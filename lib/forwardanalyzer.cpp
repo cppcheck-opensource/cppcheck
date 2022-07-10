@@ -90,6 +90,9 @@ struct ForwardTraversal {
         bool isDead() const {
             return action.isModified() || action.isInconclusive() || isEscape();
         }
+        bool hasGoto() const {
+            return endBlock ? ForwardTraversal::hasGoto(endBlock) : false;
+        }
     };
 
     bool stopUpdates() {
@@ -387,6 +390,35 @@ struct ForwardTraversal {
             }
         }
         return bail;
+    }
+
+    Progress updateBranch(Branch& branch, int depth)
+    {
+        // Save and reset actions
+        Analyzer::Action prevActions = actions;
+        actions = Analyzer::Action::None;
+        Progress p = updateRange(branch.endBlock->link(), branch.endBlock, depth);
+        branch.action |= actions;
+        // Restore actions
+        actions |= prevActions;
+
+        if (terminate == Analyzer::Terminate::Escape) {
+            branch.escape = true;
+            branch.escapeUnknown = false;
+        } else if (terminate != Analyzer::Terminate::None) {
+            if (terminate != Analyzer::Terminate::Escape) {
+                bool unknown = false;
+                if (isEscapeScope(branch.endBlock, unknown)) {
+                    branch.escape = true;
+                    branch.escapeUnknown = unknown;
+                }
+            }
+            if (terminate != Analyzer::Terminate::Modified) {
+                branch.action |= analyzeScope(branch.endBlock);
+            }
+        }
+        
+        return p;
     }
 
     bool reentersLoop(Token* endBlock, const Token* condTok, const Token* stepTok) {
@@ -697,71 +729,45 @@ struct ForwardTraversal {
                     if (!thenBranch.check && !elseBranch.check && analyzer->stopOnCondition(condTok) && stopUpdates())
                         return Break(Analyzer::Terminate::Conditional);
                     bool hasElse = Token::simpleMatch(endBlock, "} else {");
-                    bool bail = false;
-
-                    // Traverse then block
-                    thenBranch.escape = isEscapeScope(endBlock, thenBranch.escapeUnknown);
+                    tok = hasElse ? endBlock->linkAt(2) : endBlock;
                     if (thenBranch.check) {
-                        thenBranch.active = true;
-                        if (updateRange(endCond->next(), endBlock, depth - 1) == Progress::Break)
+                        if (updateRange(thenBranch.endBlock->link(), thenBranch.endBlock, depth - 1) == Progress::Break)
                             return Break();
-                    } else if (!elseBranch.check) {
-                        thenBranch.active = true;
-                        if (checkBranch(thenBranch))
-                            bail = true;
-                    }
-                    // Traverse else block
-                    if (hasElse) {
-                        elseBranch.escape = isEscapeScope(endBlock->linkAt(2), elseBranch.escapeUnknown);
-                        if (elseBranch.check) {
-                            elseBranch.active = true;
-                            Progress result = updateRange(endBlock->tokAt(2), endBlock->linkAt(2), depth - 1);
-                            if (result == Progress::Break)
-                                return Break();
-                        } else if (!thenBranch.check) {
-                            elseBranch.active = true;
-                            if (checkBranch(elseBranch))
-                                bail = true;
-                        }
-                        tok = endBlock->linkAt(2);
+                    } else if (elseBranch.check) {
+                        if (elseBranch.endBlock && updateRange(elseBranch.endBlock->link(), elseBranch.endBlock, depth - 1) == Progress::Break)
+                            return Break();
                     } else {
-                        tok = endBlock;
-                    }
-                    if (thenBranch.active)
-                        actions |= thenBranch.action;
-                    if (elseBranch.active)
-                        actions |= elseBranch.action;
-                    if (bail)
-                        return Break(Analyzer::Terminate::Bail);
-                    if (thenBranch.isDead() && elseBranch.isDead()) {
-                        if (thenBranch.isModified() && elseBranch.isModified())
-                            return Break(Analyzer::Terminate::Modified);
-                        if (thenBranch.isConclusiveEscape() && elseBranch.isConclusiveEscape())
-                            return Break(Analyzer::Terminate::Escape);
-                        return Break(Analyzer::Terminate::Bail);
-                    }
-                    // Conditional return
-                    if (thenBranch.active && thenBranch.isEscape() && !hasElse) {
-                        if (!thenBranch.isConclusiveEscape()) {
+                        const bool conditional = analyzer->isConditional();
+                        ForwardTraversal ft = fork();
+                        ft.analyzer->assume(condTok, true);
+                        Progress p = ft.updateBranch(thenBranch, depth - 1);
+
+                        analyzer->assume(condTok, false);
+                        if (hasElse) {
+                            if (updateBranch(elseBranch, depth - 1) == Progress::Break)
+                                return Break();
+                        }
+                        if (thenBranch.isDead() || elseBranch.isDead()) {
+                            if (conditional && stopUpdates())
+                                return Break(Analyzer::Terminate::Conditional);
+                        }
+                        if (thenBranch.isModified() || elseBranch.isModified()) {
+                            if (!analyzer->lowerToPossible())
+                                return Break(Analyzer::Terminate::Bail);
+                            if (!ft.analyzer->lowerToPossible())
+                                p = Progress::Break;
+                        }
+                        if (thenBranch.isInconclusive() || elseBranch.isInconclusive()) {
                             if (!analyzer->lowerToInconclusive())
                                 return Break(Analyzer::Terminate::Bail);
-                        } else if (thenBranch.check) {
-                            return Break();
-                        } else {
-                            if (analyzer->isConditional() && stopUpdates())
-                                return Break(Analyzer::Terminate::Conditional);
-                            analyzer->assume(condTok, false);
+                            if (!ft.analyzer->lowerToInconclusive())
+                                p = Progress::Break;
                         }
-                    }
-                    if (thenBranch.isInconclusive() || elseBranch.isInconclusive()) {
-                        if (!analyzer->lowerToInconclusive())
+                        if (thenBranch.hasGoto() || elseBranch.hasGoto()) {
                             return Break(Analyzer::Terminate::Bail);
-                    } else if (thenBranch.isModified() || elseBranch.isModified()) {
-                        if (!hasElse && analyzer->isConditional() && stopUpdates())
-                            return Break(Analyzer::Terminate::Conditional);
-                        if (!analyzer->lowerToPossible())
-                            return Break(Analyzer::Terminate::Bail);
-                        analyzer->assume(condTok, elseBranch.isModified());
+                        }
+                        if (p != Progress::Break)
+                            ft.updateRange(thenBranch.endBlock, end, depth - 1);
                     }
                 }
             } else if (Token::simpleMatch(tok, "try {")) {
