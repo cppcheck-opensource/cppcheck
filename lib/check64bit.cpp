@@ -51,7 +51,7 @@ static bool isFunctionPointer(const Token* tok)
     return Tokenizer::isFunctionPointer(tok->variable()->nameToken());
 }
 
-void Check64BitPortability::pointerassignment()
+void Check64BitPortabilityImpl::pointerassignment()
 {
     if (!mSettings->severity.isEnabled(Severity::portability))
         return;
@@ -139,7 +139,7 @@ void Check64BitPortability::pointerassignment()
     }
 }
 
-void Check64BitPortability::assignmentAddressToIntegerError(const Token *tok)
+void Check64BitPortabilityImpl::assignmentAddressToIntegerError(const Token *tok)
 {
     reportError(tok, Severity::portability,
                 "AssignmentAddressToInteger",
@@ -150,7 +150,7 @@ void Check64BitPortability::assignmentAddressToIntegerError(const Token *tok)
                 "way is to store addresses only in pointer types (or typedefs like uintptr_t).", CWE758, Certainty::normal);
 }
 
-void Check64BitPortability::assignmentIntegerToAddressError(const Token *tok)
+void Check64BitPortabilityImpl::assignmentIntegerToAddressError(const Token *tok)
 {
     reportError(tok, Severity::portability,
                 "AssignmentIntegerToAddress",
@@ -161,7 +161,7 @@ void Check64BitPortability::assignmentIntegerToAddressError(const Token *tok)
                 "way is to store addresses only in pointer types (or typedefs like uintptr_t).", CWE758, Certainty::normal);
 }
 
-void Check64BitPortability::returnPointerError(const Token *tok)
+void Check64BitPortabilityImpl::returnPointerError(const Token *tok)
 {
     reportError(tok, Severity::portability,
                 "CastAddressToIntegerAtReturn",
@@ -172,7 +172,7 @@ void Check64BitPortability::returnPointerError(const Token *tok)
                 "to 32-bit integer. The safe way is to return a type such as intptr_t.", CWE758, Certainty::normal);
 }
 
-void Check64BitPortability::returnIntegerError(const Token *tok)
+void Check64BitPortabilityImpl::returnIntegerError(const Token *tok)
 {
     reportError(tok, Severity::portability,
                 "CastIntegerToAddressAtReturn",
@@ -185,13 +185,13 @@ void Check64BitPortability::returnIntegerError(const Token *tok)
 
 void Check64BitPortability::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    Check64BitPortability check64BitPortability(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    Check64BitPortabilityImpl check64BitPortability(&tokenizer, &tokenizer.getSettings(), errorLogger);
     check64BitPortability.pointerassignment();
 }
 
 void Check64BitPortability::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
 {
-    Check64BitPortability c(nullptr, settings, errorLogger);
+    Check64BitPortabilityImpl c(nullptr, settings, errorLogger);
     c.assignmentAddressToIntegerError(nullptr);
     c.assignmentIntegerToAddressError(nullptr);
     c.returnIntegerError(nullptr);

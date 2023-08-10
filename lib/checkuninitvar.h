@@ -23,6 +23,7 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 #include "mathlib.h"
 #include "errortypes.h"
@@ -61,20 +62,36 @@ class CPPCHECKLIB CheckUninitVar : public Check {
 
 public:
     /** @brief This constructor is used when registering the CheckUninitVar */
-    CheckUninitVar() : Check(myName()) {}
-
-    enum Alloc : std::uint8_t { NO_ALLOC, NO_CTOR_CALL, CTOR_CALL, ARRAY };
-
-    static const Token *isVariableUsage(const Token *vartok, const Library &library, bool pointer, Alloc alloc, int indirect = 0);
-    const Token *isVariableUsage(const Token *vartok, bool pointer, Alloc alloc, int indirect = 0) const;
+    CheckUninitVar() : Check("Uninitialized variables") {}
 
 private:
-    /** @brief This constructor is used when running checks. */
-    CheckUninitVar(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
     /** @brief Run checks against the normal token list */
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+
+    /** @brief Parse current TU and extract file info */
+    Check::FileInfo *getFileInfo(const Tokenizer &tokenizer, const Settings &settings, const std::string& /*currentConfig*/) const override;
+
+    Check::FileInfo * loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement) const override;
+
+    /** @brief Analyse all file infos for all TU */
+    bool analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger) override;
+
+    void getErrorMessages(ErrorLogger* errorLogger, const Settings* settings) const override;
+
+    std::string classInfo() const override {
+        return "Uninitialized variables\n"
+               "- using uninitialized local variables\n"
+               "- using allocated data before it has been initialized\n";
+    }
+};
+
+class CPPCHECKLIB CheckUninitVarImpl : public CheckImpl {
+public:
+    /** @brief This constructor is used when running checks. */
+    CheckUninitVarImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
+
+    enum Alloc : std::uint8_t { NO_ALLOC, NO_CTOR_CALL, CTOR_CALL, ARRAY };
 
     bool diag(const Token* tok);
     /** Check for uninitialized variables */
@@ -92,16 +109,11 @@ private:
     bool isMemberVariableAssignment(const Token *tok, const std::string &membervar) const;
     bool isMemberVariableUsage(const Token *tok, bool isPointer, Alloc alloc, const std::string &membervar) const;
 
+    static const Token *isVariableUsage(const Token *vartok, const Library &library, bool pointer, Alloc alloc, int indirect = 0);
+    const Token *isVariableUsage(const Token *vartok, bool pointer, Alloc alloc, int indirect = 0) const;
+
     /** ValueFlow-based checking for uninitialized variables */
     void valueFlowUninit();
-
-    /** @brief Parse current TU and extract file info */
-    Check::FileInfo *getFileInfo(const Tokenizer &tokenizer, const Settings &settings, const std::string& /*currentConfig*/) const override;
-
-    Check::FileInfo * loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement) const override;
-
-    /** @brief Analyse all file infos for all TU */
-    bool analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger) override;
 
     void uninitvarError(const Token* tok, const ValueFlow::Value& v);
     void uninitdataError(const Token *tok, const std::string &varname);
@@ -118,18 +130,6 @@ private:
     void uninitStructMemberError(const Token *tok, const std::string &membername);
 
     std::set<const Token*> mUninitDiags;
-
-    void getErrorMessages(ErrorLogger* errorLogger, const Settings* settings) const override;
-
-    static std::string myName() {
-        return "Uninitialized variables";
-    }
-
-    std::string classInfo() const override {
-        return "Uninitialized variables\n"
-               "- using uninitialized local variables\n"
-               "- using allocated data before it has been initialized\n";
-    }
 };
 /// @}
 //---------------------------------------------------------------------------

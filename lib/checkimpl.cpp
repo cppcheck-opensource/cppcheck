@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,9 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-//---------------------------------------------------------------------------
-
-#include "check.h"
+#include "checkimpl.h"
 
 #include "errorlogger.h"
 #include "settings.h"
@@ -26,59 +24,35 @@
 #include "tokenize.h"
 #include "vfvalue.h"
 
-#include <cctype>
-#include <iostream>
+#include <cassert>
 #include <utility>
 
-//---------------------------------------------------------------------------
-
-Check::Check(std::string aname)
-    : mName(std::move(aname))
-{}
-
-void Check::writeToErrorList(const ErrorMessage &errmsg)
+void CheckImpl::reportError(const std::list<const Token *> &callstack, Severity severity, const std::string &id, const std::string &msg, const CWE &cwe, Certainty certainty)
 {
-    std::cout << errmsg.toXML() << std::endl;
-}
+    assert(mErrorLogger);
 
-
-void Check::reportError(const std::list<const Token *> &callstack, Severity severity, const std::string &id, const std::string &msg, const CWE &cwe, Certainty certainty)
-{
     // TODO: report debug warning when error is for a disabled severity
     const ErrorMessage errmsg(callstack, mTokenizer ? &mTokenizer->list : nullptr, severity, id, msg, cwe, certainty);
-    if (mErrorLogger)
-        mErrorLogger->reportErr(errmsg);
-    else
-        writeToErrorList(errmsg);
+    mErrorLogger->reportErr(errmsg);
 }
 
-void Check::reportError(ErrorPath errorPath, Severity severity, const char id[], const std::string &msg, const CWE &cwe, Certainty certainty)
+void CheckImpl::reportError(ErrorPath errorPath, Severity severity, const char id[], const std::string &msg, const CWE &cwe, Certainty certainty)
 {
+    assert(mErrorLogger);
+
     // TODO: report debug warning when error is for a disabled severity
     const ErrorMessage errmsg(std::move(errorPath), mTokenizer ? &mTokenizer->list : nullptr, severity, id, msg, cwe, certainty);
-    if (mErrorLogger)
-        mErrorLogger->reportErr(errmsg);
-    else
-        writeToErrorList(errmsg);
+    mErrorLogger->reportErr(errmsg);
 }
 
-bool Check::wrongData(const Token *tok, const char *str)
+bool CheckImpl::wrongData(const Token *tok, const char *str)
 {
     if (mSettings->daca)
         reportError(tok, Severity::debug, "DacaWrongData", "Wrong data detected by condition " + std::string(str));
     return true;
 }
 
-std::string Check::getMessageId(const ValueFlow::Value &value, const char id[])
-{
-    if (value.condition != nullptr)
-        return id + std::string("Cond");
-    if (value.safe)
-        return std::string("safe") + static_cast<char>(std::toupper(id[0])) + (id + 1);
-    return id;
-}
-
-ErrorPath Check::getErrorPath(const Token* errtok, const ValueFlow::Value* value, std::string bug) const
+ErrorPath CheckImpl::getErrorPath(const Token* errtok, const ValueFlow::Value* value, std::string bug) const
 {
     ErrorPath errorPath;
     if (!value) {
@@ -96,9 +70,8 @@ ErrorPath Check::getErrorPath(const Token* errtok, const ValueFlow::Value* value
     return errorPath;
 }
 
-void Check::logChecker(const char id[])
+void CheckImpl::logChecker(const char id[])
 {
     if (!mSettings->buildDir.empty() || mSettings->collectLogCheckers())
         reportError(nullptr, Severity::internal, "logChecker", id);
 }
-

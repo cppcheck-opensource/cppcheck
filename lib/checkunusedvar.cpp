@@ -699,7 +699,7 @@ static void useFunctionArgs(const Token *tok, Variables& variables)
 //---------------------------------------------------------------------------
 // Usage of function variables
 //---------------------------------------------------------------------------
-void CheckUnusedVar::checkFunctionVariableUsage_iterateScopes(const Scope* const scope, Variables& variables) const
+void CheckUnusedVarImpl::checkFunctionVariableUsage_iterateScopes(const Scope* const scope, Variables& variables) const
 {
     // Find declarations if the scope is executable..
     if (scope->isExecutable()) {
@@ -1173,7 +1173,7 @@ static bool isReturnedByRef(const Variable* var, const Function* func)
     });
 }
 
-void CheckUnusedVar::checkFunctionVariableUsage()
+void CheckUnusedVarImpl::checkFunctionVariableUsage()
 {
     if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->checkLibrary && !mSettings->isPremiumEnabled("unusedVariable"))
         return;
@@ -1479,7 +1479,7 @@ void CheckUnusedVar::checkFunctionVariableUsage()
     }
 }
 
-void CheckUnusedVar::unusedVariableError(const Token *tok, const std::string &varname)
+void CheckUnusedVarImpl::unusedVariableError(const Token *tok, const std::string &varname)
 {
     if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("unusedVariable"))
         return;
@@ -1487,7 +1487,7 @@ void CheckUnusedVar::unusedVariableError(const Token *tok, const std::string &va
     reportError(tok, Severity::style, "unusedVariable", "$symbol:" + varname + "\nUnused variable: $symbol", CWE563, Certainty::normal);
 }
 
-void CheckUnusedVar::allocatedButUnusedVariableError(const Token *tok, const std::string &varname)
+void CheckUnusedVarImpl::allocatedButUnusedVariableError(const Token *tok, const std::string &varname)
 {
     if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("unusedVariable"))
         return;
@@ -1495,7 +1495,7 @@ void CheckUnusedVar::allocatedButUnusedVariableError(const Token *tok, const std
     reportError(tok, Severity::style, "unusedAllocatedMemory", "$symbol:" + varname + "\nVariable '$symbol' is allocated memory that is never used.", CWE563, Certainty::normal);
 }
 
-void CheckUnusedVar::unreadVariableError(const Token *tok, const std::string &varname, bool modified)
+void CheckUnusedVarImpl::unreadVariableError(const Token *tok, const std::string &varname, bool modified)
 {
     if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("unusedVariable"))
         return;
@@ -1506,7 +1506,7 @@ void CheckUnusedVar::unreadVariableError(const Token *tok, const std::string &va
         reportError(tok, Severity::style, "unreadVariable", "$symbol:" + varname + "\nVariable '$symbol' is assigned a value that is never used.", CWE563, Certainty::normal);
 }
 
-void CheckUnusedVar::unassignedVariableError(const Token *tok, const std::string &varname)
+void CheckUnusedVarImpl::unassignedVariableError(const Token *tok, const std::string &varname)
 {
     if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("unusedVariable"))
         return;
@@ -1517,7 +1517,7 @@ void CheckUnusedVar::unassignedVariableError(const Token *tok, const std::string
 //---------------------------------------------------------------------------
 // Check that all struct members are used
 //---------------------------------------------------------------------------
-void CheckUnusedVar::checkStructMemberUsage()
+void CheckUnusedVarImpl::checkStructMemberUsage()
 {
     if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("unusedStructMember") && !mSettings->isPremiumEnabled("unusedVariable"))
         return;
@@ -1698,12 +1698,12 @@ void CheckUnusedVar::checkStructMemberUsage()
     }
 }
 
-void CheckUnusedVar::unusedStructMemberError(const Token* tok, const std::string& structname, const std::string& varname, const std::string& prefix)
+void CheckUnusedVarImpl::unusedStructMemberError(const Token* tok, const std::string& structname, const std::string& varname, const std::string& prefix)
 {
     reportError(tok, Severity::style, "unusedStructMember", "$symbol:" + structname + "::" + varname + '\n' + prefix + " member '$symbol' is never used.", CWE563, Certainty::normal);
 }
 
-bool CheckUnusedVar::isEmptyType(const Type* type)
+bool CheckUnusedVarImpl::isEmptyType(const Type* type)
 {
     // a type that has no variables and no constructor
 
@@ -1726,7 +1726,7 @@ bool CheckUnusedVar::isEmptyType(const Type* type)
 
 void CheckUnusedVar::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckUnusedVar checkUnusedVar(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckUnusedVarImpl checkUnusedVar(&tokenizer, &tokenizer.getSettings(), errorLogger);
 
     // Coding style checks
     checkUnusedVar.checkStructMemberUsage();
@@ -1735,10 +1735,11 @@ void CheckUnusedVar::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLog
 
 void CheckUnusedVar::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
 {
-    CheckUnusedVar c(nullptr, settings, errorLogger);
+    CheckUnusedVarImpl c(nullptr, settings, errorLogger);
     c.unusedVariableError(nullptr, "varname");
     c.allocatedButUnusedVariableError(nullptr, "varname");
     c.unreadVariableError(nullptr, "varname", false);
     c.unassignedVariableError(nullptr, "varname");
     c.unusedStructMemberError(nullptr, "structname", "variable");
 }
+

@@ -23,6 +23,7 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 #include "errortypes.h"
 
@@ -47,15 +48,32 @@ namespace ValueFlow {
 class CPPCHECKLIB CheckAutoVariables : public Check {
 public:
     /** This constructor is used when registering the CheckClass */
-    CheckAutoVariables() : Check(myName()) {}
+    CheckAutoVariables() : Check("Auto Variables") {}
 
 private:
-    /** This constructor is used when running checks. */
-    CheckAutoVariables(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
     /** @brief Run checks against the normal token list */
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+
+    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
+
+    std::string classInfo() const override {
+        return "A pointer to a variable is only valid as long as the variable is in scope.\n"
+               "Check:\n"
+               "- returning a pointer to auto or temporary variable\n"
+               "- assigning address of an variable to an effective parameter of a function\n"
+               "- returning reference to local/temporary variable\n"
+               "- returning address of function parameter\n"
+               "- suspicious assignment of pointer argument\n"
+               "- useless assignment of function argument\n";
+    }
+};
+
+class CPPCHECKLIB CheckAutoVariablesImpl : public CheckImpl
+{
+public:
+    /** This constructor is used when running checks. */
+    CheckAutoVariablesImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** assign function argument */
     void assignFunctionArg();
@@ -69,7 +87,6 @@ private:
     bool checkAutoVariableAssignment(const Token *expr, bool inconclusive, const Token *startToken = nullptr);
 
     void checkVarLifetime();
-
     void checkVarLifetimeScope(const Token * start, const Token * end);
 
     void errorAutoVariableAssignment(const Token *tok, bool inconclusive);
@@ -85,24 +102,8 @@ private:
     void errorUselessAssignmentArg(const Token *tok);
     void errorUselessAssignmentPtrArg(const Token *tok);
 
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
-
-    static std::string myName() {
-        return "Auto Variables";
-    }
-
-    std::string classInfo() const override {
-        return "A pointer to a variable is only valid as long as the variable is in scope.\n"
-               "Check:\n"
-               "- returning a pointer to auto or temporary variable\n"
-               "- assigning address of an variable to an effective parameter of a function\n"
-               "- returning reference to local/temporary variable\n"
-               "- returning address of function parameter\n"
-               "- suspicious assignment of pointer argument\n"
-               "- useless assignment of function argument\n";
-    }
-
     /** returns true if tokvalue has already been diagnosed */
+private:
     bool diag(const Token* tokvalue);
 
     std::set<const Token*> mDiagDanglingTemp;

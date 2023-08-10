@@ -109,7 +109,7 @@ private:
 
         // Check..
         if (options.onlyFormatStr) {
-            CheckIO checkIO(&tokenizer, &settings1, this);
+            CheckIOImpl checkIO(&tokenizer, &settings1, this);
             checkIO.checkWrongPrintfScanfArguments();
             return;
         }

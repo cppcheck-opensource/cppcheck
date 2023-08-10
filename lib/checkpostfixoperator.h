@@ -23,6 +23,7 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 
 #include <string>
@@ -44,30 +45,28 @@ class CPPCHECKLIB CheckPostfixOperator : public Check {
 
 public:
     /** This constructor is used when registering the CheckPostfixOperator */
-    CheckPostfixOperator() : Check(myName()) {}
+    CheckPostfixOperator() : Check("Using postfix operators") {}
 
 private:
-    /** This constructor is used when running checks. */
-    CheckPostfixOperator(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+
+    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
+    std::string classInfo() const override {
+        return "Warn if using postfix operators ++ or -- rather than prefix operator\n";
+    }
+};
+
+class CPPCHECKLIB CheckPostfixOperatorImpl : public CheckImpl {
+public:
+    /** This constructor is used when running checks. */
+    CheckPostfixOperatorImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** Check postfix operators */
     void postfixOperator();
 
     /** Report Error */
     void postfixOperatorError(const Token *tok);
-
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
-
-    static std::string myName() {
-        return "Using postfix operators";
-    }
-
-    std::string classInfo() const override {
-        return "Warn if using postfix operators ++ or -- rather than prefix operator\n";
-    }
 };
 /// @}
 //---------------------------------------------------------------------------

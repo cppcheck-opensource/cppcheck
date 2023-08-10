@@ -23,6 +23,7 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 #include "mathlib.h"
 #include "errortypes.h"
@@ -50,14 +51,38 @@ namespace ValueFlow {
 class CPPCHECKLIB CheckCondition : public Check {
 public:
     /** This constructor is used when registering the CheckAssignIf */
-    CheckCondition() : Check(myName()) {}
+    CheckCondition() : Check("Condition") {}
 
 private:
-    /** This constructor is used when running checks. */
-    CheckCondition(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+
+    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
+
+    std::string classInfo() const override {
+        return "Match conditions with assignments and other conditions:\n"
+               "- Mismatching assignment and comparison => comparison is always true/false\n"
+               "- Mismatching lhs and rhs in comparison => comparison is always true/false\n"
+               "- Detect usage of | where & should be used\n"
+               "- Duplicate condition and assignment\n"
+               "- Detect matching 'if' and 'else if' conditions\n"
+               "- Mismatching bitand (a &= 0xf0; a &= 1; => a = 0)\n"
+               "- Opposite inner condition is always false\n"
+               "- Identical condition after early exit is always false\n"
+               "- Condition that is always true/false\n"
+               "- Mutual exclusion over || always evaluating to true\n"
+               "- Comparisons of modulo results that are always true/false.\n"
+               "- Known variable values => condition is always true/false\n"
+               "- Invalid test for overflow. Some mainstream compilers remove such overflow tests when optimising code.\n"
+               "- Suspicious assignment of container/iterator in condition => condition is always true.\n";
+    }
+};
+
+
+class CPPCHECKLIB CheckConditionImpl : public CheckImpl {
+public:
+    /** This constructor is used when running checks. */
+    CheckConditionImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** mismatching assignment / comparison */
     void assignIf();
@@ -157,30 +182,6 @@ private:
 
     void checkCompareValueOutOfTypeRange();
     void compareValueOutOfTypeRangeError(const Token *comparisonTok, const std::string &type, MathLib::bigint value, bool result);
-
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
-
-    static std::string myName() {
-        return "Condition";
-    }
-
-    std::string classInfo() const override {
-        return "Match conditions with assignments and other conditions:\n"
-               "- Mismatching assignment and comparison => comparison is always true/false\n"
-               "- Mismatching lhs and rhs in comparison => comparison is always true/false\n"
-               "- Detect usage of | where & should be used\n"
-               "- Duplicate condition and assignment\n"
-               "- Detect matching 'if' and 'else if' conditions\n"
-               "- Mismatching bitand (a &= 0xf0; a &= 1; => a = 0)\n"
-               "- Opposite inner condition is always false\n"
-               "- Identical condition after early exit is always false\n"
-               "- Condition that is always true/false\n"
-               "- Mutual exclusion over || always evaluating to true\n"
-               "- Comparisons of modulo results that are always true/false.\n"
-               "- Known variable values => condition is always true/false\n"
-               "- Invalid test for overflow. Some mainstream compilers remove such overflow tests when optimising code.\n"
-               "- Suspicious assignment of container/iterator in condition => condition is always true.\n";
-    }
 };
 /// @}
 //---------------------------------------------------------------------------

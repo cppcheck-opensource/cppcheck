@@ -22,6 +22,7 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 
 #include <string>
@@ -46,14 +47,32 @@ class Tokenizer;
 class CPPCHECKLIB CheckExceptionSafety : public Check {
 public:
     /** This constructor is used when registering the CheckClass */
-    CheckExceptionSafety() : Check(myName()) {}
+    CheckExceptionSafety() : Check("Exception Safety") {}
 
 private:
-    /** This constructor is used when running checks. */
-    CheckExceptionSafety(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+
+    /** Generate all possible errors (for --errorlist) */
+    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
+
+    /** wiki formatted description of the class (for --doc) */
+    std::string classInfo() const override {
+        return "Checking exception safety\n"
+               "- Throwing exceptions in destructors\n"
+               "- Throwing exception during invalid state\n"
+               "- Throwing a copy of a caught exception instead of rethrowing the original exception\n"
+               "- Exception caught by value instead of by reference\n"
+               "- Throwing exception in noexcept, nothrow(), __attribute__((nothrow)) or __declspec(nothrow) function\n"
+               "- Unhandled exception specification when calling function foo()\n"
+               "- Rethrow without currently handled exception\n";
+    }
+};
+
+class CPPCHECKLIB CheckExceptionSafetyImpl : public CheckImpl {
+public:
+    /** This constructor is used when running checks. */
+    CheckExceptionSafetyImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** Don't throw exceptions in destructors */
     void destructors();
@@ -87,26 +106,6 @@ private:
     void unhandledExceptionSpecificationError(const Token * tok1, const Token * tok2, const std::string & funcname);
     /** Rethrow without currently handled exception */
     void rethrowNoCurrentExceptionError(const Token *tok);
-
-    /** Generate all possible errors (for --errorlist) */
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
-
-    /** Short description of class (for --doc) */
-    static std::string myName() {
-        return "Exception Safety";
-    }
-
-    /** wiki formatted description of the class (for --doc) */
-    std::string classInfo() const override {
-        return "Checking exception safety\n"
-               "- Throwing exceptions in destructors\n"
-               "- Throwing exception during invalid state\n"
-               "- Throwing a copy of a caught exception instead of rethrowing the original exception\n"
-               "- Exception caught by value instead of by reference\n"
-               "- Throwing exception in noexcept, nothrow(), __attribute__((nothrow)) or __declspec(nothrow) function\n"
-               "- Unhandled exception specification when calling function foo()\n"
-               "- Rethrow without currently handled exception\n";
-    }
 };
 /// @}
 //---------------------------------------------------------------------------

@@ -22,7 +22,6 @@
 //---------------------------------------------------------------------------
 
 #include "config.h"
-#include "errortypes.h"
 
 #include <list>
 #include <string>
@@ -36,14 +35,8 @@ namespace CTU {
     class FileInfo;
 }
 
-namespace ValueFlow {
-    class Value;
-}
-
 class Settings;
-class Token;
 class ErrorLogger;
-class ErrorMessage;
 class Tokenizer;
 
 /** Use WRONG_DATA in checkers to mark conditions that check that data is correct */
@@ -57,21 +50,14 @@ class Tokenizer;
  * All checking classes must inherit from this class
  */
 class CPPCHECKLIB Check {
-public:
-    /** This constructor is used when registering the CheckClass */
-    explicit Check(std::string aname);
-
 protected:
-    /** This constructor is used when running checks. */
-    Check(std::string aname, const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : mTokenizer(tokenizer), mSettings(settings), mErrorLogger(errorLogger), mName(std::move(aname)) {}
-
-private:
-    static std::list<Check *> &instances_internal();
-
-public:
+    /** This constructor is used when registering the check */
+    explicit Check(std::string aname)
+        : mName(std::move(aname))
+    {}
     virtual ~Check() = default;
 
+public:
     Check(const Check &) = delete;
     Check& operator=(const Check &) = delete;
 
@@ -88,13 +74,6 @@ public:
 
     /** get information about this class, used to generate documentation */
     virtual std::string classInfo() const = 0;
-
-    /**
-     * Write given error to stdout in xml format.
-     * This is for for printout out the error list with --errorlist
-     * @param errmsg Error message to write
-     */
-    static void writeToErrorList(const ErrorMessage &errmsg);
 
     /** Base class used for whole-program analysis */
     class CPPCHECKLIB FileInfo {
@@ -120,40 +99,6 @@ public:
     virtual bool analyseWholeProgram(const CTU::FileInfo& /*ctu*/, const std::list<FileInfo*>& /*fileInfo*/, const Settings& /*settings*/, ErrorLogger & /*errorLogger*/) {
         return false;
     }
-
-protected:
-    static std::string getMessageId(const ValueFlow::Value &value, const char id[]);
-
-    const Tokenizer* const mTokenizer{};
-    const Settings* const mSettings{};
-    ErrorLogger* const mErrorLogger{};
-
-    /** report an error */
-    void reportError(const Token *tok, const Severity severity, const std::string &id, const std::string &msg) {
-        reportError(tok, severity, id, msg, CWE(0U), Certainty::normal);
-    }
-
-    /** report an error */
-    void reportError(const Token *tok, const Severity severity, const std::string &id, const std::string &msg, const CWE &cwe, Certainty certainty) {
-        const std::list<const Token *> callstack(1, tok);
-        reportError(callstack, severity, id, msg, cwe, certainty);
-    }
-
-    /** report an error */
-    void reportError(const std::list<const Token *> &callstack, Severity severity, const std::string &id, const std::string &msg, const CWE &cwe, Certainty certainty);
-
-    void reportError(ErrorPath errorPath, Severity severity, const char id[], const std::string &msg, const CWE &cwe, Certainty certainty);
-
-    /** log checker */
-    void logChecker(const char id[]);
-
-    ErrorPath getErrorPath(const Token* errtok, const ValueFlow::Value* value, std::string bug) const;
-
-    /**
-     * Use WRONG_DATA in checkers when you check for wrong data. That
-     * will call this method
-     */
-    bool wrongData(const Token *tok, const char *str);
 
 private:
     const std::string mName;

@@ -104,7 +104,7 @@ private:
         ASSERT_LOC(tokenizer.simplifyTokens1(""), file, line);
 
         // Check for unused private functions..
-        CheckClass checkClass(&tokenizer, &settings1, this);
+        CheckClassImpl checkClass(&tokenizer, &settings1, this);
         checkClass.privateFunctions();
     }
 

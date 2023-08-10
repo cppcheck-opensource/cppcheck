@@ -23,6 +23,7 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 #include "library.h"
 
@@ -107,14 +108,23 @@ public:
 class CPPCHECKLIB CheckLeakAutoVar : public Check {
 public:
     /** This constructor is used when registering the CheckLeakAutoVar */
-    CheckLeakAutoVar() : Check(myName()) {}
+    CheckLeakAutoVar() : Check("Leaks (auto variables)") {}
 
 private:
-    /** This constructor is used when running checks. */
-    CheckLeakAutoVar(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+
+    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
+
+    std::string classInfo() const override {
+        return "Detect when a auto variable is allocated but not deallocated or deallocated twice.\n";
+    }
+};
+
+class CPPCHECKLIB CheckLeakAutoVarImpl : public CheckImpl {
+public:
+    /** This constructor is used when running checks. */
+    CheckLeakAutoVarImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** check for leaks in all scopes */
     void check();
@@ -157,16 +167,6 @@ private:
 
     /** message: user configuration is needed to complete analysis */
     void configurationInfo(const Token* tok, const std::pair<const Token*, VarInfo::Usage>& functionUsage);
-
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
-
-    static std::string myName() {
-        return "Leaks (auto variables)";
-    }
-
-    std::string classInfo() const override {
-        return "Detect when a auto variable is allocated but not deallocated or deallocated twice.\n";
-    }
 };
 /// @}
 //---------------------------------------------------------------------------

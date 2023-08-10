@@ -23,6 +23,7 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 
 #include <list>
@@ -47,15 +48,30 @@ namespace ValueFlow
 class CPPCHECKLIB CheckType : public Check {
 public:
     /** @brief This constructor is used when registering the CheckClass */
-    CheckType() : Check(myName()) {}
+    CheckType() : Check("Type") {}
 
 private:
-    /** @brief This constructor is used when running checks. */
-    CheckType(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
     /** @brief Run checks against the normal token list */
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+
+    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
+
+    std::string classInfo() const override {
+        return "Type checks\n"
+               "- bitwise shift by too many bits (only enabled when --platform is used)\n"
+               "- signed integer overflow (only enabled when --platform is used)\n"
+               "- dangerous sign conversion, when signed value can be negative\n"
+               "- possible loss of information when assigning int result to long variable\n"
+               "- possible loss of information when returning int result as long return value\n"
+               "- float conversion overflow\n";
+    }
+};
+
+class CPPCHECKLIB CheckTypeImpl : public CheckImpl {
+public:
+    /** @brief This constructor is used when running checks. */
+    CheckTypeImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** @brief %Check for bitwise shift with too big right operand */
     void checkTooBigBitwiseShift();
@@ -81,22 +97,6 @@ private:
     void longCastAssignError(const Token *tok, const ValueType* src = nullptr, const ValueType* tgt = nullptr);
     void longCastReturnError(const Token *tok, const ValueType* src = nullptr, const ValueType* tgt = nullptr);
     void floatToIntegerOverflowError(const Token *tok, const ValueFlow::Value &value);
-
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
-
-    static std::string myName() {
-        return "Type";
-    }
-
-    std::string classInfo() const override {
-        return "Type checks\n"
-               "- bitwise shift by too many bits (only enabled when --platform is used)\n"
-               "- signed integer overflow (only enabled when --platform is used)\n"
-               "- dangerous sign conversion, when signed value can be negative\n"
-               "- possible loss of information when assigning int result to long variable\n"
-               "- possible loss of information when returning int result as long return value\n"
-               "- float conversion overflow\n";
-    }
 };
 /// @}
 //---------------------------------------------------------------------------

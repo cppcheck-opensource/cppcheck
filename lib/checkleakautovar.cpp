@@ -107,35 +107,35 @@ void VarInfo::possibleUsageAll(const std::pair<const Token*, Usage>& functionUsa
 }
 
 
-void CheckLeakAutoVar::leakError(const Token *tok, const std::string &varname, int type) const
+void CheckLeakAutoVarImpl::leakError(const Token *tok, const std::string &varname, int type) const
 {
-    const CheckMemoryLeak checkmemleak(mTokenizer, mErrorLogger, mSettings);
+    const CheckMemoryLeakImpl checkmemleak(mTokenizer, mSettings, mErrorLogger);
     if (Library::isresource(type))
         checkmemleak.resourceLeakError(tok, varname);
     else
         checkmemleak.memleakError(tok, varname);
 }
 
-void CheckLeakAutoVar::mismatchError(const Token *deallocTok, const Token *allocTok, const std::string &varname) const
+void CheckLeakAutoVarImpl::mismatchError(const Token *deallocTok, const Token *allocTok, const std::string &varname) const
 {
-    const CheckMemoryLeak c(mTokenizer, mErrorLogger, mSettings);
+    const CheckMemoryLeakImpl c(mTokenizer, mSettings, mErrorLogger);
     const std::list<const Token *> callstack = { allocTok, deallocTok };
     c.mismatchAllocDealloc(callstack, varname);
 }
 
-void CheckLeakAutoVar::deallocUseError(const Token *tok, const std::string &varname) const
+void CheckLeakAutoVarImpl::deallocUseError(const Token *tok, const std::string &varname) const
 {
-    const CheckMemoryLeak c(mTokenizer, mErrorLogger, mSettings);
+    const CheckMemoryLeakImpl c(mTokenizer, mSettings, mErrorLogger);
     c.deallocuseError(tok, varname);
 }
 
-void CheckLeakAutoVar::deallocReturnError(const Token *tok, const Token *deallocTok, const std::string &varname)
+void CheckLeakAutoVarImpl::deallocReturnError(const Token *tok, const Token *deallocTok, const std::string &varname)
 {
     const std::list<const Token *> locations = { deallocTok, tok };
     reportError(locations, Severity::error, "deallocret", "$symbol:" + varname + "\nReturning/dereferencing '$symbol' after it is deallocated / released", CWE672, Certainty::normal);
 }
 
-void CheckLeakAutoVar::configurationInfo(const Token* tok, const std::pair<const Token*, VarInfo::Usage>& functionUsage)
+void CheckLeakAutoVarImpl::configurationInfo(const Token* tok, const std::pair<const Token*, VarInfo::Usage>& functionUsage)
 {
     if (mSettings->checkLibrary && functionUsage.second == VarInfo::USED &&
         (!functionUsage.first || !functionUsage.first->function() || !functionUsage.first->function()->hasBody())) {
@@ -149,7 +149,7 @@ void CheckLeakAutoVar::configurationInfo(const Token* tok, const std::pair<const
     }
 }
 
-void CheckLeakAutoVar::doubleFreeError(const Token *tok, const Token *prevFreeTok, const std::string &varname, int type)
+void CheckLeakAutoVarImpl::doubleFreeError(const Token *tok, const Token *prevFreeTok, const std::string &varname, int type)
 {
     const std::list<const Token *> locations = { prevFreeTok, tok };
 
@@ -160,7 +160,7 @@ void CheckLeakAutoVar::doubleFreeError(const Token *tok, const Token *prevFreeTo
 }
 
 
-void CheckLeakAutoVar::check()
+void CheckLeakAutoVarImpl::check()
 {
     if (mSettings->clang)
         return;
@@ -303,10 +303,10 @@ static std::vector<const Token*> getComparisonTokens(const Token* tok)
     return result;
 }
 
-bool CheckLeakAutoVar::checkScope(const Token * const startToken,
-                                  VarInfo &varInfo,
-                                  std::set<int> notzero,
-                                  nonneg int recursiveCount)
+bool CheckLeakAutoVarImpl::checkScope(const Token * const startToken,
+                                      VarInfo &varInfo,
+                                      std::set<int> notzero,
+                                      nonneg int recursiveCount)
 {
 #if ASAN
     static const nonneg int recursiveLimit = 300;
@@ -887,7 +887,7 @@ bool CheckLeakAutoVar::checkScope(const Token * const startToken,
 }
 
 
-const Token * CheckLeakAutoVar::checkTokenInsideExpression(const Token * const tok, VarInfo &varInfo, bool inFuncCall)
+const Token * CheckLeakAutoVarImpl::checkTokenInsideExpression(const Token * const tok, VarInfo &varInfo, bool inFuncCall)
 {
     // Deallocation and then dereferencing pointer..
     if (tok->varId() > 0) {
@@ -896,7 +896,7 @@ const Token * CheckLeakAutoVar::checkTokenInsideExpression(const Token * const t
         if (var != varInfo.alloctype.end()) {
             bool unknown = false;
             if (var->second.status == VarInfo::DEALLOC && tok->valueType() && tok->valueType()->pointer &&
-                CheckNullPointer::isPointerDeRef(tok, unknown, *mSettings, /*checkNullArg*/ false) && !unknown) {
+                CheckNullPointerImpl::isPointerDeRef(tok, unknown, *mSettings, /*checkNullArg*/ false) && !unknown) {
                 deallocUseError(tok, tok->str());
             } else if (Token::simpleMatch(tok->tokAt(-2), "= &")) {
                 varInfo.erase(tok->varId());
@@ -956,7 +956,7 @@ const Token * CheckLeakAutoVar::checkTokenInsideExpression(const Token * const t
 }
 
 
-void CheckLeakAutoVar::changeAllocStatusIfRealloc(std::map<int, VarInfo::AllocInfo> &alloctype, const Token *fTok, const Token *retTok) const
+void CheckLeakAutoVarImpl::changeAllocStatusIfRealloc(std::map<int, VarInfo::AllocInfo> &alloctype, const Token *fTok, const Token *retTok) const
 {
     const Library::AllocFunc* f = mSettings->library.getReallocFuncInfo(fTok);
     if (f && f->arg == -1 && f->reallocArg > 0 && f->reallocArg <= numberOfArguments(fTok)) {
@@ -977,7 +977,7 @@ void CheckLeakAutoVar::changeAllocStatusIfRealloc(std::map<int, VarInfo::AllocIn
 }
 
 
-void CheckLeakAutoVar::changeAllocStatus(VarInfo &varInfo, const VarInfo::AllocInfo& allocation, const Token* tok, const Token* arg)
+void CheckLeakAutoVarImpl::changeAllocStatus(VarInfo &varInfo, const VarInfo::AllocInfo& allocation, const Token* tok, const Token* arg)
 {
     std::map<int, VarInfo::AllocInfo> &alloctype = varInfo.alloctype;
     const auto var = alloctype.find(arg->varId());
@@ -1014,7 +1014,7 @@ void CheckLeakAutoVar::changeAllocStatus(VarInfo &varInfo, const VarInfo::AllocI
     }
 }
 
-void CheckLeakAutoVar::functionCall(const Token *tokName, const Token *tokOpeningPar, VarInfo &varInfo, const VarInfo::AllocInfo& allocation, const Library::AllocFunc* af)
+void CheckLeakAutoVarImpl::functionCall(const Token *tokName, const Token *tokOpeningPar, VarInfo &varInfo, const VarInfo::AllocInfo& allocation, const Library::AllocFunc* af)
 {
     // Ignore function call?
     const bool isLeakIgnore = mSettings->library.isLeakIgnore(mSettings->library.getFunctionName(tokName));
@@ -1153,8 +1153,8 @@ void CheckLeakAutoVar::functionCall(const Token *tokName, const Token *tokOpenin
 }
 
 
-void CheckLeakAutoVar::leakIfAllocated(const Token *vartok,
-                                       const VarInfo &varInfo)
+void CheckLeakAutoVarImpl::leakIfAllocated(const Token *vartok,
+                                           const VarInfo &varInfo)
 {
     const std::map<int, VarInfo::AllocInfo> &alloctype = varInfo.alloctype;
     const auto& possibleUsage = varInfo.possibleUsage;
@@ -1176,7 +1176,7 @@ static bool isSafeCast(const ValueType* vt, const Settings& settings)
     return sizeOf == 0 || sizeOf >= settings.platform.sizeof_pointer;
 }
 
-void CheckLeakAutoVar::ret(const Token *tok, VarInfo &varInfo, const bool isEndOfScope)
+void CheckLeakAutoVarImpl::ret(const Token *tok, VarInfo &varInfo, const bool isEndOfScope)
 {
     const std::map<int, VarInfo::AllocInfo> &alloctype = varInfo.alloctype;
     const auto& possibleUsage = varInfo.possibleUsage;
@@ -1280,13 +1280,13 @@ void CheckLeakAutoVar::ret(const Token *tok, VarInfo &varInfo, const bool isEndO
 
 void CheckLeakAutoVar::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckLeakAutoVar checkLeakAutoVar(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckLeakAutoVarImpl checkLeakAutoVar(&tokenizer, &tokenizer.getSettings(), errorLogger);
     checkLeakAutoVar.check();
 }
 
 void CheckLeakAutoVar::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
 {
-    CheckLeakAutoVar c(nullptr, settings, errorLogger);
+    CheckLeakAutoVarImpl c(nullptr, settings, errorLogger);
     c.deallocReturnError(nullptr, nullptr, "p");
     c.configurationInfo(nullptr, { nullptr, VarInfo::USED });  // user configuration is needed to complete analysis
     c.doubleFreeError(nullptr, nullptr, "varname", 0);

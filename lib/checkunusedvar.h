@@ -22,6 +22,7 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 
 #include <map>
@@ -46,15 +47,31 @@ class CPPCHECKLIB CheckUnusedVar : public Check {
 
 public:
     /** @brief This constructor is used when registering the CheckClass */
-    CheckUnusedVar() : Check(myName()) {}
+    CheckUnusedVar() : Check("UnusedVar") {}
 
 private:
-    /** @brief This constructor is used when running checks. */
-    CheckUnusedVar(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
     /** @brief Run checks against the normal token list */
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+
+    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
+
+    std::string classInfo() const override {
+        return "UnusedVar checks\n"
+
+               // style
+               "- unused variable\n"
+               "- allocated but unused variable\n"
+               "- unread variable\n"
+               "- unassigned variable\n"
+               "- unused struct member\n";
+    }
+};
+
+class CPPCHECKLIB CheckUnusedVarImpl : public CheckImpl {
+public:
+    /** @brief This constructor is used when running checks. */
+    CheckUnusedVarImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** @brief %Check for unused function variables */
     void checkFunctionVariableUsage_iterateScopes(const Scope* scope, Variables& variables) const;
@@ -72,25 +89,7 @@ private:
     void unreadVariableError(const Token *tok, const std::string &varname, bool modified);
     void unassignedVariableError(const Token *tok, const std::string &varname);
 
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
-
-    static std::string myName() {
-        return "UnusedVar";
-    }
-
-    std::string classInfo() const override {
-        return "UnusedVar checks\n"
-
-               // style
-               "- unused variable\n"
-               "- allocated but unused variable\n"
-               "- unread variable\n"
-               "- unassigned variable\n"
-               "- unused struct member\n";
-    }
-
     std::map<const Type *,bool> mIsEmptyTypeMap;
-
 };
 /// @}
 //---------------------------------------------------------------------------

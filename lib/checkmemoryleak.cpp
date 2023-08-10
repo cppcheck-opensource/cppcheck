@@ -31,6 +31,7 @@
 #include "utils.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <utility>
 #include <vector>
@@ -45,7 +46,8 @@ static const CWE CWE772(772U);  // Missing Release of Resource after Effective L
 
 //---------------------------------------------------------------------------
 
-CheckMemoryLeak::AllocType CheckMemoryLeak::getAllocationType(const Token *tok2, nonneg int varid, std::list<const Function*> *callstack) const
+
+CheckMemoryLeakImpl::AllocType CheckMemoryLeakImpl::getAllocationType(const Token *tok2, nonneg int varid, std::list<const Function*> *callstack) const
 {
     // What we may have...
     //     * var = (char *)malloc(10);
@@ -93,7 +95,7 @@ CheckMemoryLeak::AllocType CheckMemoryLeak::getAllocationType(const Token *tok2,
             return New;
         }
 
-        if (mSettings_->hasLib("posix")) {
+        if (mSettings->hasLib("posix")) {
             if (Token::Match(tok2, "open|openat|creat|mkstemp|mkostemp|socket (")) {
                 // simple sanity check of function parameters..
                 // TODO: Make such check for all these functions
@@ -112,11 +114,11 @@ CheckMemoryLeak::AllocType CheckMemoryLeak::getAllocationType(const Token *tok2,
         }
 
         // Does tok2 point on a Library allocation function?
-        const int alloctype = mSettings_->library.getAllocId(tok2, -1);
+        const int alloctype = mSettings->library.getAllocId(tok2, -1);
         if (alloctype > 0) {
-            if (alloctype == mSettings_->library.deallocId("free"))
+            if (alloctype == mSettings->library.deallocId("free"))
                 return Malloc;
-            if (alloctype == mSettings_->library.deallocId("fclose"))
+            if (alloctype == mSettings->library.deallocId("fclose"))
                 return File;
             return Library::ismemory(alloctype) ? OtherMem : OtherRes;
         }
@@ -143,7 +145,7 @@ CheckMemoryLeak::AllocType CheckMemoryLeak::getAllocationType(const Token *tok2,
 }
 
 
-CheckMemoryLeak::AllocType CheckMemoryLeak::getReallocationType(const Token *tok2, nonneg int varid) const
+CheckMemoryLeakImpl::AllocType CheckMemoryLeakImpl::getReallocationType(const Token *tok2, nonneg int varid) const
 {
     // What we may have...
     //     * var = (char *)realloc(..;
@@ -157,7 +159,7 @@ CheckMemoryLeak::AllocType CheckMemoryLeak::getReallocationType(const Token *tok
     if (!Token::Match(tok2, "%name% ("))
         return No;
 
-    const Library::AllocFunc *f = mSettings_->library.getReallocFuncInfo(tok2);
+    const Library::AllocFunc *f = mSettings->library.getReallocFuncInfo(tok2);
     if (!(f && f->reallocArg > 0 && f->reallocArg <= numberOfArguments(tok2)))
         return No;
     const auto args = getArguments(tok2);
@@ -171,11 +173,11 @@ CheckMemoryLeak::AllocType CheckMemoryLeak::getReallocationType(const Token *tok
     if (varid > 0 && !Token::Match(arg, "%varid% [,)]", varid))
         return No;
 
-    const int realloctype = mSettings_->library.getReallocId(tok2, -1);
+    const int realloctype = mSettings->library.getReallocId(tok2, -1);
     if (realloctype > 0) {
-        if (realloctype == mSettings_->library.deallocId("free"))
+        if (realloctype == mSettings->library.deallocId("free"))
             return Malloc;
-        if (realloctype == mSettings_->library.deallocId("fclose"))
+        if (realloctype == mSettings->library.deallocId("fclose"))
             return File;
         return Library::ismemory(realloctype) ? OtherMem : OtherRes;
     }
@@ -183,7 +185,7 @@ CheckMemoryLeak::AllocType CheckMemoryLeak::getReallocationType(const Token *tok
 }
 
 
-CheckMemoryLeak::AllocType CheckMemoryLeak::getDeallocationType(const Token *tok, nonneg int varid) const
+CheckMemoryLeakImpl::AllocType CheckMemoryLeakImpl::getDeallocationType(const Token *tok, nonneg int varid) const
 {
     if (tok->isCpp() && tok->str() == "delete" && tok->astOperand1()) {
         const Token* vartok = tok->astOperand1();
@@ -214,7 +216,7 @@ CheckMemoryLeak::AllocType CheckMemoryLeak::getDeallocationType(const Token *tok
                 if (tok->str() == "realloc" && Token::simpleMatch(vartok->next(), ", 0 )"))
                     return Malloc;
 
-                if (mSettings_->hasLib("posix")) {
+                if (mSettings->hasLib("posix")) {
                     if (tok->str() == "close")
                         return Fd;
                     if (tok->str() == "pclose")
@@ -222,11 +224,11 @@ CheckMemoryLeak::AllocType CheckMemoryLeak::getDeallocationType(const Token *tok
                 }
 
                 // Does tok point on a Library deallocation function?
-                const int dealloctype = mSettings_->library.getDeallocId(tok, argNr);
+                const int dealloctype = mSettings->library.getDeallocId(tok, argNr);
                 if (dealloctype > 0) {
-                    if (dealloctype == mSettings_->library.deallocId("free"))
+                    if (dealloctype == mSettings->library.deallocId("free"))
                         return Malloc;
-                    if (dealloctype == mSettings_->library.deallocId("fclose"))
+                    if (dealloctype == mSettings->library.deallocId("fclose"))
                         return File;
                     return Library::ismemory(dealloctype) ? OtherMem : OtherRes;
                 }
@@ -238,10 +240,10 @@ CheckMemoryLeak::AllocType CheckMemoryLeak::getDeallocationType(const Token *tok
     return No;
 }
 
-bool CheckMemoryLeak::isReopenStandardStream(const Token *tok) const
+bool CheckMemoryLeakImpl::isReopenStandardStream(const Token *tok) const
 {
     if (getReallocationType(tok, 0) == File) {
-        const Library::AllocFunc *f = mSettings_->library.getReallocFuncInfo(tok);
+        const Library::AllocFunc *f = mSettings->library.getReallocFuncInfo(tok);
         if (f && f->reallocArg > 0 && f->reallocArg <= numberOfArguments(tok)) {
             const Token* arg = getArguments(tok).at(f->reallocArg - 1);
             if (Token::Match(arg, "stdin|stdout|stderr"))
@@ -251,9 +253,9 @@ bool CheckMemoryLeak::isReopenStandardStream(const Token *tok) const
     return false;
 }
 
-bool CheckMemoryLeak::isOpenDevNull(const Token *tok) const
+bool CheckMemoryLeakImpl::isOpenDevNull(const Token *tok) const
 {
-    if (mSettings_->hasLib("posix") && tok->str() == "open" && numberOfArguments(tok) == 2) {
+    if (mSettings->hasLib("posix") && tok->str() == "open" && numberOfArguments(tok) == 2) {
         const Token* arg = getArguments(tok).at(0);
         if (Token::simpleMatch(arg, "\"/dev/null\""))
             return true;
@@ -261,24 +263,18 @@ bool CheckMemoryLeak::isOpenDevNull(const Token *tok) const
     return false;
 }
 
-//--------------------------------------------------------------------------
-
-
-//--------------------------------------------------------------------------
-
-void CheckMemoryLeak::memoryLeak(const Token *tok, const std::string &varname, AllocType alloctype) const
+void CheckMemoryLeakImpl::memoryLeak(const Token *tok, const std::string &varname, AllocType alloctype) const
 {
-    if (alloctype == CheckMemoryLeak::File ||
-        alloctype == CheckMemoryLeak::Pipe ||
-        alloctype == CheckMemoryLeak::Fd ||
-        alloctype == CheckMemoryLeak::OtherRes)
+    if (alloctype == File ||
+        alloctype == Pipe ||
+        alloctype == Fd ||
+        alloctype == OtherRes)
         resourceLeakError(tok, varname);
     else
         memleakError(tok, varname);
 }
-//---------------------------------------------------------------------------
 
-void CheckMemoryLeak::reportErr(const Token *tok, Severity severity, const std::string &id, const std::string &msg, const CWE &cwe) const
+void CheckMemoryLeakImpl::reportErr(const Token *tok, Severity severity, const std::string &id, const std::string &msg, const CWE &cwe) const
 {
     std::list<const Token *> callstack;
 
@@ -288,26 +284,25 @@ void CheckMemoryLeak::reportErr(const Token *tok, Severity severity, const std::
     reportErr(callstack, severity, id, msg, cwe);
 }
 
-void CheckMemoryLeak::reportErr(const std::list<const Token *> &callstack, Severity severity, const std::string &id, const std::string &msg, const CWE &cwe) const
+void CheckMemoryLeakImpl::reportErr(const std::list<const Token *> &callstack, Severity severity, const std::string &id, const std::string &msg, const CWE &cwe) const
 {
-    const ErrorMessage errmsg(callstack, mTokenizer_ ? &mTokenizer_->list : nullptr, severity, id, msg, cwe, Certainty::normal);
-    if (mErrorLogger_)
-        mErrorLogger_->reportErr(errmsg);
-    else
-        Check::writeToErrorList(errmsg);
+    assert(mErrorLogger);
+
+    const ErrorMessage errmsg(callstack, mTokenizer ? &mTokenizer->list : nullptr, severity, id, msg, cwe, Certainty::normal);
+    mErrorLogger->reportErr(errmsg);
 }
 
-void CheckMemoryLeak::memleakError(const Token *tok, const std::string &varname) const
+void CheckMemoryLeakImpl::memleakError(const Token *tok, const std::string &varname) const
 {
     reportErr(tok, Severity::error, "memleak", "$symbol:" + varname + "\nMemory leak: $symbol", CWE(401U));
 }
 
-void CheckMemoryLeak::memleakUponReallocFailureError(const Token *tok, const std::string &reallocfunction, const std::string &varname) const
+void CheckMemoryLeakImpl::memleakUponReallocFailureError(const Token *tok, const std::string &reallocfunction, const std::string &varname) const
 {
     reportErr(tok, Severity::error, "memleakOnRealloc", "$symbol:" + varname + "\nCommon " + reallocfunction + " mistake: \'$symbol\' nulled but not freed upon failure", CWE(401U));
 }
 
-void CheckMemoryLeak::resourceLeakError(const Token *tok, const std::string &varname) const
+void CheckMemoryLeakImpl::resourceLeakError(const Token *tok, const std::string &varname) const
 {
     std::string errmsg("Resource leak");
     if (!varname.empty())
@@ -315,17 +310,17 @@ void CheckMemoryLeak::resourceLeakError(const Token *tok, const std::string &var
     reportErr(tok, Severity::error, "resourceLeak", errmsg, CWE(775U));
 }
 
-void CheckMemoryLeak::deallocuseError(const Token *tok, const std::string &varname) const
+void CheckMemoryLeakImpl::deallocuseError(const Token *tok, const std::string &varname) const
 {
     reportErr(tok, Severity::error, "deallocuse", "$symbol:" + varname + "\nDereferencing '$symbol' after it is deallocated / released", CWE(416U));
 }
 
-void CheckMemoryLeak::mismatchAllocDealloc(const std::list<const Token *> &callstack, const std::string &varname) const
+void CheckMemoryLeakImpl::mismatchAllocDealloc(const std::list<const Token *> &callstack, const std::string &varname) const
 {
     reportErr(callstack, Severity::error, "mismatchAllocDealloc", "$symbol:" + varname + "\nMismatching allocation and deallocation: $symbol", CWE(762U));
 }
 
-CheckMemoryLeak::AllocType CheckMemoryLeak::functionReturnType(const Function* func, std::list<const Function*> *callstack) const
+CheckMemoryLeakImpl::AllocType CheckMemoryLeakImpl::functionReturnType(const Function* func, std::list<const Function*> *callstack) const
 {
     if (!func || !func->hasBody() || !func->functionScope)
         return No;
@@ -423,7 +418,7 @@ static bool ifvar(const Token *tok, nonneg int varid, const std::string &comp, c
 //     a = malloc(10); a = realloc(a, 100);
 //---------------------------------------------------------------------------
 
-void CheckMemoryLeakInFunction::checkReallocUsage()
+void CheckMemoryLeakInFunctionImpl::checkReallocUsage()
 {
     logChecker("CheckMemoryLeakInFunction::checkReallocUsage");
 
@@ -494,17 +489,16 @@ void CheckMemoryLeakInFunction::checkReallocUsage()
         }
     }
 }
-//---------------------------------------------------------------------------
 
 void CheckMemoryLeakInFunction::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckMemoryLeakInFunction checkMemoryLeak(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckMemoryLeakInFunctionImpl checkMemoryLeak(&tokenizer, &tokenizer.getSettings(), errorLogger);
     checkMemoryLeak.checkReallocUsage();
 }
 
 void CheckMemoryLeakInFunction::getErrorMessages(ErrorLogger *e, const Settings *settings) const
 {
-    CheckMemoryLeakInFunction c(nullptr, settings, e);
+    CheckMemoryLeakInFunctionImpl c(nullptr, settings, e);
     c.memleakError(nullptr, "varname");
     c.resourceLeakError(nullptr, "varname");
     c.deallocuseError(nullptr, "varname");
@@ -517,8 +511,7 @@ void CheckMemoryLeakInFunction::getErrorMessages(ErrorLogger *e, const Settings 
 // Checks for memory leaks in classes..
 //---------------------------------------------------------------------------
 
-
-void CheckMemoryLeakInClass::check()
+void CheckMemoryLeakInClassImpl::check()
 {
     logChecker("CheckMemoryLeakInClass::check");
 
@@ -543,15 +536,15 @@ void CheckMemoryLeakInClass::check()
 }
 
 
-void CheckMemoryLeakInClass::variable(const Scope *scope, const Token *tokVarname)
+void CheckMemoryLeakInClassImpl::variable(const Scope *scope, const Token *tokVarname)
 {
     const std::string& varname = tokVarname->str();
     const int varid = tokVarname->varId();
     const std::string& classname = scope->className;
 
     // Check if member variable has been allocated and deallocated..
-    CheckMemoryLeak::AllocType memberAlloc = CheckMemoryLeak::No;
-    CheckMemoryLeak::AllocType memberDealloc = CheckMemoryLeak::No;
+    AllocType memberAlloc = AllocType::No;
+    AllocType memberDealloc = AllocType::No;
 
     bool allocInConstructor = false;
     bool deallocInDestructor = false;
@@ -563,7 +556,7 @@ void CheckMemoryLeakInClass::variable(const Scope *scope, const Token *tokVarnam
         if (!func.hasBody()) {
             if (destructor && !func.isDefault()) { // implementation for destructor is not seen and not defaulted => assume it deallocates all variables properly
                 deallocInDestructor = true;
-                memberDealloc = CheckMemoryLeak::Many;
+                memberDealloc = AllocType::Many;
             }
             continue;
         }
@@ -596,14 +589,14 @@ void CheckMemoryLeakInClass::variable(const Scope *scope, const Token *tokVarnam
                         allocTok = tok->astParent()->astParent()->astOperand2();
 
                     AllocType alloc = getAllocationType(allocTok, 0);
-                    if (alloc != CheckMemoryLeak::No) {
+                    if (alloc != AllocType::No) {
                         if (constructor)
                             allocInConstructor = true;
 
-                        if (memberAlloc != No && memberAlloc != alloc)
-                            alloc = CheckMemoryLeak::Many;
+                        if (memberAlloc != AllocType::No && memberAlloc != alloc)
+                            alloc = AllocType::Many;
 
-                        if (alloc != CheckMemoryLeak::Many && memberDealloc != CheckMemoryLeak::No && memberDealloc != CheckMemoryLeak::Many && memberDealloc != alloc) {
+                        if (alloc != AllocType::Many && memberDealloc != AllocType::No && memberDealloc != AllocType::Many && memberDealloc != alloc) {
                             mismatchAllocDealloc({tok}, classname + "::" + varname);
                         }
 
@@ -619,18 +612,18 @@ void CheckMemoryLeakInClass::variable(const Scope *scope, const Token *tokVarnam
                 // some usage in the destructor => assume it's related
                 // to deallocation
                 if (destructor && tok->str() == varname)
-                    dealloc = CheckMemoryLeak::Many;
-                if (dealloc != CheckMemoryLeak::No) {
+                    dealloc = AllocType::Many;
+                if (dealloc != AllocType::No) {
                     if (destructor)
                         deallocInDestructor = true;
 
-                    if (dealloc != CheckMemoryLeak::Many && memberAlloc != CheckMemoryLeak::No && memberAlloc != Many && memberAlloc != dealloc) {
+                    if (dealloc != AllocType::Many && memberAlloc != AllocType::No && memberAlloc != Many && memberAlloc != dealloc) {
                         mismatchAllocDealloc({tok}, classname + "::" + varname);
                     }
 
                     // several types of allocation/deallocation?
-                    if (memberDealloc != CheckMemoryLeak::No && memberDealloc != dealloc)
-                        dealloc = CheckMemoryLeak::Many;
+                    if (memberDealloc != AllocType::No && memberDealloc != dealloc)
+                        dealloc = AllocType::Many;
 
                     memberDealloc = dealloc;
                 }
@@ -645,12 +638,12 @@ void CheckMemoryLeakInClass::variable(const Scope *scope, const Token *tokVarnam
 
     if (allocInConstructor && !deallocInDestructor) {
         unsafeClassError(tokVarname, classname, classname + "::" + varname /*, memberAlloc*/);
-    } else if (memberAlloc != CheckMemoryLeak::No && memberDealloc == CheckMemoryLeak::No) {
+    } else if (memberAlloc != AllocType::No && memberDealloc == AllocType::No) {
         unsafeClassError(tokVarname, classname, classname + "::" + varname /*, memberAlloc*/);
     }
 }
 
-void CheckMemoryLeakInClass::unsafeClassError(const Token *tok, const std::string &classname, const std::string &varname)
+void CheckMemoryLeakInClassImpl::unsafeClassError(const Token *tok, const std::string &classname, const std::string &varname)
 {
     if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("unsafeClassCanLeak"))
         return;
@@ -663,7 +656,7 @@ void CheckMemoryLeakInClass::unsafeClassError(const Token *tok, const std::strin
 }
 
 
-void CheckMemoryLeakInClass::checkPublicFunctions(const Scope *scope, const Token *classtok)
+void CheckMemoryLeakInClassImpl::checkPublicFunctions(const Scope *scope, const Token *classtok)
 {
     // Check that public functions deallocate the pointers that they allocate.
     // There is no checking how these functions are used and therefore it
@@ -680,20 +673,20 @@ void CheckMemoryLeakInClass::checkPublicFunctions(const Scope *scope, const Toke
             func.access == AccessControl::Public && func.hasBody()) {
             const Token *tok2 = func.functionScope->bodyStart->next();
             if (Token::Match(tok2, "%varid% =", varid)) {
-                const CheckMemoryLeak::AllocType alloc = getAllocationType(tok2->tokAt(2), varid);
-                if (alloc != CheckMemoryLeak::No)
+                const AllocType alloc = getAllocationType(tok2->tokAt(2), varid);
+                if (alloc != AllocType::No)
                     publicAllocationError(tok2, tok2->str());
             } else if (Token::Match(tok2, "%type% :: %varid% =", varid) &&
                        tok2->str() == scope->className) {
-                const CheckMemoryLeak::AllocType alloc = getAllocationType(tok2->tokAt(4), varid);
-                if (alloc != CheckMemoryLeak::No)
+                const AllocType alloc = getAllocationType(tok2->tokAt(4), varid);
+                if (alloc != AllocType::No)
                     publicAllocationError(tok2, tok2->strAt(2));
             }
         }
     }
 }
 
-void CheckMemoryLeakInClass::publicAllocationError(const Token *tok, const std::string &varname)
+void CheckMemoryLeakInClassImpl::publicAllocationError(const Token *tok, const std::string &varname)
 {
     reportError(tok, Severity::warning, "publicAllocationError", "$symbol:" + varname + "\nPossible leak in public function. The pointer '$symbol' is not deallocated before it is allocated.", CWE398, Certainty::normal);
 }
@@ -703,19 +696,18 @@ void CheckMemoryLeakInClass::runChecks(const Tokenizer &tokenizer, ErrorLogger *
     if (!tokenizer.isCPP())
         return;
 
-    CheckMemoryLeakInClass checkMemoryLeak(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckMemoryLeakInClassImpl checkMemoryLeak(&tokenizer, &tokenizer.getSettings(), errorLogger);
     checkMemoryLeak.check();
 }
 
 void CheckMemoryLeakInClass::getErrorMessages(ErrorLogger *e, const Settings *settings) const
 {
-    CheckMemoryLeakInClass c(nullptr, settings, e);
+    CheckMemoryLeakInClassImpl c(nullptr, settings, e);
     c.publicAllocationError(nullptr, "varname");
     c.unsafeClassError(nullptr, "class", "class::varname");
 }
 
-
-void CheckMemoryLeakStructMember::check()
+void CheckMemoryLeakStructMemberImpl::check()
 {
     if (mSettings->clang)
         return;
@@ -734,7 +726,7 @@ void CheckMemoryLeakStructMember::check()
     }
 }
 
-bool CheckMemoryLeakStructMember::isMalloc(const Variable *variable) const
+bool CheckMemoryLeakStructMemberImpl::isMalloc(const Variable *variable) const
 {
     if (!variable)
         return false;
@@ -756,7 +748,7 @@ bool CheckMemoryLeakStructMember::isMalloc(const Variable *variable) const
     return alloc;
 }
 
-void CheckMemoryLeakStructMember::checkStructVariable(const Variable* const variable) const
+void CheckMemoryLeakStructMemberImpl::checkStructVariable(const Variable* const variable) const
 {
     if (!variable)
         return;
@@ -976,15 +968,17 @@ void CheckMemoryLeakStructMember::checkStructVariable(const Variable* const vari
 
 void CheckMemoryLeakStructMember::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckMemoryLeakStructMember checkMemoryLeak(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckMemoryLeakStructMemberImpl checkMemoryLeak(&tokenizer, &tokenizer.getSettings(), errorLogger);
     checkMemoryLeak.check();
 }
 
-void CheckMemoryLeakStructMember::getErrorMessages(ErrorLogger * /*errorLogger*/, const Settings * /*settings*/) const
-{}
+void CheckMemoryLeakStructMember::getErrorMessages(ErrorLogger * errorLogger, const Settings * settings) const
+{
+    (void)errorLogger;
+    (void)settings;
+}
 
-
-void CheckMemoryLeakNoVar::check()
+void CheckMemoryLeakNoVarImpl::check()
 {
     logChecker("CheckMemoryLeakNoVar::check");
 
@@ -1010,7 +1004,7 @@ void CheckMemoryLeakNoVar::check()
 // Checks if an input argument to a function is the return value of an allocation function
 // like malloc(), and the function does not release it.
 //---------------------------------------------------------------------------
-void CheckMemoryLeakNoVar::checkForUnreleasedInputArgument(const Scope *scope)
+void CheckMemoryLeakNoVarImpl::checkForUnreleasedInputArgument(const Scope *scope)
 {
     // parse the executable scope until tok is reached...
     for (const Token *tok = scope->bodyStart; tok != scope->bodyEnd; tok = tok->next()) {
@@ -1083,7 +1077,7 @@ void CheckMemoryLeakNoVar::checkForUnreleasedInputArgument(const Scope *scope)
 //---------------------------------------------------------------------------
 // Checks if a call to an allocation function like malloc() is made and its return value is not assigned.
 //---------------------------------------------------------------------------
-void CheckMemoryLeakNoVar::checkForUnusedReturnValue(const Scope *scope)
+void CheckMemoryLeakNoVarImpl::checkForUnusedReturnValue(const Scope *scope)
 {
     for (const Token *tok = scope->bodyStart; tok != scope->bodyEnd; tok = tok->next()) {
         const bool isNew = tok->isCpp() && tok->str() == "new";
@@ -1150,7 +1144,7 @@ void CheckMemoryLeakNoVar::checkForUnusedReturnValue(const Scope *scope)
 //    f(shared_ptr<int>(new int(42)), g());
 // }
 //---------------------------------------------------------------------------
-void CheckMemoryLeakNoVar::checkForUnsafeArgAlloc(const Scope *scope)
+void CheckMemoryLeakNoVarImpl::checkForUnsafeArgAlloc(const Scope *scope)
 {
     // This test only applies to C++ source
     if (!mTokenizer->isCPP())
@@ -1200,17 +1194,17 @@ void CheckMemoryLeakNoVar::checkForUnsafeArgAlloc(const Scope *scope)
     }
 }
 
-void CheckMemoryLeakNoVar::functionCallLeak(const Token *loc, const std::string &alloc, const std::string &functionCall)
+void CheckMemoryLeakNoVarImpl::functionCallLeak(const Token *loc, const std::string &alloc, const std::string &functionCall)
 {
     reportError(loc, Severity::error, "leakNoVarFunctionCall", "Allocation with " + alloc + ", " + functionCall + " doesn't release it.", CWE772, Certainty::normal);
 }
 
-void CheckMemoryLeakNoVar::returnValueNotUsedError(const Token *tok, const std::string &alloc)
+void CheckMemoryLeakNoVarImpl::returnValueNotUsedError(const Token *tok, const std::string &alloc)
 {
     reportError(tok, Severity::error, "leakReturnValNotUsed", "$symbol:" + alloc + "\nReturn value of allocation function '$symbol' is not stored.", CWE771, Certainty::normal);
 }
 
-void CheckMemoryLeakNoVar::unsafeArgAllocError(const Token *tok, const std::string &funcName, const std::string &ptrType, const std::string& objType)
+void CheckMemoryLeakNoVarImpl::unsafeArgAllocError(const Token *tok, const std::string &funcName, const std::string &ptrType, const std::string& objType)
 {
     const std::string factoryFunc = ptrType == "shared_ptr" ? "make_shared" : "make_unique";
     reportError(tok, Severity::warning, "leakUnsafeArgAlloc",
@@ -1222,13 +1216,13 @@ void CheckMemoryLeakNoVar::unsafeArgAllocError(const Token *tok, const std::stri
 
 void CheckMemoryLeakNoVar::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckMemoryLeakNoVar checkMemoryLeak(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckMemoryLeakNoVarImpl checkMemoryLeak(&tokenizer, &tokenizer.getSettings(), errorLogger);
     checkMemoryLeak.check();
 }
 
 void CheckMemoryLeakNoVar::getErrorMessages(ErrorLogger *e, const Settings *settings) const
 {
-    CheckMemoryLeakNoVar c(nullptr, settings, e);
+    CheckMemoryLeakNoVarImpl c(nullptr, settings, e);
     c.functionCallLeak(nullptr, "funcName", "funcName");
     c.returnValueNotUsedError(nullptr, "funcName");
     c.unsafeArgAllocError(nullptr, "funcName", "shared_ptr", "int");

@@ -39,13 +39,12 @@ private:
 
 #define functionReturnType(...) functionReturnType_(__FILE__, __LINE__, __VA_ARGS__)
     template<size_t size>
-    CheckMemoryLeak::AllocType functionReturnType_(const char* file, int line, const char (&code)[size]) {
+    CheckMemoryLeakImpl::AllocType functionReturnType_(const char* file, int line, const char (&code)[size]) {
         // Tokenize..
         SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        const CheckMemoryLeak c(&tokenizer, this, &settingsDefault);
-
+        const CheckMemoryLeakImpl c(&tokenizer, &settingsDefault, this);
         return (c.functionReturnType)(&tokenizer.getSymbolDatabase()->scopeList.front().functionList.front());
     }
 
@@ -53,19 +52,19 @@ private:
         {
             const char code[] = "const char *foo()\n"
                                 "{ return 0; }";
-            ASSERT_EQUALS(CheckMemoryLeak::No, functionReturnType(code));
+            ASSERT_EQUALS(CheckMemoryLeakImpl::No, functionReturnType(code));
         }
 
         {
             const char code[] = "Fred *newFred()\n"
                                 "{ return new Fred; }";
-            ASSERT_EQUALS(CheckMemoryLeak::New, functionReturnType(code));
+            ASSERT_EQUALS(CheckMemoryLeakImpl::New, functionReturnType(code));
         }
 
         {
             const char code[] = "char *foo()\n"
                                 "{ return new char[100]; }";
-            ASSERT_EQUALS(CheckMemoryLeak::NewArray, functionReturnType(code));
+            ASSERT_EQUALS(CheckMemoryLeakImpl::NewArray, functionReturnType(code));
         }
 
         {
@@ -74,7 +73,7 @@ private:
                                 "    char *p = new char[100];\n"
                                 "    return p;\n"
                                 "}";
-            ASSERT_EQUALS(CheckMemoryLeak::NewArray, functionReturnType(code));
+            ASSERT_EQUALS(CheckMemoryLeakImpl::NewArray, functionReturnType(code));
         }
     }
 
@@ -94,8 +93,8 @@ private:
 
         // there is no allocation
         const Token *tok = Token::findsimplematch(tokenizer.tokens(), "ret =");
-        const CheckMemoryLeak check(&tokenizer, nullptr, &settingsDefault);
-        ASSERT_EQUALS(CheckMemoryLeak::No, check.getAllocationType(tok->tokAt(2), 1));
+        const CheckMemoryLeakImpl check(&tokenizer, &settingsDefault, nullptr);
+        ASSERT_EQUALS(CheckMemoryLeakImpl::No, check.getAllocationType(tok->tokAt(2), 1));
     }
 };
 
@@ -120,7 +119,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check for memory leaks..
-        CheckMemoryLeakInFunction checkMemoryLeak(&tokenizer, &settings, this);
+        CheckMemoryLeakInFunctionImpl checkMemoryLeak(&tokenizer, &settings, this);
         checkMemoryLeak.checkReallocUsage();
     }
 
@@ -502,7 +501,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check for memory leaks..
-        CheckMemoryLeakInClass checkMemoryLeak(&tokenizer, &settings, this);
+        CheckMemoryLeakInClassImpl checkMemoryLeak(&tokenizer, &settings, this);
         (checkMemoryLeak.check)();
     }
 
@@ -1707,7 +1706,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check for memory leaks..
-        CheckMemoryLeakStructMember checkMemoryLeakStructMember(&tokenizer, &settings, this);
+        CheckMemoryLeakStructMemberImpl checkMemoryLeakStructMember(&tokenizer, &settings, this);
         (checkMemoryLeakStructMember.check)();
     }
 
@@ -2389,7 +2388,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check for memory leaks..
-        CheckMemoryLeakNoVar checkMemoryLeakNoVar(&tokenizer, &settings, this);
+        CheckMemoryLeakNoVarImpl checkMemoryLeakNoVar(&tokenizer, &settings, this);
         (checkMemoryLeakNoVar.check)();
     }
 

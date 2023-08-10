@@ -127,7 +127,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check for redundant code..
-        CheckUninitVar checkuninitvar(&tokenizer, &settings1, this);
+        CheckUninitVarImpl checkuninitvar(&tokenizer, &settings1, this);
         checkuninitvar.check();
     }
 
@@ -137,7 +137,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check for redundant code..
-        CheckUninitVar checkuninitvar(&tokenizer, &settings, this);
+        CheckUninitVarImpl checkuninitvar(&tokenizer, &settings, this);
         checkuninitvar.check();
     }
 
@@ -3673,7 +3673,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check for redundant code..
-        CheckUninitVar checkuninitvar(&tokenizer, &settings, this);
+        CheckUninitVarImpl checkuninitvar(&tokenizer, &settings, this);
         (checkuninitvar.valueFlowUninit)();
     }
 

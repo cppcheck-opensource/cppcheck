@@ -23,6 +23,7 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 
 #include <string>
@@ -42,14 +43,22 @@ class Tokenizer;
 
 class CPPCHECKLIB CheckAssert : public Check {
 public:
-    CheckAssert() : Check(myName()) {}
+    CheckAssert() : Check("Assert") {}
 
 private:
-    CheckAssert(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
     /** run checks, the token list is not simplified */
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
+
+    std::string classInfo() const override {
+        return "Warn if there are side effects in assert statements (since this cause different behaviour in debug/release builds).\n";
+    }
+};
+
+class CPPCHECKLIB CheckAssertImpl : public CheckImpl {
+public:
+    CheckAssertImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     void assertWithSideEffects();
 
@@ -58,16 +67,6 @@ private:
 
     void sideEffectInAssertError(const Token *tok, const std::string& functionName);
     void assignmentInAssertError(const Token *tok, const std::string &varname);
-
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
-
-    static std::string myName() {
-        return "Assert";
-    }
-
-    std::string classInfo() const override {
-        return "Warn if there are side effects in assert statements (since this cause different behaviour in debug/release builds).\n";
-    }
 };
 /// @}
 //---------------------------------------------------------------------------

@@ -2157,7 +2157,7 @@ bool isWithoutSideEffects(const Token* tok, bool checkArrayAccess, bool checkRef
     if (tok && tok->varId()) {
         const Variable* var = tok->variable();
         return var && ((!var->isClass() && (checkReference || !var->isReference())) || var->isPointer() ||
-                       (checkArrayAccess ? var->isArray() || (var->isStlType() && !var->isStlType(CheckClass::stl_containers_not_const)) : var->isStlType()));
+                       (checkArrayAccess ? var->isArray() || (var->isStlType() && !var->isStlType(CheckClassImpl::stl_containers_not_const)) : var->isStlType()));
     }
     return true;
 }

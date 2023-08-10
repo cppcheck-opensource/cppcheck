@@ -5697,7 +5697,7 @@ static void valueFlowSubFunction(const TokenList& tokenlist,
                 // Remove uninit values if argument is passed by value
                 if (argtok->variable() && !argtok->variable()->isPointer() && argvalues.size() == 1 &&
                     argvalues.front().isUninitValue()) {
-                    if (CheckUninitVar::isVariableUsage(argtok, settings.library, false, CheckUninitVar::Alloc::NO_ALLOC, 0))
+                    if (CheckUninitVarImpl::isVariableUsage(argtok, settings.library, false, CheckUninitVarImpl::Alloc::NO_ALLOC, 0))
                         continue;
                 }
 

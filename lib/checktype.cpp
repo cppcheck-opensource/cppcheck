@@ -56,7 +56,7 @@ static const CWE CWE758(758U);   // Reliance on Undefined, Unspecified, or Imple
 static const CWE CWE190(190U);   // Integer Overflow or Wraparound
 
 
-void CheckType::checkTooBigBitwiseShift()
+void CheckTypeImpl::checkTooBigBitwiseShift()
 {
     // unknown sizeof(int) => can't run this checker
     if (mSettings->platform.type == Platform::Type::Unspecified)
@@ -110,7 +110,7 @@ void CheckType::checkTooBigBitwiseShift()
     }
 }
 
-void CheckType::tooBigBitwiseShiftError(const Token *tok, int lhsbits, const ValueFlow::Value &rhsbits)
+void CheckTypeImpl::tooBigBitwiseShiftError(const Token *tok, int lhsbits, const ValueFlow::Value &rhsbits)
 {
     constexpr char id[] = "shiftTooManyBits";
 
@@ -129,7 +129,7 @@ void CheckType::tooBigBitwiseShiftError(const Token *tok, int lhsbits, const Val
     reportError(std::move(errorPath), rhsbits.errorSeverity() ? Severity::error : Severity::warning, id, errmsg.str(), CWE758, rhsbits.isInconclusive() ? Certainty::inconclusive : Certainty::normal);
 }
 
-void CheckType::tooBigSignedBitwiseShiftError(const Token *tok, int lhsbits, const ValueFlow::Value &rhsbits)
+void CheckTypeImpl::tooBigSignedBitwiseShiftError(const Token *tok, int lhsbits, const ValueFlow::Value &rhsbits)
 {
     constexpr char id[] = "shiftTooManyBitsSigned";
 
@@ -164,7 +164,7 @@ void CheckType::tooBigSignedBitwiseShiftError(const Token *tok, int lhsbits, con
 // Checking for integer overflow
 //---------------------------------------------------------------------------
 
-void CheckType::checkIntegerOverflow()
+void CheckTypeImpl::checkIntegerOverflow()
 {
     // unknown sizeof(int) => can't run this checker
     if (mSettings->platform.type == Platform::Type::Unspecified || mSettings->platform.int_bit >= MathLib::bigint_bits)
@@ -215,7 +215,16 @@ void CheckType::checkIntegerOverflow()
     }
 }
 
-void CheckType::integerOverflowError(const Token *tok, const ValueFlow::Value &value, bool isOverflow)
+static std::string getMessageId(const ValueFlow::Value &value, const char id[])
+{
+    if (value.condition != nullptr)
+        return id + std::string("Cond");
+    if (value.safe)
+        return std::string("safe") + static_cast<char>(std::toupper(id[0])) + (id + 1);
+    return id;
+}
+
+void CheckTypeImpl::integerOverflowError(const Token *tok, const ValueFlow::Value &value, bool isOverflow)
 {
     const std::string expr(tok ? tok->expressionString() : "");
     const std::string type = isOverflow ? "overflow" : "underflow";
@@ -242,7 +251,7 @@ void CheckType::integerOverflowError(const Token *tok, const ValueFlow::Value &v
 // Checking for sign conversion when operand can be negative
 //---------------------------------------------------------------------------
 
-void CheckType::checkSignConversion()
+void CheckTypeImpl::checkSignConversion()
 {
     if (!mSettings->severity.isEnabled(Severity::warning))
         return;
@@ -274,7 +283,7 @@ void CheckType::checkSignConversion()
     }
 }
 
-void CheckType::signConversionError(const Token *tok, const ValueFlow::Value *negativeValue, const bool constvalue)
+void CheckTypeImpl::signConversionError(const Token *tok, const ValueFlow::Value *negativeValue, const bool constvalue)
 {
     const std::string expr(tok ? tok->expressionString() : "var");
 
@@ -292,7 +301,7 @@ void CheckType::signConversionError(const Token *tok, const ValueFlow::Value *ne
         ErrorPath errorPath = getErrorPath(tok,negativeValue,"Negative value is converted to an unsigned value");
         reportError(std::move(errorPath),
                     Severity::warning,
-                    Check::getMessageId(*negativeValue, "signConversion").c_str(),
+                    getMessageId(*negativeValue, "signConversion").c_str(),
                     msg.str(),
                     CWE195,
                     negativeValue->isInconclusive() ? Certainty::inconclusive : Certainty::normal);
@@ -327,7 +336,7 @@ static bool checkTypeCombination(ValueType src, ValueType tgt, const Settings& s
     });
 }
 
-void CheckType::checkLongCast()
+void CheckTypeImpl::checkLongCast()
 {
     if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("truncLongCastAssignment"))
         return;
@@ -405,7 +414,7 @@ static void makeBaseTypeString(std::string& typeStr)
         typeStr.erase(typeStr.begin(), typeStr.begin() + pos + 6 + 1);
 }
 
-void CheckType::longCastAssignError(const Token *tok, const ValueType* src, const ValueType* tgt)
+void CheckTypeImpl::longCastAssignError(const Token *tok, const ValueType* src, const ValueType* tgt)
 {
     std::string srcStr = src ? src->str() : "int";
     makeBaseTypeString(srcStr);
@@ -418,7 +427,7 @@ void CheckType::longCastAssignError(const Token *tok, const ValueType* src, cons
                 srcStr + " result is assigned to " + tgtStr + " variable. If the variable is " + tgtStr + " to avoid loss of information, then there is loss of information. To avoid loss of information you must cast a calculation operand to " + tgtStr + ", for example 'l = a * b;' => 'l = (" + tgtStr + ")a * b;'.", CWE197, Certainty::normal);
 }
 
-void CheckType::longCastReturnError(const Token *tok, const ValueType* src, const ValueType* tgt)
+void CheckTypeImpl::longCastReturnError(const Token *tok, const ValueType* src, const ValueType* tgt)
 {
     std::string srcStr = src ? src->str() : "int";
     makeBaseTypeString(srcStr);
@@ -435,7 +444,7 @@ void CheckType::longCastReturnError(const Token *tok, const ValueType* src, cons
 // Checking for float to integer overflow
 //---------------------------------------------------------------------------
 
-void CheckType::checkFloatToIntegerOverflow()
+void CheckTypeImpl::checkFloatToIntegerOverflow()
 {
     logChecker("CheckType::checkFloatToIntegerOverflow");
 
@@ -475,7 +484,7 @@ void CheckType::checkFloatToIntegerOverflow()
     }
 }
 
-void CheckType::checkFloatToIntegerOverflow(const Token *tok, const ValueType *vtint, const ValueType *vtfloat, const std::list<ValueFlow::Value> &floatValues)
+void CheckTypeImpl::checkFloatToIntegerOverflow(const Token *tok, const ValueType *vtint, const ValueType *vtfloat, const std::list<ValueFlow::Value> &floatValues)
 {
     // Conversion of float to integer?
     if (!vtint || !vtint->isIntegral())
@@ -512,7 +521,7 @@ void CheckType::checkFloatToIntegerOverflow(const Token *tok, const ValueType *v
     }
 }
 
-void CheckType::floatToIntegerOverflowError(const Token *tok, const ValueFlow::Value &value)
+void CheckTypeImpl::floatToIntegerOverflowError(const Token *tok, const ValueFlow::Value &value)
 {
     std::ostringstream errmsg;
     errmsg << "Undefined behaviour: float (" << value.floatValue << ") to integer conversion overflow.";
@@ -525,7 +534,7 @@ void CheckType::floatToIntegerOverflowError(const Token *tok, const ValueFlow::V
 void CheckType::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
     // These are not "simplified" because casts can't be ignored
-    CheckType checkType(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckTypeImpl checkType(&tokenizer, &tokenizer.getSettings(), errorLogger);
     checkType.checkTooBigBitwiseShift();
     checkType.checkIntegerOverflow();
     checkType.checkSignConversion();
@@ -535,7 +544,7 @@ void CheckType::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 
 void CheckType::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
 {
-    CheckType c(nullptr, settings, errorLogger);
+    CheckTypeImpl c(nullptr, settings, errorLogger);
     c.tooBigBitwiseShiftError(nullptr, 32, ValueFlow::Value(64));
     c.tooBigSignedBitwiseShiftError(nullptr, 31, ValueFlow::Value(31));
     c.integerOverflowError(nullptr, ValueFlow::Value(1LL<<32));

@@ -49,8 +49,7 @@ private:
         SimpleTokenizer tokenizer(settings, *this, cpp);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        // Check char variable usage..
-        Check64BitPortability check64BitPortability(&tokenizer, &settings, this);
+        Check64BitPortabilityImpl check64BitPortability(&tokenizer, &settings, this);
         check64BitPortability.pointerassignment();
     }
 

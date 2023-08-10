@@ -37,8 +37,7 @@
 // CWE ids used
 static const CWE CWE398(398U);   // Indicator of Poor Code Quality
 
-
-void CheckPostfixOperator::postfixOperator()
+void CheckPostfixOperatorImpl::postfixOperator()
 {
     if (!mSettings->severity.isEnabled(Severity::performance))
         return;
@@ -84,7 +83,7 @@ void CheckPostfixOperator::postfixOperator()
 //---------------------------------------------------------------------------
 
 
-void CheckPostfixOperator::postfixOperatorError(const Token *tok)
+void CheckPostfixOperatorImpl::postfixOperatorError(const Token *tok)
 {
     reportError(tok, Severity::performance, "postfixOperator",
                 "Prefer prefix ++/-- operators for non-primitive types.\n"
@@ -100,12 +99,12 @@ void CheckPostfixOperator::runChecks(const Tokenizer &tokenizer, ErrorLogger *er
     if (tokenizer.isC())
         return;
 
-    CheckPostfixOperator checkPostfixOperator(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckPostfixOperatorImpl checkPostfixOperator(&tokenizer, &tokenizer.getSettings(), errorLogger);
     checkPostfixOperator.postfixOperator();
 }
 
 void CheckPostfixOperator::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
 {
-    CheckPostfixOperator c(nullptr, settings, errorLogger);
+    CheckPostfixOperatorImpl c(nullptr, settings, errorLogger);
     c.postfixOperatorError(nullptr);
 }

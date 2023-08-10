@@ -23,6 +23,7 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 
 #include <string>
@@ -41,15 +42,33 @@ class Tokenizer;
 class CPPCHECKLIB CheckBool : public Check {
 public:
     /** @brief This constructor is used when registering the CheckClass */
-    CheckBool() : Check(myName()) {}
+    CheckBool() : Check("Boolean") {}
 
 private:
-    /** @brief This constructor is used when running checks. */
-    CheckBool(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
     /** @brief Run checks against the normal token list */
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+
+    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
+
+    std::string classInfo() const override {
+        return "Boolean type checks\n"
+               "- using increment on boolean\n"
+               "- comparison of a boolean expression with an integer other than 0 or 1\n"
+               "- comparison of a function returning boolean value using relational operator\n"
+               "- comparison of a boolean value with boolean value using relational operator\n"
+               "- using bool in bitwise expression\n"
+               "- pointer addition in condition (either dereference is forgot or pointer overflow is required to make the condition false)\n"
+               "- Assigning bool value to pointer or float\n"
+               "- Returning an integer other than 0 or 1 from a function with boolean return value\n";
+    }
+};
+
+class CPPCHECKLIB CheckBoolImpl : public CheckImpl
+{
+public:
+    /** @brief This constructor is used when running checks. */
+    CheckBoolImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** @brief %Check for comparison of function returning bool*/
     void checkComparisonOfFuncReturningBool();
@@ -94,24 +113,6 @@ private:
     void comparisonOfBoolExpressionWithIntError(const Token *tok, bool not0or1);
     void pointerArithBoolError(const Token *tok);
     void returnValueBoolError(const Token *tok);
-
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
-
-    static std::string myName() {
-        return "Boolean";
-    }
-
-    std::string classInfo() const override {
-        return "Boolean type checks\n"
-               "- using increment on boolean\n"
-               "- comparison of a boolean expression with an integer other than 0 or 1\n"
-               "- comparison of a function returning boolean value using relational operator\n"
-               "- comparison of a boolean value with boolean value using relational operator\n"
-               "- using bool in bitwise expression\n"
-               "- pointer addition in condition (either dereference is forgot or pointer overflow is required to make the condition false)\n"
-               "- Assigning bool value to pointer or float\n"
-               "- Returning an integer other than 0 or 1 from a function with boolean return value\n";
-    }
 };
 /// @}
 //---------------------------------------------------------------------------

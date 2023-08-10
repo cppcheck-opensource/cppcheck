@@ -23,6 +23,7 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 
 #include <string>
@@ -41,15 +42,32 @@ class Tokenizer;
 class CPPCHECKLIB CheckSizeof : public Check {
 public:
     /** @brief This constructor is used when registering the CheckClass */
-    CheckSizeof() : Check(myName()) {}
+    CheckSizeof() : Check("Sizeof") {}
 
 private:
-    /** @brief This constructor is used when running checks. */
-    CheckSizeof(const Tokenizer* tokenizer, const Settings* settings, ErrorLogger* errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
     /** @brief Run checks against the normal token list */
     void runChecks(const Tokenizer& tokenizer, ErrorLogger* errorLogger) override;
+
+    void getErrorMessages(ErrorLogger* errorLogger, const Settings* settings) const override;
+
+    std::string classInfo() const override {
+        return "sizeof() usage checks\n"
+               "- sizeof for array given as function argument\n"
+               "- sizeof for numeric given as function argument\n"
+               "- using sizeof(pointer) instead of the size of pointed data\n"
+               "- look for 'sizeof sizeof ..'\n"
+               "- look for calculations inside sizeof()\n"
+               "- look for function calls inside sizeof()\n"
+               "- look for suspicious calculations with sizeof()\n"
+               "- using 'sizeof(void)' which is undefined\n";
+    }
+};
+
+class CPPCHECKLIB CheckSizeofImpl : public CheckImpl {
+public:
+    /** @brief This constructor is used when running checks. */
+    CheckSizeofImpl(const Tokenizer* tokenizer, const Settings* settings, ErrorLogger* errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** @brief %Check for 'sizeof sizeof ..' */
     void sizeofsizeof();
@@ -88,24 +106,6 @@ private:
     void sizeofVoidError(const Token *tok);
     void sizeofDereferencedVoidPointerError(const Token *tok, const std::string &varname);
     void arithOperationsOnVoidPointerError(const Token* tok, const std::string &varname, const std::string &vartype);
-
-    void getErrorMessages(ErrorLogger* errorLogger, const Settings* settings) const override;
-
-    static std::string myName() {
-        return "Sizeof";
-    }
-
-    std::string classInfo() const override {
-        return "sizeof() usage checks\n"
-               "- sizeof for array given as function argument\n"
-               "- sizeof for numeric given as function argument\n"
-               "- using sizeof(pointer) instead of the size of pointed data\n"
-               "- look for 'sizeof sizeof ..'\n"
-               "- look for calculations inside sizeof()\n"
-               "- look for function calls inside sizeof()\n"
-               "- look for suspicious calculations with sizeof()\n"
-               "- using 'sizeof(void)' which is undefined\n";
-    }
 };
 /// @}
 //---------------------------------------------------------------------------

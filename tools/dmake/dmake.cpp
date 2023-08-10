@@ -495,6 +495,7 @@ int main(int argc, char **argv)
     }
     libfiles_h.emplace("analyzer.h");
     libfiles_h.emplace("calculate.h");
+    libfiles_h.emplace("check.h");
     libfiles_h.emplace("config.h");
     libfiles_h.emplace("filesettings.h");
     libfiles_h.emplace("findtoken.h");
@@ -559,7 +560,7 @@ int main(int argc, char **argv)
 
         for (const std::string &libfile: libfiles_prio) {
             const std::string l = libfile.substr(4);
-            outstr += make_vcxproj_cl_entry(l, l == "check.cpp" ? Precompile : Compile);
+            outstr += make_vcxproj_cl_entry(l, l == "checkimpl.cpp" ? Precompile : Compile);
         }
     }, [&](std::string &outstr){
         outstr += make_vcxproj_cl_entry(R"(..\externals\simplecpp\simplecpp.h)", Include);

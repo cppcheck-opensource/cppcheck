@@ -52,7 +52,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check class constructors..
-        CheckClass checkClass(&tokenizer, &settings1, this);
+        CheckClassImpl checkClass(&tokenizer, &settings1, this);
         checkClass.constructors();
     }
 

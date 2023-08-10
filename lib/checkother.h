@@ -23,6 +23,7 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 #include "errortypes.h"
 
@@ -55,22 +56,85 @@ class CPPCHECKLIB CheckOther : public Check {
 
 public:
     /** @brief This constructor is used when registering the CheckClass */
-    CheckOther() : Check(myName()) {}
+    CheckOther() : Check("Other") {}
+
+private:
+    /** @brief Run checks against the normal token list */
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+
+    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
+
+    std::string classInfo() const override {
+        return "Other checks\n"
+
+               // error
+               "- division with zero\n"
+               "- scoped object destroyed immediately after construction\n"
+               "- assignment in an assert statement\n"
+               "- free() or delete of an invalid memory location\n"
+               "- bitwise operation with negative right operand\n"
+               "- cast the return values of getc(),fgetc() and getchar() to character and compare it to EOF\n"
+               "- race condition with non-interlocked access after InterlockedDecrement() call\n"
+               "- expression 'x = x++;' depends on order of evaluation of side effects\n"
+               "- overlapping write of union\n"
+
+               // warning
+               "- either division by zero or useless condition\n"
+               "- access of moved or forwarded variable.\n"
+
+               // performance
+               "- redundant data copying for const variable\n"
+               "- subsequent assignment or copying to a variable or buffer\n"
+               "- passing parameter by value\n"
+
+               // portability
+               "- Passing NULL pointer to function with variable number of arguments leads to UB.\n"
+
+               // style
+               "- C-style pointer cast in C++ code\n"
+               "- casting between incompatible pointer types\n"
+               "- [Incomplete statement](IncompleteStatement)\n"
+               "- [check how signed char variables are used](CharVar)\n"
+               "- variable scope can be limited\n"
+               "- unusual pointer arithmetic. For example: \"abc\" + 'd'\n"
+               "- redundant assignment, increment, or bitwise operation in a switch statement\n"
+               "- redundant strcpy in a switch statement\n"
+               "- Suspicious case labels in switch()\n"
+               "- assignment of a variable to itself\n"
+               "- Comparison of values leading always to true or false\n"
+               "- Clarify calculation with parentheses\n"
+               "- suspicious comparison of '\\0' with a char\\* variable\n"
+               "- duplicate break statement\n"
+               "- unreachable code\n"
+               "- testing if unsigned variable is negative/positive\n"
+               "- Suspicious use of ; at the end of 'if/for/while' statement.\n"
+               "- Array filled incompletely using memset/memcpy/memmove.\n"
+               "- NaN (not a number) value used in arithmetic expression.\n"
+               "- comma in return statement (the comma can easily be misread as a semicolon).\n"
+               "- prefer erfc, expm1 or log1p to avoid loss of precision.\n"
+               "- identical code in both branches of if/else or ternary operator.\n"
+               "- redundant pointer operation on pointer like &\\*some_ptr.\n"
+               "- find unused 'goto' labels.\n"
+               "- function declaration and definition argument names different.\n"
+               "- function declaration and definition argument order different.\n"
+               "- shadow variable.\n"
+               "- variable can be declared const.\n"
+               "- calculating modulo of one.\n"
+               "- known function argument, suspicious calculation.\n";
+    }
+};
+
+class CPPCHECKLIB CheckOtherImpl : public CheckImpl {
+public:
+    /** @brief This constructor is used when running checks. */
+    CheckOtherImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** Is expression a comparison that checks if a nonzero (unsigned/pointer) expression is less than zero? */
     static bool comparisonNonZeroExpressionLessThanZero(const Token *tok, const ValueFlow::Value *&zeroValue, const Token *&nonZeroExpr, bool suppress = false);
 
     /** Is expression a comparison that checks if a nonzero (unsigned/pointer) expression is positive? */
     static bool testIfNonZeroExpressionIsPositive(const Token *tok, const ValueFlow::Value *&zeroValue, const Token *&nonZeroExpr);
-
-private:
-    /** @brief This constructor is used when running checks. */
-    CheckOther(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
-
-    /** @brief Run checks against the normal token list */
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
 
     /** @brief Clarify calculation for ".. a * b ? .." */
     void clarifyCalculation();
@@ -264,74 +328,6 @@ private:
     void comparePointersError(const Token *tok, const ValueFlow::Value *v1, const ValueFlow::Value *v2);
     void checkModuloOfOneError(const Token *tok);
     void unionZeroInitError(const Token *tok, const UnionMember& largestMember);
-
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
-
-    static std::string myName() {
-        return "Other";
-    }
-
-    std::string classInfo() const override {
-        return "Other checks\n"
-
-               // error
-               "- division with zero\n"
-               "- scoped object destroyed immediately after construction\n"
-               "- assignment in an assert statement\n"
-               "- free() or delete of an invalid memory location\n"
-               "- bitwise operation with negative right operand\n"
-               "- cast the return values of getc(),fgetc() and getchar() to character and compare it to EOF\n"
-               "- race condition with non-interlocked access after InterlockedDecrement() call\n"
-               "- expression 'x = x++;' depends on order of evaluation of side effects\n"
-               "- overlapping write of union\n"
-
-               // warning
-               "- either division by zero or useless condition\n"
-               "- access of moved or forwarded variable.\n"
-               "- potentially dangerous C style type cast of pointer/reference to object.\n"
-
-               // performance
-               "- redundant data copying for const variable\n"
-               "- subsequent assignment or copying to a variable or buffer\n"
-               "- passing parameter by value\n"
-
-               // portability
-               "- Passing NULL pointer to function with variable number of arguments leads to UB.\n"
-               "- Casting non-zero integer literal in decimal or octal format to pointer.\n"
-               "- Incorrect zero initialization of unions can lead to access of uninitialized memory.\n"
-
-               // style
-               "- C-style pointer cast in C++ code\n"
-               "- casting between incompatible pointer types\n"
-               "- [Incomplete statement](IncompleteStatement)\n"
-               "- [check how signed char variables are used](CharVar)\n"
-               "- variable scope can be limited\n"
-               "- unusual pointer arithmetic. For example: \"abc\" + 'd'\n"
-               "- redundant assignment, increment, or bitwise operation in a switch statement\n"
-               "- redundant strcpy in a switch statement\n"
-               "- Suspicious case labels in switch()\n"
-               "- assignment of a variable to itself\n"
-               "- Comparison of values leading always to true or false\n"
-               "- Clarify calculation with parentheses\n"
-               "- suspicious comparison of '\\0' with a char\\* variable\n"
-               "- duplicate break statement\n"
-               "- unreachable code\n"
-               "- testing if unsigned variable is negative/positive\n"
-               "- Suspicious use of ; at the end of 'if/for/while' statement.\n"
-               "- Array filled incompletely using memset/memcpy/memmove.\n"
-               "- NaN (not a number) value used in arithmetic expression.\n"
-               "- comma in return statement (the comma can easily be misread as a semicolon).\n"
-               "- prefer erfc, expm1 or log1p to avoid loss of precision.\n"
-               "- identical code in both branches of if/else or ternary operator.\n"
-               "- redundant pointer operation on pointer like &\\*some_ptr.\n"
-               "- find unused 'goto' labels.\n"
-               "- function declaration and definition argument names different.\n"
-               "- function declaration and definition argument order different.\n"
-               "- shadow variable.\n"
-               "- variable can be declared const.\n"
-               "- calculating modulo of one.\n"
-               "- known function argument, suspicious calculation.\n";
-    }
 
     bool diag(const Token* tok) {
         return !mRedundantAssignmentDiag.emplace(tok).second;

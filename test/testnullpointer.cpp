@@ -4351,7 +4351,7 @@ private:
             Library library;
             ASSERT(LibraryHelper::loadxmldata(library, xmldata, sizeof(xmldata)));
 
-            const std::list<const Token *> null = CheckNullPointer::parseFunctionCall(*xtok, library);
+            const std::list<const Token *> null = CheckNullPointerImpl::parseFunctionCall(*xtok, library);
             ASSERT_EQUALS(0U, null.size());
         }
 
@@ -4369,7 +4369,7 @@ private:
             Library library;
             ASSERT(LibraryHelper::loadxmldata(library, xmldata, sizeof(xmldata)));
 
-            const std::list<const Token *> null = CheckNullPointer::parseFunctionCall(*xtok, library);
+            const std::list<const Token *> null = CheckNullPointerImpl::parseFunctionCall(*xtok, library);
             ASSERT_EQUALS(1U, null.size());
             ASSERT_EQUALS("a", null.front()->str());
         }

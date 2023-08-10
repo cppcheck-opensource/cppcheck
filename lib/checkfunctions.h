@@ -23,6 +23,7 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 
 #include <string>
@@ -47,15 +48,33 @@ namespace ValueFlow {
 class CPPCHECKLIB CheckFunctions : public Check {
 public:
     /** This constructor is used when registering the CheckFunctions */
-    CheckFunctions() : Check(myName()) {}
+    CheckFunctions() : Check("Check function usage") {}
 
 private:
-    /** This constructor is used when running checks. */
-    CheckFunctions(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
     /** @brief Run checks against the normal token list */
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+
+    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
+
+    std::string classInfo() const override {
+        return "Check function usage:\n"
+               "- missing 'return' in non-void function\n"
+               "- return value of certain functions not used\n"
+               "- invalid input values for functions\n"
+               "- Warn if a function is called whose usage is discouraged\n"
+               "- memset() third argument is zero\n"
+               "- memset() with a value out of range as the 2nd parameter\n"
+               "- memset() with a float as the 2nd parameter\n"
+               "- copy elision optimization for returning value affected by std::move\n"
+               "- use memcpy()/memset() instead of for loop\n";
+    }
+};
+
+class CPPCHECKLIB CheckFunctionsImpl : public CheckImpl {
+public:
+    /** This constructor is used when running checks. */
+    CheckFunctionsImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** Check for functions that should not be used */
     void checkProhibitedFunctions();
@@ -106,25 +125,7 @@ private:
     void missingReturnError(const Token *tok);
     void copyElisionError(const Token *tok);
     void useStandardLibraryError(const Token *tok, const std::string& expected);
-
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
-
-    static std::string myName() {
-        return "Check function usage";
-    }
-
-    std::string classInfo() const override {
-        return "Check function usage:\n"
-               "- missing 'return' in non-void function\n"
-               "- return value of certain functions not used\n"
-               "- invalid input values for functions\n"
-               "- Warn if a function is called whose usage is discouraged\n"
-               "- memset() third argument is zero\n"
-               "- memset() with a value out of range as the 2nd parameter\n"
-               "- memset() with a float as the 2nd parameter\n"
-               "- copy elision optimization for returning value affected by std::move\n"
-               "- use memcpy()/memset() instead of for loop\n";
-    }
+    void functionCalledError(const Token* tok, Severity severity, const std::string& prefix, const std::string& msg);
 };
 /// @}
 //---------------------------------------------------------------------------

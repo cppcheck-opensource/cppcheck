@@ -54,7 +54,7 @@ static bool checkNullpointerFunctionCallPlausibility(const Function* func, unsig
     return !func || (func->argCount() >= arg && func->getArgumentVar(arg - 1) && func->getArgumentVar(arg - 1)->isPointer());
 }
 
-std::list<const Token*> CheckNullPointer::parseFunctionCall(const Token &tok, const Library &library, bool checkNullArg)
+std::list<const Token*> CheckNullPointerImpl::parseFunctionCall(const Token &tok, const Library &library, bool checkNullArg)
 {
     if (Token::Match(&tok, "%name% ( )") || !tok.tokAt(2))
         return {};
@@ -128,21 +128,12 @@ namespace {
     };
 }
 
-/**
- * Is there a pointer dereference? Everything that should result in
- * a nullpointer dereference error message will result in a true
- * return value. If it's unknown if the pointer is dereferenced false
- * is returned.
- * @param tok token for the pointer
- * @param unknown it is not known if there is a pointer dereference (could be reported as a debug message)
- * @return true => there is a dereference
- */
-bool CheckNullPointer::isPointerDeRef(const Token *tok, bool &unknown) const
+bool CheckNullPointerImpl::isPointerDeRef(const Token *tok, bool &unknown) const
 {
     return isPointerDeRef(tok, unknown, *mSettings);
 }
 
-bool CheckNullPointer::isPointerDeRef(const Token *tok, bool &unknown, const Settings &settings, bool checkNullArg)
+bool CheckNullPointerImpl::isPointerDeRef(const Token *tok, bool &unknown, const Settings &settings, bool checkNullArg)
 {
     unknown = false;
 
@@ -155,7 +146,7 @@ bool CheckNullPointer::isPointerDeRef(const Token *tok, bool &unknown, const Set
             ftok = ftok->previous();
         }
         if (ftok && ftok->previous()) {
-            const std::list<const Token *> varlist = parseFunctionCall(*ftok->previous(), settings.library, checkNullArg);
+            const std::list<const Token *> varlist = CheckNullPointerImpl::parseFunctionCall(*ftok->previous(), settings.library, checkNullArg);
             if (std::find(varlist.cbegin(), varlist.cend(), tok) != varlist.cend()) {
                 return true;
             }
@@ -273,7 +264,7 @@ static bool isNullablePointer(const Token* tok)
     return false;
 }
 
-void CheckNullPointer::nullPointerByDeRefAndCheck()
+void CheckNullPointerImpl::nullPointerByDeRefAndCheck()
 {
     const bool printInconclusive = (mSettings->certainty.isEnabled(Certainty::inconclusive));
 
@@ -307,7 +298,7 @@ void CheckNullPointer::nullPointerByDeRefAndCheck()
 
             // Pointer dereference.
             bool unknown = false;
-            if (!isPointerDeRef(tok, unknown)) {
+            if (!CheckNullPointerImpl::isPointerDeRef(tok, unknown, *mSettings)) {
                 if (unknown)
                     nullPointerError(tok, tok->expressionString(), value, true);
                 continue;
@@ -318,7 +309,7 @@ void CheckNullPointer::nullPointerByDeRefAndCheck()
     }
 }
 
-void CheckNullPointer::nullPointer()
+void CheckNullPointerImpl::nullPointer()
 {
     logChecker("CheckNullPointer::nullPointer");
     nullPointerByDeRefAndCheck();
@@ -332,7 +323,7 @@ namespace {
 }
 
 /** Dereferencing null constant (simplified token list) */
-void CheckNullPointer::nullConstantDereference()
+void CheckNullPointerImpl::nullConstantDereference()
 {
     logChecker("CheckNullPointer::nullConstantDereference");
 
@@ -425,14 +416,14 @@ void CheckNullPointer::nullConstantDereference()
     }
 }
 
-void CheckNullPointer::nullPointerError(const Token *tok)
+void CheckNullPointerImpl::nullPointerError(const Token *tok)
 {
     ValueFlow::Value v(0);
     v.setKnown();
     nullPointerError(tok, "", &v, false);
 }
 
-void CheckNullPointer::nullPointerError(const Token *tok, const std::string &varname, const ValueFlow::Value *value, bool inconclusive)
+void CheckNullPointerImpl::nullPointerError(const Token *tok, const std::string &varname, const ValueFlow::Value *value, bool inconclusive)
 {
     const std::string errmsgcond("$symbol:" + varname + '\n' + ValueFlow::eitherTheConditionIsRedundant(value ? value->condition : nullptr) + " or there is possible null pointer dereference: $symbol.");
     const std::string errmsgdefarg("$symbol:" + varname + "\nPossible null pointer dereference if the default parameter value is used: $symbol");
@@ -486,7 +477,7 @@ void CheckNullPointer::nullPointerError(const Token *tok, const std::string &var
     }
 }
 
-void CheckNullPointer::arithmetic()
+void CheckNullPointerImpl::arithmetic()
 {
     logChecker("CheckNullPointer::arithmetic");
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
@@ -533,7 +524,7 @@ static std::string arithmeticTypeString(const Token *tok)
     return "arithmetic";
 }
 
-void CheckNullPointer::pointerArithmeticError(const Token* tok, const ValueFlow::Value *value, bool inconclusive)
+void CheckNullPointerImpl::pointerArithmeticError(const Token* tok, const ValueFlow::Value *value, bool inconclusive)
 {
     // cppcheck-suppress shadowFunction - TODO: fix this
     std::string arithmetic = arithmeticTypeString(tok);
@@ -563,7 +554,7 @@ void CheckNullPointer::pointerArithmeticError(const Token* tok, const ValueFlow:
                 inconclusive ? Certainty::inconclusive : Certainty::normal);
 }
 
-void CheckNullPointer::redundantConditionWarning(const Token* tok, const ValueFlow::Value *value, const Token *condition, bool inconclusive)
+void CheckNullPointerImpl::redundantConditionWarning(const Token* tok, const ValueFlow::Value *value, const Token *condition, bool inconclusive)
 {
     // cppcheck-suppress shadowFunction - TODO: fix this
     std::string arithmetic = arithmeticTypeString(tok);
@@ -587,7 +578,7 @@ static bool isUnsafeUsage(const Settings &settings, const Token *vartok, CTU::Fi
 {
     (void)value;
     bool unknown = false;
-    return CheckNullPointer::isPointerDeRef(vartok, unknown, settings);
+    return CheckNullPointerImpl::isPointerDeRef(vartok, unknown, settings);
 }
 
 // a Clang-built executable will crash when using the anonymous MyFileInfo later on - so put it in a unique namespace for now
@@ -613,9 +604,11 @@ namespace
     };
 }
 
-Check::FileInfo *CheckNullPointer::getFileInfo(const Tokenizer &tokenizer, const Settings &settings, const std::string& /*currentConfig*/) const
+Check::FileInfo *CheckNullPointer::getFileInfo(const Tokenizer &tokenizer, const Settings &settings, const std::string& currentConfig) const
 {
-    const std::list<CTU::FileInfo::UnsafeUsage> &unsafeUsage = CTU::getUnsafeUsage(tokenizer, settings, isUnsafeUsage);
+    (void)currentConfig;
+
+    const std::list<CTU::FileInfo::UnsafeUsage> &unsafeUsage = CTU::getUnsafeUsage(tokenizer, settings, ::isUnsafeUsage);
     if (unsafeUsage.empty())
         return nullptr;
 
@@ -639,9 +632,9 @@ bool CheckNullPointer::analyseWholeProgram(const CTU::FileInfo &ctu, const std::
 {
     (void)settings;
 
-    CheckNullPointer dummy(nullptr, &settings, &errorLogger);
+    CheckNullPointerImpl dummy(nullptr, &settings, &errorLogger);
     dummy.
-    logChecker("CheckNullPointer::analyseWholeProgram"); // unusedfunctions
+    logChecker("CheckNullPointer::analyseWholeProgram");
 
     if (fileInfo.empty())
         return false;
@@ -701,7 +694,7 @@ bool CheckNullPointer::analyseWholeProgram(const CTU::FileInfo &ctu, const std::
 
 void CheckNullPointer::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckNullPointer checkNullPointer(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckNullPointerImpl checkNullPointer(&tokenizer, &tokenizer.getSettings(), errorLogger);
     checkNullPointer.nullPointer();
     checkNullPointer.arithmetic();
     checkNullPointer.nullConstantDereference();
@@ -709,7 +702,7 @@ void CheckNullPointer::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorL
 
 void CheckNullPointer::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
 {
-    CheckNullPointer c(nullptr, settings, errorLogger);
+    CheckNullPointerImpl c(nullptr, settings, errorLogger);
     c.nullPointerError(nullptr, "pointer", nullptr, false);
     c.pointerArithmeticError(nullptr, nullptr, false);
     // TODO: nullPointerArithmeticOutOfMemory
