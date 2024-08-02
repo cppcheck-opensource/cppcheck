@@ -284,13 +284,12 @@ static void parseCompareEachInt(
         return;
     if (tok->isComparisonOp()) {
         std::vector<ValueFlow::Value> value1 = evaluate(tok->astOperand1());
-        std::vector<ValueFlow::Value> value2 = evaluate(tok->astOperand2());
-        if (!value1.empty() && !value2.empty()) {
-            if (tok->astOperand1()->hasKnownIntValue())
-                value2.clear();
-            if (tok->astOperand2()->hasKnownIntValue())
-                value1.clear();
+        std::vector<ValueFlow::Value> value2;
+        if (value1.empty() || !tok->astOperand1()->hasKnownIntValue()) {
+            value2 = evaluate(tok->astOperand2());
         }
+        if (!value2.empty() && tok->astOperand2()->hasKnownIntValue())
+            value1.clear();
         for (const ValueFlow::Value& v1 : value1) {
             if (isSaturated(v1.intvalue) || astIsFloat(tok->astOperand2(), /*unknown*/ false))
                 continue;
