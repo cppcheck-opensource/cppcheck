@@ -364,11 +364,13 @@ static void programMemoryParseCondition(ProgramMemory& pm, const Token* tok, con
         if (endTok && findExpressionChanged(vartok, tok->next(), endTok, settings))
             return;
         const bool impossible = (tok->str() == "==" && !then) || (tok->str() == "!=" && then);
-        const ValueFlow::Value& v = then ? truevalue : falsevalue;
-        pm.setValue(vartok, impossible ? asImpossible(v) : v);
+        ValueFlow::Value& v = then ? truevalue : falsevalue;
+        const auto iv = v.intvalue;
+        // cppcheck-suppress accessMoved - FP #13628
+        pm.setValue(vartok, impossible ? asImpossible(std::move(v)) : v);
         const Token* containerTok = settings.library.getContainerFromYield(vartok, Library::Container::Yield::SIZE);
         if (containerTok)
-            pm.setContainerSizeValue(containerTok, v.intvalue, !impossible);
+            pm.setContainerSizeValue(containerTok, iv, !impossible);
     } else if (Token::simpleMatch(tok, "!")) {
         programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, !then);
     } else if (then && Token::simpleMatch(tok, "&&")) {
