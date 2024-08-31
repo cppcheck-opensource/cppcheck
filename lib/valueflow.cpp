@@ -5864,10 +5864,10 @@ static void valueFlowFunctionReturn(TokenList& tokenlist, ErrorLogger& errorLogg
         if (programMemory.empty() && !arguments.empty())
             continue;
         std::vector<ValueFlow::Value> values = execute(function->functionScope, programMemory, settings);
-        for (const ValueFlow::Value& v : values) {
+        for (ValueFlow::Value& v : values) {
             if (v.isUninitValue())
                 continue;
-            setFunctionReturnValue(function, tok, v, settings);
+            setFunctionReturnValue(function, tok, std::move(v), settings);
         }
     }
 }
