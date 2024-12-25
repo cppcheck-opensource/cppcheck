@@ -6768,8 +6768,8 @@ static void valueFlowContainerSize(const TokenList& tokenlist,
                     Token* rhs = tok->tokAt(2)->astOperand2();
                     std::vector<ValueFlow::Value> values = getInitListSize(rhs, containerTok->valueType(), settings);
                     valueFlowContainerSetTokValue(tokenlist, errorLogger, settings, containerTok, rhs);
-                    for (const ValueFlow::Value& value : values)
-                        valueFlowForward(containerTok->next(), containerTok, value, tokenlist, errorLogger, settings);
+                    for (ValueFlow::Value& value : values)
+                        valueFlowForward(containerTok->next(), containerTok, std::move(value), tokenlist, errorLogger, settings);
                 }
             } else if (Token::Match(tok, ". %name% (") && tok->astOperand1() && tok->astOperand1()->valueType() &&
                        tok->astOperand1()->valueType()->container) {
