@@ -4226,7 +4226,7 @@ static void valueFlowAfterAssign(const TokenList &tokenlist,
                         continue;
                     ids.insert(value.tokvalue->exprId());
                 }
-                for (ValueFlow::Value value : values) {
+                for (ValueFlow::Value& value : values) {
                     if (!value.isSymbolicValue())
                         continue;
                     const Token* expr = value.tokvalue;
