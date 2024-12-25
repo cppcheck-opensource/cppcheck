@@ -7034,8 +7034,8 @@ static void valueFlowSafeFunctions(const TokenList& tokenlist, const SymbolDatab
                 argValues.back().valueType = ValueFlow::Value::ValueType::CONTAINER_SIZE;
                 argValues.back().errorPath.emplace_back(arg.nameToken(), "Assuming " + arg.name() + " size is 1000000");
                 argValues.back().safe = true;
-                for (const ValueFlow::Value &value : argValues)
-                    valueFlowForward(const_cast<Token*>(functionScope->bodyStart), arg.nameToken(), value, tokenlist, errorLogger, settings);
+                for (ValueFlow::Value &value : argValues)
+                    valueFlowForward(const_cast<Token*>(functionScope->bodyStart), arg.nameToken(), std::move(value), tokenlist, errorLogger, settings);
                 continue;
             }
 
