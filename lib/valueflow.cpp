@@ -1978,10 +1978,8 @@ static void valueFlowForwardLifetime(Token * tok, const TokenList &tokenlist, Er
         if (!expr)
             return;
 
-        if (expr->exprId() == 0)
+        if (expr->exprId() <= 0)
             return;
-
-        const Token* endOfVarScope = ValueFlow::getEndOfExprScope(expr);
 
         // Only forward lifetime values
         std::list<ValueFlow::Value> values = parent->astOperand2()->values();
@@ -1995,21 +1993,21 @@ static void valueFlowForwardLifetime(Token * tok, const TokenList &tokenlist, Er
 
         // Skip RHS
         Token* nextExpression = nextAfterAstRightmostLeaf(parent);
+        const Token* endOfVarScope = ValueFlow::getEndOfExprScope(expr);
 
-        if (expr->exprId() > 0) {
-            valueFlowForward(nextExpression, endOfVarScope->next(), expr, values, tokenlist, errorLogger, settings);
+        valueFlowForward(nextExpression, endOfVarScope->next(), expr, values, tokenlist, errorLogger, settings);
 
+        // TODO: handle `[`
+        if (Token::simpleMatch(parent->astOperand1(), ".")) {
             for (ValueFlow::Value& val : values) {
                 if (val.lifetimeKind == ValueFlow::Value::LifetimeKind::Address)
                     val.lifetimeKind = ValueFlow::Value::LifetimeKind::SubObject;
             }
-            // TODO: handle `[`
-            if (Token::simpleMatch(parent->astOperand1(), ".")) {
-                const Token* parentLifetime =
-                    getParentLifetime(parent->astOperand1()->astOperand2(), settings.library);
-                if (parentLifetime && parentLifetime->exprId() > 0) {
-                    valueFlowForward(nextExpression, endOfVarScope, parentLifetime, std::move(values), tokenlist, errorLogger, settings);
-                }
+
+            const Token* parentLifetime =
+                getParentLifetime(parent->astOperand1()->astOperand2(), settings.library);
+            if (parentLifetime && parentLifetime->exprId() > 0) {
+                valueFlowForward(nextExpression, endOfVarScope, parentLifetime, std::move(values), tokenlist, errorLogger, settings);
             }
         }
         // Constructor
