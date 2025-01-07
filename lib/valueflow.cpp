@@ -392,28 +392,28 @@ void ValueFlow::combineValueProperties(const ValueFlow::Value &value1, const Val
         result.tokvalue = value1.tokvalue;
     else if (value2.tokvalue)
         result.tokvalue = value2.tokvalue;
-    if (value1.isSymbolicValue()) {
-        result.valueType = value1.valueType;
-        result.tokvalue = value1.tokvalue;
-    }
     if (value2.isSymbolicValue()) {
         result.valueType = value2.valueType;
         result.tokvalue = value2.tokvalue;
     }
-    if (value1.isIteratorValue())
+    else if (value1.isSymbolicValue()) {
         result.valueType = value1.valueType;
+        result.tokvalue = value1.tokvalue;
+    }
     if (value2.isIteratorValue())
         result.valueType = value2.valueType;
+    else if (value1.isIteratorValue())
+        result.valueType = value1.valueType;
     result.condition = value1.condition ? value1.condition : value2.condition;
     result.varId = (value1.varId != 0) ? value1.varId : value2.varId;
     result.varvalue = (result.varId == value1.varId) ? value1.varvalue : value2.varvalue;
     result.errorPath = (value1.errorPath.empty() ? value2 : value1).errorPath;
     result.safe = value1.safe || value2.safe;
     if (value1.bound == ValueFlow::Value::Bound::Point || value2.bound == ValueFlow::Value::Bound::Point) {
-        if (value1.bound == ValueFlow::Value::Bound::Upper || value2.bound == ValueFlow::Value::Bound::Upper)
-            result.bound = ValueFlow::Value::Bound::Upper;
         if (value1.bound == ValueFlow::Value::Bound::Lower || value2.bound == ValueFlow::Value::Bound::Lower)
             result.bound = ValueFlow::Value::Bound::Lower;
+        else if (value1.bound == ValueFlow::Value::Bound::Upper || value2.bound == ValueFlow::Value::Bound::Upper)
+            result.bound = ValueFlow::Value::Bound::Upper;
     }
     if (value1.path != value2.path)
         result.path = -1;
