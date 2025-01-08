@@ -5759,7 +5759,7 @@ static const ValueFlow::Value* getKnownValueFromToken(const Token* tok)
     if (!tok)
         return nullptr;
     auto it = std::find_if(tok->values().begin(), tok->values().end(), [&](const ValueFlow::Value& v) {
-        return (v.isIntValue() || v.isContainerSizeValue() || v.isFloatValue()) && v.isKnown();
+        return v.isKnown() && (v.isIntValue() || v.isContainerSizeValue() || v.isFloatValue());
     });
     if (it == tok->values().end())
         return nullptr;
