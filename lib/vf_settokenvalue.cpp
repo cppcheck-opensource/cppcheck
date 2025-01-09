@@ -258,8 +258,9 @@ namespace ValueFlow
         }
 
         if (Token::simpleMatch(parent, "=") && astIsRHS(tok)) {
-            setTokenValue(parent, value, settings);
-            if (!value.isUninitValue())
+            const bool isUninit = value.isUninitValue();
+            setTokenValue(parent, std::move(value), settings);
+            if (!isUninit)
                 return;
         }
 
