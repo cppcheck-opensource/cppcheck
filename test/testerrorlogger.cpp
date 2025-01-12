@@ -51,6 +51,8 @@ private:
         TEST_CASE(ErrorMessageConstructLocations);
         TEST_CASE(ErrorMessageVerbose);
         TEST_CASE(ErrorMessageVerboseLocations);
+        TEST_CASE(ErrorMessageVerboseSymbol);
+        TEST_CASE(ErrorMessageVerboseNewline);
         TEST_CASE(ErrorMessageFromInternalError);
         TEST_CASE(CustomFormat);
         TEST_CASE(CustomFormat2);
@@ -282,6 +284,27 @@ private:
         ASSERT_EQUALS("Verbose error", msg.verboseMessage());
         ASSERT_EQUALS("[foo.cpp:5] -> [bar.cpp:8]: (error) Programming error.", msg.toString(false, templateFormat, ""));
         ASSERT_EQUALS("[foo.cpp:5] -> [bar.cpp:8]: (error) Verbose error", msg.toString(true, templateFormat, ""));
+    }
+
+    void ErrorMessageVerboseSymbol() const {
+        std::list<ErrorMessage::FileLocation> locs(1, fooCpp5);
+        ErrorMessage msg(std::move(locs), "", Severity::error, "$symbol:sym\nProgramming error with $symbol.\nVerbose error about $symbol", "errorId", Certainty::normal);
+        ASSERT_EQUALS(1, msg.callStack.size());
+        ASSERT_EQUALS("Programming error with sym.", msg.shortMessage());
+        ASSERT_EQUALS("Verbose error about sym", msg.verboseMessage());
+        ASSERT_EQUALS("[foo.cpp:5]: (error) Programming error with sym.", msg.toString(false, templateFormat, ""));
+        ASSERT_EQUALS("[foo.cpp:5]: (error) Verbose error about sym", msg.toString(true, templateFormat, ""));
+        ASSERT_EQUALS("sym\n", msg.symbolNames());
+    }
+
+    void ErrorMessageVerboseNewline() const {
+        std::list<ErrorMessage::FileLocation> locs(1, fooCpp5);
+        ErrorMessage msg(std::move(locs), "", Severity::error, "Programming error.\nVerbose error\nEven more verbose", "errorId", Certainty::normal);
+        ASSERT_EQUALS(1, msg.callStack.size());
+        ASSERT_EQUALS("Programming error.", msg.shortMessage());
+        ASSERT_EQUALS("Verbose error\nEven more verbose", msg.verboseMessage());
+        ASSERT_EQUALS("[foo.cpp:5]: (error) Programming error.", msg.toString(false, templateFormat, ""));
+        ASSERT_EQUALS("[foo.cpp:5]: (error) Verbose error\nEven more verbose", msg.toString(true, templateFormat, ""));
     }
 
     void ErrorMessageFromInternalError() const {
