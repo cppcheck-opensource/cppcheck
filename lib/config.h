@@ -203,6 +203,8 @@
 #if HAVE_EXECINFO_H
 #define USE_UNIX_BACKTRACE_SUPPORT
 #endif
+#elif __has_include(<execinfo.h>)
+#define USE_UNIX_BACKTRACE_SUPPORT
 #endif
 #endif
 
