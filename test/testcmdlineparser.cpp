@@ -2706,6 +2706,7 @@ private:
                         "</message>\n"
                         "</rule>\n"
                         "<rule>\n"
+                        "<engine>std</engine>\n"
                         "<tokenlist>define</tokenlist>\n"
                         "<pattern>.*</pattern>\n"
                         "<message>\n"
@@ -2726,7 +2727,7 @@ private:
         ASSERT_EQUALS("ruleId1", it->id);
         ASSERT_EQUALS("ruleSummary1", it->summary);
         ++it;
-        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->engine);
+        ASSERT_EQUALS_ENUM(Regex::Engine::Std, it->engine);
         ASSERT_EQUALS("define", it->tokenlist);
         ASSERT_EQUALS(".*", it->pattern);
         ASSERT_EQUALS_ENUM(Severity::warning, it->severity);
