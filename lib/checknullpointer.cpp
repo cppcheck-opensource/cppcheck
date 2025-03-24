@@ -49,7 +49,7 @@ static const CWE CWE_INCORRECT_CALCULATION(682U);
 
 //---------------------------------------------------------------------------
 
-static bool checkNullpointerFunctionCallPlausibility(const Function* func, unsigned int arg)
+static bool checkNullpointerFunctionCallPlausibility(const Function* func, size_t arg)
 {
     return !func || (func->argCount() >= arg && func->getArgumentVar(arg - 1) && func->getArgumentVar(arg - 1)->isPointer());
 }
@@ -61,7 +61,7 @@ std::list<const Token*> CheckNullPointerImpl::parseFunctionCall(const Token &tok
 
     const std::vector<const Token *> args = getArguments(&tok);
     std::list<const Token*> var;
-    for (int argnr = 1; argnr <= args.size(); ++argnr) {
+    for (size_t argnr = 1; argnr <= args.size(); ++argnr) {
         const Token *param = args[argnr - 1];
         if ((!checkNullArg || library.isnullargbad(&tok, argnr)) && checkNullpointerFunctionCallPlausibility(tok.function(), argnr))
             var.push_back(param);
@@ -370,7 +370,7 @@ void CheckNullPointerImpl::nullConstantDereference()
 
             else if (Token::Match(tok->previous(), "::|. %name% (")) {
                 const std::vector<const Token *> &args = getArguments(tok);
-                for (int argnr = 0; argnr < args.size(); ++argnr) {
+                for (size_t argnr = 0; argnr < args.size(); ++argnr) {
                     const Token *argtok = args[argnr];
                     if (!argtok->hasKnownIntValue())
                         continue;
