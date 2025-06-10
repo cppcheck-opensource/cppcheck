@@ -5835,10 +5835,10 @@ static void valueFlowFunctionReturn(TokenList& tokenlist, ErrorLogger& errorLogg
 
         bool hasKnownValue = false;
 
-        for (const ValueFlow::Value& v : getCommonValuesFromTokens(returns)) {
-            setFunctionReturnValue(function, tok, v, settings, false);
+        for (ValueFlow::Value& v : getCommonValuesFromTokens(returns)) {
             if (v.isKnown())
                 hasKnownValue = true;
+            setFunctionReturnValue(function, tok, std::move(v), settings, false);
         }
 
         if (hasKnownValue)
