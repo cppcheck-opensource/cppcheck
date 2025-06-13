@@ -194,12 +194,13 @@ Library::Error Library::load(const char exename[], const char path[], bool debug
     }
 
     const bool is_abs_path = Path::isAbsolute(path);
+    const bool is_rel_path = Path::isRelative(path);
 
     std::string fullfilename(path);
 
     // TODO: what if the extension is not .cfg?
-    // only append extension when we provide the library name and not a path - TODO: handle relative paths?
-    if (!is_abs_path && Path::getFilenameExtension(fullfilename).empty())
+    // only append extension when we provide the library name and not a path
+    if (!is_abs_path && !is_rel_path && Path::getFilenameExtension(fullfilename).empty())
         fullfilename += ".cfg";
 
     std::string absolute_path;

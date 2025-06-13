@@ -629,10 +629,16 @@ private:
         ASSERT_EQUALS(true, Path::isRelative("file\\"));
 
         ASSERT_EQUALS(false, Path::isRelative("file"));
-        ASSERT_EQUALS(false, Path::isRelative("/dir/file"));
 
-        // TODO: this is not detected as absolute path in _WIN32 builds
 #ifdef _WIN32
+        // this is a relative path on Windows
+        ASSERT_EQUALS(true, Path::isRelative("/dir/file"));
+#else
+        ASSERT_EQUALS(false, Path::isRelative("/dir/file"));
+#endif
+
+#ifdef _WIN32
+        // TODO: this is not detected as absolute path in _WIN32 builds
         ASSERT_EQUALS(false, Path::isRelative("c:\\dir\\file"));
         ASSERT_EQUALS(false, Path::isRelative("c:/dir/file"));
 #else

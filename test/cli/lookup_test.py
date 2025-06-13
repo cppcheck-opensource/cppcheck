@@ -205,9 +205,9 @@ def test_lib_lookup_relative_noext_notfound(tmpdir):
     assert exitcode == 1, stdout if stdout else stderr
     lines = __remove_std_lookup_log(stdout.splitlines(), exepath)
     assert lines == [
-        "looking for library 'config/gnu.cfg'",
-        "looking for library '{}/config/gnu.cfg'".format(exepath),
-        "looking for library '{}/cfg/config/gnu.cfg'".format(exepath),
+        "looking for library 'config/gnu'",
+        "looking for library '{}/config/gnu'".format(exepath),
+        "looking for library '{}/cfg/config/gnu'".format(exepath),
         "library not found: 'config/gnu'",
         "cppcheck: Failed to load library configuration file 'config/gnu'. File not found"
     ]
@@ -226,10 +226,9 @@ def test_lib_lookup_relative_noext_trailing_notfound(tmpdir):
     assert exitcode == 1, stdout if stdout else stderr
     lines = __remove_std_lookup_log(stdout.splitlines(), exepath)
     assert lines == [
-        # TODO: do not append extension
-        "looking for library 'config/gnu/.cfg'",
-        "looking for library '{}/config/gnu/.cfg'".format(exepath),
-        "looking for library '{}/cfg/config/gnu/.cfg'".format(exepath),
+        "looking for library 'config/gnu/'",
+        "looking for library '{}/config/gnu/'".format(exepath),
+        "looking for library '{}/cfg/config/gnu/'".format(exepath),
         "library not found: 'config/gnu/'",
         "cppcheck: Failed to load library configuration file 'config/gnu/'. File not found"
     ]
@@ -608,10 +607,10 @@ def test_platform_lookup_relative_noext_notfound(tmpdir):
     lines = stdout.splitlines()
     assert lines == [
         "looking for platform 'platform/none'",
-        "try to load platform file '{}/platform/none.xml' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platform/none.xml".format(cwd, cwd),
-        "try to load platform file '{}/platforms/platform/none.xml' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platforms/platform/none.xml".format(cwd, cwd),
-        "try to load platform file '{}/platform/none.xml' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platform/none.xml".format(exepath, exepath),
-        "try to load platform file '{}/platforms/platform/none.xml' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platforms/platform/none.xml".format(exepath, exepath),
+        "try to load platform file '{}/platform/none' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platform/none".format(cwd, cwd),
+        "try to load platform file '{}/platforms/platform/none' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platforms/platform/none".format(cwd, cwd),
+        "try to load platform file '{}/platform/none' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platform/none".format(exepath, exepath),
+        "try to load platform file '{}/platforms/platform/none' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platforms/platform/none".format(exepath, exepath),
         "cppcheck: error: unrecognized platform: 'platform/none'."
     ]
 
@@ -632,11 +631,10 @@ def test_platform_lookup_relative_noext_trailing_notfound(tmpdir):
     lines = stdout.splitlines()
     assert lines == [
         "looking for platform 'platform/none/'",
-        # TODO: should not append extension
-        "try to load platform file '{}/platform/none/.xml' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platform/none/.xml".format(cwd, cwd),
-        "try to load platform file '{}/platforms/platform/none/.xml' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platforms/platform/none/.xml".format(cwd, cwd),
-        "try to load platform file '{}/platform/none/.xml' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platform/none/.xml".format(exepath, exepath),
-        "try to load platform file '{}/platforms/platform/none/.xml' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platforms/platform/none/.xml".format(exepath, exepath),
+        "try to load platform file '{}/platform/none/' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platform/none/".format(cwd, cwd),
+        "try to load platform file '{}/platforms/platform/none/' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platforms/platform/none/".format(cwd, cwd),
+        "try to load platform file '{}/platform/none/' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platform/none/".format(exepath, exepath),
+        "try to load platform file '{}/platforms/platform/none/' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platforms/platform/none/".format(exepath, exepath),
         "cppcheck: error: unrecognized platform: 'platform/none/'."
     ]
 
@@ -884,6 +882,7 @@ def test_addon_lookup_relative_notfound(tmpdir):
     ]
 
 
+# FIXME: an addon requires a file extension as we need to differentiate between .py and .json addons
 def test_addon_lookup_relative_noext_notfound(tmpdir):
     test_file = os.path.join(tmpdir, 'test.c')
     with open(test_file, 'wt'):
@@ -956,6 +955,7 @@ def test_addon_lookup_absolute_notfound(tmpdir):
     ]
 
 
+# FIXME: an addon requires a file extension as we need to differentiate between .py and .json addons
 def test_addon_lookup_absolute_noext_notfound(tmpdir):
     test_file = os.path.join(tmpdir, 'test.c')
     with open(test_file, 'wt'):
