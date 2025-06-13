@@ -119,6 +119,13 @@ public:
     static bool isAbsolute(const std::string& path);
 
     /**
+     * @brief Check if given path is relative
+     * @param path Path to check
+     * @return true if given path is relative
+     */
+    static bool isRelative(const std::string& path);
+
+    /**
      * @brief Create a relative path from an absolute one, if absolute path is inside the basePaths.
      * @param absolutePath Path to be made relative.
      * @param basePaths Paths to which it may be made relative.
