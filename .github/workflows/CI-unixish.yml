@@ -732,6 +732,21 @@ jobs:
           # compile with verification and ast matchers
           make -j$(nproc) CXXOPTS="-Werror -g -O2" CPPOPTS="-DCHECK_INTERNAL -DHAVE_BOOST" MATCHCOMPILER=yes VERIFY=1
 
+      - name: Self check (output)
+        run: |
+          wget https://github.com/danmar/simplecpp/archive/refs/tags/1.5.1.tar.gz
+          tar xvf 1.5.1.tar.gz
+          # TODO: should include --verbose but identifiers in output differ on each run
+          ./cppcheck -q --std=c++11 --template=selfcheck -D__GNUC__ --library=gnu --check-level=exhaustive --debug --debug-template simplecpp-1.5.1/simplecpp.cpp > selfcheck.res
+          diff -u selfcheck.exp selfcheck.res
+
+      # upload in failure case only. being able to just download the file, makes it easier to update the files in case of bigger changes
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: Actual output
+          path: ./selfcheck.res
+
       - name: CMake
         run: |
           cmake -S . -B cmake.output -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DUSE_MATCHCOMPILER=Verify -DENABLE_CHECK_INTERNAL=On -DCPPCHK_GLIBCXX_DEBUG=Off -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On
