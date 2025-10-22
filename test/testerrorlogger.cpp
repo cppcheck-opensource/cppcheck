@@ -54,6 +54,7 @@ private:
         TEST_CASE(ErrorMessageVerboseSymbol);
         TEST_CASE(ErrorMessageVerboseNewline);
         TEST_CASE(ErrorMessageFromInternalError);
+        TEST_CASE(ErrorMessageCode);
         TEST_CASE(CustomFormat);
         TEST_CASE(CustomFormat2);
         TEST_CASE(CustomFormatLocations);
@@ -362,6 +363,25 @@ private:
         testReportType(ReportType::misraC2012, Severity::style, "premium-misra-c-2012-dir-4.6", "Advisory", "Dir 4.6");
         testReportType(ReportType::misraC2012, Severity::style, "misra-c2012-dir-4.6", "Advisory", "Dir 4.6");
         testReportType(ReportType::certC, Severity::error, "resourceLeak", "L3", "FIO42-C");
+    }
+
+    void ErrorMessageCode() const {
+        ScopedFile file("code.cpp",
+                        "int i;\n"
+                        "int i2;\n"
+                        "int i3;\n"
+                        );
+
+        ErrorMessage::FileLocation codeCpp3_5{"code.cpp", 3, 5};
+        std::list<ErrorMessage::FileLocation> locs = { codeCpp3_5 };
+        ErrorMessage msg(std::move(locs), "", Severity::error, "Programming error.\nVerbose error", "errorId", Certainty::normal);
+        ASSERT_EQUALS(1, msg.callStack.size());
+        ASSERT_EQUALS("Programming error.", msg.shortMessage());
+        ASSERT_EQUALS("Verbose error", msg.verboseMessage());
+        ASSERT_EQUALS("code.cpp:3:5: error: Programming error. [errorId]\n"
+                      "int i3;\n"
+                      "    ^",
+                      msg.toString(false, "{file}:{line}:{column}: {severity}:{inconclusive:inconclusive:} {message} [{id}]\n{code}", ""));
     }
 
     void CustomFormat() const {
