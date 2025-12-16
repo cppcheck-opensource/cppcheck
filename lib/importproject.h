@@ -49,6 +49,11 @@ namespace cppcheck {
             return caseInsensitiveStringCompare(lhs,rhs) < 0;
         }
     };
+
+    namespace testing
+    {
+        CPPCHECKLIB bool evaluateVcxprojCondition(const std::string& condition, const std::string& configuration, const std::string& platform);
+    }
 }
 
 /**
