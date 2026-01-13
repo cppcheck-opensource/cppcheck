@@ -628,11 +628,13 @@ namespace {
                         lpar.push(tok2);
                     else if (tok2->str() == ")") {
                         if (lpar.empty())
-                            break;
+                            throw std::runtime_error("unmatched ')' in condition " + condition);
                         Token::createMutualLinks(lpar.top(), tok2);
                         lpar.pop();
                     }
                 }
+                if (!lpar.empty())
+                    throw std::runtime_error("'(' without closing ')'!");
             }
 
             // Replace "And" and "Or" with "&&" and "||"
