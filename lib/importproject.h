@@ -49,6 +49,11 @@ namespace cppcheck {
             return caseInsensitiveStringCompare(lhs,rhs) < 0;
         }
     };
+
+    namespace testing
+    {
+        CPPCHECKLIB bool evaluateVcxprojCondition(const std::string& condition, const std::string& configuration, const std::string& platform);
+    }
 }
 
 /**
@@ -196,6 +201,10 @@ namespace CppcheckXml {
     static constexpr char ProjectNameElementName[] = "project-name";
 }
 
+namespace testing
+{
+    CPPCHECKLIB bool evaluateVcxprojCondition(const std::string& condition, const std::string& configuration, const std::string& platform);
+}
 /// @}
 //---------------------------------------------------------------------------
 #endif // importprojectH
