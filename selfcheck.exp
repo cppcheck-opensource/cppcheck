@@ -9780,8 +9780,8 @@ Line 125
   : always 0
   '\0' always 0
 Line 132
-  = possible {"0"@254,"&&"@120,"||"@122,"!="@156}
-  s possible {"0"@254,"&&"@120,"||"@122,"!="@156}
+  = possible {"0"@3,"&&"@140,"||"@142,"!="@176,size=1@3,size=2@140}
+  s possible {"0"@3,"&&"@140,"||"@142,"!="@176,size=1@3,size=2@140}
 Line 136
   ( always {!<=-1,!>=2}
 Line 137
@@ -9862,7 +9862,7 @@ Line 176
   return always {!<=-1,!>=2}
   mExpandedFrom possible lifetime[Object]=(m)
   ( possible lifetime[Iterator]=(mExpandedFrom)
-  m possible lifetime[Object]=(macros)@102
+  m possible lifetime[Object]=(macros)@110
   != always {!<=-1,!>=2}
   ( {lifetime[Iterator]=(mExpandedFrom),end=0}
 Line 192
@@ -9915,8 +9915,8 @@ Line 241
   = always 0
   nullptr always 0
 Line 263
-  ! {!<=-1,!>=2,1@9}
-  tok possible {symbolic=(tok->previous)@118,0@9}
+  ! {!<=-1,!>=2,1@29}
+  tok possible {symbolic=(tok->previous)@138,0@29}
 Line 265
   tok always !0
 Line 266
@@ -10011,10 +10011,10 @@ Line 414
 Line 421
   ( possible lifetime[Object]=(data)
 Line 423
-  newdata always size=0
+  newdata always size=72
 Line 424
-  newdata inconclusive size=0
-  newdata inconclusive size=0
+  newdata inconclusive size=72
+  newdata inconclusive size=72
 Line 439
   ( always !<=-1
 Line 442
@@ -10160,7 +10160,7 @@ Line 90
 Line 92
   "__has_include" always "__has_include"
 Line 98
-  t possible {symbolic=(lhs/rhs)@227,symbolic=(lhs%rhs)@227}
+  t possible {symbolic=(lhs/rhs)@247,symbolic=(lhs%rhs)@247}
 Line 114
   hex {!<=-1,!>=2,0}
   = always {!<=-1,!>=2}
@@ -10208,29 +10208,30 @@ Line 139
   ( always {!<=-1,!>=2}
 Line 141
   return always {!<=-1,!>=2}
-  s possible >=size=4@72
-  ( {!<=-1,>=4@72}
+  s possible >=size=4@92
+  ( {!<=-1,>=4@92}
   >= always {!<=-1,!>=2}
-  e possible "/."@20
-  ( always !<=-1
+  e possible {"/."@25,size=2@25}
+  ( {!<=-1,2@25}
   && always {!<=-1,!>=2}
   ( always {!<=-1,!>=2}
-  e possible "/."@20
+  e possible {"/."@25,size=2@25}
   ( {lifetime[Iterator]=(e),start=0}
-  e possible "/."@20
+  e possible {"/."@25,size=2@25}
   ( {lifetime[Iterator]=(e),end=0}
-  ( {lifetime[Iterator]=(s),start=0}
+  s possible >=size=2@25
+  ( {lifetime[Iterator]=(s),>=size=2@25,start=0}
 Line 144
   ( always {!<=-1,!>=2}
 Line 146
   return always {!<=-1,!>=2}
-  tok1 {symbolic=(tok)@8,symbolic=(lpar)@9,0@27}
-  && {!<=-1,!>=2,0@27}
-  tok2 {symbolic=(rawtok->next)@144,symbolic=(rawtok->nextSkipComments())@189,symbolic=(B->next)@76,symbolic=(tok3?tok3->next:nullptr)@155,symbolic=(tok->next)@156,symbolic=(tok->next)@252,symbolic=(lpar)@8,symbolic=(nameTokDef->next->next)@23}
-  && {!<=-1,!>=2,0@27}
-  tok1 {!0,symbolic=(tok)@8,symbolic=(lpar)@9}
+  tok1 possible {symbolic=(tok)@22,0@43,symbolic=(B->next)@22045}
+  && {!<=-1,!>=2,0@43}
+  tok2 possible {symbolic=(rawtok->next)@147,symbolic=(rawtok->nextSkipComments())@194,symbolic=(B->next)@82,symbolic=(nextTok)@93,symbolic=(tok3?tok3->next:nullptr)@165,symbolic=(tok->next)@166,symbolic=(tok->next)@8,symbolic=(lpar)@22,symbolic=(nameTokDef->next->next)@39}
+  && {!<=-1,!>=2,0@43}
+  tok1 {!0,symbolic=(tok)@22}
   ( always {!<=-1,!>=2}
-  tok2 {!0,symbolic=(rawtok->next)@144,symbolic=(rawtok->nextSkipComments())@189,symbolic=(B->next)@76,symbolic=(tok3?tok3->next:nullptr)@155,symbolic=(tok->next)@156,symbolic=(tok->next)@252,symbolic=(lpar)@8,symbolic=(nameTokDef->next->next)@23}
+  tok2 {!0,symbolic=(rawtok->next)@147,symbolic=(rawtok->nextSkipComments())@194,symbolic=(B->next)@82,symbolic=(nextTok)@93,symbolic=(tok3?tok3->next:nullptr)@165,symbolic=(tok->next)@166,symbolic=(tok->next)@8,symbolic=(lpar)@22,symbolic=(nameTokDef->next->next)@39}
 Line 149
   ( always {!<=-1,!>=2}
 Line 151
@@ -10299,22 +10300,22 @@ Line 168
   pos always !<=-1
   = always !<=-1
   ( always !<=-1
-  from possible "\\\\"@47
+  from possible {"\\\\"@67,size=2@67}
   pos always !<=-1
   != always {!<=-1,!>=2}
   pos always !<=-1
   = always !<=-1
   ( always !<=-1
-  from inconclusive "\\\\"@47
+  from inconclusive {"\\\\"@67,size=2@67}
   pos always !<=-1
   + always !<=-1
-  to inconclusive "\\"@47
-  ( always !<=-1
+  to inconclusive {"\\"@67,size=1@67}
+  ( {!<=-1,1@67}
 Line 169
   pos always !<=-1
-  from inconclusive "\\\\"@47
-  ( always !<=-1
-  to inconclusive "\\"@47
+  from inconclusive {"\\\\"@67,size=2@67}
+  ( {!<=-1,2@67}
+  to inconclusive {"\\"@67,size=1@67}
 Line 177
   ( {lifetime[Object]=(str),!0}
   "\r\n" always "\r\n"
@@ -10380,7 +10381,7 @@ Line 195
   != always {!<=-1,!>=2}
   '\0' always 0
   && always {!<=-1,!>=2}
-  ops possible {"+-*/%&|^"@27,"#="@35}
+  ops possible {"+-*/%&|^"@33,"#="@41}
   op always !0
   != always {!<=-1,!>=2}
   nullptr always 0
@@ -10388,7 +10389,7 @@ Line 198
   ( always {!<=-1,!>=2}
 Line 200
   return always {!<=-1,!>=2}
-  c possible "<>=!"@157
+  c possible "<>=!"@177
   0 always 0
   != always {!<=-1,!>=2}
   nullptr always 0
@@ -10765,7 +10766,7 @@ Line 587
 Line 589
   return always {!<=-1,!>=2}
   ( possible 0
-  ch {!<=-1,95,36,47@56,34@56,39@56}
+  ch {!<=-1,95,36,47@76,34@76,39@76}
   || always {!<=-1,!>=2}
   ch always !<=-1
   == always {!<=-1,!>=2}
@@ -10857,23 +10858,23 @@ Line 623
 Line 625
   fileIndex always !<=-1
   != always {!<=-1,!>=2}
-  location possible {lifetime[Address]=(location)@43,lifetime[Address]=(location)@45}
+  location possible {lifetime[Address]=(location)@63,lifetime[Address]=(location)@65}
   . always !<=-1
   fileIndex always !<=-1
   || always {!<=-1,!>=2}
   line always !<=-1
   >= always {!<=-1,!>=2}
-  location possible {lifetime[Address]=(location)@43,lifetime[Address]=(location)@45}
+  location possible {lifetime[Address]=(location)@63,lifetime[Address]=(location)@65}
   . always !<=-1
   line always !<=-1
 Line 626
-  location possible {lifetime[Address]=(location)@43,lifetime[Address]=(location)@45}
+  location possible {lifetime[Address]=(location)@63,lifetime[Address]=(location)@65}
   . always !<=-1
   fileIndex always !<=-1
   = always !<=-1
   fileIndex always !<=-1
 Line 627
-  location possible {lifetime[Address]=(location)@43,lifetime[Address]=(location)@45}
+  location possible {lifetime[Address]=(location)@63,lifetime[Address]=(location)@65}
   . always !<=-1
   line always !<=-1
   = always !<=-1
@@ -10883,7 +10884,7 @@ Line 631
   + always !<=1
   2 always 2
   >= always {!<=-1,!>=2}
-  location possible {lifetime[Address]=(location)@43,lifetime[Address]=(location)@45}
+  location possible {lifetime[Address]=(location)@63,lifetime[Address]=(location)@65}
   . always !<=-1
   line always !<=-1
 Line 632
@@ -11026,8 +11027,8 @@ Line 710
   ( always !<=-1
   1U always 1
   2U always 2
-  "\\\\" always "\\\\"
-  "\\" always "\\"
+  "\\\\" always {size=2,"\\\\"}
+  "\\" always {size=1,"\\"}
 Line 711
   numtok possible symbolic=(strtok->previous)
   & {lifetime[Address]=(location),!0}
@@ -12064,7 +12065,7 @@ Line 1219
 Line 1220
   ( always {!<=-1,!>=2}
 Line 1221
-  "!=" always "!="
+  "!=" always {size=2,"!="}
 Line 1223
   ! always {!<=-1,!>=2}
   ( always {!<=-1,!>=2}
@@ -12240,11 +12241,11 @@ Line 1294
 Line 1295
   ( always {!<=-1,!>=2}
 Line 1296
-  "&&" always "&&"
+  "&&" always {size=2,"&&"}
 Line 1297
   ( always {!<=-1,!>=2}
 Line 1298
-  "||" always "||"
+  "||" always {size=2,"||"}
 Line 1300
   ( possible size=2
   != always {!<=-1,!>=2}
@@ -12365,7 +12366,7 @@ Line 1354
 Line 1355
   tok1 always !0
 Line 1362
-  start possible 60@103
+  start possible 60@123
 Line 1364
   backslash always {!<=-1,!>=2}
   backslash always {!<=-1,!>=2}
@@ -12375,15 +12376,15 @@ Line 1365
   = always 0
   0 always 0
 Line 1366
-  ch possible {symbolic=(next),symbolic=(end),0,62@103}
+  ch possible {symbolic=(next),symbolic=(end),0,92,62@123}
   != {!<=-1,!>=2,0}
-  end possible {symbolic=(ch),62@103}
+  end possible {symbolic=(ch),62@123}
   && {!<=-1,!>=2,0}
-  ch {!symbolic=(end),0}
+  ch {!symbolic=(end),0,92}
   != {!<=-1,!>=2,1}
   '\r' always 13
   && {!<=-1,!>=2,0}
-  ch {!symbolic=(end),0,!13}
+  ch {!symbolic=(end),0,!13,92}
   != {!<=-1,!>=2,1}
   '\n' always 10
   && {!<=-1,!>=2,0}
@@ -12467,7 +12468,7 @@ Line 1393
   ( always {!<=-1,!>=2}
   || always {!<=-1,!>=2}
   != always {!<=-1,!>=2}
-  end possible 62@103
+  end possible 62@123
 Line 1397
   = always 4
   :: always 4
@@ -12613,9 +12614,9 @@ Line 1493
   valueDefinedInCode_ always {!<=-1,!>=2}
   false always 0
 Line 1494
-  name possible {"__STRICT_ANSI__"@10,"__FILE__"@11,"__LINE__"@12,"__COUNTER__"@13,"__DATE__"@15,"__TIME__"@17,"__STDC_VERSION__"@21,"__cplusplus"@25}
+  name possible {"__STRICT_ANSI__"@10,"__FILE__"@11,"__LINE__"@12,"__COUNTER__"@13,"__DATE__"@15,"__TIME__"@17,"__STDC_VERSION__"@21,"__cplusplus"@25,size=15@10,size=8@11}
   ' ' always 32
-  value possible {"1"@10,"__FILE__"@11,"__LINE__"@12,"__COUNTER__"@13}
+  value possible {"1"@10,"__FILE__"@11,"__LINE__"@12,"__COUNTER__"@13,size=1@10,size=8@11,size=11@13}
 Line 1495
   ( {lifetime[Object]=(def),!0}
   ( {lifetime[Object]=(def),!0}
@@ -12643,6 +12644,8 @@ Line 1513
   . always {!<=-1,!>=2}
   valueDefinedInCode_ always {!<=-1,!>=2}
 Line 1514
+  ( always {!<=-1,!>=2}
+Line 1515
   ( always {!<=-1,!>=2}
 Line 1518
   ( always {!<=-1,!>=2}
@@ -12708,13 +12711,19 @@ Line 1564
   '#' always 35
   && always {!<=-1,!>=2}
   ! always {!<=-1,!>=2}
+  ( always {!<=-1,!>=2}
   rawtok always !0
   rawtok always !0
 Line 1565
-  "it is invalid to use a preprocessor directive as macro parameter" always "it is invalid to use a preprocessor directive as macro parameter"
+  rawtok always !0
+  "it is invalid to use a preprocessor directive as macro parameter" always {size=64,"it is invalid to use a preprocessor directive as macro parameter"}
 Line 1566
+  rawtok always !0
+  rawtok always !0
   . always {!<=-1,!>=2}
   whitespaceahead always {!<=-1,!>=2}
+Line 1567
+  rawtok always !0
 Line 1569
   & {lifetime[Address]=(output2),!0}
   expandedmacros always size=0
@@ -12850,6 +12859,8 @@ Line 1646
   '(' always 40
   && always {!<=-1,!>=2}
 Line 1647
+  ( always {!<=-1,!>=2}
+  . always !0
   && always {!<=-1,!>=2}
 Line 1648
   . always !<=-1
@@ -12867,22 +12878,22 @@ Line 1666
   "\': " always "\': "
 Line 1673
   "Unexpected token '" always "Unexpected token '"
-  tokenA possible symbolic=(tok->next->next)@36
+  tokenA possible symbolic=(tok->next->next)@42
   "'" always "'"
 Line 1677
   "Combining '" always "Combining '"
   "' and '" always "' and '"
-  tokenB possible symbolic=(tok->next->next)@38
+  tokenB possible symbolic=(tok->next->next)@44
   "' yields an invalid token." always "' yields an invalid token."
 Line 1681
-  "Unexpected newline" always "Unexpected newline"
+  "Unexpected newline" always {size=18,"Unexpected newline"}
 Line 1685
   "Combining '\\" always "Combining '\\"
   "' and '" always "' and '"
-  strAB possible {size=5@66,size=9@68}
+  strAB possible {size=5@72,size=9@74}
   ( always !<=-1
   "' yields universal character '\\" always "' yields universal character '\\"
-  strAB possible {size=5@66,size=9@68}
+  strAB possible {size=5@72,size=9@74}
   "'. This is undefined behavior according to C standard chapter 5.1.1.2, paragraph 4." always "'. This is undefined behavior according to C standard chapter 5.1.1.2, paragraph 4."
 Line 1690
   , always {!<=-1,!>=2}
@@ -12891,19 +12902,14 @@ Line 1690
   = always 0
   nullptr always 0
 Line 1691
-  str possible {"1"@168,"0"@168,""@244,"##"@254}
+  str possible {"1"@178,"0"@178,"","##"@10,size=0,size=2@10}
 Line 1692
-  replaced {!<=-1,!>=2,1@119}
-Line 1693
-  tok always size=0
+  replaced {!<=-1,!>=2,1@127}
 Line 1694
   expandedFromToken possible 0
 Line 1695
-  tok always size=0
   expandedFromToken always !0
   this always !0
-Line 1696
-  tok always size=0
 Line 1699
   ( always {!<=-1,!>=2}
 Line 1701
@@ -13025,6 +13031,7 @@ Line 1752
   "__VA_OPT__" always "__VA_OPT__"
 Line 1753
   ! always {!<=-1,!>=2}
+  ( always {!<=-1,!>=2}
   || always {!<=-1,!>=2}
   != always {!<=-1,!>=2}
   '(' always 40
@@ -13162,8 +13169,9 @@ Line 1814
   ( always !<=-1
 Line 1826
   ! always {!<=-1,!>=2}
+  lpar possible symbolic=(nextTok)@94
   || always {!<=-1,!>=2}
-  lpar always !0
+  lpar {!0,symbolic=(nextTok)@94}
   != always {!<=-1,!>=2}
   '(' always 40
 Line 1827
@@ -13174,28 +13182,23 @@ Line 1828
   = always 0
   0 always 0
 Line 1829
-  = always !0
-  lpar always !0
+  = {!0,symbolic=(nextTok)@94}
+  lpar {!0,symbolic=(nextTok)@94}
 Line 1830
   ( always {!<=-1,!>=2}
-  lpar {symbolic=(tok),!0}
-  tok inconclusive symbolic=(lpar)
+  lpar {symbolic=(tok),!0,symbolic=(nextTok)@94}
+  tok possible {symbolic=(lpar),symbolic=(nextTok)@94}
 Line 1831
-  tok inconclusive symbolic=(lpar)
   . possible {35,40,41}
   == {!<=-1,!>=2,1,0}
   '#' always 35
   && {!<=-1,!>=2,0}
-  tok inconclusive symbolic=(lpar)
-  tok inconclusive symbolic=(lpar)
+  ( always {!<=-1,!>=2}
   && {!<=-1,!>=2,0}
-  tok inconclusive symbolic=(lpar)
   == always {!<=-1,!>=2}
   '#' always 35
   && {!<=-1,!>=2,0}
   ( always {!<=-1,!>=2}
-  tok inconclusive symbolic=(lpar)
-  tok inconclusive symbolic=(lpar)
 Line 1833
   false always 0
 Line 1834
@@ -13203,6 +13206,7 @@ Line 1834
   == {!<=-1,!>=2,0}
   '#' always 35
   && {!<=-1,!>=2,0}
+  ( always {!<=-1,!>=2}
   && {!<=-1,!>=2,0}
   != always {!<=-1,!>=2}
   '#' always 35
@@ -13244,7 +13248,7 @@ Line 1855
   : always 0
   nullptr always 0
 Line 1859
-  expandedmacros possible size=0@71
+  expandedmacros possible size=0@90
 Line 1865
   usageList possible lifetime[Object]=(loc)
 Line 1867
@@ -13252,7 +13256,7 @@ Line 1867
   == {!<=-1,!>=2,0}
   "__FILE__" always "__FILE__"
 Line 1868
-  output possible {lifetime[Address]=(temp)@137,lifetime[Address]=(temp)@151,lifetime[Address]=(output2)@71,lifetime[Address]=(output2)@73}
+  output possible {lifetime[Address]=(temp)@145,lifetime[Address]=(temp)@161,lifetime[Address]=(output2)@90,lifetime[Address]=(output2)@92}
   '\"' always 34
   '\"' always 34
 Line 1871
@@ -13401,13 +13405,16 @@ Line 1950
 Line 1954
   = possible {symbolic=(optExpandValue->cfront()),symbolic=(optNoExpandValue->cfront()),symbolic=(valueToken)}
   valueToken2 possible {symbolic=(optExpandValue->cfront()),symbolic=(optNoExpandValue->cfront()),symbolic=(valueToken)}
-  tok inconclusive {symbolic=(optExpandValue->cfront()),symbolic=(optNoExpandValue->cfront()),symbolic=(valueToken)}
+  tok possible {symbolic=(optExpandValue->cfront()),symbolic=(optNoExpandValue->cfront()),symbolic=(valueToken)}
   != {!<=-1,!>=2,0}
   endToken2 possible {symbolic=(endToken),symbolic=(tok),0}
 Line 1955
-  != always {!<=-1,!>=2}
+  . possible 44
+  != {!<=-1,!>=2,1}
   '#' always 35
 Line 1957
+  ( always {!<=-1,!>=2}
+  . possible 0
   && always {!<=-1,!>=2}
   && always {!<=-1,!>=2}
   . always !0
@@ -13427,6 +13434,7 @@ Line 1958
 Line 1960
   variadic always {!<=-1,!>=2}
   && always {!<=-1,!>=2}
+  . always !35
   == always {!<=-1,!>=2}
   ',' always 44
   && always {!<=-1,!>=2}
@@ -13449,7 +13457,7 @@ Line 1970
 Line 1971
   ( always {!<=-1,!>=2}
 Line 1972
-  "" always ""
+  "" always {size=0,""}
   ( always {!<=-1,!>=2}
 Line 1975
   ( always {!<=-1,!>=2}
@@ -13475,7 +13483,7 @@ Line 1989
   . always !<=-1
   col always !<=-1
 Line 1991
-  "##" always "##"
+  "##" always {size=2,"##"}
   ( always {!<=-1,!>=2}
 Line 1996
   >= always {!<=-1,!>=2}
@@ -13530,6 +13538,10 @@ Line 2031
   . possible 0
 Line 2034
   ! always {!<=-1,!>=2}
+  ( always {!<=-1,!>=2}
+  . always !0
+Line 2036
+  . always !0
 Line 2039
   it possible {symbolic=(macros.end()),end=0}
   = possible lifetime[Iterator]=(macros)
@@ -13542,6 +13554,8 @@ Line 2040
   ( possible lifetime[Iterator]=(expandedmacros)
   != always {!<=-1,!>=2}
   ( {lifetime[Iterator]=(expandedmacros),end=0}
+Line 2042
+  . always !0
 Line 2045
   it {lifetime[Iterator]=(macros),symbolic=(macros.find(temp.cback()->str())),!end=0}
 Line 2046
@@ -13559,10 +13573,12 @@ Line 2065
   . always {!<=-1,!>=2}
   name always {!<=-1,!>=2}
 Line 2066
+  output possible lifetime[Address]=(tokenListHash)@100
   true always 1
 Line 2073
   ( always {!<=-1,!>=2}
   & {lifetime[Address]=(temp),!0}
+  macros possible size=0@100
 Line 2074
   == always {!<=-1,!>=2}
   "__VA_ARGS__" always "__VA_ARGS__"
@@ -13604,6 +13620,7 @@ Line 2091
   expandedmacros2 always !size=0
 Line 2093
   ! always {!<=-1,!>=2}
+  ( always {!<=-1,!>=2}
 Line 2094
   true always 1
 Line 2099
@@ -13615,6 +13632,7 @@ Line 2100
 Line 2101
   & {lifetime[Address]=(tokens),!0}
 Line 2102
+  ( always {!<=-1,!>=2}
   & {lifetime[Address]=(tokens),!0}
 Line 2104
   && always {!<=-1,!>=2}
@@ -13626,6 +13644,8 @@ Line 2107
   tok2 possible symbolic=(tok->next)
 Line 2108
   true always 1
+Line 2109
+  . possible symbolic=(tok2)
 Line 2112
   & {lifetime[Address]=(temp),!0}
 Line 2113
@@ -13756,6 +13776,8 @@ Line 2141
   : always "0"
   "0" always "0"
   true always 1
+Line 2142
+  lastToken possible symbolic=(defToken->next->next->next)
 Line 2146
   true always 1
 Line 2150
@@ -13893,13 +13915,16 @@ Line 2231
   = always 1
   true always 1
 Line 2232
-  output possible lifetime[Address]=(output2)@79
+  output possible lifetime[Address]=(output2)@86
 Line 2233
   ! always {!<=-1,!>=2}
 Line 2234
-  "Missing first argument" always "Missing first argument"
+  "Missing first argument" always {size=22,"Missing first argument"}
 Line 2235
   ! always {!<=-1,!>=2}
+  ( always {!<=-1,!>=2}
+  tok possible symbolic=(B->next)@86
+  tok possible symbolic=(B->next)@86
   || always {!<=-1,!>=2}
   ! always {!<=-1,!>=2}
   ( always {!<=-1,!>=2}
@@ -14077,19 +14102,26 @@ Line 2308
   ( always {!<=-1,!>=2}
   nextTok always symbolic=(B->next)
   && always {!<=-1,!>=2}
+  ( always {!<=-1,!>=2}
+  nextTok always symbolic=(B->next)
   && always {!<=-1,!>=2}
+  nextTok always symbolic=(B->next)
   == always {!<=-1,!>=2}
   '#' always 35
   && always {!<=-1,!>=2}
+  nextTok always symbolic=(B->next)
   == always {!<=-1,!>=2}
   '#' always 35
 Line 2311
   & {lifetime[Address]=(output2),!0}
+  nextTok always symbolic=(B->next)
 Line 2319
   ( always {!<=-1,!>=2}
   && always {!<=-1,!>=2}
   ( always {!<=-1,!>=2}
+  . always symbolic=(nextTok)
   && always {!<=-1,!>=2}
+  . always symbolic=(nextTok)
   == always {!<=-1,!>=2}
   '(' always 40
 Line 2320
@@ -14108,6 +14140,7 @@ Line 2321
   it {lifetime[Iterator]=(macros),!symbolic=(macros.end()),!end=0}
 Line 2322
   & {lifetime[Address]=(tokens),!0}
+  . always symbolic=(nextTok)
 Line 2324
   tok2 always !0
 Line 2327
@@ -14144,12 +14177,12 @@ Line 2428
   ( always {!<=-1,!>=2}
 Line 2430
   return always {!<=-1,!>=2}
-  path possible symbolic=(*it)@45509
+  path possible symbolic=(*it)@46794
   ( always !<=-1
   > always {!<=-1,!>=2}
   1U always 1
   && always {!<=-1,!>=2}
-  path {>=size=2,!<=size=1,symbolic=(*it)@45509}
+  path {>=size=2,!<=size=1,symbolic=(*it)@46794}
   0 always 0
   == always {!<=-1,!>=2}
   '/' always 47
@@ -14219,7 +14252,7 @@ Line 2462
   2 always 2
 Line 2466
   ( always {!<=-1,!>=2}
-  "/." always "/."
+  "/." always {size=2,"/."}
 Line 2467
   ( always !<=-1
   - always !<=-1
@@ -14231,6 +14264,7 @@ Line 2470
 Line 2471
   pos always !<=-1
   = always !<=-1
+  path possible {".",size=1}
   ( always !<=-1
   "/.." always "/.."
   pos {symbolic=((pos1==0)?1:(pos1-1)),!<=-1,1}
@@ -14410,7 +14444,7 @@ Line 2567
 Line 2569
   lastSlash always !<=-1
   = always !<=-1
-  path possible ""@7113
+  path possible {""@7118,size=0@7118}
   ( always !<=-1
   "\\/" always "\\/"
 Line 2570
@@ -14561,7 +14595,7 @@ Line 2650
   "undefined function-like macro invocation: " always "undefined function-like macro invocation: "
   "( ... )" always "( ... )"
 Line 2651
-  "0" always "0"
+  "0" always {size=1,"0"}
 Line 2664
   ( always !<=-1
 Line 2666
@@ -14580,7 +14614,7 @@ Line 2669
   = always !<=-1
 Line 2672
   pos always !<=-1
-  maxlen {!<=-1,3@241,symbolic=(escape=='u'?4:8)@243,4@243,8@243}
+  maxlen {!<=-1,3@246,symbolic=(escape=='u'?4:8)@248,4@248,8@248}
 Line 2673
   = {lifetime[Object]=(sub),!0}
   ( {lifetime[Object]=(sub),!0}
@@ -14591,7 +14625,7 @@ Line 2675
   start {lifetime[Object]=(sub),symbolic=(sub.c_str()),!0}
   & {lifetime[Address]=(end),!0,Uninit*}
   end always Uninit
-  base possible {8@241,16@242,0}
+  base possible {8@246,16@247,0}
 Line 2676
   pos always !<=-1
   += always !<=-1
@@ -14599,7 +14633,7 @@ Line 2676
 Line 2677
   start {lifetime[Object]=(sub),symbolic=(sub.c_str()),!0}
   < always {!<=-1,!>=2}
-  minlen possible {1@241,symbolic=(escape=='u'?4:8)@243,4@243,8@243}
+  minlen possible {1@246,symbolic=(escape=='u'?4:8)@248,4@248,8@248}
 Line 2678
   "expected digit" always "expected digit"
 Line 2679
@@ -15074,7 +15108,7 @@ Line 2871
 Line 2872
   "code point too large" always "code point too large"
 Line 2876
-  narrow always {!<=-1,!>=2}
+  narrow {!<=-1,!>=2,0}
   || always {!<=-1,!>=2}
   utf8 always {!<=-1,!>=2}
   && always {!<=-1,!>=2}
@@ -15253,24 +15287,19 @@ Line 3024
 Line 3030
   . always {!<=-1,!>=2}
   removeComments always {!<=-1,!>=2}
-Line 3031
-  data always size=0
-Line 3033
-  = inconclusive size=0
-  data inconclusive size=0
 Line 3034
-  data {symbolic=(name_it->second),size=0}
+  data always symbolic=(name_it->second)
 Line 3035
-  data inconclusive {symbolic=(name_it->second),size=0}
+  data inconclusive symbolic=(name_it->second)
 Line 3037
-  data inconclusive {symbolic=(name_it->second),size=0}
+  data inconclusive symbolic=(name_it->second)
   true always 1
 Line 3040
   , always {!<=-1,!>=2}
   systemheader always {!<=-1,!>=2}
 Line 3042
   ( always {!<=-1,!>=2}
-  header possible symbolic=(*it)@177
+  header possible symbolic=(*it)@182
 Line 3043
   nullptr always 0
 Line 3047
@@ -15283,9 +15312,9 @@ Line 3054
   false always 0
 Line 3057
   ! {!<=-1,!>=2,1@27}
-  systemheader {!<=-1,!>=2,0@27,symbolic=(htok->str()[0]=='<')@193}
+  systemheader {!<=-1,!>=2,0@27,symbolic=(htok->str()[0]=='<')@198}
 Line 3058
-  sourcefile possible ""@27
+  sourcefile possible {""@27,size=0@27}
   nullptr always 0
 Line 3062
   != always {!<=-1,!>=2}
@@ -15312,7 +15341,7 @@ Line 3083
 Line 3086
   ( always {!<=-1,!>=2}
 Line 3102
-  path possible symbolic=(name_it->first)@205
+  path possible symbolic=(name_it->first)@210
   ( {lifetime[Object]=(path),!0}
   & {lifetime[Address]=(statbuf),!0}
   != always {!<=-1,!>=2}
@@ -15332,7 +15361,7 @@ Line 3124
 Line 3125
   it {lifetime[Iterator]=(dui.includes),lifetime[Object]=(dui),!symbolic=(dui.includes.end()),!end=0}
 Line 3127
-  "" always ""
+  "" always {size=0,""}
   filename always symbolic=(*it)
   false always 0
   outputList possible 0
@@ -15425,7 +15454,7 @@ Line 3184
 Line 3190
   ( always {!<=-1,!>=2}
 Line 3192
-  tok1 possible {lifetime[Address]=(inctok)@61,lifetime[Address]=(tmp)@131,lifetime[Address]=(rawtok)@153}
+  tok1 possible {lifetime[Address]=(inctok)@63,lifetime[Address]=(tmp)@134,lifetime[Address]=(rawtok)@158}
 Line 3193
   it possible {symbolic=(macros.end()),end=0}
   = possible lifetime[Iterator]=(macros)
@@ -15436,7 +15465,7 @@ Line 3194
   != always {!<=-1,!>=2}
   ( {lifetime[Iterator]=(macros),end=0}
 Line 3197
-  tok1 possible {lifetime[Address]=(inctok)@61,lifetime[Address]=(tmp)@131,lifetime[Address]=(rawtok)@153}
+  tok1 possible {lifetime[Address]=(inctok)@63,lifetime[Address]=(tmp)@134,lifetime[Address]=(rawtok)@158}
   it {lifetime[Iterator]=(macros),!end=0}
   & {lifetime[Address]=(value),!0}
   tok always symbolic=(*tok1)
@@ -15458,7 +15487,7 @@ Line 3210
   . always {!<=-1,!>=2}
   comment always {!<=-1,!>=2}
 Line 3212
-  tok1 possible {lifetime[Address]=(inctok)@61,lifetime[Address]=(tmp)@131,lifetime[Address]=(rawtok)@153}
+  tok1 possible {lifetime[Address]=(inctok)@63,lifetime[Address]=(tmp)@134,lifetime[Address]=(rawtok)@158}
   tok possible symbolic=(*tok1)
 Line 3214
   return always {!<=-1,!>=2}
@@ -15667,31 +15696,31 @@ Line 3294
   strictAnsiUndefined {symbolic=(dui.undefined.find("__STRICT_ANSI__")!=dui.undefined.cend()),!<=-1,!>=2}
 Line 3295
   "__STRICT_ANSI__" always "__STRICT_ANSI__"
-  "__STRICT_ANSI__" always "__STRICT_ANSI__"
-  "1" always "1"
+  "__STRICT_ANSI__" always {size=15,"__STRICT_ANSI__"}
+  "1" always {size=1,"1"}
 Line 3297
   "__FILE__" always "__FILE__"
-  "__FILE__" always "__FILE__"
-  "__FILE__" always "__FILE__"
+  "__FILE__" always {size=8,"__FILE__"}
+  "__FILE__" always {size=8,"__FILE__"}
 Line 3298
   macros always !size=0
   "__LINE__" always "__LINE__"
-  "__LINE__" always "__LINE__"
-  "__LINE__" always "__LINE__"
+  "__LINE__" always {size=8,"__LINE__"}
+  "__LINE__" always {size=8,"__LINE__"}
 Line 3299
   macros always {!size=1,!size=0}
   "__COUNTER__" always "__COUNTER__"
-  "__COUNTER__" always "__COUNTER__"
-  "__COUNTER__" always "__COUNTER__"
+  "__COUNTER__" always {size=11,"__COUNTER__"}
+  "__COUNTER__" always {size=11,"__COUNTER__"}
 Line 3302
   macros always {!size=2,!size=1,!size=0}
   "__DATE__" always "__DATE__"
-  "__DATE__" always "__DATE__"
+  "__DATE__" always {size=8,"__DATE__"}
   & {lifetime[Address]=(ltime),!0}
 Line 3303
   macros always {!size=3,!size=2,!size=1,!size=0}
   "__TIME__" always "__TIME__"
-  "__TIME__" always "__TIME__"
+  "__TIME__" always {size=8,"__TIME__"}
   & {lifetime[Address]=(ltime),!0}
 Line 3305
   ! {!<=-1,!>=2,0}
@@ -15713,7 +15742,7 @@ Line 3309
 Line 3310
   macros always {!size=4,!size=3,!size=2,!size=1,!size=0}
   "__STDC_VERSION__" always "__STDC_VERSION__"
-  "__STDC_VERSION__" always "__STDC_VERSION__"
+  "__STDC_VERSION__" always {size=16,"__STDC_VERSION__"}
   std_def always !size=0
 Line 3312
   cpp_std possible -1
@@ -15743,7 +15772,7 @@ Line 3324
 Line 3325
   macros always {!size=4,!size=3,!size=2,!size=1,!size=0}
   "__cplusplus" always "__cplusplus"
-  "__cplusplus" always "__cplusplus"
+  "__cplusplus" always {size=11,"__cplusplus"}
   std_def always !size=0
 Line 3332
   True always 0
@@ -15762,7 +15791,7 @@ Line 3342
   ( {lifetime[Iterator]=(dui.includes),lifetime[Object]=(dui),end=0}
   it possible {lifetime[Iterator]=(dui.includes),lifetime[Object]=(dui)}
 Line 3343
-  "" always ""
+  "" always {size=0,""}
   it {lifetime[Iterator]=(dui.includes),lifetime[Object]=(dui),!symbolic=(dui.includes.end()),!end=0}
   false always 0
 Line 3344
@@ -15793,6 +15822,7 @@ Line 3357
   ( always {!<=-1,!>=2}
 Line 3358
   ! always {!<=-1,!>=2}
+  ( always {!<=-1,!>=2}
 Line 3363
   ! always {!<=-1,!>=2}
   . always {!<=-1,!>=2}
@@ -16028,6 +16058,7 @@ Line 3499
   == always {!<=-1,!>=2}
 Line 3500
   ! always {!<=-1,!>=2}
+  ( always {!<=-1,!>=2}
 Line 3503
   = always 4
   :: always 4
@@ -16108,7 +16139,7 @@ Line 3536
   != always {!<=-1,!>=2}
   ( {lifetime[Iterator]=(macros),end=0}
 Line 3537
-  "1" always "1"
+  "1" always {size=1,"1"}
   tok always !0
 Line 3538
   hasInclude always {!<=-1,!>=2}
@@ -16116,10 +16147,10 @@ Line 3538
   tok always !0
   == always {!<=-1,!>=2}
 Line 3539
-  "1" always "1"
+  "1" always {size=1,"1"}
   tok always !0
 Line 3541
-  "0" always "0"
+  "0" always {size=1,"0"}
   tok always !0
 Line 3543
   par {!<=-1,!>=2,0}
@@ -16221,6 +16252,7 @@ Line 3581
   "0" always "0"
   : always "1"
   "1" always "1"
+  tok possible 0
 Line 3583
   par {!<=-1,!>=2,0}
 Line 3584
@@ -16377,6 +16409,8 @@ Line 3669
   . always !0
   == always {!<=-1,!>=2}
   && always {!<=-1,!>=2}
+  ( always {!<=-1,!>=2}
+  . always !0
 Line 3672
   ( possible {symbolic=((ifstates.top()==ElseIsTrue)?True:AlwaysFalse),2,0}
   != {!<=-1,!>=2,1,0}
@@ -16400,6 +16434,7 @@ Line 3686
   == always {!<=-1,!>=2}
   '#' always 35
   && always {!<=-1,!>=2}
+  ( always {!<=-1,!>=2}
 Line 3687
   != always {!<=-1,!>=2}
   '#' always 35
