@@ -142,6 +142,8 @@ public:
     /** analyse whole program use .analyzeinfo files or ctuinfo string */
     unsigned int analyseWholeProgram(const std::string &buildDir, const std::list<FileWithDetails> &files, const std::list<FileSettings>& fileSettings, const std::string& ctuInfo);
 
+    static std::string detectPython(const CppCheck::ExecuteCmdFn &executeCommand);
+
 private:
     void purgedConfigurationMessage(const std::string &file, const std::string& configuration);
 
