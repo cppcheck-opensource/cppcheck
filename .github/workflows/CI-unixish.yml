@@ -738,4 +738,10 @@ jobs:
 
       - name: Self check
         run: |
-          ./selfcheck.sh
+          mkdir b1
+          ./selfcheck.sh --cppcheck-build-dir=b1
+          discards=$(./selfcheck.sh "--debug-analyzerinfo --cppcheck-build-dir=b1 --showtime=none" 2>&1 | grep -v skipping)
+          if [ -n "$discards" ]; then
+            echo $discards
+            exit 1
+          fi
