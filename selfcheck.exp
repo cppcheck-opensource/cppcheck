@@ -10170,12 +10170,12 @@ Line 115
   = always {!<=-1,!>=2}
   ( always {!<=-1,!>=2}
 Line 116
-  hex {symbolic=(isHex(s)),!<=-1,!>=2,0}
+  hex {!<=-1,!>=2,0}
   2 always 2
   oct {!<=-1,!>=2,0}
   1 always 1
 Line 117
-  hex {symbolic=(isHex(s)),!<=-1,!>=2}
+  hex always {!<=-1,!>=2}
 Line 119
   oct always {!<=-1,!>=2}
 Line 125
@@ -10191,12 +10191,12 @@ Line 129
   = always {!<=-1,!>=2}
   ( always {!<=-1,!>=2}
 Line 130
-  hex {symbolic=(isHex(s)),!<=-1,!>=2,0}
+  hex {!<=-1,!>=2,0}
   2 always 2
   oct {!<=-1,!>=2,0}
   1 always 1
 Line 131
-  hex {symbolic=(isHex(s)),!<=-1,!>=2}
+  hex always {!<=-1,!>=2}
 Line 133
   oct always {!<=-1,!>=2}
 Line 135
@@ -10208,7 +10208,7 @@ Line 139
   ( always {!<=-1,!>=2}
 Line 141
   return always {!<=-1,!>=2}
-  s possible >=size=4@92
+  s possible {>=size=4@92,34@110}
   ( {!<=-1,>=4@92}
   >= always {!<=-1,!>=2}
   e possible {"/."@25,size=2@25}
@@ -10454,16 +10454,17 @@ Line 250
   ch2 always !<=-1
 Line 251
   ch always !<=-1
-  = {255,!<=-1}
-  ( {255,!<=-1}
+  = {255,symbolic=(makeUtf16Char(ch,ch2)),!<=-1}
+  ( {255,symbolic=(makeUtf16Char(ch,ch2)),!<=-1}
+  ch16 always symbolic=(makeUtf16Char(ch,ch2))
   >= always {!<=-1,!>=2}
   0x80 always 128
-  ? possible 255
+  ? possible {255,symbolic=(makeUtf16Char(ch,ch2))}
   0xff always 255
-  : always 255
-  ch16 {!>=128,<=127}
+  : always {255,symbolic=(makeUtf16Char(ch,ch2))}
+  ch16 {symbolic=(makeUtf16Char(ch,ch2)),!>=128,<=127}
 Line 255
-  ch {symbolic=(static_cast<unsigned char>((ch16>=0x80)?0xff:ch16)),!<=-1,255}
+  ch {symbolic=(static_cast<unsigned char>((ch16>=0x80)?0xff:ch16)),!<=-1,255,symbolic=(makeUtf16Char(ch,ch2))}
   == {!<=-1,!>=2,0}
   '\r' always 13
 Line 256
@@ -10496,16 +10497,17 @@ Line 280
   ch2 always !<=-1
 Line 281
   ch always !<=-1
-  = {255,!<=-1}
-  ( {255,!<=-1}
+  = {255,symbolic=(makeUtf16Char(ch,ch2)),!<=-1}
+  ( {255,symbolic=(makeUtf16Char(ch,ch2)),!<=-1}
+  ch16 always symbolic=(makeUtf16Char(ch,ch2))
   >= always {!<=-1,!>=2}
   0x80 always 128
-  ? possible 255
+  ? possible {255,symbolic=(makeUtf16Char(ch,ch2))}
   0xff always 255
-  : always 255
-  ch16 {!>=128,<=127}
+  : always {255,symbolic=(makeUtf16Char(ch,ch2))}
+  ch16 {symbolic=(makeUtf16Char(ch,ch2)),!>=128,<=127}
 Line 285
-  ch {symbolic=(static_cast<unsigned char>((ch16>=0x80)?0xff:ch16)),!<=-1,255}
+  ch {symbolic=(static_cast<unsigned char>((ch16>=0x80)?0xff:ch16)),!<=-1,255,symbolic=(makeUtf16Char(ch,ch2))}
   == {!<=-1,!>=2,0}
   '\r' always 13
 Line 286
@@ -11059,16 +11061,19 @@ Line 730
   == always {!<=-1,!>=2}
   '#' always 35
 Line 732
-  && always {!<=-1,!>=2}
-  llTok always !0
+  llTok {symbolic=(lastLineTok()),0}
+  && {!<=-1,!>=2,0}
+  llTok {symbolic=(lastLineTok()),!0}
   == always {!<=-1,!>=2}
   '#' always 35
-  && always {!<=-1,!>=2}
-  llTok always !0
-  && always {!<=-1,!>=2}
+  && {!<=-1,!>=2,0}
+  llTok {symbolic=(lastLineTok()),!0}
+  && {!<=-1,!>=2,0}
+  llTok always symbolic=(lastLineTok())
   == always {!<=-1,!>=2}
   "error" always "error"
   || always {!<=-1,!>=2}
+  llTok always symbolic=(lastLineTok())
   == always {!<=-1,!>=2}
   "warning" always "warning"
 Line 733
@@ -11376,12 +11381,13 @@ Line 845
   outputList always !0
 Line 849
   ')' always 41
-  currentToken always !<=-1
+  currentToken always 34
 Line 850
   ( always {!<=-1,!>=2}
   && always {!<=-1,!>=2}
   ! always {!<=-1,!>=2}
   ( always {!<=-1,!>=2}
+  currentToken possible 34
   && always {!<=-1,!>=2}
   ( always !<=-1
   > always {!<=-1,!>=2}
@@ -11460,19 +11466,23 @@ Line 893
   > always {!<=-1,!>=2}
   0 always 0
 Line 895
-  && always {!<=-1,!>=2}
-  llTok always !0
+  llTok {symbolic=(lastLineTok()),0}
+  && {!<=-1,!>=2,0}
+  llTok {symbolic=(lastLineTok()),!0}
   == always {!<=-1,!>=2}
   '#' always 35
-  && always {!<=-1,!>=2}
-  llTok always !0
-  && always {!<=-1,!>=2}
+  && {!<=-1,!>=2,0}
+  llTok {symbolic=(lastLineTok()),!0}
+  && {!<=-1,!>=2,0}
+  llTok always symbolic=(lastLineTok())
   == always {!<=-1,!>=2}
   "define" always "define"
   || always {!<=-1,!>=2}
+  llTok always symbolic=(lastLineTok())
   == always {!<=-1,!>=2}
   "pragma" always "pragma"
-  && always {!<=-1,!>=2}
+  && {!<=-1,!>=2,0}
+  llTok always symbolic=(lastLineTok())
 Line 896
   multiline always !<=-1
   += always !<=-1
@@ -11486,13 +11496,15 @@ Line 910
   == always {!<=-1,!>=2}
   '<' always 60
 Line 912
-  && always {!<=-1,!>=2}
-  llTok always !0
+  llTok {symbolic=(lastLineTok()),0}
+  && {!<=-1,!>=2,0}
+  llTok {symbolic=(lastLineTok()),!0}
   == always {!<=-1,!>=2}
   '#' always 35
-  && always {!<=-1,!>=2}
-  llTok always !0
-  && always {!<=-1,!>=2}
+  && {!<=-1,!>=2,0}
+  llTok {symbolic=(lastLineTok()),!0}
+  && {!<=-1,!>=2,0}
+  llTok always symbolic=(lastLineTok())
   == always {!<=-1,!>=2}
   "include" always "include"
 Line 913
@@ -11939,17 +11951,16 @@ Line 1150
   rhs possible {0,-1}
   . always !0
 Line 1151
-  rhs {symbolic=(stringToLL(tok->next->str())),0,-1}
-  == {!<=-1,!>=2,1,0}
+  rhs possible -1
+  == {!<=-1,!>=2,0}
   0 always 0
 Line 1152
   "division/modulo by zero" always "division/modulo by zero"
 Line 1154
-  rhs {symbolic=(stringToLL(tok->next->str())),-1,!0}
-  == {!<=-1,!>=2,1}
+  rhs always !0
+  == always {!<=-1,!>=2}
   -1 always -1
   && always {!<=-1,!>=2}
-  lhs always symbolic=(stringToLL(tok->previous->str()))
   == always {!<=-1,!>=2}
 Line 1155
   "division overflow" always "division overflow"
@@ -11957,10 +11968,8 @@ Line 1156
   == always {!<=-1,!>=2}
   '/' always 47
 Line 1157
-  lhs always symbolic=(stringToLL(tok->previous->str()))
   rhs always !0
 Line 1159
-  lhs always symbolic=(stringToLL(tok->previous->str()))
   rhs always !0
 Line 1163
   = always !0
@@ -12159,6 +12168,7 @@ Line 1259
   op possible "&^|"
 Line 1261
   * possible 124
+  op possible "&^|"
   == {!<=-1,!>=2,0}
   '&' always 38
 Line 1262
@@ -12395,6 +12405,7 @@ Line 1367
 Line 1368
   backslash always {!<=-1,!>=2}
   && always {!<=-1,!>=2}
+  ch always !<=-1
   == always {!<=-1,!>=2}
   '\n' always 10
 Line 1369
@@ -12409,8 +12420,9 @@ Line 1373
   = always 0
   false always 0
 Line 1374
-  ch possible 92
+  ch {!<=-1,92}
 Line 1375
+  ch always !<=-1
   == always {!<=-1,!>=2}
   '\\' always 92
 Line 1376
@@ -12425,11 +12437,11 @@ Line 1379
   = always !<=-1
   ( always !<=-1
 Line 1380
-  next possible {10,92}
+  next {!<=-1,10,92}
   == {!<=-1,!>=2,0}
   '\r' always 13
   || always {!<=-1,!>=2}
-  next {92,!13}
+  next {!<=-1,92,!13}
   == {!<=-1,!>=2,0}
   '\n' always 10
 Line 1381
@@ -12439,7 +12451,7 @@ Line 1381
 Line 1382
   backslash always {!<=-1,!>=2}
   = {!<=-1,!>=2,1,0}
-  next possible {13,10}
+  next {!<=-1,13,10}
   == {!<=-1,!>=2,1,0}
   '\r' always 13
 Line 1383
@@ -12447,7 +12459,7 @@ Line 1383
   = always 0
   false always 0
 Line 1384
-  next always {!13,!10}
+  next always {!<=-1,!13,!10}
   == always {!<=-1,!>=2}
   '\\' always 92
 Line 1385
@@ -12456,7 +12468,7 @@ Line 1385
   ! always {!<=-1,!>=2}
   update_ch always {!<=-1,!>=2}
 Line 1386
-  next possible {13,10,92}
+  next {!<=-1,13,10,92}
 Line 1387
   next possible 92
   == {!<=-1,!>=2,1}
@@ -12527,8 +12539,9 @@ Line 1452
   ( always {!<=-1,!>=2}
 Line 1455
   return always {!<=-1,!>=2}
+  prevTok always symbolic=(lastLineTok(maxsize))
   && always {!<=-1,!>=2}
-  prevTok always !0
+  prevTok {symbolic=(lastLineTok(maxsize)),!0}
   == always {!<=-1,!>=2}
   '#' always 35
 Line 1458
@@ -13128,7 +13141,7 @@ Line 1804
   = always 0
   0U always 0
 Line 1805
-  calledInDefine {!<=-1,!>=2,0}
+  calledInDefine {!<=-1,!>=2,0,symbolic=(loc.fileIndex!=nameTokInst->location.fileIndex||loc.line<nameTokInst->location.line)@217}
   ? always {!<=-1,!>=2}
   ( always {!<=-1,!>=2}
   : always {!<=-1,!>=2}
@@ -13289,7 +13302,7 @@ Line 1881
   . always !<=-1
   line always !<=-1
 Line 1883
-  calledInDefine always {!<=-1,!>=2}
+  calledInDefine {symbolic=(loc.fileIndex!=nameTokInst->location.fileIndex||loc.line<nameTokInst->location.line),!<=-1,!>=2}
 Line 1885
   ( always {!<=-1,!>=2}
 Line 1887
@@ -13349,6 +13362,7 @@ Line 1917
   == always {!<=-1,!>=2}
   ( {lifetime[Iterator]=(macros),end=0}
 Line 1918
+  parametertokens2 always size=0
   parametertokens1 always !size=0
 Line 1920
   m {lifetime[Iterator]=(macros),symbolic=(macros.find("__COUNTER__")),!symbolic=(macros.end()),!end=0}
@@ -13566,8 +13580,9 @@ Line 2054
   & {lifetime[Address]=(temp2),!0}
 Line 2055
   ! always {!<=-1,!>=2}
+  tok2 always symbolic=(appendTokens(&temp2,loc,tok->next,macros,expandedmacros,parametertokens))
 Line 2060
-  tok2 always !0
+  tok2 {symbolic=(appendTokens(&temp2,loc,tok->next,macros,expandedmacros,parametertokens)),!0}
 Line 2065
   ! always {!<=-1,!>=2}
   . always {!<=-1,!>=2}
@@ -13641,7 +13656,7 @@ Line 2104
   '(' always 40
 Line 2107
   ! always {!<=-1,!>=2}
-  tok2 possible symbolic=(tok->next)
+  tok2 possible {symbolic=(appendTokens(&tokens,loc,tok->next,macros,expandedmacros,parametertokens)),symbolic=(tok->next)}
 Line 2108
   true always 1
 Line 2109
@@ -13879,7 +13894,7 @@ Line 2178
   == always {!<=-1,!>=2}
   ( {lifetime[Iterator]=(expandedmacros),end=0}
 Line 2181
-  it possible lifetime[Iterator]=(macros)
+  it {lifetime[Iterator]=(macros),!symbolic=(macros.end()),!end=0}
 Line 2183
   ( always {!<=-1,!>=2}
 Line 2188
@@ -13968,10 +13983,10 @@ Line 2240
   ( always {!<=-1,!>=2}
   && always {!<=-1,!>=2}
   ! always {!<=-1,!>=2}
-  canBeConcatenatedWithEqual always {!<=-1,!>=2}
+  canBeConcatenatedWithEqual {symbolic=(A->isOneOf("+-*/%&|^")||A->str()=="<<"||A->str()==">>"),!<=-1,!>=2}
   && always {!<=-1,!>=2}
   ! always {!<=-1,!>=2}
-  canBeConcatenatedStringOrChar {symbolic=(isStringLiteral_(A->str())||isCharLiteral_(A->str())),!<=-1,!>=2}
+  canBeConcatenatedStringOrChar always {!<=-1,!>=2}
 Line 2243
   ! {!<=-1,!>=2,1}
   B always symbolic=(tok->next->next)
@@ -13992,7 +14007,7 @@ Line 2243
 Line 2244
   B always symbolic=(tok->next->next)
 Line 2246
-  canBeConcatenatedWithEqual always {!<=-1,!>=2}
+  canBeConcatenatedWithEqual {symbolic=(A->isOneOf("+-*/%&|^")||A->str()=="<<"||A->str()==">>"),!<=-1,!>=2}
   && always {!<=-1,!>=2}
   B always symbolic=(tok->next->next)
   != always {!<=-1,!>=2}
@@ -14000,7 +14015,7 @@ Line 2246
   || always {!<=-1,!>=2}
 Line 2247
   ! always {!<=-1,!>=2}
-  canBeConcatenatedWithEqual always {!<=-1,!>=2}
+  canBeConcatenatedWithEqual {symbolic=(A->isOneOf("+-*/%&|^")||A->str()=="<<"||A->str()==">>"),!<=-1,!>=2}
   && always {!<=-1,!>=2}
   B always symbolic=(tok->next->next)
   == always {!<=-1,!>=2}
@@ -14141,8 +14156,10 @@ Line 2321
 Line 2322
   & {lifetime[Address]=(tokens),!0}
   . always symbolic=(nextTok)
+Line 2323
+  tok2 always symbolic=(appendTokens(&tokens,loc,B->next,macros,expandedmacros,parametertokens))
 Line 2324
-  tok2 always !0
+  tok2 {symbolic=(appendTokens(&tokens,loc,B->next,macros,expandedmacros,parametertokens)),!0}
 Line 2327
   expandResult always {!<=-1,!>=2}
 Line 2337
@@ -14422,10 +14439,10 @@ Line 2556
 Line 2559
   return always {!<=-1,!>=2}
   ! {!<=-1,!>=2,0}
-  std_ver {symbolic=(simplecpp::getCppStdString(dui.std)),size=0}
+  std_ver possible size=0
   ( {!<=-1,!>=2,1}
   && {!<=-1,!>=2,0}
-  std_ver {symbolic=(simplecpp::getCppStdString(dui.std)),!size=0}
+  std_ver always !size=0
   >= always {!<=-1,!>=2}
   "201703L" always "201703L"
 Line 2562
@@ -15161,6 +15178,7 @@ Line 2891
   == always {!<=-1,!>=2}
   1 always 1
 Line 2892
+  ( always !<=-1
   multivalue always !<=-1
 Line 2895
   narrow {!<=-1,!>=2,0}
@@ -15693,7 +15711,7 @@ Line 3294
   strictAnsiDefined always {!<=-1,!>=2}
   && always {!<=-1,!>=2}
   ! always {!<=-1,!>=2}
-  strictAnsiUndefined {symbolic=(dui.undefined.find("__STRICT_ANSI__")!=dui.undefined.cend()),!<=-1,!>=2}
+  strictAnsiUndefined always {!<=-1,!>=2}
 Line 3295
   "__STRICT_ANSI__" always "__STRICT_ANSI__"
   "__STRICT_ANSI__" always {size=15,"__STRICT_ANSI__"}
@@ -15730,11 +15748,10 @@ Line 3306
   c_std possible -1
   . always !size=0
 Line 3307
-  c_std always symbolic=(simplecpp::getCStd(dui.std))
   != always {!<=-1,!>=2}
   CUnknown always -1
 Line 3308
-  c_std {symbolic=(simplecpp::getCStd(dui.std)),!-1}
+  c_std always !-1
 Line 3309
   ! {!<=-1,!>=2,0}
   std_def possible size=0
@@ -15746,9 +15763,7 @@ Line 3310
   std_def always !size=0
 Line 3312
   cpp_std possible -1
-  . always !size=0
 Line 3313
-  cpp_std always symbolic=(simplecpp::getCppStd(dui.std))
   == always {!<=-1,!>=2}
   CPPUnknown always -1
 Line 3316
@@ -15757,14 +15772,13 @@ Line 3316
   DUI_ERROR always 9
 Line 3317
   "unknown standard specified: '" always "unknown standard specified: '"
-  . always !size=0
   "'" always "'"
 Line 3318
   outputList always !0
 Line 3320
   output always NonMovedVariable
 Line 3323
-  cpp_std {symbolic=(simplecpp::getCppStd(dui.std)),!-1}
+  cpp_std always !-1
 Line 3324
   ! {!<=-1,!>=2,0}
   std_def possible size=0
@@ -16603,8 +16617,6 @@ Line 3752
   C23 always 4
 Line 3753
   CUnknown always -1
-Line 3758
-  std possible symbolic=(simplecpp::getCStd(dui.std))@20
 Line 3759
   C89 always 0
 Line 3761
@@ -16738,8 +16750,6 @@ Line 3800
   CPP26 always 6
 Line 3801
   CPPUnknown always -1
-Line 3806
-  std possible symbolic=(simplecpp::getCppStd(dui.std))@24
 Line 3807
   CPP03 always 0
 Line 3808
