@@ -605,21 +605,29 @@ namespace {
         // see https://learn.microsoft.com/en-us/visualstudio/msbuild/msbuild-conditions
         // properties are .NET String objects and you can call any of its members on them
         bool conditionIsTrue(const ProjectConfiguration &p, const std::string &filename, std::vector<std::string> &errors) const {
-            return conditionIsTrue(mCondition, p, filename, errors);
+            if (mCondition.empty())
+                return true;
+            try {
+                return evalCondition(mCondition, p);
+            }
+            catch (const std::runtime_error& r)
+            {
+                errors.emplace_back(filename + ": Can not evaluate condition '" + mCondition + "': " + r.what());
+                return false;
+            }
         }
 
-        static bool conditionIsTrue(const std::string& condition, const ProjectConfiguration &p, const std::string &filename, std::vector<std::string> &errors) {
-            if (condition.empty())
-                return true;
-            std::string c = '(' + condition + ");";
+        static bool evalCondition(const std::string& condition, const ProjectConfiguration &p) {
+            std::string c = '(' + condition + ")";
             replaceAll(c, "$(Configuration)", p.configuration);
             replaceAll(c, "$(Platform)", p.platformStr);
 
-            // TODO: improve evaluation
             const Settings s;
             TokenList tokenlist(s, Standards::Language::C);
-            tokenlist.createTokensFromBuffer(c.data(), c.size()); // TODO: check result
-            // TODO: put in a helper
+            if (!tokenlist.createTokensFromBuffer(c.data(), c.size())) {
+                throw std::runtime_error("Can not tokenize condition");
+            }
+
             // generate links
             {
                 std::stack<Token*> lpar;
@@ -653,23 +661,18 @@ namespace {
                     return execute(tok->astTop(), p) == "True";
                 }
             }
-
             throw std::runtime_error("Invalid condition: '" + condition + "'");
         }
+
+
     private:
 
-        static std::string executeOp1(const Token* tok, const ProjectConfiguration &p, bool b=false) {
-            const std::string result = execute(tok->astOperand1(), p);
-            if (b)
-                return (result != "False" && !result.empty()) ? "True" : "False";
-            return result;
+        static std::string executeOp1(const Token* tok, const ProjectConfiguration &p) {
+            return  execute(tok->astOperand1(), p);
         }
 
-        static std::string executeOp2(const Token* tok, const ProjectConfiguration &p, bool b=false) {
-            const std::string result = execute(tok->astOperand2(), p);
-            if (b)
-                return (result != "False" && !result.empty()) ? "True" : "False";
-            return result;
+        static std::string executeOp2(const Token* tok, const ProjectConfiguration &p) {
+            return execute(tok->astOperand2(), p);
         }
 
         static std::string execute(const Token* tok, const ProjectConfiguration &p) {
@@ -677,25 +680,25 @@ namespace {
                 throw std::runtime_error("Missing operator");
             auto boolResult = [](bool b) -> std::string { return b ? "True" : "False"; };
             if (tok->isUnaryOp("!"))
-                return boolResult(executeOp1(tok, p, true) == "False");
+                return boolResult(executeOp1(tok, p) == "False");
             if (tok->str() == "==")
                 return boolResult(executeOp1(tok, p) == executeOp2(tok, p));
             if (tok->str() == "!=")
                 return boolResult(executeOp1(tok, p) != executeOp2(tok, p));
             if (tok->str() == "&&")
-                return boolResult(executeOp1(tok, p, true) == "True" && executeOp2(tok, p, true) == "True");
+                return boolResult(executeOp1(tok, p) == "True" && executeOp2(tok, p) == "True");
             if (tok->str() == "||")
-                return boolResult(executeOp1(tok, p, true) == "True" || executeOp2(tok, p, true) == "True");
+                return boolResult(executeOp1(tok, p) == "True" || executeOp2(tok, p) == "True");
             if (tok->str() == "(" && Token::Match(tok->previous(), "$ ( %name% . %name% (")) {
                 const std::string propertyName = tok->next()->str();
                 std::string propertyValue;
                 if (propertyName == "Configuration")
                     propertyValue = p.configuration;
                 else if (propertyName == "Platform")
-                    propertyValue = p.platform;
+                    propertyValue = p.platformStr;
                 else
                     throw std::runtime_error("Unhandled property '" + propertyName + "'");
-                const std::string method = tok->strAt(3);
+                const std::string& method = tok->strAt(3);
                 std::string arg = executeOp2(tok->tokAt(4), p);
                 if (arg.size() >= 2 && arg[0] == '\'')
                     arg = arg.substr(1, arg.size() - 2);
@@ -707,7 +710,7 @@ namespace {
                     return boolResult(startsWith(propertyValue,arg));
                 throw std::runtime_error("Unhandled method '" + method + "'");
             }
-            if (tok->str().size() >= 2 && tok->str()[0] == '\'')
+            if (tok->str().size() >= 2 && tok->str()[0] == '\'') // String Literal
                 return tok->str();
 
             throw std::runtime_error("Unknown/unhandled operator/operand '" + tok->str() + "'");
@@ -1702,5 +1705,5 @@ bool cppcheck::testing::evaluateVcxprojCondition(const std::string& condition, c
     p.configuration = configuration;
     p.platformStr = platform;
     std::vector<std::string> errors;
-    return ConditionalGroup::conditionIsTrue(condition, p, "file.vcxproj", errors) && errors.empty();
+    return ConditionalGroup::evalCondition(condition, p);
 }
