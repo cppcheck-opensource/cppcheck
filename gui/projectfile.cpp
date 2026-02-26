@@ -627,7 +627,7 @@ void ProjectFile::readSuppressions(QXmlStreamReader &reader)
                 if (reader.attributes().hasAttribute(QString(),"fileName"))
                     suppression.fileName = reader.attributes().value(QString(),"fileName").toString().toStdString();
                 if (reader.attributes().hasAttribute(QString(),"lineNumber"))
-                    suppression.lineNumber = reader.attributes().value(QString(),"lineNumber").toInt();
+                    suppression.lineNumber = reader.attributes().value(QString(),"lineNumber").toUInt();
                 if (reader.attributes().hasAttribute(QString(),"symbolName"))
                     suppression.symbolName = reader.attributes().value(QString(),"symbolName").toString().toStdString();
                 if (reader.attributes().hasAttribute(QString(),"hash"))
@@ -954,6 +954,7 @@ bool ProjectFile::write(const QString &filename)
                     CppcheckXml::LibraryElementName);
 
     if (!mSuppressions.isEmpty()) {
+        // TODO: merge/align with SuppressionList::dump()?
         xmlWriter.writeStartElement(CppcheckXml::SuppressionsElementName);
         for (const SuppressionList::Suppression &suppression : utils::as_const(mSuppressions)) {
             xmlWriter.writeStartElement(CppcheckXml::SuppressionElementName);

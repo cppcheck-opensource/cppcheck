@@ -91,6 +91,7 @@ static const std::array<Platform::Type, 6> builtinPlatforms = {
     Platform::Type::Unix64
 };
 
+// TODO: use SuppressionList::Suppression::toString() instead?
 static std::string suppressionAsText(const SuppressionList::Suppression& s)
 {
     std::string ret;
@@ -98,8 +99,9 @@ static std::string suppressionAsText(const SuppressionList::Suppression& s)
         ret = s.errorId;
     if (!s.fileName.empty())
         ret += " fileName=" + s.fileName;
-    if (s.lineNumber != SuppressionList::Suppression::NO_LINE)
+    if (s.lineNumber != 0)
         ret += " lineNumber=" + std::to_string(s.lineNumber);
+    // do not include column as suppressions are only line-based
     if (!s.symbolName.empty())
         ret += " symbolName=" + s.symbolName;
     if (s.hash > 0)

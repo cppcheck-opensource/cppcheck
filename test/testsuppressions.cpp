@@ -1630,7 +1630,7 @@ private:
         {
             SuppressionList suppressions;
             addCheckedSuppression(suppressions, {"abc", "a.c", 10U});
-            addCheckedSuppression(suppressions, {"unmatchedSuppression", "*", SuppressionList::Suppression::NO_LINE});
+            addCheckedSuppression(suppressions, {"unmatchedSuppression", "*", 0});
             ASSERT_EQUALS(false, CppCheckExecutorTest::reportUnmatchedSuppressions(settingsDefault, suppressions, files, fs, *this));
             ASSERT_EQUALS("", errout_str());
         }
@@ -1639,7 +1639,7 @@ private:
         {
             SuppressionList suppressions;
             addCheckedSuppression(suppressions, {"abc", "a.c", 10U});
-            addCheckedSuppression(suppressions, {"unmatchedSuppression", "", SuppressionList::Suppression::NO_LINE});
+            addCheckedSuppression(suppressions, {"unmatchedSuppression", "", 0});
             ASSERT_EQUALS(false, CppCheckExecutorTest::reportUnmatchedSuppressions(settingsDefault, suppressions, files, fs, *this));
             ASSERT_EQUALS("", errout_str());
         }
@@ -1648,7 +1648,7 @@ private:
         {
             SuppressionList suppressions;
             addCheckedSuppression(suppressions, {"abc", "a.c", 10U});
-            addCheckedSuppression(suppressions, {"unmatchedSuppression", "a.c", SuppressionList::Suppression::NO_LINE});
+            addCheckedSuppression(suppressions, {"unmatchedSuppression", "a.c", 0});
             ASSERT_EQUALS(false, CppCheckExecutorTest::reportUnmatchedSuppressions(settingsDefault, suppressions, files, fs, *this));
             ASSERT_EQUALS("", errout_str());
         }
@@ -1666,7 +1666,7 @@ private:
         {
             SuppressionList suppressions;
             addCheckedSuppression(suppressions, {"abc", "a.c", 10U});
-            addCheckedSuppression(suppressions, {"unmatchedSuppression", "b.c", SuppressionList::Suppression::NO_LINE});
+            addCheckedSuppression(suppressions, {"unmatchedSuppression", "b.c", 0});
             ASSERT_EQUALS(true, CppCheckExecutorTest::reportUnmatchedSuppressions(settingsDefault, suppressions, files, fs, *this));
             ASSERT_EQUALS("[a.c:10:0]: (information) Unmatched suppression: abc [unmatchedSuppression]\n", errout_str());
         }
@@ -1822,22 +1822,22 @@ private:
 
         ASSERT_EQUALS("syntaxError", it->errorId);
         ASSERT_EQUALS("", it->fileName);
-        ASSERT_EQUALS(SuppressionList::Suppression::NO_LINE, it->lineNumber);
+        ASSERT_EQUALS(0, it->lineNumber);
         ++it;
 
         ASSERT_EQUALS("uninitvar", it->errorId);
         ASSERT_EQUALS("1.c", it->fileName);
-        ASSERT_EQUALS(SuppressionList::Suppression::NO_LINE, it->lineNumber);
+        ASSERT_EQUALS(0, it->lineNumber);
         ++it;
 
         ASSERT_EQUALS("memleak", it->errorId);
         ASSERT_EQUALS("1.c", it->fileName);
-        ASSERT_EQUALS(SuppressionList::Suppression::NO_LINE, it->lineNumber);
+        ASSERT_EQUALS(0, it->lineNumber);
         ++it;
 
         ASSERT_EQUALS("uninitvar", it->errorId);
         ASSERT_EQUALS("2.c", it->fileName);
-        ASSERT_EQUALS(SuppressionList::Suppression::NO_LINE, it->lineNumber);
+        ASSERT_EQUALS(0, it->lineNumber);
         ++it;
 
         ASSERT_EQUALS("memleak", it->errorId);
@@ -1883,7 +1883,7 @@ private:
             const ErrorMessage msg({}, "test1.cpp", Severity::information, "msg", "id", Certainty::inconclusive);
             const auto msg_s = SuppressionList::ErrorMessage::fromErrorMessage(msg, {"m1", "m2"});
             ASSERT_EQUALS("test1.cpp", msg_s.getFileName());
-            ASSERT_EQUALS(SuppressionList::Suppression::NO_LINE, msg_s.lineNumber);
+            ASSERT_EQUALS(0, msg_s.lineNumber);
             ASSERT_EQUALS("id", msg_s.errorId);
             ASSERT_EQUALS_ENUM(Certainty::inconclusive, msg_s.certainty);
             ASSERT_EQUALS("", msg_s.symbolNames);
@@ -2052,15 +2052,15 @@ private:
         int lineNumber;
         std::string extraComment;
         SuppressionList::Type type = SuppressionList::Type::unique;
-        int lineBegin = SuppressionList::Suppression::NO_LINE;
-        int lineEnd = SuppressionList::Suppression::NO_LINE;
+        int lineBegin = 0;
+        int lineEnd = 0;
 
         PolyspaceParseResult(const std::string &&errorId,
                              int lineNumber,
                              const std::string &&extraComment = "",
                              SuppressionList::Type type = SuppressionList::Type::unique,
-                             int lineBegin = SuppressionList::Suppression::NO_LINE,
-                             int lineEnd = SuppressionList::Suppression::NO_LINE)
+                             int lineBegin = 0,
+                             int lineEnd = 0)
             : errorId(errorId)
             , lineNumber(lineNumber)
             , extraComment(extraComment)
