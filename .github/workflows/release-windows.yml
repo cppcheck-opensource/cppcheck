@@ -2,13 +2,7 @@
 # Environment reference https://help.github.com/en/actions/reference/virtual-environments-for-github-hosted-runners
 name: release-windows
 
-on:
-  push:
-    tags:
-      - '2.*'
-  schedule:
-    - cron:  '0 0 * * *'
-  workflow_dispatch:
+on: [pull_request, push]
 
 permissions:
   contents: read
