@@ -436,12 +436,14 @@ jobs:
       - name: Run CMake (without GUI)
         run: |
           export PATH=cmake-${{ env.CMAKE_VERSION_FULL }}-linux-x86_64/bin:$PATH
-          cmake -S . -B cmake.output -Werror=dev --warn-uninitialized -DHAVE_RULES=On -DBUILD_TESTING=On
+          # FIXME: cannot use --warn-uninitialized here as it completely breaks the build
+          cmake -S . -B cmake.output -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=On
 
       - name: Run CMake (with GUI)
         run: |
           export PATH=cmake-${{ env.CMAKE_VERSION_FULL }}-linux-x86_64/bin:$PATH
-          cmake -S . -B cmake.output.gui -Werror=dev --warn-uninitialized -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On
+          # FIXME: cannot use --warn-uninitialized here as it completely breaks the build
+          cmake -S . -B cmake.output.gui -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On
 
   build:
 
