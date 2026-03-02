@@ -79,7 +79,7 @@ jobs:
         run: |
           :: TODO: enable rules?
           :: specify Release build so matchcompiler is used
-          cmake -S . -B build -Werror=dev -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=Off -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_ONLINE_HELP=On -DUSE_BOOST=ON -DBOOST_INCLUDEDIR=%GITHUB_WORKSPACE%\boost -DCMAKE_COMPILE_WARNING_AS_ERROR=On || exit /b !errorlevel!
+          cmake -S . -B build -Werror=dev --warn-uninitialized -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=Off -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_ONLINE_HELP=On -DUSE_BOOST=ON -DBOOST_INCLUDEDIR=%GITHUB_WORKSPACE%\boost -DCMAKE_COMPILE_WARNING_AS_ERROR=On || exit /b !errorlevel!
           cmake --build build --target cppcheck-gui --config Release || exit /b !errorlevel!
 
       # TODO: package PDBs
