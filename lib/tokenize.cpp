@@ -6008,6 +6008,9 @@ bool Tokenizer::simplifyTokenList1(const char FileName[])
     // Link < with >
     createLinks2();
 
+    // Handle std::aligned_storage<...>
+    simplifyAlignedStorage();
+
     // Mark C++ casts
     markCppCasts();
 
@@ -11170,6 +11173,57 @@ void Tokenizer::simplifyNamespaceAliases()
                 tok->deleteThis();
             }
         }
+    }
+}
+
+void Tokenizer::simplifyAlignedStorage()
+{
+    if (!isCPP())
+        return;
+
+    const Standards::cppstd_t std = mSettings.standards.cpp;
+    if (std < Standards::CPP11 || std >= Standards::CPP23)
+        return;
+
+    for (Token *tok = list.front(); tok; tok = tok->next()) {
+        if (!Token::simpleMatch(tok, "aligned_storage <"))
+            continue;
+
+        tok = tok->next();
+        const Token *end = tok->link();
+        tok = tok->next();
+
+        if (!tok)
+            break;
+
+        if (!end)
+            continue;
+
+        for (; tok != end; tok = tok->next()) {
+            if (Token::simpleMatch(tok, ",")) {
+                tok = tok->next();
+                break;
+            }
+
+            if (Token::Match(tok, "(|<"))
+                tok = tok->link();
+        }
+
+        std::string str;
+        for (; tok != end; tok = tok->next()) {
+            str += " " + tok->str();
+        }
+
+        if (str.empty())
+            continue;
+
+        if (!Token::Match(tok, "> :: type %name%"))
+            continue;
+
+        str = str.substr(1);
+
+        tok = tok->tokAt(3);
+        tok->addAttributeAlignas(str);
     }
 }
 

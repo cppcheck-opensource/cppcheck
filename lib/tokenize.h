@@ -529,6 +529,11 @@ private:
     void simplifyNamespaceAliases();
 
     /**
+     * Handle std::aligned_storage<...>
+     */
+    void simplifyAlignedStorage();
+
+    /**
      * Convert C++17 style nested namespace to older style
      */
     void simplifyNestedNamespace();
