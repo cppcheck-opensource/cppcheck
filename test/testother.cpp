@@ -4787,6 +4787,12 @@ private:
               "    return h(s ? s->gnc() : 1);\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:5:11]: (style) Parameter 's' can be declared as pointer to const [constParameterPointer]\n", errout_str());
+
+        check("using IntPtr = int *;\n"
+              "int* foo(IntPtr bar) {\n"
+              "  return bar = 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void constArray() {
