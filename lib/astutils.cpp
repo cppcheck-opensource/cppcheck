@@ -3671,21 +3671,27 @@ bool isGlobalData(const Token *expr)
             globalData = true;
             return ChildrenToVisit::none;
         }
-        if (Token::Match(tok, "[*[]") && tok->astOperand1() && tok->astOperand1()->variable()) {
+        if (Token::Match(tok, "[*[]") && tok->astOperand1()) {
             // TODO check if pointer points at local data
-            const Variable *lhsvar = tok->astOperand1()->variable();
-            const ValueType *lhstype = tok->astOperand1()->valueType();
-            if (lhsvar->isPointer() || !lhstype || lhstype->type == ValueType::Type::ITERATOR) {
-                globalData = true;
-                return ChildrenToVisit::none;
+            const Token *lhs = tok->astOperand1();
+            if (lhs->isCast()) {
+                lhs = lhs->astOperand2() ? lhs->astOperand2() : lhs->astOperand1();
             }
-            if (lhsvar->isArgument() && lhsvar->isArray()) {
-                globalData = true;
-                return ChildrenToVisit::none;
-            }
-            if (lhsvar->isArgument() && lhstype->type <= ValueType::Type::VOID && !lhstype->container) {
-                globalData = true;
-                return ChildrenToVisit::none;
+            if (lhs && lhs->variable()) {
+                const Variable *lhsvar = lhs->variable();
+                const ValueType *lhstype = lhs->valueType();
+                if (lhsvar->isPointer() || !lhstype || lhstype->type == ValueType::Type::ITERATOR) {
+                    globalData = true;
+                    return ChildrenToVisit::none;
+                }
+                if (lhsvar->isArgument() && lhsvar->isArray()) {
+                    globalData = true;
+                    return ChildrenToVisit::none;
+                }
+                if (lhsvar->isArgument() && lhstype->type <= ValueType::Type::VOID && !lhstype->container) {
+                    globalData = true;
+                    return ChildrenToVisit::none;
+                }
             }
         }
         if (tok->varId() == 0 && tok->isName() && tok->strAt(-1) != ".") {
