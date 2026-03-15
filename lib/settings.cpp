@@ -21,7 +21,6 @@
 #include "path.h"
 #include "summaries.h"
 #include "suppressions.h"
-#include "utils.h"
 #include "vfvalue.h"
 
 #include <cctype>
@@ -29,7 +28,6 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
-#include <map>
 #include <utility>
 
 #include "json.h"

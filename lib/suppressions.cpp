@@ -18,6 +18,7 @@
 
 #include "suppressions.h"
 
+#include "addoninfo.h"
 #include "errorlogger.h"
 #include "filesettings.h"
 #include "path.h"
@@ -33,6 +34,7 @@
 #include <cstring>
 #include <functional> // std::bind, std::placeholders
 #include <sstream>
+#include <stdexcept>
 #include <utility>
 
 #include "xml.h"

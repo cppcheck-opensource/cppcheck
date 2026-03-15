@@ -25,6 +25,7 @@
 #include "filesettings.h"
 #include "checkthread.h"
 
+#include <cstddef>
 #include <list>
 #include <mutex>
 #include <string>

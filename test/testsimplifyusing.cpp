@@ -21,6 +21,7 @@
 #include "helpers.h"
 #include "platform.h"
 #include "settings.h"
+#include "standards.h"
 #include "token.h"
 #include "utils.h"
 

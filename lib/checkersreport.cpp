@@ -20,8 +20,8 @@
 
 #include "addoninfo.h"
 #include "checkers.h"
-#include "errortypes.h"
 #include "settings.h"
+#include "utils.h"
 
 #include <algorithm>
 #include <cstddef>

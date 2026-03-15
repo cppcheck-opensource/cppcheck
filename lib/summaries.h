@@ -23,6 +23,7 @@
 
 #include "config.h"
 
+#include <cstddef>
 #include <set>
 #include <string>
 

@@ -24,6 +24,7 @@
 #include "suppressions.h"
 #include "threadresult.h"
 
+#include <cstddef>
 #include <list>
 #include <memory>
 #include <set>

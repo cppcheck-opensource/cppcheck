@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "addoninfo.h"
 #include "config.h"
 #include "cppcheck.h"
 #include "cppcheckexecutor.h"
@@ -32,6 +33,7 @@
 #include "threadexecutor.h"
 
 #include <cstring>
+#include <initializer_list>
 #include <list>
 #include <map>
 #include <memory>

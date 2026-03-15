@@ -23,11 +23,13 @@
 #include "path.h"
 #include "utils.h"
 
+#include <array>
 #include <cstring>
 #include <exception>
 #include <iostream>
 #include <map>
 #include <sstream>
+#include <stdexcept>
 #include <utility>
 
 #include "xml.h"

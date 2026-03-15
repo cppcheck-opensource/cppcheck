@@ -24,8 +24,6 @@
 
 #if defined(USE_UNIX_SIGNAL_HANDLING)
 
-#include "utils.h"
-
 #ifdef USE_UNIX_BACKTRACE_SUPPORT
 #include "stacktrace.h"
 #endif
