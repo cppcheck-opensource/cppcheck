@@ -1019,28 +1019,60 @@ def test_showtime_top5_summary_j_process(tmp_path):
 
 
 def test_showtime_file(tmp_path):
-    __test_showtime(tmp_path, 'file', 77, 'Check time: ')
+    __test_showtime(tmp_path, 'file', 79, 'Check time: ')
 
 
 # TODO: remove extra args when --executor=process works works
 def test_showtime_summary(tmp_path):
-    __test_showtime(tmp_path, 'summary', 77, 'Overall time: ', ['-j1'])
+    __test_showtime(tmp_path, 'summary', 79, 'Overall time: ', ['-j1'])
 
 
 # TODO: remove when --executor=process works works
 def test_showtime_summary_j_thread(tmp_path):
-    __test_showtime(tmp_path, 'summary', 77, 'Overall time: ', ['-j2', '--executor=thread'])
+    __test_showtime(tmp_path, 'summary', 79, 'Overall time: ', ['-j2', '--executor=thread'])
 
 
 # TODO: remove override when fixed
 @pytest.mark.skipif(sys.platform == 'win32', reason="requires ProcessExecutor")
 @pytest.mark.xfail(strict=True)  # TODO: need to transfer the timer results to parent process - see #4452
 def test_showtime_summary_j_process(tmp_path):
-    __test_showtime(tmp_path, 'summary', 77, 'Overall time: ', ['-j2', '--executor=process'])
+    __test_showtime(tmp_path, 'summary', 79, 'Overall time: ', ['-j2', '--executor=process'])
 
 
 def test_showtime_file_total(tmp_path):
     __test_showtime(tmp_path, 'file-total', 0, 'Check time: ')
+
+
+def test_showtime_unique(tmp_path):
+    test_file = tmp_path / 'test.cpp'
+    with open(test_file, 'wt') as f:
+        f.write(
+"""
+void f()
+{
+    (void)(*((int*)0)); // cppcheck-suppress nullPointer
+}
+""")
+
+    args = [
+        '--showtime=summary',
+        '--quiet',
+        '--inline-suppr',
+        str(test_file)
+    ]
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0
+    multi_res = []
+    for line in stdout.splitlines():
+        # TODO: remove when we no longer emit empty line
+        if not line:
+            continue
+        if any(i in line for i in ['1 result(s)', 'Overall time:']):
+            continue
+        multi_res.append(line)
+    assert multi_res == []
+    assert stderr == ''
 
 
 def test_missing_addon(tmpdir):

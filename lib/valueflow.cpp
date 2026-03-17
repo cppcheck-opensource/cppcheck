@@ -1210,6 +1210,12 @@ static void valueFlowEnumValue(SymbolDatabase & symboldatabase, const Settings &
     }
 }
 
+// trampoline to generate unique timer results entry
+static void valueFlowEnumValueEarly(SymbolDatabase & symboldatabase, const Settings & settings)
+{
+    valueFlowEnumValue(symboldatabase, settings);
+}
+
 static void valueFlowGlobalConstVar(TokenList& tokenList, const Settings& settings)
 {
     // Get variable values...
@@ -7200,7 +7206,7 @@ struct ValueFlowPassRunner {
     bool run_once(std::initializer_list<ValuePtr<ValueFlowPass>> passes) const
     {
         return std::any_of(passes.begin(), passes.end(), [&](const ValuePtr<ValueFlowPass>& pass) {
-            return run(pass);
+            return run(pass, 0);
         });
     }
 
@@ -7210,10 +7216,11 @@ struct ValueFlowPassRunner {
         std::size_t n = state.settings.vfOptions.maxIterations;
         while (n > 0 && values != getTotalValues()) {
             values = getTotalValues();
-            const std::string passnum = std::to_string(state.settings.vfOptions.maxIterations - n + 1);
+            const std::size_t passnum = state.settings.vfOptions.maxIterations - n + 1;
+            const std::string passnum_s = std::to_string(passnum);
             if (std::any_of(passes.begin(), passes.end(), [&](const ValuePtr<ValueFlowPass>& pass) {
-                ProgressReporter progressReporter(state.errorLogger, state.settings.reportProgress, state.tokenlist.getSourceFilePath(), std::string("ValueFlow::") + pass->name() + (' ' + passnum));
-                return run(pass);
+                ProgressReporter progressReporter(state.errorLogger, state.settings.reportProgress, state.tokenlist.getSourceFilePath(), std::string("ValueFlow::") + pass->name() + (' ' + passnum_s));
+                return run(pass, passnum);
             }))
                 return true;
             --n;
@@ -7233,7 +7240,7 @@ struct ValueFlowPassRunner {
         return false;
     }
 
-    bool run(const ValuePtr<ValueFlowPass>& pass) const
+    bool run(const ValuePtr<ValueFlowPass>& pass, std::size_t it) const
     {
         auto start = Clock::now();
         if (start > stop) {
@@ -7243,7 +7250,12 @@ struct ValueFlowPassRunner {
         if (!state.tokenlist.isCPP() && pass->cpp())
             return false;
         if (timerResults) {
-            Timer t(pass->name(), state.settings.showtime, timerResults);
+            std::string name = pass->name();
+            if (it > 0) {
+                name += ' ';
+                name += std::to_string(it);
+            }
+            Timer t(name, state.settings.showtime, timerResults);
             pass->run(state);
         } else {
             pass->run(state);
@@ -7375,7 +7387,7 @@ void ValueFlow::setValues(TokenList& tokenlist,
 
     ValueFlowPassRunner runner{ValueFlowState{tokenlist, symboldatabase, errorLogger, settings}, timerResults};
     runner.run_once({
-        VFA(valueFlowEnumValue(symboldatabase, settings)),
+        VFA(valueFlowEnumValueEarly(symboldatabase, settings)),
         VFA(valueFlowNumber(tokenlist, settings)),
         VFA(valueFlowString(tokenlist, settings)),
         VFA(valueFlowTypeTraits(tokenlist, settings)),
