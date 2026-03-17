@@ -128,9 +128,7 @@ private:
         TEST_CASE(one_error_less_files);
         TEST_CASE(one_error_several_files);
         TEST_CASE(showtime_top5_file);
-        TEST_CASE(showtime_top5_summary);
         TEST_CASE(showtime_file);
-        TEST_CASE(showtime_summary);
         TEST_CASE(showtime_file_total);
         TEST_CASE(suppress_error_library);
         TEST_CASE(unique_errors);
@@ -247,20 +245,6 @@ private:
         ASSERT_EQUALS((5 + 1 + 1) * 2LL, cppcheck::count_all_of(output_s, '\n'));
     }
 
-    void showtime_top5_summary() {
-        REDIRECT;
-        check(2, 0,
-              "int main() {}",
-              dinit(CheckOptions,
-                    $.showtime = ShowTime::TOP5_SUMMARY));
-        const std::string output_s = GET_REDIRECT_OUTPUT;
-        // once: top5 results + newline
-        ASSERT_EQUALS(5 + 1, cppcheck::count_all_of(output_s, '\n'));
-        // should only report the top5 once
-        ASSERT(output_s.find("1 result(s)") == std::string::npos);
-        ASSERT(output_s.find("2 result(s)") != std::string::npos);
-    }
-
     void showtime_file() {
         REDIRECT;
         check(2, 0,
@@ -269,18 +253,6 @@ private:
                     $.showtime = ShowTime::FILE));
         const std::string output_s = GET_REDIRECT_OUTPUT;
         ASSERT_EQUALS(0, cppcheck::count_all_of(output_s, "Overall time:"));
-    }
-
-    void showtime_summary() {
-        REDIRECT;
-        check(2, 0,
-              "int main() {}",
-              dinit(CheckOptions,
-                    $.showtime = ShowTime::SUMMARY));
-        const std::string output_s = GET_REDIRECT_OUTPUT;
-        // should only report the actual summary once
-        ASSERT(output_s.find("1 result(s)") == std::string::npos);
-        ASSERT(output_s.find("2 result(s)") != std::string::npos);
     }
 
     void showtime_file_total() {

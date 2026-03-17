@@ -67,12 +67,10 @@ unsigned int SingleExecutor::check()
             reportStatus(c, mFileSettings.size(), c, mFileSettings.size());
     }
 
+    // TODO: show time after the whole program analysis
     // TODO: CppCheckExecutor::check_internal() is also invoking the whole program analysis - is it run twice?
     if (mCppcheck.analyseWholeProgram())
         result++;
-
-    if (mTimerResults && (mSettings.showtime == ShowTime::SUMMARY || mSettings.showtime == ShowTime::TOP5_SUMMARY))
-        mTimerResults->showResults(mSettings.showtime);
 
     return result;
 }

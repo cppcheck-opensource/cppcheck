@@ -216,9 +216,6 @@ unsigned int ThreadExecutor::check()
         return v + f.get();
     });
 
-    if (mTimerResults && (mSettings.showtime == ShowTime::SUMMARY || mSettings.showtime == ShowTime::TOP5_SUMMARY))
-        mTimerResults->showResults(mSettings.showtime);
-
     return result;
 }
 
