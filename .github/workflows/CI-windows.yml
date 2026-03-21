@@ -219,7 +219,7 @@ jobs:
 
       - name: Run Debug test
         if: matrix.config == 'debug'
-        run: .\bin\debug\testrunner.exe || exit /b !errorlevel!
+        run: .\bin\debug\testrunner.exe -t || exit /b !errorlevel!
 
       - name: Build CLI release configuration using MSBuild
         if: matrix.config == 'release'
