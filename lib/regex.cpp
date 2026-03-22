@@ -167,7 +167,7 @@ namespace {
         ~PcreRegex() override
         {
             if (mExtra) {
-                pcre_free(mExtra);
+                pcre_free_study(mExtra);
                 mExtra = nullptr;
             }
             if (mRe) {
