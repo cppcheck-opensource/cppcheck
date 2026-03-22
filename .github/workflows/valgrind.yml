@@ -51,7 +51,13 @@ jobs:
       - name: Run valgrind
         run: |
           ec=0
-          valgrind --error-limit=yes --leak-check=full --num-callers=50 --show-reachable=yes --track-origins=yes --suppressions=valgrind/testrunner.supp --gen-suppressions=all -s --log-fd=9 --error-exitcode=42 ./testrunner TestGarbage TestOther TestSimplifyTemplate TestRegExPcre 9>memcheck.log || ec=1
+          # disabled all tests invoking processes because the child processes fail with still reachable memory.
+          # some of the TestProcessExecutor* tests are also extremely slow.
+          excluded_tests="TestProcessExecutorFS \
+            TestProcessExecutorFiles \
+            TestSuppressions::suppressionsSettingsProcessesFiles \
+            TestSuppressions::suppressionsSettingsProcessesFS"
+          valgrind --error-limit=yes --leak-check=full --num-callers=50 --show-reachable=yes --track-origins=yes --suppressions=valgrind/testrunner.supp --gen-suppressions=all -s --log-fd=9 --error-exitcode=42 ./testrunner -x $excluded_tests 9>memcheck.log || ec=1
           cat memcheck.log
           exit $ec
         # TODO: debuginfod.ubuntu.com is currently not responding to any requests causing it to run into a 40(!) minute timeout
