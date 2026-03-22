@@ -23,7 +23,6 @@ jobs:
     env:
       QT_VERSION: 6.10.0
       ASAN_OPTIONS: detect_stack_use_after_return=1
-      LSAN_OPTIONS: suppressions=lsan-suppr.txt:print_suppressions=0
       # TODO: figure out why there are cache misses with PCH enabled
       CCACHE_SLOPPINESS: pch_defines,time_macros
 
@@ -100,7 +99,6 @@ jobs:
 
       - name: Run CTest
         run: |
-          cp lsan-suppr.txt cmake.output/bin
           ctest --test-dir cmake.output --output-on-failure -j$(nproc)
 
       - name: Run test/cli
