@@ -8336,8 +8336,10 @@ private:
         const char code[] = "void requires(const char*);\n" // #14613
                             "void f() { requires(\"abc\"); }\n";
         ASSERT_NO_THROW(tokenizeAndStringify(code, dinit(TokenizeOptions, $.cpp = false)));
-        ASSERT_NO_THROW(tokenizeAndStringify(code, dinit(TokenizeOptions, $.cpp = true, $.cppstd = Standards::CPP17)));
-        ASSERT_THROW_INTERNAL(tokenizeAndStringify(code, dinit(TokenizeOptions, $.cpp = true, $.cppstd = Standards::CPP20)), AST);
+        const Settings s_cpp17 = settingsBuilder().cpp(Standards::CPP17).build();
+        ASSERT_NO_THROW(tokenizeAndStringify(code, s_cpp17, true));
+        const Settings s_cpp20 = settingsBuilder().cpp(Standards::CPP20).build();
+        ASSERT_THROW_INTERNAL(tokenizeAndStringify(code, s_cpp20, true), AST);
     }
 
     void cppcast() {
