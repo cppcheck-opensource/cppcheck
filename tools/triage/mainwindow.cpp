@@ -81,7 +81,7 @@ MainWindow::MainWindow(QWidget *parent) :
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
     QDir workFolder(WORK_FOLDER);
     if (!workFolder.exists()) {
-        workFolder.mkdir(WORK_FOLDER);
+        (void)workFolder.mkdir(WORK_FOLDER);
     }
 
     ui->results->setContextMenuPolicy(Qt::CustomContextMenu);

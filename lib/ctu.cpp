@@ -512,7 +512,7 @@ static bool findPath(const std::string &callId,
     if (index >= maxCtuDepth)
         return false; // TODO: add bailout message?
 
-    const auto it = utils::as_const(callsMap).find(callId);
+    const auto it = callsMap.find(callId);
     if (it == callsMap.end())
         return false;
 

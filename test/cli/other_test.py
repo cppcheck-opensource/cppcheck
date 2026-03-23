@@ -954,31 +954,87 @@ def test_unused_function_include(tmpdir):
     __test_unused_function_include(tmpdir, [])
 
 
-# TODO: test with all other types
-def test_showtime_top5_file(tmpdir):
-    test_file = os.path.join(tmpdir, 'test.cpp')
+# TODO: test with multiple files
+def __test_showtime(tmp_path, showtime, exp_len, exp_last, extra_args=None):
+    test_file = tmp_path / 'test.cpp'
     with open(test_file, 'wt') as f:
-        f.write("""
-                int main(int argc)
-                {
-                }
-                """)
+        f.write(
+"""
+void f()
+{
+    (void)(*((int*)0)); // cppcheck-suppress nullPointer
+}
+""")
 
-    args = ['--showtime=top5_file', '--quiet', test_file]
+    args = [
+        f'--showtime={showtime}',
+        '--quiet',
+        '--inline-suppr',
+        str(test_file)
+    ]
+
+    if extra_args:
+        args += extra_args
 
     exitcode, stdout, stderr = cppcheck(args)
-    assert exitcode == 0  # TODO: needs to be 1
+    assert exitcode == 0
     lines = stdout.splitlines()
-    assert len(lines) == 7
-    assert lines[0] == ''
-    for i in range(1, 5):
-        if lines[i].startswith('valueFlowLifetime'):
-            assert lines[i].endswith(' - 2 result(s))')
-        elif lines[i].startswith('valueFlowEnumValue'):
-            assert lines[i].endswith(' - 2 result(s))')
-        else:
-            assert lines[i].endswith(' result(s))')
+    if 'cppcheck internal API usage' in stdout:
+        exp_len += 1
+    assert len(lines) == exp_len
+    idx_last = exp_len-1
+    if idx_last:
+        assert lines[0] == ''
+    for i in range(1, idx_last):
+        assert 'avg.' in lines[i]
+    assert lines[idx_last].startswith(exp_last)
     assert stderr == ''
+
+
+def test_showtime_top5_file(tmp_path):
+    __test_showtime(tmp_path, 'top5_file', 7, 'Check time: ')
+
+
+# TODO: remove extra args when --executor=process works works
+def test_showtime_top5_summary(tmp_path):
+    __test_showtime(tmp_path, 'top5_summary', 7, 'Overall time: ', ['-j1'])
+
+
+# TODO: remove when --executor=process works works
+def test_showtime_top5_summary_j_thread(tmp_path):
+    __test_showtime(tmp_path, 'top5_summary', 7, 'Overall time: ', ['-j2', '--executor=thread'])
+
+
+# TODO: remove override when fixed
+@pytest.mark.skipif(sys.platform == 'win32', reason="requires ProcessExecutor")
+@pytest.mark.xfail(strict=True)  # TODO: need to transfer the timer results to parent process - see #4452
+def test_showtime_top5_summary_j_process(tmp_path):
+    __test_showtime(tmp_path, 'top5_summary', 7, 'Overall time: ', ['-j2', '--executor=process'])
+
+
+def test_showtime_file(tmp_path):
+    __test_showtime(tmp_path, 'file', 79, 'Check time: ')
+
+
+# TODO: remove extra args when --executor=process works works
+def test_showtime_summary(tmp_path):
+    __test_showtime(tmp_path, 'summary', 79, 'Overall time: ', ['-j1'])
+
+
+# TODO: remove when --executor=process works works
+def test_showtime_summary_j_thread(tmp_path):
+    __test_showtime(tmp_path, 'summary', 79, 'Overall time: ', ['-j2', '--executor=thread'])
+
+
+# TODO: remove override when fixed
+@pytest.mark.skipif(sys.platform == 'win32', reason="requires ProcessExecutor")
+@pytest.mark.xfail(strict=True)  # TODO: need to transfer the timer results to parent process - see #4452
+def test_showtime_summary_j_process(tmp_path):
+    __test_showtime(tmp_path, 'summary', 79, 'Overall time: ', ['-j2', '--executor=process'])
+
+
+def test_showtime_file_total(tmp_path):
+    __test_showtime(tmp_path, 'file-total', 1, 'Check time: ')
 
 
 def test_missing_addon(tmpdir):

@@ -32,6 +32,7 @@
 #include <QPointF>
 #include <QRegion>
 #include <QTransform>
+#include <QDir>
 
 // TODO: this is actually avilable via Core5Compat but I could not get it to work with pkg-config
 #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
@@ -53,6 +54,28 @@ int ignoredReturnValue_QSize_width(const QSize &s)
     s.width();
     return s.width();
 }
+
+
+void ignoredReturnValue_QDir(const QString& dirname)
+{
+    QDir dir(dirname);
+
+    // cppcheck-suppress ignoredReturnValue
+    dir.exists("abc");
+
+    // cppcheck-suppress ignoredReturnErrorCode
+    dir.mkdir("abc");
+
+    // cppcheck-suppress ignoredReturnValue
+    dir.count();
+
+    // cppcheck-suppress ignoredReturnValue
+    dir.filePath("abc");
+
+    // cppcheck-suppress ignoredReturnValue
+    dir.entryList();
+}
+
 
 void unusedVariable_QTransform()
 {

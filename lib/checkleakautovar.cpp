@@ -1163,7 +1163,7 @@ void CheckLeakAutoVar::leakIfAllocated(const Token *vartok,
     const std::map<int, VarInfo::AllocInfo> &alloctype = varInfo.alloctype;
     const auto& possibleUsage = varInfo.possibleUsage;
 
-    const auto var = utils::as_const(alloctype).find(vartok->varId());
+    const auto var = alloctype.find(vartok->varId());
     if (var != alloctype.cend() && var->second.status == VarInfo::ALLOC) {
         const auto use = possibleUsage.find(vartok->varId());
         if (use == possibleUsage.end()) {

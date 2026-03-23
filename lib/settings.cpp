@@ -109,7 +109,7 @@ std::string Settings::loadCppcheckCfg(Settings& settings, Suppressions& suppress
     }
     const picojson::object& obj = json.get<picojson::object>();
     {
-        const auto it = utils::as_const(obj).find("productName");
+        const auto it = obj.find("productName");
         if (it != obj.cend()) {
             const auto& v = it->second;
             if (!v.is<std::string>())
@@ -118,7 +118,7 @@ std::string Settings::loadCppcheckCfg(Settings& settings, Suppressions& suppress
         }
     }
     {
-        const auto it = utils::as_const(obj).find("manualUrl");
+        const auto it = obj.find("manualUrl");
         if (it != obj.cend()) {
             const auto& v = it->second;
             if (!v.is<std::string>())
@@ -127,7 +127,7 @@ std::string Settings::loadCppcheckCfg(Settings& settings, Suppressions& suppress
         }
     }
     {
-        const auto it = utils::as_const(obj).find("about");
+        const auto it = obj.find("about");
         if (it != obj.cend()) {
             const auto& v = it->second;
             if (!v.is<std::string>())
@@ -136,7 +136,7 @@ std::string Settings::loadCppcheckCfg(Settings& settings, Suppressions& suppress
         }
     }
     {
-        const auto it = utils::as_const(obj).find("addons");
+        const auto it = obj.find("addons");
         if (it != obj.cend()) {
             const auto& entry = it->second;
             if (!entry.is<picojson::array>())
@@ -154,7 +154,7 @@ std::string Settings::loadCppcheckCfg(Settings& settings, Suppressions& suppress
         }
     }
     {
-        const auto it = utils::as_const(obj).find("suppressions");
+        const auto it = obj.find("suppressions");
         if (it != obj.cend()) {
             const auto& entry = it->second;
             if (!entry.is<picojson::array>())
@@ -171,7 +171,7 @@ std::string Settings::loadCppcheckCfg(Settings& settings, Suppressions& suppress
         }
     }
     {
-        const auto it = utils::as_const(obj).find("safety");
+        const auto it = obj.find("safety");
         if (it != obj.cend()) {
             const auto& v = it->second;
             if (!v.is<bool>())

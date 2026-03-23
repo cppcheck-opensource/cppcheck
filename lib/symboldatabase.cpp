@@ -3864,7 +3864,7 @@ void SymbolDatabase::returnImplicitIntError(const Token *tok) const
 const Function* Type::getFunction(const std::string& funcName) const
 {
     if (classScope) {
-        const auto it = utils::as_const(classScope->functionMap).find(funcName);
+        const auto it = classScope->functionMap.find(funcName);
         if (it != classScope->functionMap.end())
             return it->second;
     }
@@ -4838,7 +4838,7 @@ std::vector<const Function*> Function::getOverloadedFunctions() const
 
     while (scope) {
         const bool isMemberFunction = scope->isClassOrStruct() && !isStatic();
-        for (auto it = utils::as_const(scope->functionMap).find(tokenDef->str());
+        for (auto it = scope->functionMap.find(tokenDef->str());
              it != scope->functionMap.end() && it->first == tokenDef->str();
              ++it) {
             const Function* func = it->second;
@@ -4889,7 +4889,7 @@ const Function * Function::getOverriddenFunctionRecursive(const ::Type* baseType
         const Scope *parent = derivedFromType->classScope;
 
         // check if function defined in base class
-        auto range = utils::as_const(parent->functionMap).equal_range(tokenDef->str());
+        auto range = parent->functionMap.equal_range(tokenDef->str());
         for (auto it = range.first; it != range.second; ++it) {
             const Function * func = it->second;
             if (func->isImplicitlyVirtual()) { // Base is virtual and of same name
@@ -5836,7 +5836,7 @@ void Scope::findFunctionInBase(const Token* tok, nonneg int args, std::vector<co
                 if (base->classScope == this) // Ticket #5120, #5125: Recursive class; tok should have been found already
                     continue;
 
-                auto range = utils::as_const(base->classScope->functionMap).equal_range(tok->str());
+                auto range = base->classScope->functionMap.equal_range(tok->str());
                 for (auto it = range.first; it != range.second; ++it) {
                     const Function *func = it->second;
                     if (func->isDestructor() && !Token::simpleMatch(tok->tokAt(-1), "~"))
@@ -5998,7 +5998,7 @@ const Function* Scope::findFunction(const Token *tok, bool requireConst, Referen
     const std::size_t args = arguments.size();
 
     auto addMatchingFunctions = [&](const Scope *scope) {
-        auto range = utils::as_const(scope->functionMap).equal_range(tok->str());
+        auto range = scope->functionMap.equal_range(tok->str());
         for (auto it = range.first; it != range.second; ++it) {
             const Function *func = it->second;
             if (ref == Reference::LValue && func->hasRvalRefQualifier())
@@ -6766,7 +6766,7 @@ Function * SymbolDatabase::findFunctionInScope(const Token *func, const Scope *n
     const Function * function = nullptr;
     const bool destructor = func->strAt(-1) == "~";
 
-    auto range = utils::as_const(ns->functionMap).equal_range(func->str());
+    auto range = ns->functionMap.equal_range(func->str());
     for (auto it = range.first; it != range.second; ++it) {
         if (it->second->argsMatch(ns, it->second->argDef, func->next(), path, path_length) &&
             it->second->isDestructor() == destructor) {
@@ -7685,14 +7685,14 @@ static const Function *getOperatorFunction(const Token * const tok)
 
     const Scope *classScope = getClassScope(tok->astOperand1());
     if (classScope) {
-        auto it = utils::as_const(classScope->functionMap).find(functionName);
+        auto it = classScope->functionMap.find(functionName);
         if (it != classScope->functionMap.end())
             return it->second;
     }
 
     classScope = getClassScope(tok->astOperand2());
     if (classScope) {
-        auto it = utils::as_const(classScope->functionMap).find(functionName);
+        auto it = classScope->functionMap.find(functionName);
         if (it != classScope->functionMap.end())
             return it->second;
     }

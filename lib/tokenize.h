@@ -34,7 +34,7 @@
 
 class Settings;
 class SymbolDatabase;
-class TimerResults;
+class TimerResultsIntf;
 class Token;
 class TemplateSimplifier;
 class ErrorLogger;
@@ -53,7 +53,7 @@ public:
     Tokenizer(TokenList tokenList, ErrorLogger &errorLogger);
     ~Tokenizer();
 
-    void setTimerResults(TimerResults *tr) {
+    void setTimerResults(TimerResultsIntf *tr) {
         mTimerResults = tr;
     }
 
@@ -713,9 +713,9 @@ private:
     nonneg int mUnnamedCount{};
 
     /**
-     * TimerResults
+     * timer results
      */
-    TimerResults* mTimerResults{};
+    TimerResultsIntf* mTimerResults{};
 };
 
 /// @}
