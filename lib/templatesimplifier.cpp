@@ -2085,8 +2085,11 @@ void TemplateSimplifier::expandTemplate(
         std::stack<const Token *> templates;
         int scopeCount = 0;
         for (; tok3; tok3 = tok3->next()) {
-            if (tok3->str() == "{")
+            if (tok3->str() == "{") {
+                if (isFunction && isSpecialization && inTemplateDefinition)
+                    break;
                 ++scopeCount;
+            }
             else if (tok3->str() == "}")
                 --scopeCount;
             if (scopeCount < 0)

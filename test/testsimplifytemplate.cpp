@@ -225,6 +225,7 @@ private:
         TEST_CASE(template181);
         TEST_CASE(template182); // #13770
         TEST_CASE(template183);
+        TEST_CASE(template184);
         TEST_CASE(template_specialization_1);  // #7868 - template specialization template <typename T> struct S<C<T>> {..};
         TEST_CASE(template_specialization_2);  // #7868 - template specialization template <typename T> struct S<C<T>> {..};
         TEST_CASE(template_specialization_3);
@@ -4696,6 +4697,32 @@ private:
                            "decltype ( & S<int> :: f ) x ; "
                            "} ;";
         ASSERT_EQUALS(exp, tok(code));
+    }
+
+    void template184() {
+        const char code[] = "template <typename T>\n"
+                            "T g(T x) {\n"
+                            "  return x;\n"
+                            "}\n"
+                            "template <>\n"
+                            "float g<float>(float x) {\n"
+                            "  return x + 1.0f;\n"
+                            "}\n"
+                            "void f(int i) {\n"
+                            "  g(i);\n"
+                            "  g(1.0f);\n"
+                            "}\n";
+        const char exp[] = "float g<float> ( float x ) ; "
+                           "template < typename T > "
+                           "T g ( T x ) { return x ; } "
+                           "float g<float> ( float x ) {"
+                           " return x + 1.0f ; "
+                           "} "
+                           "void f ( int i ) {"
+                           " g ( i ) ;"
+                           " g<float> ( 1.0f ) ; "
+                           "}";
+        ASSERT_EQUALS(exp, tok(code)); // TODO: instantiate g<int>(int)
     }
 
     void template_specialization_1() {  // #7868 - template specialization template <typename T> struct S<C<T>> {..};
