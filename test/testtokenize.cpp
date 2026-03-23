@@ -46,7 +46,6 @@ public:
     TestTokenizer() : TestFixture("TestTokenizer") {}
 
 private:
-    const Settings settings0 = settingsBuilder().build();
     const Settings settings1 = settingsBuilder().library("std.cfg").debugwarnings().build();
     const Settings settings2 = settingsBuilder(settings1).cpp(Standards::CPP11).c(Standards::C11).build();
     const Settings settings2_win32a = settingsBuilder(settings2).platform(Platform::Type::Win32A).build();
@@ -54,7 +53,7 @@ private:
     const Settings settings2_win64 = settingsBuilder(settings2).platform(Platform::Type::Win64).build();
     const Settings settings2_unix32 = settingsBuilder(settings2).platform(Platform::Type::Unix32).build();
     const Settings settings2_unix64 = settingsBuilder(settings2).platform(Platform::Type::Unix64).build();
-    const Settings settings3 = settingsBuilder(settings0).c(Standards::C89).cpp(Standards::CPP03).build();
+    const Settings settings3 = settingsBuilder().c(Standards::C89).cpp(Standards::CPP03).build();
     const Settings settings_windows = settingsBuilder().library("windows.cfg").debugwarnings().cpp(Standards::CPP11).build();
     const Settings settings_win32a = settingsBuilder(settings_windows).platform(Platform::Type::Win32A).build();
     const Settings settings_win32w = settingsBuilder(settings_windows).platform(Platform::Type::Win32W).build();
@@ -1734,7 +1733,7 @@ private:
         {
             const char code[] = "extern \"C\" int foo();";
             // tokenize..
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             // Expected result..
             ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
@@ -1743,7 +1742,7 @@ private:
         {
             const char code[] = "extern \"C\" { int foo(); }";
             // tokenize..
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             // Expected result..
             ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
@@ -1752,7 +1751,7 @@ private:
         {
             const char code[] = "extern \"C++\" int foo();";
             // tokenize..
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             // Expected result..
             ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
@@ -1761,7 +1760,7 @@ private:
         {
             const char code[] = "extern \"C++\" { int foo(); }";
             // tokenize..
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             // Expected result..
             ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
@@ -3188,7 +3187,7 @@ private:
             const char code[] = "class A{\n"
                                 " void f() {}\n"
                                 "};";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
             // A body {}
@@ -3211,7 +3210,7 @@ private:
                                 " char a[10];\n"
                                 " char *b ; b = new char[a[0]];\n"
                                 "};";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
             // a[10]
@@ -3233,7 +3232,7 @@ private:
             const char code[] = "void f(){\n"
                                 " foo(g());\n"
                                 "};";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
             // foo(
@@ -3251,7 +3250,7 @@ private:
             const char code[] = "bool foo(C<z> a, bar<int, x<float>>& f, int b) {\n"
                                 "    return(a<b && b>f);\n"
                                 "}";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
             // template<
@@ -3277,7 +3276,7 @@ private:
             const char code[] = "void foo() {\n"
                                 "    return static_cast<bar>(a);\n"
                                 "}";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
 
@@ -3292,7 +3291,7 @@ private:
             const char code[] = "void foo() {\n"
                                 "    nvwa<(x > y)> ERROR_nnn;\n"
                                 "}";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
 
@@ -3306,7 +3305,7 @@ private:
         {
             // #4860
             const char code[] = "class A : public B<int> {};";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
 
@@ -3320,7 +3319,7 @@ private:
         {
             // #4860
             const char code[] = "Bar<Typelist< int, Typelist< int, Typelist< int, FooNullType>>>>::set(1, 2, 3);";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
 
@@ -3335,7 +3334,7 @@ private:
         {
             // #5627
             const char code[] = "new Foo<Bar>[10];";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
 
@@ -3349,7 +3348,7 @@ private:
         {
             // #6242
             const char code[] = "func = integral_<uchar, int, double>;";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
 
@@ -3362,7 +3361,7 @@ private:
         {
             // if (a < b || c > d) { }
             const char code[] = "{ if (a < b || c > d); }";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
 
@@ -3372,7 +3371,7 @@ private:
         {
             // bool f = a < b || c > d
             const char code[] = "bool f = a < b || c > d;";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
 
@@ -3382,7 +3381,7 @@ private:
         {
             // template
             const char code[] = "a < b || c > d;";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
 
@@ -3392,7 +3391,7 @@ private:
         {
             // if (a < ... > d) { }
             const char code[] = "{ if (a < b || c == 3 || d > e); }";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
 
@@ -3402,7 +3401,7 @@ private:
         {
             // template
             const char code[] = "a<b==3 || c> d;";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
             ASSERT_EQUALS(true, tok->linkAt(1) == tok->tokAt(7));
@@ -3411,7 +3410,7 @@ private:
         {
             // template
             const char code[] = "a<b || c==4> d;";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
             ASSERT_EQUALS(true, tok->linkAt(1) == tok->tokAt(7));
@@ -3419,7 +3418,7 @@ private:
 
         {
             const char code[] = "template < f = b || c > struct S;";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
             ASSERT_EQUALS(true, tok->linkAt(1) == tok->tokAt(7));
@@ -3428,7 +3427,7 @@ private:
 
         {
             const char code[] = "struct A : B<c&&d> {};";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
             ASSERT_EQUALS(true, tok->linkAt(4) == tok->tokAt(8));
@@ -3437,7 +3436,7 @@ private:
 
         {
             const char code[] = "Data<T&&>;";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
             ASSERT_EQUALS(true, tok->linkAt(1) == tok->tokAt(4));
@@ -3447,7 +3446,7 @@ private:
         {
             // #6601
             const char code[] = "template<class R> struct FuncType<R(&)()> : FuncType<R()> { };";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = tokenizer.tokens();
 
@@ -3465,7 +3464,7 @@ private:
         {
             // #7158
             const char code[] = "enum { value = boost::mpl::at_c<B, C> };";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok = Token::findsimplematch(tokenizer.tokens(), "<");
             ASSERT_EQUALS(true, tok->link() == tok->tokAt(4));
@@ -3477,7 +3476,7 @@ private:
             const char code[] = "template <typename T, typename U>\n"
                                 "struct CheckedDivOp< T, U, typename std::enable_if<std::is_floating_point<T>::value || std::is_floating_point<U>::value>::type> {\n"
                                 "};\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok1 = Token::findsimplematch(tokenizer.tokens(), "struct")->tokAt(2);
             const Token *tok2 = Token::findsimplematch(tokenizer.tokens(), "{")->previous();
@@ -3488,7 +3487,7 @@ private:
         {
             // #7975
             const char code[] = "template <class C> X<Y&&Z, C*> copy() {};\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok1 = Token::findsimplematch(tokenizer.tokens(), "< Y");
             const Token *tok2 = Token::findsimplematch(tok1, "> copy");
@@ -3499,7 +3498,7 @@ private:
         {
             // #8006
             const char code[] = "C<int> && a = b;";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok1 = tokenizer.tokens()->next();
             const Token *tok2 = tok1->tokAt(2);
@@ -3510,7 +3509,7 @@ private:
         {
             // #8115
             const char code[] = "void Test(C<int> && c);";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok1 = Token::findsimplematch(tokenizer.tokens(), "<");
             const Token *tok2 = tok1->tokAt(2);
@@ -3521,7 +3520,7 @@ private:
             // #8654
             const char code[] = "template<int N> struct A {}; "
                                 "template<int... Ns> struct foo : A<Ns>... {};";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *A = Token::findsimplematch(tokenizer.tokens(), "A <");
             ASSERT_EQUALS(true, A->linkAt(1) == A->tokAt(3));
@@ -3530,7 +3529,7 @@ private:
             // #8851
             const char code[] = "template<typename std::enable_if<!(std::value1) && std::value2>::type>"
                                 "void basic_json() {}";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             ASSERT_EQUALS(true, Token::simpleMatch(tokenizer.tokens()->linkAt(1), "> void"));
         }
@@ -3538,7 +3537,7 @@ private:
         {
             // #9094 - template usage or comparison?
             const char code[] = "a = f(x%x<--a==x>x);";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             ASSERT(nullptr == Token::findsimplematch(tokenizer.tokens(), "<")->link());
         }
@@ -3548,7 +3547,7 @@ private:
             const char code[] = "using std::same_as;\n"
                                 "template<same_as<int> T>\n"
                                 "void f();";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token *tok1 = Token::findsimplematch(tokenizer.tokens(), "template <");
             const Token *tok2 = Token ::findsimplematch(tokenizer.tokens(), "same_as <");
@@ -3559,7 +3558,7 @@ private:
         {
             // #9131 - template usage or comparison?
             const char code[] = "using std::list; list<t *> l;";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             ASSERT(nullptr != Token::findsimplematch(tokenizer.tokens(), "<")->link());
         }
@@ -3570,7 +3569,7 @@ private:
                                 "{\n"
                                 "    for (set<ParticleSource*>::iterator i = sources.begin(); i != sources.end(); ++i) {}\n"
                                 "}";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             ASSERT(nullptr != Token::findsimplematch(tokenizer.tokens(), "<")->link());
         }
@@ -3581,7 +3580,7 @@ private:
                                 "  a<> b;\n"
                                 "  b.a<>::c();\n"
                                 "}\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             ASSERT(nullptr != Token::findsimplematch(tokenizer.tokens(), "> ::")->link());
         }
@@ -3592,7 +3591,7 @@ private:
                                 "template <char... b> struct c {\n"
                                 "  void d() { a<b...>[0]; }\n"
                                 "};\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             ASSERT(nullptr != Token::findsimplematch(tokenizer.tokens(), "> [")->link());
         }
@@ -3604,7 +3603,7 @@ private:
                                 "template <typename e> using f = c<e() && sizeof(int), int>;\n"
                                 "template <typename e, typename = f<e>> struct g {};\n"
                                 "template <typename e> using baz = g<e>;\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             ASSERT(nullptr != Token::findsimplematch(tokenizer.tokens(), "> ;")->link());
         }
@@ -3618,7 +3617,7 @@ private:
                                 "template <int> using c = a;\n"
                                 "template <int d> c<d> e;\n"
                                 "auto f = -e<1> == 0;\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             ASSERT(nullptr != Token::findsimplematch(tokenizer.tokens(), "> ==")->link());
         }
@@ -3636,7 +3635,7 @@ private:
                                 "constexpr void b<a, d>::operator()(c &&) const {\n"
                                 "  i<3>.f([] {});\n"
                                 "}\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             ASSERT(nullptr != Token::findsimplematch(tokenizer.tokens(), "> . f (")->link());
         }
@@ -3644,7 +3643,7 @@ private:
         {
             // #10491
             const char code[] = "template <template <class> class> struct a;\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token* tok1 = Token::findsimplematch(tokenizer.tokens(), "< class");
             const Token* tok2 = Token::findsimplematch(tok1, "> class");
@@ -3655,7 +3654,7 @@ private:
         {
             // #10491
             const char code[] = "template <template <class> class> struct a;\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token* tok1 = Token::findsimplematch(tokenizer.tokens(), "< template");
             const Token* tok2 = Token::findsimplematch(tok1, "> struct");
@@ -3666,7 +3665,7 @@ private:
         {
             // #10552
             const char code[] = "v.value<QPair<int, int>>()\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token* tok1 = Token::findsimplematch(tokenizer.tokens(), "< QPair");
             const Token* tok2 = Token::findsimplematch(tok1, "> (");
@@ -3677,7 +3676,7 @@ private:
         {
             // #10552
             const char code[] = "v.value<QPair<int, int>>()\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token* tok1 = Token::findsimplematch(tokenizer.tokens(), "< int");
             const Token* tok2 = Token::findsimplematch(tok1, "> > (");
@@ -3688,7 +3687,7 @@ private:
         {
             // #10615
             const char code[] = "struct A : public B<__is_constructible()>{};\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token* tok1 = Token::findsimplematch(tokenizer.tokens(), "< >");
             const Token* tok2 = Token::findsimplematch(tok1, "> { } >");
@@ -3699,7 +3698,7 @@ private:
         {
             // #10664
             const char code[] = "class C1 : public T1<D2<C2>const> {};\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token* tok1 = Token::findsimplematch(tokenizer.tokens(), "< C2");
             const Token* tok2 = Token::findsimplematch(tok1, "> const");
@@ -3714,7 +3713,7 @@ private:
                                 "void f() {\n"
                                 "    if (a<int>[0]) {}\n"
                                 "}\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token* tok1 = Token::findsimplematch(tokenizer.tokens(), "< int");
             const Token* tok2 = Token::findsimplematch(tok1, "> [");
@@ -3728,7 +3727,7 @@ private:
                                 "    int b[2] = {};\n"
                                 "    if (b[idx<1>]) {}\n"
                                 "}\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token* tok1 = Token::findsimplematch(tokenizer.tokens(), "< 1");
             const Token* tok2 = Token::findsimplematch(tok1, "> ]");
@@ -3740,7 +3739,7 @@ private:
             const char code[] = "void f() {\n"
                                 "    []<typename T>() {};\n"
                                 "}\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token* tok1 = Token::findsimplematch(tokenizer.tokens(), "< T");
             const Token* tok2 = Token::findsimplematch(tok1, "> (");
@@ -3752,7 +3751,7 @@ private:
             const char code[] = "void f() {\n"
                                 "    auto g = [] <typename A, typename B> (A a, B&& b) { return a < b; };\n"
                                 "}\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token* tok1 = Token::findsimplematch(tokenizer.tokens(), "< A");
             const Token* tok2 = Token::findsimplematch(tok1, "> (");
@@ -3766,7 +3765,7 @@ private:
                                 "        return [] <typename T> () {};\n"
                                 "    };\n"
                                 "}\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token* tok1 = Token::findsimplematch(tokenizer.tokens(), "< T");
             const Token* tok2 = Token::findsimplematch(tok1, "> (");
@@ -3783,7 +3782,7 @@ private:
                                 "    S s;\n"
                                 "    s.operator()<int, int>(1);\n"
                                 "}\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token* tok1 = Token::findsimplematch(tokenizer.tokens(), "< int");
             const Token* tok2 = Token::findsimplematch(tok1, "> (");
@@ -3799,7 +3798,7 @@ private:
                                 "        std::is_same<typename T::size_type, std::size_t>::value && std::is_same<typename T::size_type, std::size_t>::value\n"
                                 "        >();\n"
                                 "}\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token* tok1 = Token::findsimplematch(tokenizer.tokens(), "< bool");
             const Token* tok2 = Token::findsimplematch(tok1, "> (");
@@ -3811,7 +3810,7 @@ private:
             const char code[] = "double f() {\n"
                                 "    return std::is_same_v<int, double> ? 1e-7 : 1e-3;\n"
                                 "}\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token* tok1 = Token::findsimplematch(tokenizer.tokens(), "< int");
             const Token* tok2 = Token::findsimplematch(tok1, "> ?");
@@ -3824,7 +3823,7 @@ private:
                                 "void f(Fn && fn, Args&&... args) {\n"
                                 "    static_assert(std::is_invocable_v<Fn&&, Args&&...>);\n"
                                 "}\n";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token* tok1 = Token::findsimplematch(tokenizer.tokens(), "< Fn");
             const Token* tok2 = Token::findsimplematch(tok1, "> )");
@@ -3834,7 +3833,7 @@ private:
     }
 
     void simplifyString() {
-        TokenList tokenlist{settings0, Standards::Language::CPP};
+        TokenList tokenlist{settingsDefault, Standards::Language::CPP};
         TokenizerTest tokenizer(std::move(tokenlist), *this);
         ASSERT_EQUALS("\"abc\"", tokenizer.simplifyString("\"abc\""));
         ASSERT_EQUALS("\"\n\"", tokenizer.simplifyString("\"\\xa\""));
@@ -4066,7 +4065,7 @@ private:
         const char expected[] = "void func1 ( ) ; void func2 ( ) ; void func3 ( ) ; void func4 ( ) ; void func5 ( ) ; void func6 ( ) ;";
 
         // tokenize..
-        SimpleTokenizer tokenizer(settings0, *this);
+        SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT(tokenizer.tokenize(code));
 
         // Expected result..
@@ -4092,7 +4091,7 @@ private:
         const char expected[] = "extern vas_f * VAS_Fail ;";
 
         // tokenize..
-        SimpleTokenizer tokenizer(settings0, *this);
+        SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT(tokenizer.tokenize(code));
         ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
 
@@ -4105,7 +4104,7 @@ private:
         const char expected[] = "void ( * func_notret ) ( void ) ;";
 
         // tokenize..
-        SimpleTokenizer tokenizer(settings0, *this);
+        SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT(tokenizer.tokenize(code));
         ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
 
@@ -4118,7 +4117,7 @@ private:
         const char expected[] = "int & foo ( ) ;";
 
         // tokenize..
-        SimpleTokenizer tokenizer(settings0, *this);
+        SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT(tokenizer.tokenize(code));
         ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
 
@@ -4131,7 +4130,7 @@ private:
         const char expected[] = "void func1 ( ) ;";
 
         // tokenize..
-        SimpleTokenizer tokenizer(settings0, *this);
+        SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT(tokenizer.tokenize(code));
 
         // Expected result..
@@ -4151,7 +4150,7 @@ private:
         const char expected[] = "void func1 ( ) ; void func2 ( ) ; void func3 ( ) ; void func4 ( ) ; void func5 ( ) ;";
 
         // tokenize..
-        SimpleTokenizer tokenizer(settings0, *this);
+        SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT(tokenizer.tokenize(code));
 
         // Expected result..
@@ -4178,7 +4177,7 @@ private:
         const char expected[] = "class foo { public: bool operator== ( const foo & ) ; } ;";
 
         // tokenize..
-        SimpleTokenizer tokenizer(settings0, *this);
+        SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT(tokenizer.tokenize(code));
 
         // Expected result..
@@ -4201,7 +4200,7 @@ private:
                                 "void func6 ( ) ; void func7 ( ) ; void func8 ( ) ;";
 
         // tokenize..
-        SimpleTokenizer tokenizer(settings0, *this);
+        SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT(tokenizer.tokenize(code));
 
         // Expected result..
@@ -4239,7 +4238,7 @@ private:
                                 "void func6 ( ) ; void func7 ( ) ; void func8 ( ) ;";
 
         // tokenize..
-        SimpleTokenizer tokenizer(settings0, *this);
+        SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT(tokenizer.tokenize(code));
 
         // Expected result..
@@ -4270,7 +4269,7 @@ private:
         const char expected[] = "void func1 ( const char * format , ... ) ; void func2 ( ) ;";
 
         // tokenize..
-        SimpleTokenizer tokenizer(settings0, *this);
+        SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT(tokenizer.tokenize(code));
 
         // Expected result..
@@ -4287,7 +4286,7 @@ private:
         const char code[] = "[[maybe_unused]] int var {};";
         const char expected[] = "int var { } ;";
 
-        SimpleTokenizer tokenizer(settings0, *this);
+        SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT(tokenizer.tokenize(code));
 
         ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
@@ -4300,7 +4299,7 @@ private:
         const char code[] = "int var [[maybe_unused]] {};";
         const char expected[] = "int var { } ;";
 
-        SimpleTokenizer tokenizer(settings0, *this);
+        SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT(tokenizer.tokenize(code));
 
         ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
@@ -4313,7 +4312,7 @@ private:
         const char code[] = "std::string var [[maybe_unused]];";
         const char expected[] = "std :: string var ;";
 
-        SimpleTokenizer tokenizer(settings0, *this);
+        SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT(tokenizer.tokenize(code));
 
         ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
@@ -4326,7 +4325,7 @@ private:
         const char code[] = "[[maybe_unused]] auto [var1, var2] = f();";
         const char expected[] = "auto [ var1 , var2 ] = f ( ) ;";
 
-        SimpleTokenizer tokenizer(settings0, *this);
+        SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT(tokenizer.tokenize(code));
 
         ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
@@ -4340,7 +4339,7 @@ private:
     void attributeAlignasBefore() {
         const char code[] = "alignas(long) unsigned char buffer[sizeof(long)];";
         const char expected[] = "char buffer [ sizeof ( long ) ] ;";
-        SimpleTokenizer tokenizer(settings0, *this);
+        SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT(tokenizer.tokenize(code));
 
         ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
@@ -4355,7 +4354,7 @@ private:
     void attributeAlignasAfter() {
         const char code[] = "unsigned char buffer[sizeof(long)] alignas(long);";
         const char expected[] = "char buffer [ sizeof ( long ) ] ;";
-        SimpleTokenizer tokenizer(settings0, *this);
+        SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT(tokenizer.tokenize(code));
 
         ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
@@ -4753,7 +4752,7 @@ private:
         {
             // 13893
             const char code[] = "namespace test { bool foo; }";
-            SimpleTokenizer tokenizer(settings0, *this);
+            SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             ASSERT(!tokenizer.tokens()->tokAt(2)->isInitBracket());
         }
@@ -5044,7 +5043,7 @@ private:
     void bitfields16() {
         const char code[] = "struct A { unsigned int x : 1; };";
 
-        SimpleTokenizer tokenizer(settings0, *this);
+        SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT(tokenizer.tokenize(code));
         const Token *x = Token::findsimplematch(tokenizer.tokens(), "x");
         ASSERT_EQUALS(1, x->bits());
@@ -5094,7 +5093,7 @@ private:
 
     void bitfields21() {
         const char code[] = "struct S { uint32_t a : 1, b : 1; };";
-        SimpleTokenizer tokenizer(settings0, *this);
+        SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT(tokenizer.tokenize(code));
         const Token *a = Token::findsimplematch(tokenizer.tokens(), "a");
         ASSERT_EQUALS(1, a->bits());
@@ -6459,7 +6458,7 @@ private:
     template<size_t size>
     std::string testAst(const char (&data)[size], AstStyle style = AstStyle::Simple, ListSimplification ls = ListSimplification::Partial) {
         // tokenize given code..
-        TokenList tokenlist{settings0, Standards::Language::CPP};
+        TokenList tokenlist{settingsDefault, Standards::Language::CPP};
         tokenlist.appendFileIfNew("test.cpp");
         if (!tokenlist.createTokensFromString(data))
             return "ERROR";
@@ -7483,7 +7482,7 @@ private:
 #define isStartOfExecutableScope(offset, code) isStartOfExecutableScope_(offset, code, __FILE__, __LINE__)
     template<size_t size>
     bool isStartOfExecutableScope_(int offset, const char (&code)[size], const char* file, int line) {
-        SimpleTokenizer tokenizer(settings0, *this);
+        SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         return Tokenizer::startOfExecutableScope(tokenizer.tokens()->tokAt(offset)) != nullptr;
