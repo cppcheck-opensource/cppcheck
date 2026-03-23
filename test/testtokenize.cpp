@@ -46,8 +46,8 @@ public:
     TestTokenizer() : TestFixture("TestTokenizer") {}
 
 private:
-    const Settings settings0 = settingsBuilder().library("qt.cfg").build();
-    const Settings settings1 = settingsBuilder().library("std.cfg").library("qt.cfg").debugwarnings().build();
+    const Settings settings0 = settingsBuilder().build();
+    const Settings settings1 = settingsBuilder().library("std.cfg").debugwarnings().build();
     const Settings settings2 = settingsBuilder(settings1).cpp(Standards::CPP11).c(Standards::C11).build();
     const Settings settings2_win32a = settingsBuilder(settings2).platform(Platform::Type::Win32A).build();
     const Settings settings2_win32w = settingsBuilder(settings2).platform(Platform::Type::Win32W).build();
