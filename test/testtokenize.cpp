@@ -3839,7 +3839,7 @@ private:
             SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token* tok1 = Token::findsimplematch(tokenizer.tokens(), "< Fn");
-            const Token* tok2 = Token::findsimplematch(tok1, "> )");
+            const Token* tok2 = Token::findsimplematch(tok1, "> }");
             ASSERT_EQUALS(true, tok1->link() == tok2);
             ASSERT_EQUALS(true, tok2->link() == tok1);
         }
