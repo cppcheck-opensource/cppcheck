@@ -2013,6 +2013,8 @@ void CheckCondition::checkCompareValueOutOfTypeRange()
 
                 bool result{};
                 const auto kiv = valueTok->getKnownIntValue();
+                if (kiv == 0)
+                    continue; // prevent overlap with TestOther::unsignedPositive/unsignedLessThanZero
                 if (tok->str() == "==")
                     result = false;
                 else if (tok->str() == "!=")
