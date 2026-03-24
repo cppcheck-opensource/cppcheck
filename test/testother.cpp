@@ -9313,6 +9313,24 @@ private:
               "    for (unsigned p = 0; p < (sizeof(a) / sizeof((a)[0])); ++p) {}\n"
               "}");
         ASSERT_EQUALS("", errout_str());
+
+        check("void f(const unsigned char u) {\n"
+              "    if (u >  0) {}\n"
+              "    if (u <  0) {}\n"
+              "    if (u >= 0) {}\n"
+              "    if (u <= 0) {}\n"
+              "    if (0 <  u) {}\n"
+              "    if (0 >  u) {}\n"
+              "    if (0 <= u) {}\n"
+              "    if (0 >= u) {}\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:3:11]: (style) Checking if unsigned expression 'u' is less than zero. [unsignedLessThanZero]\n"
+                      "[test.cpp:4:11]: (style) Unsigned expression 'u' can't be negative so it is unnecessary to test it. [unsignedPositive]\n"
+                      "[test.cpp:5:11]: (style) Checking if unsigned expression 'u' is less than zero. [unsignedLessThanZero]\n"
+                      "[test.cpp:7:13]: (style) Checking if unsigned expression 'u' is less than zero. [unsignedLessThanZero]\n"
+                      "[test.cpp:8:13]: (style) Unsigned expression 'u' can't be negative so it is unnecessary to test it. [unsignedPositive]\n"
+                      "[test.cpp:9:13]: (style) Checking if unsigned expression 'u' is less than zero. [unsignedLessThanZero]\n",
+                      errout_str());
     }
 
     void checkSignOfPointer() {
