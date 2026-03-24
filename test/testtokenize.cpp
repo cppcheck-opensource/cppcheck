@@ -3820,8 +3820,21 @@ private:
 
         {
             const char code[] = "template <typename Fn, typename... Args>\n" // #14612
-                                "void f(Fn && fn, Args&&... args) {\n"
+                                "void f(Fn&& fn, Args&&... args) {\n"
                                 "    static_assert(std::is_invocable_v<Fn&&, Args&&...>);\n"
+                                "}\n";
+            SimpleTokenizer tokenizer(settingsDefault, *this);
+            ASSERT(tokenizer.tokenize(code));
+            const Token* tok1 = Token::findsimplematch(tokenizer.tokens(), "< Fn");
+            const Token* tok2 = Token::findsimplematch(tok1, "> )");
+            ASSERT_EQUALS(true, tok1->link() == tok2);
+            ASSERT_EQUALS(true, tok2->link() == tok1);
+        }
+
+        {
+            const char code[] = "template <typename Fn, typename... Args>\n" // #14615
+                                "void f(Fn&& fn, Args&&... args) {\n"
+                                "    constexpr bool b{ std::is_invocable_v<Fn&&, Args&&...> };\n"
                                 "}\n";
             SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
