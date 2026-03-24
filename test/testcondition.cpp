@@ -4065,7 +4065,7 @@ private:
               "    unsigned int num = max - 1;\n"
               "    if (num < 0) {}\n" // <- do not report knownConditionTrueFalse
               "}");
-        ASSERT_EQUALS("[test.cpp:3:15]: (style) Comparing expression of type 'unsigned int' against value 0. Condition is always false. [compareValueOutOfTypeRangeError]", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:15]: (style) Comparing expression of type 'unsigned int' against value 0. Condition is always false. [compareValueOutOfTypeRangeError]\n", errout_str());
 
         // #10297
         check("void foo(size_t len, int start) {\n"
