@@ -17,19 +17,27 @@
 #include "options.h"
 
 options::options(int argc, const char* const argv[])
-    : mArgs(argv + 1, argv + argc)
-    ,mQuiet(mArgs.count("-q") != 0)
-    ,mHelp(mArgs.count("-h") != 0 || mArgs.count("--help"))
-    ,mSummary(mArgs.count("-n") == 0)
-    ,mDryRun(mArgs.count("-d") != 0)
-    ,mExcludeTests(mArgs.count("-x") != 0)
-    ,mExe(argv[0])
+    : mExe(argv[0])
 {
-    for (const auto& arg : mArgs) {
+    const std::set<std::string> args(argv + 1, argv + argc);
+    for (const auto& arg : args) {
         if (arg.empty())
             continue; // empty argument
-        if (arg[0] == '-')
+        if (arg[0] == '-') {
+            if (arg == "-q")
+                mQuiet = true;
+            else if (arg == "-h" || arg == "--help")
+                mHelp = true;
+            else if (arg == "-n")
+                mSummary = false;
+            else if (arg == "-d")
+                mDryRun = true;
+            else if (arg == "-x")
+                mExcludeTests = true;
+            else
+                mErrors.emplace_back("unknown option '" + arg + "'");
             continue; // command-line switch
+        }
         const auto pos = arg.find("::");
         if (pos == std::string::npos) {
             mWhichTests[arg] = {}; // run whole fixture
@@ -77,4 +85,9 @@ const std::string& options::exe() const
 bool options::exclude_tests() const
 {
     return mExcludeTests;
+}
+
+const std::vector<std::string>& options::errors() const
+{
+    return mErrors;
 }

@@ -20,6 +20,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <vector>
 
 /**
  * @brief Class to parse command-line parameters for ./testrunner .
@@ -43,6 +44,9 @@ public:
     /** Which tests should be run. */
     const std::map<std::string, std::set<std::string>>& which_tests() const;
 
+    /** Errors encountered during option processing. */
+    const std::vector<std::string>& errors() const;
+
     const std::string& exe() const;
 
     options() = delete;
@@ -50,13 +54,13 @@ public:
     options& operator =(const options&) = delete;
 
 private:
-    std::set<std::string> mArgs;
     std::map<std::string, std::set<std::string>> mWhichTests;
-    const bool mQuiet;
-    const bool mHelp;
-    const bool mSummary;
-    const bool mDryRun;
-    const bool mExcludeTests;
+    std::vector<std::string> mErrors;
+    bool mQuiet{};
+    bool mHelp{};
+    bool mSummary{true};
+    bool mDryRun{};
+    bool mExcludeTests{};
     std::string mExe;
 };
 
