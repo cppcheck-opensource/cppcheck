@@ -4065,7 +4065,7 @@ private:
               "    unsigned int num = max - 1;\n"
               "    if (num < 0) {}\n" // <- do not report knownConditionTrueFalse
               "}");
-        ASSERT_EQUALS("", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:15]: (style) Comparing expression of type 'unsigned int' against value 0. Condition is always false. [compareValueOutOfTypeRangeError]", errout_str());
 
         // #10297
         check("void foo(size_t len, int start) {\n"
@@ -6354,6 +6354,15 @@ private:
               "    if (b != 2) {}\n"
               "}\n", settingsUnix64);
         ASSERT_EQUALS("[test.cpp:2:14]: (style) Comparing expression of type 'bool' against value 2. Condition is always true. [compareValueOutOfTypeRangeError]\n",
+                      errout_str());
+
+        check("void f(const std::uint32_t& u) {\n" // #9078
+              "    if (u >= UINT32_MAX) {}\n"
+              "    if (u <= UINT32_MAX) {}\n"
+              "    if (u > UINT32_MAX) {}\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:14]: (style) Comparing expression of type 'const unsigned int &' against value 4294967295. Condition is always true. [compareValueOutOfTypeRangeError]\n"
+                      "[test.cpp:4:13]: (style) Comparing expression of type 'const unsigned int &' against value 4294967295. Condition is always false. [compareValueOutOfTypeRangeError]\n",
                       errout_str());
     }
 
