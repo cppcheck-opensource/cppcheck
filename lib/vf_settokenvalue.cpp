@@ -72,7 +72,7 @@ namespace ValueFlow
             return value;
         if (!parent->isBinaryOp())
             return value;
-        if (!parent->isConstOp())
+        if (!parent->isConstOp() && !parent->isAssignmentOp())
             return value;
         if (!astIsIntegral(parent->astOperand1(), false))
             return value;
@@ -88,7 +88,7 @@ namespace ValueFlow
         ValueType::Sign sign = ValueType::Sign::UNSIGNED;
         if (n1 < n2)
             sign = vt2->sign;
-        else if (n1 > n2)
+        else if (n1 >= n2)
             sign = vt1->sign;
         Value v = castValue(value, sign, std::max(n1, n2) * 8);
         v.wideintvalue = value.intvalue;
