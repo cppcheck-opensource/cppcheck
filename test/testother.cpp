@@ -9327,9 +9327,9 @@ private:
         ASSERT_EQUALS("[test.cpp:3:11]: (style) Checking if unsigned expression 'u' is less than zero. [unsignedLessThanZero]\n"
                       "[test.cpp:4:11]: (style) Unsigned expression 'u' can't be negative so it is unnecessary to test it. [unsignedPositive]\n"
                       "[test.cpp:5:11]: (style) Checking if unsigned expression 'u' is less than zero. [unsignedLessThanZero]\n"
-                      "[test.cpp:7:13]: (style) Checking if unsigned expression 'u' is less than zero. [unsignedLessThanZero]\n"
-                      "[test.cpp:8:13]: (style) Unsigned expression 'u' can't be negative so it is unnecessary to test it. [unsignedPositive]\n"
-                      "[test.cpp:9:13]: (style) Checking if unsigned expression 'u' is less than zero. [unsignedLessThanZero]\n",
+                      "[test.cpp:7:11]: (style) Checking if unsigned expression 'u' is less than zero. [unsignedLessThanZero]\n"
+                      "[test.cpp:8:11]: (style) Unsigned expression 'u' can't be negative so it is unnecessary to test it. [unsignedPositive]\n"
+                      "[test.cpp:9:11]: (style) Checking if unsigned expression 'u' is less than zero. [unsignedLessThanZero]\n",
                       errout_str());
     }
 
