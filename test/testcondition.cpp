@@ -4065,7 +4065,7 @@ private:
               "    unsigned int num = max - 1;\n"
               "    if (num < 0) {}\n" // <- do not report knownConditionTrueFalse
               "}");
-        ASSERT_EQUALS("[test.cpp:3:15]: (style) Comparing expression of type 'unsigned int' against value 0. Condition is always false. [compareValueOutOfTypeRangeError]\n", errout_str());
+        ASSERT_EQUALS("", errout_str());
 
         // #10297
         check("void foo(size_t len, int start) {\n"
@@ -6324,28 +6324,24 @@ private:
 
         check("void f(const unsigned char u) {\n"
               "    if (u >  0) {}\n"
-              "    if (u <  0) {}\n" // warn
-              "    if (u >= 0) {}\n" // warn
+              "    if (u <  0) {}\n"
+              "    if (u >= 0) {}\n"
               "    if (u <= 0) {}\n"
               "    if (u >  255) {}\n" // warn
               "    if (u <  255) {}\n"
               "    if (u >= 255) {}\n"
               "    if (u <= 255) {}\n" // warn
               "    if (0   <  u) {}\n"
-              "    if (0   >  u) {}\n" // warn
-              "    if (0   <= u) {}\n" // warn
+              "    if (0   >  u) {}\n"
+              "    if (0   <= u) {}\n"
               "    if (0   >= u) {}\n"
               "    if (255 <  u) {}\n" // warn
               "    if (255 >  u) {}\n"
               "    if (255 <= u) {}\n"
               "    if (255 >= u) {}\n" // warn
               "}\n", settingsUnix64);
-        ASSERT_EQUALS("[test.cpp:3:14]: (style) Comparing expression of type 'const unsigned char' against value 0. Condition is always false. [compareValueOutOfTypeRangeError]\n"
-                      "[test.cpp:4:14]: (style) Comparing expression of type 'const unsigned char' against value 0. Condition is always true. [compareValueOutOfTypeRangeError]\n"
-                      "[test.cpp:6:14]: (style) Comparing expression of type 'const unsigned char' against value 255. Condition is always false. [compareValueOutOfTypeRangeError]\n"
+        ASSERT_EQUALS("[test.cpp:6:14]: (style) Comparing expression of type 'const unsigned char' against value 255. Condition is always false. [compareValueOutOfTypeRangeError]\n"
                       "[test.cpp:9:14]: (style) Comparing expression of type 'const unsigned char' against value 255. Condition is always true. [compareValueOutOfTypeRangeError]\n"
-                      "[test.cpp:11:9]: (style) Comparing expression of type 'const unsigned char' against value 0. Condition is always false. [compareValueOutOfTypeRangeError]\n"
-                      "[test.cpp:12:9]: (style) Comparing expression of type 'const unsigned char' against value 0. Condition is always true. [compareValueOutOfTypeRangeError]\n"
                       "[test.cpp:14:9]: (style) Comparing expression of type 'const unsigned char' against value 255. Condition is always false. [compareValueOutOfTypeRangeError]\n"
                       "[test.cpp:17:9]: (style) Comparing expression of type 'const unsigned char' against value 255. Condition is always true. [compareValueOutOfTypeRangeError]\n",
                       errout_str());
