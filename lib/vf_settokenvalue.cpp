@@ -88,7 +88,7 @@ namespace ValueFlow
         ValueType::Sign sign = ValueType::Sign::UNSIGNED;
         if (n1 < n2)
             sign = vt2->sign;
-        else if (n1 >= n2)
+        else // (n1 >= n2)
             sign = vt1->sign;
         Value v = castValue(value, sign, std::max(n1, n2) * 8);
         v.wideintvalue = value.intvalue;
