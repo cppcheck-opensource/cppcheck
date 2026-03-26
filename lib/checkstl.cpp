@@ -2003,20 +2003,17 @@ static bool isc_strConstructor(const Token* tok)
 {
     if (!tok->valueType() || !Token::Match(tok, "%var% (|{"))
         return false;
-
-    const Token* callTok = tok->tokAt(1)->astOperand2();
-    while (Token::simpleMatch(callTok, "+") && callTok->isBinaryOp()) {
-        if (callTok->astOperand1()->str() == "+") {
-            callTok = callTok->astOperand1();
-            continue;
+    bool result = false;
+    visitAstNodes(tok->tokAt(1)->astOperand2(), [&](const Token* tok2) {
+        if (Token::simpleMatch(tok2, "+"))
+            return ChildrenToVisit::op1_and_op2;
+        if (isc_strCall(tok2, tok->valueType()->container)) {
+            result = true;
+            return ChildrenToVisit::done;
         }
-        if (callTok->astOperand1()->str() == "(")
-            callTok = callTok->astOperand1();
-        else if (callTok->astOperand2()->str() == "(")
-            callTok = callTok->astOperand2();
-        break;
-    }
-    return isc_strCall(callTok, tok->valueType()->container);
+        return ChildrenToVisit::none;
+    });
+    return result;
 }
 
 namespace {
