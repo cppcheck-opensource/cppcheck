@@ -674,7 +674,6 @@ void CheckIO::checkFormatString(const Token * const tok,
                     ++i;
                 }
                 if (scanf_s && !skip) {
-                    numSecure++;
                     if (argListTok) {
                         argListTok = argListTok->nextArgument();
                     }
@@ -722,7 +721,7 @@ void CheckIO::checkFormatString(const Token * const tok,
                                     if (!(argInfo.isArrayOrPointer() && argInfo.element && !argInfo.typeToken->isStandardType()))
                                         invalidScanfArgTypeError_s(tok, numFormat, specifier, &argInfo);
                                 }
-                                if (scanf_s && argInfo.typeToken) {
+                                if (scanf_s) {
                                     numSecure++;
                                     if (argListTok) {
                                         argListTok = argListTok->nextArgument();
