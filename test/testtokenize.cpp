@@ -5449,6 +5449,20 @@ private:
             ASSERT_EQUALS(exp, tokenizeAndStringify(code, dinit(TokenizeOptions, $.cpp = false)));
         }
 
+        { // not used as parameter name in C
+            const char code[] = "static void foo(int not, int test) {"
+                                "    test = not;"
+                                "}";
+            const char exp[] = "static void foo ( int not , int test ) { test = not ; }";
+            ASSERT_EQUALS(exp, tokenizeAndStringify(code, dinit(TokenizeOptions, $.cpp = false)));
+        }
+
+        { // binary alt token as last parameter in C
+            const char code[] = "void f(int or) { if (or) {} }";
+            const char exp[] = "void f ( int or ) { if ( or ) { } }";
+            ASSERT_EQUALS(exp, tokenizeAndStringify(code, dinit(TokenizeOptions, $.cpp = false)));
+        }
+
         //ASSERT_EQUALS("", filter_valueflow(errout_str()));
         ignore_errout();
     }
