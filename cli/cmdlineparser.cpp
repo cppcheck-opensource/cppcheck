@@ -1584,7 +1584,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
 
     // Default template format..
     if (mSettings.templateFormat.empty()) {
-        mSettings.templateFormat = "{bold}{file}:{line}:{column}: {red}{inconclusive:{magenta}}{severity}:{inconclusive: inconclusive:}{default} {message} [{id}]{reset}\\n{code}";
+        mSettings.templateFormat = "{bold}{file}:{line}:{column}: {inconclusive:}{severity}:{inconclusive: inconclusive:}{default} {message} [{id}]{reset}\\n{code}";
         if (mSettings.templateLocation.empty())
             mSettings.templateLocation = "{bold}{file}:{line}:{column}: {dim}note:{reset} {info}\\n{code}";
     }
