@@ -59,10 +59,8 @@ options::options(int argc, const char* const argv[])
 options::~options()
 {
     // TODO: allow more than 5 results to be shown
-    // TODO: provide higher resolution in output
-    // TODO: disable the metrics
     if (mTimerResults)
-        mTimerResults->showResults(ShowTime::TOP5_FILE);
+        mTimerResults->showResults(ShowTime::TOP5_FILE, false);
 }
 
 bool options::quiet() const

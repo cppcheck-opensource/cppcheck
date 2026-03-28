@@ -57,24 +57,26 @@ void TimerResults::showResults(ShowTime mode, bool metrics) const
 
     size_t ordinal = 1; // maybe it would be nice to have an ordinal in output later!
     for (auto iter=data.cbegin(); iter!=data.cend(); ++iter) {
-        const double sec = iter->second.getSeconds().count();
-        const double secAverage = sec / static_cast<double>(iter->second.mNumberOfResults);
         if ((mode != ShowTime::TOP5_FILE && mode != ShowTime::TOP5_SUMMARY) || (ordinal<=5)) {
+            const double sec = iter->second.getSeconds().count();
             std::cout << iter->first << ": " << sec << "s";
-            if (metrics)
-                std::cout << " (avg. " << secAverage << "s - " << iter->second.mNumberOfResults  << " result(s))";
+            if (metrics) {
+                const double secAverage = sec / static_cast<double>(iter->second.mResults.size());
+                const double secMin = asSeconds(*std::min_element(iter->second.mResults.cbegin(), iter->second.mResults.cend())).count();
+                const double secMax = asSeconds(*std::max_element(iter->second.mResults.cbegin(), iter->second.mResults.cend())).count();
+                std::cout << " (avg. " << secAverage << "s / min " << secMin << "s / max " << secMax << "s - " << iter->second.mResults.size() << " result(s))";
+            }
             std::cout << std::endl;
         }
         ++ordinal;
     }
 }
 
-void TimerResults::addResults(const std::string& str, std::chrono::milliseconds duration)
+void TimerResults::addResults(const std::string& name, std::chrono::milliseconds duration)
 {
     std::lock_guard<std::mutex> l(mResultsSync);
 
-    mResults[str].mDuration += duration;
-    mResults[str].mNumberOfResults++;
+    mResults[name].mResults.push_back(duration);
 }
 
 void TimerResults::reset()

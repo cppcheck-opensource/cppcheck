@@ -33,7 +33,7 @@ private:
 
     void result() const {
         TimerResultsData t1;
-        t1.mDuration = std::chrono::milliseconds{1234};
+        t1.mResults.emplace_back(1234);
         ASSERT(t1.getSeconds().count() > 1.233 && t1.getSeconds().count() < 1.235);
 
         // TODO : more tests
