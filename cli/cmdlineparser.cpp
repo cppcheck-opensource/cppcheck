@@ -756,6 +756,15 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
             }
         }
 
+        else if (std::strncmp(argv[i], "--exitcode-suppress=", 20) == 0) {
+            const std::string suppression = argv[i]+20;
+            const std::string errmsg(mSuppressions.nofail.addSuppressionLine(suppression));
+            if (!errmsg.empty()) {
+                mLogger.printError(errmsg);
+                return Result::Fail;
+            }
+        }
+
         // Filter errors
         else if (std::strncmp(argv[i], "--exitcode-suppressions=", 24) == 0) {
             // exitcode-suppressions=filename.txt
@@ -1811,6 +1820,9 @@ void CmdLineParser::printHelp() const
         "                         provided. Note that your operating system can modify\n"
         "                         this value, e.g. '256' can become '0'.\n"
         "    --errorlist          Print a list of all the error messages in XML format.\n"
+        "    --exitcode-suppress=<spec>\n"
+        "                         Used to specify an error ID which should not result in\n"
+        "                         a non-zero exitcode."
         "    --exitcode-suppressions=<file>\n"
         "                         Used when certain messages should be displayed but\n"
         "                         should not cause a non-zero exitcode.\n"
