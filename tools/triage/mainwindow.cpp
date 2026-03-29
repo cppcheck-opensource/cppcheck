@@ -181,12 +181,12 @@ void MainWindow::refreshResults()
     filter(ui->version->currentText());
 }
 
-void MainWindow::filter(const QString& filter)
+void MainWindow::filter(const QString& filterStr)
 {
     QStringList allErrors;
 
     for (const QString &errorItem : mAllErrors) {
-        if (filter.isEmpty()) {
+        if (filterStr.isEmpty()) {
             allErrors << errorItem;
             continue;
         }
@@ -195,7 +195,7 @@ void MainWindow::filter(const QString& filter)
         if (lines.size() < 2)
             continue;
 
-        if (lines[1].startsWith(filter))
+        if (lines[1].startsWith(filterStr))
             allErrors << errorItem;
     }
 

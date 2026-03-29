@@ -174,8 +174,8 @@ private:
 
         std::int8_t mMutableExpr{-1};
 
-        void setCppcheckAttribute(CppcheckAttributesType type, MathLib::bigint value);
-        bool getCppcheckAttribute(CppcheckAttributesType type, MathLib::bigint &value) const;
+        void setCppcheckAttribute(CppcheckAttributesType attrType, MathLib::bigint value);
+        bool getCppcheckAttribute(CppcheckAttributesType attrType, MathLib::bigint &value) const;
 
         Impl() = default;
         ~Impl();
@@ -872,8 +872,8 @@ public:
     }
     static const Token *findsimplematch(const Token * startTok, const char pattern[], size_t pattern_len, const Token * end);
 
-    static const Token *findmatch(const Token * startTok, const char pattern[], nonneg int varId = 0);
-    static const Token *findmatch(const Token * startTok, const char pattern[], const Token * end, nonneg int varId = 0);
+    static const Token *findmatch(const Token * startTok, const char pattern[], nonneg int varid = 0);
+    static const Token *findmatch(const Token * startTok, const char pattern[], const Token * end, nonneg int varid = 0);
 
     template<size_t count>
     static Token *findsimplematch(Token * const startTok, const char (&pattern)[count]) {
@@ -886,8 +886,8 @@ public:
     }
     static Token *findsimplematch(Token * startTok, const char pattern[], size_t pattern_len, const Token * end);
 
-    static Token *findmatch(Token * startTok, const char pattern[], nonneg int varId = 0);
-    static Token *findmatch(Token * startTok, const char pattern[], const Token * end, nonneg int varId = 0);
+    static Token *findmatch(Token * startTok, const char pattern[], nonneg int varid = 0);
+    static Token *findmatch(Token * startTok, const char pattern[], const Token * end, nonneg int varid = 0);
 
 private:
     template<class T, REQUIRES("T must be a Token class", std::is_convertible<T*, const Token*> )>
@@ -1267,7 +1267,7 @@ public:
 
     static std::string typeStr(const Token* tok);
 
-    static bool isStandardType(const std::string& str);
+    static bool isStandardType(const std::string& s);
 
     /**
      * @return a pointer to the Enumerator associated with this token.
@@ -1439,17 +1439,17 @@ private:
 
     /**
      * Works almost like strcmp() except returns only true or false and
-     * if str has empty space &apos; &apos; character, that character is handled
+     * if s has empty space &apos; &apos; character, that character is handled
      * as if it were &apos;\\0&apos;
      */
-    static bool firstWordEquals(const char *str, const char *word);
+    static bool firstWordEquals(const char *s, const char *word);
 
     /**
      * Works almost like strchr() except
-     * if str has empty space &apos; &apos; character, that character is handled
+     * if s has empty space &apos; &apos; character, that character is handled
      * as if it were &apos;\\0&apos;
      */
-    static const char *chrInFirstWord(const char *str, char c);
+    static const char *chrInFirstWord(const char *s, char c);
 
     RET_NONNULL Token* insertToken(const std::string& tokenStr, bool prepend);
     RET_NONNULL Token* insertToken(const std::string& tokenStr, const std::string& originalNameStr, bool prepend);

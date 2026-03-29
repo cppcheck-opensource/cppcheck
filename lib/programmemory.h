@@ -116,7 +116,7 @@ struct CPPCHECKLIB ProgramMemory {
 
     bool getContainerSizeValue(nonneg int exprid, MathLib::bigint& result) const;
     bool getContainerEmptyValue(nonneg int exprid, MathLib::bigint& result) const;
-    void setContainerSizeValue(const Token* expr, MathLib::bigint value, bool isEqual = true);
+    void setContainerSizeValue(const Token* expr, MathLib::bigint value, bool equal = true);
 
     void setUnknown(const Token* expr);
 

@@ -206,10 +206,10 @@ public:
     /**
      * is token pointing at function head?
      * @param tok         A '(' or ')' token in a possible function head
-     * @param endsWith    string after function head
+     * @param end         string after function head
      * @return token matching with endsWith if syntax seems to be a function head else nullptr
      */
-    static const Token * isFunctionHead(const Token *tok, const std::string &endsWith);
+    static const Token * isFunctionHead(const Token *tok, const std::string &end);
 
     const Settings& getSettings() const {
         return mSettings;

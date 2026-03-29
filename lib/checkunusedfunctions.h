@@ -58,7 +58,7 @@ public:
     // Return true if an error is reported.
     bool check(const Settings& settings, ErrorLogger& errorLogger) const;
 
-    void updateFunctionData(const CheckUnusedFunctions& check);
+    void updateFunctionData(const CheckUnusedFunctions& checkUnusedFunctions);
 
 private:
     static void unusedFunctionError(ErrorLogger& errorLogger,

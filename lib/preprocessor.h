@@ -118,9 +118,9 @@ public:
 
     void setPlatformInfo();
 
-    simplecpp::TokenList preprocess(const std::string &cfg, std::vector<std::string> &files, simplecpp::OutputList& outputList);
+    simplecpp::TokenList preprocess(const std::string &cfgStr, std::vector<std::string> &files, simplecpp::OutputList& outputList);
 
-    std::string getcode(const std::string &cfg, std::vector<std::string> &files, bool writeLocations);
+    std::string getcode(const std::string &cfgStr, std::vector<std::string> &files, bool writeLocations);
 
     /**
      * Calculate HASH. Using toolinfo, tokens1, filedata.

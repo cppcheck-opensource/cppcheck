@@ -177,7 +177,7 @@ namespace {
         }
 
         std::string compile();
-        std::string match(const std::string& str, const MatchFn& match) const override;
+        std::string match(const std::string& str, const MatchFn& matchFn) const override;
 
     private:
         std::string mPattern;
@@ -219,7 +219,7 @@ namespace {
         return "";
     }
 
-    std::string PcreRegex::match(const std::string& str, const MatchFn& match) const
+    std::string PcreRegex::match(const std::string& str, const MatchFn& matchFn) const
     {
         if (!mRe)
             return "regular expression has not been compiled yet";
@@ -236,7 +236,7 @@ namespace {
             const auto pos1 = static_cast<unsigned int>(ovector[0]);
             const auto pos2 = static_cast<unsigned int>(ovector[1]);
 
-            match(pos1, pos2);
+            matchFn(pos1, pos2);
 
             // jump to the end of the match for the next pcre_exec
             pos = static_cast<int>(pos2);

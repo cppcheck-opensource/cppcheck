@@ -91,9 +91,9 @@ public:
         return mFsFileId;
     }
 
-    void setFsFileId(std::size_t fsFileId)
+    void setFsFileId(std::size_t id)
     {
-        mFsFileId = fsFileId;
+        mFsFileId = id;
     }
 private:
     std::string mPath;

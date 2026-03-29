@@ -211,9 +211,9 @@ static const std::unordered_set<std::string> stdTypes = { "bool"
                                                           , "unsigned"
 };
 
-bool Token::isStandardType(const std::string& str)
+bool Token::isStandardType(const std::string& s)
 {
-    return stdTypes.find(str) != stdTypes.end();
+    return stdTypes.find(s) != stdTypes.end();
 }
 
 void Token::update_property_isStandardType()
@@ -637,31 +637,31 @@ bool Token::simpleMatch(const Token *tok, const char pattern[], size_t pattern_l
     return true;
 }
 
-bool Token::firstWordEquals(const char *str, const char *word)
+bool Token::firstWordEquals(const char *s, const char *word)
 {
     for (;;) {
-        if (*str != *word)
-            return (*str == ' ' && *word == 0);
-        if (*str == 0)
+        if (*s != *word)
+            return (*s == ' ' && *word == 0);
+        if (*s == 0)
             break;
 
-        ++str;
+        ++s;
         ++word;
     }
 
     return true;
 }
 
-const char *Token::chrInFirstWord(const char *str, char c)
+const char *Token::chrInFirstWord(const char *s, char c)
 {
     for (;;) {
-        if (*str == ' ' || *str == 0)
+        if (*s == ' ' || *s == 0)
             return nullptr;
 
-        if (*str == c)
-            return str;
+        if (*s == c)
+            return s;
 
-        ++str;
+        ++s;
     }
 }
 
@@ -1014,41 +1014,41 @@ Token *Token::findsimplematch(Token * const startTok, const char pattern[], size
 }
 
 template<class T, REQUIRES("T must be a Token class", std::is_convertible<T*, const Token*> )>
-static T *findmatchImpl(T * const startTok, const char pattern[], const nonneg int varId)
+static T *findmatchImpl(T * const startTok, const char pattern[], const nonneg int varid)
 {
     for (T* tok = startTok; tok; tok = tok->next()) {
-        if (Token::Match(tok, pattern, varId))
+        if (Token::Match(tok, pattern, varid))
             return tok;
     }
     return nullptr;
 }
 
-const Token *Token::findmatch(const Token * const startTok, const char pattern[], const nonneg int varId)
+const Token *Token::findmatch(const Token * const startTok, const char pattern[], const nonneg int varid)
 {
-    return findmatchImpl(startTok, pattern, varId);
+    return findmatchImpl(startTok, pattern, varid);
 }
 
-Token *Token::findmatch(Token * const startTok, const char pattern[], const nonneg int varId) {
-    return findmatchImpl(startTok, pattern, varId);
+Token *Token::findmatch(Token * const startTok, const char pattern[], const nonneg int varid) {
+    return findmatchImpl(startTok, pattern, varid);
 }
 
 template<class T, REQUIRES("T must be a Token class", std::is_convertible<T*, const Token*> )>
-static T *findmatchImpl(T * const startTok, const char pattern[], const Token * const end, const nonneg int varId)
+static T *findmatchImpl(T * const startTok, const char pattern[], const Token * const end, const nonneg int varid)
 {
     for (T* tok = startTok; tok && tok != end; tok = tok->next()) {
-        if (Token::Match(tok, pattern, varId))
+        if (Token::Match(tok, pattern, varid))
             return tok;
     }
     return nullptr;
 }
 
-const Token *Token::findmatch(const Token * const startTok, const char pattern[], const Token * const end, const nonneg int varId)
+const Token *Token::findmatch(const Token * const startTok, const char pattern[], const Token * const end, const nonneg int varid)
 {
-    return findmatchImpl(startTok, pattern, end, varId);
+    return findmatchImpl(startTok, pattern, end, varid);
 }
 
-Token *Token::findmatch(Token * const startTok, const char pattern[], const Token * const end, const nonneg int varId) {
-    return findmatchImpl(startTok, pattern, end, varId);
+Token *Token::findmatch(Token * const startTok, const char pattern[], const Token * const end, const nonneg int varid) {
+    return findmatchImpl(startTok, pattern, end, varid);
 }
 
 void Token::function(const Function *f)
@@ -2661,26 +2661,26 @@ Token::Impl::~Impl()
     }
 }
 
-void Token::Impl::setCppcheckAttribute(CppcheckAttributesType type, MathLib::bigint value)
+void Token::Impl::setCppcheckAttribute(CppcheckAttributesType attrType, MathLib::bigint value)
 {
     CppcheckAttributes *attr = mCppcheckAttributes;
-    while (attr && attr->type != type)
+    while (attr && attr->type != attrType)
         attr = attr->next;
     if (attr)
         attr->value = value;
     else {
         attr = new CppcheckAttributes;
-        attr->type = type;
+        attr->type = attrType;
         attr->value = value;
         attr->next = mCppcheckAttributes;
         mCppcheckAttributes = attr;
     }
 }
 
-bool Token::Impl::getCppcheckAttribute(CppcheckAttributesType type, MathLib::bigint &value) const
+bool Token::Impl::getCppcheckAttribute(CppcheckAttributesType attrType, MathLib::bigint &value) const
 {
     const CppcheckAttributes *attr = mCppcheckAttributes;
-    while (attr && attr->type != type)
+    while (attr && attr->type != attrType)
         attr = attr->next;
     if (attr)
         value = attr->value;
