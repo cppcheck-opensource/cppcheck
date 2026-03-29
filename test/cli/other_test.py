@@ -4402,3 +4402,31 @@ void f(T* p)
     file = function_call_paths[0].attrib['file']
     assert file
     assert not '\\' in file  # the path was incorrectly converted to native
+
+
+# TODO: Remove duplication/builddir when 7079 is merged
+def test_inline_block_suppr_builddir_twice(tmp_path):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, 'wt') as f:
+        f.write("""
+// cppcheck-suppress-begin [zerodiv]
+x = 10 / 0;
+// cppcheck-suppress-end [zerodiv]
+""")
+
+    build_dir = tmp_path / 'b'
+    os.mkdir(build_dir)
+
+    args = [
+        '-q',
+        '--cppcheck-build-dir={}'.format(build_dir),
+        '--enable=all',
+        '--inline-suppr',
+        str(test_file)
+    ]
+
+    for _ in range(2):
+        exitcode, stdout, stderr = cppcheck(args)
+        assert exitcode == 0
+        assert stdout == ''
+        assert stderr == ''
