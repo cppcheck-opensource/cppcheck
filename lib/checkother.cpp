@@ -4174,9 +4174,13 @@ void CheckOther::checkShadowVariables()
                 (functionScope->function->isStatic() || functionScope->function->isFriend()) &&
                 shadowed->variable() && !shadowed->variable()->isLocal())
                 return;
-            if (var.scope() && var.scope()->function && var.scope()->function->isConstructor()
-                && shadowed->variable() && shadowed->variable()->isMember())
-                return;
+            if (var.scope() && var.scope()->function && var.scope()->function->isConstructor()) {
+                if (shadowed->variable() && shadowed->variable()->isMember())
+                    return;
+                if (shadowed->function() && shadowed->function()->nestedIn &&
+                    shadowed->function()->nestedIn->isClassOrStruct())
+                    return;
+            }
             shadowError(var.nameToken(), var.isArgument() ? "argument" : "local variable",
                         shadowed, (shadowed->varId() != 0) ?
                         (shadowed->variable()->isMember() ? "member" : "variable") : "function");
