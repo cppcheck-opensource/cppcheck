@@ -13033,6 +13033,10 @@ private:
         check("struct S { int v; explicit S(int v); };\n"
               "S::S(int v) : v(v) {}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct S { int v(); explicit S(int v); };\n"
+              "S::S(int v) : v(v) {}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void knownArgument() {
