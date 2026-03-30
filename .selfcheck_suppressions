@@ -78,3 +78,5 @@ knownConditionTrueFalse:externals/tinyxml2/tinyxml2.cpp
 useStlAlgorithm:externals/simplecpp/simplecpp.cpp
 funcArgNamesDifferentUnnamed:externals/simplecpp/simplecpp.h
 missingMemberCopy:externals/simplecpp/simplecpp.h
+shadowFunction:externals/simplecpp/simplecpp.cpp
+shadowFunction:externals/simplecpp/simplecpp.h
