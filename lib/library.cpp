@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,10 +46,10 @@ struct Library::LibraryData
 {
     struct Platform {
         const PlatformType *platform_type(const std::string &name) const {
-            const auto it = utils::as_const(mPlatformTypes).find(name);
+            const auto it = mPlatformTypes.find(name);
             return (it != mPlatformTypes.end()) ? &(it->second) : nullptr;
         }
-        std::map<std::string, PlatformType> mPlatformTypes;
+        std::unordered_map<std::string, PlatformType> mPlatformTypes;
     };
 
     class ExportedFunctions {
@@ -123,9 +123,9 @@ struct Library::LibraryData
     std::map<std::string, AllocFunc> mDealloc; // deallocation functions
     std::map<std::string, AllocFunc> mRealloc; // reallocation functions
     std::unordered_map<std::string, FalseTrueMaybe> mNoReturn; // is function noreturn?
-    std::map<std::string, std::string> mReturnValue;
-    std::map<std::string, std::string> mReturnValueType;
-    std::map<std::string, int> mReturnValueContainer;
+    std::unordered_map<std::string, std::string> mReturnValue;
+    std::unordered_map<std::string, std::string> mReturnValueType;
+    std::unordered_map<std::string, int> mReturnValueContainer;
     std::map<std::string, std::vector<MathLib::bigint>> mUnknownReturnValues;
     std::map<std::string, bool> mReportErrors;
     std::map<std::string, bool> mProcessAfterCode;
@@ -137,7 +137,7 @@ struct Library::LibraryData
     std::map<std::string, int> mReflection; // invocation of reflection
     std::unordered_map<std::string, struct PodType> mPodTypes; // pod types
     std::map<std::string, PlatformType> mPlatformTypes; // platform independent typedefs
-    std::map<std::string, Platform> mPlatforms; // platform dependent typedefs
+    std::unordered_map<std::string, Platform> mPlatforms; // platform dependent typedefs
     std::map<std::pair<std::string,std::string>, TypeCheck> mTypeChecks;
     std::unordered_map<std::string, NonOverlappingData> mNonOverlappingData;
     std::unordered_set<std::string> mEntrypoints;
@@ -1323,10 +1323,10 @@ const Library::ArgumentChecks * Library::getarg(const Token *ftok, int argnr) co
     const Function* func = nullptr;
     if (isNotLibraryFunction(ftok, &func))
         return nullptr;
-    const auto it2 = utils::as_const(func->argumentChecks).find(argnr);
+    const auto it2 = func->argumentChecks.find(argnr);
     if (it2 != func->argumentChecks.cend())
         return &it2->second;
-    const auto it3 = utils::as_const(func->argumentChecks).find(-1);
+    const auto it3 = func->argumentChecks.find(-1);
     if (it3 != func->argumentChecks.cend())
         return &it3->second;
     return nullptr;

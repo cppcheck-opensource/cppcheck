@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -504,7 +504,7 @@ static std::vector<const Token*> evaluateType(const Token* start, const Token* e
                     return {};
                 result.insert(result.end(), inner.begin(), inner.end());
             } else {
-                // We cant evaluate the decltype so bail
+                // We can't evaluate the decltype so bail
                 return {};
             }
             tok = tok->linkAt(1);
@@ -903,10 +903,10 @@ static void valueFlowSameExpressions(TokenList& tokenlist, const Settings& setti
 
         long long val;
 
-        if (Token::Match(tok, "==|>=|<=|/")) {
+        if (Token::Match(tok, "==|>=|<=|/|/=")) {
             val = 1;
         }
-        else if (Token::Match(tok, "!=|>|<|%|-")) {
+        else if (Token::Match(tok, "!=|>|<|%|%=|-|-=|^|^=")) {
             val = 0;
         }
         else
@@ -1208,6 +1208,12 @@ static void valueFlowEnumValue(SymbolDatabase & symboldatabase, const Settings &
             }
         }
     }
+}
+
+// trampoline to generate unique timer results entry
+static void valueFlowEnumValueEarly(SymbolDatabase & symboldatabase, const Settings & settings)
+{
+    valueFlowEnumValue(symboldatabase, settings);
 }
 
 static void valueFlowGlobalConstVar(TokenList& tokenList, const Settings& settings)
@@ -4101,7 +4107,7 @@ static bool intersects(const C1& c1, const C2& c2)
     return false;
 }
 
-static void valueFlowAfterAssign(TokenList &tokenlist,
+static void valueFlowAfterAssign(const TokenList &tokenlist,
                                  const SymbolDatabase& symboldatabase,
                                  ErrorLogger &errorLogger,
                                  const Settings &settings,
@@ -7200,7 +7206,7 @@ struct ValueFlowPassRunner {
     bool run_once(std::initializer_list<ValuePtr<ValueFlowPass>> passes) const
     {
         return std::any_of(passes.begin(), passes.end(), [&](const ValuePtr<ValueFlowPass>& pass) {
-            return run(pass);
+            return run(pass, 0);
         });
     }
 
@@ -7210,10 +7216,11 @@ struct ValueFlowPassRunner {
         std::size_t n = state.settings.vfOptions.maxIterations;
         while (n > 0 && values != getTotalValues()) {
             values = getTotalValues();
-            const std::string passnum = std::to_string(state.settings.vfOptions.maxIterations - n + 1);
+            const std::size_t passnum = state.settings.vfOptions.maxIterations - n + 1;
+            const std::string passnum_s = std::to_string(passnum);
             if (std::any_of(passes.begin(), passes.end(), [&](const ValuePtr<ValueFlowPass>& pass) {
-                ProgressReporter progressReporter(state.errorLogger, state.settings.reportProgress >= 0, state.tokenlist.getSourceFilePath(), std::string("ValueFlow::") + pass->name() + (' ' + passnum));
-                return run(pass);
+                ProgressReporter progressReporter(state.errorLogger, state.settings.reportProgress, state.tokenlist.getSourceFilePath(), std::string("ValueFlow::") + pass->name() + (' ' + passnum_s));
+                return run(pass, passnum);
             }))
                 return true;
             --n;
@@ -7233,7 +7240,7 @@ struct ValueFlowPassRunner {
         return false;
     }
 
-    bool run(const ValuePtr<ValueFlowPass>& pass) const
+    bool run(const ValuePtr<ValueFlowPass>& pass, std::size_t it) const
     {
         auto start = Clock::now();
         if (start > stop) {
@@ -7243,7 +7250,12 @@ struct ValueFlowPassRunner {
         if (!state.tokenlist.isCPP() && pass->cpp())
             return false;
         if (timerResults) {
-            Timer t(pass->name(), state.settings.showtime, timerResults);
+            std::string name = pass->name();
+            if (it > 0) {
+                name += ' ';
+                name += std::to_string(it);
+            }
+            Timer t(name, state.settings.showtime, timerResults);
             pass->run(state);
         } else {
             pass->run(state);
@@ -7375,7 +7387,7 @@ void ValueFlow::setValues(TokenList& tokenlist,
 
     ValueFlowPassRunner runner{ValueFlowState{tokenlist, symboldatabase, errorLogger, settings}, timerResults};
     runner.run_once({
-        VFA(valueFlowEnumValue(symboldatabase, settings)),
+        VFA(valueFlowEnumValueEarly(symboldatabase, settings)),
         VFA(valueFlowNumber(tokenlist, settings)),
         VFA(valueFlowString(tokenlist, settings)),
         VFA(valueFlowTypeTraits(tokenlist, settings)),

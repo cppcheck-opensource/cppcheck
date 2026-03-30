@@ -22,6 +22,7 @@ options::options(int argc, const char* const argv[])
     ,mHelp(mWhichTests.count("-h") != 0 || mWhichTests.count("--help"))
     ,mSummary(mWhichTests.count("-n") == 0)
     ,mDryRun(mWhichTests.count("-d") != 0)
+    ,mExcludeTests(mWhichTests.count("-x") != 0)
     ,mExe(argv[0])
 {
     for (auto it = mWhichTests.cbegin(); it != mWhichTests.cend();) {
@@ -64,4 +65,9 @@ const std::set<std::string>& options::which_test() const
 const std::string& options::exe() const
 {
     return mExe;
+}
+
+bool options::exclude_tests() const
+{
+    return mExcludeTests;
 }

@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -265,11 +265,17 @@ static bool hasOverloadedAssignment(const Token* tok, bool& inconclusive)
 
 static bool isMemberAssignment(const Token* tok, const Token*& rhs, const Settings& settings)
 {
-    if (!Token::Match(tok, "[;{}] %var% . %var%"))
-        return false;
+    const Token *endBracket = nullptr;
+    if (!Token::Match(tok, "[;{}] %var% . %var%")) {
+        if (!Token::Match(tok, "[;{}] %var% ["))
+            return false;
+        endBracket = tok->linkAt(2);
+        if (!Token::Match(endBracket, "] . %var%"))
+            return false;
+    }
     if (!isPtrArg(tok->next()))
         return false;
-    const Token* assign = tok->tokAt(2)->astParent();
+    const Token* assign = (endBracket ? endBracket->next() : tok->tokAt(2))->astParent();
     while (Token::simpleMatch(assign, "["))
         assign = assign->astParent();
     if (!Token::simpleMatch(assign, "="))

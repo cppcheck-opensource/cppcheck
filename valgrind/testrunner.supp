@@ -14,3 +14,9 @@
    obj:*
    obj:*
 }
+{
+   TestRegEx::partialmatch false positive
+   Memcheck:Cond
+   obj:*
+   obj:*
+}

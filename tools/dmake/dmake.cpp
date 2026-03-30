@@ -771,6 +771,10 @@ int main(int argc, char **argv)
          << "    $(error invalid HAVE_RULES value '$(HAVE_RULES)')\n"
          << "endif\n\n";
 
+    // the # needs to be escaped on older make versions
+    fout << "HAVE_EXECINFO_H=$(shell echo \"\\#include <execinfo.h>\" | $(CXX) -c -xc - 2> /dev/null && echo \"1\" || echo \"0\")\n"
+         << "override CPPFLAGS += -DHAVE_EXECINFO_H=$(HAVE_EXECINFO_H)\n\n";
+
     fout << "override CXXFLAGS += $(CXXOPTS)\n";
     fout << "override CPPFLAGS += $(CPPOPTS)\n";
     fout << "override LDFLAGS += $(LDOPTS)\n\n";

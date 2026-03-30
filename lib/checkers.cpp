@@ -41,7 +41,7 @@ namespace checkers {
         {"CheckBufferOverrun::analyseWholeProgram",""},
         {"CheckBufferOverrun::argumentSize","warning"},
         {"CheckBufferOverrun::arrayIndex",""},
-        {"CheckBufferOverrun::arrayIndexThenCheck",""},
+        {"CheckBufferOverrun::arrayIndexThenCheck","style"},
         {"CheckBufferOverrun::bufferOverflow",""},
         {"CheckBufferOverrun::negativeArraySize",""},
         {"CheckBufferOverrun::objectIndex",""},

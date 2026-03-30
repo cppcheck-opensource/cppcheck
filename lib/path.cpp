@@ -387,7 +387,7 @@ std::string Path::getAbsoluteFilePath(const std::string& filePath)
     if (absolute)
         absolute_path = absolute;
     free(absolute);
-    // only throw on realpath() fialure to resolve a path when the given one was non-existent
+    // only throw on realpath() failure to resolve a path when the given one was non-existent
     if (!spath.empty() && absolute_path.empty() && !exists(spath))
         throw std::runtime_error("path '" + filePath + "' does not exist");
 #else

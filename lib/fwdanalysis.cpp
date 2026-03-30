@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -410,6 +410,16 @@ FwdAnalysis::Result FwdAnalysis::checkRecursive(const Token *expr, const Token *
     return Result(Result::Type::NONE);
 }
 
+static bool isSimpleIndexExpression(const Token* tok)
+{
+    const Token* idx = tok->astOperand2();
+    if (!idx)
+        return false;
+    if (idx->isIncDecOp())
+        idx = idx->astOperand1();
+    return idx->variable() && idx->variable()->scope() == tok->scope();
+}
+
 std::set<nonneg int> FwdAnalysis::getExprVarIds(const Token* expr, bool* localOut, bool* unknownVarIdOut) const
 {
     // all variable ids in expr.
@@ -418,7 +428,7 @@ std::set<nonneg int> FwdAnalysis::getExprVarIds(const Token* expr, bool* localOu
     bool unknownVarId = false;
     visitAstNodes(expr,
                   [&](const Token *tok) {
-        if (tok->str() == "[" && mWhat == What::UnusedValue)
+        if (tok->str() == "[" && mWhat == What::UnusedValue && isSimpleIndexExpression(tok))
             return ChildrenToVisit::op1;
         if (tok->varId() == 0 && tok->isName() && tok->strAt(-1) != ".") {
             // unknown variable

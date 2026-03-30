@@ -109,6 +109,12 @@
 # ssh -t danielmarjamaki,cppcheck@shell.sourceforge.net create
 # ./build-cppcheck.sh
 #
+# create a ticket with data from http://cppcheck1.osuosl.org:8000/time_gt.html for performance tracking
+# (example: https://trac.cppcheck.net/ticket/13715)
+# - type: defect
+# - component: Performance
+# - summary: [meta] performance regressions in 2.x
+#
 # run daca with new release
 # 1. edit tools/donate-cpu-server.py. Update OLD_VERSION and SERVER_VERSION
 # 2. scp -i ~/.ssh/osuosl_id_rsa tools/donate-cpu-server.py danielmarjamaki@cppcheck1.osuosl.org:/var/daca@home/
@@ -144,9 +150,9 @@ rm -f cppcheck.cfg
 # TODO manual, update version on webpage
 
 # frs
-git archive --format=tar --prefix=$releasename/ $tag | gzip > upload/$releasename.tar.gz
-git archive --format=tar --prefix=$releasename/ $tag | bzip2 > upload/$releasename.tar.bz2
-git archive --format=zip -9 --prefix=$releasename/ $tag > upload/$releasename.zip
+git archive --format=tar --prefix=$releasename/ $tag | gzip > upload/frs/$releasename.tar.gz
+git archive --format=tar --prefix=$releasename/ $tag | bzip2 > upload/frs/$releasename.tar.bz2
+git archive --format=zip -9 --prefix=$releasename/ $tag > upload/frs/$releasename.zip
 cp releasenotes.txt upload/frs/README.md
 # TODO msi
 

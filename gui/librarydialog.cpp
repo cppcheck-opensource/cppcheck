@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -167,7 +167,7 @@ void LibraryDialog::saveCfg()
 void LibraryDialog::saveCfgAs()
 {
     const QString filter(tr("Library files (*.cfg)"));
-    const QString path = Path::getPathFromFilename(mFileName.toStdString()).c_str();
+    const QString path = QString::fromStdString(Path::getPathFromFilename(mFileName.toStdString()));
     QString selectedFile = QFileDialog::getSaveFileName(this,
                                                         tr("Save the library as"),
                                                         path,
@@ -292,11 +292,11 @@ void LibraryDialog::filterFunctions(const QString& filter)
     QList<QListWidgetItem *> allItems = mUi->functions->findItems(QString(), Qt::MatchContains);
 
     if (filter.isEmpty()) {
-        for (QListWidgetItem *item : allItems) {
+        for (QListWidgetItem *item : utils::as_const(allItems)) {
             item->setHidden(false);
         }
     } else {
-        for (QListWidgetItem *item : allItems) {
+        for (QListWidgetItem *item : utils::as_const(allItems)) {
             item->setHidden(!item->text().startsWith(filter));
         }
     }

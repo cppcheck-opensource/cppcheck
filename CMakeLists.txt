@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(Cppcheck VERSION 2.18.99 LANGUAGES CXX)
+project(Cppcheck VERSION 2.20.99 LANGUAGES CXX)
 
 include(cmake/options.cmake)
 
@@ -17,6 +17,7 @@ include(cmake/compilerCheck.cmake)
 include(cmake/versions.cmake)
 include(cmake/findDependencies.cmake)
 include(cmake/compileroptions.cmake)
+include(cmake/includechecks.cmake)
 include(cmake/compilerDefinitions.cmake)
 include(cmake/buildFiles.cmake)
 if(BUILD_GUI)

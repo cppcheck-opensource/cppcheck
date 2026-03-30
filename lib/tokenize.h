@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 
 class Settings;
 class SymbolDatabase;
-class TimerResults;
+class TimerResultsIntf;
 class Token;
 class TemplateSimplifier;
 class ErrorLogger;
@@ -53,7 +53,7 @@ public:
     Tokenizer(TokenList tokenList, ErrorLogger &errorLogger);
     ~Tokenizer();
 
-    void setTimerResults(TimerResults *tr) {
+    void setTimerResults(TimerResultsIntf *tr) {
         mTimerResults = tr;
     }
 
@@ -713,9 +713,9 @@ private:
     nonneg int mUnnamedCount{};
 
     /**
-     * TimerResults
+     * timer results
      */
-    TimerResults* mTimerResults{};
+    TimerResultsIntf* mTimerResults{};
 };
 
 /// @}

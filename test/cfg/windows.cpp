@@ -11,6 +11,7 @@
 
 #include <Windows.h>
 #include <WinCon.h>
+#include <SetupAPI.h>
 #include <cstdio>
 #include <direct.h>
 #include <evntrace.h>
@@ -90,6 +91,10 @@ std::string constVariable_GetModuleFileName(void) {
     if (GetModuleFileNameA(NULL, path, sizeof(path))==0)
         return std::string();
     return std::string{path};
+}
+
+const TCHAR* constVariable_MAKEINTRESOURCE() { // #14564
+    return MAKEINTRESOURCE(5 - 1);
 }
 
 int stringCompare_mbscmp(const unsigned char *string1, const unsigned char *string2)
@@ -1222,4 +1227,14 @@ void SEH_unusedLabel() { // #13233
     }
     __finally {
     }
+}
+
+HWND constParameterPointer_CreateWindow(void* param) { // #14560
+    return CreateWindow(L"MessageWnd", NULL, 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, NULL, param);
+}
+
+void constParameterPointer_SetupDiGetDeviceInstanceId(HDEVINFO info, SP_DEVINFO_DATA *data) {
+    const DWORD buffer_size = 256;
+    TCHAR buffer[buffer_size];
+    SetupDiGetDeviceInstanceId(info, data, buffer, buffer_size, NULL);
 }

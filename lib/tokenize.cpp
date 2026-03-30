@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -103,14 +103,14 @@ static void skipEnumBody(T *&tok)
 /**
  * is tok the start brace { of a class, struct, union, or enum
  */
-static bool isClassStructUnionEnumStart(const Token * tok)
+static const Token* isClassStructUnionEnumStart(const Token* tok)
 {
     if (!Token::Match(tok->previous(), "class|struct|union|enum|%name%|>|>> {"))
-        return false;
+        return nullptr;
     const Token * tok2 = tok->previous();
     while (tok2 && !Token::Match(tok2, "class|struct|union|enum|{|}|)|;"))
         tok2 = tok2->previous();
-    return Token::Match(tok2, "class|struct|union|enum") && !Token::simpleMatch(tok2->tokAt(-1), "->");
+    return (Token::Match(tok2, "class|struct|union|enum") && !Token::simpleMatch(tok2->tokAt(-1), "->")) ? tok2 : nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -135,7 +135,7 @@ Tokenizer::~Tokenizer()
 
 nonneg int Tokenizer::sizeOfType(const std::string& type) const
 {
-    const auto it = utils::as_const(mTypeSize).find(type);
+    const auto it = mTypeSize.find(type);
     if (it == mTypeSize.end()) {
         const Library::PodType* podtype = mSettings.library.podtype(type);
         if (!podtype)
@@ -154,7 +154,7 @@ nonneg int Tokenizer::sizeOfType(const Token *type) const
     if (type->tokType() == Token::eString)
         return Token::getStrLength(type) + 1U;
 
-    const auto it = utils::as_const(mTypeSize).find(type->str());
+    const auto it = mTypeSize.find(type->str());
     if (it == mTypeSize.end()) {
         const Library::PodType* podtype = mSettings.library.podtype(type->str());
         if (!podtype)
@@ -1028,6 +1028,13 @@ bool Tokenizer::isFunctionPointer(const Token* tok) {
     return Token::Match(tok, "%name% ) (");
 }
 
+static bool matchCurrentType(const std::string& typeStr, const std::map<int, std::string>& types)
+{
+    return std::any_of(types.begin(), types.end(), [&](const std::pair<int, std::string>& element) {
+        return typeStr == element.second;
+    });
+}
+
 void Tokenizer::simplifyTypedef()
 {
     // Simplify global typedefs that are not redefined with the fast 1-pass simplification.
@@ -1050,12 +1057,19 @@ void Tokenizer::simplifyTypedef()
 
     int indentlevel = 0;
     std::map<std::string, TypedefSimplifier> typedefs;
+    std::map<int, std::string> inType;
     for (Token* tok = list.front(); tok; tok = tok->next()) {
         if (!tok->isName()) {
-            if (tok->str()[0] == '{')
+            if (tok->str()[0] == '{') {
                 ++indentlevel;
-            else if (tok->str()[0] == '}')
+                if (const Token* typeStart = isClassStructUnionEnumStart(tok)) {
+                    inType.emplace(indentlevel, typeStart->strAt(1));
+                }
+            }
+            else if (tok->str()[0] == '}') {
+                inType.erase(indentlevel);
                 --indentlevel;
+            }
             continue;
         }
 
@@ -1072,7 +1086,7 @@ void Tokenizer::simplifyTypedef()
         }
 
         auto it = typedefs.find(tok->str());
-        if (it != typedefs.end() && it->second.canReplace(tok)) {
+        if (it != typedefs.end() && it->second.canReplace(tok) && !matchCurrentType(tok->str(), inType)) {
             std::set<std::string> r;
             std::string originalname;
             while (it != typedefs.end() && r.insert(tok->str()).second) {
@@ -2418,7 +2432,8 @@ namespace {
             while (scope && scope->parent) {
                 if (scope->name.empty())
                     break;
-                fullName = scope->name + " :: " + fullName;
+                fullName.insert(0, " :: ");
+                fullName.insert(0, scope->name);
                 scope = scope->parent;
             }
         }
@@ -2890,7 +2905,7 @@ static const Token* skipConstVolatileBackwards(const Token* tok) {
 
 bool Tokenizer::simplifyUsing()
 {
-    if (!isCPP() || mSettings.standards.cpp < Standards::CPP11)
+    if (!isCPP())
         return false;
 
     // simplify using N::x; to using x = N::x;
@@ -3788,7 +3803,7 @@ void Tokenizer::simplifyParenthesizedLibraryFunctions()
         if (!Token::simpleMatch(tok, ") ("))
             continue;
         Token *rpar = tok, *lpar = tok->link();
-        if (!lpar || (Token::Match(lpar->previous(), "%name%") && !lpar->previous()->isKeyword()))
+        if (!lpar || (Token::Match(lpar->previous(), "%name%") && !Token::Match(lpar->previous(), "return|delete|throw")))
             continue;
         const Token *ftok = rpar->previous();
         if (mSettings.library.isNotLibraryFunction(ftok))
@@ -4629,7 +4644,7 @@ void Tokenizer::setVarIdClassFunction(const std::string &classname,
         if (Token::Match(tok2, "%name% ::"))
             continue;
 
-        const auto it = utils::as_const(varlist).find(tok2->str());
+        const auto it = varlist.find(tok2->str());
         if (it != varlist.end()) {
             tok2->varId(it->second);
             setVarIdStructMembers(tok2, structMembers, varId_);
@@ -5543,7 +5558,7 @@ void Tokenizer::createLinks2()
 
             while (!type.empty() && type.top()->str() == "<") {
                 const Token* end = type.top()->findClosingBracket();
-                if (Token::Match(end, "> %comp%|;|.|=|{|(|::"))
+                if (Token::Match(end, "> %comp%|;|.|=|{|}|(|)|::"))
                     break;
                 // Variable declaration
                 if (Token::Match(end, "> %var% ;") && (type.top()->tokAt(-2) == nullptr || Token::Match(type.top()->tokAt(-2), ";|}|{")))
@@ -7799,7 +7814,7 @@ bool Tokenizer::simplifyCAlternativeTokens()
         if (!tok->isName())
             continue;
 
-        const auto cOpIt = utils::as_const(cAlternativeTokens).find(tok->str());
+        const auto cOpIt = cAlternativeTokens.find(tok->str());
         if (cOpIt != cAlternativeTokens.end()) {
             alt.push_back(tok);
 
@@ -7841,7 +7856,7 @@ bool Tokenizer::simplifyCAlternativeTokens()
         return false;
 
     for (Token *tok: alt) {
-        const auto cOpIt = utils::as_const(cAlternativeTokens).find(tok->str());
+        const auto cOpIt = cAlternativeTokens.find(tok->str());
         if (cOpIt != cAlternativeTokens.end())
             tok->str(cOpIt->second);
         else if (tok->str() == "not")
@@ -8764,6 +8779,8 @@ void Tokenizer::findGarbageCode() const
                     syntaxError(tok, prev == tok->previous() ? (prev->str() + " " + tok->str()) : (prev->str() + " .. " + tok->str()));
             }
         }
+        else if (tok->isStandardType() && tok->next() && tok->str() == tok->strAt(1) && tok->str() != "long")
+            syntaxError(tok);
     }
 
     // invalid struct declaration
@@ -9761,10 +9778,19 @@ void Tokenizer::simplifyCPPAttribute()
             Token* atok = nullptr;
             if (Token::Match(tok->previous(), "%name%"))
                 atok = tok->previous();
-            else {
+            else if (Token::simpleMatch(tok->previous(), "]")) {
+                atok = tok;
+                while (atok && Token::simpleMatch(atok->previous(), "]")) {
+                    atok = atok->linkAt(-1);
+                    atok = atok ? atok->previous() : nullptr;
+                }
+                if (!Token::Match(atok, "%name%"))
+                    atok = nullptr;
+            } else {
                 atok = tok;
                 while (isCPPAttribute(atok) || isAlignAttribute(atok))
                     atok = skipCPPOrAlignAttribute(atok)->next();
+                atok = atok ? getVariableTokenAfterAttributes(atok) : atok;
             }
             if (atok) {
                 std::string a;
@@ -10442,7 +10468,7 @@ void Tokenizer::simplifyMicrosoftStringFunctions()
         if (tok->strAt(1) != "(")
             continue;
 
-        const auto match = utils::as_const(apis).find(tok->str());
+        const auto match = apis.find(tok->str());
         if (match!=apis.end()) {
             tok->str(ansi ? match->second.mbcs : match->second.unicode);
             tok->originalName(match->first);

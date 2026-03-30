@@ -2,6 +2,7 @@
 // ~/cppcheck/cppcheck --dump misra/misra-test-c11.c --std=c11
 // ~/cppcheck/cppcheck --dump -DDUMMY --suppress=uninitvar --inline-suppr misra/misra-test-c11.c --std=c11 --platform=unix64 && python3 ../misra.py -verify misra/misra-test-c11.c.dump
 
+#include <stdbool.h>
 #include <stdint.h>
 
 typedef unsigned int UINT_TYPEDEF;
@@ -22,4 +23,14 @@ static void misra6_1_fn(void) {
     // "Use" occurrence should not generate warnings
     struct_with_bitfields s;
     s.h = 61;
+}
+
+static void misra_10_3_c11(void) {
+    bool b = false;
+    bool b0 = 0; // 10.3
+    bool b1 = 1; // 10.3
+    b = 0; // 10.3
+    b = 1; // 10.3
+    b = false; // no-warning
+    b = true; // no-warning
 }

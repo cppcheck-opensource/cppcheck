@@ -25,6 +25,7 @@
 #include "filesettings.h"
 #include "importproject.h"
 #include "projectfile.h"
+#include "utils.h"
 
 #include <algorithm>
 #include <iterator>
@@ -191,7 +192,7 @@ void ComplianceReportDialog::save()
         QSet<QString> allFiles;
         for (const QString &sourcefile: fileList.getFileList())
             addHeaders(sourcefile, allFiles);
-        for (const QString& fileName: allFiles) {
+        for (const QString& fileName: utils::as_const(allFiles)) {
             QFile f(fileName);
             if (f.open(QFile::ReadOnly)) {
                 QCryptographicHash hash(QCryptographicHash::Algorithm::Md5);

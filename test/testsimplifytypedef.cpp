@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -230,6 +230,7 @@ private:
         TEST_CASE(simplifyTypedef157);
         TEST_CASE(simplifyTypedef158);
         TEST_CASE(simplifyTypedef159);
+        TEST_CASE(simplifyTypedef160);
 
         TEST_CASE(simplifyTypedefFunction1);
         TEST_CASE(simplifyTypedefFunction2); // ticket #1685
@@ -3812,6 +3813,28 @@ private:
         ASSERT_EQUALS(exp, tok(code));
     }
 
+    void simplifyTypedef160() {
+        const char code[] = "struct S1 {};\n"
+                            "typedef struct S1 S2;\n"
+                            "namespace N {\n"
+                            "    struct B {\n"
+                            "        explicit B(int& i);\n"
+                            "    };\n"
+                            "    struct S2 : B {\n"
+                            "        explicit S2(int& i) : B(i) {}\n"
+                            "    };\n"
+                            "}\n";
+        const char exp[] = "struct S1 { } ; "
+                           "namespace N { "
+                           "struct B { "
+                           "explicit B ( int & i ) ; } ; "
+                           "struct S2 : B { "
+                           "explicit S2 ( int & i ) : B ( i ) { } "
+                           "} ; "
+                           "}";
+        ASSERT_EQUALS(exp, tok(code));
+    }
+
     void simplifyTypedefFunction1() {
         {
             const char code[] = "typedef void (*my_func)();\n"
@@ -4507,7 +4530,7 @@ private:
         // Search for the simplified short token and check its original Name, start from front to get the variable in the struct
         token = Token::findsimplematch(tokenizer.list.front(), "short", tokenizer.list.back());
         ASSERT_EQUALS("int16_t", token->originalName());
-        // Search for the simplified * token -> function pointer gets "(*" tokens infront of it
+        // Search for the simplified * token -> function pointer gets "(*" tokens in front of it
         token = Token::findsimplematch(endOfTypeDef, "*", tokenizer.list.back());
         ASSERT_EQUALS("rFunctionPointer_fp", token->originalName());
     }

@@ -274,7 +274,7 @@ class Token:
         astParent          ast parent
         astOperand1        ast operand1
         astOperand2        ast operand2
-        orriginalName      orriginal name of the token
+        orriginalName      original name of the token
         valueType          type information: container/..
         file               file name
         linenr             line number
@@ -1003,7 +1003,7 @@ class Suppression:
                 and (self.symbolName is None or fnmatch(message, '*'+self.symbolName+'*'))
                 and fnmatch(errorId, self.errorId)):
             return True
-        # Other Suppression (Globaly set via suppression file or cli command)
+        # Other Suppression (Globally set via suppression file or cli command)
         if ((self.fileName is None or fnmatch(file, self.fileName))
                 and (self.suppressionType is None)
                 and (self.symbolName is None or fnmatch(message, '*'+self.symbolName+'*'))

@@ -36,7 +36,7 @@ You can stop the script whenever you like with Ctrl C.
 
 ## Compiling
 
-Cppcheck requires a C++ compiler with (partial) C++11 support. Minimum required versions are GCC 5.1 / Clang 3.5 / Visual Studio 2015.
+Cppcheck requires a C++ compiler with (partial) C++11 support. Minimum required versions are GCC 5.1 / Clang 3.5 / AppleClang 6.0 / Visual Studio 2015.
 
 To build the GUI application, you need to use the CMake build system.
 

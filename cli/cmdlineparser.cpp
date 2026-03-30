@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -206,8 +206,6 @@ bool CmdLineParser::fillSettingsFromArgs(int argc, const char* const argv[])
     assert(!(!pathnamesRef.empty() && !fileSettingsRef.empty()));
 
     if (!fileSettingsRef.empty()) {
-        // TODO: de-duplicate
-
         std::list<FileSettings> fileSettings;
         if (!mSettings.fileFilters.empty()) {
             // filter only for the selected filenames from all project files
@@ -224,6 +222,8 @@ bool CmdLineParser::fillSettingsFromArgs(int argc, const char* const argv[])
         else {
             fileSettings = fileSettingsRef;
         }
+
+        // TODO: de-duplicate
 
         mFileSettings.clear();
 
@@ -265,19 +265,6 @@ bool CmdLineParser::fillSettingsFromArgs(int argc, const char* const argv[])
             return false;
         }
 
-        // de-duplicate files
-        {
-            auto it = filesResolved.begin();
-            while (it != filesResolved.end()) {
-                const std::string& absname = Path::getAbsoluteFilePath(it->spath());
-                // TODO: log if duplicated files were dropped
-                filesResolved.erase(std::remove_if(std::next(it), filesResolved.end(), [&](const FileWithDetails& entry) {
-                    return Path::getAbsoluteFilePath(entry.spath()) == absname;
-                }), filesResolved.end());
-                ++it;
-            }
-        }
-
         std::list<FileWithDetails> files;
         if (!mSettings.fileFilters.empty()) {
             files = filterFiles(mSettings.fileFilters, filesResolved);
@@ -289,6 +276,19 @@ bool CmdLineParser::fillSettingsFromArgs(int argc, const char* const argv[])
         }
         else {
             files = std::move(filesResolved);
+        }
+
+        // de-duplicate files
+        {
+            auto it = files.begin();
+            while (it != files.end()) {
+                const std::string& absname = it->abspath();
+                // TODO: log if duplicated files were dropped
+                files.erase(std::remove_if(std::next(it), files.end(), [&](const FileWithDetails& entry) {
+                    return entry.abspath() == absname;
+                }), files.end());
+                ++it;
+            }
         }
 
         frontend::applyLang(files, mSettings, mEnforcedLang);

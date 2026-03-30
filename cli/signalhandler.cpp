@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,8 +23,6 @@
 #include "signalhandler.h"
 
 #if defined(USE_UNIX_SIGNAL_HANDLING)
-
-#include "utils.h"
 
 #ifdef USE_UNIX_BACKTRACE_SUPPORT
 #include "stacktrace.h"
@@ -108,7 +106,7 @@ static const Signalmap_t listofsignals = {
  * but when ending up here something went terribly wrong anyway.
  * And all which is left is just printing some information and terminate.
  */
-static void CppcheckSignalHandler(int signo, siginfo_t * info, void * context)
+static void CppcheckSignalHandler(int signo, siginfo_t * info, void * context) // cppcheck-suppress constParameterCallback - info can be const
 {
     int type = -1;
     pid_t killid;
@@ -124,7 +122,7 @@ static void CppcheckSignalHandler(int signo, siginfo_t * info, void * context)
     killid = getpid();
 #endif
 
-    const auto it = utils::as_const(listofsignals).find(signo);
+    const auto it = listofsignals.find(signo);
     const char * const signame = (it==listofsignals.end()) ? "unknown" : it->second.c_str();
     bool unexpectedSignal=true; // unexpected indicates program failure
     bool terminate=true; // exit process/thread

@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -732,6 +732,13 @@ private:
                                   "class Derived : public Base {\n"
                                   "public:\n"
                                   "    void Two() = delete;\n"
+                                  "};\n");
+        ASSERT_EQUALS("", errout_str());
+
+        checkDuplInheritedMembers("struct B { void f(); };\n" // #14583
+                                  "struct D : B {\n"
+                                  "    template <typename>\n"
+                                  "    void f();\n"
                                   "};\n");
         ASSERT_EQUALS("", errout_str());
     }
@@ -8835,6 +8842,16 @@ private:
                       "};\n");
         ASSERT_EQUALS("[test.cpp:2:14] -> [test.cpp:5:6]: (style) The destructor '~D' overrides a destructor in a base class but is not marked with a 'override' specifier. [missingOverride]\n",
                       errout_str());
+
+        checkOverride("struct B {\n" // #14581
+                      "    virtual void f();\n"
+                      "};\n"
+                      "struct D : B {\n"
+                      "    void f() override;\n"
+                      "    template <typename T>\n"
+                      "    void f();\n"
+                      "};\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void overrideCVRefQualifiers() {

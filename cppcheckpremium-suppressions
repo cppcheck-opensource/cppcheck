@@ -196,7 +196,7 @@ premium-misra-cpp-2023-12.3.1
 # TODO ensure overrides match
 premium-misra-cpp-2023-13.3.2
 
-# TODO use the same parameter names in overriden methods.
+# TODO use the same parameter names in overridden methods.
 premium-misra-cpp-2023-13.3.3
 
 # we sometimes use both public/private data members by intention

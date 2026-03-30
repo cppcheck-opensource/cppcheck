@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -198,6 +198,7 @@ void TokenList::addtoken(const Token * tok, const nonneg int lineno, const nonne
     mTokensFrontBack->back->column(column);
     mTokensFrontBack->back->fileIndex(fileno);
     mTokensFrontBack->back->flags(tok->flags());
+    mTokensFrontBack->back->tokType(tok->tokType());
 }
 
 void TokenList::addtoken(const Token *tok, const Token *locationTok)
@@ -219,6 +220,7 @@ void TokenList::addtoken(const Token *tok, const Token *locationTok)
     mTokensFrontBack->back->linenr(locationTok->linenr());
     mTokensFrontBack->back->column(locationTok->column());
     mTokensFrontBack->back->fileIndex(locationTok->fileIndex());
+    mTokensFrontBack->back->tokType(tok->tokType());
 }
 
 void TokenList::addtoken(const Token *tok)
@@ -242,6 +244,7 @@ void TokenList::addtoken(const Token *tok)
     mTokensFrontBack->back->linenr(tok->linenr());
     mTokensFrontBack->back->column(tok->column());
     mTokensFrontBack->back->fileIndex(tok->fileIndex());
+    mTokensFrontBack->back->tokType(tok->tokType());
 }
 
 
@@ -873,7 +876,7 @@ static void compileTerm(Token *&tok, AST_state& state)
                 state.inArrayAssignment--;
                 tok = tok1->link()->next();
             }
-        } else if (!state.inArrayAssignment && !Token::simpleMatch(prev, "=")) {
+        } else if ((!state.inArrayAssignment && !Token::simpleMatch(prev, "=")) || Token::simpleMatch(prev, "?")) {
             state.op.push(tok);
             tok = tok->link()->next();
         } else {
@@ -1055,7 +1058,12 @@ static void compilePrecedence2(Token *&tok, AST_state& state)
             else
                 compileUnaryOp(tok, state, compileExpression);
             tok = tok2->link()->next();
-        } else if (Token::simpleMatch(tok->previous(), "requires {")) {
+        } else if ((Token::simpleMatch(tok->tokAt(-1), "requires {") && tok->tokAt(-1)->isKeyword())
+                   || (Token::simpleMatch(tok->tokAt(-1), ")")
+                       && tok->linkAt(-1)
+                       && Token::simpleMatch(tok->linkAt(-1)->tokAt(-1), "requires (") && tok->linkAt(-1)->tokAt(-1)->isKeyword())) {
+            if (!tok->link())
+                throw InternalError(tok, "Syntax error, token has no link.", InternalError::AST);
             tok->astOperand1(state.op.top());
             state.op.pop();
             state.op.push(tok);
@@ -1787,8 +1795,9 @@ static Token * createAstAtToken(Token *tok)
         }
     }
 
-    if (Token::Match(tok, "%type% %name%|*|&|&&|::") && !Token::Match(tok, "return|new|delete")) {
-        int typecount = 0;
+    if ((Token::Match(tok, "%type% %name%|*|&|&&|::") && !Token::Match(tok, "return|new|delete")) ||
+        (Token::Match(tok, ":: %type%") && !tok->next()->isKeyword())) {
+        int typecount = tok->str() == "::" ? 1 : 0;
         Token *typetok = tok;
         while (Token::Match(typetok, "%type%|::|*|&|&&|<")) {
             if (typetok->isName() && !Token::simpleMatch(typetok->previous(), "::"))
@@ -1811,7 +1820,7 @@ static Token * createAstAtToken(Token *tok)
             !Token::Match(tok, "return|throw") &&
             Token::Match(typetok->previous(), "%name% ( !!*") &&
             typetok->previous()->varId() == 0 &&
-            !typetok->previous()->isKeyword() &&
+            (!typetok->previous()->isKeyword() || typetok->previous()->isOperatorKeyword()) &&
             (skipMethodDeclEnding(typetok->link()) || Token::Match(typetok->link(), ") ;|{")))
             return typetok;
     }

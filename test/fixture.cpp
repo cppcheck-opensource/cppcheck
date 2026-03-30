@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -346,7 +346,8 @@ void TestFixture::printHelp()
         "    -q                   Do not print the test cases that have run.\n"
         "    -h, --help           Print this help.\n"
         "    -n                   Print no summaries.\n"
-        "    -d                   Do not execute the tests.\n";
+        "    -d                   Do not execute any tests (dry run).\n"
+        "    -x                   Exclude the specified tests.\n";
 }
 
 void TestFixture::run(const std::string &str)
@@ -390,17 +391,23 @@ std::size_t TestFixture::runTests(const options& args)
     // TODO: bail out when given class/test is not found?
     for (std::string classname : args.which_test()) {
         std::string testname;
-        if (classname.find("::") != std::string::npos) {
-            testname = classname.substr(classname.find("::") + 2);
-            classname.erase(classname.find("::"));
+        const std::string::size_type pos = classname.find("::");
+        if (pos != std::string::npos) {
+            // TODO: excluding indiviual tests is not supported yet
+            testname = classname.substr(pos + 2);
+            classname.erase(pos);
         }
 
         for (TestInstance * test : TestRegistry::theInstance().tests()) {
-            if (classname.empty() || test->classname == classname) {
-                TestFixture* fixture = test->create();
-                fixture->processOptions(args);
-                fixture->run(testname);
+            if (!classname.empty()) {
+                const bool match = test->classname == classname;
+                if ((match && args.exclude_tests()) || (!match && !args.exclude_tests()))
+                    continue;
             }
+
+            TestFixture* fixture = test->create();
+            fixture->processOptions(args);
+            fixture->run(testname);
         }
     }
 

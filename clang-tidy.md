@@ -133,6 +133,7 @@ Does not improve the readability.
 `misc-unconventional-assign-operator`<br/>
 `bugprone-throwing-static-initialization`<br/>
 `bugprone-command-processor`<br/>
+`misc-multiple-inheritance`<br/>
 
 To be evaluated (need to remove exclusion).
 
@@ -163,6 +164,18 @@ We are not interested in this.
 
 Reports false positives - see https://github.com/llvm/llvm-project/issues/164125.
 
+`readability-inconsistent-ifelse-braces`<br/>
+
+The suggestions are too intrusive.
+
+`modernize-avoid-c-style-cast`<br/>
+
+Currently flags functional casts - see https://github.com/llvm/llvm-project/issues/186784.
+
+`misc-use-internal-linkage.AnalyzeTypes`<br/>
+
+Adding anonymous namespaces requires identation which is too instrusive right now. Would require changes to our fomatting configuration.
+
 ### Disabled for performance reasons
 
 `portability-std-allocator-const`<br/>
@@ -187,7 +200,7 @@ We are currently using our own `naming.json` to enforce naming schemes. Also dis
 
 `portability-simd-intrinsics`<br/>
 
-We are not using SIMD instructions and it suggests to use `std::experiemental::` features which might not be commonly available. Also disabled for performance reasons - see https://github.com/llvm/llvm-project/issues/57527#issuecomment-1237935132.
+We are not using SIMD instructions and it suggests to use `std::experimental::` features which might not be commonly available. Also disabled for performance reasons - see https://github.com/llvm/llvm-project/issues/57527#issuecomment-1237935132.
 
 `modernize-macro-to-enum`<br/>
 

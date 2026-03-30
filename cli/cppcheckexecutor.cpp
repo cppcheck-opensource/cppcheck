@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -329,7 +329,7 @@ static std::vector<ErrorMessage> getUnmatchedSuppressions(const std::list<Suppre
 
         std::list<ErrorMessage::FileLocation> callStack;
         if (!s.fileName.empty()) {
-            callStack.emplace_back(s.fileName, s.lineNumber == -1 ? 0 : s.lineNumber, 0); // TODO: get rid of s.lineNumber == -1 hack
+            callStack.emplace_back(s.fileName, s.lineNumber == -1 ? 0 : s.lineNumber, 0); // TODO: set column - see #13810 / get rid of s.lineNumber == -1 hack
         }
         const std::string unmatchedSuppressionId = s.isPolyspace ? "unmatchedPolyspaceSuppression" : "unmatchedSuppression";
         errors.emplace_back(std::move(callStack), "", Severity::information, "Unmatched suppression: " + s.errorId, unmatchedSuppressionId, Certainty::normal);
@@ -461,6 +461,10 @@ int CppCheckExecutor::check_internal(const Settings& settings, Suppressions& sup
         }
 #endif
     }
+
+    // TODO: show time *after* the whole program analysis
+    if (settings.showtime == ShowTime::SUMMARY || settings.showtime == ShowTime::TOP5_SUMMARY)
+        timerResults.showResults(settings.showtime);
 
     // TODO: is this run again instead of using previously cached results?
     returnValue |= cppcheck.analyseWholeProgram(settings.buildDir, mFiles, mFileSettings, stdLogger.getCtuInfo());

@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include "filesettings.h"
 #include "resultsview.h"
 #include "settings.h"
+#include "utils.h"
 
 #include <algorithm>
 #include <string>
@@ -161,7 +162,7 @@ void ThreadHandler::createThreads(const int count)
 
 void ThreadHandler::removeThreads()
 {
-    for (CheckThread* thread : mThreads) {
+    for (CheckThread* thread : utils::as_const(mThreads)) {
         if (thread->isRunning()) {
             thread->stop();
             thread->wait();
@@ -216,7 +217,7 @@ void ThreadHandler::stop()
     mCheckStartTime = QDateTime();
     mAnalyseWholeProgram = false;
     mCtuInfo.clear();
-    for (CheckThread* thread : mThreads) {
+    for (CheckThread* thread : utils::as_const(mThreads)) {
         thread->stop();
     }
 }

@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -76,6 +76,7 @@ private:
         TEST_CASE(uninitvar12); // #10218 - stream read
         TEST_CASE(uninitvar13); // #9772
         TEST_CASE(uninitvar14);
+        TEST_CASE(uninitvar15); // #13685
         TEST_CASE(uninitvar_unconditionalTry);
         TEST_CASE(uninitvar_funcptr); // #6404
         TEST_CASE(uninitvar_operator); // #6680
@@ -3647,6 +3648,17 @@ private:
         (checkuninitvar.valueFlowUninit)();
     }
 
+    void uninitvar15() { // #13685
+        const char code[] = "int f() {\n"
+                            "    int x;\n"
+                            "    if (!({ int *p = &x; *p = 1; 1; }))\n"
+                            "        return 0;\n"
+                            "    return x;\n"
+                            "}";
+        valueFlowUninit(code, false);
+        ASSERT_EQUALS("", errout_str());
+    }
+
     void valueFlowUninit2_value()
     {
         valueFlowUninit("void f() {\n"
@@ -6684,6 +6696,18 @@ private:
                         "    return [&]() { return j; }();\n"
                         "}\n");
         ASSERT_EQUALS("[test.cpp:17:27]: (error) Uninitialized variable: j [uninitvar]\n", errout_str());
+
+        valueFlowUninit("int f() {\n" // #14582
+                        "    int a[1];\n"
+                        "    static_cast<int*>(a)[0] = 0;\n"
+                        "    return a[0];\n"
+                        "}\n"
+                        "int g() {\n"
+                        "    int a[1];\n"
+                        "    ((int*)a)[0] = 0;\n"
+                        "    return a[0];\n"
+                        "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void valueFlowUninitBreak() { // Do not show duplicate warnings about the same uninitialized value

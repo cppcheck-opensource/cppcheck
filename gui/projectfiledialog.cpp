@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -194,7 +194,7 @@ ProjectFileDialog::ProjectFileDialog(ProjectFile *projectFile, bool premium, QWi
     }
     libs.sort();
     mUI->mLibraries->clear();
-    for (const QString &lib : libs) {
+    for (const QString &lib : utils::as_const(libs)) {
         auto* item = new QListWidgetItem(lib, mUI->mLibraries);
         item->setFlags(item->flags() | Qt::ItemIsUserCheckable); // set checkable flag
         item->setCheckState(Qt::Unchecked); // AND initialize check state

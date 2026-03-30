@@ -15,17 +15,14 @@ jobs:
 
     strategy:
       matrix:
-        # "opensuse/tumbleweed:latest" / "fedora:latest" / "debian:unstable" / "archlinux:latest"
+        # "opensuse/tumbleweed:latest" / "fedora:rawhide" / "debian:unstable" / "archlinux:latest"
         include:
           - os: ubuntu-22.04
-            image: "fedora:latest"
+            image: "fedora:rawhide"
             stdlib: libstdc++
-            clang_inc: '-isystem/usr/lib/clang/20/include'
-          # TODO: disable because it currently fails with "error: <cstddef> tried including <stddef.h> but didn't find libc++'s <stddef.h> header."
-          #- os: ubuntu-22.04
-          #  image: "fedora:latest"
-          #  stdlib: libc++
-          #  clang_inc: '-isystem/usr/lib/clang/20/include'
+          - os: ubuntu-22.04
+            image: "fedora:rawhide"
+            stdlib: libc++
           - os: macos-26
             image: ""
             stdlib: libc++  # no libstdc++ on macOS
@@ -128,7 +125,7 @@ jobs:
 
       - name: Prepare CMake
         run: |
-          cmake -S . -B cmake.output -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCPPCHK_GLIBCXX_DEBUG=Off -DUSE_MATCHCOMPILER=Off -DEXTERNALS_AS_SYSTEM=On -DUSE_LIBCXX=${{ matrix.stdlib == 'libc++' }}
+          cmake -S . -B cmake.output -Werror=dev -DCMAKE_BUILD_TYPE=Release -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCPPCHK_GLIBCXX_DEBUG=Off -DUSE_MATCHCOMPILER=Off -DEXTERNALS_AS_SYSTEM=On -DUSE_LIBCXX=${{ matrix.stdlib == 'libc++' }}
         env:
           CC: clang
           CXX: clang++
@@ -150,8 +147,7 @@ jobs:
 
       - name: iwyu_tool
         run: |
-          # TODO: remove -stdlib= - it should have been taken from the compilation database
-          iwyu_tool -p cmake.output -j $(nproc) -- -w -Xiwyu --max_line_length=1024 -Xiwyu --comment_style=long -Xiwyu --quoted_includes_first -Xiwyu --update_comments -stdlib=${{ matrix.stdlib }} ${{ matrix.mapping_file_opt }} ${{ matrix.clang_inc }} > iwyu.log
+          iwyu_tool -p cmake.output -j $(nproc) -- -w -Xiwyu --max_line_length=1024 -Xiwyu --comment_style=long -Xiwyu --quoted_includes_first -Xiwyu --update_comments ${{ matrix.mapping_file_opt }} ${{ matrix.clang_inc }} > iwyu.log
 
       # TODO: run with all configurations
       - name: test/cfg
@@ -236,7 +232,7 @@ jobs:
 
       - name: Prepare CMake
         run: |
-          cmake -S . -B cmake.output -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCPPCHK_GLIBCXX_DEBUG=Off -DUSE_MATCHCOMPILER=Off -DEXTERNALS_AS_SYSTEM=On -DUSE_LIBCXX=${{ matrix.use_libcxx }}
+          cmake -S . -B cmake.output -Werror=dev -DCMAKE_BUILD_TYPE=Release -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCPPCHK_GLIBCXX_DEBUG=Off -DUSE_MATCHCOMPILER=Off -DEXTERNALS_AS_SYSTEM=On -DUSE_LIBCXX=${{ matrix.use_libcxx }}
         env:
           CC: clang-22
           CXX: clang++-22

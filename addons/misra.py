@@ -2472,7 +2472,14 @@ class MisraChecker:
                 rhs_category = get_category(rhs)
                 if lhs_category and rhs_category and lhs_category != rhs_category and rhs_category not in ('signed','unsigned'):
                     self.reportError(tok, 10, 3)
-                if bitsOfEssentialType(lhs) < bitsOfEssentialType(rhs) and (lhs != "bool" or tok.astOperand2.str not in ('0','1')):
+                find_std = cfg.standards.c if cfg.standards and cfg.standards.c else self.stdversion
+                allow_bool_literal_0_1 = (
+                    find_std == "c89" and
+                    lhs == "bool" and
+                    tok.astOperand2 and
+                    tok.astOperand2.str in ('0', '1')
+                )
+                if bitsOfEssentialType(lhs) < bitsOfEssentialType(rhs) and not allow_bool_literal_0_1:
                     self.reportError(tok, 10, 3)
 
     def misra_10_4(self, data):

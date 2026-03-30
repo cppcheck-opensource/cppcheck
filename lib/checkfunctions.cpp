@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -634,6 +634,12 @@ void CheckFunctions::checkLibraryMatchFunctions()
     for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
         if (!tok->scope() || !tok->scope()->isExecutable())
             continue;
+
+        // skip uninstantiated templates
+        if (tok == tok->scope()->bodyStart && tok->scope()->function && tok->scope()->function->templateDef) {
+            tok = tok->link();
+            continue;
+        }
 
         if (tok->str() == "new")
             insideNew = true;

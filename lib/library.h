@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
 #include "config.h"
 #include "mathlib.h"
 #include "standards.h"
-#include "utils.h"
 
 #include <array>
 #include <cstdint>
@@ -242,21 +241,21 @@ public:
         bool startPatternHasStd{};
 
         Action getAction(const std::string& function) const {
-            const auto i = utils::as_const(functions).find(function);
+            const auto i = functions.find(function);
             if (i != functions.end())
                 return i->second.action;
             return Action::NO_ACTION;
         }
 
         Yield getYield(const std::string& function) const {
-            const auto i = utils::as_const(functions).find(function);
+            const auto i = functions.find(function);
             if (i != functions.end())
                 return i->second.yield;
             return Yield::NO_YIELD;
         }
 
         const std::string& getReturnType(const std::string& function) const {
-            const auto i = utils::as_const(functions).find(function);
+            const auto i = functions.find(function);
             return (i != functions.end()) ? i->second.returnType : mEmptyString;
         }
 
@@ -482,7 +481,7 @@ private:
     std::string getFunctionName(const Token *ftok, bool &error) const;
 
     static const AllocFunc* getAllocDealloc(const std::map<std::string, AllocFunc> &data, const std::string &name) {
-        const auto it = utils::as_const(data).find(name);
+        const auto it = data.find(name);
         return (it == data.end()) ? nullptr : &it->second;
     }
 

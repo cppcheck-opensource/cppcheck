@@ -1,11 +1,11 @@
 
-Release Notes for Cppcheck 2.20
+Release Notes for Cppcheck 2.21
 
 Major bug fixes & crashes:
 -
 
 New checks:
--
+- MISRA C 2012 rule 10.3 now warns on assigning integer literals 0 and 1 to bool in C99 and later while preserving the existing C89 behavior.
 
 C/C++ support:
 -
@@ -14,14 +14,10 @@ GUI:
 -
 
 Changed interface:
-- removed CMake option "DISABLE_CRTDBG_MAP_ALLOC"
-- CMake option "BUILD_TESTS" has been deprecated and will be removed in Cppcheck 2.22 - use "BUILD_TESTING" instead
 -
 
 Infrastructure & dependencies:
 -
 
 Other:
-- The built-in "win*" and "unix*" platforms will now default to signed char type instead of unknown signedness. If you require unsigned chars please specify "--funsigned-char"
-- bumped minimum required CMake version to 3.22
 -

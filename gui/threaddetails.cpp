@@ -1,4 +1,6 @@
 #include "threaddetails.h"
+#include "utils.h"
+
 #include "ui_threaddetails.h"
 
 #include <QMutexLocker>
@@ -43,7 +45,7 @@ void ThreadDetails::updateUI() {
     QString text("Thread\tStart time\tFile/Progress\n");
     {
         QMutexLocker locker(&mMutex);
-        for (const auto& td: mThreadDetails) {
+        for (const auto& td: utils::as_const(mThreadDetails)) {
             auto& timeProgress = mProgress[td.file];
             if (timeProgress.first.isEmpty() && !timeProgress.second.isEmpty())
                 timeProgress.first = QTime::currentTime().toString(Qt::TextDate);

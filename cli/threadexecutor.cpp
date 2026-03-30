@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -215,9 +215,6 @@ unsigned int ThreadExecutor::check()
     unsigned int result = std::accumulate(threadFutures.begin(), threadFutures.end(), 0U, [](unsigned int v, std::future<unsigned int>& f) {
         return v + f.get();
     });
-
-    if (mTimerResults && (mSettings.showtime == ShowTime::SUMMARY || mSettings.showtime == ShowTime::TOP5_SUMMARY))
-        mTimerResults->showResults(mSettings.showtime);
 
     return result;
 }

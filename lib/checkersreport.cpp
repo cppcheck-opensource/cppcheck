@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,8 @@
 
 #include "addoninfo.h"
 #include "checkers.h"
-#include "errortypes.h"
 #include "settings.h"
+#include "utils.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -170,7 +170,7 @@ std::string CheckersReport::getReport(const std::string& criticalErrors) const
         // TODO: mention "information" and "debug" as source for indications of bailouts
         // TODO: still rephrase this - this message does not provides confidence in the results
         // TODO: document what a bailout is and why it is done - mention it in the upcoming security/tuning guide
-        // TODO: make bailouts a seperate group - need to differentiate between user bailouts (missing data like configuration/includes) and internal bailouts (e.g. limitations of ValueFlow)
+        // TODO: make bailouts a separate group - need to differentiate between user bailouts (missing data like configuration/includes) and internal bailouts (e.g. limitations of ValueFlow)
         fout << "Note: There might still have been non-critical bailouts which might lead to false negatives." << std::endl;
     }
 
@@ -209,13 +209,19 @@ std::string CheckersReport::getReport(const std::string& criticalErrors) const
         fout << title << std::endl;
         fout << std::string(title.size(), '-') << std::endl;
 
+        maxCheckerSize = 0;
+        for (const auto& checkReq: addonInfo.checkers) {
+            const std::string& checker = checkReq.first;
+            maxCheckerSize = std::max(checker.size(), maxCheckerSize);
+        }
+
         for (const auto& checkReq: addonInfo.checkers) {
             const std::string& checker = checkReq.first;
             const bool active = mActiveCheckers.count(checkReq.first) > 0;
             const std::string& req = checkReq.second;
             fout << (active ? "Yes  " : "No   ") << checker;
             if (!active && !req.empty())
-                fout << std::string(maxCheckerSize + 4 - checker.size(), ' ') << "require:" + req;
+                fout << std::string(maxCheckerSize + 4 - checker.size(), ' ') << "require:" << req;
             fout << std::endl;
         }
     }

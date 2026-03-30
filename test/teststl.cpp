@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -4678,6 +4678,45 @@ private:
               "    auto s = std::make_shared<S>();\n"
               "    global.push_back(s);\n"
               "    return s->x.c_str();\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("std::string f(const std::string& s) {\n" // #14533
+              "    auto x = std::string(\"abc\") + s.c_str();\n"
+              "    auto y = s.c_str() + std::string(\"def\");\n"
+              "    return x + y;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:33]: (performance) Concatenating the result of c_str() and a std::string is slow and redundant. [stlcstrConcat]\n"
+                      "[test.cpp:3:24]: (performance) Concatenating the result of c_str() and a std::string is slow and redundant. [stlcstrConcat]\n",
+                      errout_str());
+
+        check("std::string get();\n"
+              "std::string f(const std::string& s) {\n"
+              "    return get() + s.c_str();\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:18]: (performance) Concatenating the result of c_str() and a std::string is slow and redundant. [stlcstrConcat]\n",
+                      errout_str());
+
+        check("std::string get();\n" // #14536
+              "    std::string f(const std::string& s) {\n"
+              "    return s + get().c_str();\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:14]: (performance) Concatenating the result of c_str() and a std::string is slow and redundant. [stlcstrConcat]\n",
+                      errout_str());
+
+        check("std::string get();\n"
+              "std::string f(std::string & s) {\n"
+              "    s = get().c_str();\n"
+              "    std::string s2{ get().c_str() };\n"
+              "    return s2;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:5]: (performance) Assigning the result of c_str() to a std::string is slow and redundant. [stlcstrAssignment]\n"
+                      "[test.cpp:4:17]: (performance) Constructing a std::string from the result of c_str() is slow and redundant. [stlcstrConstructor]\n",
+                      errout_str());
+
+        check("void f() {\n"
+              "    std::string s;\n"
+              "    auto a = + s.c_str();\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
     }

@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -125,7 +125,7 @@ private:
     /** @brief Check that the override keyword is used when overriding virtual functions */
     void checkOverride();
 
-    /** @brief Check that the overriden function is not identical to the base function */
+    /** @brief Check that the overridden function is not identical to the base function */
     void checkUselessOverride();
 
     /** @brief Check that large members are returned by reference from getter function */

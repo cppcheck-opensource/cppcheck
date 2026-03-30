@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -3176,6 +3176,8 @@ static std::vector<DuplMemberFuncInfo> getDuplInheritedMemberFunctionsRecursive(
                 continue;
             if (classFuncIt.tokenDef->isExpandedMacro())
                 continue;
+            if (classFuncIt.templateDef)
+                continue;
             for (const Function& parentClassFuncIt : parentClassIt.type->classScope->functionList) {
                 if (classFuncIt.name() == parentClassFuncIt.name() &&
                     (parentClassFuncIt.access != AccessControl::Private || !skipPrivate) &&
@@ -3317,6 +3319,8 @@ void CheckClass::checkOverride()
             if (func.hasOverrideSpecifier() || func.hasFinalSpecifier())
                 continue;
             if (func.tokenDef->isExpandedMacro())
+                continue;
+            if (func.templateDef)
                 continue;
             const Function *baseFunc = func.getOverriddenFunction();
             if (baseFunc)

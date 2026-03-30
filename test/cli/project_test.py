@@ -64,7 +64,7 @@ def test_json_entry_file_not_found(tmpdir):
         "--project=" + str(project_file)
     ])
     assert 0 == ret
-    assert stderr == f"nofile:0:0: error: File is missing: {missing_file_posix} [missingFile]\n"
+    assert stderr == f"{missing_file}:0:0: error: File is missing: {missing_file_posix} [missingFile]\n"
 
 
 def test_json_no_arguments(tmpdir):

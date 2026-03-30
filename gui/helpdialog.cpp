@@ -19,6 +19,7 @@
 #include "helpdialog.h"
 
 #include "common.h"
+#include "utils.h"
 
 #include "ui_helpdialog.h"
 
@@ -65,7 +66,7 @@ static QString getHelpFile()
     paths << (filesdir + "/help")
           << filesdir;
 #endif
-    for (const QString &p: paths) {
+    for (const QString &p: utils::as_const(paths)) {
         QString filename = p + "/online-help.qhc";
         if (QFileInfo::exists(filename))
             return filename;

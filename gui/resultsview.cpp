@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -423,7 +423,7 @@ void ResultsView::readErrorsXml(const QString &filename)
         msgBox.exec();
     }
 
-    for (const ErrorItem& item : errors) {
+    for (const ErrorItem& item : utils::as_const(errors)) {
         handleCriticalError(item);
         mUI->mTree->addErrorItem(item);
     }

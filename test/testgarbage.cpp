@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -259,6 +259,7 @@ private:
         TEST_CASE(garbageCode228);
         TEST_CASE(garbageCode229);
         TEST_CASE(garbageCode230);
+        TEST_CASE(garbageCode231);
 
         TEST_CASE(garbageCodeFuzzerClientMode1); // test cases created with the fuzzer client, mode 1
 
@@ -1774,6 +1775,9 @@ private:
     }
     void garbageCode230() { // #14432
         ASSERT_THROW_INTERNAL(checkCode("e U U,i"), SYNTAX);
+    }
+    void garbageCode231() {
+        ASSERT_THROW_INTERNAL(checkCode("char char* [] = {\"a\" \"b\"}"), SYNTAX);
     }
 
 

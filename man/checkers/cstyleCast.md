@@ -31,7 +31,7 @@ The motivation of this checker is to modernize c++ code.
 
 You can use C++ casts such as `static_cast` to fix these warnings.
 
-The `dynamic_cast` should rarelly be used to fix these warnings because dangerousTypeCast is
+The `dynamic_cast` should rarely be used to fix these warnings because dangerousTypeCast is
 reported when that can be a good idea.
 
 Before:

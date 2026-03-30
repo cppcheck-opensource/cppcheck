@@ -25,8 +25,11 @@ if(RUN_CLANG_TIDY_NAMES)
         endif()
         message(STATUS "NPROC=${NPROC}")
 
-        # TODO: introduced in run-clang-tidy-22
-        set(CLANG_TIDY_CONFIG "-enable-check-profile")
+        if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 22)
+            set(CLANG_TIDY_CONFIG "-enable-check-profile")
+        else()
+            set(CLANG_TIDY_CONFIG "")
+        endif()
 
         # most of these are disabled because they are too noisy in our code
         # clang-analyzer-core.CallAndMessage
@@ -40,6 +43,8 @@ if(RUN_CLANG_TIDY_NAMES)
         set(CLANG_TIDY_CSA_CONFIG "-config={InheritParentConfig: true, Checks: '-*,clang-analyzer-*,-clang-analyzer-core.CallAndMessage,-clang-analyzer-core.NonNullParamChecker,-clang-analyzer-cplusplus.NewDeleteLeaks,-clang-analyzer-cplusplus.NewDelete,-clang-analyzer-core.NullDereference,-clang-analyzer-unix.Stream,-clang-analyzer-alpha.clone.CloneChecker,-clang-analyzer-alpha.webkit.*'}")
         if (ENABLE_CSA_ALPHA)
             set(CLANG_TIDY_CSA_ALPHA_OPTS "-allow-enabling-alpha-checkers" "-extra-arg=-Xclang" "-extra-arg=-analyzer-config" "-extra-arg=-Xclang" "-extra-arg=aggressive-binary-operation-simplification=true")
+        else()
+            set(CLANG_TIDY_CSA_ALPHA_OPTS "")
         endif()
 
         # TODO: exclude moc_*.cpp

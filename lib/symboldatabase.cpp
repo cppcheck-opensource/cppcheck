@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -160,6 +160,7 @@ void SymbolDatabase::createSymbolDatabaseFindAllScopes()
     };
 
     std::stack<const Token*> inIfCondition;
+    std::stack<Scope*> pendingIfScopes;
 
     auto addLambda = [this, &scope](const Token* tok, const Token* lambdaEndToken) -> const Token* {
         const Token* lambdaStartToken = lambdaEndToken->link();
@@ -713,7 +714,7 @@ void SymbolDatabase::createSymbolDatabaseFindAllScopes()
                 }
                 // function prototype?
                 else if (declEnd && declEnd->str() == ";") {
-                    if (tok->astParent() && tok->astParent()->str() == "::" &&
+                    if ((Token::simpleMatch(tok->tokAt(-1), "::") || (tok->tokAt(-1) && Token::simpleMatch(tok->tokAt(-2), ":: ~"))) &&
                         Token::Match(declEnd->previous(), "default|delete")) {
                         addClassFunction(scope, tok, argStart);
                         continue;
@@ -766,13 +767,14 @@ void SymbolDatabase::createSymbolDatabaseFindAllScopes()
                     scopeList.emplace_back(*this, tok, scope, ScopeType::eSwitch, scopeStartTok);
 
                 scope->nestedList.push_back(&scopeList.back());
-                scope = &scopeList.back();
-                if (scope->type == ScopeType::eFor)
-                    scope->checkVariable(tok->tokAt(2), AccessControl::Local); // check for variable declaration and add it to new scope if found
-                else if (scope->type == ScopeType::eCatch)
-                    scope->checkVariable(tok->tokAt(2), AccessControl::Throw); // check for variable declaration and add it to new scope if found
+                Scope* newScope = &scopeList.back();
+                if (newScope->type == ScopeType::eFor)
+                    newScope->checkVariable(tok->tokAt(2), AccessControl::Local); // check for variable declaration and add it to new scope if found
+                else if (newScope->type == ScopeType::eCatch)
+                    newScope->checkVariable(tok->tokAt(2), AccessControl::Throw); // check for variable declaration and add it to new scope if found
                 tok = tok->next();
                 inIfCondition.push(scopeStartTok);
+                pendingIfScopes.push(newScope);
             } else if (Token::Match(tok, "%var% {")) {
                 endInitList.emplace(tok->linkAt(1), scope);
                 tok = tok->next();
@@ -783,6 +785,8 @@ void SymbolDatabase::createSymbolDatabaseFindAllScopes()
                     endInitList.emplace(tok->link(), scope);
                 } else if (!inIfCondition.empty() && tok == inIfCondition.top()) {
                     inIfCondition.pop();
+                    scope = pendingIfScopes.top();
+                    pendingIfScopes.pop();
                 } else if (isExecutableScope(tok)) {
                     scopeList.emplace_back(*this, tok, scope, ScopeType::eUnconditional, tok);
                     scope->nestedList.push_back(&scopeList.back());
@@ -3860,7 +3864,7 @@ void SymbolDatabase::returnImplicitIntError(const Token *tok) const
 const Function* Type::getFunction(const std::string& funcName) const
 {
     if (classScope) {
-        const auto it = utils::as_const(classScope->functionMap).find(funcName);
+        const auto it = classScope->functionMap.find(funcName);
         if (it != classScope->functionMap.end())
             return it->second;
     }
@@ -4834,7 +4838,7 @@ std::vector<const Function*> Function::getOverloadedFunctions() const
 
     while (scope) {
         const bool isMemberFunction = scope->isClassOrStruct() && !isStatic();
-        for (auto it = utils::as_const(scope->functionMap).find(tokenDef->str());
+        for (auto it = scope->functionMap.find(tokenDef->str());
              it != scope->functionMap.end() && it->first == tokenDef->str();
              ++it) {
             const Function* func = it->second;
@@ -4885,7 +4889,7 @@ const Function * Function::getOverriddenFunctionRecursive(const ::Type* baseType
         const Scope *parent = derivedFromType->classScope;
 
         // check if function defined in base class
-        auto range = utils::as_const(parent->functionMap).equal_range(tokenDef->str());
+        auto range = parent->functionMap.equal_range(tokenDef->str());
         for (auto it = range.first; it != range.second; ++it) {
             const Function * func = it->second;
             if (func->isImplicitlyVirtual()) { // Base is virtual and of same name
@@ -5832,7 +5836,7 @@ void Scope::findFunctionInBase(const Token* tok, nonneg int args, std::vector<co
                 if (base->classScope == this) // Ticket #5120, #5125: Recursive class; tok should have been found already
                     continue;
 
-                auto range = utils::as_const(base->classScope->functionMap).equal_range(tok->str());
+                auto range = base->classScope->functionMap.equal_range(tok->str());
                 for (auto it = range.first; it != range.second; ++it) {
                     const Function *func = it->second;
                     if (func->isDestructor() && !Token::simpleMatch(tok->tokAt(-1), "~"))
@@ -5994,7 +5998,7 @@ const Function* Scope::findFunction(const Token *tok, bool requireConst, Referen
     const std::size_t args = arguments.size();
 
     auto addMatchingFunctions = [&](const Scope *scope) {
-        auto range = utils::as_const(scope->functionMap).equal_range(tok->str());
+        auto range = scope->functionMap.equal_range(tok->str());
         for (auto it = range.first; it != range.second; ++it) {
             const Function *func = it->second;
             if (ref == Reference::LValue && func->hasRvalRefQualifier())
@@ -6762,7 +6766,7 @@ Function * SymbolDatabase::findFunctionInScope(const Token *func, const Scope *n
     const Function * function = nullptr;
     const bool destructor = func->strAt(-1) == "~";
 
-    auto range = utils::as_const(ns->functionMap).equal_range(func->str());
+    auto range = ns->functionMap.equal_range(func->str());
     for (auto it = range.first; it != range.second; ++it) {
         if (it->second->argsMatch(ns, it->second->argDef, func->next(), path, path_length) &&
             it->second->isDestructor() == destructor) {
@@ -7681,14 +7685,14 @@ static const Function *getOperatorFunction(const Token * const tok)
 
     const Scope *classScope = getClassScope(tok->astOperand1());
     if (classScope) {
-        auto it = utils::as_const(classScope->functionMap).find(functionName);
+        auto it = classScope->functionMap.find(functionName);
         if (it != classScope->functionMap.end())
             return it->second;
     }
 
     classScope = getClassScope(tok->astOperand2());
     if (classScope) {
-        auto it = utils::as_const(classScope->functionMap).find(functionName);
+        auto it = classScope->functionMap.find(functionName);
         if (it != classScope->functionMap.end())
             return it->second;
     }

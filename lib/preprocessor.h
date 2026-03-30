@@ -141,7 +141,7 @@ public:
 
     const simplecpp::Output* reportOutput(const simplecpp::OutputList &outputList, bool showerror);
 
-    void error(const std::string &filename, unsigned int linenr, unsigned int col, const std::string &msg, simplecpp::Output::Type type);
+    void error(const simplecpp::Location& loc, const std::string &msg, simplecpp::Output::Type type);
 
     const simplecpp::Output* handleErrors(const simplecpp::OutputList &outputList);
 
@@ -156,9 +156,9 @@ private:
         SystemHeader
     };
 
-    void missingInclude(const std::string &filename, unsigned int linenr, unsigned int col, const std::string &header, HeaderTypes headerType);
-    void invalidSuppression(const std::string &filename, unsigned int linenr, unsigned int col, const std::string &msg);
-    void error(const std::string &filename, unsigned int linenr, unsigned int col, const std::string &msg, const std::string& id);
+    void missingInclude(const simplecpp::Location& loc, const std::string &header, HeaderTypes headerType);
+    void invalidSuppression(const simplecpp::Location& loc, const std::string &msg);
+    void error(const simplecpp::Location& loc, const std::string &msg, const std::string& id);
 
     void addRemarkComments(const simplecpp::TokenList &tokens, std::vector<RemarkComment> &remarkComments) const;
 

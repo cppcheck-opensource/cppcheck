@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -170,7 +170,7 @@ void CheckThread::run()
         const Details details{ mThreadIndex, QString::fromStdString(fname), QTime::currentTime(), };
         emit startCheck(details);
 
-        cppcheck.check(*file);
+        cppcheck.check(*fileSettings);
         runAddonsAndTools(mSettings, fileSettings, QString::fromStdString(fname));
 
         emit finishCheck(details);
@@ -190,7 +190,7 @@ void CheckThread::run()
 
 void CheckThread::runAddonsAndTools(const Settings& settings, const FileSettings *fileSettings, const QString &fileName)
 {
-    for (const QString& addon : mAddonsAndTools) {
+    for (const QString& addon : utils::as_const(mAddonsAndTools)) {
         if (addon == CLANG_ANALYZER || addon == CLANG_TIDY) {
             if (!fileSettings)
                 continue;
@@ -303,7 +303,7 @@ void CheckThread::runAddonsAndTools(const Settings& settings, const FileSettings
             {
                 const QString cmd(clangTidyCmd());
                 QString debug(cmd.contains(" ") ? ('\"' + cmd + '\"') : cmd);
-                for (const QString& arg : args) {
+                for (const QString& arg : utils::as_const(args)) {
                     if (arg.contains(" "))
                         debug += " \"" + arg + '\"';
                     else

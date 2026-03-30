@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -477,7 +477,7 @@ public:
         /** @brief the maximum iterations to execute */
         std::size_t maxIterations = 4;
 
-        /** @brief maximum numer if-branches */
+        /** @brief maximum number if-branches */
         int maxIfCount = -1;
 
         /** @brief maximum number of sets of arguments to pass to subfuncions */

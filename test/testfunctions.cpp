@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2220,6 +2220,12 @@ private:
               "    return b;\n"
               "}\n", s);
         TODO_ASSERT_EQUALS("", "[test.cpp:6:5]: (debug) auto token with no type. [autoNoType]\n", errout_str());
+
+        check("template <typename T>\n" // #13509
+              "void f(const T& t) {\n"
+              "    t.g();\n"
+              "}\n", s);
+        ASSERT_EQUALS("", errout_str());
     }
 
     void checkUseStandardLibrary1() {

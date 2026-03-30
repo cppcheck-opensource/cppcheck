@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@
 #include "tokenize.h"
 #include "tokenlist.h"
 #include "utils.h"
+#include "vfvalue.h"
 
 #include <algorithm>
 #include <array>
@@ -1163,7 +1164,7 @@ void CheckLeakAutoVar::leakIfAllocated(const Token *vartok,
     const std::map<int, VarInfo::AllocInfo> &alloctype = varInfo.alloctype;
     const auto& possibleUsage = varInfo.possibleUsage;
 
-    const auto var = utils::as_const(alloctype).find(vartok->varId());
+    const auto var = alloctype.find(vartok->varId());
     if (var != alloctype.cend() && var->second.status == VarInfo::ALLOC) {
         const auto use = possibleUsage.find(vartok->varId());
         if (use == possibleUsage.end()) {

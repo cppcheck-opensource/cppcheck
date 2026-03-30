@@ -12,6 +12,8 @@ function(build_src output filename)
     set(${output} ${${output}} ${outfile} PARENT_SCOPE)
     if (USE_MATCHCOMPILER_OPT STREQUAL "Verify")
         set(verify_option "--verify")
+    else()
+        set(verify_option "")
     endif()
     add_custom_command(
         OUTPUT ${outfile}
@@ -28,6 +30,7 @@ function(build_src output filename)
 endfunction()
 
 if (NOT USE_MATCHCOMPILER_OPT STREQUAL "Off")
+    set(srcs_build "")
     foreach(file ${srcs})
         build_src(srcs_build ${file})
     endforeach()

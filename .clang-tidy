@@ -42,7 +42,9 @@ Checks: >
         -modernize-avoid-c-arrays,
         -modernize-deprecated-ios-base-aliases,
         -misc-include-cleaner,
+        -misc-multiple-inheritance,
         -misc-unused-using-decls,
+        -modernize-avoid-c-style-cast,
         -modernize-loop-convert,
         -modernize-macro-to-enum,
         -modernize-raw-string-literal,
@@ -68,6 +70,7 @@ Checks: >
         -readability-identifier-length,
         -readability-identifier-naming,
         -readability-implicit-bool-conversion,
+        -readability-inconsistent-ifelse-braces,
         -readability-isolate-declaration,
         -readability-magic-numbers,
         -readability-redundant-parentheses,
@@ -87,3 +90,5 @@ CheckOptions:
     value:           false
   - key:             misc-override-with-different-visibility.DisallowedVisibilityChange
     value:           widening
+  - key:             misc-use-internal-linkage.AnalyzeTypes
+    value:           false

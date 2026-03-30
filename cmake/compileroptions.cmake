@@ -170,6 +170,12 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-Wno-weak-vtables)
     add_compile_options(-Wno-multichar)
 
+    # FIXME: only reported when running clang-tidy
+    # /home/runner/work/cppcheck/cppcheck/tools/triage/mainwindow.cpp:19:10: error: multiple candidates for header 'mainwindow.h' found; directory '/home/runner/work/cppcheck/cppcheck/tools/triage' chosen, ignoring others including '/home/runner/work/cppcheck/cppcheck/gui' [clang-diagnostic-shadow-header]
+    # 19 | #include "mainwindow.h"
+    # |          ^
+    add_compile_options_safe(-Wno-shadow-header)
+
     if(ENABLE_COVERAGE OR ENABLE_COVERAGE_XML)
       message(FATAL_ERROR "Do not use clang to generate code coverage. Use GCC instead.")
     endif()

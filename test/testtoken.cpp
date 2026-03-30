@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,6 +64,7 @@ private:
         TEST_CASE(multiCompare3);                   // false positive for %or% on code using "|="
         TEST_CASE(multiCompare4);
         TEST_CASE(multiCompare5);
+        TEST_CASE(multiCompare6);
         TEST_CASE(charTypes);
         TEST_CASE(stringTypes);
         TEST_CASE(getStrLength);
@@ -320,6 +321,17 @@ private:
         Token tok(list, std::move(tokensFrontBack));
         tok.str("||");
         ASSERT_EQUALS(true, TokenTest::multiCompare(&tok, "+|%or%|%oror%", 0) >= 0);
+    }
+
+    void multiCompare6() const {
+        {
+            const SimpleTokenList stl("x %= y;");
+            ASSERT_EQUALS(true, Token::Match(stl.front(), "%name% %= %name%"));
+        }
+        {
+            const SimpleTokenList stl("x += y;");
+            ASSERT_EQUALS(false, Token::Match(stl.front(), "%name% %= %name%"));
+        }
     }
 
     void charTypes() const {

@@ -37,6 +37,8 @@ public:
     bool summary() const;
     /** Perform dry run. */
     bool dry_run() const;
+    /** Exclude provided lists of tests. */
+    bool exclude_tests() const;
     /** Which test should be run. Empty string means 'all tests' */
     const std::set<std::string>& which_test() const;
 
@@ -52,6 +54,7 @@ private:
     const bool mHelp;
     const bool mSummary;
     const bool mDryRun;
+    const bool mExcludeTests;
     std::string mExe;
 };
 

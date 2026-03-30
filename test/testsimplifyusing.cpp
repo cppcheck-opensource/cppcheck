@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #include "helpers.h"
 #include "platform.h"
 #include "settings.h"
+#include "standards.h"
 #include "token.h"
 #include "utils.h"
 
@@ -75,6 +76,7 @@ private:
         TEST_CASE(simplifyUsing36);
         TEST_CASE(simplifyUsing37);
         TEST_CASE(simplifyUsing38);
+        TEST_CASE(simplifyUsing39);
 
         TEST_CASE(simplifyUsing8970);
         TEST_CASE(simplifyUsing8971);
@@ -106,12 +108,14 @@ private:
         Platform::Type type = Platform::Type::Native;
         bool debugwarnings = true;
         bool preprocess = false;
+        Standards::cppstd_t cppstd = Standards::CPPLatest;
     };
 
 #define tok(...) tok_(__FILE__, __LINE__, __VA_ARGS__)
     template<size_t size>
     std::string tok_(const char* file, int line, const char (&code)[size], const TokOptions& options = make_default_obj()) {
-        const Settings settings = settingsBuilder(settings0).certainty(Certainty::inconclusive).debugwarnings(options.debugwarnings).platform(options.type).build();
+        const Settings settings = settingsBuilder(settings0).certainty(Certainty::inconclusive).debugwarnings(options.debugwarnings)
+                                  .platform(options.type).cpp(options.cppstd).build();
 
         if (options.preprocess) {
             SimpleTokenizer2 tokenizer(settings, *this, code, "test.cpp");
@@ -922,6 +926,16 @@ private:
                             "int end;\n";
         const char expected[] = "Unknown begin ; int end ;";
         ASSERT_EQUALS(expected, tok(code));
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void simplifyUsing39() {
+        const char code[] = "using std::wstring;\n" // #14578
+                            "wstring ws;";
+        const char expected[] = "std :: wstring ws ;";
+        ASSERT_EQUALS(expected, tok(code));
+        ASSERT_EQUALS("", errout_str());
+        ASSERT_EQUALS(expected, tok(code, dinit(TokOptions, $.cppstd = Standards::CPP03)));
         ASSERT_EQUALS("", errout_str());
     }
 

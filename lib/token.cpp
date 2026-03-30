@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -554,7 +554,7 @@ int multiCompareImpl(const Token *tok, const char *haystack, nonneg int varid)
     const char *needle = tok->str().c_str();
     const char *needlePointer = needle;
     for (;;) {
-        if (needlePointer == needle && haystack[0] == '%' && haystack[1] != '|' && haystack[1] != '\0' && haystack[1] != ' ') {
+        if (needlePointer == needle && haystack[0] == '%' && haystack[1] != '|' && haystack[1] != '\0' && haystack[1] != ' ' && haystack[1] != '=') {
             const int ret = multiComparePercent(tok, haystack, varid);
             if (ret < 2)
                 return ret;

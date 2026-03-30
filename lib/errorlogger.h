@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,12 +24,12 @@
 #include "config.h"
 #include "errortypes.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <ctime>
 #include <list>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 #include <map>
 
@@ -299,6 +299,8 @@ public:
     }
 
     ~ProgressReporter() {
+        if (mReportProgressInterval < 0)
+            return;
         mErrorLogger.reportProgress(mFilename, mStage.c_str(), 100);
     }
 
@@ -334,12 +336,12 @@ CPPCHECKLIB void substituteTemplateLocationStatic(std::string& templateLocation,
 /** Get a classification string from the given guideline and reporttype */
 CPPCHECKLIB std::string getClassification(const std::string &guideline, ReportType reportType);
 
-/** Get a guidline string froM the given error id, reporttype, mapping and severity */
+/** Get a guideline string froM the given error id, reporttype, mapping and severity */
 CPPCHECKLIB std::string getGuideline(const std::string &errId, ReportType reportType,
                                      const std::map<std::string, std::string> &guidelineMapping,
                                      Severity severity);
 
-/** Get a map from cppcheck error ids to guidlines matching the given report type */
+/** Get a map from cppcheck error ids to guidelines matching the given report type */
 CPPCHECKLIB std::map<std::string, std::string> createGuidelineMapping(ReportType reportType);
 
 /// @}

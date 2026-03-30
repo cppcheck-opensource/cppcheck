@@ -5166,6 +5166,20 @@ void constVariablePointer_push_back(std::vector<T*>& d, const std::vector<T*>& s
     }
 }
 
+struct S_constVariablePointer_wstring { // #14575
+    std::wstring m;
+    const std::wstring& get() const { return m; }
+};
+
+S_constVariablePointer_wstring* g_constVariablePointer_wstring();
+
+void h_constVariablePointer_wstring(const wchar_t*);
+
+void f_constVariablePointer_wstring() {
+    S_constVariablePointer_wstring* s = g_constVariablePointer_wstring(); // cppcheck-suppress constVariablePointer
+    h_constVariablePointer_wstring(s->get().c_str());
+}
+
 std::streampos constParameterPointer_istream_tellg(std::istream* p) { // #13801
     return p->tellg();
 }

@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -304,7 +304,7 @@ static void conditionAlwaysTrueOrFalse(const Token *tok, const std::map<nonneg i
     if (tok->isName() || tok->str() == ".") {
         while (tok && tok->str() == ".")
             tok = tok->astOperand2();
-        const auto it = utils::as_const(variableValue).find(tok ? tok->varId() : ~0U);
+        const auto it = tok ? variableValue.find(tok->varId()) : variableValue.end();
         if (it != variableValue.end()) {
             *alwaysTrue = (it->second != 0LL);
             *alwaysFalse = (it->second == 0LL);
@@ -330,7 +330,7 @@ static void conditionAlwaysTrueOrFalse(const Token *tok, const std::map<nonneg i
         while (vartok && vartok->str() == ".")
             vartok = vartok->astOperand2();
 
-        const auto it = utils::as_const(variableValue).find(vartok ? vartok->varId() : ~0U);
+        const auto it = vartok ? variableValue.find(vartok->varId()) : variableValue.end();
         if (it == variableValue.end())
             return;
 

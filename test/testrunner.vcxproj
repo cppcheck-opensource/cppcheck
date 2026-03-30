@@ -53,6 +53,7 @@
     <ClCompile Include="testbufferoverrun.cpp" />
     <ClCompile Include="testcharvar.cpp" />
     <ClCompile Include="testcheck.cpp" />
+    <ClCompile Include="testcheckersreport.cpp" />
     <ClCompile Include="testclangimport.cpp" />
     <ClCompile Include="testclass.cpp" />
     <ClCompile Include="testcmdlineparser.cpp" />

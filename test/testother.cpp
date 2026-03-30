@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -123,6 +123,7 @@ private:
         TEST_CASE(varScope43);
         TEST_CASE(varScope44);
         TEST_CASE(varScope45);
+        TEST_CASE(varScope46);
 
         TEST_CASE(oldStylePointerCast);
         TEST_CASE(intToPointerCast);
@@ -1982,6 +1983,63 @@ private:
               "    }\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:2:16]: (style) The scope of the variable 'b' can be reduced. [variableScope]\n", errout_str());
+    }
+
+    void varScope46() {
+        check("void f() {\n" // #7091
+              "    int y1;\n"
+              "    for (int i = 0; i < 3; ++i) {\n"
+              "        for(int j = 0; j < 3; ++j) {\n"
+              "                y1 = 2 * 1;\n"
+              "                y1 += 1;\n"
+              "        }\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:9]: (style) The scope of the variable 'y1' can be reduced. [variableScope]\n",
+                      errout_str());
+
+        check("bool f() {\n"
+              "bool b = false;\n"
+              "do {\n"
+              "    switch (g()) {\n"
+              "        case 0:\n"
+              "            b = true;\n"
+              "            break;\n"
+              "        case 1:\n"
+              "            return b;\n"
+              "            break;\n"
+              "        default:\n"
+              "            break;\n"
+              "    }\n"
+              "}\n"
+              "while (true);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f() {\n"
+              "    int y1 = 0;\n"
+              "    for (int i = 0; i < 3; ++i) {\n"
+              "        for(int j = 0; j < 3; ++j) {\n"
+              "                y1 = y1 + 1;\n"
+              "                dostuff(y1);\n"
+              "        }\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f(int& r) {\n" // #14566
+              "    int i = 0;\n"
+              "    while (g()) {\n"
+              "        {\n"
+              "            if (g()) {\n"
+              "                i = 0;"
+              "                std::swap(i, r);\n"
+              "            }\n"
+              "        }\n"
+              "    }\n"
+              "    use(i);"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
 #define checkOldStylePointerCast(...) checkOldStylePointerCast_(__FILE__, __LINE__, __VA_ARGS__)
@@ -4705,6 +4763,30 @@ private:
               "    return [](int* p) { return *p; }(&i);\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:3:20]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n", errout_str());
+
+        check("struct S {\n" // #14571
+              "    char* c;\n"
+              "};\n"
+              "struct T {\n"
+              "    S s;\n"
+              "};\n"
+              "void f(std::string* p, T& t) {\n"
+              "    S& r = t.s;\n"
+              "    strcpy(r.c, p->c_str());\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:7:21]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n", errout_str());
+
+        check("struct S {\n" // #14559
+              "    int gc() const;\n"
+              "    int gnc();\n"
+              "};\n"
+              "int f1(S* s) {\n"
+              "    return h(s ? s->gc() : 1);\n"
+              "}\n"
+              "int f2(S* s) {\n"
+              "    return h(s ? s->gnc() : 1);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:11]: (style) Parameter 's' can be declared as pointer to const [constParameterPointer]\n", errout_str());
     }
 
     void constArray() {
@@ -9243,6 +9325,24 @@ private:
               "    for (unsigned p = 0; p < (sizeof(a) / sizeof((a)[0])); ++p) {}\n"
               "}");
         ASSERT_EQUALS("", errout_str());
+
+        check("void f(const unsigned char u) {\n"
+              "    if (u >  0) {}\n"
+              "    if (u <  0) {}\n"
+              "    if (u >= 0) {}\n"
+              "    if (u <= 0) {}\n"
+              "    if (0 <  u) {}\n"
+              "    if (0 >  u) {}\n"
+              "    if (0 <= u) {}\n"
+              "    if (0 >= u) {}\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:3:11]: (style) Checking if unsigned expression 'u' is less than zero. [unsignedLessThanZero]\n"
+                      "[test.cpp:4:11]: (style) Unsigned expression 'u' can't be negative so it is unnecessary to test it. [unsignedPositive]\n"
+                      "[test.cpp:5:11]: (style) Checking if unsigned expression 'u' is less than zero. [unsignedLessThanZero]\n"
+                      "[test.cpp:7:11]: (style) Checking if unsigned expression 'u' is less than zero. [unsignedLessThanZero]\n"
+                      "[test.cpp:8:11]: (style) Unsigned expression 'u' can't be negative so it is unnecessary to test it. [unsignedPositive]\n"
+                      "[test.cpp:9:11]: (style) Checking if unsigned expression 'u' is less than zero. [unsignedLessThanZero]\n",
+                      errout_str());
     }
 
     void checkSignOfPointer() {
@@ -11251,6 +11351,12 @@ private:
         check("void a(char *p, ...);\n"
               "void b() { a(NULL, 2); }");
         ASSERT_EQUALS("", errout_str());
+
+        checkP("extern const int sentinel;\n"
+               "void a(int, ...);\n"
+               "#define b(x, ...) a((x), __VA_ARGS__, &sentinel)\n"
+               "void c() { b(1, NULL); }");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void checkCastIntToCharAndBack() { // #160
@@ -13208,6 +13314,13 @@ private:
               "    if (j % c) {}\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("void f() {\n"
+              "    int i = 0;\n"
+              "    i %= 1;\n"
+              "    (void)i;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:7]: (style) Modulo of one is always equal to zero [moduloofone]\n", errout_str());
     }
 
     void sameExpressionPointers() {

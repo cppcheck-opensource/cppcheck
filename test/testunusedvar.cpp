@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -5812,6 +5812,22 @@ private:
                               "    for (int i = 0; (pci = cdi_list_get(pciDevices, i)); i++)\n"
                               "    {}\n"
                               "}");
+        ASSERT_EQUALS("", errout_str());
+
+        functionVariableUsage("void f(const int* b, int x) {\n" // #11125
+                              "    int a[6];\n"
+                              "    int i = 0;\n"
+                              "    for (int j = 0; j < 6; ++j) {\n"
+                              "        if (b[j] != 0) {\n"
+                              "            a[i] = j;\n"
+                              "            ++i;\n"
+                              "        }\n"
+                              "    }\n"
+                              "    if (i > 1) {\n"
+                              "        a[i] = a[0];\n"
+                              "        (void)a[x];\n"
+                              "    }\n"
+                              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 

@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -69,6 +69,7 @@ private:
         TEST_CASE(testautovar15); // ticket #6538
         TEST_CASE(testautovar16); // ticket #8114
         TEST_CASE(testautovar17);
+        TEST_CASE(testautovar18);
         TEST_CASE(testautovar_array1);
         TEST_CASE(testautovar_array2);
         TEST_CASE(testautovar_array3);
@@ -514,6 +515,15 @@ private:
               "    *q = &s.p[0];\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void testautovar18() {
+        check("struct S { int* p; };\n"
+              "void foo(struct S* s) {\n"
+              "    int x;\n"
+              "    s[2].p = &x;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:5]: (error) Address of local auto-variable assigned to a function parameter. [autoVariables]\n", errout_str());
     }
 
     void testautovar_array1() {

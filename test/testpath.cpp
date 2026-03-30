@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -315,7 +315,7 @@ private:
         ASSERT_EQUALS(Standards::Language::CPP, Path::identify("/mnt/c/foo/index.cpp", false));
         ASSERT_EQUALS(Standards::Language::CPP, Path::identify("/mnt/c/foo/index.Cpp", false));
 
-        // TODO: check for case-insenstive filesystem instead
+        // TODO: check for case-insensitive filesystem instead
         // In unix .C is considered C++
 #if !defined(_WIN32) && !(defined(__APPLE__) && defined(__MACH__))
         ASSERT_EQUALS(Standards::Language::CPP, Path::identify("index.C", false));

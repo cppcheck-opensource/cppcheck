@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1084,7 +1084,7 @@ bool isAliasOf(const Token* tok, const Token* expr, nonneg int* indirect)
         r = findAstNode(expr, [&](const Token* childTok) {
             if (childTok->exprId() == 0)
                 return false;
-            if (ref.token != tok && expr->exprId() == childTok->exprId()) {
+            if (ref.token != tok && expr->exprId() == childTok->exprId() && ref.token->isUnaryOp("*") && expr->exprId() == ref.token->astOperand1()->exprId()) {
                 if (indirect)
                     *indirect = 0;
                 return true;
@@ -2499,7 +2499,7 @@ bool isMutableExpression(const Token* tok)
     if (const Variable* var = tok->variable()) {
         if (var->nameToken() == tok)
             return false;
-        if (!var->isPointer() && var->isConst())
+        if (var->isConst() && !var->isPointer() && (!var->isArray() || !var->isArgument()))
             return false;
     }
     return true;
@@ -2628,7 +2628,7 @@ bool isVariableChanged(const Token *tok, int indirect, const Settings &settings,
     if (!tok->isMutableExpr())
         return false;
 
-    if (indirect == 0 && isConstVarExpression(tok))
+    if (isConstVarExpression(tok))
         return false;
 
     const Token *tok2 = tok;
@@ -2636,7 +2636,8 @@ bool isVariableChanged(const Token *tok, int indirect, const Settings &settings,
     while ((tok2->astParent() && tok2->astParent()->isUnaryOp("*")) ||
            (Token::simpleMatch(tok2->astParent(), ".") && !Token::Match(tok2->astParent()->astParent(), "[(,]")) ||
            (tok2->astParent() && tok2->astParent()->isUnaryOp("&") && Token::simpleMatch(tok2->astParent()->astParent(), ".") && tok2->astParent()->astParent()->originalName()=="->") ||
-           (Token::simpleMatch(tok2->astParent(), "[") && tok2 == tok2->astParent()->astOperand1())) {
+           (Token::simpleMatch(tok2->astParent(), "[") && tok2 == tok2->astParent()->astOperand1()) ||
+           (Token::simpleMatch(tok2->astParent(), "(") && tok2->astParent()->isCast())) {
         if (tok2->astParent() && (tok2->astParent()->isUnaryOp("*") || (astIsLHS(tok2) && tok2->astParent()->originalName() == "->" && !hasOverloadedMemberAccess(tok2))))
             derefs++;
         if (derefs > indirect)
@@ -2692,7 +2693,7 @@ bool isVariableChanged(const Token *tok, int indirect, const Settings &settings,
         if (isVariableChanged(tok2->astParent(), indirect + 1, settings, depth - 1))
             return true;
     } else {
-        // If its already const then it cant be modified
+        // If its already const then it can't be modified
         if (vt && vt->isConst(indirect))
             return false;
     }
@@ -3369,7 +3370,7 @@ bool isConstVarExpression(const Token *tok, const std::function<bool(const Token
     if (!tok)
         return false;
     if (tok->str() == "?" && tok->astOperand2() && tok->astOperand2()->str() == ":") // ternary operator
-        return isConstVarExpression(tok->astOperand2()->astOperand1()) && isConstVarExpression(tok->astOperand2()->astOperand2()); // left and right of ":"
+        return isConstVarExpression(tok->astOperand2()->astOperand1()) || isConstVarExpression(tok->astOperand2()->astOperand2()); // left and right of ":"
     if (skipPredicate && skipPredicate(tok))
         return false;
     if (Token::simpleMatch(tok->previous(), "sizeof ("))

@@ -20,7 +20,16 @@ jobs:
 
     strategy:
       matrix:
-        image: ["ubuntu:24.04", "ubuntu:25.10"]
+        include:
+          - image: "ubuntu:24.04"
+            with_gui: true
+            full_build: true
+          - image: "ubuntu:25.10"
+            with_gui: true
+            full_build: true
+          - image: "alpine:3.23"
+            with_gui: false  # it appears FindQt6.cmake is not provided by any package
+            full_build: false  # FIXME: test-signalhandler.cpp fails to build since feenableexcept() is missing
       fail-fast: false # Prefer quick result
 
     runs-on: ubuntu-22.04
@@ -45,8 +54,14 @@ jobs:
           apt-get install -y cmake g++ make libxml2-utils libpcre3-dev
 
       - name: Install missing software (gui) on latest ubuntu
+        if: contains(matrix.image, 'ubuntu')
         run: |
           apt-get install -y qt6-base-dev qt6-charts-dev qt6-tools-dev
+
+      - name: Install missing software on Alpine
+        if: contains(matrix.image, 'alpine')
+        run: |
+          apk add cmake make g++ pcre-dev
 
       # needs to be called after the package installation since
       # - it doesn't call "apt-get update"
@@ -57,9 +72,10 @@ jobs:
 
       - name: Run CMake
         run: |
-          cmake -S . -B cmake.output -G "Unix Makefiles" -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake -S . -B cmake.output -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=${{ matrix.with_gui }} -DWITH_QCHART=On -DBUILD_TRIAGE=${{ matrix.with_gui }} -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
-      - name: CMake build (with GUI)
+      - name: CMake build
+        if: matrix.full_build
         run: |
           cmake --build cmake.output -- -j$(nproc)
 
@@ -71,7 +87,7 @@ jobs:
 
     strategy:
       matrix:
-        image: ["ubuntu:24.04", "ubuntu:25.10"]
+        image: ["ubuntu:24.04", "ubuntu:25.10", "alpine:3.23"]
       fail-fast: false # Prefer quick result
 
     runs-on: ubuntu-22.04
@@ -90,6 +106,11 @@ jobs:
           apt-get update
           apt-get install -y g++ make python3 libxml2-utils libpcre3-dev
 
+      - name: Install missing software on Alpine
+        if: contains(matrix.image, 'alpine')
+        run: |
+          apk add make g++ pcre-dev bash python3 libxml2-utils
+
       # needs to be called after the package installation since
       # - it doesn't call "apt-get update"
       - name: ccache
@@ -97,14 +118,16 @@ jobs:
         with:
           key: ${{ github.workflow }}-${{ matrix.image }}
 
+      # /usr/lib/ccache/bin - Alpine Linux
+
       - name: Build cppcheck
         run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          export PATH="/usr/lib/ccache/bin:/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           make -j$(nproc) HAVE_RULES=yes CXXOPTS="-Werror"
 
       - name: Build test
         run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          export PATH="/usr/lib/ccache/bin:/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           make -j$(nproc) HAVE_RULES=yes CXXOPTS="-Werror" testrunner
 
       - name: Run test

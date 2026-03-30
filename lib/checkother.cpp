@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1331,6 +1331,15 @@ static bool mayDependOn(const ValueType *other, const ValueType *original)
     return otherPtr > originalPtr;
 }
 
+static bool isOnlyUsedInCurrentScope(const Variable* var, const Token *tok, const Scope* scope)
+{
+    if (tok->scope() == scope)
+        return true;
+    if (tok->scope()->type == ScopeType::eSwitch)
+        return false;
+    return !Token::findmatch(tok->scope()->bodyEnd, "%varid%", var->scope()->bodyEnd, var->declarationId());
+}
+
 bool CheckOther::checkInnerScope(const Token *tok, const Variable* var, bool& used) const
 {
     const Scope* scope = tok->next()->scope();
@@ -1370,7 +1379,8 @@ bool CheckOther::checkInnerScope(const Token *tok, const Variable* var, bool& us
         if (tok == forHeadEnd)
             forHeadEnd = nullptr;
 
-        if (loopVariable && noContinue && tok->scope() == scope && !forHeadEnd && scope->type != ScopeType::eSwitch && Token::Match(tok, "%varid% =", var->declarationId())) { // Assigned in outer scope.
+        if (loopVariable && noContinue && !forHeadEnd && scope->type != ScopeType::eSwitch && Token::Match(tok, "%varid% =", var->declarationId()) &&
+            isOnlyUsedInCurrentScope(var, tok, scope)) { // Assigned in outer scope.
             loopVariable = false;
             std::pair<const Token*, const Token*> range = tok->next()->findExpressionStartEndTokens();
             if (range.first)
@@ -3547,7 +3557,7 @@ void CheckOther::checkVarFuncNullUB()
     for (const Scope * scope : symbolDatabase->functionScopes) {
         for (const Token* tok = scope->bodyStart; tok != scope->bodyEnd; tok = tok->next()) {
             // Is NULL passed to a function?
-            if (Token::Match(tok,"[(,] NULL [,)]")) {
+            if (Token::Match(tok,"[(,] NULL )")) {
                 // Locate function name in this function call.
                 const Token *ftok = tok;
                 int argnr = 1;
@@ -4419,7 +4429,7 @@ void CheckOther::checkModuloOfOne()
     for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
         if (!tok->astOperand2() || !tok->astOperand1())
             continue;
-        if (tok->str() != "%")
+        if (tok->str() != "%" && tok->str() != "%=")
             continue;
         if (!tok->valueType() || !tok->valueType()->isIntegral())
             continue;

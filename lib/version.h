@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,9 +20,9 @@
 #ifndef versionH
 #define versionH
 
-#define CPPCHECK_VERSION_STRING "2.19 dev"
-#define CPPCHECK_VERSION 2,18,99,0
+#define CPPCHECK_VERSION_STRING "2.21 dev"
+#define CPPCHECK_VERSION 2,20,99,0
 
-#define LEGALCOPYRIGHT L"Copyright (C) 2007-2025 Cppcheck team."
+#define LEGALCOPYRIGHT L"Copyright (C) 2007-2026 Cppcheck team."
 
 #endif

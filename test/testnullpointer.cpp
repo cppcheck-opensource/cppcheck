@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -995,6 +995,14 @@ private:
               "char f(S* s) { return s->p ? 'a' : s->p->c; }\n");
         ASSERT_EQUALS("[test.cpp:2:24] -> [test.cpp:2:37]: (warning) Either the condition 's->p' is redundant or there is possible null pointer dereference: s->p. [nullPointerRedundantCheck]\n",
                       errout_str());
+
+        check("int f(const int a[]) {\n" // #14544
+              "    int i = 0;\n"
+              "    if (!a)\n"
+              "        a = &i;\n"
+              "    return *a;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void nullpointer5() {

@@ -83,7 +83,7 @@ namespace simplecpp {
             , mSize(strlen(data))
         {}
 
-        // only provide when std::span is not available so using untyped initilization won't use View
+        // only provide when std::span is not available so using untyped initialization won't use View
 #if !defined(__cpp_lib_span)
         View(const char* data, std::size_t size)
             : mData(data)

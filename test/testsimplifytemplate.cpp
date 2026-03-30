@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -224,6 +224,7 @@ private:
         TEST_CASE(template180);
         TEST_CASE(template181);
         TEST_CASE(template182); // #13770
+        TEST_CASE(template183);
         TEST_CASE(template_specialization_1);  // #7868 - template specialization template <typename T> struct S<C<T>> {..};
         TEST_CASE(template_specialization_2);  // #7868 - template specialization template <typename T> struct S<C<T>> {..};
         TEST_CASE(template_specialization_3);
@@ -4675,6 +4676,25 @@ private:
                             "    return [](auto&&...) {};\n"
                             "}\n";
         const char exp[] = "template < class ... > auto f ( ) { return [ ] ( auto && ... ) { } ; }";
+        ASSERT_EQUALS(exp, tok(code));
+    }
+
+    void template183() { // #11498
+        const char code[] = "template <typename T>\n"
+                            "struct S {\n"
+                            "    void f();\n"
+                            "    using X = decltype(&S<T>::f);\n"
+                            "private:\n"
+                            "    X x;\n"
+                            "};\n"
+                            "S<int> s;\n";
+        const char exp[] = "struct S<int> ; "
+                           "S<int> s ; "
+                           "struct S<int> { "
+                           "void f ( ) ; "
+                           "private: "
+                           "decltype ( & S<int> :: f ) x ; "
+                           "} ;";
         ASSERT_EQUALS(exp, tok(code));
     }
 

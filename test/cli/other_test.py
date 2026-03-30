@@ -788,7 +788,7 @@ def test_addon_misc(tmpdir):
         f.write("""
 extern void f()
 {
-    char char* [] = {"a" "b"}
+    const char* c[] = {"a" "b"};
 }
         """)
 
@@ -800,7 +800,7 @@ extern void f()
     assert lines == [
         'Checking {} ...'.format(test_file)
     ]
-    assert stderr == '{}:4:26: style: String concatenation in array initialization, missing comma? [misc-stringConcatInArrayInit]\n'.format(test_file)
+    assert stderr == '{}:4:28: style: String concatenation in array initialization, missing comma? [misc-stringConcatInArrayInit]\n'.format(test_file)
 
 
 def test_invalid_addon_json(tmpdir):
@@ -954,30 +954,124 @@ def test_unused_function_include(tmpdir):
     __test_unused_function_include(tmpdir, [])
 
 
-# TODO: test with all other types
-def test_showtime_top5_file(tmpdir):
-    test_file = os.path.join(tmpdir, 'test.cpp')
+# TODO: test with clang-tidy
+# TODO: test with --addon
+# TODO: test with FileSettings
+# TODO: test with multiple files
+def __test_showtime(tmp_path, showtime, exp_res, exp_last, extra_args=None):
+    test_file = tmp_path / 'test.cpp'
     with open(test_file, 'wt') as f:
-        f.write("""
-                int main(int argc)
-                {
-                }
-                """)
+        f.write(
+"""
+void f()
+{
+    (void)(*((int*)0)); // cppcheck-suppress nullPointer
+}
+""")
 
-    args = ['--showtime=top5_file', '--quiet', test_file]
+    args = [
+        f'--showtime={showtime}',
+        '--quiet',
+        '--inline-suppr',
+        str(test_file)
+    ]
+
+    if extra_args:
+        args += extra_args
 
     exitcode, stdout, stderr = cppcheck(args)
-    assert exitcode == 0  # TODO: needs to be 1
+    assert exitcode == 0
     lines = stdout.splitlines()
-    assert len(lines) == 7
-    assert lines[0] == ''
-    for i in range(1, 5):
-        if lines[i].startswith('valueFlowLifetime'):
-            assert lines[i].endswith(' - 2 result(s))')
-        elif lines[i].startswith('valueFlowEnumValue'):
-            assert lines[i].endswith(' - 2 result(s))')
-        else:
-            assert lines[i].endswith(' result(s))')
+    exp_len = exp_res
+    if exp_res:
+        exp_len += 1  # empty line at the beginning - only added when individual results exist
+    if 'cppcheck internal API usage' in stdout:
+        exp_len += 1
+    exp_len += 1  # last line
+    assert len(lines) == exp_len
+    if exp_res:
+        assert lines[0] == ''
+    for i in range(1, exp_res):
+        assert 'avg.' in lines[i]
+    assert lines[exp_len-1].startswith(exp_last)
+    assert stderr == ''
+
+
+def test_showtime_top5_file(tmp_path):
+    __test_showtime(tmp_path, 'top5_file', 5, 'Check time: ')
+
+
+# TODO: remove extra args when --executor=process works works
+def test_showtime_top5_summary(tmp_path):
+    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', ['-j1'])
+
+
+# TODO: remove when --executor=process works works
+def test_showtime_top5_summary_j_thread(tmp_path):
+    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', ['-j2', '--executor=thread'])
+
+
+# TODO: remove override when fixed
+@pytest.mark.skipif(sys.platform == 'win32', reason="requires ProcessExecutor")
+@pytest.mark.xfail(strict=True)  # TODO: need to transfer the timer results to parent process - see #4452
+def test_showtime_top5_summary_j_process(tmp_path):
+    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', ['-j2', '--executor=process'])
+
+
+def test_showtime_file(tmp_path):
+    __test_showtime(tmp_path, 'file', 79, 'Check time: ')
+
+
+# TODO: remove extra args when --executor=process works works
+def test_showtime_summary(tmp_path):
+    __test_showtime(tmp_path, 'summary', 79, 'Overall time: ', ['-j1'])
+
+
+# TODO: remove when --executor=process works works
+def test_showtime_summary_j_thread(tmp_path):
+    __test_showtime(tmp_path, 'summary', 79, 'Overall time: ', ['-j2', '--executor=thread'])
+
+
+# TODO: remove override when fixed
+@pytest.mark.skipif(sys.platform == 'win32', reason="requires ProcessExecutor")
+@pytest.mark.xfail(strict=True)  # TODO: need to transfer the timer results to parent process - see #4452
+def test_showtime_summary_j_process(tmp_path):
+    __test_showtime(tmp_path, 'summary', 79, 'Overall time: ', ['-j2', '--executor=process'])
+
+
+def test_showtime_file_total(tmp_path):
+    __test_showtime(tmp_path, 'file-total', 0, 'Check time: ')
+
+
+def test_showtime_unique(tmp_path):
+    test_file = tmp_path / 'test.cpp'
+    with open(test_file, 'wt') as f:
+        f.write(
+"""
+void f()
+{
+    (void)(*((int*)0)); // cppcheck-suppress nullPointer
+}
+""")
+
+    args = [
+        '--showtime=summary',
+        '--quiet',
+        '--inline-suppr',
+        str(test_file)
+    ]
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0
+    multi_res = []
+    for line in stdout.splitlines():
+        # TODO: remove when we no longer emit empty line
+        if not line:
+            continue
+        if any(i in line for i in ['1 result(s)', 'Overall time:']):
+            continue
+        multi_res.append(line)
+    assert multi_res == []
     assert stderr == ''
 
 
@@ -3374,6 +3468,42 @@ def test_suppress_unmatched_wildcard(tmp_path):  # #13660
     ]
 
 
+def test_suppress_unmatched_wildcard_cached(tmp_path):  # #14585
+    test_file = tmp_path / 'test.c'
+    with open(test_file, 'wt') as f:
+        f.write(
+"""void f()
+{
+    (void)(*((int*)0));
+}
+""")
+
+    build_dir = tmp_path / 'b1'
+    os.makedirs(build_dir)
+
+    # need to run in the temporary folder because the path of the suppression has to match
+    args = [
+        '-q',
+        '--template=simple',
+        '--enable=information',
+        '--cppcheck-build-dir={}'.format(build_dir),
+        '--suppress=nullPointer:test*.c',
+        'test.c'
+    ]
+
+    stderr_exp = []
+
+    exitcode, stdout, stderr = cppcheck(args, cwd=tmp_path)
+    assert exitcode == 0, stdout
+    assert stdout.splitlines() == []
+    assert stderr.splitlines() == stderr_exp
+
+    exitcode, stdout, stderr = cppcheck(args, cwd=tmp_path)
+    assert exitcode == 0, stdout
+    assert stdout.splitlines() == []
+    assert stderr.splitlines() == stderr_exp
+
+
 def test_suppress_unmatched_wildcard_unchecked(tmp_path):
     # make sure that unmatched wildcards suppressions are reported if files matching the expressions were processesd
     # but isSuppressed() has never been called (i.e. no findings in file at all)
@@ -4234,3 +4364,41 @@ def test_analyzerinfo(tmp_path):
     # TODO:
     # - invalid error
     # - internalError
+
+
+def test_ctu_function_call_path_slash(tmp_path):  # #14591
+    test_file = tmp_path / 'test.cpp'
+    with open(test_file, "w") as f:
+        f.write(
+"""void g(T* p)
+{
+    *p = 0;
+}
+
+void f(T* p)
+{
+    p = nullptr;
+    g(p);
+}
+""")
+
+    build_dir = tmp_path / 'b1'
+    os.makedirs(build_dir)
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--cppcheck-build-dir={}'.format(build_dir),
+        str(test_file)
+    ]
+
+    exitcode, _, _ = cppcheck(args)
+    assert exitcode == 0
+
+    test_a1_file = build_dir / 'test.a1'
+    analyzerinfo = ElementTree.fromstring(test_a1_file.read_text())
+    function_call_paths = analyzerinfo.findall('FileInfo/function-call/path')
+    assert len(function_call_paths) == 1
+    file = function_call_paths[0].attrib['file']
+    assert file
+    assert not '\\' in file  # the path was incorrectly converted to native
