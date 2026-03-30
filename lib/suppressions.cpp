@@ -25,7 +25,6 @@
 #include "pathmatch.h"
 #include "utils.h"
 #include "token.h"
-#include "tokenize.h"
 #include "tokenlist.h"
 #include "settings.h"
 
@@ -615,25 +614,25 @@ std::list<SuppressionList::Suppression> SuppressionList::getSuppressions() const
     return mSuppressions;
 }
 
-void SuppressionList::markUnmatchedInlineSuppressionsAsChecked(const Tokenizer &tokenizer) {
+void SuppressionList::markUnmatchedInlineSuppressionsAsChecked(const TokenList &tokenlist) {
     std::lock_guard<std::mutex> lg(mSuppressionsSync);
 
     int currLineNr = -1;
     int currFileIdx = -1;
-    for (const Token *tok = tokenizer.tokens(); tok; tok = tok->next()) {
+    for (const Token *tok = tokenlist.front(); tok; tok = tok->next()) {
         if (currFileIdx != tok->fileIndex() || currLineNr != tok->linenr()) {
             currLineNr = tok->linenr();
             currFileIdx = tok->fileIndex();
             for (auto &suppression : mSuppressions) {
                 if (suppression.type == SuppressionList::Type::unique) {
-                    if (!suppression.checked && (suppression.lineNumber == currLineNr) && (suppression.fileName == tokenizer.list.file(tok))) {
+                    if (!suppression.checked && (suppression.lineNumber == currLineNr) && (suppression.fileName == tokenlist.file(tok))) {
                         suppression.checked = true;
                     }
                 } else if (suppression.type == SuppressionList::Type::block) {
-                    if ((!suppression.checked && (suppression.lineBegin <= currLineNr) && (suppression.lineEnd >= currLineNr) && (suppression.fileName == tokenizer.list.file(tok)))) {
+                    if ((!suppression.checked && (suppression.lineBegin <= currLineNr) && (suppression.lineEnd >= currLineNr) && (suppression.fileName == tokenlist.file(tok)))) {
                         suppression.checked = true;
                     }
-                } else if (!suppression.checked && suppression.fileName == tokenizer.list.file(tok)) {
+                } else if (!suppression.checked && suppression.fileName == tokenlist.file(tok)) {
                     suppression.checked = true;
                 }
             }
