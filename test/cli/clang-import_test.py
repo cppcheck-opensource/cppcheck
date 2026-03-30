@@ -1,4 +1,3 @@
-
 # python -m pytest test-clang-import.py
 
 import os
@@ -117,12 +116,12 @@ def test_ast(tmpdir):
 
 def test_log(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt'):
+    with open(test_file, 'w'):
         pass
 
     args = ['--clang', test_file]
     out_lines = [
-        'Checking {} ...'.format(test_file).replace('\\', '/'),
+        f'Checking {test_file} ...'.replace('\\', '/'),
     ]
 
     assert_cppcheck(args, ec_exp=0, err_exp=[], out_exp=out_lines)
@@ -130,7 +129,7 @@ def test_log(tmpdir):
 
 def test_warning(tmpdir):  # #12424
     test_file = os.path.join(tmpdir, 'test_2')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('''void f() {}''')
 
     exitcode, stdout, stderr = cppcheck(['-q', '--enable=warning', '--clang', test_file])
@@ -141,7 +140,7 @@ def test_warning(tmpdir):  # #12424
 
 def __test_cmd(tmp_path, file_name, extra_args, stdout_exp_1, content=''):
     test_file = tmp_path / file_name
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write(content)
 
     args = [
@@ -160,8 +159,8 @@ def __test_cmd(tmp_path, file_name, extra_args, stdout_exp_1, content=''):
     assert exitcode == 0, stderr if not stdout else stdout
     assert stderr == ''
     assert stdout.splitlines() == [
-        'Checking {} ...'.format(file_name),
-        'clang -fsyntax-only -Xclang -ast-dump -fno-color-diagnostics {}{}'.format(stdout_exp_1, file_name)
+        f'Checking {file_name} ...',
+        f'clang -fsyntax-only -Xclang -ast-dump -fno-color-diagnostics {stdout_exp_1}{file_name}'
     ]
 
 
@@ -199,7 +198,7 @@ def test_cmd_def(tmp_path):
 
 def test_cmd_include(tmp_path):
     inc_file = tmp_path / 'inc.h'
-    with open(inc_file, 'wt'):
+    with open(inc_file, 'w'):
         pass
     __test_cmd(tmp_path, 'test.cpp',['--include=inc.h'], '-x c++ --include inc.h')
 
@@ -220,7 +219,7 @@ def test_cmd_std_c(tmp_path):  # #13129
 def test_cmd_std_c_builddir(tmp_path):  # #13129
     build_dir = tmp_path / 'b1'
     os.makedirs(build_dir)
-    __test_cmd(tmp_path, 'test.cpp',['--std=c89', '--std=c++14', '--cppcheck-build-dir={}'.format(build_dir)], '-x c++ -std=c++14')
+    __test_cmd(tmp_path, 'test.cpp',['--std=c89', '--std=c++14', f'--cppcheck-build-dir={build_dir}'], '-x c++ -std=c++14')
 
 
 def test_cmd_std_cpp(tmp_path):  # #13129
@@ -249,7 +248,7 @@ def test_cmd_std_cpp_enforce_alias(tmp_path):  # #13128/#13129/#13130
 
 def test_debug_clang_output(tmp_path):
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write(
 """
 void f() {}
@@ -279,7 +278,7 @@ def test_debug_clang_output_failure_exitcode(tmp_path):
     # TranslationUnitDecl 0x6127d5d9d4e8 <<invalid sloc>> <invalid sloc>
     # ...
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write(
 """void f()
 {
@@ -300,6 +299,6 @@ def test_debug_clang_output_failure_exitcode(tmp_path):
     stderr_lines = stderr.splitlines()
     assert len(stderr_lines) > 5, stderr_lines
     assert (stderr_lines[0] ==
-            "Failed to execute 'clang -fsyntax-only -Xclang -ast-dump -fno-color-diagnostics -x c {} 2>&1' - (exitcode: 1 / output: {}:3:12: error: indirection requires pointer operand ('int' invalid)".format(test_file, test_file))
+            f"Failed to execute 'clang -fsyntax-only -Xclang -ast-dump -fno-color-diagnostics -x c {test_file} 2>&1' - (exitcode: 1 / output: {test_file}:3:12: error: indirection requires pointer operand ('int' invalid)")
     assert stdout.find('TranslationUnitDecl') != -1, stdout
     assert stdout.find(str(test_file)) != -1, stdout

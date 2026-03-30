@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 
 def test_libraries(tmpdir):  #13701
     test_file = str(tmpdir / 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('x=1;\n')
 
     args = ['--library=posix', '--dump', test_file]
@@ -18,7 +18,7 @@ def test_libraries(tmpdir):  #13701
 
     dumpfile = test_file + '.dump'
     assert os.path.isfile(dumpfile)
-    with open(dumpfile, 'rt') as f:
+    with open(dumpfile) as f:
         dump = f.read()
     assert '<library lib="posix"/>' in dump
     assert dump.find('<library lib="posix"/>') < dump.find('<dump cfg=')
@@ -26,7 +26,7 @@ def test_libraries(tmpdir):  #13701
 
 def __test_language(tmp_path, file_ext, exp_lang, force_lang=None):
     test_file = tmp_path / ('test.' + file_ext)
-    with open(test_file, 'wt'):
+    with open(test_file, 'w'):
         pass
 
     args = [
@@ -98,11 +98,11 @@ def test_language_unk_force_cpp(tmp_path):
 
 def test_duplicate_file_entries(tmpdir):  #13333
     test_file = str(tmpdir / 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('x=1;\n')
 
     project_file = str(tmpdir / 'compile_commands.json')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(json.dumps([{
                "file": test_file,
                "directory": str(tmpdir),
@@ -122,13 +122,13 @@ def test_duplicate_file_entries(tmpdir):  #13333
 
 def test_container_methods(tmpdir):
     test_file = str(tmpdir / 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('std::string s;\n')
 
     exitcode, _, stderr = cppcheck(['--dump', '.'], cwd=str(tmpdir))
     assert exitcode == 0, stderr
 
     dumpfile = test_file + '.dump'
-    with open(dumpfile, 'rt') as f:
+    with open(dumpfile) as f:
         dump = f.read()
     assert '<f name="emplace" action="push" yield="iterator"/>' in dump

@@ -1,4 +1,3 @@
-
 # python -m pytest test-suppress-syntaxError.py
 
 import os

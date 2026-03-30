@@ -7,7 +7,7 @@ from bisect_common import *
 def run(cppcheck_path, options):
     cmd = options.split()
     cmd.insert(0, cppcheck_path)
-    print('running {}'.format(cppcheck_path))
+    print(f'running {cppcheck_path}')
     with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True) as p:
         stdout, stderr = p.communicate()
         rc = p.returncode

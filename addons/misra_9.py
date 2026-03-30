@@ -33,7 +33,7 @@ class ElementDef:
             "ElementDef",
             self.getLongName(),
             inits,
-            ", ".join(("{}={}".format(a, repr(getattr(self, a))) for a in attrs))
+            ", ".join(f"{a}={repr(getattr(self, a))}" for a in attrs)
         )
 
     @property

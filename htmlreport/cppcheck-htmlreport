@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from __future__ import unicode_literals
 
 from datetime import date
 import argparse
@@ -487,7 +486,7 @@ def git_blame(errors, path, file, blame_options):
     if last_line == 0:
         return {}
 
-    first_line = next((error for error in errors if error['line'] > 0))['line']
+    first_line = next(error for error in errors if error['line'] > 0)['line']
 
     full_path = os.path.join(path, file)
     path, filename = os.path.split(full_path)
@@ -562,29 +561,29 @@ def tr_str(td_th, line, id, cwe, severity, classification, guideline, message, t
     else:
         items.insert(0,line)
         for item in items:
-            ret += '<%s>%s</%s>' % (td_th, item, td_th)
+            ret += '<{}>{}</{}>'.format(td_th, item, td_th)
     if message_class:
         message_attribute = ' class="%s"' % message_class
     else:
         message_attribute = ''
-    ret += '<%s%s>%s</%s>' % (td_th, message_attribute, html_escape(message), td_th)
+    ret += '<{}{}>{}</{}>'.format(td_th, message_attribute, html_escape(message), td_th)
 
     if timestamp:
-        ret += '<%s>%s</%s>' % (td_th, timestamp, td_th)
+        ret += '<{}>{}</{}>'.format(td_th, timestamp, td_th)
 
     for field in  add_author:
         if field == 'name':
-            ret += '<%s>%s</%s>' % (td_th, html_escape(author), td_th)
+            ret += '<{}>{}</{}>'.format(td_th, html_escape(author), td_th)
         elif field == 'email':
-            ret += '<%s>%s</%s>' % (td_th, html_escape(author_mail), td_th)
+            ret += '<{}>{}</{}>'.format(td_th, html_escape(author_mail), td_th)
         elif field == 'date':
-            ret += '<%s>%s</%s>' % (td_th, date, td_th)
+            ret += '<{}>{}</{}>'.format(td_th, date, td_th)
 
     if tr_class:
         tr_attributes = ' class="%s"' % tr_class
     else:
         tr_attributes = ''
-    return '<tr%s>%s</tr>' % (tr_attributes, ret)
+    return '<tr{}>{}</tr>'.format(tr_attributes, ret)
 
 
 def to_css_selector(tag):
@@ -875,9 +874,9 @@ def main() -> None:
 
         source_filename = os.path.join(source_dir, filename)
         try:
-            with io.open(source_filename, 'r', encoding=options.source_encoding) as input_file:
+            with open(source_filename, encoding=options.source_encoding) as input_file:
                 content = input_file.read()
-        except IOError:
+        except OSError:
             if error['id'] != 'unmatchedSuppression':
                 sys.stderr.write("ERROR: Source file '%s' not found.\n" %
                                  source_filename)
@@ -895,7 +894,7 @@ def main() -> None:
                                               encoding=options.source_encoding)
         htmlFormatter.errors = errors
 
-        with io.open(os.path.join(options.report_dir, htmlfile), 'w', encoding='utf-8') as output_file:
+        with open(os.path.join(options.report_dir, htmlfile), 'w', encoding='utf-8') as output_file:
             output_file.write(HTML_HEAD %
                               (options.title,
                                htmlFormatter.get_style_defs('.highlight'),
@@ -934,7 +933,7 @@ def main() -> None:
     # all the errors created.
     print('Creating index.html')
 
-    with io.open(os.path.join(options.report_dir, 'index.html'),
+    with open(os.path.join(options.report_dir, 'index.html'),
                  'w') as output_file:
 
         stats_count = 0
@@ -1006,7 +1005,7 @@ def main() -> None:
         for filename, data in sorted(files.items()):
             file_error = filename in decode_errors or filename.endswith('*')
             is_file = filename != '' and not file_error
-            row_content = filename if file_error else "<a href=\"%s\">%s</a>" % (data['htmlfile'], filename)
+            row_content = filename if file_error else "<a href=\"{}\">{}</a>".format(data['htmlfile'], filename)
             htmlfile = data.get('htmlfile') if is_file else None
 
             output_file.write("\n      <tbody class=\"fileEntry\">")
@@ -1064,7 +1063,7 @@ def main() -> None:
         sys.stderr.write("\nConsider changing source-encoding (for example: \"htmlreport ... --source-encoding=\"iso8859-1\"\"\n")
 
     print('Creating style.css file')
-    with io.open(os.path.join(options.report_dir, 'style.css'), 'w') as css_file:
+    with open(os.path.join(options.report_dir, 'style.css'), 'w') as css_file:
         css_file.write(STYLE_FILE)
 
     print("Creating stats.html (statistics)\n")
@@ -1082,7 +1081,7 @@ def main() -> None:
     # get top ten for each severity
     SEVERITIES = "error", "warning", "portability", "performance", "style", "unusedFunction", "information", "missingInclude", "internal"
 
-    with io.open(os.path.join(options.report_dir, 'stats.html'), 'w') as stats_file:
+    with open(os.path.join(options.report_dir, 'stats.html'), 'w') as stats_file:
 
         stats_file.write(HTML_HEAD % (options.title, '', options.title, ': Statistics'))
         stats_file.write(HTML_HEAD_END)
@@ -1133,7 +1132,7 @@ def main() -> None:
     if options.checkers_report:
         print("Creating checkers.html (checkers report)\n")
 
-        with io.open(os.path.join(options.report_dir, 'checkers.html'), 'w') as checkers_file:
+        with open(os.path.join(options.report_dir, 'checkers.html'), 'w') as checkers_file:
 
             checkers_file.write(HTML_HEAD % (options.title, '', options.title, ': Checkers'))
             checkers_file.write(HTML_HEAD_END)
@@ -1141,7 +1140,7 @@ def main() -> None:
             checkers_file.write(HTML_MENU.replace('id="menu"', 'id="menu_index"', 1).replace("Defects:", "Back to summary", 1) % (''))
             checkers_file.write(HTML_MENU_END.replace("content", "content_index", 1))
 
-            with io.open(options.checkers_report, 'r', encoding=options.source_encoding) as checkers_report:
+            with open(options.checkers_report, encoding=options.source_encoding) as checkers_report:
                 content = checkers_report.read()
 
                 checkers_file.write("<pre>\n")

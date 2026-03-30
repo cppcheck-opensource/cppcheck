@@ -28,7 +28,7 @@ except ImportError:
                 'extra': ''}
         sys.stdout.write(json.dumps(msg) + '\n')
     else:
-        sys.stderr.write('%s [%s]\n' % (message, error_id))
+        sys.stderr.write('{} [{}]\n'.format(message, error_id))
     sys.exit(1)
 
 from xml.etree import ElementTree
@@ -91,7 +91,7 @@ class Directive:
         attrs = ["str", "file", "linenr"]
         return "{}({})".format(
             "Directive",
-            ", ".join(("{}={}".format(a, repr(getattr(self, a))) for a in attrs))
+            ", ".join(f"{a}={repr(getattr(self, a))}" for a in attrs)
         )
 
 class MacroUsage:
@@ -127,7 +127,7 @@ class MacroUsage:
         attrs = ["name", "file", "linenr", "column", "usefile", "useline", "usecolumn", "isKnownValue"]
         return "{}({})".format(
             "MacroUsage",
-            ", ".join(("{}={}".format(a, repr(getattr(self, a))) for a in attrs))
+            ", ".join(f"{a}={repr(getattr(self, a))}" for a in attrs)
         )
 
 
@@ -156,7 +156,7 @@ class PreprocessorIfCondition:
         attrs = ["file", "linenr", "column", "E", "result"]
         return "{}({})".format(
             "PreprocessorIfCondition",
-            ", ".join(("{}={}".format(a, repr(getattr(self, a))) for a in attrs))
+            ", ".join(f"{a}={repr(getattr(self, a))}" for a in attrs)
         )
 
 class ValueType:
@@ -203,7 +203,7 @@ class ValueType:
                   "constness", "pointer"]
         return "{}({})".format(
             "ValueType",
-            ", ".join(("{}={}".format(a, repr(getattr(self, a))) for a in attrs))
+            ", ".join(f"{a}={repr(getattr(self, a))}" for a in attrs)
         )
 
 
@@ -450,7 +450,7 @@ class Token:
                 "linenr", "column"]
         return "{}({})".format(
             "Token",
-            ", ".join(("{}={}".format(a, repr(getattr(self, a))) for a in attrs))
+            ", ".join(f"{a}={repr(getattr(self, a))}" for a in attrs)
         )
 
     def setId(self, IdMap):
@@ -608,7 +608,7 @@ class Scope:
                  "nestedInId", "nestedIn", "type", "definedType", "isExecutable", "functions"]
         return "{}({})".format(
             "Scope",
-            ", ".join(("{}={}".format(a, repr(getattr(self, a))) for a in attrs))
+            ", ".join(f"{a}={repr(getattr(self, a))}" for a in attrs)
         )
 
     def setId(self, IdMap):
@@ -688,7 +688,7 @@ class Function:
                  "isAttributeNoreturn", "overriddenFunction", "nestedIn", "argumentId"]
         return "{}({})".format(
             "Function",
-            ", ".join(("{}={}".format(a, repr(getattr(self, a))) for a in attrs))
+            ", ".join(f"{a}={repr(getattr(self, a))}" for a in attrs)
         )
 
     def setId(self, IdMap):
@@ -783,7 +783,7 @@ class Variable:
                  "isReference", "isStatic", "isVolatile", "constness"]
         return "{}({})".format(
             "Variable",
-            ", ".join(("{}={}".format(a, repr(getattr(self, a))) for a in attrs))
+            ", ".join(f"{a}={repr(getattr(self, a))}" for a in attrs)
         )
 
     def setId(self, IdMap):
@@ -911,7 +911,7 @@ class Value:
                  "bufferSize", "containerSize", "condition", "valueKind"]
         return "{}({})".format(
             "Value",
-            ", ".join(("{}={}".format(a, repr(getattr(self, a))) for a in attrs))
+            ", ".join(f"{a}={repr(getattr(self, a))}" for a in attrs)
         )
 
 
@@ -938,7 +938,7 @@ class ValueFlow:
         attrs = ["Id", "values"]
         return "{}({})".format(
             "ValueFlow",
-            ", ".join(("{}={}".format(a, repr(getattr(self, a))) for a in attrs))
+            ", ".join(f"{a}={repr(getattr(self, a))}" for a in attrs)
         )
 
 
@@ -978,7 +978,7 @@ class Suppression:
         attrs = ["errorId", "fileName", "lineNumber", "symbolName", "lineBegin", "lineEnd","suppressionType"]
         return "{}({})".format(
             "Suppression",
-            ", ".join(("{}={}".format(a, repr(getattr(self, a))) for a in attrs))
+            ", ".join(f"{a}={repr(getattr(self, a))}" for a in attrs)
         )
 
     def isMatch(self, file, line, message, errorId):
@@ -1144,7 +1144,7 @@ class Platform:
                  "long_bit", "long_long_bit", "pointer_bit"]
         return "{}({})".format(
             "Platform",
-            ", ".join(("{}={}".format(a, repr(getattr(self, a))) for a in attrs))
+            ", ".join(f"{a}={repr(getattr(self, a))}" for a in attrs)
         )
 
 
@@ -1176,7 +1176,7 @@ class Standards:
         attrs = ["c", "cpp", "posix"]
         return "{}({})".format(
             "Standards",
-            ", ".join(("{}={}".format(a, repr(getattr(self, a))) for a in attrs))
+            ", ".join(f"{a}={repr(getattr(self, a))}" for a in attrs)
         )
 
 
@@ -1421,7 +1421,7 @@ class CppcheckData:
         attrs = ["configurations", "platform"]
         return "{}({})".format(
             "CppcheckData",
-            ", ".join(("{}={}".format(a, repr(getattr(self, a))) for a in attrs))
+            ", ".join(f"{a}={repr(getattr(self, a))}" for a in attrs)
         )
 
 
@@ -1522,7 +1522,7 @@ def get_files(args):
     """Return dump_files, ctu_info_files"""
     all_files = args.dumpfile
     if args.file_list:
-        with open(args.file_list, 'rt') as f:
+        with open(args.file_list) as f:
             for line in f.readlines():
                 all_files.append(line.rstrip())
     dump_files = []
@@ -1686,12 +1686,12 @@ def reportError(location, severity, message, addon, errorId, extra='', columnOve
                 'extra': extra}
         sys.stdout.write(json.dumps(msg) + '\n')
     else:
-        if is_suppressed(location, message, '%s-%s' % (addon, errorId)):
+        if is_suppressed(location, message, '{}-{}'.format(addon, errorId)):
             return
         loc = '[%s:%i]' % (location.file, location.linenr)
         if len(extra) > 0:
             message += ' (' + extra + ')'
-        sys.stderr.write('%s (%s) %s [%s-%s]\n' % (loc, severity, message, addon, errorId))
+        sys.stderr.write('{} ({}) {} [{}-{}]\n'.format(loc, severity, message, addon, errorId))
         global EXIT_CODE
         EXIT_CODE = 1
 
@@ -1702,7 +1702,7 @@ def reportSummary(dumpfile, summary_type, summary_data):
     else:
         # dumpfile ends with ".dump"
         ctu_info_file = dumpfile[:-4] + "ctu-info"
-        with open(ctu_info_file, 'at') as f:
+        with open(ctu_info_file, 'a') as f:
             f.write(json.dumps(msg) + '\n')
 
 

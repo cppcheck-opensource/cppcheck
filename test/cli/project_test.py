@@ -9,16 +9,16 @@ from testutils import cppcheck
 
 @pytest.mark.parametrize("project_ext", ["json", "sln", "vcxproj", "bpr", "cppcheck"])
 def test_missing_project(project_ext):
-    project_file = "file.{}".format(project_ext)
+    project_file = f"file.{project_ext}"
 
     ret, stdout, stderr = cppcheck(['--project=' + project_file, '--template=cppcheck1'])
     assert 1 == ret
-    assert "cppcheck: error: failed to open project '{}'. The file does not exist.\n".format(project_file) == stdout
+    assert f"cppcheck: error: failed to open project '{project_file}'. The file does not exist.\n" == stdout
     assert "" == stderr
 
 
 def __test_project_error(tmpdir, ext, content, expected):
-    project_file = os.path.join(tmpdir, "file.{}".format(ext))
+    project_file = os.path.join(tmpdir, f"file.{ext}")
 
     with open(project_file, 'w') as f:
         if content is not None:
@@ -26,7 +26,7 @@ def __test_project_error(tmpdir, ext, content, expected):
 
     ret, stdout, stderr = cppcheck(['--project=' + str(project_file)])
     assert 1 == ret
-    assert "cppcheck: error: " + expected + "\ncppcheck: error: failed to load project '{}'. An error occurred.\n".format(project_file) == stdout
+    assert "cppcheck: error: " + expected + f"\ncppcheck: error: failed to load project '{project_file}'. An error occurred.\n" == stdout
     assert "" == stderr
 
 

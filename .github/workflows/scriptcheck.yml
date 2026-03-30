@@ -80,14 +80,9 @@ jobs:
 
       - name: Install missing software on ubuntu (Python 3)
         run: |
-          # shellcheck cannot be installed via pip
-          # ERROR: Could not find a version that satisfies the requirement shellcheck (from versions: none)
-          # ERROR: No matching distribution found for shellcheck
-          sudo apt-get install shellcheck
           python -m pip install pip --upgrade
           python -m pip install natsort
           python -m pip install pexpect
-          python -m pip install 'pylint<4.1.0'
           python -m pip install unittest2
           python -m pip install pytest
           python -m pip install pytest-xdist
@@ -95,6 +90,16 @@ jobs:
           python -m pip install requests
           python -m pip install psutil
           python -m pip install setuptools
+
+      - name: Install missing software on ubuntu (Python 3 / latest)
+        if: matrix.python-latest
+        run: |
+          # shellcheck cannot be installed via pip
+          # ERROR: Could not find a version that satisfies the requirement shellcheck (from versions: none)
+          # ERROR: No matching distribution found for shellcheck
+          sudo apt-get install shellcheck
+          python -m pip install 'pylint<4.1.0'
+          python -m pip install pyupgrade
 
       - name: run Shellcheck
         if: matrix.python-latest
@@ -106,6 +111,12 @@ jobs:
         run: |
           shopt -s globstar
           pylint --jobs $(nproc) --py-version 3.7 addons/**/*.py htmlreport/cppcheck-htmlreport htmlreport/**/*.py test/**/*.py tools/**/*.py
+
+      - name: run pyupgrade
+        if: matrix.python-latest
+        run: |
+          pyupgrade --py38-plus --exit-zero-even-if-changed addons/**/*.py htmlreport/cppcheck-htmlreport htmlreport/**/*.py test/**/*.py tools/**/*.py
+          git diff --exit-code
 
       - name: check .json files
         if: matrix.python-latest

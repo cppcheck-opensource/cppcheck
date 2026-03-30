@@ -16,7 +16,7 @@ def validate_regex(expr):
     try:
         re.compile(expr)
     except re.error:
-        print('Error: "{}" is not a valid regular expression.'.format(expr))
+        print(f'Error: "{expr}" is not a valid regular expression.')
         sys.exit(1)
 
 
@@ -51,7 +51,7 @@ for arg in sys.argv[1:]:
     data = cppcheckdata.CppcheckData(arg)
 
     for cfg in data.iterconfigurations():
-        print('Checking %s, config %s...' % (arg, cfg.name))
+        print('Checking {}, config {}...'.format(arg, cfg.name))
         if RE_VARNAME:
             for var in cfg.variables:
                 if var.access == 'Private':

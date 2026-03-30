@@ -1,4 +1,3 @@
-
 # python -m pytest test-proj2.py
 
 import json
@@ -22,7 +21,7 @@ def __create_compile_commands(proj_dir):
     proj_dir = str(proj_dir)
     j = [{'directory': os.path.join(proj_dir, 'a'), 'command': 'gcc -c a.c', 'file': 'a.c'},
          {'directory': proj_dir, 'command': 'gcc -c b/b.c', 'file': 'b/b.c'}]
-    with open(os.path.join(proj_dir, __COMPILE_COMMANDS_JSON), 'wt') as f:
+    with open(os.path.join(proj_dir, __COMPILE_COMMANDS_JSON), 'w') as f:
         f.write(json.dumps(j))
 
 

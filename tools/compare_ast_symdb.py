@@ -12,7 +12,7 @@ import subprocess
 CPPCHECK = os.path.expanduser('~/cppcheck/cppcheck')
 
 def run_cppcheck(cppcheck_parameters:str, clang:str):
-    cmd = '{} {} {} --debug --verbose'.format(CPPCHECK, cppcheck_parameters, clang)
+    cmd = f'{CPPCHECK} {cppcheck_parameters} {clang} --debug --verbose'
     #print(cmd)
     with subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
         # TODO: handle p.returncode?
@@ -64,20 +64,20 @@ def compare_ast_symdb(cppcheck_parameters: str):
     ast1 = get_ast(debug1)
     ast2 = get_ast(debug2)
     if ast1 != ast2:
-        print("ast is not the same: {}".format(cppcheck_parameters))
-        with open('cppcheck.ast', 'wt') as f:
+        print(f"ast is not the same: {cppcheck_parameters}")
+        with open('cppcheck.ast', 'w') as f:
             f.write(ast1)
-        with open('clang.ast', 'wt') as f:
+        with open('clang.ast', 'w') as f:
             f.write(ast2)
         same = False
 
     symdb1 = get_symdb(debug1)
     symdb2 = get_symdb(debug2)
     if symdb1 != symdb2:
-        print("symdb is not the same: {}".format(cppcheck_parameters))
-        with open('cppcheck.symdb', 'wt') as f:
+        print(f"symdb is not the same: {cppcheck_parameters}")
+        with open('cppcheck.symdb', 'w') as f:
             f.write(symdb1)
-        with open('clang.symdb', 'wt') as f:
+        with open('clang.symdb', 'w') as f:
             f.write(symdb2)
         same = False
 

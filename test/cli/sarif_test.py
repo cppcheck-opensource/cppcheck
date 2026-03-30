@@ -464,7 +464,7 @@ def test_sarif_rule_coverage():
     rules = driver["rules"]
 
     # Collect all rule IDs
-    rule_ids = set(rule["id"] for rule in rules)
+    rule_ids = {rule["id"] for rule in rules}
 
     # Should have at least 5 different rules triggered
     assert (
@@ -590,8 +590,8 @@ def test_sarif_results_consistency():
     results = run["results"]
 
     # Collect rule IDs from both rules and results
-    rule_ids_in_rules = set(rule["id"] for rule in rules)
-    rule_ids_in_results = set(result["ruleId"] for result in results)
+    rule_ids_in_rules = {rule["id"] for rule in rules}
+    rule_ids_in_results = {result["ruleId"] for result in results}
 
     # Every rule ID in results should have a corresponding rule definition
     for result_rule_id in rule_ids_in_results:

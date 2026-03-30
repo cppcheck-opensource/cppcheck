@@ -189,8 +189,8 @@ class MatchCompiler:
         if (len(tok) > 2) and (tok[0] == "%"):
             print("unhandled:" + tok)
         elif tok in tokTypes:
-            cond = ' || '.join(['tok->tokType() == Token::{}'.format(tokType) for tokType in tokTypes[tok]])
-            return '(({cond}) && tok->str() == MatchCompiler::makeConstString("{tok}"))'.format(cond=cond, tok=tok)
+            cond = ' || '.join([f'tok->tokType() == Token::{tokType}' for tokType in tokTypes[tok]])
+            return f'(({cond}) && tok->str() == MatchCompiler::makeConstString("{tok}"))'
         return (
             '(tok->str() == MatchCompiler::makeConstString("' + tok + '"))'
         )
@@ -679,7 +679,7 @@ class MatchCompiler:
     def convertFile(self, srcname, destname, line_directive):
         self._reset()
 
-        with io.open(srcname, "rt", encoding="utf-8") as fin:
+        with open(srcname, encoding="utf-8") as fin:
             srclines = fin.readlines()
 
         code = ''
@@ -736,7 +736,7 @@ class MatchCompiler:
             footer += '#endif\n'
             footer += '#undef MAYBE_UNUSED\n'
 
-        with io.open(destname, 'wt', encoding="utf-8") as fout:
+        with open(destname, 'w', encoding="utf-8") as fout:
             if modified or len(self._rawMatchFunctions):
                 fout.write(header)
                 fout.write(strFunctions)

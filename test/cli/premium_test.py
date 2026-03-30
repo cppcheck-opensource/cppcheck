@@ -1,4 +1,3 @@
-
 # python -m pytest premium_test.py
 
 import os
@@ -19,11 +18,11 @@ def __copy_cppcheck_premium(tmpdir):
 
     # add minimum cfg/std.cfg
     test_cfg_folder = tmpdir.mkdir('cfg')
-    with open(test_cfg_folder.join('std.cfg'), 'wt') as f:
+    with open(test_cfg_folder.join('std.cfg'), 'w') as f:
         f.write('<?xml version="1.0"?>\n<def format="2"/>')
 
     # add simple cppcheck.cfg
-    with open(tmpdir.join('cppcheck.cfg'), 'wt') as f:
+    with open(tmpdir.join('cppcheck.cfg'), 'w') as f:
         f.write("""
                 {
                     "addons": [],
@@ -39,7 +38,7 @@ def __copy_cppcheck_premium(tmpdir):
 
 def test_misra_c_builtin_style_checks(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('void foo() { int x; y = 0; }')
 
     exe = __copy_cppcheck_premium(tmpdir)
@@ -76,7 +75,7 @@ def test_build_dir_hash_cppcheck_product(tmpdir):
     # so that files are rescanned when cppcheck is switched
 
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write(';')
 
     build_dir = tmpdir.mkdir('b')
@@ -94,7 +93,7 @@ def test_build_dir_hash_cppcheck_product(tmpdir):
         i += 7
         return s[i:s.find('"', i)]
 
-    with open(build_dir.join('test.a1'), 'rt') as f:
+    with open(build_dir.join('test.a1')) as f:
         f1 = f.read()
         hash1 = _get_hash(f1)
     assert re.match(r'^[0-9a-f]{6,}$', hash1), f1
@@ -105,7 +104,7 @@ def test_build_dir_hash_cppcheck_product(tmpdir):
     assert stderr == ''
     assert exitcode == 0
 
-    with open(build_dir.join('test.a1'), 'rt') as f:
+    with open(build_dir.join('test.a1')) as f:
         f2 = f.read()
         hash2 = _get_hash(f2)
     assert re.match(r'^[0-9a-f]{6,}$', hash2), f2
@@ -116,7 +115,7 @@ def test_build_dir_hash_cppcheck_product(tmpdir):
 def test_misra_py(tmpdir):
     # 13831 - do not execute misra.py when --premium=misra-c-2012 is used
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('void foo();\n')
 
     exe = __copy_cppcheck_premium(tmpdir)
@@ -139,18 +138,18 @@ def test_invalid_license_retry(tmpdir):
 
     os.mkdir(build_dir)
 
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('void foo();\n')
 
     args = [f"--addon={addon_file}", f"--cppcheck-build-dir={build_dir}", '--xml', '--enable=all', test_file]
 
-    with open(addon_file, 'wt') as f:
+    with open(addon_file, 'w') as f:
         f.write('print(\'{"addon":"premium","column":0,"errorId":"invalidLicense","extra":"","file":"Cppcheck Premium","linenr":0,"message":"Invalid license: No license file was found, contact sales@cppchecksolutions.com","severity":"error"}\')')
 
     _, _, stderr = cppcheck(args)
     assert 'Invalid license' in stderr
 
-    with open(addon_file, 'wt') as f:
+    with open(addon_file, 'w') as f:
         f.write('')
 
     _, _, stderr = cppcheck(args)
@@ -172,12 +171,12 @@ def test_cwe(tmpdir):
     test_file = os.path.join(tmpdir, 'test.c')
     addon_file = os.path.join(tmpdir, 'premiumaddon.py')
 
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('void foo();\n')
 
     args = [f"--addon={addon_file}", '--xml', test_file]
 
-    with open(addon_file, 'wt') as f:
+    with open(addon_file, 'w') as f:
         f.write('print(\'{"addon":"a","column":1,"errorId":"id","extra":"","file":"test.c","cwe":123,"linenr":1,"message":"bug","severity":"error"}\')')
 
     _, _, stderr = cppcheck(args)
@@ -189,12 +188,12 @@ def test_hash(tmpdir):
     test_file = os.path.join(tmpdir, 'test.c')
     addon_file = os.path.join(tmpdir, 'premiumaddon.py')
 
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('void foo();\n')
 
     args = [f"--addon={addon_file}", '--xml', test_file]
 
-    with open(addon_file, 'wt') as f:
+    with open(addon_file, 'w') as f:
         f.write('print(\'{"addon":"a","column":1,"errorId":"id","extra":"","file":"test.c","hash":123,"linenr":1,"message":"bug","severity":"error"}\')')
 
     _, _, stderr = cppcheck(args)

@@ -94,7 +94,7 @@ class Extract:
         start_code = None
         disable = False
 
-        for line in open(filename, 'r'):
+        for line in open(filename):
             # testclass starts
             res = re.match('class (' + name + ')', line)
             if res is not None:
@@ -383,7 +383,7 @@ if filename is not None:
                     lines[line_number] += ' // ' + res.group(3)
                     code = '\n'.join(lines)
                 else:
-                    print('filename:%s expected:%s' % (filename, expected))
+                    print('filename:{} expected:{}'.format(filename, expected))
 
             # source code
             with open(codedir + filename, 'w') as fout:

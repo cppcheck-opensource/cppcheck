@@ -20,12 +20,12 @@ def __create_compile_commands(dir, entries):
         f = os.path.basename(e)
         obj = {
             'directory': os.path.dirname(os.path.abspath(e)),
-            'command': 'gcc -c {}'.format(f),
+            'command': f'gcc -c {f}',
             'file': f
         }
         j.append(obj)
     compile_commands = os.path.join(dir, 'compile_commmands.json')
-    with open(compile_commands, 'wt') as f:
+    with open(compile_commands, 'w') as f:
         f.write(json.dumps(j))
     return compile_commands
 
@@ -61,7 +61,7 @@ def test_addon_suppress_inline_project(tmpdir):
         '--enable=information,style',
         '--inline-suppr',
         '--error-exitcode=1',
-        '--project={}'.format(compile_db)
+        f'--project={compile_db}'
     ]
     ret, stdout, stderr = cppcheck(args, cwd=__script_dir)
     lines = stderr.splitlines()
@@ -103,27 +103,27 @@ def test_suppress_inline_j():
 def test_suppress_inline_builddir(tmp_path):
     build_dir = tmp_path / 'b1'
     os.mkdir(build_dir)
-    __test_suppress_inline(['--cppcheck-build-dir={}'.format(build_dir), '-j1'])
+    __test_suppress_inline([f'--cppcheck-build-dir={build_dir}', '-j1'])
 
 
 def test_suppress_inline_builddir_cached(tmp_path):
     build_dir = tmp_path / 'b1'
     os.mkdir(build_dir)
-    __test_suppress_inline(['--cppcheck-build-dir={}'.format(build_dir), '-j1'])
-    __test_suppress_inline(['--cppcheck-build-dir={}'.format(build_dir), '-j1'])
+    __test_suppress_inline([f'--cppcheck-build-dir={build_dir}', '-j1'])
+    __test_suppress_inline([f'--cppcheck-build-dir={build_dir}', '-j1'])
 
 
 def test_suppress_inline_builddir_j(tmp_path):
     build_dir = tmp_path / 'b1'
     os.mkdir(build_dir)
-    __test_suppress_inline(['--cppcheck-build-dir={}'.format(build_dir), '-j2'])
+    __test_suppress_inline([f'--cppcheck-build-dir={build_dir}', '-j2'])
 
 
 def test_inline_suppr_builddir_j_cached(tmp_path):
     build_dir = tmp_path / 'b1'
     os.mkdir(build_dir)
-    __test_suppress_inline(['--cppcheck-build-dir={}'.format(build_dir), '-j2'])
-    __test_suppress_inline(['--cppcheck-build-dir={}'.format(build_dir), '-j2'])
+    __test_suppress_inline([f'--cppcheck-build-dir={build_dir}', '-j2'])
+    __test_suppress_inline([f'--cppcheck-build-dir={build_dir}', '-j2'])
 
 
 # TODO: remove overrides when it is fully working
@@ -139,7 +139,7 @@ def __test_suppress_inline_project(tmp_path, extra_args):
         '--enable=information,style',
         '--inline-suppr',
         '--error-exitcode=1',
-        '--project={}'.format(compile_db)
+        f'--project={compile_db}'
     ]
 
     args += extra_args
@@ -164,27 +164,27 @@ def test_suppress_inline_project_j(tmp_path):
 def test_suppress_inline_project_builddir(tmp_path):
     build_dir = tmp_path / 'b1'
     os.mkdir(build_dir)
-    __test_suppress_inline_project(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j1'])
+    __test_suppress_inline_project(tmp_path, [f'--cppcheck-build-dir={build_dir}', '-j1'])
 
 
 def test_suppress_inline_project_builddir_cached(tmp_path):
     build_dir = tmp_path / 'b1'
     os.mkdir(build_dir)
-    __test_suppress_inline_project(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j1'])
-    __test_suppress_inline_project(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j1'])
+    __test_suppress_inline_project(tmp_path, [f'--cppcheck-build-dir={build_dir}', '-j1'])
+    __test_suppress_inline_project(tmp_path, [f'--cppcheck-build-dir={build_dir}', '-j1'])
 
 
 def test_suppress_inline_project_builddir_j(tmp_path):
     build_dir = tmp_path / 'b1'
     os.mkdir(build_dir)
-    __test_suppress_inline_project(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j2'])
+    __test_suppress_inline_project(tmp_path, [f'--cppcheck-build-dir={build_dir}', '-j2'])
 
 
 def test_suppress_inline_project_builddir_j_cached(tmp_path):
     build_dir = tmp_path / 'b1'
     os.mkdir(build_dir)
-    __test_suppress_inline_project(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j2'])
-    __test_suppress_inline_project(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j2'])
+    __test_suppress_inline_project(tmp_path, [f'--cppcheck-build-dir={build_dir}', '-j2'])
+    __test_suppress_inline_project(tmp_path, [f'--cppcheck-build-dir={build_dir}', '-j2'])
 
 
 @pytest.mark.parametrize("builddir", (False,True))
@@ -215,9 +215,9 @@ def test_addon_builddir_use_ctuinfo(tmp_path):
         'whole-program']
     _, _, stderr = cppcheck(args, cwd=__script_dir)
     assert 'misra-c2012-5.8' in stderr
-    with open(tmp_path / 'whole1.a1.ctu-info', 'wt'):
+    with open(tmp_path / 'whole1.a1.ctu-info', 'w'):
         pass
-    with open(tmp_path / 'whole2.a1.ctu-info', 'wt'):
+    with open(tmp_path / 'whole2.a1.ctu-info', 'w'):
         pass
     _, _, stderr = cppcheck(args, cwd=__script_dir)
     assert 'misra-c2012-5.8' not in stderr
@@ -263,7 +263,7 @@ def __test_checkclass(extra_args):
     ret, stdout, stderr = cppcheck(args, cwd=__script_dir)
     lines = stderr.splitlines()
     assert lines == [
-        "whole-program{}odr1.cpp:6:1: error: The one definition rule is violated, different classes/structs have the same name 'C' [ctuOneDefinitionRuleViolation]".format(os.path.sep)
+        f"whole-program{os.path.sep}odr1.cpp:6:1: error: The one definition rule is violated, different classes/structs have the same name 'C' [ctuOneDefinitionRuleViolation]"
     ]
     assert stdout == ''
     assert ret == 1, stdout
@@ -281,13 +281,13 @@ def test_checkclass_j():
 def test_checkclass_builddir(tmpdir):
     build_dir = os.path.join(tmpdir, 'b1')
     os.mkdir(build_dir)
-    __test_checkclass(['--cppcheck-build-dir={}'.format(build_dir)])
+    __test_checkclass([f'--cppcheck-build-dir={build_dir}'])
 
 
 def test_checkclass_builddir_j(tmpdir):
     build_dir = os.path.join(tmpdir, 'b1')
     os.mkdir(build_dir)
-    __test_checkclass(['-j2', '--cppcheck-build-dir={}'.format(build_dir)])
+    __test_checkclass(['-j2', f'--cppcheck-build-dir={build_dir}'])
 
 
 def __test_checkclass_project(tmpdir, extra_args):
@@ -303,7 +303,7 @@ def __test_checkclass_project(tmpdir, extra_args):
         '--template=simple',
         '--enable=information,style',
         '--error-exitcode=1',
-        '--project={}'.format(compile_db)
+        f'--project={compile_db}'
     ]
 
     args += extra_args
@@ -311,7 +311,7 @@ def __test_checkclass_project(tmpdir, extra_args):
     ret, stdout, stderr = cppcheck(args, cwd=__script_dir)
     lines = stderr.splitlines()
     assert lines == [
-        "{}:6:1: error: The one definition rule is violated, different classes/structs have the same name 'C' [ctuOneDefinitionRuleViolation]".format(odr_file_1)
+        f"{odr_file_1}:6:1: error: The one definition rule is violated, different classes/structs have the same name 'C' [ctuOneDefinitionRuleViolation]"
     ]
     assert stdout == ''
     assert ret == 1, stdout
@@ -329,13 +329,13 @@ def test_checkclass_project_j(tmpdir):
 def test_checkclass_project_builddir(tmpdir):
     build_dir = os.path.join(tmpdir, 'b1')
     os.mkdir(build_dir)
-    __test_checkclass_project(tmpdir, ['-j1', '--cppcheck-build-dir={}'.format(build_dir)])
+    __test_checkclass_project(tmpdir, ['-j1', f'--cppcheck-build-dir={build_dir}'])
 
 
 def test_checkclass_project_builddir_j(tmpdir):
     build_dir = os.path.join(tmpdir, 'b1')
     os.mkdir(build_dir)
-    __test_checkclass_project(tmpdir, ['-j2', '--cppcheck-build-dir={}'.format(build_dir)])
+    __test_checkclass_project(tmpdir, ['-j2', f'--cppcheck-build-dir={build_dir}'])
 
 def test_ctu_odr_config():
     args = [
@@ -351,7 +351,7 @@ def test_ctu_odr_config():
     ret, stdout, stderr = cppcheck(args, cwd=__script_dir)
     lines = stderr.splitlines()
     assert lines == [
-        "whole-program{}odr_cfg1.cpp:2:1: error: The one definition rule is violated, different classes/structs have the same name 'S' [ctuOneDefinitionRuleViolation]".format(os.path.sep)
+        f"whole-program{os.path.sep}odr_cfg1.cpp:2:1: error: The one definition rule is violated, different classes/structs have the same name 'S' [ctuOneDefinitionRuleViolation]"
     ]
     assert stdout == ''
     assert ret == 1, stdout
@@ -390,7 +390,7 @@ def test_nullpointer_file0_j():
 def test_nullpointer_file0_builddir_j(tmpdir):
     build_dir = os.path.join(tmpdir, 'b1')
     os.mkdir(build_dir)
-    __test_nullpointer_file0(['-j2', '--cppcheck-build-dir={}'.format(build_dir)])
+    __test_nullpointer_file0(['-j2', f'--cppcheck-build-dir={build_dir}'])
 
 # TODO: this only succeeded because it depedent on the bugged unqiue message handling
 @pytest.mark.parametrize("single_file", [
@@ -404,14 +404,14 @@ def test_nullpointer_out_of_memory(tmpdir, single_file):
     code1 = 'void f(int* p) { *p = 0; }\n'
     code2 = 'int main() { int* p = malloc(10); f(p); return 0; }\n'
     if single_file:
-        with open(tmpdir / 'test.c', 'wt') as f:
+        with open(tmpdir / 'test.c', 'w') as f:
             f.write(code1 + code2)
     else:
-        with open(tmpdir / 'header.h', 'wt') as f:
+        with open(tmpdir / 'header.h', 'w') as f:
             f.write('void f(int* p);\n')
-        with open(tmpdir / 'test1.c', 'wt') as f:
+        with open(tmpdir / 'test1.c', 'w') as f:
             f.write('#include "header.h"\n' + code1)
-        with open(tmpdir / 'test2.c', 'wt') as f:
+        with open(tmpdir / 'test2.c', 'w') as f:
             f.write('#include "header.h"\n' + code2)
     args = [
         '--cppcheck-build-dir=.',

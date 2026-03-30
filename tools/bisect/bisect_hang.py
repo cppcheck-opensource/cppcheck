@@ -11,7 +11,7 @@ def run(cppcheck_path, options, elapsed_time=None):
         timeout = elapsed_time * 2
     cmd = options.split()
     cmd.insert(0, cppcheck_path)
-    print('running {}'.format(cppcheck_path))
+    print(f'running {cppcheck_path}')
     with subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) as p:
         try:
             p.communicate(timeout=timeout)
@@ -54,7 +54,7 @@ if not elapsed_time:
     # TODO: handle error result
     run(cppcheck_path, options)
     elapsed_time = time.perf_counter() - t
-    print('elapsed_time: {}'.format(elapsed_time))
+    print(f'elapsed_time: {elapsed_time}')
     # TODO: write to stdout and redirect all all printing to stderr
     sys.exit(round(elapsed_time + .5))  # return the time
 
@@ -64,7 +64,7 @@ run_time = time.perf_counter() - t
 
 if not elapsed_time:
     # TODO: handle error result
-    print('elapsed_time: {}'.format(run_time))
+    print(f'elapsed_time: {run_time}')
     # TODO: write to stdout and redirect all printing to stderr
     sys.exit(round(run_time + .5))  # return the time
 
@@ -74,6 +74,6 @@ if run_res is None:
 if not run_res:
     sys.exit(EC_BAD if not invert else EC_GOOD)  # timeout occurred
 
-print('run_time: {}'.format(run_time))
+print(f'run_time: {run_time}')
 
 sys.exit(EC_GOOD if not invert else EC_BAD)  # no timeout

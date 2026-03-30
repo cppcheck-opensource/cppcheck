@@ -10,7 +10,7 @@ __script_dir = os.path.dirname(os.path.abspath(__file__))
 def test_project_force_U(tmpdir):
     # 10018
     # -U does not work with compile_commands.json
-    with open(os.path.join(tmpdir, 'bug1.cpp'), 'wt') as f:
+    with open(os.path.join(tmpdir, 'bug1.cpp'), 'w') as f:
         f.write("""
                 int x = 123 / 0;
                 #ifdef MACRO1
@@ -27,7 +27,7 @@ def test_project_force_U(tmpdir):
          "output": "bug1.o"}
     ]
 
-    with open(compile_commands, 'wt') as f:
+    with open(compile_commands, 'w') as f:
         f.write(json.dumps(compilation_db))
 
     # Without -U => both bugs are found
@@ -46,11 +46,11 @@ def __write_cppcheck_project_file(tmpdir, platform=None, importproject=None):
     project_file = os.path.join(tmpdir, 'Project.cppcheck')
 
     if platform is not None:
-        platform = '<platform>{}</platform>'.format(platform)
+        platform = f'<platform>{platform}</platform>'
     if importproject is not None:
-        platform = '<importproject>{}</importproject>'.format(importproject)
+        platform = f'<importproject>{importproject}</importproject>'
 
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
 """<?xml version="1.0" encoding="UTF-8"?>
 <project version="1">
@@ -71,10 +71,10 @@ def test_project_custom_platform(tmpdir):
     """
     project_file = __write_cppcheck_project_file(tmpdir, platform='p1.xml')
 
-    with open(os.path.join(tmpdir, 'p1.xml'), 'wt') as f:
+    with open(os.path.join(tmpdir, 'p1.xml'), 'w') as f:
         f.write('<?xml version="1.0"?>\n<platform/>')
 
-    with open(os.path.join(tmpdir, '1.c'), 'wt') as f:
+    with open(os.path.join(tmpdir, '1.c'), 'w') as f:
         f.write("int x;")
 
     ret, stdout, stderr = cppcheck(['--project=' + project_file, '--template=cppcheck1', '-q'])
@@ -89,7 +89,7 @@ def test_project_empty_platform(tmpdir):
     """
     project_file = __write_cppcheck_project_file(tmpdir, platform='')
 
-    with open(os.path.join(tmpdir, '1.c'), 'wt') as f:
+    with open(os.path.join(tmpdir, '1.c'), 'w') as f:
         f.write("int x;")
 
     ret, stdout, stderr = cppcheck(['--project=' + project_file, '--template=cppcheck1', '-q'])
@@ -104,7 +104,7 @@ def test_project_unspecified_platform(tmpdir):
     """
     project_file = __write_cppcheck_project_file(tmpdir, platform='Unspecified')
 
-    with open(os.path.join(tmpdir, '1.c'), 'wt') as f:
+    with open(os.path.join(tmpdir, '1.c'), 'w') as f:
         f.write("int x;")
 
     ret, stdout, stderr = cppcheck(['--project=' + project_file, '--template=cppcheck1', '-q'])
@@ -119,7 +119,7 @@ def test_project_unknown_platform(tmpdir):
     """
     project_file = __write_cppcheck_project_file(tmpdir, platform='dummy')
 
-    with open(os.path.join(tmpdir, '1.c'), 'wt') as f:
+    with open(os.path.join(tmpdir, '1.c'), 'w') as f:
         f.write("int x;")
 
     ret, stdout, stderr = cppcheck(['--project=' + project_file, '--template=cppcheck1'])
@@ -134,7 +134,7 @@ def test_project_empty_fields(tmpdir):
     """
     project_file = os.path.join(tmpdir, 'Project.cppcheck')
 
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
 """<?xml version="1.0" encoding="UTF-8"?>
 <project version="1">
@@ -231,7 +231,7 @@ def test_project_missing_subproject(tmpdir):
 
 
 def test_project_std(tmpdir):
-    with open(os.path.join(tmpdir, 'bug1.cpp'), 'wt') as f:
+    with open(os.path.join(tmpdir, 'bug1.cpp'), 'w') as f:
         f.write("""
                 #if __cplusplus == 201402L
                 int x = 123 / 0;
@@ -249,7 +249,7 @@ def test_project_std(tmpdir):
         }
     ]
 
-    with open(compile_commands, 'wt') as f:
+    with open(compile_commands, 'w') as f:
         f.write(json.dumps(compilation_db))
 
     ret, stdout, stderr = cppcheck(['--project=' + compile_commands, '--enable=all', '-rp=' + str(tmpdir), '--template=cppcheck1'])
@@ -261,7 +261,7 @@ def test_project_std(tmpdir):
 @pytest.mark.skip() # clang-tidy is not available in all cases
 def test_clang_tidy(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
                 int main(int argc)
                 {
@@ -270,7 +270,7 @@ def test_clang_tidy(tmpdir):
                 """)
 
     project_file = os.path.join(tmpdir, 'test.cppcheck')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
             """<?xml version="1.0" encoding="UTF-8"?>
 <project version="1">
@@ -282,7 +282,7 @@ def test_clang_tidy(tmpdir):
   </tools>
 </project>""".format(test_file))
 
-    args = ['--project={}'.format(project_file)]
+    args = [f'--project={project_file}']
 
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0, stdout
@@ -290,7 +290,7 @@ def test_clang_tidy(tmpdir):
     # TODO: should detect clang-tidy issue
     assert len(lines) == 1
     assert lines == [
-        'Checking {} ...'.format(test_file)
+        f'Checking {test_file} ...'
     ]
     assert stderr == ''
 
@@ -303,11 +303,11 @@ def test_clang_tidy(tmpdir):
 ])
 def test_project_file_filter(tmpdir, file_filter):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         pass
 
     project_file = os.path.join(tmpdir, 'test.cppcheck')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
             """<?xml version="1.0" encoding="UTF-8"?>
 <project>
@@ -316,9 +316,9 @@ def test_project_file_filter(tmpdir, file_filter):
     </paths>
 </project>""".format(test_file))
 
-    args = file_filter + ['--project={}'.format(project_file)]
+    args = file_filter + [f'--project={project_file}']
     out_lines = [
-        'Checking {} ...'.format(test_file)
+        f'Checking {test_file} ...'
     ]
 
     assert_cppcheck(args, ec_exp=0, err_exp=[], out_exp=out_lines)
@@ -330,14 +330,14 @@ def test_project_file_filter(tmpdir, file_filter):
 ])
 def test_project_file_filter_cpp(tmpdir, file_filter):
     test_file_1 = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file_1, 'wt') as f:
+    with open(test_file_1, 'w') as f:
         pass
     test_file_2 = os.path.join(tmpdir, 'test.c')
-    with open(test_file_2, 'wt') as f:
+    with open(test_file_2, 'w') as f:
         pass
 
     project_file = os.path.join(tmpdir, 'test.cppcheck')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
             """<?xml version="1.0" encoding="UTF-8"?>
 <project>
@@ -347,9 +347,9 @@ def test_project_file_filter_cpp(tmpdir, file_filter):
     </paths>
 </project>""".format(test_file_1, test_file_2))
 
-    args = file_filter + ['--project={}'.format(project_file)]
+    args = file_filter + [f'--project={project_file}']
     out_lines = [
-        'Checking {} ...'.format(test_file_1)
+        f'Checking {test_file_1} ...'
     ]
 
     assert_cppcheck(args, ec_exp=0, err_exp=[], out_exp=out_lines)
@@ -361,14 +361,14 @@ def test_project_file_filter_cpp(tmpdir, file_filter):
 ])
 def test_project_file_filter_c(tmpdir, file_filter):
     test_file_1 = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file_1, 'wt') as f:
+    with open(test_file_1, 'w') as f:
         pass
     test_file_2 = os.path.join(tmpdir, 'test.c')
-    with open(test_file_2, 'wt') as f:
+    with open(test_file_2, 'w') as f:
         pass
 
     project_file = os.path.join(tmpdir, 'test.cppcheck')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
             """<?xml version="1.0" encoding="UTF-8"?>
 <project>
@@ -378,9 +378,9 @@ def test_project_file_filter_c(tmpdir, file_filter):
     </paths>
 </project>""".format(test_file_1, test_file_2))
 
-    args = file_filter + ['--project={}'.format(project_file)]
+    args = file_filter + [f'--project={project_file}']
     out_lines = [
-        'Checking {} ...'.format(test_file_2)
+        f'Checking {test_file_2} ...'
     ]
 
     assert_cppcheck(args, ec_exp=0, err_exp=[], out_exp=out_lines)
@@ -391,14 +391,14 @@ def test_project_relpath_file_filter_abspath(tmpdir):
     relative paths in project file, absolute path in file filter
     """
     test_file_cpp = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file_cpp, 'wt') as f:
+    with open(test_file_cpp, 'w') as f:
         pass
     test_file_c = os.path.join(tmpdir, 'test.c')
-    with open(test_file_c, 'wt') as f:
+    with open(test_file_c, 'w') as f:
         pass
 
     project_file = os.path.join(tmpdir, 'test.cppcheck')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
             """<?xml version="1.0" encoding="UTF-8"?>
 <project>
@@ -412,7 +412,7 @@ def test_project_relpath_file_filter_abspath(tmpdir):
         'Checking test.c ...'
     ]
 
-    args = ['--file-filter={}'.format(test_file_c), '--project=test.cppcheck']
+    args = [f'--file-filter={test_file_c}', '--project=test.cppcheck']
     assert_cppcheck(args, ec_exp=0, err_exp=[], out_exp=out_lines, cwd=tmpdir)
 
 
@@ -421,14 +421,14 @@ def test_project_abspath_file_filter_relpath(tmpdir):
     absolute paths in project file, relative path in file filter
     """
     test_file_cpp = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file_cpp, 'wt') as f:
+    with open(test_file_cpp, 'w') as f:
         pass
     test_file_c = os.path.join(tmpdir, 'test.c')
-    with open(test_file_c, 'wt') as f:
+    with open(test_file_c, 'w') as f:
         pass
 
     project_file = os.path.join(tmpdir, 'test.cppcheck')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
             """<?xml version="1.0" encoding="UTF-8"?>
 <project>
@@ -439,7 +439,7 @@ def test_project_abspath_file_filter_relpath(tmpdir):
 </project>""".format(test_file_c, test_file_cpp))
 
     out_lines = [
-        'Checking {} ...'.format(test_file_c)
+        f'Checking {test_file_c} ...'
     ]
 
     args = ['--file-filter=test.c', '--project=test.cppcheck']
@@ -462,31 +462,31 @@ def test_project_pathmatch_other_cwd(tmpdir):
     os.mkdir(test_dir_3)
 
     test_file_1 = os.path.join(test_dir_1, 'a-abs.c')
-    with open(test_file_1, 'wt') as f:
+    with open(test_file_1, 'w') as f:
         pass
 
     test_file_2 = os.path.join(test_dir_1, 'a-rel.c')
-    with open(test_file_2, 'wt') as f:
+    with open(test_file_2, 'w') as f:
         pass
 
     test_file_3 = os.path.join(test_dir_2, 'b-abs.c')
-    with open(test_file_3, 'wt') as f:
+    with open(test_file_3, 'w') as f:
         pass
 
     test_file_4 = os.path.join(test_dir_2, 'b-rel.c')
-    with open(test_file_4, 'wt') as f:
+    with open(test_file_4, 'w') as f:
         pass
 
     test_file_5 = os.path.join(test_dir_3, 'b-abs.c')
-    with open(test_file_5, 'wt') as f:
+    with open(test_file_5, 'w') as f:
         pass
 
     test_file_6 = os.path.join(test_dir_3, 'b-rel.c')
-    with open(test_file_6, 'wt') as f:
+    with open(test_file_6, 'w') as f:
         pass
 
     project_file = os.path.join(test_root, 'test.cppcheck')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
             """<?xml version="1.0" encoding="UTF-8"?>
 <project>
@@ -504,11 +504,11 @@ def test_project_pathmatch_other_cwd(tmpdir):
 </project>""".format(test_file_1, test_file_3, test_file_5))
 
     out_lines = [
-        'Checking {} ...'.format(test_file_5),
+        f'Checking {test_file_5} ...',
         'Checking {} ...'.format(os.path.join("..", "cwd", "b", "b-rel.c")),
     ]
 
-    args = ['--file-filter={}/*/?/**.c*'.format(test_root), '--project=../test.cppcheck']
+    args = [f'--file-filter={test_root}/*/?/**.c*', '--project=../test.cppcheck']
     exitcode, stdout, stderr = cppcheck(args, cwd=test_cwd)
     stdout_lines = stdout.splitlines()
     assert 0 == exitcode
@@ -519,11 +519,11 @@ def test_project_pathmatch_other_cwd(tmpdir):
 
 def test_project_file_filter_no_match(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         pass
 
     project_file = os.path.join(tmpdir, 'test.cppcheck')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
             """<?xml version="1.0" encoding="UTF-8"?>
 <project>
@@ -532,7 +532,7 @@ def test_project_file_filter_no_match(tmpdir):
     </paths>
 </project>""".format(test_file))
 
-    args = ['--file-filter=*.c', '--project={}'.format(project_file)]
+    args = ['--file-filter=*.c', f'--project={project_file}']
     out_lines = [
         'cppcheck: error: could not find any files matching the filter:*.c'
     ]
@@ -542,20 +542,20 @@ def test_project_file_filter_no_match(tmpdir):
 
 def test_project_file_order(tmpdir):
     test_file_a = os.path.join(tmpdir, 'a.c')
-    with open(test_file_a, 'wt'):
+    with open(test_file_a, 'w'):
         pass
     test_file_b = os.path.join(tmpdir, 'b.c')
-    with open(test_file_b, 'wt'):
+    with open(test_file_b, 'w'):
         pass
     test_file_c = os.path.join(tmpdir, 'c.c')
-    with open(test_file_c, 'wt'):
+    with open(test_file_c, 'w'):
         pass
     test_file_d = os.path.join(tmpdir, 'd.c')
-    with open(test_file_d, 'wt'):
+    with open(test_file_d, 'w'):
         pass
 
     project_file = os.path.join(tmpdir, 'test.cppcheck')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
             """<?xml version="1.0" encoding="UTF-8"?>
 <project>
@@ -567,19 +567,19 @@ def test_project_file_order(tmpdir):
     </paths>
 </project>""".format(test_file_c, test_file_d, test_file_b, test_file_a))
 
-    args = ['--project={}'.format(project_file), '-j1']
+    args = [f'--project={project_file}', '-j1']
 
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file_c),
+        f'Checking {test_file_c} ...',
         '1/4 files checked 25% done',
-        'Checking {} ...'.format(test_file_d),
+        f'Checking {test_file_d} ...',
         '2/4 files checked 50% done',
-        'Checking {} ...'.format(test_file_b),
+        f'Checking {test_file_b} ...',
         '3/4 files checked 75% done',
-        'Checking {} ...'.format(test_file_a),
+        f'Checking {test_file_a} ...',
         '4/4 files checked 100% done'
     ]
     assert stderr == ''
@@ -587,11 +587,11 @@ def test_project_file_order(tmpdir):
 
 def test_project_file_duplicate(tmpdir):
     test_file_a = os.path.join(tmpdir, 'a.c')
-    with open(test_file_a, 'wt'):
+    with open(test_file_a, 'w'):
         pass
 
     project_file = os.path.join(tmpdir, 'test.cppcheck')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
             """<?xml version="1.0" encoding="UTF-8"?>
 <project>
@@ -602,30 +602,30 @@ def test_project_file_duplicate(tmpdir):
     </paths>
 </project>""".format(test_file_a, test_file_a, tmpdir))
 
-    args = ['--project={}'.format(project_file)]
+    args = [f'--project={project_file}']
 
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file_a)
+        f'Checking {test_file_a} ...'
     ]
     assert stderr == ''
 
 
 def test_project_file_duplicate_2(tmpdir):
     test_file_a = os.path.join(tmpdir, 'a.c')
-    with open(test_file_a, 'wt'):
+    with open(test_file_a, 'w'):
         pass
     test_file_b = os.path.join(tmpdir, 'b.c')
-    with open(test_file_b, 'wt'):
+    with open(test_file_b, 'w'):
         pass
     test_file_c = os.path.join(tmpdir, 'c.c')
-    with open(test_file_c, 'wt'):
+    with open(test_file_c, 'w'):
         pass
 
     project_file = os.path.join(tmpdir, 'test.cppcheck')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
             """<?xml version="1.0" encoding="UTF-8"?>
 <project>
@@ -641,17 +641,17 @@ def test_project_file_duplicate_2(tmpdir):
     </paths>
 </project>""".format(test_file_c, test_file_a, test_file_b, tmpdir, test_file_b, test_file_c, test_file_a, tmpdir))
 
-    args = ['--project={}'.format(project_file), '-j1']
+    args = [f'--project={project_file}', '-j1']
 
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file_c),
+        f'Checking {test_file_c} ...',
         '1/3 files checked 33% done',
-        'Checking {} ...'.format(test_file_a),
+        f'Checking {test_file_a} ...',
         '2/3 files checked 66% done',
-        'Checking {} ...'.format(test_file_b),
+        f'Checking {test_file_b} ...',
         '3/3 files checked 100% done'
     ]
     assert stderr == ''
@@ -659,7 +659,7 @@ def test_project_file_duplicate_2(tmpdir):
 
 def test_project_file_duplicate_3(tmpdir):  # #12834
     test_file_a = os.path.join(tmpdir, 'a.c')
-    with open(test_file_a, 'wt'):
+    with open(test_file_a, 'w'):
         pass
 
     # multiple ways to specify the same file
@@ -671,7 +671,7 @@ def test_project_file_duplicate_3(tmpdir):  # #12834
     in_file_f = os.path.join(tmpdir, 'dummy', '..', 'a.c')
 
     project_file = os.path.join(tmpdir, 'test.cppcheck')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
             """<?xml version="1.0" encoding="UTF-8"?>
 <project>
@@ -686,13 +686,13 @@ def test_project_file_duplicate_3(tmpdir):  # #12834
     </paths>
 </project>""".format(in_file_a, in_file_b, in_file_c, in_file_d, in_file_e, in_file_f, tmpdir))
 
-    args = ['--project={}'.format(project_file)]
+    args = [f'--project={project_file}']
 
     exitcode, stdout, stderr = cppcheck(args, cwd=tmpdir)
     assert exitcode == 0
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file_a)
+        f'Checking {test_file_a} ...'
     ]
     assert stderr == ''
 
@@ -700,7 +700,7 @@ def test_project_file_duplicate_3(tmpdir):  # #12834
 @pytest.mark.skipif(sys.platform != 'win32', reason="requires Windows")
 def test_project_file_duplicate_4(tmpdir):  # #12834
     test_file_a = os.path.join(tmpdir, 'a.c')
-    with open(test_file_a, 'wt'):
+    with open(test_file_a, 'w'):
         pass
 
     # multiple ways to specify the same file
@@ -717,7 +717,7 @@ def test_project_file_duplicate_4(tmpdir):  # #12834
         args2.append(a.replace('\\', '/'))
 
     project_file = os.path.join(tmpdir, 'test.cppcheck')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
             """<?xml version="1.0" encoding="UTF-8"?>
 <project>
@@ -740,23 +740,23 @@ def test_project_file_duplicate_4(tmpdir):  # #12834
 </project>""".format(in_file_a, in_file_b, in_file_c, in_file_d, in_file_e, in_file_f, tmpdir,
                      args2[0], args2[1], args2[2], args2[3], args2[4], args2[5], args2[6]))
 
-    args = ['--project={}'.format(project_file)]
+    args = [f'--project={project_file}']
 
     exitcode, stdout, stderr = cppcheck(args, cwd=tmpdir)
     assert exitcode == 0
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file_a)
+        f'Checking {test_file_a} ...'
     ]
     assert stderr == ''
 
 def test_project_file_ignore(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         pass
 
     project_file = os.path.join(tmpdir, 'test.cppcheck')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
             """<?xml version="1.0" encoding="UTF-8"?>
 <project>
@@ -765,7 +765,7 @@ def test_project_file_ignore(tmpdir):
     </paths>
 </project>""".format(test_file))
 
-    args = ['-itest.cpp', '--project={}'.format(project_file)]
+    args = ['-itest.cpp', f'--project={project_file}']
     out_lines = [
         'cppcheck: error: could not find or open any of the paths given.',
         'cppcheck: Maybe all paths were ignored?'
@@ -776,11 +776,11 @@ def test_project_file_ignore(tmpdir):
 
 def test_project_file_ignore_2(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         pass
 
     project_file = os.path.join(tmpdir, 'test.cppcheck')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
             """<?xml version="1.0" encoding="UTF-8"?>
 <project>
@@ -792,7 +792,7 @@ def test_project_file_ignore_2(tmpdir):
     </exclude>
 </project>""".format(test_file))
 
-    args = ['--project={}'.format(project_file)]
+    args = [f'--project={project_file}']
     out_lines = [
         'cppcheck: error: could not find or open any of the paths given.',
         'cppcheck: Maybe all paths were ignored?'
@@ -803,11 +803,11 @@ def test_project_file_ignore_2(tmpdir):
 
 def test_project_file_ignore_3(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         pass
 
     project_file = os.path.join(tmpdir, 'test.cppcheck')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
             """<?xml version="1.0" encoding="UTF-8"?>
 <project>
@@ -819,7 +819,7 @@ def test_project_file_ignore_3(tmpdir):
     </ignore>
 </project>""".format(test_file))
 
-    args = ['--project={}'.format(project_file)]
+    args = [f'--project={project_file}']
     out_lines = [
         'cppcheck: error: could not find or open any of the paths given.',
         'cppcheck: Maybe all paths were ignored?'
@@ -830,7 +830,7 @@ def test_project_file_ignore_3(tmpdir):
 
 def test_json_file_ignore(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         pass
 
     compilation_db = [
@@ -841,10 +841,10 @@ def test_json_file_ignore(tmpdir):
     ]
 
     project_file = os.path.join(tmpdir, 'test.json')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(json.dumps(compilation_db))
 
-    args = ['-itest.cpp', '--project={}'.format(project_file)]
+    args = ['-itest.cpp', f'--project={project_file}']
     out_lines = [
         'cppcheck: error: no C or C++ source files found.',
         'cppcheck: all paths were ignored'
@@ -855,7 +855,7 @@ def test_json_file_ignore(tmpdir):
 
 def test_json_file_ignore_2(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         pass
 
     compilation_db = [
@@ -866,10 +866,10 @@ def test_json_file_ignore_2(tmpdir):
     ]
 
     project_file = os.path.join(tmpdir, 'test.json')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(json.dumps(compilation_db))
 
-    args = ['-i{}'.format(test_file), '--project={}'.format(project_file)]
+    args = [f'-i{test_file}', f'--project={project_file}']
     out_lines = [
         'cppcheck: error: no C or C++ source files found.',
         'cppcheck: all paths were ignored'
@@ -881,7 +881,7 @@ def test_json_file_ignore_2(tmpdir):
 @pytest.mark.xfail(strict=True)
 def test_project_D(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 #ifndef __GNUC__
 #error "requirement not met"
@@ -889,7 +889,7 @@ def test_project_D(tmpdir):
                 """)
 
     project_file = os.path.join(tmpdir, 'test.cppcheck')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
             """
 <?xml version="1.0" encoding="UTF-8"?>
@@ -907,8 +907,8 @@ def test_project_D(tmpdir):
     arg_D = ['-D__GNUC__']
 
     out_expected = [
-        'Checking {} ...'.format(test_file),
-        'Checking {}: __GNUC__=1...'.format(test_file)
+        f'Checking {test_file} ...',
+        f'Checking {test_file}: __GNUC__=1...'
     ]
 
     args1 = args + arg_D
@@ -927,7 +927,7 @@ def test_project_D(tmpdir):
 
 def test_compdb_D(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 #ifndef __GNUC__
 #error "requirement not met"
@@ -941,7 +941,7 @@ def test_compdb_D(tmpdir):
          "file": "test.cpp",
          "output": "test.o"}
     ]
-    with open(compile_commands, 'wt') as f:
+    with open(compile_commands, 'w') as f:
         f.write(json.dumps(compilation_db))
 
     args = [
@@ -951,8 +951,8 @@ def test_compdb_D(tmpdir):
     arg_D = ['-D__GNUC__']
 
     out_expected = [
-        'Checking {} ...'.format(test_file),
-        'Checking {}: __GNUC__=1;...'.format(test_file)  # TODO: get rid of extra ;
+        f'Checking {test_file} ...',
+        f'Checking {test_file}: __GNUC__=1;...'  # TODO: get rid of extra ;
     ]
 
     args1 = args + arg_D
@@ -973,7 +973,7 @@ def test_shared_items_project():
 
     args = [
         '--platform=win64',
-        '--project={}'.format(solution_file),
+        f'--project={solution_file}',
         '--project-configuration=Release|x64'
     ]
 
@@ -987,11 +987,11 @@ def test_shared_items_project():
 
 def test_project_file_nested(tmp_path):
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt'):
+    with open(test_file, 'w'):
         pass
 
     level3_file = tmp_path / 'level3.cppcheck'
-    with open(level3_file, 'wt') as f:
+    with open(level3_file, 'w') as f:
         f.write(
 """<project>
     <paths>
@@ -1000,20 +1000,20 @@ def test_project_file_nested(tmp_path):
 </project>""".format(test_file))
 
     level2_file = tmp_path / 'level2.cppcheck'
-    with open(level2_file, 'wt') as f:
+    with open(level2_file, 'w') as f:
         f.write(
 """<project>
     <importproject>level3.cppcheck</importproject>
 </project>""")
 
     level1_file = tmp_path / 'level1.cppcheck'
-    with open(level1_file, 'wt') as f:
+    with open(level1_file, 'w') as f:
         f.write(
 """<project>
     <importproject>level2.cppcheck</importproject>
 </project>""")
 
-    args = ['--project={}'.format(level1_file)]
+    args = [f'--project={level1_file}']
     out_lines = [
         'cppcheck: error: nested Cppcheck GUI projects are not supported.'
     ]
@@ -1023,11 +1023,11 @@ def test_project_file_nested(tmp_path):
 
 def test_project_file_no_analyze_all_vs_configs(tmp_path):
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt'):
+    with open(test_file, 'w'):
         pass
 
     project_path = tmp_path / 'project.cppcheck'
-    with open(project_path, 'wt') as f:
+    with open(project_path, 'w') as f:
         f.write(
 """<project>
     <analyze-all-vs-configs>false</analyze-all-vs-configs>
@@ -1051,9 +1051,9 @@ def test_project_progress(tmp_path, j, executor):
         pytest.skip("process executor not supported on Windows")
 
     code = 'x = 1;'
-    with open(tmp_path / 'test1.c', 'wt') as f:
+    with open(tmp_path / 'test1.c', 'w') as f:
         f.write(code)
-    with open(tmp_path / 'test2.c', 'wt') as f:
+    with open(tmp_path / 'test2.c', 'w') as f:
         f.write(code)
 
     compilation_db = [
@@ -1069,7 +1069,7 @@ def test_project_progress(tmp_path, j, executor):
 
     project_file = tmp_path / 'compile_commands.json'
 
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(json.dumps(compilation_db))
 
     _, stdout, _ = cppcheck([f'--project={project_file}', f'-j{j}', f'--executor={executor}'])

@@ -20,7 +20,7 @@ TIME_LIMIT = 2
 
 def format_float(a, b=1):
     if a > 0 and b > 0:
-        return '{:.2f}'.format(a / b)
+        return f'{a / b:.2f}'
     return 'N/A'
 
 
@@ -88,7 +88,7 @@ if __name__ == "__main__":
         try:
             lib.clone_cppcheck(cppcheck_path, '')
         except Exception as e:
-            print('Failed to clone Cppcheck repository ({}), retry later'.format(e))
+            print(f'Failed to clone Cppcheck repository ({e}), retry later')
             sys.exit(1)
 
         if not lib.compile_cppcheck(cppcheck_path):
@@ -146,7 +146,7 @@ if __name__ == "__main__":
 
         libraries = lib.library_includes.get_libraries(source_path)
 
-        with open(results_file, 'at') as myfile:
+        with open(results_file, 'a') as myfile:
             myfile.write('package:' + package + '\n')
             myfile.write('libraries:' + ','.join(libraries) +'\n')
 
@@ -163,7 +163,7 @@ if __name__ == "__main__":
                 else:
                     error_text = f'{id} crash code={c}'
 
-            with open(results_file, 'at') as myfile:
+            with open(results_file, 'a') as myfile:
                 if error_text is not None:
                     myfile.write(f'{error_text}\n')
                 else:
@@ -183,7 +183,7 @@ if __name__ == "__main__":
                             time_factor = time / time0
                             myfile.write(f'{id}: Timefactor: %.3f\n' % time_factor)
 
-        with open(summary_file, 'wt') as myfile:
+        with open(summary_file, 'w') as myfile:
             all = {}
             for id, c in summary_results.items():
                 for error_id, count in c.items():

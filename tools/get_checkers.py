@@ -7,7 +7,7 @@ import requests
 def print_checkers(glob_pattern:str):
     checkers = {}
     for filename in glob.glob(glob_pattern):
-        for line in open(filename,'rt'):
+        for line in open(filename):
             res = re.match(r'[ \t]*logChecker\(\s*"([^"]+)"\s*\);.*', line)
             if res is None:
                 continue
@@ -17,7 +17,7 @@ def print_checkers(glob_pattern:str):
                 req = ''
             checkers[res.group(1)] = req
     for c,req in dict(sorted(checkers.items())).items():
-        print('        {"%s","%s"},' % (c, req))
+        print('        {{"{}","{}"}},'.format(c, req))
 
 
 print("""/*
@@ -56,7 +56,7 @@ print("""
     const char Dis[] = "Disapplied";""")
 
 for version in (2012, 2023, 2025):
-    with open(os.path.expanduser('~/cppchecksolutions/addon/coverage/misra-c-%i.txt' % version), 'rt') as f:
+    with open(os.path.expanduser('~/cppchecksolutions/addon/coverage/misra-c-%i.txt' % version)) as f:
         all_guidelines = f.read()
 
     if version == 2012:
@@ -68,7 +68,7 @@ for version in (2012, 2023, 2025):
     for line in all_guidelines.split('\n'):
         res = re.match(r'Dir\s+(\d+)[.](\d+)\s+(\w+).*', line)
         if res:
-            a = amd.get('%s.%s' % (res.group(1), res.group(2)), 0)
+            a = amd.get('{}.{}'.format(res.group(1), res.group(2)), 0)
             print('        {%s,%s,%s,%i},' % (res.group(1), res.group(2), res.group(3)[:3], a))
     print('    };')
 
@@ -120,7 +120,7 @@ for version in (2012, 2023, 2025):
     for line in all_guidelines.split('\n'):
         res = re.match(r'Rule\s+(\d+)[.](\d+)\s+(\w+).*', line)
         if res:
-            a = amd.get('%s.%s' % (res.group(1), res.group(2)), 0)
+            a = amd.get('{}.{}'.format(res.group(1), res.group(2)), 0)
             comment = '' if a == 0 else ' // Amendment %i' % a
             print('        {%s,%s,%s,%i},%s' % (res.group(1), res.group(2), res.group(3)[:3], a, comment))
     print('    };')
@@ -929,7 +929,7 @@ def getCertCInfo(main_url:str):
             if res:
                 if res.group(1) == 'EXP40-C' and 'EXP39-C' not in rules:
                     print('    {"EXP39-C", "L2"},')
-                print('    {"%s", "%s"},' % (res.group(1), res.group(2)))
+                print('    {{"{}", "{}"}},'.format(res.group(1), res.group(2)))
                 rules.append(res.group(1))
         if 'EXP45-C' in rules:
             if 'EXP46-C' not in rules:

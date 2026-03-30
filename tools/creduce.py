@@ -17,7 +17,7 @@ def print_lines(lines):
         print(line)
 
 def write_to(file, lines):
-    content = list((line + "\n" for line in lines))
+    content = list(line + "\n" for line in lines)
     if (len(content) > 0):
         with open(file, 'w') as f:
             f.writelines(content)
@@ -27,7 +27,7 @@ def make_executable(p):
 
 def quote(s):
     text = s.replace("'", "'\"'\"'")
-    return "'{}'".format(text)
+    return f"'{text}'"
 
 class ScriptBuilder:
     def __init__(self):
@@ -48,8 +48,8 @@ class ScriptBuilder:
     def check(self, equal_zero=False, result=1):
         op = 'eq' if equal_zero else 'ne'
         cmds = ['RES=$?',
-                'if [ $RES -{} "0" ]; then'.format(op),
-                '    exit {}'.format(result),
+                f'if [ $RES -{op} "0" ]; then',
+                f'    exit {result}',
                 'fi']
         self.commands.extend(cmds)
 

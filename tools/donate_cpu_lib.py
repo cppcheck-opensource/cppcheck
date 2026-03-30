@@ -41,7 +41,7 @@ def detect_make():
         except OSError:
             continue
 
-        print("using '{}'".format(m))
+        print(f"using '{m}'")
         return m
 
     print("Error: a make command ({}) is required".format(','.join(make_cmds)))
@@ -66,14 +66,14 @@ def check_requirements():
             #print('{} --version'.format(app))
             subprocess.check_call([app, '--version'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except OSError:
-            print("Error: '{}' is required".format(app))
+            print(f"Error: '{app}' is required")
             result = False
 
     try:
         # pylint: disable-next=unused-import - intentional
         import psutil
     except ImportError as e:
-        print("Error: {}. Module is required.".format(e))
+        print(f"Error: {e}. Module is required.")
         result = False
 
     return result
@@ -90,13 +90,13 @@ def try_retry(fun, fargs=(), max_tries=5, sleep_duration=5.0, sleep_factor=2.0):
             raise e
         except BaseException as e:
             if i < max_tries - 1:
-                print("{} in {}: {}".format(type(e).__name__, fun.__name__, str(e)))
-                print("Trying {} again in {} seconds".format(fun.__name__, sleep_duration))
+                print(f"{type(e).__name__} in {fun.__name__}: {str(e)}")
+                print(f"Trying {fun.__name__} again in {sleep_duration} seconds")
                 time.sleep(sleep_duration)
                 sleep_duration *= sleep_factor
                 # do not return - re-try
             else:
-                print("Maximum number of tries reached for {}".format(fun.__name__))
+                print(f"Maximum number of tries reached for {fun.__name__}")
                 raise e
 
 
@@ -123,7 +123,7 @@ def checkout_cppcheck_version(repo_path, version, cppcheck_path):
     if not os.path.isabs(cppcheck_path):
         raise ValueError("cppcheck_path is not an absolute path")
     if os.path.exists(cppcheck_path):
-        print('Checking out {}'.format(version))
+        print(f'Checking out {version}')
         subprocess.check_call(['git', 'checkout', '-f', version], cwd=cppcheck_path)
 
         # It is possible to pull branches, not tags
@@ -132,7 +132,7 @@ def checkout_cppcheck_version(repo_path, version, cppcheck_path):
 
         hash_old = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], cwd=cppcheck_path).strip()
 
-        print('Pulling {}'.format(version))
+        print(f'Pulling {version}')
         # --rebase is a workaround for a dropped commit - see https://github.com/danmar/cppcheck/pull/6904
         # TODO: drop the commit in question
         # TOD: remove --rebase
@@ -146,18 +146,18 @@ def checkout_cppcheck_version(repo_path, version, cppcheck_path):
         return has_changes
 
     if version != 'main':
-        print('Fetching {}'.format(version))
+        print(f'Fetching {version}')
         # Since this is a shallow clone, explicitly fetch the remote version tag
         refspec = 'refs/tags/' + version + ':ref/tags/' + version
         subprocess.check_call(['git', 'fetch', '--depth=1', 'origin', refspec], cwd=repo_path)
-    print('Adding worktree \'{}\' for {}'.format(cppcheck_path, version))
+    print(f'Adding worktree \'{cppcheck_path}\' for {version}')
     subprocess.check_call(['git', 'worktree', 'add', cppcheck_path,  version], cwd=repo_path)
     return True
 
 
 def get_cppcheck_info(cppcheck_path):
     try:
-        return subprocess.check_output(['git', 'show', "--pretty=%h (%ci)", 'HEAD', '--no-patch', '--no-notes'], universal_newlines=True, cwd=cppcheck_path).strip()
+        return subprocess.check_output(['git', 'show', "--pretty=%h (%ci)", 'HEAD', '--no-patch', '--no-notes'], text=True, cwd=cppcheck_path).strip()
     except:
         return ''
 
@@ -201,7 +201,7 @@ def compile_version(cppcheck_path):
 
 
 def compile_cppcheck(cppcheck_path):
-    print('Compiling {}'.format(os.path.basename(cppcheck_path)))
+    print(f'Compiling {os.path.basename(cppcheck_path)}')
 
     cppcheck_bin = __get_cppcheck_binary(cppcheck_path)
     # remove file so interrupted "main" branch compilation is being resumed
@@ -228,7 +228,7 @@ def compile_cppcheck(cppcheck_path):
                 build_cmd.append('RDYNAMIC=-lshlwapi')
             subprocess.check_call(build_cmd, cwd=cppcheck_path, env=build_env)
     except Exception as e:
-        print('Compilation failed: {}'.format(e))
+        print(f'Compilation failed: {e}')
         return False
 
     try:
@@ -237,7 +237,7 @@ def compile_cppcheck(cppcheck_path):
         else:
             subprocess.check_call([os.path.join(cppcheck_path, 'cppcheck'), '--version'], cwd=cppcheck_path)
     except Exception as e:
-        print('Running Cppcheck failed: {}'.format(e))
+        print(f'Running Cppcheck failed: {e}')
         # remove faulty binary
         if os.path.isfile(cppcheck_bin):
             os.remove(cppcheck_bin)
@@ -312,7 +312,7 @@ def __remove_tree(folder_name):
     try:
         try_retry(rmtree_func, max_tries=5, sleep_duration=30, sleep_factor=1)
     except Exception as e:
-        print('Failed to cleanup {}: {}'.format(folder_name, e))
+        print(f'Failed to cleanup {folder_name}: {e}')
         sys.exit(1)
 
 
@@ -447,7 +447,7 @@ def scan_package(cppcheck_path, source_path, libraries, capture_callstack=True, 
 
     # TODO: temporarily disabled timing information - use --showtime=top5_summary when next version is released
     # Reference for GNU C: https://gcc.gnu.org/onlinedocs/cpp/Common-Predefined-Macros.html
-    options = '{} --inconclusive --enable={} --inline-suppr --template=daca2'.format(libs, enable)
+    options = f'{libs} --inconclusive --enable={enable} --inline-suppr --template=daca2'
     if 'information' in enable:
         # TODO: remove missingInclude disabling after 2.16 has been released
         options += ' --disable=missingInclude --suppress=unmatchedSuppression'
@@ -459,7 +459,7 @@ def scan_package(cppcheck_path, source_path, libraries, capture_callstack=True, 
         options += ' --check-library --debug-warnings --suppress=autoNoType --suppress=valueFlowBailout' \
                    ' --suppress=bailoutUninitVar --suppress=symbolDatabaseWarning --suppress=normalCheckLevelConditionExpressions'
     options += ' -D__GNUC__ --platform=unix64'
-    options_rp = options + ' -rp={}'.format(dir_to_scan)
+    options_rp = options + f' -rp={dir_to_scan}'
     if __make_cmd == 'msbuild.exe':
         cppcheck_cmd = os.path.join(cppcheck_path, 'bin', 'cppcheck.exe') + ' ' + options_rp
         cmd = cppcheck_cmd + ' ' + __jobs + ' ' + dir_to_scan
@@ -519,7 +519,7 @@ def scan_package(cppcheck_path, source_path, libraries, capture_callstack=True, 
                 sig_num = int(ie_line[sig_start_pos:ie_line.find(' ', sig_start_pos)])
             # break on the first signalled file for now
             break
-    print('cppcheck finished with ' + str(returncode) + ('' if sig_num == -1 else ' (signal ' + str(sig_num) + ')') + ' in {:.1f}s'.format(elapsed_time))
+    print('cppcheck finished with ' + str(returncode) + ('' if sig_num == -1 else ' (signal ' + str(sig_num) + ')') + f' in {elapsed_time:.1f}s')
 
     options_j = options + ' ' + __jobs
 
@@ -637,8 +637,8 @@ def __send_all(connection, data):
 def __upload(cmd, data, cmd_info):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.connect(__server_address)
-        __send_all(sock, '{}\n{}'.format(cmd, data))
-    print('{} has been successfully uploaded.'.format(cmd_info))
+        __send_all(sock, f'{cmd}\n{data}')
+    print(f'{cmd_info} has been successfully uploaded.')
     return True
 
 
@@ -651,7 +651,7 @@ def upload_results(package, results):
     try:
         try_retry(__upload, fargs=('write\n' + package, results + '\nDONE', 'Result'), max_tries=20, sleep_duration=15, sleep_factor=1)
     except Exception as e:
-        print('Result upload failed ({})!'.format(e))
+        print(f'Result upload failed ({e})!')
         return False
 
     return True
@@ -666,7 +666,7 @@ def upload_info(package, info_output):
     try:
         try_retry(__upload, fargs=('write_info\n' + package, info_output + '\nDONE', 'Information'), max_tries=20, sleep_duration=15, sleep_factor=1)
     except Exception as e:
-        print('Information upload failed ({})!'.format(e))
+        print(f'Information upload failed ({e})!')
         return False
 
     return True
@@ -676,7 +676,7 @@ def upload_nodata(package):
     try:
         try_retry(__upload, fargs=('write_nodata\n' + package, '', 'No-data status'), max_tries=3, sleep_duration=30, sleep_factor=1)
     except Exception as e:
-        print('No-data upload failed ({})!'.format(e))
+        print(f'No-data upload failed ({e})!')
         return False
 
     return True
@@ -738,10 +738,10 @@ class LibraryIncludes:
             for name in files:
                 filename = os.path.join(root, name)
                 try:
-                    with open(filename, 'rt', errors='ignore') as f:
+                    with open(filename, errors='ignore') as f:
                         filedata = f.read()
                     has_include_cb(filedata)
-                except IOError:
+                except OSError:
                     pass
 
     def get_libraries(self, folder):
@@ -762,7 +762,7 @@ class LibraryIncludes:
                 del library_includes_re[lib_d]
 
         self.__iterate_files(folder, has_include)
-        print('Found libraries: {}'.format(libraries))
+        print(f'Found libraries: {libraries}')
         return libraries
 
 

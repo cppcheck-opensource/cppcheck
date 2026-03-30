@@ -1,4 +1,3 @@
-
 # python -m pytest test-helloworld.py
 
 import os
@@ -118,7 +117,7 @@ def test_addon_with_gui_project(tmp_path):
     args = [
         '--template=cppcheck1',
         '--enable=style',
-        '--project={}'.format(project_file)
+        f'--project={project_file}'
     ]
     ret, stdout, stderr = cppcheck(args, cwd=tmp_path)
     filename = os.path.join('helloworld', 'main.c')
@@ -273,7 +272,7 @@ def test_suppress_project_relative(tmp_path):
                             suppressions=[{'fileName':'main.c', 'id':'zerodiv'}])
 
     args = [
-        '--project={}'.format(project_file)
+        f'--project={project_file}'
     ]
 
     ret, stdout, stderr = cppcheck(args, cwd=tmp_path)
@@ -289,7 +288,7 @@ def test_suppress_project_absolute(tmp_path):
                             suppressions=[{'fileName':'main.c', 'id':'zerodiv'}])
 
     args = [
-        '--project={}'.format(project_file)
+        f'--project={project_file}'
     ]
 
     ret, stdout, stderr = cppcheck(args)
@@ -336,7 +335,7 @@ def test_checkers_report(tmpdir):
 
     cppcheck(args, cwd=__script_dir)
 
-    with open(filename, 'rt') as f:
+    with open(filename) as f:
         data = f.read().splitlines()
         assert 'No   CheckAutoVariables::assignFunctionArg                     require:style,warning' in data, json.dumps(data, indent=4)
         assert 'Yes  CheckAutoVariables::autoVariables' in data, json.dumps(data, indent=4)
@@ -345,7 +344,7 @@ def test_checkers_report(tmpdir):
         '--enable=style'
     ]
     cppcheck(args, cwd=__script_dir)
-    with open(filename, 'rt') as f:
+    with open(filename) as f:
         data = f.read().splitlines()
         # checker has been activated by --enable=style
         assert 'Yes  CheckAutoVariables::assignFunctionArg' in data, json.dumps(data, indent=4)

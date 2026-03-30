@@ -54,7 +54,7 @@ def test_dummy_metrics_xml_report(tmpdir):
     assert stderr == ''
     assert stdout == f'Checking {source_path} ...\n'
 
-    with open(output_file, 'r') as file:
+    with open(output_file) as file:
         xml = file.read()
 
     for expected in __expected_xml:

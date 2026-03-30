@@ -56,7 +56,7 @@ def man_search(manpage):
         if manpage.endswith('.gz'):
             MANPAGE = gzip.open(manpage, 'r')
         else:
-            MANPAGE = open(manpage, 'r')
+            MANPAGE = open(manpage)
     except OSError as filename:
         print('cannot open %s' % filename, file=sys.stderr)
         return  # None, None
@@ -94,7 +94,7 @@ def man_search(manpage):
         # vprint(1, '%s for %s' % (res, lineread))
         if res:
             apis.add(res.group(1))
-            dprint(1, 'found api %s in %s' % (res.group(1), lineread))
+            dprint(1, 'found api {} in {}'.format(res.group(1), lineread))
             continue
 
         if 'MT-Unsafe' in lineread:

@@ -12,7 +12,7 @@ def build_cppcheck(bisect_path):
     install_path = os.path.join(bisect_path, commit_hash)
     cppcheck_path = os.path.join(install_path, 'cppcheck')
     if os.path.exists(install_path):
-        print('binary for {} already exists'.format(commit_hash))
+        print(f'binary for {commit_hash} already exists')
         return cppcheck_path
 
     bisect_repo_dir = os.path.join(bisect_path, 'cppcheck')
@@ -32,12 +32,12 @@ def build_cppcheck(bisect_path):
     # TODO: make jobs configurable
     # TODO: use "make install"?
     # TODO: use CXXOPTS overrides to workaround compiling issues in older versions
-    print('building {}'.format(commit_hash))
+    print(f'building {commit_hash}')
     # we always need to use CXXFLAGS because we need to support older versions
     subprocess.check_call(['make', '-C', bisect_repo_dir, '-j6', 'MATCHCOMPILER=yes', 'CXXFLAGS=-O2 -w -pipe', '-s'])
 
     # TODO: remove folder if installation failed
-    print('installing {}'.format(commit_hash))
+    print(f'installing {commit_hash}')
     os.mkdir(install_path)
     if os.path.exists(os.path.join(bisect_repo_dir, 'cfg')):
         shutil.copytree(os.path.join(bisect_repo_dir, 'cfg'), os.path.join(install_path, 'cfg'))

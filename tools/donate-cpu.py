@@ -55,7 +55,7 @@ for arg in sys.argv[1:]:
         print('Stop time:' + stop_time)
     elif arg.startswith('-j'):
         if not re.match(r'-j\d+', arg):
-            print('Argument "{}" is invalid.'.format(arg))
+            print(f'Argument "{arg}" is invalid.')
             print('"-j" must be followed by a positive number.')
             sys.exit(1)
         print('Jobs:' + arg[2:])
@@ -66,7 +66,7 @@ for arg in sys.argv[1:]:
         print('Added Package:' + pkg)
     elif arg.startswith('--packages='):
         pkg_cnt = len(package_urls)
-        with open(arg[arg.find('=')+1:], 'rt') as f:
+        with open(arg[arg.find('=')+1:]) as f:
             for package_url in f:
                 package_url = package_url.strip()
                 if not package_url:
@@ -92,7 +92,7 @@ for arg in sys.argv[1:]:
         if max_packages < 0:
             max_packages = None
         if max_packages is None:
-            print('Error: Max. packages value "{}" is invalid. Must be a positive number or 0.'.format(arg_value))
+            print(f'Error: Max. packages value "{arg_value}" is invalid. Must be a positive number or 0.')
             sys.exit(1)
         # 0 means infinitely, no counting needed.
         if max_packages == 0:
@@ -145,7 +145,7 @@ if bandwidth_limit and isinstance(bandwidth_limit, str):
 if package_urls:
     max_packages = len(package_urls)
 if max_packages:
-    print('Maximum number of packages to download and analyze: {}'.format(max_packages))
+    print(f'Maximum number of packages to download and analyze: {max_packages}')
 if not os.path.exists(work_path):
     os.mkdir(work_path)
 repo_path = os.path.join(work_path, 'repo')
@@ -158,15 +158,15 @@ print('Get Cppcheck..')
 try:
     lib.try_retry(lib.clone_cppcheck, fargs=(repo_path, migrate_repo_path))
 except Exception as e:
-    print('Error: Failed to clone Cppcheck ({}), retry later'.format(e))
+    print(f'Error: Failed to clone Cppcheck ({e}), retry later')
     sys.exit(1)
 
 while True:
     if max_packages:
         if packages_processed >= max_packages:
-            print('Processed the specified number of {} package(s). Exiting now.'.format(max_packages))
+            print(f'Processed the specified number of {max_packages} package(s). Exiting now.')
             break
-        print('Processing package {} of the specified {} package(s).'.format(packages_processed + 1, max_packages))
+        print(f'Processing package {packages_processed + 1} of the specified {max_packages} package(s).')
         packages_processed += 1
     if stop_time:
         print('stop_time:' + stop_time + '. Time:' + time.strftime('%H:%M') + '.')
@@ -176,31 +176,31 @@ while True:
     try:
         cppcheck_versions = lib.try_retry(lib.get_cppcheck_versions, max_tries=3, sleep_duration=30.0, sleep_factor=1.0)
     except Exception as e:
-        print('Failed to get cppcheck versions from server ({}), retry later'.format(e))
+        print(f'Failed to get cppcheck versions from server ({e}), retry later')
         sys.exit(1)
     for ver in cppcheck_versions:
         if ver == 'head':
             ver = 'main'
         current_cppcheck_dir = os.path.join(work_path, 'tree-'+ver)
         if ver != 'main' and lib.has_binary(current_cppcheck_dir):
-            print('No need to check Cppcheck-{} for changes - binary already exists'.format(ver))
+            print(f'No need to check Cppcheck-{ver} for changes - binary already exists')
             continue
-        print('Checking Cppcheck-{} for changes..'.format(ver))
+        print(f'Checking Cppcheck-{ver} for changes..')
         try:
             has_changes = lib.try_retry(lib.checkout_cppcheck_version, fargs=(repo_path, ver, current_cppcheck_dir), max_tries=3, sleep_duration=30.0, sleep_factor=1.0)
         except KeyboardInterrupt as e:
             # Passthrough for user abort
             raise e
         except Exception as e:
-            print('Failed to update Cppcheck-{} ({}), retry later'.format(ver, e))
+            print(f'Failed to update Cppcheck-{ver} ({e}), retry later')
             sys.exit(1)
         if ver == 'main':
             if (has_changes or not lib.has_binary(current_cppcheck_dir)) and not lib.compile_cppcheck(current_cppcheck_dir):
-                print('Failed to compile Cppcheck-{}, retry later'.format(ver))
+                print(f'Failed to compile Cppcheck-{ver}, retry later')
                 sys.exit(1)
         else:
             if not lib.compile_version(current_cppcheck_dir):
-                print('Failed to compile Cppcheck-{}, retry later'.format(ver))
+                print(f'Failed to compile Cppcheck-{ver}, retry later')
                 sys.exit(1)
     if package_urls:
         package = package_urls[packages_processed-1]
@@ -208,7 +208,7 @@ while True:
         try:
             package = lib.get_package()
         except Exception as e:
-            print('Error: Failed to get package ({}), retry later'.format(e))
+            print(f'Error: Failed to get package ({e}), retry later')
             sys.exit(1)
     tgz = lib.download_package(work_path, package, bandwidth_limit)
     if tgz is None:
@@ -272,7 +272,7 @@ while True:
                 count += ' Crash!'
         else:
             count += ' ' + str(c)
-        elapsed_time += " {:.1f}".format(t)
+        elapsed_time += f" {t:.1f}"
         errout = errout.replace(work_path, '[...]')
         results_to_diff.append(errout)
         if ver == 'head':
@@ -310,5 +310,5 @@ while True:
     if not max_packages or packages_processed < max_packages:
         print('Sleep 5 seconds..')
         if (client_version_head is not None) and (Version(client_version_head) > Version(lib.get_client_version())):
-            print("ATTENTION: A newer client version ({}) is available - please update!".format(client_version_head))
+            print(f"ATTENTION: A newer client version ({client_version_head}) is available - please update!")
         time.sleep(5)

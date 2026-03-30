@@ -1,4 +1,3 @@
-
 # python -m pytest performance_test.py
 
 import os
@@ -15,7 +14,7 @@ def test_slow_array_many_floats(tmpdir):
     # 11649
     # cppcheck valueflow takes a long time when an array has many floats
     filename = os.path.join(tmpdir, 'hang.c')
-    with open(filename, 'wt') as f:
+    with open(filename, 'w') as f:
         f.write("const float f[] = {\n")
         for _ in range(20000):
             f.write('    13.6f,\n')
@@ -28,7 +27,7 @@ def test_slow_array_many_strings(tmpdir):
     # 11901
     # cppcheck valueflow takes a long time when analyzing a file with many strings
     filename = os.path.join(tmpdir, 'hang.c')
-    with open(filename, 'wt') as f:
+    with open(filename, 'w') as f:
         f.write("const char *strings[] = {\n")
         for _ in range(20000):
             f.write('    "abc",\n')
@@ -40,7 +39,7 @@ def test_slow_array_many_strings(tmpdir):
 def test_slow_long_line(tmpdir):
     # simplecpp #314
     filename = os.path.join(tmpdir, 'hang.c')
-    with open(filename, 'wt') as f:
+    with open(filename, 'w') as f:
         f.write("#define A() static const int a[] = {\\\n")
         for _ in range(5000):
             f.write(" -123, 456, -789,\\\n")
@@ -52,7 +51,7 @@ def test_slow_long_line(tmpdir):
 def test_slow_large_constant_expression(tmpdir):
     # 12182
     filename = os.path.join(tmpdir, 'hang.c')
-    with open(filename, 'wt') as f:
+    with open(filename, 'w') as f:
         f.write("""
 #define FLAG1 0
 #define FLAG2 0
@@ -122,7 +121,7 @@ x = SAMPLE_SIZE;
 def test_slow_exprid(tmpdir):
     # 11885
     filename = os.path.join(tmpdir, 'hang.c')
-    with open(filename, 'wt') as f:
+    with open(filename, 'w') as f:
         f.write("""
 int foo(int a, int b)
 {
@@ -150,7 +149,7 @@ int foo(int a, int b)
 def test_stack_overflow_AST(tmpdir):
     # 14435
     filename = os.path.join(tmpdir, 'hang.cpp')
-    with open(filename, 'wt') as f:
+    with open(filename, 'w') as f:
         f.write("""
 #define ROW 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
 #define ROW8 ROW ROW ROW ROW ROW ROW ROW ROW
@@ -174,7 +173,7 @@ void f(std::vector<int>& v) {
 def test_slow_initlist_varchanged(tmpdir):
     # #12235
     filename = os.path.join(tmpdir, 'hang.cpp')
-    with open(filename, 'wt') as f:
+    with open(filename, 'w') as f:
         f.write(r"""
                 struct T {
                     int* q;
@@ -215,7 +214,7 @@ def test_slow_initlist_varchanged(tmpdir):
 def test_slow_many_scopes(tmpdir):
     # #12038
     filename = os.path.join(tmpdir, 'hang.cpp')
-    with open(filename, 'wt') as f:
+    with open(filename, 'w') as f:
         f.write(r"""
                 #define BLOCK {\
                     char buf[sizeof("x") + 5 * 3 + 16];\
@@ -250,7 +249,7 @@ def test_slow_many_scopes(tmpdir):
 def test_crash_array_in_namespace(tmpdir):
     # 12847
     filename = os.path.join(tmpdir, 'hang.cpp')
-    with open(filename, 'wt') as f:
+    with open(filename, 'w') as f:
         f.write(r"""
                 #define ROW A, A, A, A, A, A, A, A,
                 #define ROW8 ROW ROW ROW ROW ROW ROW ROW ROW
@@ -271,7 +270,7 @@ def test_crash_array_in_namespace(tmpdir):
 def test_crash_array_in_array(tmpdir):
     # 12861
     filename = os.path.join(tmpdir, 'hang.cpp')
-    with open(filename, 'wt') as f:
+    with open(filename, 'w') as f:
         f.write(r"""
                 #define ROW A, A, A, A, A, A, A, A,
                 #define ROW8 ROW ROW ROW ROW ROW ROW ROW ROW
@@ -291,7 +290,7 @@ def test_crash_array_in_array(tmpdir):
 def test_slow_bifurcate(tmpdir):
     # #14134
     filename = os.path.join(tmpdir, 'hang.cpp')
-    with open(filename, 'wt') as f:
+    with open(filename, 'w') as f:
         f.write(r"""
                 class C {
                 public:

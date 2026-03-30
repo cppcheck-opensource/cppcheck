@@ -1,4 +1,3 @@
-
 # python -m pytest test-other.py
 
 import os
@@ -23,7 +22,7 @@ def __remove_verbose_log(l : list):
 
 def test_missing_include(tmpdir):  # #11283
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 #include "test.h"
 """)
@@ -31,18 +30,18 @@ def test_missing_include(tmpdir):  # #11283
     args = ['--enable=missingInclude', '--template=simple', test_file]
 
     _, _, stderr = cppcheck(args)
-    assert stderr == '{}:2:2: information: Include file: "test.h" not found. [missingInclude]\n'.format(test_file)
+    assert stderr == f'{test_file}:2:2: information: Include file: "test.h" not found. [missingInclude]\n'
 
 
 def __test_missing_include_check_config(tmpdir, use_j):
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
                 #include "test.h"
                 """)
 
     # TODO: -rp is not working requiring the full path in the assert
-    args = '--check-config -rp={} {}'.format(tmpdir, test_file)
+    args = f'--check-config -rp={tmpdir} {test_file}'
     if use_j:
         args = '-j2 ' + args
 
@@ -60,7 +59,7 @@ def test_missing_include_check_config_j(tmpdir):
 
 def test_missing_include_inline_suppr(tmpdir):
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
                 // cppcheck-suppress missingInclude
                 #include "missing.h"
@@ -76,7 +75,7 @@ def test_missing_include_inline_suppr(tmpdir):
 
 def test_preprocessor_error(tmpdir):
     test_file = os.path.join(tmpdir, '10866.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('#error test\nx=1;\n')
     exitcode, _, stderr = cppcheck(['--error-exitcode=1', test_file])
     assert 'preprocessorErrorDirective' in stderr
@@ -92,7 +91,7 @@ __ANSI_FG_RESET = "\x1b[0m"
 @pytest.mark.parametrize("env,color_expected", [({"CLICOLOR_FORCE":"1"}, True), ({"NO_COLOR": "1", "CLICOLOR_FORCE":"1"}, False)])
 def test_color_non_tty(tmpdir, env, color_expected):
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('#error test\nx=1;\n')
     exitcode, stdout, stderr = cppcheck([test_file], env=env)
 
@@ -108,7 +107,7 @@ def test_color_non_tty(tmpdir, env, color_expected):
 @pytest.mark.parametrize("env,color_expected", [({}, True), ({"NO_COLOR": "1"}, False)])
 def test_color_tty(tmpdir, env, color_expected):
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('#error test\nx=1;\n')
     exitcode, stdout, stderr = cppcheck([test_file], env=env, tty=True)
 
@@ -132,20 +131,20 @@ def test_invalid_library(tmpdir):
 
 def test_message_j(tmpdir):
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("")
 
     args = ['-j2', test_file]
 
     _, stdout, _ = cppcheck(args)
-    assert stdout == "Checking {} ...\n".format(test_file) # we were adding stray \0 characters at the end
+    assert stdout == f"Checking {test_file} ...\n" # we were adding stray \0 characters at the end
 
 # TODO: test missing std.cfg
 
 
 def test_progress(tmpdir):
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
                 int main(int argc)
                 {
@@ -159,7 +158,7 @@ def test_progress(tmpdir):
     pos = stdout.find('\n')
     assert(pos != -1)
     pos += 1
-    assert stdout[:pos] == "Checking {} ...\n".format(test_file)
+    assert stdout[:pos] == f"Checking {test_file} ...\n"
     assert (stdout[pos:] ==
             "progress: Tokenize (typedef) 0%\n"
             "progress: Tokenize (typedef) 12%\n"
@@ -236,7 +235,7 @@ def test_progress(tmpdir):
 
 def test_progress_j(tmpdir):
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
                 int main(int argc)
                 {
@@ -247,13 +246,13 @@ def test_progress_j(tmpdir):
 
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0, stdout if stdout else stderr
-    assert stdout == "Checking {} ...\n".format(test_file)
+    assert stdout == f"Checking {test_file} ...\n"
     assert stderr == ""
 
 
 def test_execute_addon_failure_py_auto(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
                 void f();
                 """)
@@ -263,12 +262,12 @@ def test_execute_addon_failure_py_auto(tmpdir):
     # provide empty PATH environment variable so python is not found and execution of addon fails
     env = {'PATH': ''}
     _, _, stderr = cppcheck(args, env)
-    assert stderr == '{}:0:0: error: Bailing out from analysis: Checking file failed: Failed to auto detect python [internalError]\n\n^\n'.format(test_file)
+    assert stderr == f'{test_file}:0:0: error: Bailing out from analysis: Checking file failed: Failed to auto detect python [internalError]\n\n^\n'
 
 
 def test_execute_addon_failure_py_notexist(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
                 void f();
                 """)
@@ -278,29 +277,29 @@ def test_execute_addon_failure_py_notexist(tmpdir):
 
     _, _, stderr = cppcheck(args)
     ec = 1 if os.name == 'nt' else 127
-    assert stderr == "{}:0:0: error: Bailing out from analysis: Checking file failed: Failed to execute addon 'naming' - exitcode is {} [internalError]\n\n^\n".format(test_file, ec)
+    assert stderr == f"{test_file}:0:0: error: Bailing out from analysis: Checking file failed: Failed to execute addon 'naming' - exitcode is {ec} [internalError]\n\n^\n"
 
 
 def test_execute_addon_failure_json_notexist(tmpdir):
     # specify non-existent python executable so execution of addon fails
     addon_json = os.path.join(tmpdir, 'addon.json')
-    with open(addon_json, 'wt') as f:
+    with open(addon_json, 'w') as f:
         f.write(json.dumps({'executable': 'notexist'}))
 
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
                 void f();
                 """)
 
     args = [
-        '--addon={}'.format(addon_json),
+        f'--addon={addon_json}',
         test_file
     ]
 
     _, _, stderr = cppcheck(args)
     ec = 1 if os.name == 'nt' else 127
-    assert stderr == "{}:0:0: error: Bailing out from analysis: Checking file failed: Failed to execute addon 'addon.json' - exitcode is {} [internalError]\n\n^\n".format(test_file, ec)
+    assert stderr == f"{test_file}:0:0: error: Bailing out from analysis: Checking file failed: Failed to execute addon 'addon.json' - exitcode is {ec} [internalError]\n\n^\n"
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows specific issue")
@@ -309,20 +308,20 @@ def test_execute_addon_path_with_spaces(tmpdir):
     addon_dir = os.path.join(tmpdir, 'A Folder')
     addon_script = os.path.join(addon_dir, 'addon.bat')
 
-    with open(addon_json, 'wt') as f:
+    with open(addon_json, 'w') as f:
         f.write(json.dumps({'executable': addon_script }))
 
     os.makedirs(addon_dir, exist_ok=True)
 
-    with open(addon_script, 'wt') as f:
+    with open(addon_script, 'w') as f:
         f.write('@echo {"file":"1.c","linenr":1,"column":1,"severity":"error","message":"hello world","errorId":"hello","addon":"test"}')
 
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         pass
 
     args = [
-        '--addon={}'.format(addon_json),
+        f'--addon={addon_json}',
         test_file,
     ]
 
@@ -335,34 +334,34 @@ def test_execute_addon_path_with_spaces(tmpdir):
 def test_execute_addon_failure_json_ctu_notexist(tmpdir):
     # specify non-existent python executable so execution of addon fails
     addon_json = os.path.join(tmpdir, 'addon.json')
-    with open(addon_json, 'wt') as f:
+    with open(addon_json, 'w') as f:
         f.write(json.dumps({
             'executable': 'notexist',
             'ctu': True
         }))
 
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
                 void f(); """)
 
     args = [
         '--template=simple',
-        '--addon={}'.format(addon_json),
+        f'--addon={addon_json}',
         test_file
     ]
 
     _, _, stderr = cppcheck(args)
     ec = 1 if os.name == 'nt' else 127
     assert stderr.splitlines() == [
-        "{}:0:0: error: Bailing out from analysis: Checking file failed: Failed to execute addon 'addon.json' - exitcode is {} [internalError]".format(test_file, ec),
-        ":0:0: error: Bailing out from analysis: Whole program analysis failed: Failed to execute addon 'addon.json' - exitcode is {} [internalError]".format(ec)
+        f"{test_file}:0:0: error: Bailing out from analysis: Checking file failed: Failed to execute addon 'addon.json' - exitcode is {ec} [internalError]",
+        f":0:0: error: Bailing out from analysis: Whole program analysis failed: Failed to execute addon 'addon.json' - exitcode is {ec} [internalError]"
     ]
 
 
 def test_execute_addon_file0(tmpdir):
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('void foo() {}\n')
 
     args = ['--xml', '--addon=misra', '--enable=style', test_file]
@@ -376,7 +375,7 @@ def test_execute_addon_file0(tmpdir):
 @pytest.mark.skip
 def test_internal_error(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 #include <cstdio>
 
@@ -390,13 +389,13 @@ void f() {
     args = [test_file]
 
     _, _, stderr = cppcheck(args)
-    assert stderr == '{}:0:0: error: Bailing from out analysis: Checking file failed: converting \'1f\' to integer failed - not an integer [internalError]\n\n^\n'.format(test_file)
+    assert stderr == f'{test_file}:0:0: error: Bailing from out analysis: Checking file failed: converting \'1f\' to integer failed - not an integer [internalError]\n\n^\n'
 
 
 def test_addon_ctu_exitcode(tmpdir):
     """ #12440 - Misra ctu violations found => exit code should be non-zero """
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""typedef enum { BLOCK =  0x80U, } E;""")
     args = ['--addon=misra', '--enable=style', '--error-exitcode=1', test_file]
     exitcode, _, stderr = cppcheck(args)
@@ -407,7 +406,7 @@ def test_addon_ctu_exitcode(tmpdir):
 # TODO: test with -j2
 def test_addon_misra(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 typedef int MISRA_5_6_VIOLATION;
         """)
@@ -418,15 +417,15 @@ typedef int MISRA_5_6_VIOLATION;
     assert exitcode == 0, stdout if stdout else stderr
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file)
+        f'Checking {test_file} ...'
     ]
-    assert stderr == '{}:2:1: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-2.3]\ntypedef int MISRA_5_6_VIOLATION;\n^\n'.format(test_file)
+    assert stderr == f'{test_file}:2:1: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-2.3]\ntypedef int MISRA_5_6_VIOLATION;\n^\n'
 
 
 def test_addon_y2038(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
     # TODO: trigger warning
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 extern void f()
 {
@@ -441,14 +440,14 @@ extern void f()
     assert exitcode == 0, stdout if stdout else stderr
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file)
+        f'Checking {test_file} ...'
     ]
-    assert stderr == '{}:4:21: warning: time is Y2038-unsafe [y2038-unsafe-call]\n'.format(test_file)
+    assert stderr == f'{test_file}:4:21: warning: time is Y2038-unsafe [y2038-unsafe-call]\n'
 
 
 def test_addon_threadsafety(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 extern const char* f()
 {
@@ -462,15 +461,15 @@ extern const char* f()
     assert exitcode == 0, stdout if stdout else stderr
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file)
+        f'Checking {test_file} ...'
     ]
-    assert stderr == '{}:4:12: warning: strerror is MT-unsafe [threadsafety-unsafe-call]\n'.format(test_file)
+    assert stderr == f'{test_file}:4:12: warning: strerror is MT-unsafe [threadsafety-unsafe-call]\n'
 
 
 def test_addon_naming(tmpdir):
     # the addon does nothing without a config
     addon_file = os.path.join(tmpdir, 'naming1.json')
-    with open(addon_file, 'wt') as f:
+    with open(addon_file, 'w') as f:
         f.write("""
 {
     "script": "addons/naming.py",
@@ -481,26 +480,26 @@ def test_addon_naming(tmpdir):
                 """)
 
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 int Var;
         """)
 
-    args = ['--addon={}'.format(addon_file), '--enable=all', '--disable=unusedFunction', '--template=simple', test_file]
+    args = [f'--addon={addon_file}', '--enable=all', '--disable=unusedFunction', '--template=simple', test_file]
 
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0, stdout if stdout else stderr
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file)
+        f'Checking {test_file} ...'
     ]
-    assert stderr == '{}:2:1: style: Variable Var violates naming convention [naming-varname]\n'.format(test_file)
+    assert stderr == f'{test_file}:2:1: style: Variable Var violates naming convention [naming-varname]\n'
 
 
 def test_addon_namingng(tmpdir):
     addon_file = os.path.join(tmpdir, 'namingng.json')
     addon_config_file = os.path.join(tmpdir, 'namingng.config.json')
-    with open(addon_file, 'wt') as f:
+    with open(addon_file, 'w') as f:
         f.write("""
 {
     "script": "addons/namingng.py",
@@ -510,7 +509,7 @@ def test_addon_namingng(tmpdir):
 }
                 """%(addon_config_file).replace('\\','\\\\'))
 
-    with open(addon_config_file, 'wt') as f:
+    with open(addon_config_file, 'w') as f:
         f.write("""
 {
     "RE_FILE": [
@@ -544,14 +543,14 @@ def test_addon_namingng(tmpdir):
 
     test_unguarded_include_file_basename = 'test_unguarded.h'
     test_unguarded_include_file = os.path.join(tmpdir, test_unguarded_include_file_basename)
-    with open(test_unguarded_include_file, 'wt') as f:
+    with open(test_unguarded_include_file, 'w') as f:
         f.write("""
 void InvalidFunctionUnguarded();
 """)
 
     test_include_file_basename = '_test.h'
     test_include_file = os.path.join(tmpdir, test_include_file_basename)
-    with open(test_include_file, 'wt') as f:
+    with open(test_include_file, 'w') as f:
         f.write("""
 #ifndef TEST_H
 #define TEST_H
@@ -566,7 +565,7 @@ extern int _invalid_extern_global;
 
     test_file_basename = 'test_.cpp'
     test_file = os.path.join(tmpdir, test_file_basename)
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 #include "%s"
 
@@ -603,69 +602,69 @@ namespace _invalid_namespace { }
     assert exitcode == 0, stdout if stdout else stderr
     lines = __remove_verbose_log(stdout.splitlines())
     assert lines == [
-        'Checking {} ...'.format(test_file)
+        f'Checking {test_file} ...'
     ]
     lines = [line for line in stderr.splitlines() if line != '']
     expect = [
-        '{}:0:0: style: File name {} violates naming convention [namingng-namingConvention]'.format(test_include_file,test_include_file_basename),
+        f'{test_include_file}:0:0: style: File name {test_include_file_basename} violates naming convention [namingng-namingConvention]',
         '^',
-        '{}:2:9: style: include guard naming violation; TEST_H != _TEST_H [namingng-includeGuardName]'.format(test_include_file),
+        f'{test_include_file}:2:9: style: include guard naming violation; TEST_H != _TEST_H [namingng-includeGuardName]',
         '#ifndef TEST_H',
         '        ^',
-        '{}:5:6: style: Function InvalidFunction violates naming convention [namingng-namingConvention]'.format(test_include_file),
+        f'{test_include_file}:5:6: style: Function InvalidFunction violates naming convention [namingng-namingConvention]',
         'void InvalidFunction();',
         '     ^',
-        '{}:6:12: style: Global variable _invalid_extern_global violates naming convention [namingng-namingConvention]'.format(test_include_file),
+        f'{test_include_file}:6:12: style: Global variable _invalid_extern_global violates naming convention [namingng-namingConvention]',
         'extern int _invalid_extern_global;',
         '           ^',
 
-        '{}:0:0: style: File name {} violates naming convention [namingng-namingConvention]'.format(test_unguarded_include_file,test_unguarded_include_file_basename),
+        f'{test_unguarded_include_file}:0:0: style: File name {test_unguarded_include_file_basename} violates naming convention [namingng-namingConvention]',
         '^',
-        '{}:0:0: style: Missing include guard [namingng-includeGuardMissing]'.format(test_unguarded_include_file),
+        f'{test_unguarded_include_file}:0:0: style: Missing include guard [namingng-includeGuardMissing]',
         '^',
-        '{}:2:6: style: Function InvalidFunctionUnguarded violates naming convention [namingng-namingConvention]'.format(test_unguarded_include_file),
+        f'{test_unguarded_include_file}:2:6: style: Function InvalidFunctionUnguarded violates naming convention [namingng-namingConvention]',
         'void InvalidFunctionUnguarded();',
         '     ^',
 
-        '{}:0:0: style: File name {} violates naming convention [namingng-namingConvention]'.format(test_file,test_file_basename),
+        f'{test_file}:0:0: style: File name {test_file_basename} violates naming convention [namingng-namingConvention]',
         '^',
-        '{}:7:26: style: Variable _invalid_arg violates naming convention [namingng-namingConvention]'.format(test_file),
+        f'{test_file}:7:26: style: Variable _invalid_arg violates naming convention [namingng-namingConvention]',
         'void valid_function2(int _invalid_arg);',
         '                         ^',
-        '{}:8:26: style: Variable invalid_arg_ violates naming convention [namingng-namingConvention]'.format(test_file),
+        f'{test_file}:8:26: style: Variable invalid_arg_ violates naming convention [namingng-namingConvention]',
         'void valid_function3(int invalid_arg_);',
         '                         ^',
-        '{}:10:31: style: Variable invalid_arg32 violates naming convention [namingng-namingConvention]'.format(test_file),
+        f'{test_file}:10:31: style: Variable invalid_arg32 violates naming convention [namingng-namingConvention]',
         'void valid_function5(uint32_t invalid_arg32);',
         '                              ^',
-        '{}:4:6: style: Function invalid_function_ violates naming convention [namingng-namingConvention]'.format(test_file),
+        f'{test_file}:4:6: style: Function invalid_function_ violates naming convention [namingng-namingConvention]',
         'void invalid_function_();',
         '     ^',
-        '{}:5:6: style: Function _invalid_function violates naming convention [namingng-namingConvention]'.format(test_file),
+        f'{test_file}:5:6: style: Function _invalid_function violates naming convention [namingng-namingConvention]',
         'void _invalid_function();',
         '     ^',
-        '{}:12:10: style: Function invalid_function7 violates naming convention [namingng-namingConvention]'.format(test_file),
+        f'{test_file}:12:10: style: Function invalid_function7 violates naming convention [namingng-namingConvention]',
         'uint16_t invalid_function7(int valid_arg);',
         '         ^',
-        '{}:15:5: style: Global variable _invalid_global violates naming convention [namingng-namingConvention]'.format(test_file),
+        f'{test_file}:15:5: style: Global variable _invalid_global violates naming convention [namingng-namingConvention]',
         'int _invalid_global;',
         '    ^',
-        '{}:16:12: style: Global variable _invalid_static_global violates naming convention [namingng-namingConvention]'.format(test_file),
+        f'{test_file}:16:12: style: Global variable _invalid_static_global violates naming convention [namingng-namingConvention]',
         'static int _invalid_static_global;',
         '           ^',
-        '{}:20:5: style: Class Constructor _clz violates naming convention [namingng-namingConvention]'.format(test_file),
+        f'{test_file}:20:5: style: Class Constructor _clz violates naming convention [namingng-namingConvention]',
         '    _clz() : _invalid_public(0), _invalid_private(0), priv_good(0), priv_bad_tmp(0) { }',
         '    ^',
-        '{}:21:9: style: Public member variable _invalid_public violates naming convention [namingng-namingConvention]'.format(test_file),
+        f'{test_file}:21:9: style: Public member variable _invalid_public violates naming convention [namingng-namingConvention]',
         '    int _invalid_public;',
         '        ^',
-        '{}:23:10: style: Private member variable _invalid_private violates naming convention: required prefix priv_ missing [namingng-namingConvention]'.format(test_file),
+        f'{test_file}:23:10: style: Private member variable _invalid_private violates naming convention: required prefix priv_ missing [namingng-namingConvention]',
         '    char _invalid_private;',
         '         ^',
-        '{}:25:9: style: Private member variable priv_bad_tmp violates naming convention: illegal suffix _tmp [namingng-namingConvention]'.format(test_file),
+        f'{test_file}:25:9: style: Private member variable priv_bad_tmp violates naming convention: illegal suffix _tmp [namingng-namingConvention]',
         '    int priv_bad_tmp;',
         '        ^',
-        '{}:28:11: style: Namespace _invalid_namespace violates naming convention [namingng-namingConvention]'.format(test_file),
+        f'{test_file}:28:11: style: Namespace _invalid_namespace violates naming convention [namingng-namingConvention]',
         'namespace _invalid_namespace { }',
         '          ^',
     ]
@@ -679,7 +678,7 @@ namespace _invalid_namespace { }
 def test_addon_namingng_config(tmpdir):
     addon_file = os.path.join(tmpdir, 'namingng.json')
     addon_config_file = os.path.join(tmpdir, 'namingng.config.json')
-    with open(addon_file, 'wt') as f:
+    with open(addon_file, 'w') as f:
         f.write("""
 {
     "script": "addons/namingng.py",
@@ -689,7 +688,7 @@ def test_addon_namingng_config(tmpdir):
 }
                 """%(addon_config_file).replace('\\','\\\\'))
 
-    with open(addon_config_file, 'wt') as f:
+    with open(addon_config_file, 'w') as f:
         f.write("""
 {
     "RE_FILE": "[^/]*[a-z][a-z0-9_]*[a-z0-9]\\.c\\Z",
@@ -732,7 +731,7 @@ def test_addon_namingng_config(tmpdir):
 
     lines = __remove_verbose_log(stdout.splitlines())
     assert lines == [
-        'Checking {} ...'.format(test_file)
+        f'Checking {test_file} ...'
     ]
     lines = stderr.splitlines()
     # ignore the first line, stating that the addon failed to run properly
@@ -762,7 +761,7 @@ def test_addon_namingng_config(tmpdir):
 
 def test_addon_findcasts(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
         extern void f(char c)
         {
@@ -777,14 +776,14 @@ def test_addon_findcasts(tmpdir):
     assert exitcode == 0, stdout if stdout else stderr
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file)
+        f'Checking {test_file} ...'
     ]
-    assert stderr == '{}:4:21: information: found a cast [findcasts-cast]\n'.format(test_file)
+    assert stderr == f'{test_file}:4:21: information: found a cast [findcasts-cast]\n'
 
 
 def test_addon_misc(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 extern void f()
 {
@@ -798,77 +797,77 @@ extern void f()
     assert exitcode == 0, stdout if stdout else stderr
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file)
+        f'Checking {test_file} ...'
     ]
-    assert stderr == '{}:4:28: style: String concatenation in array initialization, missing comma? [misc-stringConcatInArrayInit]\n'.format(test_file)
+    assert stderr == f'{test_file}:4:28: style: String concatenation in array initialization, missing comma? [misc-stringConcatInArrayInit]\n'
 
 
 def test_invalid_addon_json(tmpdir):
     addon_file = os.path.join(tmpdir, 'addon1.json')
-    with open(addon_file, 'wt') as f:
+    with open(addon_file, 'w') as f:
         f.write("""
                 """)
 
     test_file = os.path.join(tmpdir, 'file.cpp')
-    with open(test_file, 'wt'):
+    with open(test_file, 'w'):
         pass
 
-    args = ['--addon={}'.format(addon_file), test_file]
+    args = [f'--addon={addon_file}', test_file]
 
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 1
     lines = stdout.splitlines()
     assert lines == [
-        'Loading {} failed. syntax error at line 2 near: '.format(addon_file)
+        f'Loading {addon_file} failed. syntax error at line 2 near: '
     ]
     assert stderr == ''
 
 
 def test_invalid_addon_py(tmpdir):
     addon_file = os.path.join(tmpdir, 'addon1.py')
-    with open(addon_file, 'wt') as f:
+    with open(addon_file, 'w') as f:
         f.write("""
 raise Exception()
                 """)
 
     test_file = os.path.join(tmpdir, 'file.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 typedef int MISRA_5_6_VIOLATION;
                 """)
 
-    args = ['--addon={}'.format(addon_file), '--enable=all', '--disable=unusedFunction', test_file]
+    args = [f'--addon={addon_file}', '--enable=all', '--disable=unusedFunction', test_file]
 
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0  # TODO: needs to be 1
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file)
+        f'Checking {test_file} ...'
     ]
-    assert stderr == "{}:0:0: error: Bailing out from analysis: Checking file failed: Failed to execute addon 'addon1' - exitcode is 1 [internalError]\n\n^\n".format(test_file)
+    assert stderr == f"{test_file}:0:0: error: Bailing out from analysis: Checking file failed: Failed to execute addon 'addon1' - exitcode is 1 [internalError]\n\n^\n"
 
 
 # TODO: test with -j2
 def test_invalid_addon_py_verbose(tmpdir):
     addon_file = os.path.join(tmpdir, 'addon1.py')
-    with open(addon_file, 'wt') as f:
+    with open(addon_file, 'w') as f:
         f.write("""
 raise Exception()
                 """)
 
     test_file = os.path.join(tmpdir, 'file.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 typedef int MISRA_5_6_VIOLATION;
                 """)
 
-    args = ['--addon={}'.format(addon_file), '--enable=all', '--disable=unusedFunction', '--verbose', '-j1', test_file]
+    args = [f'--addon={addon_file}', '--enable=all', '--disable=unusedFunction', '--verbose', '-j1', test_file]
 
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0  # TODO: needs to be 1
     lines = __remove_verbose_log(stdout.splitlines())
     assert lines == [
-        'Checking {} ...'.format(test_file)
+        f'Checking {test_file} ...'
     ]
     """
 /tmp/pytest-of-user/pytest-11/test_invalid_addon_py_20/file.cpp:0:0: error: Bailing out from analysis: Checking file failed: Failed to execute addon 'addon1' - exitcode is 1: python3 /home/user/CLionProjects/cppcheck/addons/runaddon.py /tmp/pytest-of-user/pytest-11/test_invalid_addon_py_20/addon1.py --cli /tmp/pytest-of-user/pytest-11/test_invalid_addon_py_20/file.cpp.24762.dump
@@ -884,14 +883,14 @@ Traceback (most recent call last):
 Exceptio [internalError]
     """
     # /tmp/pytest-of-user/pytest-10/test_invalid_addon_py_20/file.cpp:0:0: error: Bailing out from analysis: Checking file failed: Failed to execute addon 'addon1' - exitcode is 256.: python3 /home/user/CLionProjects/cppcheck/addons/runaddon.py /tmp/pytest-of-user/pytest-10/test_invalid_addon_py_20/addon1.py --cli /tmp/pytest-of-user/pytest-10/test_invalid_addon_py_20/file.cpp.24637.dump
-    assert stderr.startswith("{}:0:0: error: Bailing out from analysis: Checking file failed: Failed to execute addon 'addon1' - exitcode is 1: ".format(test_file))
+    assert stderr.startswith(f"{test_file}:0:0: error: Bailing out from analysis: Checking file failed: Failed to execute addon 'addon1' - exitcode is 1: ")
     assert stderr.count('Output:\nTraceback')
     assert stderr.endswith('raise Exception()\nException [internalError]\n\n^\n')
 
 
 def test_addon_result(tmpdir):
     addon_file = os.path.join(tmpdir, 'addon1.py')
-    with open(addon_file, 'wt') as f:
+    with open(addon_file, 'w') as f:
         f.write("""
 print("Checking ...")
 print("")
@@ -900,18 +899,18 @@ print('{"loc": [{"file": "test.cpp", "linenr": 1, "column": 1, "info": ""}], "se
                 """)
 
     test_file = os.path.join(tmpdir, 'file.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 typedef int MISRA_5_6_VIOLATION;
                 """)
 
-    args = ['--addon={}'.format(addon_file), '--enable=all', '--disable=unusedFunction', test_file]
+    args = [f'--addon={addon_file}', '--enable=all', '--disable=unusedFunction', test_file]
 
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0  # TODO: needs to be 1
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file)
+        f'Checking {test_file} ...'
     ]
     assert stderr == 'test.cpp:1:1: style: msg [addon1-id]\n\n^\n'
 
@@ -920,13 +919,13 @@ typedef int MISRA_5_6_VIOLATION;
 # #11483
 def __test_unused_function_include(tmpdir, extra_args):
     test_cpp_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_cpp_file, 'wt') as f:
+    with open(test_cpp_file, 'w') as f:
         f.write("""
                 #include "test.h"
                 """)
 
     test_h_file = os.path.join(tmpdir, 'test.h')
-    with open(test_h_file, 'wt') as f:
+    with open(test_h_file, 'w') as f:
         f.write("""
                 class A {
                 public:
@@ -947,7 +946,7 @@ def __test_unused_function_include(tmpdir, extra_args):
     args += extra_args
 
     _, _, stderr = cppcheck(args)
-    assert stderr == "{}:4:26: style: The function 'f' is never used. [unusedFunction]\n".format(test_h_file)
+    assert stderr == f"{test_h_file}:4:26: style: The function 'f' is never used. [unusedFunction]\n"
 
 
 def test_unused_function_include(tmpdir):
@@ -960,7 +959,7 @@ def test_unused_function_include(tmpdir):
 # TODO: test with multiple files
 def __test_showtime(tmp_path, showtime, exp_res, exp_last, extra_args=None):
     test_file = tmp_path / 'test.cpp'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write(
 """
 void f()
@@ -1045,7 +1044,7 @@ def test_showtime_file_total(tmp_path):
 
 def test_showtime_unique(tmp_path):
     test_file = tmp_path / 'test.cpp'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write(
 """
 void f()
@@ -1091,12 +1090,12 @@ def test_missing_addon(tmpdir):
 
 def test_file_filter(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt'):
+    with open(test_file, 'w'):
         pass
 
     args = ['--file-filter=*.cpp', test_file]
     out_lines = [
-        'Checking {} ...'.format(test_file)
+        f'Checking {test_file} ...'
     ]
 
     assert_cppcheck(args, ec_exp=0, err_exp=[], out_exp=out_lines)
@@ -1104,15 +1103,15 @@ def test_file_filter(tmpdir):
 
 def test_file_filter_2(tmpdir):
     test_file_1 = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file_1, 'wt'):
+    with open(test_file_1, 'w'):
         pass
     test_file_2 = os.path.join(tmpdir, 'test.c')
-    with open(test_file_2, 'wt'):
+    with open(test_file_2, 'w'):
         pass
 
     args = ['--file-filter=*.cpp', test_file_1, test_file_2]
     out_lines = [
-        'Checking {} ...'.format(test_file_1)
+        f'Checking {test_file_1} ...'
     ]
 
     assert_cppcheck(args, ec_exp=0, err_exp=[], out_exp=out_lines)
@@ -1120,15 +1119,15 @@ def test_file_filter_2(tmpdir):
 
 def test_file_filter_3(tmpdir):
     test_file_1 = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file_1, 'wt'):
+    with open(test_file_1, 'w'):
         pass
     test_file_2 = os.path.join(tmpdir, 'test.c')
-    with open(test_file_2, 'wt'):
+    with open(test_file_2, 'w'):
         pass
 
     args = ['--file-filter=*.c', test_file_1, test_file_2]
     out_lines = [
-        'Checking {} ...'.format(test_file_2)
+        f'Checking {test_file_2} ...'
     ]
 
     assert_cppcheck(args, ec_exp=0, err_exp=[], out_exp=out_lines)
@@ -1136,7 +1135,7 @@ def test_file_filter_3(tmpdir):
 
 def test_file_filter_no_match(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt'):
+    with open(test_file, 'w'):
         pass
 
     args = ['--file-filter=*.c', test_file]
@@ -1149,16 +1148,16 @@ def test_file_filter_no_match(tmpdir):
 
 def test_file_order(tmpdir):
     test_file_a = os.path.join(tmpdir, 'a.c')
-    with open(test_file_a, 'wt'):
+    with open(test_file_a, 'w'):
         pass
     test_file_b = os.path.join(tmpdir, 'b.c')
-    with open(test_file_b, 'wt'):
+    with open(test_file_b, 'w'):
         pass
     test_file_c = os.path.join(tmpdir, 'c.c')
-    with open(test_file_c, 'wt'):
+    with open(test_file_c, 'w'):
         pass
     test_file_d = os.path.join(tmpdir, 'd.c')
-    with open(test_file_d, 'wt'):
+    with open(test_file_d, 'w'):
         pass
 
     args = [test_file_c, test_file_d, test_file_b, test_file_a, '-j1']
@@ -1167,13 +1166,13 @@ def test_file_order(tmpdir):
     assert exitcode == 0, stdout if stdout else stderr
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file_c),
+        f'Checking {test_file_c} ...',
         '1/4 files checked 25% done',
-        'Checking {} ...'.format(test_file_d),
+        f'Checking {test_file_d} ...',
         '2/4 files checked 50% done',
-        'Checking {} ...'.format(test_file_b),
+        f'Checking {test_file_b} ...',
         '3/4 files checked 75% done',
-        'Checking {} ...'.format(test_file_a),
+        f'Checking {test_file_a} ...',
         '4/4 files checked 100% done'
     ]
     assert stderr == ''
@@ -1181,27 +1180,27 @@ def test_file_order(tmpdir):
 
 def test_markup(tmpdir):
     test_file_1 = os.path.join(tmpdir, 'test_1.qml')
-    with open(test_file_1, 'wt'):
+    with open(test_file_1, 'w'):
         pass
     test_file_2 = os.path.join(tmpdir, 'test_2.cpp')
-    with open(test_file_2, 'wt'):
+    with open(test_file_2, 'w'):
         pass
     test_file_3 = os.path.join(tmpdir, 'test_3.qml')
-    with open(test_file_3, 'wt'):
+    with open(test_file_3, 'w'):
         pass
     test_file_4 = os.path.join(tmpdir, 'test_4.cpp')
-    with open(test_file_4, 'wt'):
+    with open(test_file_4, 'w'):
         pass
 
     args = ['--library=qt', test_file_1, test_file_2, test_file_3, test_file_4, '-j1']
     out_lines = [
-        'Checking {} ...'.format(test_file_2),
+        f'Checking {test_file_2} ...',
         '1/4 files checked 25% done',
-        'Checking {} ...'.format(test_file_4),
+        f'Checking {test_file_4} ...',
         '2/4 files checked 50% done',
-        'Checking {} ...'.format(test_file_1),
+        f'Checking {test_file_1} ...',
         '3/4 files checked 75% done',
-        'Checking {} ...'.format(test_file_3),
+        f'Checking {test_file_3} ...',
         '4/4 files checked 100% done'
     ]
 
@@ -1210,16 +1209,16 @@ def test_markup(tmpdir):
 
 def test_markup_j(tmpdir):
     test_file_1 = os.path.join(tmpdir, 'test_1.qml')
-    with open(test_file_1, 'wt'):
+    with open(test_file_1, 'w'):
         pass
     test_file_2 = os.path.join(tmpdir, 'test_2.cpp')
-    with open(test_file_2, 'wt'):
+    with open(test_file_2, 'w'):
         pass
     test_file_3 = os.path.join(tmpdir, 'test_3.qml')
-    with open(test_file_3, 'wt'):
+    with open(test_file_3, 'w'):
         pass
     test_file_4 = os.path.join(tmpdir, 'test_4.cpp')
-    with open(test_file_4, 'wt'):
+    with open(test_file_4, 'w'):
         pass
 
     args = ['--library=qt', '-j2', test_file_1, test_file_2, test_file_3, test_file_4]
@@ -1233,17 +1232,17 @@ def test_markup_j(tmpdir):
         '2/4 files checked 50% done',
         '3/4 files checked 75% done',
         '4/4 files checked 100% done',
-        'Checking {} ...'.format(test_file_1),
-        'Checking {} ...'.format(test_file_2),
-        'Checking {} ...'.format(test_file_3),
-        'Checking {} ...'.format(test_file_4)
+        f'Checking {test_file_1} ...',
+        f'Checking {test_file_2} ...',
+        f'Checking {test_file_3} ...',
+        f'Checking {test_file_4} ...'
     ]
     assert stderr == ''
 
 
 def test_valueflow_debug(tmpdir):
     test_file_cpp = os.path.join(tmpdir, 'test_1.cpp')
-    with open(test_file_cpp, 'wt') as f:
+    with open(test_file_cpp, 'w') as f:
         f.write("""
 #include "test.h"
 
@@ -1254,7 +1253,7 @@ void f()
 """
                 )
     test_file_h = os.path.join(tmpdir, 'test.h')
-    with open(test_file_h, 'wt') as f:
+    with open(test_file_h, 'w') as f:
         f.write("""
 #include "test2.h"
 inline void f1()
@@ -1264,7 +1263,7 @@ inline void f1()
 """
                 )
     test_file_h_2 = os.path.join(tmpdir, 'test2.h')
-    with open(test_file_h_2, 'wt') as f:
+    with open(test_file_h_2, 'w') as f:
         f.write("""
 inline void f2()
 {
@@ -1327,7 +1326,7 @@ Line 6
 
 def test_file_duplicate(tmpdir):
     test_file_a = os.path.join(tmpdir, 'a.c')
-    with open(test_file_a, 'wt'):
+    with open(test_file_a, 'w'):
         pass
 
     args = [test_file_a, test_file_a, str(tmpdir)]
@@ -1336,20 +1335,20 @@ def test_file_duplicate(tmpdir):
     assert exitcode == 0, stdout if stdout else stderr
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file_a)
+        f'Checking {test_file_a} ...'
     ]
     assert stderr == ''
 
 
 def test_file_duplicate_2(tmpdir):
     test_file_a = os.path.join(tmpdir, 'a.c')
-    with open(test_file_a, 'wt'):
+    with open(test_file_a, 'w'):
         pass
     test_file_b = os.path.join(tmpdir, 'b.c')
-    with open(test_file_b, 'wt'):
+    with open(test_file_b, 'w'):
         pass
     test_file_c = os.path.join(tmpdir, 'c.c')
-    with open(test_file_c, 'wt'):
+    with open(test_file_c, 'w'):
         pass
 
     args = [test_file_c, test_file_a, test_file_b, str(tmpdir), test_file_b, test_file_c, test_file_a, str(tmpdir), '-j1']
@@ -1358,11 +1357,11 @@ def test_file_duplicate_2(tmpdir):
     assert exitcode == 0, stdout if stdout else stderr
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file_c),
+        f'Checking {test_file_c} ...',
         '1/3 files checked 33% done',
-        'Checking {} ...'.format(test_file_a),
+        f'Checking {test_file_a} ...',
         '2/3 files checked 66% done',
-        'Checking {} ...'.format(test_file_b),
+        f'Checking {test_file_b} ...',
         '3/3 files checked 100% done'
     ]
     assert stderr == ''
@@ -1370,7 +1369,7 @@ def test_file_duplicate_2(tmpdir):
 
 def test_file_duplicate_3(tmpdir):  # #12834
     test_file_a = os.path.join(tmpdir, 'a.c')
-    with open(test_file_a, 'wt'):
+    with open(test_file_a, 'w'):
         pass
 
     # multiple ways to specify the same file
@@ -1395,7 +1394,7 @@ def test_file_duplicate_3(tmpdir):  # #12834
 @pytest.mark.skipif(sys.platform != 'win32', reason="requires Windows")
 def test_file_duplicate_4(tmpdir):  # #12834
     test_file_a = os.path.join(tmpdir, 'a.c')
-    with open(test_file_a, 'wt'):
+    with open(test_file_a, 'w'):
         pass
 
     # multiple ways to specify the same file
@@ -1423,7 +1422,7 @@ def test_file_duplicate_4(tmpdir):  # #12834
 
 def test_file_ignore(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt'):
+    with open(test_file, 'w'):
         pass
 
     args = ['-itest.cpp', test_file]
@@ -1440,12 +1439,12 @@ def test_build_dir_j_memleak(tmpdir): #12111
     os.mkdir(build_dir)
 
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('int main() {}')
 
-    args = ['--cppcheck-build-dir={}'.format(build_dir), '-j2', test_file]
+    args = [f'--cppcheck-build-dir={build_dir}', '-j2', test_file]
     out_lines = [
-        'Checking {} ...'.format(test_file)
+        f'Checking {test_file} ...'
     ]
 
     assert_cppcheck(args, ec_exp=0, err_exp=[], out_exp=out_lines)
@@ -1453,21 +1452,21 @@ def test_build_dir_j_memleak(tmpdir): #12111
 
 def __test_addon_json_invalid(tmpdir, addon_json, expected):
     addon_file = os.path.join(tmpdir, 'invalid.json')
-    with open(addon_file, 'wt') as f:
+    with open(addon_file, 'w') as f:
         f.write(addon_json)
 
     test_file = os.path.join(tmpdir, 'file.cpp')
-    with open(test_file, 'wt'):
+    with open(test_file, 'w'):
         pass
 
-    args = ['--addon={}'.format(addon_file), test_file]
+    args = [f'--addon={addon_file}', test_file]
 
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 1
     lines = stdout.splitlines()
     assert len(lines) == 1
     assert lines == [
-        'Loading {} failed. {}'.format(addon_file, expected)
+        f'Loading {addon_file} failed. {expected}'
     ]
     assert stderr == ''
 
@@ -1506,7 +1505,7 @@ def test_addon_json_invalid_script_2(tmpdir):
 
 def test_unknown_extension(tmpdir):
     test_file = os.path.join(tmpdir, 'test_2')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('''
 void f() { }
 ''')
@@ -1519,7 +1518,7 @@ void f() { }
 
 def test_rule_file_define_multiple(tmpdir):
     rule_file = os.path.join(tmpdir, 'rule_file.xml')
-    with open(rule_file, 'wt') as f:
+    with open(rule_file, 'w') as f:
         f.write("""
 <rules>
     <rule>
@@ -1542,32 +1541,32 @@ def test_rule_file_define_multiple(tmpdir):
 </rules>""")
 
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('''
 #define DEF_1
 #define DEF_2
 void f() { }
 ''')
 
-    exitcode, stdout, stderr = cppcheck(['--template=simple', '--rule-file={}'.format(rule_file), '-DDEF_3', test_file])
+    exitcode, stdout, stderr = cppcheck(['--template=simple', f'--rule-file={rule_file}', '-DDEF_3', test_file])
     assert exitcode == 0, stdout if stdout else stderr
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file),
+        f'Checking {test_file} ...',
         'Processing rule: DEF_1',
         'Processing rule: DEF_2',
-        'Checking {}: DEF_3=1...'.format(test_file)
+        f'Checking {test_file}: DEF_3=1...'
     ]
     lines = stderr.splitlines()
     assert lines == [
-        "{}:2:0: error: found 'DEF_1' [ruleId1]".format(test_file),
-        "{}:3:0: error: define2 [ruleId2]".format(test_file)
+        f"{test_file}:2:0: error: found 'DEF_1' [ruleId1]",
+        f"{test_file}:3:0: error: define2 [ruleId2]"
     ]
 
 
 def test_rule_file_define(tmpdir):
     rule_file = os.path.join(tmpdir, 'rule_file.xml')
-    with open(rule_file, 'wt') as f:
+    with open(rule_file, 'w') as f:
         f.write("""
 <rule>
     <tokenlist>define</tokenlist>
@@ -1576,31 +1575,31 @@ def test_rule_file_define(tmpdir):
 """)
 
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('''
 #define DEF_1
 #define DEF_2
 void f() { }
 ''')
 
-    exitcode, stdout, stderr = cppcheck(['--template=simple', '--rule-file={}'.format(rule_file), '-DDEF_3', test_file])
+    exitcode, stdout, stderr = cppcheck(['--template=simple', f'--rule-file={rule_file}', '-DDEF_3', test_file])
     assert exitcode == 0, stdout if stdout else stderr
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file),
+        f'Checking {test_file} ...',
         'Processing rule: DEF_.',
-        'Checking {}: DEF_3=1...'.format(test_file)
+        f'Checking {test_file}: DEF_3=1...'
     ]
     lines = stderr.splitlines()
     assert lines == [
-        "{}:2:0: style: found 'DEF_1' [rule]".format(test_file),
-        "{}:3:0: style: found 'DEF_2' [rule]".format(test_file)
+        f"{test_file}:2:0: style: found 'DEF_1' [rule]",
+        f"{test_file}:3:0: style: found 'DEF_2' [rule]"
     ]
 
 
 def test_rule_file_normal(tmpdir):
     rule_file = os.path.join(tmpdir, 'rule_file.xml')
-    with open(rule_file, 'wt') as f:
+    with open(rule_file, 'w') as f:
         f.write("""
 <rule>
     <pattern>int</pattern>
@@ -1608,7 +1607,7 @@ def test_rule_file_normal(tmpdir):
 """)
 
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('''
 #define DEF_1
 #define DEF_2
@@ -1616,22 +1615,22 @@ typedef int i32;
 void f(i32) { }
 ''')
 
-    exitcode, stdout, stderr = cppcheck(['--template=simple', '--rule-file={}'.format(rule_file), test_file])
+    exitcode, stdout, stderr = cppcheck(['--template=simple', f'--rule-file={rule_file}', test_file])
     assert exitcode == 0, stdout if stdout else stderr
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file),
+        f'Checking {test_file} ...',
         'Processing rule: int',
     ]
     lines = stderr.splitlines()
     assert lines == [
-        "{}:5:0: style: found 'int' [rule]".format(test_file)
+        f"{test_file}:5:0: style: found 'int' [rule]"
     ]
 
 
 def test_rule_file_raw(tmpdir):
     rule_file = os.path.join(tmpdir, 'rule_file.xml')
-    with open(rule_file, 'wt') as f:
+    with open(rule_file, 'w') as f:
         f.write("""
 <rule>
     <tokenlist>raw</tokenlist>
@@ -1640,7 +1639,7 @@ def test_rule_file_raw(tmpdir):
 """)
 
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('''
 #define DEF_1
 #define DEF_2
@@ -1648,23 +1647,23 @@ typedef int i32;
 void f(i32) { }
 ''')
 
-    exitcode, stdout, stderr = cppcheck(['--template=simple', '--rule-file={}'.format(rule_file), test_file])
+    exitcode, stdout, stderr = cppcheck(['--template=simple', f'--rule-file={rule_file}', test_file])
     assert exitcode == 0, stdout if stdout else stderr
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file),
+        f'Checking {test_file} ...',
         'Processing rule: i32',
     ]
     lines = stderr.splitlines()
     assert lines == [
-        "{}:4:0: style: found 'i32' [rule]".format(test_file),
-        "{}:5:0: style: found 'i32' [rule]".format(test_file)
+        f"{test_file}:4:0: style: found 'i32' [rule]",
+        f"{test_file}:5:0: style: found 'i32' [rule]"
     ]
 
 
 def test_rule(tmpdir):
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('''
 #define DEF_1
 #define DEF_2
@@ -1675,12 +1674,12 @@ void f() { }
     assert exitcode == 0, stdout if stdout else stderr
     lines = stdout.splitlines()
     assert lines == [
-        'Checking {} ...'.format(test_file),
+        f'Checking {test_file} ...',
         'Processing rule: f',
     ]
     lines = stderr.splitlines()
     assert lines == [
-        "{}:4:0: style: found 'f' [rule]".format(test_file)
+        f"{test_file}:4:0: style: found 'f' [rule]"
     ]
 
 
@@ -1688,8 +1687,8 @@ def test_rule_multiple_files(tmpdir):
     stderr_exp = []
     for i in range(10):
         test_file = os.path.join(tmpdir, f'test_{i}.c')
-        stderr_exp.append("{}:4:0: style: found 'f' [rule]".format(test_file))
-        with open(test_file, 'wt') as f:
+        stderr_exp.append(f"{test_file}:4:0: style: found 'f' [rule]")
+        with open(test_file, 'w') as f:
             f.write('''
 #define DEF_1
 #define DEF_2
@@ -1709,44 +1708,44 @@ def test_filelist(tmpdir):
     list_dir = os.path.join(tmpdir, 'list-dir')
     os.mkdir(list_dir)
 
-    with open(os.path.join(list_dir, 'aaa.c'), 'wt'):
+    with open(os.path.join(list_dir, 'aaa.c'), 'w'):
         pass
-    with open(os.path.join(list_dir, 'zzz.c'), 'wt'):
+    with open(os.path.join(list_dir, 'zzz.c'), 'w'):
         pass
-    with open(os.path.join(list_dir, 'valueflow.cpp'), 'wt'):
+    with open(os.path.join(list_dir, 'valueflow.cpp'), 'w'):
         pass
-    with open(os.path.join(list_dir, 'vfvalue.cpp'), 'wt'):
+    with open(os.path.join(list_dir, 'vfvalue.cpp'), 'w'):
         pass
-    with open(os.path.join(list_dir, 'vf_enumvalue.cpp'), 'wt'):
+    with open(os.path.join(list_dir, 'vf_enumvalue.cpp'), 'w'):
         pass
-    with open(os.path.join(list_dir, 'vf_analyze.h'), 'wt'):
+    with open(os.path.join(list_dir, 'vf_analyze.h'), 'w'):
         pass
 
     sub_dir_1 = os.path.join(list_dir, 'valueflow')
     os.mkdir(sub_dir_1)
-    with open(os.path.join(sub_dir_1, 'file.cpp'), 'wt'):
+    with open(os.path.join(sub_dir_1, 'file.cpp'), 'w'):
         pass
-    with open(os.path.join(sub_dir_1, 'file.c'), 'wt'):
+    with open(os.path.join(sub_dir_1, 'file.c'), 'w'):
         pass
-    with open(os.path.join(sub_dir_1, 'file.h'), 'wt'):
+    with open(os.path.join(sub_dir_1, 'file.h'), 'w'):
         pass
 
     sub_dir_2 = os.path.join(list_dir, 'vfvalue')
     os.mkdir(sub_dir_2)
-    with open(os.path.join(sub_dir_2, 'file.cpp'), 'wt'):
+    with open(os.path.join(sub_dir_2, 'file.cpp'), 'w'):
         pass
-    with open(os.path.join(sub_dir_2, 'file.c'), 'wt'):
+    with open(os.path.join(sub_dir_2, 'file.c'), 'w'):
         pass
-    with open(os.path.join(sub_dir_2, 'file.h'), 'wt'):
+    with open(os.path.join(sub_dir_2, 'file.h'), 'w'):
         pass
 
     sub_dir_3 = os.path.join(list_dir, 'vf_enumvalue')
     os.mkdir(sub_dir_3)
-    with open(os.path.join(sub_dir_3, 'file.cpp'), 'wt'):
+    with open(os.path.join(sub_dir_3, 'file.cpp'), 'w'):
         pass
-    with open(os.path.join(sub_dir_3, 'file.c'), 'wt'):
+    with open(os.path.join(sub_dir_3, 'file.c'), 'w'):
         pass
-    with open(os.path.join(sub_dir_3, 'file.h'), 'wt'):
+    with open(os.path.join(sub_dir_3, 'file.h'), 'w'):
         pass
 
     # TODO: -rp is not applied to "Checking" messages
@@ -1771,16 +1770,16 @@ def test_filelist(tmpdir):
     ]
     assert len(expected), len(lines)
     for i in range(1, len(expected)+1):
-        lines.remove('{}/{} files checked {}% done'.format(i, len(expected), int(100 * i // len(expected))))
+        lines.remove(f'{i}/{len(expected)} files checked {int(100 * i // len(expected))}% done')
     assert lines == expected
 
 
 def test_markup_lang(tmpdir):
     test_file_1 = os.path.join(tmpdir, 'test_1.qml')
-    with open(test_file_1, 'wt'):
+    with open(test_file_1, 'w'):
         pass
     test_file_2 = os.path.join(tmpdir, 'test_2.cpp')
-    with open(test_file_2, 'wt'):
+    with open(test_file_2, 'w'):
         pass
 
     # do not assert processing markup file with enforced language
@@ -1799,7 +1798,7 @@ def test_markup_lang(tmpdir):
 
 def test_cpp_probe(tmpdir):
     test_file = os.path.join(tmpdir, 'test.h')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.writelines([
             'class A {};'
         ])
@@ -1813,13 +1812,13 @@ def test_cpp_probe(tmpdir):
     lines = stderr.splitlines()
     assert lines == [
         # TODO: fix that awkward format
-        "{}:1:1: error: Code 'classA{{' is invalid C code.: Use --std, -x or --language to enforce C++. Or --cpp-header-probe to identify C++ headers via the Emacs marker. [syntaxError]".format(test_file)
+        f"{test_file}:1:1: error: Code 'classA{{' is invalid C code.: Use --std, -x or --language to enforce C++. Or --cpp-header-probe to identify C++ headers via the Emacs marker. [syntaxError]"
     ]
 
 
 def test_cpp_probe_2(tmpdir):
     test_file = os.path.join(tmpdir, 'test.h')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.writelines([
             '// -*- C++ -*-',
             'class A {};'
@@ -1838,11 +1837,11 @@ def test_config_invalid(tmpdir):
     shutil.copytree(os.path.join(os.path.dirname(__lookup_cppcheck_exe()), 'cfg'), os.path.join(tmpdir, 'cfg'))
 
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt'):
+    with open(test_file, 'w'):
         pass
 
     config_file = os.path.join(tmpdir, 'cppcheck.cfg')
-    with open(config_file, 'wt'):
+    with open(config_file, 'w'):
         pass
 
     exitcode, stdout, stderr, exe = cppcheck_ex([test_file], cwd=tmpdir, cppcheck_exe=exe)
@@ -1860,11 +1859,11 @@ def test_config_override(tmpdir):
     shutil.copytree(os.path.join(os.path.dirname(__lookup_cppcheck_exe()), 'cfg'), os.path.join(tmpdir, 'cfg'))
 
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt'):
+    with open(test_file, 'w'):
         pass
 
     config_file = os.path.join(tmpdir, 'cppcheck.cfg')
-    with open(config_file, 'wt') as f:
+    with open(config_file, 'w') as f:
         f.write(json.dumps({
             'safety': False
         }))
@@ -1877,7 +1876,7 @@ def test_config_override(tmpdir):
 
 def test_checkers_report(tmpdir):
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('x=1;')
     checkers_report = os.path.join(tmpdir, 'r.txt')
     exitcode, stdout, stderr = cppcheck(['--enable=all', '--checkers-report=' + checkers_report, test_file], remove_checkers_report=False)
@@ -1889,10 +1888,10 @@ def test_checkers_report(tmpdir):
 def test_checkers_report_misra_json(tmpdir):
     """check that misra checkers are reported properly when --addon=misra.json is used"""
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('x=1;')
     misra_json = os.path.join(tmpdir, 'misra.json')
-    with open(misra_json, 'wt') as f:
+    with open(misra_json, 'w') as f:
         f.write('{"script":"misra.py"}')
     exitcode, stdout, stderr = cppcheck('--enable=style --addon=misra.json --xml-version=3 test.c'.split(), cwd=tmpdir)
     assert exitcode == 0, stdout if stdout else stderr
@@ -1902,12 +1901,12 @@ def test_checkers_report_misra_json(tmpdir):
 def __test_ignore_file(tmpdir, ign, append=False, inject_path=False):
     os.mkdir(os.path.join(tmpdir, 'src'))
     test_file = os.path.join(tmpdir, 'src', 'test.cpp')
-    with open(test_file, 'wt'):
+    with open(test_file, 'w'):
         pass
 
     # TODO: this should say that all paths are ignored
     lines_exp = [
-        'ignored path: {}'.format(test_file),
+        f'ignored path: {test_file}',
         'cppcheck: error: could not find or open any of the paths given.',
         'cppcheck: Maybe all paths were ignored?'
     ]
@@ -1921,9 +1920,9 @@ def __test_ignore_file(tmpdir, ign, append=False, inject_path=False):
         ign = ign.replace('$path', str(test_file))
 
     if append:
-        args += ['-i{}'.format(ign)]
+        args += [f'-i{ign}']
     else:
-        args = ['-i{}'.format(ign)] + args
+        args = [f'-i{ign}'] + args
 
     exitcode, stdout, stderr = cppcheck(args, cwd=tmpdir)
     assert exitcode == 1, stdout if stdout else stderr
@@ -1988,7 +1987,7 @@ def test_ignore_abspath(tmpdir):
 
 def __write_gui_project(tmpdir, test_file, ignore):
     project_file = os.path.join(tmpdir, 'test.cppcheck')
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(
         """<?xml version="1.0" encoding="UTF-8"?>
 <project>
@@ -2006,12 +2005,12 @@ def __write_gui_project(tmpdir, test_file, ignore):
 def __test_ignore_project(tmpdir, ign_proj, ign_cli=None, append_cli=False, inject_path_proj=False):
     os.mkdir(os.path.join(tmpdir, 'src'))
     test_file = os.path.join(tmpdir, 'src', 'test.cpp')
-    with open(test_file, 'wt'):
+    with open(test_file, 'w'):
         pass
 
     # TODO: this should say that all paths were ignored
     lines_exp = [
-        'ignored path: {}'.format(test_file),
+        f'ignored path: {test_file}',
         'cppcheck: error: could not find or open any of the paths given.',
         'cppcheck: Maybe all paths were ignored?'
     ]
@@ -2022,13 +2021,13 @@ def __test_ignore_project(tmpdir, ign_proj, ign_cli=None, append_cli=False, inje
     project_file = __write_gui_project(tmpdir, test_file, ign_proj)
     args = [
         '--debug-ignore',
-        '--project={}'.format(project_file)
+        f'--project={project_file}'
     ]
 
     if append_cli:
-        args += ['-i{}'.format(ign_cli)]
+        args += [f'-i{ign_cli}']
     else:
-        args = ['-i{}'.format(ign_cli)] + args
+        args = [f'-i{ign_cli}'] + args
 
     exitcode, stdout, _ = cppcheck(args, cwd=tmpdir)
     assert exitcode == 1, stdout
@@ -2085,10 +2084,10 @@ def __write_compdb(tmpdir, test_file):
         {
             'directory': os.path.dirname(test_file),
             'file': test_file,
-            'command': 'gcc -c {}'.format(test_file)
+            'command': f'gcc -c {test_file}'
         }
     ]
-    with open(compile_commands, 'wt') as f:
+    with open(compile_commands, 'w') as f:
         f.write(json.dumps(j))
     return compile_commands
 
@@ -2096,7 +2095,7 @@ def __write_compdb(tmpdir, test_file):
 def __test_ignore_project_2(tmpdir, extra_args, append=False, inject_path=False):
     os.mkdir(os.path.join(tmpdir, 'src'))
     test_file = os.path.join(tmpdir, 'src', 'test.cpp')
-    with open(test_file, 'wt'):
+    with open(test_file, 'w'):
         pass
 
     lines_exp = [
@@ -2107,7 +2106,7 @@ def __test_ignore_project_2(tmpdir, extra_args, append=False, inject_path=False)
     project_file = __write_compdb(tmpdir, test_file)
     args = [
         '--debug-ignore',
-        '--project={}'.format(project_file)
+        f'--project={project_file}'
     ]
 
     if inject_path:
@@ -2182,11 +2181,11 @@ def test_ignore_project_2_abspath(tmpdir):
 
 def test_dumpfile_platform(tmpdir):
     test_file = os.path.join(tmpdir, 'test.c')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('x=1;\n')
     cppcheck('--dump --platform=unix64 test.c'.split(), cwd=tmpdir)
     platform = ''
-    with open(test_file + '.dump', 'rt') as f:
+    with open(test_file + '.dump') as f:
         for line in f:
             if line.find('<platform name="') > 0:
                 platform = line.strip()
@@ -2197,7 +2196,7 @@ def test_dumpfile_platform(tmpdir):
 
 def test_builddir_hash_check_level(tmp_path):  # #13376
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 void f(bool b)
 {
@@ -2214,7 +2213,7 @@ void f(bool b)
 
     args = [ # // #14029
         '--enable=warning',  # to execute the code which generates the normalCheckLevelMaxBranches message
-        '--cppcheck-build-dir={}'.format(build_dir),
+        f'--cppcheck-build-dir={build_dir}',
         '--template=simple',
         str(test_file)
     ]
@@ -2226,14 +2225,14 @@ void f(bool b)
     args = [
         '--enable=warning',  # to execute the code which generates the normalCheckLevelMaxBranches message
         '--enable=information',  # to show the normalCheckLevelMaxBranches message
-        '--cppcheck-build-dir={}'.format(build_dir),
+        f'--cppcheck-build-dir={build_dir}',
         '--template=simple',
         str(test_file)
     ]
 
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0, stdout
-    assert stderr == '{}:0:0: information: Limiting analysis of branches. Use --check-level=exhaustive to analyze all branches. [normalCheckLevelMaxBranches]\n'.format(test_file)
+    assert stderr == f'{test_file}:0:0: information: Limiting analysis of branches. Use --check-level=exhaustive to analyze all branches. [normalCheckLevelMaxBranches]\n'
 
     cache_file = (build_dir / 'test.a1')
 
@@ -2254,7 +2253,7 @@ void f(bool b)
 
 def test_def_undef(tmp_path):
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 void f()
 {
@@ -2273,18 +2272,18 @@ void f()
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0
     assert stdout.splitlines() == [
-        'Checking {} ...'.format(test_file),
-        'Checking {}: DEF_1=1...'.format(test_file)  # TODO: should not print DEF_1 - see #13335
+        f'Checking {test_file} ...',
+        f'Checking {test_file}: DEF_1=1...'  # TODO: should not print DEF_1 - see #13335
     ]
     assert stderr.splitlines() == [
-        '{}:5:14: error: Null pointer dereference: (int*)0 [nullPointer]'.format(test_file)
+        f'{test_file}:5:14: error: Null pointer dereference: (int*)0 [nullPointer]'
     ]
 
 
 @pytest.mark.xfail(strict=True)
 def test_def_def(tmp_path):  # #13334
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 void f()
 {
@@ -2306,18 +2305,18 @@ void f()
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0
     assert stdout.splitlines() == [
-        'Checking {} ...'.format(test_file),
-        'Checking {}: DEF_1=3;DEF_1=7...'.format(test_file)  # TODO: should not print DEF_1 twice - see #13335
+        f'Checking {test_file} ...',
+        f'Checking {test_file}: DEF_1=3;DEF_1=7...'  # TODO: should not print DEF_1 twice - see #13335
     ]
     assert stderr.splitlines() == [
-        '{}:8:14: error: Null pointer dereference: (int*)0 [nullPointer]'.format(test_file)
+        f'{test_file}:8:14: error: Null pointer dereference: (int*)0 [nullPointer]'
     ]
 
 
 @pytest.mark.xfail(strict=True)
 def test_def_undef_def(tmp_path):  # #13334
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 void f()
 {
@@ -2337,17 +2336,17 @@ void f()
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0
     assert stdout.splitlines() == [
-        'Checking {} ...'.format(test_file),
-        'Checking {}: DEF_1=1;DEF_1=1...'.format(test_file)  # TODO: should not print DEF_1 twice - see #13335
+        f'Checking {test_file} ...',
+        f'Checking {test_file}: DEF_1=1;DEF_1=1...'  # TODO: should not print DEF_1 twice - see #13335
     ]
     assert stderr.splitlines() == [
-        '{}:5:14: error: Null pointer dereference: (int*)0 [nullPointer]'.format(test_file)
+        f'{test_file}:5:14: error: Null pointer dereference: (int*)0 [nullPointer]'
     ]
 
 
 def test_undef(tmp_path):
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 void f()
 {
@@ -2365,17 +2364,17 @@ void f()
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0
     assert stdout.splitlines() == [
-        'Checking {} ...'.format(test_file)
+        f'Checking {test_file} ...'
     ]
     assert stderr.splitlines() == [
-        '{}:5:14: error: Null pointer dereference: (int*)0 [nullPointer]'.format(test_file)
+        f'{test_file}:5:14: error: Null pointer dereference: (int*)0 [nullPointer]'
     ]
 
 
 @pytest.mark.xfail(strict=True)
 def test_undef_src(tmp_path):  # #13340
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 #define DEF_1
 
@@ -2395,16 +2394,16 @@ void f()
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0
     assert stdout.splitlines() == [
-        'Checking {} ...'.format(test_file)
+        f'Checking {test_file} ...'
     ]
     assert stderr.splitlines() == [
-        '{}:7:14: error: Null pointer dereference: (int*)0 [nullPointer]'.format(test_file)
+        f'{test_file}:7:14: error: Null pointer dereference: (int*)0 [nullPointer]'
     ]
 
 
 def test_dump_check_config(tmp_path):  # #13432
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 void f() {}
 """)
@@ -2428,7 +2427,7 @@ void f() {}
 # TODO: remove all overrides when fully fixed
 def __test_inline_suppr(tmp_path, extra_args):  # #13087
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 void f() {
   // cppcheck-suppress memleak
@@ -2449,7 +2448,7 @@ void f() {
     assert exitcode == 0, stdout
     assert stdout == ''
     assert stderr.splitlines() == [
-        '{}:4:0: information: Unmatched suppression: memleak [unmatchedSuppression]'.format(test_file)
+        f'{test_file}:4:0: information: Unmatched suppression: memleak [unmatchedSuppression]'
     ]
 
 
@@ -2464,32 +2463,32 @@ def test_inline_suppr_j(tmp_path):
 def test_inline_suppr_builddir(tmp_path):
     build_dir = tmp_path / 'b1'
     os.mkdir(build_dir)
-    __test_inline_suppr(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j1'])
+    __test_inline_suppr(tmp_path, [f'--cppcheck-build-dir={build_dir}', '-j1'])
 
 
 def test_inline_suppr_builddir_cached(tmp_path):
     build_dir = tmp_path / 'b1'
     os.mkdir(build_dir)
-    __test_inline_suppr(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j1'])
-    __test_inline_suppr(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j1'])
+    __test_inline_suppr(tmp_path, [f'--cppcheck-build-dir={build_dir}', '-j1'])
+    __test_inline_suppr(tmp_path, [f'--cppcheck-build-dir={build_dir}', '-j1'])
 
 
 def test_inline_suppr_builddir_j(tmp_path):
     build_dir = tmp_path / 'b1'
     os.mkdir(build_dir)
-    __test_inline_suppr(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j2'])
+    __test_inline_suppr(tmp_path, [f'--cppcheck-build-dir={build_dir}', '-j2'])
 
 
 def test_inline_suppr_builddir_j_cached(tmp_path):
     build_dir = tmp_path / 'b1'
     os.mkdir(build_dir)
-    __test_inline_suppr(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j2'])
-    __test_inline_suppr(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j2'])
+    __test_inline_suppr(tmp_path, [f'--cppcheck-build-dir={build_dir}', '-j2'])
+    __test_inline_suppr(tmp_path, [f'--cppcheck-build-dir={build_dir}', '-j2'])
 
 
 def test_duplicate_suppression(tmp_path):
     test_file = tmp_path / 'file.cpp'
-    with open(test_file, 'wt'):
+    with open(test_file, 'w'):
         pass
 
     args = [
@@ -2509,19 +2508,19 @@ def test_duplicate_suppression(tmp_path):
 
 def test_duplicate_suppressions_list(tmp_path):
     suppr_file = tmp_path / 'suppressions'
-    with open(suppr_file, 'wt') as f:
+    with open(suppr_file, 'w') as f:
         f.write('''
 uninitvar
 uninitvar
 ''')
 
     test_file = tmp_path / 'file.cpp'
-    with open(test_file, 'wt'):
+    with open(test_file, 'w'):
         pass
 
     args = [
         '-q',
-        '--suppressions-list={}'.format(suppr_file),
+        f'--suppressions-list={suppr_file}',
         str(test_file)
     ]
 
@@ -2535,17 +2534,17 @@ uninitvar
 
 def test_duplicate_suppressions_mixed(tmp_path):
     suppr_file = tmp_path / 'suppressions'
-    with open(suppr_file, 'wt') as f:
+    with open(suppr_file, 'w') as f:
         f.write('uninitvar')
 
     test_file = tmp_path / 'file.cpp'
-    with open(test_file, 'wt'):
+    with open(test_file, 'w'):
         pass
 
     args = [
         '-q',
         '--suppress=uninitvar',
-        '--suppressions-list={}'.format(suppr_file),
+        f'--suppressions-list={suppr_file}',
         str(test_file)
     ]
 
@@ -2559,7 +2558,7 @@ def test_duplicate_suppressions_mixed(tmp_path):
 
 def test_xml_output(tmp_path):  # #13391 / #13485
     test_file = tmp_path / 'test.cpp'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 void f(const void* p)
 {
@@ -2599,7 +2598,7 @@ void f(const void* p)
 def test_outputfile(tmp_path): # #14051
     test_file = tmp_path / 'test.cpp'
     out_file = tmp_path / 'out.txt'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write(
 """
 int main()
@@ -2610,12 +2609,12 @@ int main()
 
     args = [
         '-q',
-        '--output-file={}'.format(out_file),
+        f'--output-file={out_file}',
         str(test_file)
     ]
 
     out_exp = [
-        '{}:4:15: error: Division by zero. [zerodiv]'.format(test_file),
+        f'{test_file}:4:15: error: Division by zero. [zerodiv]',
         '    int x = 1 / 0;',
         '              ^',
     ]
@@ -2625,7 +2624,7 @@ int main()
     assert stdout == ''
     assert stderr == ''
 
-    with open(out_file, 'rt') as f:
+    with open(out_file) as f:
         out_text = f.read()
 
     assert out_text.splitlines() == out_exp
@@ -2633,7 +2632,7 @@ int main()
 
 def test_internal_error_loc_int(tmp_path):
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write(
 """
 void f() {
@@ -2650,13 +2649,13 @@ void f() {
     assert exitcode == 0, stdout
     assert stdout.splitlines() == []
     assert stderr.splitlines() == [
-        '{}:3:13: error: Internal Error. MathLib::toBigUNumber: out_of_range: 0x10000000000000000 [internalError]'.format(test_file)
+        f'{test_file}:3:13: error: Internal Error. MathLib::toBigUNumber: out_of_range: 0x10000000000000000 [internalError]'
     ]
 
 
 def __test_addon_suppr(tmp_path, extra_args):
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 // cppcheck-suppress misra-c2012-2.3
 typedef int MISRA_5_6_VIOLATION;
@@ -2677,7 +2676,7 @@ typedef int MISRA_5_6_VIOLATION_1;
     assert exitcode == 0, stdout
     assert stdout == ''
     assert stderr.splitlines() == [
-        '{}:4:1: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-2.3]'.format(test_file),
+        f'{test_file}:4:1: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-2.3]',
     ]
 
 
@@ -2700,7 +2699,7 @@ def test_addon_suppr_cli_file_line(tmp_path):
 
 def test_addon_suppr_cli_absfile_line(tmp_path):
     test_file = tmp_path / 'test.c'
-    __test_addon_suppr(tmp_path, ['--suppress=misra-c2012-2.3:{}:3'.format(test_file)])
+    __test_addon_suppr(tmp_path, [f'--suppress=misra-c2012-2.3:{test_file}:3'])
 
 
 def test_ctu_path_builddir(tmp_path):  # #11883
@@ -2708,7 +2707,7 @@ def test_ctu_path_builddir(tmp_path):  # #11883
     os.mkdir(build_dir)
 
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 void f(int *p) { *p = 3; }
 int main() {
@@ -2721,22 +2720,22 @@ f(p);
         '-q',
         '--enable=style',
         '--suppress=nullPointer',  # we only care about the CTU findings
-        '--cppcheck-build-dir={}'.format(build_dir),
+        f'--cppcheck-build-dir={build_dir}',
         str(test_file)
     ]
 
     # the CTU path was not properly read leading to missing location information
     stderr_exp = [
-        '{}:2:19: error: Null pointer dereference: p [ctunullpointer]'.format(test_file),
+        f'{test_file}:2:19: error: Null pointer dereference: p [ctunullpointer]',
         'void f(int *p) { *p = 3; }',
         '                  ^',
-        "{}:4:14: note: Assignment 'p=0', assigned value is 0".format(test_file),
+        f"{test_file}:4:14: note: Assignment 'p=0', assigned value is 0",
         '    int *p = 0;',
         '             ^',
-        '{}:5:2: note: Calling function f, 1st argument is null'.format(test_file),
+        f'{test_file}:5:2: note: Calling function f, 1st argument is null',
         'f(p);',
         ' ^',
-        '{}:2:19: note: Dereferencing argument p that is null'.format(test_file),
+        f'{test_file}:2:19: note: Dereferencing argument p that is null',
         'void f(int *p) { *p = 3; }',
         '                  ^'
     ]
@@ -2758,7 +2757,7 @@ def test_ctu_builddir(tmp_path):  # #11883
     os.mkdir(build_dir)
 
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""
 void f(int *p) { *p = 3; }
 int main() {
@@ -2772,7 +2771,7 @@ f(p);
         '--template=simple',
         '--enable=style',
         '--suppress=nullPointer',  # we only care about the CTU findings
-        '--cppcheck-build-dir={}'.format(build_dir),
+        f'--cppcheck-build-dir={build_dir}',
         '-j1',
         '--emit-duplicates',
         str(test_file)
@@ -2783,7 +2782,7 @@ f(p);
     assert exitcode == 0, stdout
     assert stdout == ''
     assert stderr.splitlines() == [
-        '{}:2:19: error: Null pointer dereference: p [ctunullpointer]'.format(test_file)
+        f'{test_file}:2:19: error: Null pointer dereference: p [ctunullpointer]'
     ]
 
 
@@ -2973,7 +2972,7 @@ void f()
     else:
         assert stdout.count('### Template Simplifier pass ') == 1
     assert stderr.splitlines() == [
-        '{}:4:14: error: Null pointer dereference: (int*)nullptr [nullPointer]'.format(test_file)
+        f'{test_file}:4:14: error: Null pointer dereference: (int*)nullptr [nullPointer]'
     ]
     return stdout
 
@@ -3005,7 +3004,7 @@ def test_file_ignore_2(tmp_path):  # #13570
     os.mkdir(lib_path)
 
     test_file_1 = lib_path / 'test_1.c'
-    with open(test_file_1, 'wt'):
+    with open(test_file_1, 'w'):
         pass
 
     args = [
@@ -3121,13 +3120,13 @@ def test_debug_valueflow_data_xml(tmp_path):  # #13606
 
 def test_dir_ignore(tmp_path):
     test_file = tmp_path / 'test.cpp'
-    with open(test_file, 'wt'):
+    with open(test_file, 'w'):
         pass
 
     lib_dir = tmp_path / 'lib'
     os.mkdir(lib_dir)
     lib_test_file = lib_dir / 'test.cpp'
-    with open(lib_test_file, 'wt'):
+    with open(lib_test_file, 'w'):
         pass
 
     args = [
@@ -3137,8 +3136,8 @@ def test_dir_ignore(tmp_path):
     ]
     # make sure the whole directory is being ignored instead of each of its contents individually
     out_lines = [
-        'ignored path: {}'.format(lib_dir),
-        'Checking {} ...'.format(test_file)
+        f'ignored path: {lib_dir}',
+        f'Checking {test_file} ...'
     ]
 
     assert_cppcheck(args, ec_exp=0, err_exp=[], out_exp=out_lines, cwd=str(tmp_path))
@@ -3146,7 +3145,7 @@ def test_dir_ignore(tmp_path):
 
 def test_check_headers(tmp_path):
     test_file_h = tmp_path / 'test.h'
-    with open(test_file_h, 'wt') as f:
+    with open(test_file_h, 'w') as f:
         f.write(
 """
 inline void hdr()
@@ -3156,7 +3155,7 @@ inline void hdr()
 """)
 
     test_file_c = tmp_path / 'test.c'
-    with open(test_file_c, 'wt') as f:
+    with open(test_file_c, 'w') as f:
         f.write(
 """
 #include "test.h"
@@ -3178,7 +3177,7 @@ void f() {}
 
 def test_unique_error(tmp_path):  # #6366
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write(
 """void f()
 {
@@ -3198,14 +3197,14 @@ def test_unique_error(tmp_path):  # #6366
     assert exitcode == 0, stdout
     assert stdout.splitlines() == []
     assert stderr.splitlines() == [
-        "{}:4:13: error: Array 'm[9]' accessed at index 9, which is out of bounds. [arrayIndexOutOfBounds]".format(test_file),
-        "{}:4:21: error: Array 'm[9]' accessed at index 9, which is out of bounds. [arrayIndexOutOfBounds]".format(test_file)
+        f"{test_file}:4:13: error: Array 'm[9]' accessed at index 9, which is out of bounds. [arrayIndexOutOfBounds]",
+        f"{test_file}:4:21: error: Array 'm[9]' accessed at index 9, which is out of bounds. [arrayIndexOutOfBounds]"
     ]
 
 
 def test_check_unused_templates_class(tmp_path):
     test_file_h = tmp_path / 'test.h'
-    with open(test_file_h, 'wt') as f:
+    with open(test_file_h, 'w') as f:
         f.write(
 """template<class T>
 class HdrCl1
@@ -3245,7 +3244,7 @@ struct HdrSt2
 """)
 
     test_file = tmp_path / 'test.cpp'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write(
 """#include "test.h"
 
@@ -3302,7 +3301,7 @@ void f() {}
 
 def test_check_unused_templates_func(tmp_path):  # #13714
     test_file_h = tmp_path / 'test.h'
-    with open(test_file_h, 'wt') as f:
+    with open(test_file_h, 'w') as f:
         f.write(
 """template<class T>
 void f_t_hdr_1()
@@ -3318,7 +3317,7 @@ void f_t_hdr_2()
 """)
 
     test_file = tmp_path / 'test.cpp'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write(
 """#include "test.h"
 
@@ -3357,7 +3356,7 @@ except OSError:
 
 def __test_clang_tidy(tmpdir, use_compdb):
     test_file = os.path.join(tmpdir, 'test.cpp')
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write(
 """static void foo() // NOLINT(misc-use-anonymous-namespace)
 {
@@ -3372,7 +3371,7 @@ def __test_clang_tidy(tmpdir, use_compdb):
         '--clang-tidy'
     ]
     if project_file:
-        args += ['--project={}'.format(project_file)]
+        args += [f'--project={project_file}']
     else:
         args += [str(test_file)]
     exitcode, stdout, stderr = cppcheck(args)
@@ -3380,8 +3379,8 @@ def __test_clang_tidy(tmpdir, use_compdb):
     assert stdout.splitlines() == [
     ]
     assert stderr.splitlines() == [
-        '{}:3:14: error: Null pointer dereference: (int*)nullptr [nullPointer]'.format(test_file),
-        '{}:3:14: style: C-style casts are discouraged; use static_cast/const_cast/reinterpret_cast [clang-tidy-google-readability-casting]'.format(test_file)
+        f'{test_file}:3:14: error: Null pointer dereference: (int*)nullptr [nullPointer]',
+        f'{test_file}:3:14: style: C-style casts are discouraged; use static_cast/const_cast/reinterpret_cast [clang-tidy-google-readability-casting]'
     ]
 
 
@@ -3399,7 +3398,7 @@ def test_clang_tidy_project(tmpdir):
 @pytest.mark.skipif(not has_clang_tidy, reason='clang-tidy is not available')
 def test_clang_tidy_error_exit(tmp_path):  # #13828 / #13829
     test_file = tmp_path / 'test.cpp'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write(
 """#include <string>
 #include <utility>
@@ -3422,21 +3421,21 @@ static bool f() // NOLINT(misc-use-anonymous-namespace)
         '--inline-suppr',
         '--std=c++11',
         '--clang-tidy',
-        '--project={}'.format(project_file)
+        f'--project={project_file}'
     ]
 
     exitcode, stdout, stderr = cppcheck(args)
     assert stdout.splitlines() == []
     assert stderr.splitlines() == [
-        "{}:10:12: warning: 'str' used after it was moved [clang-tidy-bugprone-use-after-move]".format(test_file),
-        "{}:10:12: style: 'str' used after it was moved [clang-tidy-hicpp-invalid-access-moved]".format(test_file)
+        f"{test_file}:10:12: warning: 'str' used after it was moved [clang-tidy-bugprone-use-after-move]",
+        f"{test_file}:10:12: style: 'str' used after it was moved [clang-tidy-hicpp-invalid-access-moved]"
     ]
     assert exitcode == 0, stdout
 
 
 def test_suppress_unmatched_wildcard(tmp_path):  # #13660
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write(
 """void f()
 {
@@ -3470,7 +3469,7 @@ def test_suppress_unmatched_wildcard(tmp_path):  # #13660
 
 def test_suppress_unmatched_wildcard_cached(tmp_path):  # #14585
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write(
 """void f()
 {
@@ -3486,7 +3485,7 @@ def test_suppress_unmatched_wildcard_cached(tmp_path):  # #14585
         '-q',
         '--template=simple',
         '--enable=information',
-        '--cppcheck-build-dir={}'.format(build_dir),
+        f'--cppcheck-build-dir={build_dir}',
         '--suppress=nullPointer:test*.c',
         'test.c'
     ]
@@ -3508,7 +3507,7 @@ def test_suppress_unmatched_wildcard_unchecked(tmp_path):
     # make sure that unmatched wildcards suppressions are reported if files matching the expressions were processesd
     # but isSuppressed() has never been called (i.e. no findings in file at all)
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write("""void f() {}""")
 
     # need to run in the temporary folder because the path of the suppression has to match
@@ -3535,7 +3534,7 @@ def test_suppress_unmatched_wildcard_unchecked(tmp_path):
 
 def test_preprocess_enforced_c(tmp_path):  # #10989
     test_file = tmp_path / 'test.cpp'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write(
 """#ifdef __cplusplus
 #error "err"
@@ -3556,7 +3555,7 @@ def test_preprocess_enforced_c(tmp_path):  # #10989
 
 def test_preprocess_enforced_cpp(tmp_path):  # #10989
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write(
 """#ifdef __cplusplus
 #error "err"
@@ -3573,7 +3572,7 @@ def test_preprocess_enforced_cpp(tmp_path):  # #10989
     assert exitcode == 0, stdout if stdout else stderr
     assert stdout.splitlines() == []
     assert stderr.splitlines() == [
-        '{}:2:2: error: #error "err" [preprocessorErrorDirective]'.format(test_file)
+        f'{test_file}:2:2: error: #error "err" [preprocessorErrorDirective]'
     ]
 
 
@@ -3583,7 +3582,7 @@ def test_preprocess_system_include(tmp_path): # #13928
         pytest.skip('<string> header file not found')
 
     test_file = tmp_path / 'test.c'
-    with open(test_file, 'wt') as f:
+    with open(test_file, 'w') as f:
         f.write('#include <string>\n'
                 ';\n')
 
@@ -3640,7 +3639,7 @@ def __test_debug_normal(tmp_path, verbose):
         assert stdout.find('##AST') == -1
     assert stdout.find('### Template Simplifier pass ') == -1
     assert stderr.splitlines() == [
-        '{}:3:14: error: Null pointer dereference: (int*)0 [nullPointer]'.format(test_file)
+        f'{test_file}:3:14: error: Null pointer dereference: (int*)0 [nullPointer]'
     ]
     return stdout
 
@@ -3684,7 +3683,7 @@ def __test_debug_simplified(tmp_path, verbose):
     assert stdout.find('##AST') == -1
     assert stdout.find('### Template Simplifier pass ') == -1
     assert stderr.splitlines() == [
-        '{}:3:14: error: Null pointer dereference: (int*)0 [nullPointer]'.format(test_file)
+        f'{test_file}:3:14: error: Null pointer dereference: (int*)0 [nullPointer]'
     ]
     return stdout
 
@@ -3727,7 +3726,7 @@ def __test_debug_symdb(tmp_path, verbose):
     assert stdout.find('##AST') == -1
     assert stdout.find('### Template Simplifier pass ') == -1
     assert stderr.splitlines() == [
-        '{}:3:14: error: Null pointer dereference: (int*)0 [nullPointer]'.format(test_file)
+        f'{test_file}:3:14: error: Null pointer dereference: (int*)0 [nullPointer]'
     ]
     return stdout
 
@@ -3771,7 +3770,7 @@ def __test_debug_ast(tmp_path, verbose):
     assert stdout.find('##AST') != -1
     assert stdout.find('### Template Simplifier pass ') == -1
     assert stderr.splitlines() == [
-        '{}:3:14: error: Null pointer dereference: (int*)0 [nullPointer]'.format(test_file)
+        f'{test_file}:3:14: error: Null pointer dereference: (int*)0 [nullPointer]'
     ]
     return stdout
 
@@ -3814,7 +3813,7 @@ def __test_debug_valueflow(tmp_path, verbose):
     assert stdout.find('##AST') == -1
     assert stdout.find('### Template Simplifier pass ') == -1
     assert stderr.splitlines() == [
-        '{}:3:14: error: Null pointer dereference: (int*)0 [nullPointer]'.format(test_file)
+        f'{test_file}:3:14: error: Null pointer dereference: (int*)0 [nullPointer]'
     ]
     return stdout
 
@@ -3855,7 +3854,7 @@ void f()
     assert stdout.find('##AST') == -1
     assert stdout.find('### Template Simplifier pass ') == -1
     assert stderr.splitlines() == [
-        "{}:2:1: error: Code 'template<...' is invalid C code. [syntaxError]".format(test_file)
+        f"{test_file}:2:1: error: Code 'template<...' is invalid C code. [syntaxError]"
     ]
 
 
@@ -3887,7 +3886,7 @@ int PTR4 q4_var RBR4 = 0;
     assert exitcode == 0, stdout
     assert stdout.splitlines() == []
     assert stderr.splitlines() == [
-        '{}:12:5: error: maximum AST depth exceeded [internalAstError]'.format(test_file)
+        f'{test_file}:12:5: error: maximum AST depth exceeded [internalAstError]'
     ]
 
 
@@ -4032,7 +4031,7 @@ int 你=0;
     assert exitcode == 0, stdout
     assert stdout.splitlines() == []
     assert stderr.splitlines() == [
-        '{}:2:5: error: The code contains unhandled character(s) (character code=228). Neither unicode nor extended ascii is supported. [unhandledChar]'.format(test_file)
+        f'{test_file}:2:5: error: The code contains unhandled character(s) (character code=228). Neither unicode nor extended ascii is supported. [unhandledChar]'
     ]
 
 
@@ -4048,7 +4047,7 @@ def test_simplecpp_include_nested_too_deeply(tmp_path):
     for i in range(400):
         test_h = tmp_path / f'test_{i}.h'
         with open(test_h, "w") as f:
-            f.write('#include "test_{}.h"'.format(i+1))
+            f.write(f'#include "test_{i+1}.h"')
 
     args = [
         '-q',
@@ -4063,8 +4062,8 @@ def test_simplecpp_include_nested_too_deeply(tmp_path):
     test_h = tmp_path / 'test_398.h'
     assert stderr.splitlines() == [
         # TODO: should only report the error once
-        '{}:1:2: error: #include nested too deeply [includeNestedTooDeeply]'.format(test_h),
-        '{}:1:2: error: #include nested too deeply [includeNestedTooDeeply]'.format(test_h)
+        f'{test_h}:1:2: error: #include nested too deeply [includeNestedTooDeeply]',
+        f'{test_h}:1:2: error: #include nested too deeply [includeNestedTooDeeply]'
     ]
 
 
@@ -4085,8 +4084,8 @@ def test_simplecpp_syntax_error(tmp_path):
     assert stdout.splitlines() == []
     assert stderr.splitlines() == [
         # TODO: should only report the error once
-        '{}:1:2: error: No header in #include [syntaxError]'.format(test_file),
-        '{}:1:2: error: No header in #include [syntaxError]'.format(test_file)
+        f'{test_file}:1:2: error: No header in #include [syntaxError]',
+        f'{test_file}:1:2: error: No header in #include [syntaxError]'
     ]
 
 
@@ -4153,16 +4152,16 @@ def test_no_valid_configuration(tmp_path):
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0, stdout
     assert stdout.splitlines() == [
-        'Checking {} ...'.format(test_file)
+        f'Checking {test_file} ...'
     ]
     # TODO: this lacks context about the configuration which encounters these errors
     # TODO: add message when a configuration is dropped?
     assert stderr.splitlines() == [
         # TODO: should only report the error once
-        '{}:1:2: error: No header in #include [syntaxError]'.format(test_file),
-        '{}:1:2: error: No header in #include [syntaxError]'.format(test_file),
-        '{}:1:2: error: No header in #include [syntaxError]'.format(test_file),
-        '{}:0:0: information: This file is not analyzed. No working configuration could be extracted. Use -v for more details. [noValidConfiguration]'.format(test_file)
+        f'{test_file}:1:2: error: No header in #include [syntaxError]',
+        f'{test_file}:1:2: error: No header in #include [syntaxError]',
+        f'{test_file}:1:2: error: No header in #include [syntaxError]',
+        f'{test_file}:0:0: information: This file is not analyzed. No working configuration could be extracted. Use -v for more details. [noValidConfiguration]'
     ]
 
 
@@ -4188,13 +4187,13 @@ def test_no_valid_configuration_check_config(tmp_path):
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0, stdout
     assert stdout.splitlines() == [
-        'Checking {} ...'.format(test_file)
+        f'Checking {test_file} ...'
     ]
     # TODO: this lacks context about the configuration which encounters these errors
     # TODO: add message when a configuration is dropped
     assert stderr.splitlines() == [
-        '{}:1:2: error: No header in #include [syntaxError]'.format(test_file),
-        '{}:1:2: error: No header in #include [syntaxError]'.format(test_file)
+        f'{test_file}:1:2: error: No header in #include [syntaxError]',
+        f'{test_file}:1:2: error: No header in #include [syntaxError]'
     ]
 
 
@@ -4218,7 +4217,7 @@ def __test_active_checkers(tmp_path, active_cnt, total_cnt, use_misra=False, use
     if use_misra:
         args += ['--addon=misra']
     if build_dir:
-        args += ['--cppcheck-build-dir={}'.format(build_dir)]
+        args += [f'--cppcheck-build-dir={build_dir}']
     else:
         args += ['--no-cppcheck-build-dir']
 
@@ -4236,7 +4235,7 @@ def __test_active_checkers(tmp_path, active_cnt, total_cnt, use_misra=False, use
 
     if build_dir:
         checkers_file = build_dir / 'checkers.txt'
-        with open(checkers_file, 'r') as f:
+        with open(checkers_file) as f:
             checkers = f.read().splitlines()
 
         assert checkers == checkers_exp
@@ -4284,14 +4283,14 @@ def test_analyzerinfo(tmp_path):
         '-q',
         '--debug-analyzerinfo',
         '--template=simple',
-        '--cppcheck-build-dir={}'.format(build_dir),
+        f'--cppcheck-build-dir={build_dir}',
         '--enable=all',
         str(test_file)
     ]
 
     stderr_exp = [
-        '{}:3:14: error: Null pointer dereference: (int*)0 [nullPointer]'.format(test_file),
-        "{}:1:6: style: The function 'f' is never used. [unusedFunction]".format(test_file)
+        f'{test_file}:3:14: error: Null pointer dereference: (int*)0 [nullPointer]',
+        f"{test_file}:1:6: style: The function 'f' is never used. [unusedFunction]"
     ]
 
     def run_and_assert_cppcheck(stdout_exp):
@@ -4305,12 +4304,12 @@ def test_analyzerinfo(tmp_path):
 
     # no cached results
     run_and_assert_cppcheck([
-        "no cached result '{}' for '{}' found".format(test_a1_file_s, test_file_s)
+        f"no cached result '{test_a1_file_s}' for '{test_file_s}' found"
     ])
 
     # cached results
     run_and_assert_cppcheck([
-        "skipping analysis - loaded 1 cached finding(s) from '{}' for '{}'".format(test_a1_file_s, test_file_s)
+        f"skipping analysis - loaded 1 cached finding(s) from '{test_a1_file_s}' for '{test_file_s}'"
     ])
 
     # modified file
@@ -4318,7 +4317,7 @@ def test_analyzerinfo(tmp_path):
         f.write('\n#define DEF')
 
     run_and_assert_cppcheck([
-        "discarding cached result from '{}' for '{}' - hash mismatch".format(test_a1_file_s, test_file_s)
+        f"discarding cached result from '{test_a1_file_s}' for '{test_file_s}' - hash mismatch"
     ])
 
     # invalid XML
@@ -4326,7 +4325,7 @@ def test_analyzerinfo(tmp_path):
         f.write('.')
 
     run_and_assert_cppcheck([
-        "discarding cached result - failed to load '{}' for '{}' (XML_ERROR_PARSING_TEXT)".format(test_a1_file_s, test_file_s)
+        f"discarding cached result - failed to load '{test_a1_file_s}' for '{test_file_s}' (XML_ERROR_PARSING_TEXT)"
     ])
 
     # missing root node
@@ -4334,7 +4333,7 @@ def test_analyzerinfo(tmp_path):
         f.write('<?xml version="1.0"?>')
 
     run_and_assert_cppcheck([
-        "discarding cached result from '{}' for '{}' - no root node found".format(test_a1_file_s, test_file_s)
+        f"discarding cached result from '{test_a1_file_s}' for '{test_file_s}' - no root node found"
     ])
 
     # mismatched root node
@@ -4342,7 +4341,7 @@ def test_analyzerinfo(tmp_path):
         f.write('<?xml version="1.0"?><root/>')
 
     run_and_assert_cppcheck([
-        "discarding cached result from '{}' for '{}' - unexpected root node".format(test_a1_file_s, test_file_s)
+        f"discarding cached result from '{test_a1_file_s}' for '{test_file_s}' - unexpected root node"
     ])
 
     # missing 'hash' attribute
@@ -4350,7 +4349,7 @@ def test_analyzerinfo(tmp_path):
         f.write('<?xml version="1.0"?><analyzerinfo/>')
 
     run_and_assert_cppcheck([
-        "discarding cached result from '{}' for '{}' - no 'hash' attribute found".format(test_a1_file_s, test_file_s)
+        f"discarding cached result from '{test_a1_file_s}' for '{test_file_s}' - no 'hash' attribute found"
     ])
 
     # invalid 'hash' attribute
@@ -4358,7 +4357,7 @@ def test_analyzerinfo(tmp_path):
         f.write('<?xml version="1.0"?><analyzerinfo hash="hash"/>')
 
     run_and_assert_cppcheck([
-        "discarding cached result from '{}' for '{}' - hash mismatch".format(test_a1_file_s, test_file_s)
+        f"discarding cached result from '{test_a1_file_s}' for '{test_file_s}' - hash mismatch"
     ])
 
     # TODO:
@@ -4388,7 +4387,7 @@ void f(T* p)
     args = [
         '-q',
         '--template=simple',
-        '--cppcheck-build-dir={}'.format(build_dir),
+        f'--cppcheck-build-dir={build_dir}',
         str(test_file)
     ]
 

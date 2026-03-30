@@ -43,7 +43,7 @@ def getpackages():
         return []
     # TODO: handle exitcode?
     subprocess.call(['nice', 'gunzip', 'ls-lR.gz'])
-    with open('ls-lR', 'rt') as f:
+    with open('ls-lR') as f:
         lines = f.readlines()
     # TODO: handle exitcode?
     subprocess.call(['rm', 'ls-lR'])
@@ -94,7 +94,7 @@ def removeAll():
                 else:
                     os.remove(filename)
         # pylint: disable=undefined-variable
-        except WindowsError as err:
+        except OSError as err:
             time.sleep(30)
             if count == 0:
                 print('Failed to cleanup files/folders')

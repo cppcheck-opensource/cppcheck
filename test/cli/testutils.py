@@ -41,7 +41,7 @@ def create_gui_project_file(project_file, root_path=None, import_project=None, p
         cppcheck_xml += '  </addons>\n'
     cppcheck_xml += '</project>\n'
 
-    with open(project_file, 'wt') as f:
+    with open(project_file, 'w') as f:
         f.write(cppcheck_xml)
 
 
@@ -70,7 +70,7 @@ def __lookup_cppcheck_exe():
 
     if exe_path:
         exe_path = os.path.abspath(exe_path)
-        print("using '{}'".format(exe_path))
+        print(f"using '{exe_path}'")
     return exe_path
 
 

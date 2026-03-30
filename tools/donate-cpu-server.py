@@ -54,7 +54,7 @@ logger.addHandler(handler_file)
 
 def print_ts(msg) -> None:
     dt = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
-    print('[{}] {}'.format(dt, msg))
+    print(f'[{dt}] {msg}')
 
 
 # Set up an exception hook for all uncaught exceptions so they can be logged
@@ -178,7 +178,7 @@ def latestReport(latestResults: list) -> str:
         count = ['0', '0']
         lost = 0
         added = 0
-        for line in open(filename, 'rt'):
+        for line in open(filename):
             line = line.strip()
             if datestr is None and line.startswith(str(current_year) + '-') or line.startswith(str(current_year - 1) + '-'):
                 datestr = line
@@ -214,7 +214,7 @@ def crashReport(results_path: str, query_params: dict):
     for filename in sorted(glob.glob(os.path.expanduser(results_path + '/*'))):
         if not os.path.isfile(filename) or filename.endswith('.diff'):
             continue
-        with open(filename, 'rt') as file_:
+        with open(filename) as file_:
             datestr = None
             package_url = None
             for line in file_:
@@ -244,7 +244,7 @@ def crashReport(results_path: str, query_params: dict):
                     if c_head != 'Crash':
                         break
                     if package_url is not None:
-                        pkgs += '{}\n'.format(package_url)
+                        pkgs += f'{package_url}\n'
                 elif line.find(' received signal ') != -1:
                     crash_line = next(file_, '').strip()
                     location_index = crash_line.rfind(' at ')
@@ -276,7 +276,7 @@ def crashReport(results_path: str, query_params: dict):
                             stack_trace.append(m.group('number') + ' ' + m.group('function') + '(...) at ' + m.group('location'))
                             continue
 
-                        print_ts('{} - unmatched stack frame - {}'.format(package, l))
+                        print_ts(f'{package} - unmatched stack frame - {l}')
                         break
                     key = hash(' '.join(stack_trace))
 
@@ -315,7 +315,7 @@ def timeoutReport(results_path: str) -> str:
     for filename in sorted(glob.glob(os.path.expanduser(results_path + '/*'))):
         if not os.path.isfile(filename) or filename.endswith('.diff'):
             continue
-        with open(filename, 'rt') as file_:
+        with open(filename) as file_:
             datestr = None
             for line in file_:
                 line = line.strip()
@@ -361,7 +361,7 @@ def staleReport(results_path: str, query_params: dict) -> str:
     for filename in sorted(glob.glob(os.path.expanduser(results_path + '/*'))):
         if filename.endswith('.diff') or not os.path.isfile(filename):
             continue
-        with open(filename, 'rt') as f:
+        with open(filename) as f:
             # first line is datetime string
             datestr = f.readline().strip()
             try:
@@ -425,7 +425,7 @@ def diffReport(resultsPath: str) -> str:
     for filename in sorted(glob.glob(resultsPath + '/*.diff')):
         if not os.path.isfile(filename):
             continue
-        with open(filename, 'rt') as f:
+        with open(filename) as f:
             data = json.loads(f.read())
         uploadedToday = data['date'] == today
         for messageId in data['sums']:
@@ -458,7 +458,7 @@ def generate_package_diff_statistics(filename: str) -> None:
 
     sums = {}
 
-    for line in open(filename, 'rt'):
+    for line in open(filename):
         line = line.strip()
         if line == 'diff:':
             is_diff = True
@@ -486,7 +486,7 @@ def generate_package_diff_statistics(filename: str) -> None:
 
     filename_diff = filename + '.diff'
     if sums:
-        with open(filename_diff, 'wt') as f:
+        with open(filename_diff, 'w') as f:
             f.write(json.dumps(output))
     elif os.path.isfile(filename_diff):
         os.remove(filename_diff)
@@ -498,7 +498,7 @@ def diffMessageIdReport(resultPath: str, messageId: str) -> str:
     for filename in sorted(glob.glob(resultPath + '/*.diff')):
         if not os.path.isfile(filename):
             continue
-        with open(filename, 'rt') as f:
+        with open(filename) as f:
             diff_stats = json.loads(f.read())
         if messageId not in diff_stats['sums']:
             continue
@@ -507,7 +507,7 @@ def diffMessageIdReport(resultPath: str, messageId: str) -> str:
 
         url = None
         diff = False
-        for line in open(filename[:-5], 'rt'):
+        for line in open(filename[:-5]):
             if line.startswith('ftp://'):
                 url = line
             elif line == 'diff:\n':
@@ -529,7 +529,7 @@ def diffMessageIdTodayReport(resultPath: str, messageId: str) -> str:
     for filename in sorted(glob.glob(resultPath + '/*.diff')):
         if not os.path.isfile(filename):
             continue
-        with open(filename, 'rt') as f:
+        with open(filename) as f:
             diff_stats = json.loads(f.read())
         if messageId not in diff_stats['sums']:
             continue
@@ -541,7 +541,7 @@ def diffMessageIdTodayReport(resultPath: str, messageId: str) -> str:
         url = None
         diff = False
         firstLine = True
-        for line in open(filename[:-5], 'rt'):
+        for line in open(filename[:-5]):
             if firstLine:
                 firstLine = False
                 if not line.startswith(today):
@@ -599,7 +599,7 @@ def summaryReport(resultsPath: str, name: str, prefix: str, marker: str) -> str:
         uploadedToday = False
         firstLine = True
         inResults = False
-        for line in open(filename, 'rt'):
+        for line in open(filename):
             if firstLine:
                 if line.startswith(today):
                     uploadedToday = True
@@ -641,7 +641,7 @@ def summaryReport(resultsPath: str, name: str, prefix: str, marker: str) -> str:
                 outToday[messageId] += 1
 
     html = '<!DOCTYPE html>\n'
-    html += '<html><head><title>{} report</title></head><body>\n'.format(name)
+    html += f'<html><head><title>{name} report</title></head><body>\n'
     html += '<h1>HEAD report</h1>\n'
     html += '<h2>Uploaded today</h2>'
     html += summaryReportFromDict(outToday, prefix, 'today')
@@ -668,7 +668,7 @@ def messageIdReport(resultPath: str, marker: str, messageId: str, query_params: 
             continue
         url = None
         inResults = False
-        for line in open(filename, 'rt'):
+        for line in open(filename):
             if line.startswith('cppcheck: '):
                 if OLD_VERSION not in line:
                     # Package results seem to be too old, skip
@@ -714,7 +714,7 @@ def messageIdTodayReport(resultPath: str, messageId: str, marker: str) -> str:
         url = None
         inResults = False
         firstLine = True
-        for line in open(filename, 'rt'):
+        for line in open(filename):
             if firstLine:
                 firstLine = False
                 if not line.startswith(today):
@@ -754,8 +754,8 @@ def timeReport(resultPath: str, show_gt: bool, query_params: dict):
 
     title = 'Time report ({})'.format('regressed' if show_gt else 'improved')
     html = '<!DOCTYPE html>\n'
-    html += '<html><head><title>{}</title></head><body>\n'.format(title)
-    html += '<h1>{}</h1>\n'.format(title)
+    html += f'<html><head><title>{title}</title></head><body>\n'
+    html += f'<h1>{title}</h1>\n'
     html += '<pre>\n'
     column_width = [40, 10, 10, 10, 10, 10]
     html += '<b>'
@@ -773,7 +773,7 @@ def timeReport(resultPath: str, show_gt: bool, query_params: dict):
             continue
         datestr = None
         package_url = None
-        for line in open(filename, 'rt'):
+        for line in open(filename):
             line = line.strip()
             if line.startswith('cppcheck: '):
                 if OLD_VERSION not in line:
@@ -820,13 +820,13 @@ def timeReport(resultPath: str, show_gt: bool, query_params: dict):
                 data[pkg_name] = (datestr, split_line[2], split_line[1], time_factor)
 
                 if package_url is not None:
-                    pkgs += '{}\n'.format(package_url)
+                    pkgs += f'{package_url}\n'
             break
 
     sorted_data = sorted(data.items(), key=lambda kv: kv[1][3], reverse=show_gt)
     sorted_dict = collections.OrderedDict(sorted_data)
     for key in sorted_dict:
-        html += fmt(key, sorted_dict[key][0], sorted_dict[key][1], sorted_dict[key][2], '{:.2f}'.format(sorted_dict[key][3]),
+        html += fmt(key, sorted_dict[key][0], sorted_dict[key][1], sorted_dict[key][2], f'{sorted_dict[key][3]:.2f}',
                     column_width=column_width) + '\n'
 
     html += '\n'
@@ -842,9 +842,9 @@ def timeReport(resultPath: str, show_gt: bool, query_params: dict):
     html += 'Time for all packages (not just the ones listed above):\n'
     html += fmt('Total time:',
             '',
-            '{:.1f}'.format(total_time_base),
-            '{:.1f}'.format(total_time_head),
-            '{:.2f}'.format(total_time_factor), link=False, column_width=column_width)
+            f'{total_time_base:.1f}',
+            f'{total_time_head:.1f}',
+            f'{total_time_factor:.2f}', link=False, column_width=column_width)
 
     html += '\n'
     html += '</pre>\n'
@@ -858,8 +858,8 @@ def timeReport(resultPath: str, show_gt: bool, query_params: dict):
 def timeReportSlow(resultPath: str) -> str:
     title = 'Time report (slowest)'
     html = '<!DOCTYPE html>\n'
-    html += '<html><head><title>{}</title></head><body>\n'.format(title)
-    html += '<h1>{}</h1>\n'.format(title)
+    html += f'<html><head><title>{title}</title></head><body>\n'
+    html += f'<h1>{title}</h1>\n'
     html += '<pre>\n'
     html += '<b>'
     html += fmt('Package', 'Date       Time', OLD_VERSION, 'Head', link=False)
@@ -873,7 +873,7 @@ def timeReportSlow(resultPath: str) -> str:
         if not os.path.isfile(filename) or filename.endswith('.diff'):
             continue
         datestr = None
-        for line in open(filename, 'rt'):
+        for line in open(filename):
             line = line.strip()
             if line.startswith('cppcheck: '):
                 if OLD_VERSION not in line:
@@ -961,7 +961,7 @@ def check_library_report(result_path: str, message_id: str) -> str:
         if not os.path.isfile(filename) or filename.endswith('.diff'):
             continue
         in_results = False
-        for line in open(filename, 'rt'):
+        for line in open(filename):
             if line.startswith('cppcheck: '):
                 if OLD_VERSION not in line:
                     # Package results seem to be too old, skip
@@ -1026,7 +1026,7 @@ def check_library_function_name(result_path: str, function_name: str, query_para
         in_results = False
         package_url = None
         cppcheck_options = None
-        for line in open(filename, 'rt'):
+        for line in open(filename):
             if line.startswith('cppcheck: '):
                 if OLD_VERSION not in line:
                     # Package results seem to be too old, skip
@@ -1050,7 +1050,7 @@ def check_library_function_name(result_path: str, function_name: str, query_para
             if not (' ' + function_name + ' ') in line:
                 continue
             if pkgs is not None and package_url is not None:
-                pkgs += '{}\n'.format(package_url.strip())
+                pkgs += f'{package_url.strip()}\n'
                 break
             if package_url:
                 output_lines_list.append(package_url)
@@ -1079,7 +1079,7 @@ def clientsReport(results_path: str):
     for filename in sorted(glob.glob(os.path.expanduser(results_path + '/*'))):
         if not os.path.isfile(filename) or filename.endswith('.diff'):
             continue
-        with open(filename, 'rt') as file_:
+        with open(filename) as file_:
             datestr = None
             platform = None
             py_version = None
@@ -1180,7 +1180,7 @@ class HttpClientThread(Thread):
             cmd = self.cmd
             url, queryParams = self.parse_req(cmd)
             if url is None:
-                print_ts('invalid request: {}'.format(cmd))
+                print_ts(f'invalid request: {cmd}')
                 self.connection.close()
                 return
             t_start = time.perf_counter()
@@ -1280,10 +1280,10 @@ class HttpClientThread(Thread):
                     print_ts('HTTP/1.1 404 Not Found')
                     self.connection.send(b'HTTP/1.1 404 Not Found\r\n\r\n')
                 else:
-                    with open(filename, 'rt') as f:
+                    with open(filename) as f:
                         data = f.read()
                     httpGetResponse(self.connection, data, 'text/plain')
-            print_ts('{} finished in {}s'.format(url, (time.perf_counter() - t_start)))
+            print_ts(f'{url} finished in {(time.perf_counter() - t_start)}s')
         except:
             tb = "".join(traceback.format_exception(sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]))
             print_ts(tb)
@@ -1303,7 +1303,7 @@ def read_data(connection, cmd, pos_nl, max_data_size, check_done, cmd_name, time
                 try:
                     text_received = bytes_received.decode('ascii', 'ignore')
                 except UnicodeDecodeError as e:
-                    print_ts('Error: Decoding failed ({}): {}'.format(cmd_name, e))
+                    print_ts(f'Error: Decoding failed ({cmd_name}): {e}')
                     data = None
                     break
                 t = 0.0
@@ -1313,21 +1313,21 @@ def read_data(connection, cmd, pos_nl, max_data_size, check_done, cmd_name, time
             else:
                 time.sleep(0.2)
                 t += 0.2
-    except socket.error as e:
-        print_ts('Socket error occurred ({}): {}'.format(cmd_name, e))
+    except OSError as e:
+        print_ts(f'Socket error occurred ({cmd_name}): {e}')
         data = None
 
     connection.close()
 
     if (timeout > 0) and (t >= timeout):
-        print_ts('Timeout occurred ({}).'.format(cmd_name))
+        print_ts(f'Timeout occurred ({cmd_name}).')
         data = None
 
     if data and (len(data) >= max_data_size):
-        print_ts('Maximum allowed data ({} bytes) exceeded ({}).'.format(max_data_size, cmd_name))
+        print_ts(f'Maximum allowed data ({max_data_size} bytes) exceeded ({cmd_name}).')
 
     elif data and check_done and not data.endswith('\nDONE'):
-        print_ts('Incomplete data received ({}).'.format(cmd_name))
+        print_ts(f'Incomplete data received ({cmd_name}).')
         data = None
 
     return data
@@ -1343,7 +1343,7 @@ def server(server_address_port: int, packages: list, packageIndex: int, resultPa
 
     latestResults = []
     if os.path.isfile('latest.txt'):
-        with open('latest.txt', 'rt') as f:
+        with open('latest.txt') as f:
             latestResults = f.read().strip().split(' ')
 
     print_ts('version ' + SERVER_VERSION)
@@ -1356,7 +1356,7 @@ def server(server_address_port: int, packages: list, packageIndex: int, resultPa
         try:
             bytes_received = connection.recv(128)
             cmd = bytes_received.decode('utf-8', 'ignore')
-        except socket.error as e:
+        except OSError as e:
             print_ts('Error: Recv error: ' + str(e))
             connection.close()
             continue
@@ -1366,12 +1366,12 @@ def server(server_address_port: int, packages: list, packageIndex: int, resultPa
             continue
         pos_nl = cmd.find('\n')
         if pos_nl < 1:
-            print_ts("No newline found in data: '{}'".format(cmd))
+            print_ts(f"No newline found in data: '{cmd}'")
             connection.close()
             continue
         firstLine = cmd[:pos_nl]
         if re.match('[a-zA-Z0-9./ ]+', firstLine) is None:
-            print_ts('Unsupported characters found in command: {}'.format(firstLine))
+            print_ts(f'Unsupported characters found in command: {firstLine}')
             connection.close()
             continue
         if cmd.startswith('GET /'):
@@ -1395,7 +1395,7 @@ def server(server_address_port: int, packages: list, packageIndex: int, resultPa
                 if pkg is not None:
                     break
 
-            with open('package-index.txt', 'wt') as f:
+            with open('package-index.txt', 'w') as f:
                 f.write(str(packageIndex) + '\n')
 
             print_ts('get:' + pkg)
@@ -1452,17 +1452,17 @@ def server(server_address_port: int, packages: list, packageIndex: int, resultPa
                 if os.path.exists(filename):
                     os.remove(filename)
                 continue
-            with open(filename, 'wt') as f:
+            with open(filename, 'w') as f:
                 f.write(strDateTime() + '\n' + data)
             # track latest added results..
             if len(latestResults) >= 20:
                 latestResults = latestResults[1:]
             latestResults.append(filename)
-            with open('latest.txt', 'wt') as f:
+            with open('latest.txt', 'w') as f:
                 f.write(' '.join(latestResults))
             # generate package.diff..
             generate_package_diff_statistics(filename)
-            print_ts('write finished for {} ({} bytes / {}s)'.format(res.group(1), len(data), (time.perf_counter() - t_start)))
+            print_ts(f'write finished for {res.group(1)} ({len(data)} bytes / {(time.perf_counter() - t_start)}s)')
             continue
         if cmd.startswith('write_info\nftp://') or cmd.startswith('write_info\nhttp://'):
             t_start = time.perf_counter()
@@ -1500,9 +1500,9 @@ def server(server_address_port: int, packages: list, packageIndex: int, resultPa
                 if os.path.exists(filename):
                     os.remove(filename)
                 continue
-            with open(filename, 'wt') as f:
+            with open(filename, 'w') as f:
                 f.write(strDateTime() + '\n' + data)
-            print_ts('write_info finished for {} ({} bytes / {}s)'.format(res.group(1), len(data), (time.perf_counter() - t_start)))
+            print_ts(f'write_info finished for {res.group(1)} ({len(data)} bytes / {(time.perf_counter() - t_start)}s)')
             continue
         if cmd == 'getPackagesCount\n':
             packages_count = str(len(packages))
@@ -1517,7 +1517,7 @@ def server(server_address_port: int, packages: list, packageIndex: int, resultPa
                 connection.send(pkg.encode('utf-8', 'ignore'))
                 print_ts('getPackageIdx: ' + pkg)
             else:
-                print_ts('getPackageIdx: index {} is out of range'.format(request_idx))
+                print_ts(f'getPackageIdx: index {request_idx} is out of range')
             connection.close()
             continue
         if cmd.startswith('write_nodata\nftp://'):
@@ -1530,7 +1530,7 @@ def server(server_address_port: int, packages: list, packageIndex: int, resultPa
                 print_ts('No newline found in data. Ignoring no-data data.')
                 continue
             if pos < 10:
-                print_ts('Data is less than 10 characters ({}). Ignoring no-data data.'.format(pos))
+                print_ts(f'Data is less than 10 characters ({pos}). Ignoring no-data data.')
                 continue
             url = data[:pos]
 
@@ -1541,7 +1541,7 @@ def server(server_address_port: int, packages: list, packageIndex: int, resultPa
                     packages[currentIdx] = None
                     print_ts('write_nodata:' + url)
 
-                    with open('packages_nodata.txt', 'at') as f:
+                    with open('packages_nodata.txt', 'a') as f:
                         f.write(url + '\n')
                     break
                 if currentIdx == 0:
@@ -1573,20 +1573,20 @@ if __name__ == "__main__":
     print_ts('work path: ' + workPath)
     resultPath = workPath + '/donated-results'
     if not os.path.isdir(resultPath):
-        print_ts("fatal: result path '{}' is missing".format(resultPath))
+        print_ts(f"fatal: result path '{resultPath}' is missing")
         sys.exit(1)
 
-    with open('packages.txt', 'rt') as f:
+    with open('packages.txt') as f:
         packages = [val.strip() for val in f.readlines()]
 
-    print_ts('packages: {}'.format(len(packages)))
+    print_ts(f'packages: {len(packages)}')
 
     if os.path.isfile('packages_nodata.txt'):
-        with open('packages_nodata.txt', 'rt') as f:
+        with open('packages_nodata.txt') as f:
             packages_nodata = [val.strip() for val in f.readlines()]
             packages_nodata.sort()
 
-        print_ts('packages_nodata: {}'.format(len(packages_nodata)))
+        print_ts(f'packages_nodata: {len(packages_nodata)}')
 
         print_ts('removing packages with no files to process')
         packages_nodata_clean = []
@@ -1597,13 +1597,13 @@ if __name__ == "__main__":
 
         packages_nodata_diff = len(packages_nodata) - len(packages_nodata_clean)
         if packages_nodata_diff:
-            with open('packages_nodata.txt', 'wt') as f:
+            with open('packages_nodata.txt', 'w') as f:
                 for pkg in packages_nodata_clean:
                     f.write(pkg + '\n')
 
-            print_ts('removed {} packages from packages_nodata.txt'.format(packages_nodata_diff))
+            print_ts(f'removed {packages_nodata_diff} packages from packages_nodata.txt')
 
-        print_ts('packages: {}'.format(len(packages)))
+        print_ts(f'packages: {len(packages)}')
 
     if len(packages) == 0:
         print_ts('fatal: there are no packages')
@@ -1611,7 +1611,7 @@ if __name__ == "__main__":
 
     packageIndex = 0
     if os.path.isfile('package-index.txt'):
-        with open('package-index.txt', 'rt') as f:
+        with open('package-index.txt') as f:
             packageIndex = int(f.read())
         if packageIndex < 0 or packageIndex >= len(packages):
             packageIndex = 0

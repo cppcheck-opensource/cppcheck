@@ -67,11 +67,11 @@ for filename in os.listdir(directory):
     versions.append(filename)
 
 if not len(versions):
-    print("error: no versions found in '{}'".format(directory))
+    print(f"error: no versions found in '{directory}'")
     sys.exit(1)
 
 if verbose:
-    print("found {} versions in '{}'".format(len(versions), directory))
+    print(f"found {len(versions)} versions in '{directory}'")
 
 try:
     Version(versions[0])
@@ -79,12 +79,12 @@ try:
     versions.sort(key=Version)
 except:
     if verbose:
-        print("'{}' not a version - assuming commit hashes".format(versions[0]))
+        print(f"'{versions[0]}' not a version - assuming commit hashes")
     if not git_repo:
         print('error: git repository argument required for commit hash sorting')
         sys.exit(1)
     if verbose:
-        print("using git repository '{}' to sort commit hashes".format(git_repo))
+        print(f"using git repository '{git_repo}' to sort commit hashes")
     use_hashes = True
     # if you use the folder from the bisect script that contains the repo as a folder - so remove it from the list
     if versions.count('cppcheck'):
@@ -110,7 +110,7 @@ except:
         sys.exit(1)
 
 if verbose:
-    print("analyzing '{}'".format(input_file))
+    print(f"analyzing '{input_file}'")
 
 last_udiff_version = ''
 last_ec = None
@@ -209,15 +209,15 @@ for entry in versions:
         if not use_hashes:
             ver_str = version
         else:
-            ver_str = '{} ({})'.format(entry, version)
+            ver_str = f'{entry} ({version})'
         if args.perf:
             if out == "timeout":
                 data_str = "0.0" # TODO: how to handle these properly?
             elif ec != 0:
                 continue # skip errors
             else:
-                data_str = '{}'.format((end - start) / 1000.0 / 1000.0 / 1000.0)
-            print('"{}",{}'.format(ver_str, data_str))
+                data_str = f'{(end - start) / 1000.0 / 1000.0 / 1000.0}'
+            print(f'"{ver_str}",{data_str}')
             continue
         print(ver_str)
         print(ec)
@@ -244,7 +244,7 @@ for entry in versions:
         if not use_hashes:
             print(version)
         else:
-            print('{} ({})'.format(entry, version))
+            print(f'{entry} ({version})')
 
         last_ec = ec
         last_out = out
@@ -255,12 +255,12 @@ for entry in versions:
 
     if last_ec != ec:
         if verbose:
-            print("{}: exitcode changed".format(version))
+            print(f"{version}: exitcode changed")
         do_print = True
 
     if last_out != out:
         if verbose:
-            print("{}: output changed".format(version))
+            print(f"{version}: output changed")
         do_print = True
         if args.diff:
             udiff = difflib.unified_diff(last_out.splitlines(True), out.splitlines(True), fromfile=last_udiff_version, tofile=version)
@@ -278,7 +278,7 @@ for entry in versions:
         if not use_hashes:
             print(version)
         else:
-            print('{} ({})'.format(entry, version))
+            print(f'{entry} ({version})')
 
     last_ec = ec
     last_out = out

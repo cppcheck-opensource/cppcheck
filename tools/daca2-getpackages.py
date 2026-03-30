@@ -46,7 +46,7 @@ def getpackages():
     subprocess.call(['nice', 'gunzip', 'ls-lR.gz'])
     if not os.path.isfile('ls-lR'):
         sys.exit(1)
-    with open('ls-lR', 'rt') as f:
+    with open('ls-lR') as f:
         lines = f.readlines()
     # TODO: handle exitcode?
     subprocess.call(['rm', 'ls-lR'])
