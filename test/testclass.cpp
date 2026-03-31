@@ -195,6 +195,7 @@ private:
         TEST_CASE(const98);
         TEST_CASE(const99);
         TEST_CASE(const100);
+        TEST_CASE(const101);
 
         TEST_CASE(const_handleDefaultParameters);
         TEST_CASE(const_passThisToMemberOfOtherClass);
@@ -6970,6 +6971,16 @@ private:
                    "    void f() const {}\n"
                    "};\n");
         ASSERT_EQUALS("", errout_str()); // don't crash
+    }
+
+    void const101() {
+        checkConst("struct error {\n"
+                   "    error() = default;\n"
+                   "};\n"
+                   "struct S : U {\n"
+                   "    int f() { return this->error(); }\n"
+                   "};\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void const_handleDefaultParameters() {
