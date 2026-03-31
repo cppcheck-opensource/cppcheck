@@ -3,14 +3,40 @@ missingIncludeSystem
 checkersReport
 
 # warnings in Qt generated code we cannot fix
+funcArgNamesDifferent:*/moc_aboutdialog.cpp
+funcArgNamesDifferent:*/moc_applicationdialog.cpp
+funcArgNamesDifferent:*/moc_applicationlist.cpp
 funcArgNamesDifferent:*/moc_checkthread.cpp
 funcArgNamesDifferent:*/moc_codeeditor.cpp
 funcArgNamesDifferent:*/moc_codeeditstylecontrols.cpp
+funcArgNamesDifferent:*/moc_compliancereportdialog.cpp
+funcArgNamesDifferent:*/moc_codeeditstyledialog.cpp
+funcArgNamesDifferent:*/moc_fileviewdialog.cpp
+funcArgNamesDifferent:*/moc_helpdialog.cpp
+funcArgNamesDifferent:*/moc_libraryaddfunctiondialog.cpp
+funcArgNamesDifferent:*/moc_librarydialog.cpp:
+funcArgNamesDifferent:*/moc_libraryeditargdialog.cpp
 funcArgNamesDifferent:*/moc_mainwindow.cpp
+funcArgNamesDifferent:*/moc_newsuppressiondialog.cpp
+funcArgNamesDifferent:*/moc_platforms.cpp
+funcArgNamesDifferent:*/moc_projectfile.cpp
+funcArgNamesDifferent:*/moc_projectfiledialog.cpp
 funcArgNamesDifferent:*/moc_resultstree.cpp
 funcArgNamesDifferent:*/moc_resultsview.cpp
+funcArgNamesDifferent:*/moc_scratchpad.cpp
+funcArgNamesDifferent:*/moc_settingsdialog.cpp
+funcArgNamesDifferent:*/moc_statsdialog.cpp
+funcArgNamesDifferent:*/moc_testcppchecklibrarydata.cpp
+funcArgNamesDifferent:*/moc_testfilelist.cpp
+funcArgNamesDifferent:*/moc_testprojectfile.cpp
+funcArgNamesDifferent:*/moc_testresultstree.cpp
+funcArgNamesDifferent:*/moc_testtranslationhandler.cpp
+funcArgNamesDifferent:*/moc_testxmlreportv2.cpp
+funcArgNamesDifferent:*/moc_threaddetails.cpp
 funcArgNamesDifferent:*/moc_threadhandler.cpp
 funcArgNamesDifferent:*/moc_threadresult.cpp
+funcArgNamesDifferent:*/moc_translationhandler.cpp
+funcArgNamesDifferent:*/moc_txtreport.cpp
 naming-varname:*/gui/ui_*.h
 functionStatic:*/gui/ui_*.h
 
@@ -39,7 +65,9 @@ invalidPrintfArgType_sint:externals/tinyxml2/tinyxml2.h
 naming-privateMemberVariable:externals/tinyxml2/tinyxml2.h
 functionStatic:externals/tinyxml2/tinyxml2.cpp
 funcArgNamesDifferent:externals/tinyxml2/tinyxml2.cpp
+funcArgNamesDifferent:externals/tinyxml2/tinyxml2.h
 nullPointerRedundantCheck:externals/tinyxml2/tinyxml2.cpp
 knownConditionTrueFalse:externals/tinyxml2/tinyxml2.cpp
 useStlAlgorithm:externals/simplecpp/simplecpp.cpp
+funcArgNamesDifferent:externals/simplecpp/simplecpp.h
 missingMemberCopy:externals/simplecpp/simplecpp.h

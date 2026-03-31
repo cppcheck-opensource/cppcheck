@@ -1430,7 +1430,6 @@ public:
     /* returns the opening { if tok points to enum */
     static const Token* isEnumDefinition(const Token* tok);
 
-    static void getErrorMessages(ErrorLogger &errorLogger);
 
     // check if type has no side effects (no constructors and no members with constructors)
     /** @todo false negative: check constructors for side effects */
