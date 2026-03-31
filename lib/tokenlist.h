@@ -56,7 +56,7 @@ public:
     TokenList(const TokenList &) = delete;
     TokenList &operator=(const TokenList &) = delete;
 
-    TokenList(TokenList&& other) NOEXCEPT = default;
+    TokenList(TokenList&& other) noexcept = default;
 
     /** @return the source file path. e.g. "file.cpp" */
     const std::string& getSourceFilePath() const;

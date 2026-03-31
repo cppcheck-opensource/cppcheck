@@ -79,11 +79,11 @@ struct ExprIdToken {
         return !(lhs < rhs);
     }
 
-    const Token& operator*() const NOEXCEPT {
+    const Token& operator*() const noexcept {
         return *tok;
     }
 
-    const Token* operator->() const NOEXCEPT {
+    const Token* operator->() const noexcept {
         return tok;
     }
 
@@ -128,7 +128,7 @@ struct CPPCHECKLIB ProgramMemory {
 
     void erase_if(const std::function<bool(const ExprIdToken&)>& pred);
 
-    void swap(ProgramMemory &pm) NOEXCEPT;
+    void swap(ProgramMemory &pm) noexcept;
 
     void clear();
 
