@@ -437,6 +437,7 @@ private:
         TEST_CASE(astenumdecl);
         TEST_CASE(astcompound);
         TEST_CASE(astfuncdecl);
+        TEST_CASE(astarrayinit);
 
         TEST_CASE(startOfExecutableScope);
 
@@ -7492,6 +7493,11 @@ private:
         ASSERT_EQUALS("", testAst("::int32_t f();"));
     }
 
+    void astarrayinit() { // #11738
+        ASSERT_EQUALS("a2[12,{", testAst("int a[2]{ 1, 2 };"));
+        ASSERT_EQUALS("a2[2[ 12, 34,{", testAst("int a[2][2]{ { 1, 2 }, { 3, 4 } };"));
+    }
+
 #define isStartOfExecutableScope(offset, code) isStartOfExecutableScope_(offset, code, __FILE__, __LINE__)
     template<size_t size>
     bool isStartOfExecutableScope_(int offset, const char (&code)[size], const char* file, int line) {
@@ -8638,6 +8644,10 @@ private:
                         Token::Cpp11init::CPP11INIT);
 
         testIsCpp11init("void f() { g([]() {}, { 1 }); }\n",
+                        "{ 1",
+                        Token::Cpp11init::CPP11INIT);
+
+        testIsCpp11init("int a[2]{ 1, 2 }; \n",
                         "{ 1",
                         Token::Cpp11init::CPP11INIT);
 
