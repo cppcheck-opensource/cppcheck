@@ -2358,7 +2358,7 @@ bool CheckClass::isMemberFunc(const Scope *scope, const Token *tok)
         for (const Function &func : scope->functionList) {
             if (func.name() == tok->str()) {
                 const Token* tok2 = tok->tokAt(2);
-                int argsPassed = tok2->str() == ")" ? 0 : 1;
+                size_t argsPassed = tok2->str() == ")" ? 0 : 1;
                 for (;;) {
                     tok2 = tok2->nextArgument();
                     if (tok2)
@@ -2455,9 +2455,9 @@ bool CheckClass::checkConstFunc(const Scope *scope, const Function *func, Member
 
         if (const Function* f = funcTok->function()) { // check known function
             const std::vector<const Token*> args = getArguments(funcTok);
-            const auto argMax = std::min<nonneg int>(args.size(), f->argCount());
+            const auto argMax = std::min<size_t>(args.size(), f->argCount());
 
-            for (nonneg int argIndex = 0; argIndex < argMax; ++argIndex) {
+            for (size_t argIndex = 0; argIndex < argMax; ++argIndex) {
                 const Variable* const argVar = f->getArgumentVar(argIndex);
                 if (!argVar || ((argVar->isArrayOrPointer() || argVar->isReference()) &&
                                 !(argVar->valueType() && argVar->valueType()->isConst(argVar->valueType()->pointer)))) { // argument might be modified

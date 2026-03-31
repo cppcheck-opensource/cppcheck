@@ -2464,7 +2464,7 @@ static void valueFlowLifetimeFunction(Token *tok, const TokenList &tokenlist, Er
     const int returnContainer = settings.library.returnValueContainer(tok);
     if (returnContainer >= 0) {
         std::vector<const Token *> args = getArguments(tok);
-        for (int argnr = 1; argnr <= args.size(); ++argnr) {
+        for (size_t argnr = 1; argnr <= args.size(); ++argnr) {
             const Library::ArgumentChecks::IteratorInfo *i = settings.library.getArgIteratorInfo(tok, argnr);
             if (!i)
                 continue;
@@ -5722,7 +5722,7 @@ static void valueFlowFunctionDefaultParameter(const TokenList& tokenlist, const 
         const Function* function = scope->function;
         if (!function)
             continue;
-        for (nonneg int arg = function->minArgCount(); arg < function->argCount(); arg++) {
+        for (size_t arg = function->minArgCount(); arg < function->argCount(); arg++) {
             const Variable* var = function->getArgumentVar(arg);
             if (var && var->hasDefault() && Token::Match(var->nameToken(), "%var% = %num%|%str%|%char%|%name% [,)]")) {
                 const std::list<ValueFlow::Value> &values = var->nameToken()->tokAt(2)->values();

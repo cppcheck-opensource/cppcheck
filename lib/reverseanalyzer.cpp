@@ -201,7 +201,7 @@ namespace {
         void traverse(Token* start, const Token* end = nullptr) {
             if (start == end)
                 return;
-            std::size_t i = start->index();
+            nonneg int i = start->index();
             for (Token* tok = start->previous(); succeeds(tok, end); tok = tok->previous()) {
                 if (tok->index() >= i)
                     throw InternalError(tok, "Cyclic reverse analysis.");

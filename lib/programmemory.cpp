@@ -1555,7 +1555,7 @@ namespace {
                     return unknown();
                 const MathLib::bigint index = rhs.intvalue;
                 if (index >= 0 && index < strValue.size())
-                    return ValueFlow::Value{strValue[static_cast<std::size_t>(index)]};
+                    return ValueFlow::Value{strValue[index]};
                 if (index == strValue.size())
                     return ValueFlow::Value{};
             } else if (Token::Match(expr, "%cop%") && expr->astOperand1() && expr->astOperand2()) {

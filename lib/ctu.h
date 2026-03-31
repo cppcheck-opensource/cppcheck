@@ -77,14 +77,14 @@ namespace CTU {
 
         struct UnsafeUsage {
             UnsafeUsage() = default;
-            UnsafeUsage(std::string myId, nonneg int myArgNr, std::string myArgumentName, Location location, MathLib::bigint value)
+            UnsafeUsage(std::string myId, size_t myArgNr, std::string myArgumentName, Location location, MathLib::bigint value)
                 : myId(std::move(myId))
                 , myArgNr(myArgNr)
                 , myArgumentName(std::move(myArgumentName))
                 , location(std::move(location))
                 , value(value) {}
             std::string myId;
-            nonneg int myArgNr{};
+            size_t myArgNr{};
             std::string myArgumentName;
             Location location;
             MathLib::bigint value{};
@@ -94,14 +94,14 @@ namespace CTU {
         class CallBase {
         public:
             CallBase() = default;
-            CallBase(std::string callId, int callArgNr, std::string callFunctionName, Location loc)
+            CallBase(std::string callId, size_t callArgNr, std::string callFunctionName, Location loc)
                 : callId(std::move(callId)), callArgNr(callArgNr), callFunctionName(std::move(callFunctionName)), location(std::move(loc))
             {}
             CallBase(const Tokenizer &tokenizer, const Token *callToken);
             virtual ~CallBase() = default;
             CallBase(const CallBase&) = default;
             std::string callId;
-            int callArgNr{};
+            size_t callArgNr{};
             std::string callFunctionName;
             Location location;
         protected:
@@ -136,7 +136,7 @@ namespace CTU {
             bool loadFromXml(const tinyxml2::XMLElement *xmlElement);
 
             std::string myId;
-            nonneg int myArgNr{};
+            size_t myArgNr{};
         };
 
         std::list<FunctionCall> functionCalls;

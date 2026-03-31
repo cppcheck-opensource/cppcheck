@@ -833,7 +833,7 @@ void CheckStl::mismatchingContainers()
 
             // Group args together by container
             std::map<int, std::vector<ArgIteratorInfo>> containers;
-            for (int argnr = 1; argnr <= args.size(); ++argnr) {
+            for (size_t argnr = 1; argnr <= args.size(); ++argnr) {
                 const Library::ArgumentChecks::IteratorInfo *i = mSettings->library.getArgIteratorInfo(ftok, argnr);
                 if (!i)
                     continue;
@@ -1439,7 +1439,7 @@ void CheckStl::eraseCheckLoopVar(const Scope &scope, const Variable *var)
         if (Token::Match(tok->astParent(), "=|return"))
             continue;
         // Iterator is invalid..
-        int indentlevel = 0U;
+        int indentlevel = 0;
         const Token *tok2 = tok->link();
         for (; tok2 != scope.bodyEnd; tok2 = tok2->next()) {
             if (tok2->str() == "{") {
@@ -1447,7 +1447,7 @@ void CheckStl::eraseCheckLoopVar(const Scope &scope, const Variable *var)
                 continue;
             }
             if (tok2->str() == "}") {
-                if (indentlevel > 0U)
+                if (indentlevel > 0)
                     --indentlevel;
                 else if (Token::simpleMatch(tok2, "} else {"))
                     tok2 = tok2->linkAt(2);
@@ -3283,7 +3283,7 @@ void CheckStl::knownEmptyContainer()
                 if (args.empty())
                     continue;
 
-                for (int argnr = 1; argnr <= args.size(); ++argnr) {
+                for (size_t argnr = 1; argnr <= args.size(); ++argnr) {
                     const Library::ArgumentChecks::IteratorInfo *i = mSettings->library.getArgIteratorInfo(tok, argnr);
                     if (!i)
                         continue;

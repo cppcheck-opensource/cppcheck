@@ -2255,7 +2255,7 @@ void TemplateSimplifier::expandTemplate(
                 Token::Match(tok3->next()->findClosingBracket(), ">|>>")) {
                 const Token *closingBracket = tok3->next()->findClosingBracket();
                 if (Token::simpleMatch(closingBracket->next(), "&")) {
-                    int num = 0;
+                    size_t num = 0;
                     const Token *par = tok3->next();
                     while (num < typeParametersInDeclaration.size() && par != closingBracket) {
                         const std::string pattern("[<,] " + typeParametersInDeclaration[num]->str() + " [,>]");
@@ -3038,7 +3038,7 @@ bool TemplateSimplifier::matchSpecialization(
                 declToken->isSigned() != instToken->isSigned() ||
                 declToken->isUnsigned() != instToken->isUnsigned() ||
                 declToken->isLong() != instToken->isLong()) {
-                int nr = 0;
+                size_t nr = 0;
                 while (nr < templateParameters.size() && templateParameters[nr]->str() != declToken->str())
                     ++nr;
 
@@ -3136,7 +3136,7 @@ bool TemplateSimplifier::simplifyTemplateInstantiations(
 
     // locate template usage..
     std::string::size_type numberOfTemplateInstantiations = mTemplateInstantiations.size();
-    unsigned int recursiveCount = 0;
+    int recursiveCount = 0;
 
     bool instantiated = false;
 

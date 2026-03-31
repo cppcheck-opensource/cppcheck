@@ -280,11 +280,11 @@ std::list<CTU::FileInfo::UnsafeUsage> CTU::loadUnsafeUsageListFromXml(const tiny
     return ret;
 }
 
-static int isCallFunction(const Scope *scope, int argnr, const Token *&tok)
+static size_t isCallFunction(const Scope *scope, size_t argnr, const Token *&tok)
 {
     const Variable * const argvar = scope->function->getArgumentVar(argnr);
     if (!argvar->isPointer())
-        return -1;
+        return 0;
     for (const Token *tok2 = scope->bodyStart; tok2 != scope->bodyEnd; tok2 = tok2->next()) {
         if (tok2->variable() != argvar)
             continue;
@@ -306,7 +306,7 @@ static int isCallFunction(const Scope *scope, int argnr, const Token *&tok)
         tok = prev->previous();
         return argnr2;
     }
-    return -1;
+    return 0;
 }
 
 
@@ -330,7 +330,7 @@ CTU::FileInfo *CTU::getFileInfo(const Tokenizer &tokenizer)
             if (!tokFunction)
                 continue;
             const std::vector<const Token *> args(getArguments(tok->previous()));
-            for (int argnr = 0; argnr < args.size(); ++argnr) {
+            for (size_t argnr = 0; argnr < args.size(); ++argnr) {
                 const Token *argtok = args[argnr];
                 if (!argtok)
                     continue;
@@ -427,9 +427,9 @@ CTU::FileInfo *CTU::getFileInfo(const Tokenizer &tokenizer)
         }
 
         // Nested function calls
-        for (int argnr = 0; argnr < scopeFunction->argCount(); ++argnr) {
+        for (size_t argnr = 0; argnr < scopeFunction->argCount(); ++argnr) {
             const Token *tok;
-            const int argnr2 = isCallFunction(&scope, argnr, tok);
+            const size_t argnr2 = isCallFunction(&scope, argnr, tok);
             if (argnr2 > 0) {
                 FileInfo::NestedCall nestedCall(tokenizer, scopeFunction, tok);
                 nestedCall.myArgNr = argnr + 1;
@@ -442,7 +442,7 @@ CTU::FileInfo *CTU::getFileInfo(const Tokenizer &tokenizer)
     return fileInfo;
 }
 
-static std::vector<std::pair<const Token *, CTU::FileInfo::Value>> getUnsafeFunction(const Settings &settings, const Scope *scope, int argnr, bool (*isUnsafeUsage)(const Settings &settings, const Token *argtok, CTU::FileInfo::Value *value))
+static std::vector<std::pair<const Token *, CTU::FileInfo::Value>> getUnsafeFunction(const Settings &settings, const Scope *scope, size_t argnr, bool (*isUnsafeUsage)(const Settings &settings, const Token *argtok, CTU::FileInfo::Value *value))
 {
     std::vector<std::pair<const Token *, CTU::FileInfo::Value>> ret;
     const Variable * const argvar = scope->function->getArgumentVar(argnr);
@@ -487,7 +487,7 @@ std::list<CTU::FileInfo::UnsafeUsage> CTU::getUnsafeUsage(const Tokenizer &token
         const Function *const function = scope.function;
 
         // "Unsafe" functions unconditionally reads data before it is written..
-        for (int argnr = 0; argnr < function->argCount(); ++argnr) {
+        for (size_t argnr = 0; argnr < function->argCount(); ++argnr) {
             for (const std::pair<const Token *, CTU::FileInfo::Value> &v : getUnsafeFunction(settings, &scope, argnr, isUnsafeUsage)) {
                 const Token *tok = v.first;
                 const MathLib::bigint val = v.second.value;
@@ -500,7 +500,7 @@ std::list<CTU::FileInfo::UnsafeUsage> CTU::getUnsafeUsage(const Tokenizer &token
 }
 
 static bool findPath(const std::string &callId,
-                     nonneg int callArgNr,
+                     size_t callArgNr,
                      MathLib::bigint unsafeValue,
                      CTU::FileInfo::InvalidValueType invalidValue,
                      const std::map<std::string, std::list<const CTU::FileInfo::CallBase *>> &callsMap,

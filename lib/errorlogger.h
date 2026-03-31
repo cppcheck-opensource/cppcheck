@@ -88,7 +88,7 @@ public:
         std::string stringify(bool addcolumn = false) const;
 
         unsigned int fileIndex;
-        int line; // negative value means "no line"
+        int line; // negative value means "no line" - TODO: actually 0 means no line - lines from simplecpp are unsigned
         unsigned int column;
 
         const std::string& getinfo() const {

@@ -767,14 +767,14 @@ public:
 
     std::string fullName() const;
 
-    nonneg int argCount() const {
+    size_t argCount() const {
         return argumentList.size();
     }
-    nonneg int minArgCount() const {
+    size_t minArgCount() const {
         return argumentList.size() - initArgCount;
     }
-    const Variable* getArgumentVar(nonneg int num) const;
-    nonneg int initializedArgCount() const {
+    const Variable* getArgumentVar(size_t num) const;
+    size_t initializedArgCount() const {
         return initArgCount;
     }
     /**
@@ -928,7 +928,7 @@ public:
     const Scope* functionScope{};     ///< scope of function body
     const Scope* nestedIn{};          ///< Scope the function is declared in
     std::list<Variable> argumentList; ///< argument list, must remain list due to clangimport usage!
-    nonneg int initArgCount{};        ///< number of args with default values
+    size_t initArgCount{};            ///< number of args with default values
     FunctionType type = FunctionType::eFunction; ///< constructor, destructor, ...
     const Token* noexceptArg{};       ///< noexcept token
     const Token* throwArg{};          ///< throw token
@@ -1209,7 +1209,7 @@ private:
      */
     bool isVariableDeclaration(const Token* tok, const Token*& vartok, const Token*& typetok) const;
 
-    void findFunctionInBase(const Token* tok, nonneg int args, std::vector<const Function *> & matches) const;
+    void findFunctionInBase(const Token* tok, size_t args, std::vector<const Function *> & matches) const;
 
     /** @brief initialize varlist */
     void getVariableList(const Token *start, const Token *end);
