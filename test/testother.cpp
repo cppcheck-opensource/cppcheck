@@ -1792,7 +1792,7 @@ private:
 
     void varScope39() {
         check("struct S {\n" // #12405
-              "    void f(const std::string&) const;\n"
+              "    void f(const std::string& s) const;\n"
               "    const int* g(std::string&) const;\n"
               "};\n"
               "void h(int);\n"
@@ -3621,7 +3621,7 @@ private:
               "class D\n"
               "{\n"
               "public:\n"
-              "  explicit D(int&);\n"
+              "  explicit D(int& i);\n"
               "\n"
               "private:\n"
               "  C c;\n"
@@ -3642,7 +3642,7 @@ private:
               "class D\n"
               "{\n"
               "public:\n"
-              "  explicit D(int&) noexcept;\n"
+              "  explicit D(int& i) noexcept;\n"
               "\n"
               "private:\n"
               "  C c;\n"
@@ -3662,7 +3662,7 @@ private:
               "class D\n"
               "{\n"
               "public:\n"
-              "  explicit D(int&);\n"
+              "  explicit D(int& i);\n"
               "\n"
               "private:\n"
               "  C c;\n"
@@ -3683,7 +3683,7 @@ private:
               "class D\n"
               "{\n"
               "public:\n"
-              "  explicit D(int&);\n"
+              "  explicit D(int& i);\n"
               "\n"
               "private:\n"
               "  C c;\n"
@@ -3704,7 +3704,7 @@ private:
               "class D\n"
               "{\n"
               "public:\n"
-              "  explicit D(int&);\n"
+              "  explicit D(int& i);\n"
               "\n"
               "private:\n"
               "  C c;\n"
@@ -6776,7 +6776,7 @@ private:
               "    AMethodObject(double, double, double);\n"
               "};\n"
               "struct S {\n"
-              "    static void A(double, double, double);\n"
+              "    static void A(double a1, double a2, double a3);\n"
               "};\n"
               "void S::A(double const a1, double const a2, double const a3) {\n"
               "    AMethodObject(a1, a2, a3);\n"
@@ -8013,7 +8013,7 @@ private:
               "public:\n"
               "    double getScale() const { return m_range * m_zoom; }\n"
               "    void setZoom(double z) { m_zoom = z; }\n"
-              "    void dostuff(int);\n"
+              "    void dostuff(int x);\n"
               "private:\n"
               "    double m_zoom;\n"
               "    double m_range;\n"
@@ -12767,6 +12767,17 @@ private:
             "[test.cpp:2:11] -> [test.cpp:3:11]: (style, inconclusive) Function 'f' argument 1 names different: declaration 'a' definition 'b'. [funcArgNamesDifferent]\n"
             "[test.cpp:5:11] -> [test.cpp:6:11]: (style, inconclusive) Function 'g' argument 1 names different: declaration 'a' definition 'b'. [funcArgNamesDifferent]\n"
             "[test.cpp:7:15] -> [test.cpp:8:15]: (style, inconclusive) Function 'h' argument 1 names different: declaration 'a' definition 'b'. [funcArgNamesDifferent]\n",
+            errout_str());
+
+        check("void f(int a);\n" // #14632
+              "void f(int) {}\n"
+              "void g(int);\n"
+              "void g(int b) {}\n"
+              "void h(int);\n"
+              "void h(int) {}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:1:12]: (style, inconclusive) Function 'f' argument 1 names different: declaration 'a' definition '<unnamed>'. [funcArgNamesDifferent]\n"
+            "[test.cpp:4:12]: (style, inconclusive) Function 'g' argument 1 names different: declaration '<unnamed>' definition 'b'. [funcArgNamesDifferent]\n",
             errout_str());
 
     }
