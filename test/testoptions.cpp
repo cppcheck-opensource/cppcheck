@@ -35,6 +35,7 @@ private:
         TEST_CASE(which_test);
         TEST_CASE(which_test_method);
         TEST_CASE(no_test_method);
+        TEST_CASE(defaults);
         TEST_CASE(quiet);
         TEST_CASE(help);
         TEST_CASE(help_long);
