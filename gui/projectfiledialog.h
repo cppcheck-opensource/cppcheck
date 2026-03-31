@@ -275,7 +275,7 @@ private slots:
     /**
      * @brief Edit suppression (double clicking on suppression)
      */
-    void editSuppression(const QModelIndex &/*index*/);
+    void editSuppression(const QModelIndex& /*index*/);
 
     /**
      * @brief Browse for misra file
