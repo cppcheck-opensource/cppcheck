@@ -463,6 +463,16 @@ You can also create your own custom platform configuration in a XML file. Here i
       </sizeof>
     </platform>
 
+
+The locations to look for a platform in order:
+- relative to GUI project file
+- user folder
+- GUI data folder (GUI only)
+- current working path
+- relative to executable
+- `FILESDIR` hard-coded into binary
+
+
 # C/C++ Standard
 
 Use `--std` on the command line to specify a C/C++ standard.
