@@ -5,6 +5,7 @@ import select
 import subprocess
 import time
 import tempfile
+import pathlib
 
 # Create Cppcheck project file
 import sys
@@ -205,29 +206,103 @@ def cppcheck_ex(args, env=None, remove_checkers_report=True, cwd=None, cppcheck_
 
     logging.info(exe + ' ' + ' '.join(args))
 
-    run_subprocess = __run_subprocess_tty if tty else __run_subprocess
-    return_code, stdout, stderr = run_subprocess([exe] + args, env=env, cwd=cwd, timeout=timeout)
+    def run_cppcheck():
+        run_subprocess = __run_subprocess_tty if tty else __run_subprocess
+        rc, out, err = run_subprocess([exe] + args, env=env, cwd=cwd, timeout=timeout)
 
-    stdout = stdout.decode(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
-    stderr = stderr.decode(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
+        out = out.decode(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
+        err = err.decode(encoding='utf-8', errors='ignore').replace('\r\n', '\n')
+
+        return rc, out, err
+
+    return_code, stdout, stderr = run_cppcheck()
+
+    def remove_checkers_msg(msgs):
+        if msgs.find('[checkersReport]\n') > 0:
+            start_id = msgs.find('[checkersReport]\n')
+            start_line = msgs.rfind('\n', 0, start_id)
+            if start_line <= 0:
+                msgs = ''
+            else:
+                msgs = msgs[:start_line + 1]
+        elif msgs.find(': (information) Active checkers: ') >= 0:
+            pos = msgs.find(': (information) Active checkers: ')
+            if pos == 0:
+                msgs = ''
+            elif msgs[pos - 1] == '\n':
+                msgs = msgs[:pos]
+        return msgs
 
     if builddir_tmp:
+        # run it again with the generated cache and make sure the output is identical
+
+        def get_cache_contents():
+            content = {}
+            for dirpath, dirnames, filenames in os.walk(builddir_tmp.name):
+                for fn in filenames:
+                    content[os.path.join(dirpath, fn)] = (pathlib.Path(builddir_tmp.name) / dirpath / fn).read_text()
+                for dn in dirnames:
+                    content[os.path.join(dirpath, dn)] = None
+            return content
+
+        cache_content = get_cache_contents()
+
+        # TODO: check that the cached results were actually used - run with --debug-analyzerinfo, check timestamps, etc.
+        return_code_1, stdout_1, stderr_1 = run_cppcheck()
+
+        print('exitcode - expected')
+        print(return_code)
+        print('exitcode - actual')
+        print(return_code_1)
+
+        # TODO: the following asserts do not show a diff when the test fails
+        # this can apparently by fixed by using register_assert_rewrite() but I have no idea how
+
+        assert return_code == return_code_1
+
+        stdout_lines = stdout.splitlines()
+        stdout_1_lines = stdout_1.splitlines()
+
+        print('stdout - expected')
+        print(stdout_lines)
+        print('stdout - actual')
+        print(stdout_1_lines)
+
+        # strip some common output only seen during analysis
+        stdout_lines = [entry for entry in stdout_lines if not entry.startswith('Processing rule: ')]
+        stdout_lines = [entry for entry in stdout_lines if not entry.startswith('progress: ')]
+
+        # TODO: no messages for checked configurations when using cached data
+        #assert stdout_lines == stdout_1_lines
+
+        stderr_lines = stderr.splitlines()
+        stderr_1_lines = stderr_1.splitlines()
+
+        print('stderr - expected')
+        print(stderr_lines)
+        print('stderr - actual')
+        print(stderr_1_lines)
+
+        # TODO: filter out checkersReport because it  different amount of active checkers for cached runs
+        #stderr_lines = remove_checkers_msg(stderr).splitlines()
+        #stderr_1_lines = remove_checkers_msg(stderr_1).splitlines()
+
+        assert stderr_lines == stderr_1_lines
+
+        cache_content_1 = get_cache_contents()
+
+        print('cache - expected')
+        print(cache_content)
+        print('cache - actual')
+        print(cache_content_1)
+
+        assert cache_content == cache_content_1
+
         builddir_tmp.cleanup()
 
     if remove_checkers_report:
-        if stderr.find('[checkersReport]\n') > 0:
-            start_id = stderr.find('[checkersReport]\n')
-            start_line = stderr.rfind('\n', 0, start_id)
-            if start_line <= 0:
-                stderr = ''
-            else:
-                stderr = stderr[:start_line + 1]
-        elif stderr.find(': (information) Active checkers: ') >= 0:
-            pos = stderr.find(': (information) Active checkers: ')
-            if pos == 0:
-                stderr = ''
-            elif stderr[pos - 1] == '\n':
-                stderr = stderr[:pos]
+        stderr = remove_checkers_msg(stderr)
+
     return return_code, stdout, stderr, exe
 
 

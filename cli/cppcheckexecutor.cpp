@@ -361,21 +361,11 @@ bool CppCheckExecutor::reportUnmatchedSuppressions(const Settings &settings, con
         supprlist.addSuppression(std::move(s));
     }
 
-    const auto reportErrorsFn = [&](const std::string& sourcefile, std::size_t fsFileId, const std::vector<ErrorMessage>& errors) -> bool {
+    const auto reportErrorsFn = [&](const std::vector<ErrorMessage>& errors) -> bool {
         if (errors.empty())
             return false;
 
-        // TODO: what if sourcefile is empty?
-
-        AnalyzerInformation analyzerInfo;
-        // FIXME: this is a horrible hack
-        // we need to "re-open" the file so we can add the unmatchedSuppression findings.
-        // we cannot keep it open conditionally because the whole program analysis reads the XML.
-        // re-ordering the code is also not an option because the unmatched suppression reporting needs to be run after all other checks.
-        analyzerInfo.reopen(settings.buildDir, sourcefile, /*cfgname*/ "", fsFileId);
-
         for (const auto& errmsg : errors) {
-            analyzerInfo.reportErr(errmsg);
             errorLogger.reportErr(errmsg);
         }
         return true;
@@ -385,30 +375,24 @@ bool CppCheckExecutor::reportUnmatchedSuppressions(const Settings &settings, con
 
     for (auto i = files.cbegin(); i != files.cend(); ++i) {
         const std::vector<ErrorMessage> errors = getUnmatchedSuppressions(supprlist.getUnmatchedLocalSuppressions(*i), settings.unmatchedSuppressionFilters);
-        err |= reportErrorsFn(i->spath(), i->fsFileId(), errors);
+        err |= reportErrorsFn(errors);
     }
 
     for (auto i = fileSettings.cbegin(); i != fileSettings.cend(); ++i) {
         const std::vector<ErrorMessage> errors = getUnmatchedSuppressions(supprlist.getUnmatchedLocalSuppressions(i->file), settings.unmatchedSuppressionFilters);
-        err |= reportErrorsFn(i->file.spath(), i->file.fsFileId(), errors);
+        err |= reportErrorsFn(errors);
     }
 
     if (settings.inlineSuppressions) {
         const std::vector<ErrorMessage> errors = getUnmatchedSuppressions(supprlist.getUnmatchedInlineSuppressions(), settings.unmatchedSuppressionFilters);
         for (const auto& errmsg : errors) {
-            std::string sourcefile;
-            if (!errmsg.callStack.empty())
-                sourcefile = errmsg.callStack.cbegin()->getfile(false); // TODO: simplify path?
-            err |= reportErrorsFn(sourcefile, 0, {errmsg});
+            err |= reportErrorsFn({errmsg});
         }
     }
 
     const std::vector<ErrorMessage> errors = getUnmatchedSuppressions(supprlist.getUnmatchedGlobalSuppressions(), settings.unmatchedSuppressionFilters);
     for (const auto& errmsg : errors) {
-        std::string sourcefile;
-        if (!errmsg.callStack.empty())
-            sourcefile = errmsg.callStack.cbegin()->getfile(false); // TODO: simplify path?
-        err |= reportErrorsFn(sourcefile, 0, {errmsg});
+        err |= reportErrorsFn({errmsg});
     }
     return err;
 }

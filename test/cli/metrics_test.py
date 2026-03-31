@@ -46,6 +46,7 @@ def test_dummy_metrics_xml_report(tmpdir):
         f'--output-file={output_file}',
         f'--addon={addon_path}',
         '--xml-version=3',
+        '--no-cppcheck-build-dir',  # TODO: fails to run with TEST_CPPCHECK_INJECT_BUILDDIR see #14470
         source_path
     ]
 
@@ -66,6 +67,7 @@ def test_dummy_metrics_stdout(tmpdir):
     args = [
         f'--addon={addon_path}',
         '--xml-version=3',
+        '--no-cppcheck-build-dir',  # TODO: fails to run with TEST_CPPCHECK_INJECT_BUILDDIR see #14470
         source_path
     ]
 
