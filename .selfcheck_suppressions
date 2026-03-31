@@ -4,7 +4,9 @@ checkersReport
 
 # warnings in Qt generated code we cannot fix
 funcArgNamesDifferent:*/moc_checkthread.cpp
+funcArgNamesDifferent:*/moc_codeeditor.cpp
 funcArgNamesDifferent:*/moc_codeeditstylecontrols.cpp
+funcArgNamesDifferent:*/moc_mainwindow.cpp
 funcArgNamesDifferent:*/moc_resultstree.cpp
 funcArgNamesDifferent:*/moc_resultsview.cpp
 funcArgNamesDifferent:*/moc_threadhandler.cpp
