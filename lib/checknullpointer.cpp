@@ -59,13 +59,6 @@ static bool checkNullpointerFunctionCallPlausibility(const Function* func, unsig
     return !func || (func->argCount() >= arg && func->getArgumentVar(arg - 1) && func->getArgumentVar(arg - 1)->isPointer());
 }
 
-/**
- * @brief parse a function call and extract information about variable usage
- * @param tok first token
- * @param var variables that the function read / write.
- * @param library --library files data
- * @param checkNullArg perform isnullargbad check for each argument?
- */
 std::list<const Token*> CheckNullPointer::parseFunctionCall(const Token &tok, const Library &library, bool checkNullArg)
 {
     if (Token::Match(&tok, "%name% ( )") || !tok.tokAt(2))
