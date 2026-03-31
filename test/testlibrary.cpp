@@ -1045,18 +1045,18 @@ private:
     }
 
     void containerActionToFromString() const {
-        for (uint16_t i = 0; i < static_cast<uint16_t>(Library::Container::Action::NO_ACTION); ++i) {
+        for (uint8_t i = 0; i < static_cast<uint8_t>(Library::Container::Action::NO_ACTION); ++i) {
             const auto a = static_cast<Library::Container::Action>(i);
             const std::string& s = Library::Container::toString(a);
-            ASSERT_EQUALS(i, static_cast<uint16_t>(Library::Container::actionFrom(s)));
+            ASSERT_EQUALS_ENUM(a, Library::Container::actionFrom(s));
         }
     }
 
     void containerYieldToFromString() const {
-        for (uint16_t i = 0; i < static_cast<uint16_t>(Library::Container::Yield::NO_YIELD); ++i) {
+        for (uint8_t i = 0; i < static_cast<uint8_t>(Library::Container::Yield::NO_YIELD); ++i) {
             const auto y = static_cast<Library::Container::Yield>(i);
             const std::string& s = Library::Container::toString(y);
-            ASSERT_EQUALS(i, static_cast<uint16_t>(Library::Container::yieldFrom(s)));
+            ASSERT_EQUALS_ENUM(y, Library::Container::yieldFrom(s));
         }
     }
 

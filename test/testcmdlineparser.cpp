@@ -1973,7 +1973,7 @@ private:
     void suppressionTwo() {
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--suppress=uninitvar,noConstructor", "file.cpp"};
-        TODO_ASSERT_EQUALS(static_cast<int>(CmdLineParser::Result::Success), static_cast<int>(CmdLineParser::Result::Fail), static_cast<int>(parseFromArgs(argv)));
+        TODO_ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, CmdLineParser::Result::Fail, parseFromArgs(argv));
         TODO_ASSERT_EQUALS(true, false, supprs->nomsg.isSuppressed(errorMessage("uninitvar", "file.cpp", 1U)));
         TODO_ASSERT_EQUALS(true, false, supprs->nomsg.isSuppressed(errorMessage("noConstructor", "file.cpp", 1U)));
         TODO_ASSERT_EQUALS("", "cppcheck: error: Failed to add suppression. Invalid id \"uninitvar,noConstructor\"\n", logger->str());
@@ -2056,7 +2056,7 @@ private:
     void templatesNoPlaceholder() {
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--template=selfchek", "file.cpp"};
-        TODO_ASSERT_EQUALS(static_cast<int>(CmdLineParser::Result::Fail), static_cast<int>(CmdLineParser::Result::Success), static_cast<int>(parseFromArgs(argv)));
+        TODO_ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS("selfchek", settings->templateFormat);
         ASSERT_EQUALS("", settings->templateLocation);
     }

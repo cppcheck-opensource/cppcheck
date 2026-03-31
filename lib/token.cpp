@@ -772,7 +772,7 @@ nonneg int Token::getStrArraySize(const Token *tok)
     // cppcheck-suppress shadowFunction - TODO: fix this
     const std::string str(getStringLiteral(tok->str()));
     int sizeofstring = 1;
-    for (int i = 0; i < static_cast<int>(str.size()); i++) {
+    for (size_t i = 0; i < str.size(); i++) {
         if (str[i] == '\\')
             ++i;
         ++sizeofstring;

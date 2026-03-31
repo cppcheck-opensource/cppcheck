@@ -498,7 +498,7 @@ TestFixture::SettingsBuilder& TestFixture::SettingsBuilder::library(const char l
     // TODO: exename is not yet set
     const Library::ErrorCode lib_error = settings.library.load(fixture.exename.c_str(), lib).errorcode;
     if (lib_error != Library::ErrorCode::OK)
-        throw std::runtime_error("loading library '" + std::string(lib) + "' failed - " + std::to_string(static_cast<int>(lib_error)));
+        throw std::runtime_error("loading library '" + std::string(lib) + "' failed - " + std::to_string(static_cast<unsigned>(lib_error)));
     // strip extension
     std::string lib_s(lib);
     const std::string ext(".cfg");
@@ -531,6 +531,6 @@ TestFixture::SettingsBuilder& TestFixture::SettingsBuilder::libraryxml(const cha
         throw std::runtime_error(std::string("loading library XML data failed - ") + tinyxml2::XMLDocument::ErrorIDToName(xml_error));
     const Library::ErrorCode lib_error = LibraryHelper::loadxmldoc(settings.library, doc).errorcode;
     if (lib_error != Library::ErrorCode::OK)
-        throw std::runtime_error("loading library XML failed - " + std::to_string(static_cast<int>(lib_error)));
+        throw std::runtime_error("loading library XML failed - " + std::to_string(static_cast<unsigned>(lib_error)));
     return *this;
 }

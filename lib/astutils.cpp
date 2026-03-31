@@ -3815,7 +3815,7 @@ bool isUnreachableOperand(const Token *tok)
             // ternary
             if (Token::simpleMatch(parent, ":") && Token::simpleMatch(parent->astParent(), "?")) {
                 const Token *condTok = parent->astParent()->astOperand1();
-                if (condTok->hasKnownIntValue() && static_cast<bool>(condTok->getKnownIntValue()) != left)
+                if (condTok->hasKnownIntValue() && ((condTok->getKnownIntValue() != 0) != left))
                     return true;
             }
         }

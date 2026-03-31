@@ -101,9 +101,9 @@ std::string CTU::FileInfo::FunctionCall::toXmlString() const
     out << "<function-call"
         << toBaseXmlString()
         << " " << ATTR_CALL_ARGEXPR << "=\"" << ErrorLogger::toxml(callArgumentExpression) << "\""
-        << " " << ATTR_CALL_ARGVALUETYPE << "=\"" << static_cast<int>(callValueType) << "\""
+        << " " << ATTR_CALL_ARGVALUETYPE << "=\"" << static_cast<unsigned>(callValueType) << "\""
         << " " << ATTR_CALL_ARGVALUE << "=\"" << callArgValue.value << "\""
-        << " " << ATTR_CALL_UNKNOWN_FUNCTION_RETURN << "=\"" << static_cast<int>(callArgValue.unknownFunctionReturn) << "\"";
+        << " " << ATTR_CALL_UNKNOWN_FUNCTION_RETURN << "=\"" << static_cast<unsigned>(callArgValue.unknownFunctionReturn) << "\"";
     if (warning)
         out << " " << ATTR_WARNING << "=\"true\"";
     if (callValuePath.empty())
