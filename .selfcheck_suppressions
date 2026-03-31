@@ -14,7 +14,7 @@ funcArgNamesDifferent:*/moc_codeeditstyledialog.cpp
 funcArgNamesDifferent:*/moc_fileviewdialog.cpp
 funcArgNamesDifferent:*/moc_helpdialog.cpp
 funcArgNamesDifferent:*/moc_libraryaddfunctiondialog.cpp
-funcArgNamesDifferent:*/moc_librarydialog.cpp:
+funcArgNamesDifferent:*/moc_librarydialog.cpp
 funcArgNamesDifferent:*/moc_libraryeditargdialog.cpp
 funcArgNamesDifferent:*/moc_mainwindow.cpp
 funcArgNamesDifferent:*/moc_newsuppressiondialog.cpp
