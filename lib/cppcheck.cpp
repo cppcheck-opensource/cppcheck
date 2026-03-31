@@ -1715,7 +1715,6 @@ void CppCheck::getErrorMessages(ErrorLogger &errorlogger)
     CheckUnusedFunctions::getErrorMessages(errorlogger);
     Preprocessor::getErrorMessages(errorlogger, s);
     Tokenizer::getErrorMessages(errorlogger, s);
-    SymbolDatabase::getErrorMessages(errorlogger);
 }
 
 void CppCheck::analyseClangTidy(const FileSettings &fileSettings)
