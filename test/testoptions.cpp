@@ -84,7 +84,7 @@ private:
         options args(getArrayLength(argv), argv);
         ASSERT_EQUALS(false, args.quiet());
         ASSERT_EQUALS(false, args.help());
-        ASSERT_EQUALS(false, args.summary());
+        ASSERT_EQUALS(true, args.summary());
         ASSERT_EQUALS(false, args.dry_run());
         ASSERT_EQUALS(false, args.exclude_tests());
         ASSERT(args.errors().empty());
