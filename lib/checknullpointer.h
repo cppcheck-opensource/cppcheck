@@ -73,8 +73,7 @@ private:
      * @param library --library files data
      * @return list of variables that the function reads / writes.
      */
-    static std::list<const Token*> parseFunctionCall(const Token &tok,
-                                  const Library &library, bool checkNullArg = true);
+    static std::list<const Token*> parseFunctionCall(const Token &tok, const Library &library, bool checkNullArg = true);
 
     /** @brief This constructor is used when running checks. */
     CheckNullPointer(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
@@ -126,7 +125,9 @@ private:
     void pointerArithmeticError(const Token* tok, const ValueFlow::Value *value, bool inconclusive);
     void redundantConditionWarning(const Token* tok, const ValueFlow::Value *value, const Token *condition, bool inconclusive);
 
-    bool diag(const Token* tok) { return !mDiag.emplace(tok).second; }
+    bool diag(const Token* tok) {
+        return !mDiag.emplace(tok).second;
+    }
 
     std::set<const Token*> mDiag;
 };
