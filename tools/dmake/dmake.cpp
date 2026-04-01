@@ -771,8 +771,13 @@ int main(int argc, char **argv)
          << "    $(error invalid HAVE_RULES value '$(HAVE_RULES)')\n"
          << "endif\n\n";
 
-    // the # needs to be escaped on older make versions
-    fout << "HAVE_EXECINFO_H=$(shell echo \"\\#include <execinfo.h>\" | $(CXX) -c -xc - 2> /dev/null && echo \"1\" || echo \"0\")\n"
+    fout << "# older make versions do not support # in $(shell) and newer ones handle the escape sequence literally\n"
+         << "REQUIRE_ESCAPE=$(shell echo \"\\#define DEF\" | $(CXX) -c -xc - 2> /dev/null && echo \"1\" || echo \"0\")\n"
+         << "ifeq ($(REQUIRE_ESCAPE),1)\n"
+         << "    HAVE_EXECINFO_H=$(shell echo \"\\#include <execinfo.h>\" | $(CXX) -c -xc - 2> /dev/null && echo \"1\" || echo \"0\")\n"
+         << "else\n"
+         << "    HAVE_EXECINFO_H=$(shell echo \"#include <execinfo.h>\" | $(CXX) -c -xc - 2> /dev/null && echo \"1\" || echo \"0\")\n"
+         << "endif\n"
          << "override CPPFLAGS += -DHAVE_EXECINFO_H=$(HAVE_EXECINFO_H)\n\n";
 
     fout << "override CXXFLAGS += $(CXXOPTS)\n";

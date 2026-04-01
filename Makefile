@@ -155,7 +155,13 @@ else ifneq ($(HAVE_RULES),)
     $(error invalid HAVE_RULES value '$(HAVE_RULES)')
 endif
 
-HAVE_EXECINFO_H=$(shell echo "\#include <execinfo.h>" | $(CXX) -c -xc - 2> /dev/null && echo "1" || echo "0")
+# older make versions do not support # in $(shell) and newer ones handle the escape sequence literally
+REQUIRE_ESCAPE=$(shell echo "\#define DEF" | $(CXX) -c -xc - 2> /dev/null && echo "1" || echo "0")
+ifeq ($(REQUIRE_ESCAPE),1)
+    HAVE_EXECINFO_H=$(shell echo "\#include <execinfo.h>" | $(CXX) -c -xc - 2> /dev/null && echo "1" || echo "0")
+else
+    HAVE_EXECINFO_H=$(shell echo "#include <execinfo.h>" | $(CXX) -c -xc - 2> /dev/null && echo "1" || echo "0")
+endif
 override CPPFLAGS += -DHAVE_EXECINFO_H=$(HAVE_EXECINFO_H)
 
 override CXXFLAGS += $(CXXOPTS)

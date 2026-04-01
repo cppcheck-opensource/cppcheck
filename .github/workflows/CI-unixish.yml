@@ -679,6 +679,12 @@ jobs:
           test -z "$(nm processexecutor.o)"
           # TODO: test NO_* defines
 
+      - name: Test execinfo.h detection
+        run: |
+          make clean
+          make cli/stacktrace.o | grep HAVE_EXECINFO_H=1         
+          test -n "$(nm cli/stacktrace.o)"
+
       - name: Test testrunner inclusion/exclusion
         run: |
           ! ./testrunner -d TestUtils | grep -v TestUtils > /dev/null
