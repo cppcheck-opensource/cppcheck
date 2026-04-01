@@ -8822,3 +8822,10 @@ ValueType::MatchResult ValueType::matchParameter(const ValueType *call, const Va
     }
     return res;
 }
+
+void SymbolDatabase::getErrorMessages(ErrorLogger& /*errorLogger*/)
+{
+    // TODO
+    //SymbolDatabase symdb;
+    //symdb.returnImplicitIntError(nullptr);
+}
