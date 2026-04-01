@@ -1398,7 +1398,6 @@ void CheckUnusedVar::checkFunctionVariableUsage()
 
             // skip things that are only partially implemented to prevent false positives
             if (usage.mType == Variables::pointerPointer ||
-                //usage.mType == Variables::pointerArray ||
                 usage.mType == Variables::referenceArray)
                 continue;
 
