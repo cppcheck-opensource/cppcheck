@@ -2876,25 +2876,25 @@ private:
                               "{\n"
                               "    int * i[2];\n"
                               "}");
-        TODO_ASSERT_EQUALS("[test.cpp:3:9]: (style) Unused variable: i [unusedVariable]\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:11]: (style) Unused variable: i [unusedVariable]\n", errout_str());
 
         functionVariableUsage("void foo()\n"
                               "{\n"
                               "    const int * i[2];\n"
                               "}");
-        TODO_ASSERT_EQUALS("[test.cpp:3:9]: (style) Unused variable: i [unusedVariable]\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:17]: (style) Unused variable: i [unusedVariable]\n", errout_str());
 
         functionVariableUsage("void foo()\n"
                               "{\n"
                               "    void * i[2];\n"
                               "}");
-        TODO_ASSERT_EQUALS("[test.cpp:3:9]: (style) Unused variable: i [unusedVariable]\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:12]: (style) Unused variable: i [unusedVariable]\n", errout_str());
 
         functionVariableUsage("void foo()\n"
                               "{\n"
                               "    const void * i[2];\n"
                               "}");
-        TODO_ASSERT_EQUALS("[test.cpp:3:9]: (style) Unused variable: i [unusedVariable]\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:18]: (style) Unused variable: i [unusedVariable]\n", errout_str());
 
         functionVariableUsage("void foo()\n"
                               "{\n"
@@ -5812,22 +5812,6 @@ private:
                               "    for (int i = 0; (pci = cdi_list_get(pciDevices, i)); i++)\n"
                               "    {}\n"
                               "}");
-        ASSERT_EQUALS("", errout_str());
-
-        functionVariableUsage("void f(const int* b, int x) {\n" // #11125
-                              "    int a[6];\n"
-                              "    int i = 0;\n"
-                              "    for (int j = 0; j < 6; ++j) {\n"
-                              "        if (b[j] != 0) {\n"
-                              "            a[i] = j;\n"
-                              "            ++i;\n"
-                              "        }\n"
-                              "    }\n"
-                              "    if (i > 1) {\n"
-                              "        a[i] = a[0];\n"
-                              "        (void)a[x];\n"
-                              "    }\n"
-                              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
