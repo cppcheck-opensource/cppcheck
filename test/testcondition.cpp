@@ -2674,6 +2674,12 @@ private:
         check("void f1(const std::string &s) { if(s.size() >= 0) if(s.empty()) {}} "); // CheckOther says: Unsigned expression 's.size()' can't be negative so it is unnecessary to test it. [unsignedPositive]
         ASSERT_EQUALS("", errout_str());
 
+        check("void f1(const std::string &s) { if(42 < s.size()) if(s.empty()) {}}");
+        ASSERT_EQUALS("[test.cpp:1:39] -> [test.cpp:1:61]: (warning) Opposite inner 'if' condition leads to a dead code block. [oppositeInnerCondition]\n", errout_str());
+
+        check("void f1(const std::string &s) { if(s.empty()) if(42 < s.size()) {}}");
+        ASSERT_EQUALS("[test.cpp:1:43] -> [test.cpp:1:53]: (warning) Opposite inner 'if' condition leads to a dead code block. [oppositeInnerCondition]\n", errout_str());
+
         // TODO: These are identical condition since size cannot be negative
         check("void f1(const std::string &s) { if(s.size() <= 0) if(s.empty()) {}}");
         ASSERT_EQUALS("", errout_str());
