@@ -602,7 +602,7 @@ void CheckCondition::oppositeElseIfConditionError(const Token *ifCond, const Tok
 
 //---------------------------------------------------------------------------
 // - Opposite inner conditions => always false
-// - (TODO) Same/Overlapping inner condition => always true
+// - Same/Overlapping inner condition => always true
 // - same condition after early exit => always false
 //---------------------------------------------------------------------------
 
@@ -758,6 +758,8 @@ void CheckCondition::multiCondition2()
                                     if (!isAliased(vars))
                                         oppositeInnerConditionError(firstCondition, cond2, errorPath);
                                 } else if (!isReturnVar && isSameExpression(true, firstCondition, cond2, *mSettings, true, true, &errorPath)) {
+                                    identicalInnerConditionError(firstCondition, cond2, errorPath);
+                                } else if (!isReturnVar && isOverlappingCond(cond2, firstCondition, true)) {
                                     identicalInnerConditionError(firstCondition, cond2, errorPath);
                                 }
                             }

@@ -2834,6 +2834,20 @@ private:
               "    }\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:2:12] -> [test.cpp:4:13]: (warning) Identical inner 'if' condition is always true. [identicalInnerCondition]\n", errout_str());
+
+        check("void f(int x) {\n"
+              "    if (x == 1) {\n"
+              "        if (x & 7) {}\n"
+              "    }\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:2:11] -> [test.cpp:3:15]: (warning) Identical inner 'if' condition is always true. [identicalInnerCondition]\n", errout_str());
+
+        check("void f(int x) {\n"
+              "    if (x & 7) {\n"
+              "        if (x == 1) {}\n"
+              "    }\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void identicalConditionAfterEarlyExit() {

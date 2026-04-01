@@ -84,7 +84,7 @@ private:
     /**
      * multiconditions #2
      * - Opposite inner conditions => always false
-     * - (TODO) Same/Overlapping inner condition => always true
+     * - Same/Overlapping inner condition => always true
      * - same condition after early exit => always false
      **/
     void multiCondition2();
