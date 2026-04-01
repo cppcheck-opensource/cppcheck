@@ -5813,6 +5813,22 @@ private:
                               "    {}\n"
                               "}");
         ASSERT_EQUALS("", errout_str());
+
+        functionVariableUsage("void f(const int* b, int x) {\n" // #11125
+                              "    int a[6];\n"
+                              "    int i = 0;\n"
+                              "    for (int j = 0; j < 6; ++j) {\n"
+                              "        if (b[j] != 0) {\n"
+                              "            a[i] = j;\n"
+                              "            ++i;\n"
+                              "        }\n"
+                              "    }\n"
+                              "    if (i > 1) {\n"
+                              "        a[i] = a[0];\n"
+                              "        (void)a[x];\n"
+                              "    }\n"
+                              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void localvarForEach() { // #4155 - foreach
