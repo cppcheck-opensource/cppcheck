@@ -22,6 +22,7 @@
 #include "fixture.h"
 
 #include <cstdlib>
+#include <iostream>
 
 int main(int argc, char *argv[])
 {
@@ -33,6 +34,13 @@ int main(int argc, char *argv[])
     if (args.help()) {
         TestFixture::printHelp();
         return EXIT_SUCCESS;
+    }
+    if (!args.errors().empty()) {
+        for (const auto& error : args.errors())
+        {
+            std::cout << "error: " << error << '\n';
+        }
+        return EXIT_FAILURE;
     }
     const std::size_t failedTestsCount = TestFixture::runTests(args);
     return (failedTestsCount == 0) ? EXIT_SUCCESS : EXIT_FAILURE;

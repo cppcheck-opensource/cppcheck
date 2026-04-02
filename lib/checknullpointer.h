@@ -26,6 +26,7 @@
 #include "config.h"
 
 #include <list>
+#include <set>
 #include <string>
 
 class ErrorLogger;
@@ -69,12 +70,11 @@ private:
     /**
      * @brief parse a function call and extract information about variable usage
      * @param tok first token
-     * @param var variables that the function read / write.
      * @param library --library files data
+     * @param checkNullArg perform isnullargbad check for each argument?
+     * @return list of variables that the function reads / writes.
      */
-    static void parseFunctionCall(const Token &tok,
-                                  std::list<const Token *> &var,
-                                  const Library &library, bool checkNullArg = true);
+    static std::list<const Token*> parseFunctionCall(const Token &tok, const Library &library, bool checkNullArg = true);
 
     /** @brief This constructor is used when running checks. */
     CheckNullPointer(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
@@ -125,6 +125,12 @@ private:
     void arithmetic();
     void pointerArithmeticError(const Token* tok, const ValueFlow::Value *value, bool inconclusive);
     void redundantConditionWarning(const Token* tok, const ValueFlow::Value *value, const Token *condition, bool inconclusive);
+
+    bool diag(const Token* tok) {
+        return !mDiag.emplace(tok).second;
+    }
+
+    std::set<const Token*> mDiag;
 };
 /// @}
 //---------------------------------------------------------------------------

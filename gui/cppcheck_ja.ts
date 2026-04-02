@@ -1098,12 +1098,12 @@ Parameters: -l(line) (file)</translation>
     <message>
         <location filename="mainwindow.ui" line="1046"/>
         <source>Thread Details</source>
-        <translation type="unfinished"></translation>
+        <translation>スレッド詳細</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="1049"/>
         <source>Show thread details</source>
-        <translation type="unfinished"></translation>
+        <translation>スレッド詳細を表示</translation>
     </message>
     <message>
         <location filename="mainwindow.cpp" line="461"/>
@@ -1185,12 +1185,6 @@ Do you want to load this project file instead?</source>
         <location filename="mainwindow.cpp" line="1019"/>
         <source>Unknown element</source>
         <translation>不明な要素</translation>
-    </message>
-    <message>
-        <location filename="mainwindow.cpp" line="1019"/>
-        <source>Unknown element</source>
-        <oldsource>Unknown issue</oldsource>
-        <translation type="unfinished">不明な課題</translation>
     </message>
     <message>
         <location filename="mainwindow.cpp" line="1024"/>
@@ -1891,7 +1885,7 @@ Options:
     <message>
         <location filename="projectfile.ui" line="972"/>
         <source>Safety profiles (defined in C++ core guidelines)</source>
-        <translation type="unfinished"></translation>
+        <translation>安全性プロファイル(C++コアガイドラインで定義)</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="982"/>
@@ -3254,7 +3248,7 @@ To toggle what kind of errors are shown, open view menu.</source>
     <message>
         <location filename="threaddetails.ui" line="14"/>
         <source>Thread Details</source>
-        <translation type="unfinished"></translation>
+        <translation>スレッド詳細</translation>
     </message>
 </context>
 <context>

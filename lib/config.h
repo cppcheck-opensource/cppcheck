@@ -52,16 +52,6 @@
 #define __has_feature(x) 0
 #endif
 
-// C++11 noexcept
-#if defined(__cpp_noexcept_function_type) || \
-    (defined(__GNUC__) && (__GNUC__ >= 5)) \
-    || defined(__clang__) \
-    || defined(__CPPCHECK__)
-#  define NOEXCEPT noexcept
-#else
-#  define NOEXCEPT
-#endif
-
 // C++11 noreturn
 #if __has_cpp_attribute (noreturn) \
     || (defined(__GNUC__) && (__GNUC__ >= 5)) \

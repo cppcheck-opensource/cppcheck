@@ -35,9 +35,8 @@ private:
         TEST_CASE(which_test);
         TEST_CASE(which_test_method);
         TEST_CASE(no_test_method);
-        TEST_CASE(not_quiet);
+        TEST_CASE(defaults);
         TEST_CASE(quiet);
-        TEST_CASE(not_help);
         TEST_CASE(help);
         TEST_CASE(help_long);
         TEST_CASE(multiple_testcases);
@@ -45,6 +44,7 @@ private:
         TEST_CASE(invalid_switches);
         TEST_CASE(summary);
         TEST_CASE(dry_run);
+        TEST_CASE(exclude_tests);
     }
 
 
@@ -55,6 +55,7 @@ private:
             { "TestClass", {} }
         };
         ASSERT(expected == args.which_tests());
+        ASSERT(args.errors().empty());
     }
 
 
@@ -65,6 +66,7 @@ private:
             { "TestClass", {"TestMethod"} }
         };
         ASSERT(expected == args.which_tests());
+        ASSERT(args.errors().empty());
     }
 
 
@@ -73,33 +75,33 @@ private:
         options args(getArrayLength(argv), argv);
         const std::map<std::string, std::set<std::string>> expected{};
         ASSERT(expected == args.which_tests());
+        ASSERT(args.errors().empty());
     }
 
 
-    void not_quiet() const {
-        const char* argv[] = {"./test_runner", "TestClass::TestMethod", "-v"};
+    void defaults() const {
+        const char* argv[] = {"./test_runner", "TestClass::TestMethod"};
         options args(getArrayLength(argv), argv);
         ASSERT_EQUALS(false, args.quiet());
+        ASSERT_EQUALS(false, args.help());
+        ASSERT_EQUALS(true, args.summary());
+        ASSERT_EQUALS(false, args.dry_run());
+        ASSERT_EQUALS(false, args.exclude_tests());
+        ASSERT(args.errors().empty());
     }
-
 
     void quiet() const {
         const char* argv[] = {"./test_runner", "TestClass::TestMethod", "-q"};
         options args(getArrayLength(argv), argv);
         ASSERT_EQUALS(true, args.quiet());
+        ASSERT(args.errors().empty());
     }
-
-    void not_help() const {
-        const char* argv[] = {"./test_runner", "TestClass::TestMethod", "-v"};
-        options args(getArrayLength(argv), argv);
-        ASSERT_EQUALS(false, args.help());
-    }
-
 
     void help() const {
         const char* argv[] = {"./test_runner", "TestClass::TestMethod", "-h"};
         options args(getArrayLength(argv), argv);
         ASSERT_EQUALS(true, args.help());
+        ASSERT(args.errors().empty());
     }
 
 
@@ -107,6 +109,7 @@ private:
         const char* argv[] = {"./test_runner", "TestClass::TestMethod", "--help"};
         options args(getArrayLength(argv), argv);
         ASSERT_EQUALS(true, args.help());
+        ASSERT(args.errors().empty());
     }
 
     void multiple_testcases() const {
@@ -116,6 +119,7 @@ private:
             { "TestClass", { "TestMethod", "AnotherTestMethod" } }
         };
         ASSERT(expected == args.which_tests());
+        ASSERT(args.errors().empty());
     }
 
     void multiple_testcases_ignore_duplicates() const {
@@ -125,6 +129,7 @@ private:
             { "TestClass", {} }
         };
         ASSERT(expected == args.which_tests());
+        ASSERT(args.errors().empty());
     }
 
     void invalid_switches() const {
@@ -135,18 +140,32 @@ private:
         };
         ASSERT(expected == args.which_tests());
         ASSERT_EQUALS(true, args.quiet());
+        ASSERT_EQUALS(2, args.errors().size());
+        auto it = args.errors().cbegin();
+        ASSERT_EQUALS("unknown option '-a'", *it);
+        ++it;
+        ASSERT_EQUALS("unknown option '-v'", *it);
     }
 
     void summary() const {
         const char* argv[] = {"./test_runner", "TestClass::TestMethod", "-n"};
         options args(getArrayLength(argv), argv);
         ASSERT_EQUALS(false, args.summary());
+        ASSERT(args.errors().empty());
     }
 
     void dry_run() const {
         const char* argv[] = {"./test_runner", "TestClass::TestMethod", "-d"};
         options args(getArrayLength(argv), argv);
         ASSERT_EQUALS(true, args.dry_run());
+        ASSERT(args.errors().empty());
+    }
+
+    void exclude_tests() const {
+        const char* argv[] = {"./test_runner", "TestClass::TestMethod", "-x"};
+        options args(getArrayLength(argv), argv);
+        ASSERT_EQUALS(true, args.exclude_tests());
+        ASSERT(args.errors().empty());
     }
 };
 

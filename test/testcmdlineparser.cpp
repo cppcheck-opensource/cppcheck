@@ -300,10 +300,10 @@ private:
         TEST_CASE(suppressionsNoFile1);
         TEST_CASE(suppressionsNoFile2);
         TEST_CASE(suppressionsNoFile3);
-        TEST_CASE(suppressionSingle);
-        TEST_CASE(suppressionSingleFile);
-        TEST_CASE(suppressionTwo);
-        TEST_CASE(suppressionTwoSeparate);
+        TEST_CASE(suppressSingle);
+        TEST_CASE(suppressSingleFile);
+        TEST_CASE(suppressTwo);
+        TEST_CASE(suppressTwoSeparate);
         TEST_CASE(templates);
         TEST_CASE(templatesGcc);
         TEST_CASE(templatesVs);
@@ -1956,30 +1956,28 @@ private:
         return e;
     }
 
-    void suppressionSingle() {
+    void suppressSingle() {
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--suppress=uninitvar", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(true, supprs->nomsg.isSuppressed(errorMessage("uninitvar", "file.cpp", 1)));
     }
 
-    void suppressionSingleFile() {
+    void suppressSingleFile() {
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--suppress=uninitvar:file.cpp", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(true, supprs->nomsg.isSuppressed(errorMessage("uninitvar", "file.cpp", 1U)));
     }
 
-    void suppressionTwo() {
+    void suppressTwo() {
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--suppress=uninitvar,noConstructor", "file.cpp"};
-        TODO_ASSERT_EQUALS(static_cast<int>(CmdLineParser::Result::Success), static_cast<int>(CmdLineParser::Result::Fail), static_cast<int>(parseFromArgs(argv)));
-        TODO_ASSERT_EQUALS(true, false, supprs->nomsg.isSuppressed(errorMessage("uninitvar", "file.cpp", 1U)));
-        TODO_ASSERT_EQUALS(true, false, supprs->nomsg.isSuppressed(errorMessage("noConstructor", "file.cpp", 1U)));
-        TODO_ASSERT_EQUALS("", "cppcheck: error: Failed to add suppression. Invalid id \"uninitvar,noConstructor\"\n", logger->str());
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, parseFromArgs(argv));
+        ASSERT_EQUALS("cppcheck: error: Failed to add suppression. Invalid id \"uninitvar,noConstructor\"\n", logger->str());
     }
 
-    void suppressionTwoSeparate() {
+    void suppressTwoSeparate() {
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--suppress=uninitvar", "--suppress=noConstructor", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));

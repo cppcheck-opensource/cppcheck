@@ -3489,8 +3489,7 @@ private:
               "    printf(\"%s\", s);\n"
               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:18]: (error) Null pointer dereference: s [nullPointer]\n"
-            "[test.cpp:3:18]: (error) Null pointer dereference [nullPointer]\n",
+            "[test.cpp:3:18]: (error) Null pointer dereference: s [nullPointer]\n",
             errout_str());
 
         check("void f() {\n"
@@ -3514,8 +3513,7 @@ private:
               "    printf(\"%u%s\", 123, s);\n"
               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:25]: (error) Null pointer dereference: s [nullPointer]\n"
-            "[test.cpp:3:25]: (error) Null pointer dereference [nullPointer]\n",
+            "[test.cpp:3:25]: (error) Null pointer dereference: s [nullPointer]\n",
             errout_str());
 
 
@@ -3560,16 +3558,14 @@ private:
               "    sscanf(s, \"%s\", 0);\n"
               "}");
         ASSERT_EQUALS(
-            "[test.cpp:2:21]: (error) Null pointer dereference [nullPointer]\n"
-            "[test.cpp:2:21]: (error) Null pointer dereference [nullPointer]\n",   // duplicate
+            "[test.cpp:2:21]: (error) Null pointer dereference [nullPointer]\n",
             errout_str());
 
         check("void f() {\n"
               "    scanf(\"%d\", 0);\n"
               "}");
         ASSERT_EQUALS(
-            "[test.cpp:2:17]: (error) Null pointer dereference [nullPointer]\n"
-            "[test.cpp:2:17]: (error) Null pointer dereference [nullPointer]\n",   // duplicate
+            "[test.cpp:2:17]: (error) Null pointer dereference [nullPointer]\n",
             errout_str());
 
         check("void f(char* foo) {\n"
@@ -3590,9 +3586,7 @@ private:
               "    sscanf(dummy, \"%d\", iVal);\n"
               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:25]: (error) Null pointer dereference: iVal [nullPointer]\n"
-            "[test.cpp:3:25]: (error) Null pointer dereference [nullPointer]\n"
-            "[test.cpp:3:25]: (error) Null pointer dereference [nullPointer]\n",   // duplicate
+            "[test.cpp:3:25]: (error) Null pointer dereference: iVal [nullPointer]\n",
             errout_str());
 
         check("void f(char *dummy) {\n"
@@ -3611,8 +3605,7 @@ private:
               "    sscanf(dummy, \"%*d%u\", 0);\n"
               "}");
         ASSERT_EQUALS(
-            "[test.cpp:2:28]: (error) Null pointer dereference [nullPointer]\n"
-            "[test.cpp:2:28]: (error) Null pointer dereference [nullPointer]\n",   // duplicate
+            "[test.cpp:2:28]: (error) Null pointer dereference [nullPointer]\n",
             errout_str());
     }
 
@@ -4333,8 +4326,7 @@ private:
             Library library;
             ASSERT(LibraryHelper::loadxmldata(library, xmldata, sizeof(xmldata)));
 
-            std::list<const Token *> null;
-            CheckNullPointer::parseFunctionCall(*xtok, null, library);
+            const std::list<const Token *> null = CheckNullPointer::parseFunctionCall(*xtok, library);
             ASSERT_EQUALS(0U, null.size());
         }
 
@@ -4352,8 +4344,7 @@ private:
             Library library;
             ASSERT(LibraryHelper::loadxmldata(library, xmldata, sizeof(xmldata)));
 
-            std::list<const Token *> null;
-            CheckNullPointer::parseFunctionCall(*xtok, null, library);
+            const std::list<const Token *> null = CheckNullPointer::parseFunctionCall(*xtok, library);
             ASSERT_EQUALS(1U, null.size());
             ASSERT_EQUALS("a", null.front()->str());
         }

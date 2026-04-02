@@ -542,10 +542,9 @@ private:
             ASSERT(c.written);
         }
         {
-            C c;
-            C* cp = &c;
-            utils::as_const(cp)->f(); // (correctly) calls non-const version
-            ASSERT(c.written);
+            int i = 0;
+            auto cr = utils::as_const(i); // TODO: does nothing and should not be allowed
+            (void)cr;
         }
     }
 
