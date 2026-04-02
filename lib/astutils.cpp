@@ -3425,13 +3425,14 @@ static ExprUsage getFunctionUsage(const Token* tok, int indirect, const Settings
         // TODO: resolve multiple constructors
         if (ftok->variable()->type() && ftok->variable()->type()->classScope) {
             const int nCtor = ftok->variable()->type()->classScope->numConstructors;
-            if (nCtor == 0)
+            if (nCtor == 0) {
                 if (indirect > 0) {
                     std::vector<const Variable*> argvar = getArgumentVars(ftok->astParent(), argnr);
                     if (argvar.size() == 1 && argvar[0]->valueType() && argvar[0]->valueType()->pointer == indirect)
                         return ExprUsage::NotUsed;
                 }
                 return ExprUsage::Used;
+            }
             if (nCtor == 1) {
                 const Scope* scope = ftok->variable()->type()->classScope;
                 auto it = std::find_if(scope->functionList.begin(), scope->functionList.end(), [](const Function& f) {
