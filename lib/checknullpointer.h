@@ -71,6 +71,7 @@ private:
      * @brief parse a function call and extract information about variable usage
      * @param tok first token
      * @param library --library files data
+     * @param checkNullArg perform isnullargbad check for each argument?
      * @return list of variables that the function reads / writes.
      */
     static std::list<const Token*> parseFunctionCall(const Token &tok, const Library &library, bool checkNullArg = true);
