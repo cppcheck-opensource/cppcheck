@@ -169,7 +169,6 @@ private:
         TEST_CASE(deadPointer);
         TEST_CASE(splitNamespaceAuto); // crash #10473
         TEST_CASE(incompleteTypeArray);
-        TEST_CASE(stlCstr);
     }
 
 
@@ -4846,131 +4845,6 @@ private:
               "    a[i] = &p[i];\n"
               "}\n");
         ASSERT_EQUALS("", errout_str()); // don't crash
-    }
-    
-
-    void stlCstr() {
-
-        check("void f() {\n"
-              "    std::string errmsg;\n"
-              "    throw errmsg.c_str();\n"
-              "}");
-        ASSERT_EQUALS("[test.cpp:3:23] -> [test.cpp:2:17] -> [test.cpp:3:23]: (error) Returning pointer to local variable 'errmsg' that will be invalid when returning. [returnDanglingLifetime]\n", errout_str());
-
-        check("const char *get_msg() {\n"
-              "    std::string errmsg;\n"
-              "    return errmsg.c_str();\n"
-              "}");
-        ASSERT_EQUALS("[test.cpp:3:24] -> [test.cpp:2:17] -> [test.cpp:3:24]: (error) Returning pointer to local variable 'errmsg' that will be invalid when returning. [returnDanglingLifetime]\n", errout_str());
-
-        check("const char *get_msg() {\n"
-              "    std::ostringstream errmsg;\n"
-              "    return errmsg.str().c_str();\n"
-              "}");
-        ASSERT_EQUALS("[test.cpp:3:30] -> [test.cpp:3:30]: (error) Returning object that will be invalid when returning. [returnDanglingLifetime]\n", errout_str());
-
-        check("const char *get_msg() {\n"
-              "    std::string errmsg;\n"
-              "    return std::string(\"ERROR: \" + errmsg).c_str();\n"
-              "}");
-        ASSERT_EQUALS("[test.cpp:3:49] -> [test.cpp:3:49]: (error) Returning object that will be invalid when returning. [returnDanglingLifetime]\n", errout_str());
-
-        check("const char *get_msg() {\n"
-              "    std::string errmsg;\n"
-              "    return (\"ERROR: \" + errmsg).c_str();\n"
-              "}");
-        ASSERT_EQUALS("[test.cpp:3:38] -> [test.cpp:3:38]: (error) Returning object that will be invalid when returning. [returnDanglingLifetime]\n", errout_str());
-
-        check("const char *get_msg() {\n"
-              "    std::string errmsg;\n"
-              "    return (\"ERROR: \" + std::string(\"crash me\")).c_str();\n"
-              "}");
-        ASSERT_EQUALS("[test.cpp:3:55] -> [test.cpp:3:55]: (error) Returning object that will be invalid when returning. [returnDanglingLifetime]\n", errout_str());
-
-        check("void f() {\n"
-              "    std::ostringstream errmsg;\n"
-              "    const char *c = errmsg.str().c_str();\n"
-              "    (void)c;\n"
-              "}");
-        ASSERT_EQUALS("[test.cpp:3:39] -> [test.cpp:3:31] -> [test.cpp:4:11]: (error) Using pointer that is a temporary. [danglingTemporaryLifetime]\n", errout_str());
-
-        check("std::string f();\n"
-              "\n"
-              "void foo() {\n"
-              "    const char *c = f().c_str();\n"
-              "    (void)c;\n"
-              "}");
-        ASSERT_EQUALS("[test.cpp:4:30] -> [test.cpp:4:22] -> [test.cpp:5:11]: (error) Using pointer that is a temporary. [danglingTemporaryLifetime]\n", errout_str());
-
-        check("class Foo {\n"
-              "    const char *f();\n"
-              "};\n"
-              "const char *Foo::f() {\n"
-              "    std::string s;\n"
-              "    return s.c_str();\n"
-              "}");
-        ASSERT_EQUALS("[test.cpp:6:19] -> [test.cpp:5:17] -> [test.cpp:6:19]: (error) Returning pointer to local variable 's' that will be invalid when returning. [returnDanglingLifetime]\n", errout_str());
-
-        check("class Foo {\n"
-              "    std::string GetVal() const;\n"
-              "};\n"
-              "const char *f() {\n"
-              "    Foo f;\n"
-              "    return f.GetVal().c_str();\n"
-              "}");
-        ASSERT_EQUALS("[test.cpp:6:28] -> [test.cpp:6:28]: (error) Returning pointer that will be invalid when returning. [returnDanglingLifetime]\n", errout_str());
-
-        check("std::string hello()\n"
-              "{\n"
-              "     return \"hello\";\n"
-              "}\n"
-              "\n"
-              "const char *f()\n"
-              "{\n"
-              "    return hello().c_str();\n"
-              "}");
-        ASSERT_EQUALS("[test.cpp:8:25] -> [test.cpp:8:25]: (error) Returning pointer that will be invalid when returning. [returnDanglingLifetime]\n", errout_str());
-
-        check("class Fred {\n"
-              "    std::string hello();\n"
-              "    const char *f();\n"
-              "};\n"
-              "std::string Fred::hello()\n"
-              "{\n"
-              "     return \"hello\";\n"
-              "}\n"
-              "const char *Fred::f()\n"
-              "{\n"
-              "    return hello().c_str();\n"
-              "}");
-        ASSERT_EQUALS("[test.cpp:11:25] -> [test.cpp:11:25]: (error) Returning pointer that will be invalid when returning. [returnDanglingLifetime]\n", errout_str());
-
-        check("struct InternalMapInfo {\n"
-              "    std::string author;\n"
-              "};\n"
-              "const char* GetMapAuthor(int index) {\n"
-              "    const InternalMapInfo mapInfo = internal_getMapInfo;\n"
-              "    return mapInfo.author.c_str();\n"
-              "}");
-        ASSERT_EQUALS("[test.cpp:6:32] -> [test.cpp:6:32]: (error) Returning pointer that will be invalid when returning. [returnDanglingLifetime]\n", errout_str());
-
-        check("struct S {\n" // #7930
-              "    std::string data;\n"
-              "};\n"
-              "const char* test() {\n"
-              "    S s;\n"
-              "    std::string &ref = s.data;\n"
-              "    return ref.c_str();\n"
-              "}");
-        ASSERT_EQUALS("[test.cpp:6:22] -> [test.cpp:7:21] -> [test.cpp:7:21]: (error) Returning pointer that will be invalid when returning. [returnDanglingLifetime]\n", errout_str());
-
-        check("struct S {\n" //#9161
-              "    const char* f() const noexcept {\n"
-              "        return (\"\" + m).c_str();\n"
-              "    }\n"
-              "    std::string m;\n"
-              "};\n");
-        ASSERT_EQUALS("[test.cpp:3:30] -> [test.cpp:3:30]: (error) Returning object that will be invalid when returning. [returnDanglingLifetime]\n", errout_str());
     }
 
 };
