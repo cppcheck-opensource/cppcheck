@@ -2361,6 +2361,8 @@ const ::Type* Token::typeOf(const Token* tok, const Token** typeTok)
         return tok->variable()->type();
     if (tok->function())
         return tok->function()->retType;
+    if (tok->valueType() && tok->valueType()->typeScope && tok->valueType()->typeScope->definedType)
+        return tok->valueType()->typeScope->definedType;
     if (Token::simpleMatch(tok, "return")) {
         // cppcheck-suppress shadowFunction - TODO: fix this
         const Scope *scope = tok->scope();
