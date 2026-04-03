@@ -777,8 +777,8 @@ std::set<std::string> Preprocessor::getConfigs() const
     // Insert library defines
     for (const auto &define : mSettings.library.defines()) {
 
-        const std::string::size_type paren = define.find("(");
-        const std::string::size_type space = define.find(" ");
+        const std::string::size_type paren = define.find('(');
+        const std::string::size_type space = define.find(' ');
         std::string::size_type end = space;
 
         if (paren != std::string::npos && paren < space)

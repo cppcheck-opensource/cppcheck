@@ -935,7 +935,7 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
 
 ImportProject::SharedItemsProject ImportProject::importVcxitems(const std::string& filename, const std::vector<std::string>& fileFilters, std::vector<SharedItemsProject> &cache)
 {
-    auto isInCacheCheck = [filename](const ImportProject::SharedItemsProject& e) -> bool {
+    auto isInCacheCheck = [&filename](const ImportProject::SharedItemsProject& e) -> bool {
         return filename == e.pathToProjectFile;
     };
     const auto iterator = std::find_if(cache.begin(), cache.end(), isInCacheCheck);

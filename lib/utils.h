@@ -54,6 +54,7 @@ struct SelectMapValues {
 struct OnExit {
     std::function<void()> f;
 
+    // NOLINTNEXTLINE(bugprone-exception-escape) - reported with libc++ for any files which includes this (even if not used)
     ~OnExit() {
         f();
     }

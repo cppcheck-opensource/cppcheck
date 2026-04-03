@@ -1359,6 +1359,7 @@ namespace {
                 return Token::Match(child, "&&|%oror%");
             }))
                 return false;
+            // NOLINTNEXTLINE(bugprone-nondeterministic-pointer-iteration-order) - FP with libc++ only
             std::sort(conditions.begin(), conditions.end(), &TokenExprIdCompare);
             conditions.erase(std::unique(conditions.begin(), conditions.end(), &TokenExprIdCompare), conditions.end());
             return !conditions.empty() && conditions.front()->exprId() != 0;

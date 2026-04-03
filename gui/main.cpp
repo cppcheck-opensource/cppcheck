@@ -45,6 +45,7 @@ static void ShowUsage();
 static void ShowVersion();
 static bool CheckArgs(const QStringList &args);
 
+// NOLINTNEXTLINE(bugprone-exception-escape) - reported with libc++ only
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);

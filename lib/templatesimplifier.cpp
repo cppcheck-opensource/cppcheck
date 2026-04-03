@@ -74,6 +74,7 @@ namespace {
         const Token * const mToken;
     };
 
+    // NOLINTNEXTLINE(bugprone-exception-escape) - reported with libc++ only
     class FindName {
     public:
         explicit FindName(std::string name) : mName(std::move(name)) {}
@@ -84,6 +85,7 @@ namespace {
         const std::string mName;
     };
 
+    // NOLINTNEXTLINE(bugprone-exception-escape) - reported with libc++ only
     class FindFullName {
     public:
         explicit FindFullName(std::string fullName) : mFullName(std::move(fullName)) {}

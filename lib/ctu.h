@@ -109,6 +109,7 @@ namespace CTU {
             bool loadBaseFromXml(const tinyxml2::XMLElement *xmlElement);
         };
 
+        // NOLINTNEXTLINE(bugprone-exception-escape) - reported with libc++ only
         class FunctionCall : public CallBase {
         public:
             std::string callArgumentExpression;
@@ -121,6 +122,7 @@ namespace CTU {
             bool loadFromXml(const tinyxml2::XMLElement *xmlElement);
         };
 
+        // NOLINTNEXTLINE(bugprone-exception-escape) - reported with libc++ only
         class NestedCall : public CallBase {
         public:
             NestedCall() = default;
