@@ -16,13 +16,6 @@ functionStatic:*/gui/ui_*.h
 valueFlowBailout
 valueFlowBailoutIncompleteVar
 valueFlowMaxIterations:gui/resultstree.cpp
-autoNoType:externals/simplecpp/simplecpp.cpp
-autoNoType:cli/*.cpp
-autoNoType:lib/*.cpp
-autoNoType:lib/library.h
-autoNoType:gui/*.cpp
-autoNoType:test/*.cpp
-autoNoType:tools/triage/mainwindow.cpp
 # ticket 11631
 templateInstantiation:test/testutils.cpp
 
