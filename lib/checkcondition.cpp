@@ -1144,6 +1144,43 @@ static bool isIfConstexpr(const Token* tok) {
     return Token::simpleMatch(top->astOperand1(), "if") && top->astOperand1()->isConstexpr();
 }
 
+static const Token* isPointerArithmeticAdd(const Token* tok)
+{
+    if (!tok || tok->str() != "+" || !astIsPointer(tok))
+        return nullptr;
+
+    const Token* intOp = astIsPointer(tok->astOperand1()) ? tok->astOperand2() : tok->astOperand1();
+    if (intOp && intOp->hasKnownIntValue() && intOp->getKnownIntValue() != 0)
+        return tok;
+
+    return nullptr;
+}
+
+static const Token* getPointerAdditionCalcToken(const Token * const tok)
+{
+    for (const Token *op : {tok, tok->astOperand1(), tok->astOperand2()}) {
+        if (!op)
+            continue;
+
+        // case 1: op is ptr+nonzero
+        if (isPointerArithmeticAdd(op))
+            return op;
+
+        // case 2: op is a pointer variable assigned from ptr+nonzero
+        if (!astIsPointer(op))
+            continue;
+
+        for (const ValueFlow::Value& val : op->values()) {
+            if (!val.isSymbolicValue())
+                continue;
+            if (isPointerArithmeticAdd(val.tokvalue))
+                return op;
+        }
+    }
+
+    return nullptr;
+}
+
 void CheckCondition::checkIncorrectLogicOperator()
 {
     const bool printStyle = mSettings->severity.isEnabled(Severity::style);
@@ -1607,6 +1644,11 @@ void CheckCondition::alwaysTrueFalse()
                     continue;
             }
 
+            // checkPointerAdditionResultNotNull emits a more specific warning for
+            // comparisons where the pointer is the result of an expression ptr+nonzero.
+            if (getPointerAdditionCalcToken(tok))
+                continue;
+
             // Don't warn when there are expanded macros..
             bool isExpandedMacro = false;
             visitAstNodes(tok, [&](const Token * tok2) {
@@ -1778,7 +1820,6 @@ void CheckCondition::invalidTestForOverflow(const Token* tok, const ValueType *v
     reportError(tok, Severity::warning, "invalidTestForOverflow", errmsg, uncheckedErrorConditionCWE, Certainty::normal);
 }
 
-
 void CheckCondition::checkPointerAdditionResultNotNull()
 {
     if (!mSettings->severity.isEnabled(Severity::warning))
@@ -1790,32 +1831,27 @@ void CheckCondition::checkPointerAdditionResultNotNull()
     for (const Scope * scope : symbolDatabase->functionScopes) {
 
         for (const Token* tok = scope->bodyStart; tok != scope->bodyEnd; tok = tok->next()) {
-            if (!tok->isComparisonOp() || !tok->astOperand1() || !tok->astOperand2())
-                continue;
-
             // Macros might have pointless safety checks
             if (tok->isExpandedMacro())
                 continue;
 
-            const Token *calcToken, *exprToken;
-            if (tok->astOperand1()->str() == "+") {
-                calcToken = tok->astOperand1();
-                exprToken = tok->astOperand2();
-            } else if (tok->astOperand2()->str() == "+") {
-                calcToken = tok->astOperand2();
-                exprToken = tok->astOperand1();
-            } else
+            const Token *calcToken = getPointerAdditionCalcToken(tok);
+            if (!calcToken)
                 continue;
 
-            // pointer comparison against NULL (ptr+12==0)
-            if (calcToken->hasKnownIntValue())
-                continue;
-            if (!calcToken->valueType() || calcToken->valueType()->pointer==0)
-                continue;
-            if (!exprToken->hasKnownIntValue() || !exprToken->getValue(0))
-                continue;
+            if (tok->isComparisonOp() && tok->astOperand1() && tok->astOperand2()) {
+                const Token *exprToken = tok->astOperand1() == calcToken ? tok->astOperand2() : tok->astOperand1();
 
-            pointerAdditionResultNotNullError(tok, calcToken);
+                if (!exprToken)
+                    continue;
+
+                if (!exprToken->hasKnownIntValue() || !exprToken->getValue(0))
+                    continue;
+
+                pointerAdditionResultNotNullError(tok, calcToken);
+            } else if (astIsPointer(tok) && isUsedAsBool(tok, *mSettings) && !tok->astParent()->isComparisonOp()) {
+                pointerAdditionResultNotNullError(tok, calcToken);
+            }
         }
     }
 }
