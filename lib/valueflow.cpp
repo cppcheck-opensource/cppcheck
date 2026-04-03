@@ -1183,7 +1183,7 @@ static void valueFlowImpossibleValues(TokenList& tokenList, const Settings& sett
             const Token* op1 = tok->astOperand1();
             const Token* op2 = tok->astOperand2();
             if ((op1 && op1->hasKnownIntValue() && op1->getKnownIntValue() != 0)
-            || (op2 && op2->hasKnownIntValue() && op2->getKnownIntValue() != 0)) {
+                || (op2 && op2->hasKnownIntValue() && op2->getKnownIntValue() != 0)) {
                 ValueFlow::Value val(0);
                 val.setImpossible();
                 val.errorPath.emplace_back(tok, "Pointer arithmetic result cannot be null");

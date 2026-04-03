@@ -6141,7 +6141,7 @@ private:
               "  if (q);\n"
               "}");
         ASSERT_EQUALS("[test.cpp:3:7]: (warning) Comparison is wrong. Result of 'q' can't be 0 unless there is pointer overflow, and pointer overflow is undefined behaviour. [pointerAdditionResultNotNull]\n", errout_str());
-      }
+    }
 
     void duplicateConditionalAssign() {
         setMultiline();
