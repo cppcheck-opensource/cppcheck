@@ -444,7 +444,7 @@ public:
      */
 
     /** Use Clang parser */
-    bool clangParser;
+    bool clangParser{false};
 
     /** Get paths where we should glob for certain files (dir="cfg"/"platforms"/etc */
     QStringList getSearchPaths(const QString& dir) const;
@@ -570,21 +570,21 @@ private:
      * If this is false then only the Debug configuration
      * for the set platform is analyzed.
      */
-    bool mAnalyzeAllVsConfigs;
+    bool mAnalyzeAllVsConfigs{}; // TODO: defaults to true if loading a GUI project via CLI
 
     /** Check only a selected VS configuration */
     QStringList mVsConfigurations;
 
     /** Check code in headers */
-    bool mCheckHeaders;
+    bool mCheckHeaders{true};
 
     /** Check code in unused templates */
-    bool mCheckUnusedTemplates;
+    bool mCheckUnusedTemplates{true};
 
     /**
      * @brief Enable inline suppression.
      */
-    bool mInlineSuppression;
+    bool mInlineSuppression{true};
 
     /**
      * @brief List of include directories used to search include files.
@@ -648,13 +648,13 @@ private:
     QString mProjectName;
 
     /** @brief Cppcheck Premium: This value is passed to the Cert C checker if that is enabled */
-    int mCertIntPrecision;
+    int mCertIntPrecision{};
 
     /** @brief Execute clang analyzer? */
-    bool mClangAnalyzer;
+    bool mClangAnalyzer{};
 
     /** @brief Execute clang-tidy? */
-    bool mClangTidy;
+    bool mClangTidy{};
 
     /**
      * @brief Tags
@@ -667,10 +667,10 @@ private:
     std::map<std::size_t, QString> mWarningTags;
 
     /** Max CTU depth */
-    int mMaxCtuDepth;
+    int mMaxCtuDepth{};
 
     /** Max template instantiation recursion */
-    int mMaxTemplateRecursion;
+    int mMaxTemplateRecursion{};
 
     QStringList mCheckUnknownFunctionReturn;
 

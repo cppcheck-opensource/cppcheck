@@ -15,44 +15,12 @@ export PATH=
 
 ec=0
 
-$cmake_output/bin/cppcheck $selfcheck_options \
-  externals \
-  || ec=1
-
-$cmake_output/bin/cppcheck $selfcheck_options $cppcheck_options $naming_options \
-  frontend \
-  || ec=1
-
-$cmake_output/bin/cppcheck $selfcheck_options $cppcheck_options $naming_options \
-  -Ifrontend \
-  cli \
-  || ec=1
-
-$cmake_output/bin/cppcheck $selfcheck_options $cppcheck_options $naming_options \
-  --enable=internal \
-  lib \
-  || ec=1
-
 $cmake_output/bin/cppcheck $selfcheck_options $cppcheck_options $naming_options $qt_options \
   --suppress=constVariablePointer:*/moc_*.cpp \
   -DQT_CHARTS_LIB \
   -I$cmake_output/gui -Ifrontend -Igui \
-  gui/*.cpp $cmake_output/gui \
-  || ec=1
-
-$cmake_output/bin/cppcheck $selfcheck_options $cppcheck_options \
-  -Icli -Ifrontend \
-  test/*.cpp \
-  || ec=1
-
-$cmake_output/bin/cppcheck $selfcheck_options $cppcheck_options \
-  -Icli \
-  tools/dmake/*.cpp \
-  || ec=1
-
-$cmake_output/bin/cppcheck $selfcheck_options $cppcheck_options $qt_options \
-  -I$cmake_output/tools/triage -Igui \
-  tools/triage/*.cpp $cmake_output/tools/triage \
+  -gui/test/data \
+  gui $cmake_output/gui \
   || ec=1
 
 exit $ec

@@ -66,6 +66,7 @@ public:
     QString output;
 };
 
+// cppcheck-suppress-begin [functionStatic,functionConst]
 // Mock GUI...
 ProjectFile::ProjectFile(QObject *parent) : QObject(parent) {}
 ProjectFile *ProjectFile::mActiveProject;
@@ -127,6 +128,7 @@ void ThreadResult::reportErr(const ErrorMessage & /*unused*/) {
 void ThreadResult::reportProgress(const std::string &/*filename*/, const char /*stage*/[], const std::size_t /*value*/) {
     throw 1;
 }
+// cppcheck-suppress-end [functionStatic,functionConst]
 
 // Test...
 
