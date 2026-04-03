@@ -465,24 +465,36 @@ private:
         check(code2, dinit(CheckOptions, $.settings = &settingsWin));
         ASSERT_EQUALS("[test.cpp:2:3]: (style) int result is returned as long long value. If the return value is long long to avoid loss of information, then you have loss of information. [truncLongCastReturn]\n", errout_str());
 
-        const char code3[] = "long f() {\n"
-                             "    int n = 1;\n"
-                             "    return n << 12;\n"
-                             "}\n";
-        check(code3, dinit(CheckOptions, $.settings = &settings));
+        const char code3a[] = "long f() {\n"
+                              "    int n = 1;\n"
+                              "    return n << 12;\n"
+                              "}\n";
+        check(code3a, dinit(CheckOptions, $.settings = &settings));
         ASSERT_EQUALS("", errout_str());
-
-        const char code4[] = "long f(int n) {\n"
-                             "    return n << 12;\n"
-                             "}\n";
-        check(code4, dinit(CheckOptions, $.settings = &settings));
+        const char code3b[] = "long f(int n) {\n"
+                              "    return n << 12;\n"
+                              "}\n";
+        check(code3b, dinit(CheckOptions, $.settings = &settings));
         ASSERT_EQUALS("[test.cpp:2:5]: (style) int result is returned as long value. If the return value is long to avoid loss of information, then you have loss of information. [truncLongCastReturn]\n", errout_str());
 
-        const char code5[] = "long f() {\n"
-                             "    unsigned int n = 1U << 20;\n"
-                             "    return n << 20;\n"
-                             "}\n";
-        check(code5, dinit(CheckOptions, $.settings = &settings));
+        const char code3c[] = "long f() {\n"
+                              "    unsigned int n = 1U << 20;\n"
+                              "    return n << 20;\n"
+                              "}\n";
+        check(code3c, dinit(CheckOptions, $.settings = &settings));
+        ASSERT_EQUALS("[test.cpp:3:5]: (style) int result is returned as long value. If the return value is long to avoid loss of information, then you have loss of information. [truncLongCastReturn]\n", errout_str());
+
+        const char code4a[] = "long f(int x) {\n"
+                              "    int y = 0x07FFFF;\n"
+                              "    return ((x & y) << (12 & x));\n"
+                              "}\n";
+        check(code4a, dinit(CheckOptions, $.settings = &settings));
+        ASSERT_EQUALS("", errout_str());
+        const char code4b[] = "long f(int x) {\n"
+                              "    int y = 0x080000;\n"
+                              "    return ((x & y) << (12 & x));\n"
+                              "}\n";
+        check(code4b, dinit(CheckOptions, $.settings = &settings));
         ASSERT_EQUALS("[test.cpp:3:5]: (style) int result is returned as long value. If the return value is long to avoid loss of information, then you have loss of information. [truncLongCastReturn]\n", errout_str());
 
         // typedef

@@ -225,6 +225,10 @@ const Token* getStepTok(const Token* tok);
 Token* getCondTokFromEnd(Token* endBlock);
 const Token* getCondTokFromEnd(const Token* endBlock);
 
+bool getExpressionResultRange(const Token* expr, const Settings& settings, std::pair<MathLib::bigint, MathLib::bigint>& exprRange);
+bool isOperationResultWithinIntRange(const Token* op, const Settings& settings, std::pair<MathLib::bigint, MathLib::bigint>* leftRange, std::pair<MathLib::bigint, MathLib::bigint>* rightRange);
+
+
 /// For a "break" token, locate the next token to execute. The token will
 /// be either a "}" or a ";".
 const Token *findNextTokenFromBreak(const Token *breakToken);

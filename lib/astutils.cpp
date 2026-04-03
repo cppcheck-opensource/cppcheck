@@ -32,6 +32,7 @@
 #include "utils.h"
 #include "valueflow.h"
 #include "valueptr.h"
+#include "vf_common.h"
 #include "vfvalue.h"
 
 #include "checkclass.h"
@@ -41,11 +42,14 @@
 #include <functional>
 #include <initializer_list>
 #include <iterator>
+#include <limits>
 #include <list>
 #include <set>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
+
+#define INTEGER_SHIFT_LIMIT ((sizeof(int) * 8) - 1) // The number of bits, where a left shift cannot be guaranteed to be within int range.
 
 const Token* findExpression(const nonneg int exprid,
                             const Token* start,
@@ -924,6 +928,97 @@ Token* getCondTokFromEnd(Token* endBlock)
 const Token* getCondTokFromEnd(const Token* endBlock)
 {
     return getCondTokFromEndImpl(endBlock);
+}
+
+bool getExpressionResultRange(const Token* expr, const Settings& settings, std::pair<MathLib::bigint, MathLib::bigint>& exprRange)
+{
+    if (!expr)
+        return false;
+
+    // Early return for known values
+    if (expr->hasKnownIntValue()) {
+        exprRange = { expr->getKnownIntValue(), expr->getKnownIntValue() };
+        return true;
+    }
+
+    // Early return for non-integral expressions
+    if (!expr->valueType() || !expr->valueType()->isIntegral())
+        return false;
+
+    //Check binary op - bitwise and
+    if (expr->isBinaryOp() && expr->str() == "&") {
+        std::pair<MathLib::bigint, MathLib::bigint> leftRange, rightRange;
+        if (getExpressionResultRange(expr->astOperand1(), settings, leftRange) &&
+            getExpressionResultRange(expr->astOperand2(), settings, rightRange)) {
+
+            if (leftRange.second >= INT64_MAX || rightRange.second >= INT64_MAX)
+                // Abort for values larger than INT64_MAX since bigint do not handle them well
+                return false;
+
+            exprRange.first = leftRange.first & rightRange.first;
+            exprRange.second = leftRange.second & rightRange.second;
+
+            // Return false if negative values after bitwise &
+            return !(exprRange.first < 0 || exprRange.second < 0);
+        }
+    }
+
+    // Find original type before casts
+    const Token* exprToCheck = expr;
+    while (exprToCheck->isCast()) {
+        const Token* castFrom = exprToCheck->astOperand2() ? exprToCheck->astOperand2() : exprToCheck->astOperand1();
+        if (!castFrom || !castFrom->valueType() || !castFrom->valueType()->isIntegral())
+            break;
+        if (castFrom->valueType()->pointer >= 1)
+            break;
+        if (castFrom->valueType()->type >= exprToCheck->valueType()->type &&
+            castFrom->valueType()->sign == ValueType::Sign::SIGNED)
+            break;
+        exprToCheck = castFrom;
+    }
+
+    return ValueFlow::getMinMaxValues(exprToCheck->valueType(), settings.platform, exprRange.first, exprRange.second);
+}
+
+template<typename Op>
+static bool checkAllRangeOperations(const std::pair<MathLib::bigint, MathLib::bigint>& left,
+                                    const std::pair<MathLib::bigint, MathLib::bigint>& right,
+                                    const Settings& settings,
+                                    Op operation)
+{
+    return settings.platform.isIntValue(operation(left.first, right.first)) &&
+           settings.platform.isIntValue(operation(left.first, right.second)) &&
+           settings.platform.isIntValue(operation(left.second, right.first)) &&
+           settings.platform.isIntValue(operation(left.second, right.second));
+}
+
+bool isOperationResultWithinIntRange(const Token* op, const Settings& settings, std::pair<MathLib::bigint, MathLib::bigint>* leftRange, std::pair<MathLib::bigint, MathLib::bigint>* rightRange)
+{
+    if (!op || !leftRange || !rightRange)
+        return false;
+
+    if (op->str() == "<<") {
+        // If the lefthand operand is 31 or higher the resulting shift will be a negative value or greater than int range.
+        if ((rightRange->first >= INTEGER_SHIFT_LIMIT) || rightRange->second >= INTEGER_SHIFT_LIMIT)
+            return false;
+
+        // Leftshift with negative values is undefined behavior.
+        if ((rightRange->first < 0) || (rightRange->second < 0) || (leftRange->first < 0) || (leftRange->second < 0))
+            return false;
+
+        return checkAllRangeOperations(*leftRange, *rightRange, settings,
+                                       [](MathLib::bigint a, MathLib::bigint b) {
+            return a << b;
+        });
+    }
+
+    if (op->str() == "*")
+        return checkAllRangeOperations(*leftRange, *rightRange, settings,
+                                       [](MathLib::bigint a, MathLib::bigint b) {
+            return a * b;
+        });
+
+    return false;
 }
 
 Token* getInitTok(Token* tok) {
