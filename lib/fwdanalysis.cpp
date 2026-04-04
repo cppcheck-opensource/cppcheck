@@ -27,7 +27,6 @@
 #include "vfvalue.h"
 
 #include <deque>
-#include <list>
 #include <string>
 #include <utility>
 

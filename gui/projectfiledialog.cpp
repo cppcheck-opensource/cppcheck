@@ -33,7 +33,6 @@
 #include "ui_projectfile.h"
 
 #include <array>
-#include <list>
 #include <string>
 #include <utility>
 

@@ -29,7 +29,6 @@
 
 #include <cstring>
 #include <set>
-#include <vector>
 
 // Register this check class (by creating a static instance of it).
 // Disabled in release builds

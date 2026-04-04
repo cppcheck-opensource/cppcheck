@@ -32,7 +32,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <exception>
-#include <list>
 #include <memory>
 #include <set>
 #include <sstream>

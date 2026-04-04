@@ -37,10 +37,8 @@
 #include <cstdio>
 #include <list>
 #include <memory>
-#include <set>
 #include <stdexcept>
 #include <string>
-#include <unordered_set>
 #include <vector>
 
 class TestCmdlineParser : public TestFixture {
