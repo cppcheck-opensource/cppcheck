@@ -1763,7 +1763,7 @@ private:
         check("const std::string& f() {\n" // #12548
               "    return std::string{};\n"
               "}\n"
-              "const std::string& g() {\n" // #12548
+              "const std::string& g() {\n"
               "    return {};\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:2:23]: (error) Reference to temporary returned. [returnTempReference]\n"
