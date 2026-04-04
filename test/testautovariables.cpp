@@ -1760,10 +1760,15 @@ private:
 
     void returnReference29()
     {
-        check("const std::string& s() {\n" // #12548
+        check("const std::string& f() {\n" // #12548
               "    return std::string{};\n"
+              "}\n"
+              "const std::string& g() {\n" // #12548
+              "    return {};\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:23]: (error) Reference to temporary returned. [returnTempReference]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:23]: (error) Reference to temporary returned. [returnTempReference]\n"
+                      "[test.cpp:5:12]: (error) Reference to temporary returned. [returnTempReference]\n",
+                      errout_str());
     }
 
     void returnReferenceFunction() {
