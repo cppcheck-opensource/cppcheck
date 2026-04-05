@@ -1812,10 +1812,14 @@ bool isSameExpression(bool macro, const Token *tok1, const Token *tok2, const Se
 
 static bool isZeroBoundCond(const Token * const cond, bool reverse)
 {
-    if (cond == nullptr)
+    if (cond == nullptr || cond->astOperand1() == nullptr || cond->astOperand2() == nullptr)
         return false;
+
+    if ((reverse && !cond->astOperand1()->hasKnownIntValue()) || (!reverse && !cond->astOperand2()->hasKnownIntValue()))
+        return false;
+
     // Assume unsigned
-    const bool isZero = reverse ? cond->astOperand1()->getValue(0) : cond->astOperand2()->getValue(0);
+    const bool isZero = reverse ? cond->astOperand1()->getKnownIntValue() == 0 : cond->astOperand2()->getKnownIntValue() == 0;
     if (reverse) {
         if (cond->str() == "==" || cond->str() == "<=")
             return isZero;
