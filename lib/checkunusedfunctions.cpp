@@ -262,7 +262,7 @@ void CheckUnusedFunctions::parseTokens(const Tokenizer &tokenizer, const Setting
                 funcname = funcname->tokAt(2);
 
             if (funcname && funcname->isName() && !funcname->function() && !tok->astParent() && Token::Match(tok, "[(,]")) // unknown type in parameter list
-				continue;
+                continue;
 
             if (!Token::Match(funcname, "%name% [(),;]:}<>]"))
                 continue;
@@ -277,7 +277,7 @@ void CheckUnusedFunctions::parseTokens(const Tokenizer &tokenizer, const Setting
             if (ftok->str() == "<")
                 ftok = ftok->link();
             if (Token::Match(ftok->linkAt(1), ") const|throw|{"))
-                continue;
+                funcname = nullptr;
         }
 
         if (funcname) {
