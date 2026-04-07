@@ -3282,6 +3282,8 @@ static void valueFlowAfterMove(const TokenList& tokenlist, const SymbolDatabase&
                 }
                 parent = parent->astParent();
             }
+            if (bail)
+                continue;
             if (parent &&
                 (parent->str() == "return" || // MOVED in return statement
                  parent->str() == "(")) // MOVED in self assignment, isOpenParenthesisMemberFunctionCallOfVarId == true
