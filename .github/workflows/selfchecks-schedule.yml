@@ -1,0 +1,89 @@
+# Syntax reference https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions
+# Environment reference https://help.github.com/en/actions/reference/virtual-environments-for-github-hosted-runners
+name: selfcheck-schedule
+
+on: [push, pull_request]
+
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.os }}
+
+      - name: Cache Cppcheck
+        uses: actions/cache@v4
+        with:
+          path: cppcheck
+          key: ${{ runner.os }}-selfcheck-schedule-cppcheck-${{ github.sha }}
+
+      - name: Install missing software on ubuntu
+        run: |
+          sudo apt-get update
+          sudo apt-get install libboost-container-dev
+
+      - name: Self check (build)
+        run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          # compile with verification and ast matchers
+          make -j$(nproc) CXXOPTS="-Werror -g -O2" CPPOPTS="-DCHECK_INTERNAL -DHAVE_BOOST" MATCHCOMPILER=yes VERIFY=1
+
+  selfcheck:
+    needs: build
+
+    runs-on: ubuntu-22.04
+
+    strategy:
+      matrix:
+        project: ["cmake.output/compile_commands.json", "cppcheck.sln", "cppcheck.cppcheck", "gui/gui.cppcheck"]
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Restore Cppcheck
+        uses: actions/cache@v4
+        with:
+          path: cppcheck
+          key: ${{ runner.os }}-selfcheck-schedule-cppcheck-${{ github.sha }}
+
+      - name: Install missing software on ubuntu
+        if: contains(matrix.project, '.json')
+        run: |
+          sudo apt-get update
+          sudo apt-get install qt6-base-dev libqt6charts6-dev qt6-tools-dev
+
+      # TODO: enable dmake
+      - name: CMake
+        if: contains(matrix.project, '.json')
+        run: |
+          cmake -S . -B cmake.output -Werror=dev -DCMAKE_BUILD_TYPE=Debug -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCPPCHK_GLIBCXX_DEBUG=Off -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On
+
+      - name: Generate dependencies
+        if: contains(matrix.project, '.json')
+        run: |
+          # make sure auto-generated GUI files exist
+          make -C cmake.output autogen
+          make -C cmake.output gui-build-deps triage-build-ui-deps
+
+      # TODO: generate Visual Studio project
+
+      - name: Self check (${{ matrix.project }})
+        run: |
+          selfcheck_options="-q -j$(nproc) --std=c++11 --template=selfcheck --showtime=file-total --error-exitcode=1 --inline-suppr --suppressions-list=.selfcheck_suppressions --exitcode-suppress=purgedConfiguration --inconclusive --enable=style,performance,portability,warning,missingInclude,internal,information --exception-handling --debug-warnings --check-level=normal"
+          # TODO: add libraries for Visual Studio project
+          # TODO: analyze all VS configuration
+          ./cppcheck $selfcheck_options --project=${{ matrix.project }}

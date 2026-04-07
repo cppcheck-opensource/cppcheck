@@ -11,4 +11,11 @@
     <ignore>
         <path name="temp/"/>
     </ignore>
+    <exclude>
+        <path name="test/data"/>
+    </exclude>
+    <libraries>
+        <library>gnu</library>
+        <library>qt</library>
+    </libraries>
 </project>

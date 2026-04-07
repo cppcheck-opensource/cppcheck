@@ -756,6 +756,15 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
             }
         }
 
+        else if (std::strncmp(argv[i], "--exitcode-suppress=", 20) == 0) {
+            const std::string suppression = argv[i]+20;
+            const std::string errmsg(mSuppressions.nofail.addSuppressionLine(suppression));
+            if (!errmsg.empty()) {
+                mLogger.printError(errmsg);
+                return Result::Fail;
+            }
+        }
+
         // Filter errors
         else if (std::strncmp(argv[i], "--exitcode-suppressions=", 24) == 0) {
             // exitcode-suppressions=filename.txt
