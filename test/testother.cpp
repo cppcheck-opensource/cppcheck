@@ -304,6 +304,7 @@ private:
         TEST_CASE(moveForRange);
         TEST_CASE(moveTernary);
         TEST_CASE(movePointerAlias);
+        TEST_CASE(moveTryEmplace);
 
         TEST_CASE(funcArgNamesDifferent);
         TEST_CASE(funcArgOrderDifferent);
@@ -12728,6 +12729,17 @@ private:
               "    s_p->size();\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:5:8]: (warning) Access of moved variable '.'. [accessMoved]\n", errout_str());
+    }
+
+    void moveTryEmplace()
+    {
+        check("void f(std::map<std::string, std::string>& m, std::string& s) {\n" // #12773
+              "    bool b = m.try_emplace(\"a\", std::move(s)).second;\n"
+              "    if (!b) {\n"
+              "        std::cout << s;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void funcArgNamesDifferent() {
