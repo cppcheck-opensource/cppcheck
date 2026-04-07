@@ -3223,6 +3223,14 @@ static Token* findEndOfFunctionCallForParameter(Token* parameterToken)
     return nextAfterAstRightmostLeaf(parent);
 }
 
+static bool isTryEmplace(const Token* tok)
+{
+    if (tok->str() != "(" || !Token::simpleMatch(tok->astOperand1(), ".") || !tok->astOperand1()->astOperand1() || !Token::simpleMatch(tok->astOperand1()->astOperand2(), "try_emplace"))
+        return false;
+    const ValueType* vt = tok->astOperand1()->astOperand1()->valueType();
+    return vt && vt->container && vt->container->stdAssociativeLike;
+}
+
 static void valueFlowAfterMove(const TokenList& tokenlist, const SymbolDatabase& symboldatabase, ErrorLogger& errorLogger, const Settings& settings)
 {
     if (!tokenlist.isCPP() || settings.standards.cpp < Standards::CPP11)
@@ -3265,9 +3273,15 @@ static void valueFlowAfterMove(const TokenList& tokenlist, const SymbolDatabase&
             const nonneg int varId = varTok->varId();
             // x is not MOVED after assignment if code is:  x = ... std::move(x) .. ;
             const Token *parent = tok->astParent();
+            bool bail = false;
             while (parent && parent->str() != "=" && parent->str() != "return" &&
-                   !(parent->str() == "(" && isOpenParenthesisMemberFunctionCallOfVarId(parent, varId)))
+                   !(parent->str() == "(" && isOpenParenthesisMemberFunctionCallOfVarId(parent, varId))) {
+                if (isTryEmplace(parent)) {
+                    bail = true;
+                    break;
+                }
                 parent = parent->astParent();
+            }
             if (parent &&
                 (parent->str() == "return" || // MOVED in return statement
                  parent->str() == "(")) // MOVED in self assignment, isOpenParenthesisMemberFunctionCallOfVarId == true
