@@ -831,7 +831,7 @@ private:
 
     void unnamedArg()
     {
-        check("struct S {\n"
+        check("struct S {\n" // #12904
               "    void Type() {}\n"
               "};\n"
               "[[unused]] void f(Type) {}\n"
