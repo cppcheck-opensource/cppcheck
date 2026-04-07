@@ -45,6 +45,7 @@ private:
         TEST_CASE(seekOnAppendedFile);
         TEST_CASE(fflushOnInputStream);
         TEST_CASE(incompatibleFileOpen);
+        TEST_CASE(testWrongfeofUsage); // #958
 
         TEST_CASE(testScanf1); // Scanf without field limiters
         TEST_CASE(testScanf2);
@@ -741,6 +742,36 @@ private:
               "    FILE *f2 = fopen(\"tmp\", \"rt\");\n"
               "}");
         ASSERT_EQUALS("[test.cpp:3:16]: (warning) The file '\"tmp\"' is opened for read and write access at the same time on different streams [incompatibleFileOpen]\n", errout_str());
+    }
+
+    void testWrongfeofUsage() { // ticket #958
+        check("void foo(FILE * fp) {\n"
+              "  while (!feof(fp)) \n"
+              "  {\n"
+              "     char line[100];\n"
+              "     fgets(line, sizeof(line), fp);\n"
+              "  }\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:2:10]: (warning) Using feof() as a loop condition causes the last line to be processed twice. [wrongfeofUsage]\n", errout_str());
+
+        check("int foo(FILE *fp) {\n"
+              "  char line[100];\n"
+              "  while (fgets(line, sizeof(line), fp)) {}\n"
+              "  if (!feof(fp))\n"
+              "    return 1;\n"
+              "  return 0;\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void foo(FILE *fp){\n"
+              "  char line[100];\n"
+              "  fgets(line, sizeof(line), fp);\n"
+              "  while (!feof(fp)){\n"
+              "    dostuff(line);\n"
+              "    fgets(line, sizeof(line), fp);"
+              "  }\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
     }
 
 

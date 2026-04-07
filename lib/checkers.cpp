@@ -101,6 +101,7 @@ namespace checkers {
         {"CheckFunctions::useStandardLibrary","style"},
         {"CheckIO::checkCoutCerrMisusage","c"},
         {"CheckIO::checkFileUsage",""},
+        {"CheckIO::checkWrongfeofUsage",""},
         {"CheckIO::checkWrongPrintfScanfArguments",""},
         {"CheckIO::invalidScanf",""},
         {"CheckLeakAutoVar::check","notclang"},
