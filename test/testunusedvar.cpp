@@ -6681,6 +6681,10 @@ private:
                               "    C c(12);\n"
                               "}");
         ASSERT_EQUALS("", errout_str());
+
+        functionVariableUsage("class S { S(int); };\n"
+                              "void f() { S s = 0; }\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void localVarSmartPtr() {
