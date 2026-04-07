@@ -1352,6 +1352,14 @@ void CheckUnusedVar::checkFunctionVariableUsage()
             if (tok->previous() && tok->previous()->variable() && tok->previous()->variable()->nameToken()->scope()->type == ScopeType::eUnion)
                 continue;
 
+            if (expr->valueType() &&
+                expr->valueType()->type == ValueType::RECORD &&
+                !expr->valueType()->pointer &&
+                expr->valueType()->typeScope &&
+                expr->valueType()->typeScope->definedType &&
+                !symbolDatabase->isRecordTypeWithoutSideEffects(expr->valueType()->typeScope->definedType))
+                continue;
+
             FwdAnalysis fwdAnalysis(*mSettings);
             const Token* scopeEnd = ValueFlow::getEndOfExprScope(expr, scope, /*smallest*/ false);
             if (fwdAnalysis.unusedValue(expr, start, scopeEnd)) {
