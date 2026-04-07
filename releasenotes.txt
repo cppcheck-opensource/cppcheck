@@ -5,7 +5,7 @@ Major bug fixes & crashes:
 -
 
 New checks:
--
+- Warn when feof() is used as a while loop condition (wrongfeofUsage).
 
 C/C++ support:
 -
