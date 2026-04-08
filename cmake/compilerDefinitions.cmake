@@ -37,6 +37,12 @@ endif()
 
 if(HAVE_RULES)
     add_definitions(-DHAVE_RULES)
+    if(USE_PCRE2)
+        add_definitions(-DHAVE_PCRE2)
+    endif()
+    if(NOT DISABLE_PCRE1)
+        add_definitions(-DHAVE_PCRE)
+    endif()
 endif()
 
 if(Boost_FOUND)

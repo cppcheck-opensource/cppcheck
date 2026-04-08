@@ -41,7 +41,12 @@ public:
     enum class Engine : std::uint8_t
     {
         Unknown = 0,
-        Pcre = 1
+#ifdef HAVE_PCRE
+        Pcre = 1,
+#endif
+#ifdef HAVE_PCRE2
+        Pcre2 = 2
+#endif
     };
 
     static std::shared_ptr<Regex> create(std::string pattern, Engine engine, std::string& err);

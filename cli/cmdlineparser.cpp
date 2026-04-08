@@ -1291,6 +1291,9 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
 #ifdef HAVE_RULES
             Settings::Rule rule;
             rule.pattern = 7 + argv[i];
+#if defined(HAVE_PCRE2) && !defined(HAVE_PCRE)
+            rule.engine = Regex::Engine::Pcre2;
+#endif
 
             if (rule.pattern.empty()) {
                 mLogger.printError("no rule pattern provided.");
@@ -1357,9 +1360,16 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                         }
                         else if (std::strcmp(subname, "engine") == 0) {
                             const char * const engine = empty_if_null(subtext);
+#ifdef HAVE_PCRE
                             if (std::strcmp(engine, "pcre") == 0) {
                                 rule.engine = Regex::Engine::Pcre;
                             }
+#endif
+#ifdef HAVE_PCRE2
+                            else if (std::strcmp(engine, "pcre2") == 0) {
+                                rule.engine = Regex::Engine::Pcre2;
+                            }
+#endif
                             else {
                                 mLogger.printError(std::string("unknown regex engine '") + engine + "'.");
                                 return Result::Fail;

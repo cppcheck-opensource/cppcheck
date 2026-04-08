@@ -21,3 +21,8 @@ Infrastructure & dependencies:
 
 Other:
 - Make it possible to specify the regular expression engine using the `engine` element in a rule XML.
+- Added support for PCRE2 (`pcre2`) as the regular expression engine for rules.
+- Added CMake option `USE_PCRE2` to enable usage of the PCRE2 library for rules (will not change the default).
+- Added CMake option `DISABLE_PCRE1` to disable usage of the PCRE library for rules (changes default to `pcre2`).
+-
+-

@@ -85,6 +85,8 @@ private:
         std::string exp;
         if (mEngine == Regex::Engine::Pcre)
             exp = "missing terminating ] for character class";
+        else if (mEngine == Regex::Engine::Pcre2)
+            exp = "missing terminating ] for character class";
 
         (void)assertRegex("[", exp);
     }
@@ -201,6 +203,13 @@ public:
     TestRegExPcre() : TestRegExBase("TestRegExPcre", Regex::Engine::Pcre) {}
 };
 
+class TestRegExPcre2 : public TestRegExBase {
+public:
+    TestRegExPcre2() : TestRegExBase("TestRegExPcre2", Regex::Engine::Pcre2) {}
+};
+
+
 REGISTER_TEST(TestRegExPcre)
+REGISTER_TEST(TestRegExPcre2)
 
 #endif // HAVE_RULES

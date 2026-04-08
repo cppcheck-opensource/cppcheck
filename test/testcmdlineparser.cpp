@@ -2682,10 +2682,20 @@ private:
                         "<summary>ruleSummary2</summary>\n"
                         "</message>\n"
                         "</rule>\n"
+                        "<rule>\n"
+                        "<engine>pcre2</engine>\n"
+                        "<tokenlist>raw</tokenlist>\n"
+                        "<pattern>[A-Z]</pattern>\n"
+                        "<message>\n"
+                        "<severity>style</severity>\n"
+                        "<id>ruleId3</id>\n"
+                        "<summary>ruleSummary3</summary>\n"
+                        "</message>\n"
+                        "</rule>\n"
                         "</rules>");
         const char * const argv[] = {"cppcheck", "--rule-file=rule.xml", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
-        ASSERT_EQUALS(2, settings->rules.size());
+        ASSERT_EQUALS(3, settings->rules.size());
         auto it = settings->rules.cbegin();
         ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->engine);
         ASSERT_EQUALS("raw", it->tokenlist);
@@ -2700,6 +2710,13 @@ private:
         ASSERT_EQUALS_ENUM(Severity::warning, it->severity);
         ASSERT_EQUALS("ruleId2", it->id);
         ASSERT_EQUALS("ruleSummary2", it->summary);
+        ++it;
+        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre2, it->engine);
+        ASSERT_EQUALS("raw", it->tokenlist);
+        ASSERT_EQUALS("[A-Z]", it->pattern);
+        ASSERT_EQUALS_ENUM(Severity::style, it->severity);
+        ASSERT_EQUALS("ruleId3", it->id);
+        ASSERT_EQUALS("ruleSummary3", it->summary);
     }
 
     void ruleFileSingle() {
