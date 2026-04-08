@@ -174,10 +174,8 @@ namespace {
             {
                 std::set<std::string> activeCheckers;
                 std::string line;
-                // cppcheck-suppress accessMoved - FP
                 while (std::getline(fin, line))
                 {
-                    // cppcheck-suppress accessMoved - FP
                     activeCheckers.emplace(std::move(line));
                 }
                 mActiveCheckers = std::move(activeCheckers);

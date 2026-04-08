@@ -2548,10 +2548,11 @@ bool isVariableChangedByFunctionCall(const Token *tok, int indirect, const Setti
         const Library::ArgumentChecks::Direction argDirection = settings.library.getArgDirection(tok, 1 + argnr, indirect);
         if (argDirection == Library::ArgumentChecks::Direction::DIR_IN)
             return false;
+        if (argDirection == Library::ArgumentChecks::Direction::DIR_OUT)
+            return true;
 
         const bool requireNonNull = settings.library.isnullargbad(tok, 1 + argnr);
-        if (argDirection == Library::ArgumentChecks::Direction::DIR_OUT ||
-            argDirection == Library::ArgumentChecks::Direction::DIR_INOUT) {
+        if (argDirection == Library::ArgumentChecks::Direction::DIR_INOUT) {
             if (indirect == 0 && isArray(tok1))
                 return true;
             const bool requireInit = settings.library.isuninitargbad(tok, 1 + argnr);
@@ -3471,6 +3472,9 @@ static ExprUsage getFunctionUsage(const Token* tok, int indirect, const Settings
         const bool isuninitbad = settings.library.isuninitargbad(ftok, argnr + 1, indirect, &hasIndirect);
         if (isuninitbad && (!addressOf || isnullbad))
             return ExprUsage::Used;
+        const Library::ArgumentChecks::Direction dir = settings.library.getArgDirection(ftok, argnr + 1, indirect);
+        if (dir == Library::ArgumentChecks::Direction::DIR_OUT)
+            return ExprUsage::NotUsed;
     }
     return ExprUsage::Inconclusive;
 }

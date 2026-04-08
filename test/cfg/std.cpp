@@ -586,7 +586,6 @@ void bufferAccessOutOfBounds_std_ofstream_write(std::ofstream &os, const char* s
     (void)os.write(s,n);
 }
 
-// cppcheck-suppress constParameterReference // TODO: FP
 void bufferAccessOutOfBounds_std_ifstream_get(std::ifstream& in, std::streambuf& sb)
 {
     char cBuf[10];
