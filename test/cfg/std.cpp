@@ -5034,12 +5034,12 @@ struct T_constParameter_std_begin {
 };
 
 void f(S_constParameter_std_begin& s) {
-    std::for_each(std::begin(s.a), std::end(s.a), [](auto& i) { ++i; });
+    std::for_each(std::begin(s.a), std::end(s.a), [](int& i) { ++i; });
 }
 
 // cppcheck-suppress constParameterReference - FP
 void f(T_constParameter_std_begin& t) {
-    std::for_each(std::begin(t.v), std::end(t.v), [](auto& i) { ++i; });
+    std::for_each(std::begin(t.v), std::end(t.v), [](int& i) { ++i; });
 }
 
 void g_constVariable_std_begin(int* p) { *p = 0; }
