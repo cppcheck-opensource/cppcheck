@@ -8040,7 +8040,7 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
                         while (Token::simpleMatch(varTok, "["))
                             varTok = varTok->astOperand1();
                         if (Token::simpleMatch(varTok, "."))
-                            varTok = varTok->astOperand2();                        
+                            varTok = varTok->astOperand2();
                         const auto* const paramVariable = varTok->variable();
                         if (!paramVariable ||
                             !paramVariable->valueType() ||

@@ -9968,7 +9968,7 @@ private:
             tok = Token::findsimplematch(tok, "auto");
             ASSERT(tok && tok->valueType());
             ASSERT_EQUALS("iterator(std :: vector <)", tok->valueType()->str());
-        }        
+        }
         {
             GET_SYMBOL_DB("struct S { std::vector<int> v[1][1]; };\n"
                           "void f(S& s) {\n"
