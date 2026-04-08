@@ -1080,8 +1080,13 @@ std::string getGuideline(const std::string &errId, ReportType reportType,
     case ReportType::misraC2012:
     case ReportType::misraC2023:
     case ReportType::misraC2025:
-        if (errId.rfind("misra-c20", 0) == 0 || errId.rfind("premium-misra-c-20", 0) == 0)
-            guideline = errId.substr(errId.rfind('-') + 1);
+        if (errId.rfind("misra-c20", 0) == 0 || errId.rfind("premium-misra-c-20", 0) == 0) {
+            auto dashPos = errId.rfind('-');
+            while (dashPos != std::string::npos && isalpha(errId[dashPos + 1])) {
+                dashPos = errId.rfind('-', dashPos - 1);
+            }
+            guideline = errId.substr(dashPos + 1, errId.find('-', dashPos + 1) - dashPos - 1);
+        }
         break;
     case ReportType::misraCpp2008:
         if (errId.rfind("premium-misra-cpp-2008", 0) == 0)

@@ -361,6 +361,8 @@ private:
         testReportType(ReportType::misraCpp2023, Severity::style, "premium-misra-cpp-2023-dir-0.3.2", "Required", "Dir 0.3.2");
         testReportType(ReportType::misraCpp2008, Severity::style, "premium-misra-cpp-2008-3-4-1", "Required", "3-4-1");
         testReportType(ReportType::misraC2012, Severity::style, "premium-misra-c-2012-dir-4.6", "Advisory", "Dir 4.6");
+        testReportType(ReportType::misraC2012, Severity::style, "premium-misra-c-2012-10.4-positive-number", "Required", "10.4");
+        testReportType(ReportType::misraC2012, Severity::style, "premium-misra-c-2012-10.4", "Required", "10.4");
         testReportType(ReportType::misraC2012, Severity::style, "misra-c2012-dir-4.6", "Advisory", "Dir 4.6");
         testReportType(ReportType::certC, Severity::error, "resourceLeak", "L3", "FIO42-C");
     }
