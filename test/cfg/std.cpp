@@ -5025,6 +5025,32 @@ void beginEnd()
     std::crend(arr);
 }
 
+struct S_constParameter_std_begin { // #11617
+    int a[2];
+};
+
+struct T_constParameter_std_begin {
+    std::vector<int> v;
+};
+
+void f(S_constParameter_std_begin& s) {
+    std::for_each(std::begin(s.a), std::end(s.a), [](auto& i) { ++i; });
+}
+
+// cppcheck-suppress constParameterReference - FP
+void f(T_constParameter_std_begin& t) {
+    std::for_each(std::begin(t.v), std::end(t.v), [](auto& i) { ++i; });
+}
+
+void g_constVariable_std_begin(int* p) { *p = 0; }
+
+int f_constVariable_std_begin() {
+    int arr[1];
+    g_constVariable_std_begin(std::begin(arr));
+    *std::begin(arr) = 1;
+    return arr[0];
+}
+
 void smartPtr_get()
 {
     std::unique_ptr<int> p;
