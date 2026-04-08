@@ -8319,10 +8319,13 @@ bool ValueType::fromLibraryType(const std::string &typestr, const Settings &sett
 
 std::string ValueType::dump() const
 {
+    if (type == UNKNOWN_TYPE)
+        return "";
+
     std::string ret;
     switch (type) {
     case UNKNOWN_TYPE:
-        return "";
+        break; // never happens
     case NONSTD:
         ret += "valueType-type=\"nonstd\"";
         break;

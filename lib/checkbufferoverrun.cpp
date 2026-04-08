@@ -285,9 +285,9 @@ static std::vector<ValueFlow::Value> getOverrunIndexValues(const Token* tok,
         overflow = true;
         indexValues.push_back(values.front());
     }
-    if (overflow)
-        return indexValues;
-    return {};
+    if (!overflow)
+        indexValues.clear();
+    return indexValues;
 }
 
 void CheckBufferOverrun::arrayIndex()

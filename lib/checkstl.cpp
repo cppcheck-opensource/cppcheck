@@ -216,7 +216,7 @@ static std::string indexValueString(const ValueFlow::Value& indexValue, const st
             indexString += "+" + MathLib::toString(indexValue.intvalue);
     }
     if (indexValue.bound == ValueFlow::Value::Bound::Lower)
-        return "greater or equal to " + indexString;
+        indexString = "greater or equal to " + indexString;
     return indexString;
 }
 

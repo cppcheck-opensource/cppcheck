@@ -598,9 +598,11 @@ static void valueFlowTypeTraits(TokenList& tokenlist, const Settings& settings)
     eval["is_reference"] = [&](const std::vector<std::vector<const Token*>>& args) {
         if (args.size() != 1)
             return ValueFlow::Value::unknown();
-        ValueFlow::Value isRValue = eval["is_rvalue_reference"](args);
-        if (isRValue.isUninitValue() || isRValue.intvalue == 1)
-            return isRValue;
+        {
+            ValueFlow::Value isRValue = eval["is_rvalue_reference"](args);
+            if (isRValue.isUninitValue() || isRValue.intvalue == 1)
+                return isRValue;
+        }
         return eval["is_lvalue_reference"](args);
     };
     for (Token* tok = tokenlist.front(); tok; tok = tok->next()) {
@@ -4952,21 +4954,22 @@ static void valueFlowCondition(const ValuePtr<ConditionHandler>& handler,
 
 struct SimpleConditionHandler : ConditionHandler {
     std::vector<Condition> parse(const Token* tok, const Settings& /*settings*/) const override {
-
-        std::vector<Condition> conds;
-        parseCompareEachInt(tok, [&](const Token* vartok, ValueFlow::Value true_value, ValueFlow::Value false_value) {
-            if (vartok->hasKnownIntValue())
-                return;
-            if (vartok->str() == "=" && vartok->astOperand1() && vartok->astOperand2())
-                vartok = vartok->astOperand1();
-            Condition cond;
-            cond.true_values.push_back(std::move(true_value));
-            cond.false_values.push_back(std::move(false_value));
-            cond.vartok = vartok;
-            conds.push_back(std::move(cond));
-        });
-        if (!conds.empty())
-            return conds;
+        {
+            std::vector<Condition> conds;
+            parseCompareEachInt(tok, [&](const Token* vartok, ValueFlow::Value true_value, ValueFlow::Value false_value) {
+                if (vartok->hasKnownIntValue())
+                    return;
+                if (vartok->str() == "=" && vartok->astOperand1() && vartok->astOperand2())
+                    vartok = vartok->astOperand1();
+                Condition cond;
+                cond.true_values.push_back(std::move(true_value));
+                cond.false_values.push_back(std::move(false_value));
+                cond.vartok = vartok;
+                conds.push_back(std::move(cond));
+            });
+            if (!conds.empty())
+                return conds;
+        }
 
         const Token* vartok = nullptr;
 
@@ -6475,9 +6478,11 @@ static std::vector<ValueFlow::Value> getContainerSizeFromConstructorArgs(const s
     } else if (astIsContainer(args[0]) && args.size() == 1) { // copy constructor
         return getContainerValues(args[0]);
     } else if (isIteratorPair(args)) {
-        std::vector<ValueFlow::Value> result = getContainerValues(args[0]);
-        if (!result.empty())
-            return result;
+        {
+            std::vector<ValueFlow::Value> result = getContainerValues(args[0]);
+            if (!result.empty())
+                return result;
+        }
         // (ptr, ptr + size)
         if (astIsPointer(args[0]) && args[0]->exprId() != 0) {
             // (ptr, ptr) is empty
@@ -6807,21 +6812,23 @@ static void valueFlowContainerSize(const TokenList& tokenlist,
 struct ContainerConditionHandler : ConditionHandler {
     std::vector<Condition> parse(const Token* tok, const Settings& settings) const override
     {
-        std::vector<Condition> conds;
-        parseCompareEachInt(tok, [&](const Token* vartok, ValueFlow::Value true_value, ValueFlow::Value false_value) {
-            vartok = settings.library.getContainerFromYield(vartok, Library::Container::Yield::SIZE);
-            if (!vartok)
-                return;
-            true_value.valueType = ValueFlow::Value::ValueType::CONTAINER_SIZE;
-            false_value.valueType = ValueFlow::Value::ValueType::CONTAINER_SIZE;
-            Condition cond;
-            cond.true_values.push_back(std::move(true_value));
-            cond.false_values.push_back(std::move(false_value));
-            cond.vartok = vartok;
-            conds.push_back(std::move(cond));
-        });
-        if (!conds.empty())
-            return conds;
+        {
+            std::vector<Condition> conds;
+            parseCompareEachInt(tok, [&](const Token* vartok, ValueFlow::Value true_value, ValueFlow::Value false_value) {
+                vartok = settings.library.getContainerFromYield(vartok, Library::Container::Yield::SIZE);
+                if (!vartok)
+                    return;
+                true_value.valueType = ValueFlow::Value::ValueType::CONTAINER_SIZE;
+                false_value.valueType = ValueFlow::Value::ValueType::CONTAINER_SIZE;
+                Condition cond;
+                cond.true_values.push_back(std::move(true_value));
+                cond.false_values.push_back(std::move(false_value));
+                cond.vartok = vartok;
+                conds.push_back(std::move(cond));
+            });
+            if (!conds.empty())
+                return conds;
+        }
 
         const Token* vartok = nullptr;
 
@@ -7523,10 +7530,12 @@ std::vector<ValueFlow::Value> ValueFlow::isOutOfBounds(const Value& size, const 
     ValueFlow::Value inBoundsValue = inferCondition("<", indexTok, size.intvalue);
     if (inBoundsValue.isKnown() && inBoundsValue.intvalue != 0)
         return {};
-    std::vector<ValueFlow::Value> result = isOutOfBoundsImpl(size, indexTok, false);
-    if (!result.empty())
-        return result;
+    {
+        std::vector<ValueFlow::Value> result = isOutOfBoundsImpl(size, indexTok, false);
+        if (!result.empty())
+            return result;
+    }
     if (!possible)
-        return result;
+        return {};
     return isOutOfBoundsImpl(size, indexTok, true);
 }

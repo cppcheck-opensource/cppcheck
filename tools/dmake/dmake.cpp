@@ -169,12 +169,14 @@ static void compilefiles(std::ostream &fout, const std::vector<std::string> &fil
 static std::string getCppFiles(std::vector<std::string> &files, const std::string &path, bool recursive)
 {
     std::list<FileWithDetails> filelist;
-    const std::set<std::string> extra;
-    const std::vector<std::string> masks;
-    const PathMatch matcher(masks, Path::getCurrentPath());
-    std::string err = FileLister::addFiles(filelist, path, extra, recursive, matcher);
-    if (!err.empty())
-        return err;
+    {
+        const std::set<std::string> extra;
+        const std::vector<std::string> masks;
+        const PathMatch matcher(masks, Path::getCurrentPath());
+        std::string err = FileLister::addFiles(filelist, path, extra, recursive, matcher);
+        if (!err.empty())
+            return err;
+    }
 
     // add *.cpp files to the "files" vector..
     for (const auto& file : filelist) {

@@ -579,9 +579,11 @@ private:
             (Token::Match(parent, "*|[") || (parent && parent->originalName() == "->")) && getIndirect(tok) <= 0)
             return Action::Read;
 
-        Action w = isWritable(tok, d);
-        if (w != Action::None)
-            return w;
+        {
+            Action w = isWritable(tok, d);
+            if (w != Action::None)
+                return w;
+        }
 
         // Check for modifications by function calls
         return isModified(tok);
@@ -622,7 +624,7 @@ private:
                 if (Token::Match(tok->astParent(), "%assign%") && astIsLHS(tok))
                     a |= Action::Invalid;
                 if (inconclusiveRef && a.isModified())
-                    return Action::Inconclusive;
+                    a = Action::Inconclusive;
                 return a;
             }
             if (la.isRead()) {
@@ -634,7 +636,7 @@ private:
             inconclusive |= inconclusiveRef;
             Action a = isAliasModified(tok);
             if (inconclusive && a.isModified())
-                return Action::Inconclusive;
+                a = Action::Inconclusive;
             return a;
         }
         if (isSameSymbolicValue(ref))

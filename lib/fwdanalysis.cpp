@@ -140,10 +140,12 @@ FwdAnalysis::Result FwdAnalysis::checkRecursive(const Token *expr, const Token *
             if (!opTok)
                 opTok = tok->next();
             std::pair<const Token*, const Token*> startEndTokens = opTok->findExpressionStartEndTokens();
-            FwdAnalysis::Result result =
-                checkRecursive(expr, startEndTokens.first, startEndTokens.second->next(), exprVarIds, local, true, depth);
-            if (result.type != Result::Type::NONE)
-                return result;
+            {
+                FwdAnalysis::Result result =
+                    checkRecursive(expr, startEndTokens.first, startEndTokens.second->next(), exprVarIds, local, true, depth);
+                if (result.type != Result::Type::NONE)
+                    return result;
+            }
 
             // #9167: if the return is inside an inner class, it does not tell us anything
             if (!inInnerClass) {

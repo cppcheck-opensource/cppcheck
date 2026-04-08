@@ -573,9 +573,9 @@ template<> std::string MathLib::toString<double>(double value)
     result << value;
     std::string s = result.str();
     if (s == "-0")
-        return "0.0";
-    if (s.find_first_of(".e") == std::string::npos)
-        return s + ".0";
+        s = "0.0";
+    else if (s.find_first_of(".e") == std::string::npos)
+        s += ".0";
     return s;
 }
 

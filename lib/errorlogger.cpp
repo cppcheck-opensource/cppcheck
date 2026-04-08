@@ -1058,47 +1058,49 @@ std::string getGuideline(const std::string &errId, ReportType reportType,
                          const std::map<std::string, std::string> &guidelineMapping,
                          Severity severity)
 {
-    std::string guideline;
+    {
+        std::string guideline;
 
-    switch (reportType) {
-    case ReportType::autosar:
-        if (errId.rfind("premium-autosar-", 0) == 0) {
-            guideline = errId.substr(16);
+        switch (reportType) {
+        case ReportType::autosar:
+            if (errId.rfind("premium-autosar-", 0) == 0) {
+                guideline = errId.substr(16);
+                break;
+            }
+            if (errId.rfind("premium-misra-cpp-2008-", 0) == 0)
+                guideline = "M" + errId.substr(23);
+            break;
+        case ReportType::certC:
+        case ReportType::certCpp:
+            if (errId.rfind("premium-cert-", 0) == 0) {
+                guideline = errId.substr(13);
+                std::transform(guideline.begin(), guideline.end(),
+                               guideline.begin(), static_cast<int (*)(int)>(std::toupper));
+            }
+            break;
+        case ReportType::misraC2012:
+        case ReportType::misraC2023:
+        case ReportType::misraC2025:
+            if (errId.rfind("misra-c20", 0) == 0 || errId.rfind("premium-misra-c-20", 0) == 0)
+                guideline = errId.substr(errId.rfind('-') + 1);
+            break;
+        case ReportType::misraCpp2008:
+            if (errId.rfind("premium-misra-cpp-2008", 0) == 0)
+                guideline = errId.substr(23);
+            break;
+        case ReportType::misraCpp2023:
+            if (errId.rfind("premium-misra-cpp-2023", 0) == 0)
+                guideline = errId.substr(errId.rfind('-') + 1);
+            break;
+        default:
             break;
         }
-        if (errId.rfind("premium-misra-cpp-2008-", 0) == 0)
-            guideline = "M" + errId.substr(23);
-        break;
-    case ReportType::certC:
-    case ReportType::certCpp:
-        if (errId.rfind("premium-cert-", 0) == 0) {
-            guideline = errId.substr(13);
-            std::transform(guideline.begin(), guideline.end(),
-                           guideline.begin(), static_cast<int (*)(int)>(std::toupper));
-        }
-        break;
-    case ReportType::misraC2012:
-    case ReportType::misraC2023:
-    case ReportType::misraC2025:
-        if (errId.rfind("misra-c20", 0) == 0 || errId.rfind("premium-misra-c-20", 0) == 0)
-            guideline = errId.substr(errId.rfind('-') + 1);
-        break;
-    case ReportType::misraCpp2008:
-        if (errId.rfind("premium-misra-cpp-2008", 0) == 0)
-            guideline = errId.substr(23);
-        break;
-    case ReportType::misraCpp2023:
-        if (errId.rfind("premium-misra-cpp-2023", 0) == 0)
-            guideline = errId.substr(errId.rfind('-') + 1);
-        break;
-    default:
-        break;
-    }
 
-    if (!guideline.empty()) {
-        if (errId.find("-dir-") != std::string::npos)
-            guideline = "Dir " + guideline;
-        return guideline;
+        if (!guideline.empty()) {
+            if (errId.find("-dir-") != std::string::npos)
+                guideline = "Dir " + guideline;
+            return guideline;
+        }
     }
 
     auto it = guidelineMapping.find(errId);

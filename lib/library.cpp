@@ -1214,8 +1214,8 @@ std::string Library::getFunctionName(const Token *ftok) const
         const Token * tok = ftok->astParent()->isUnaryOp("&") ? ftok->astParent()->astOperand1() : ftok->next()->astOperand1();
         std::string ret = getFunctionName(tok, error);
         if (error)
-            return {};
-        if (startsWith(ret, "::"))
+            ret.clear();
+        else if (startsWith(ret, "::"))
             ret.erase(0, 2);
         return ret;
     }

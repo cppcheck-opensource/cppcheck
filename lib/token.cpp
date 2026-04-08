@@ -2441,9 +2441,11 @@ std::pair<const Token*, const Token*> Token::typeDecl(const Token* tok, bool poi
                     varTok = varTok->next();
                 while (Token::Match(varTok, "%name% ::"))
                     varTok = varTok->tokAt(2);
-                std::pair<const Token*, const Token*> r = typeDecl(varTok);
-                if (r.first)
-                    return r;
+                {
+                    std::pair<const Token*, const Token*> r = typeDecl(varTok);
+                    if (r.first)
+                        return r;
+                }
 
                 if (pointedToType && tok2->astOperand1() && Token::simpleMatch(tok2, "new")) {
                     if (Token::simpleMatch(tok2->astOperand1(), "("))
