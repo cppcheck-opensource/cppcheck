@@ -9958,9 +9958,36 @@ private:
             ASSERT(tok && tok->valueType());
             ASSERT_EQUALS("container(std :: set|unordered_set <) &", tok->valueType()->str());
         }
+        struct U_constParameter_std_begin {
+    
+};
+
+void f(S_constParameter_std_begin& s) {
+    std::for_each(std::begin(s.a), std::end(s.a), [](int& i) { ++i; });
+}
+
+void f(T_constParameter_std_begin& t) {
+    std::for_each(std::begin(t.v), std::end(t.v), [](int& i) { ++i; });
+}
+
+void f(U_constParameter_std_begin& u) {
+    std::for_each(std::begin(u.v[0][0]), std::end(u.v[0][0]), [](int& i) { ++i; });
+}
         {
             GET_SYMBOL_DB("void f(std::vector<int> v) {\n"
                           "    auto it = std::find(v.begin(), v.end(), 0);\n"
+                          "}\n");
+            ASSERT_EQUALS("", errout_str());
+
+            const Token* tok = tokenizer.tokens();
+            tok = Token::findsimplematch(tok, "auto");
+            ASSERT(tok && tok->valueType());
+            ASSERT_EQUALS("iterator(std :: vector <)", tok->valueType()->str());
+        }        
+        {
+            GET_SYMBOL_DB("struct S { std::vector<int> v[1][1]; };\n"
+                          "void f(S& s) {\n"
+                          "    auto it = std::begin(s.v[0][0]);\n"
                           "}\n");
             ASSERT_EQUALS("", errout_str());
 
