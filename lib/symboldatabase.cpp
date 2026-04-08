@@ -8036,9 +8036,13 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
                         }
                         //Is iterator fetching function called?
                     } else if (Token::simpleMatch(tok->astOperand1(), "::") &&
-                               tok->astOperand2() &&
-                               tok->astOperand2()->isVariable()) {
-                        const auto* const paramVariable = tok->astOperand2()->variable();
+                               tok->astOperand2()) {
+                        const Token* varTok = tok->astOperand2();
+                        while (Token::simpleMatch(varTok, "["))
+                            varTok = varTok->astOperand1();
+                        if (Token::simpleMatch(varTok, "."))
+                            varTok = varTok->astOperand2();                        
+                        const auto* const paramVariable = varTok->variable();
                         if (!paramVariable ||
                             !paramVariable->valueType() ||
                             !paramVariable->valueType()->container) {
