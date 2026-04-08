@@ -3471,7 +3471,7 @@ static ExprUsage getFunctionUsage(const Token* tok, int indirect, const Settings
         const bool isuninitbad = settings.library.isuninitargbad(ftok, argnr + 1, indirect, &hasIndirect);
         if (isuninitbad && (!addressOf || isnullbad))
             return ExprUsage::Used;
-        const Library::ArgumentChecks::Direction argDirection = settings.library.getArgDirection(tok, argnr + 1, indirect);
+        const Library::ArgumentChecks::Direction argDirection = settings.library.getArgDirection(ftok, argnr + 1, indirect);
         if (argDirection == Library::ArgumentChecks::Direction::DIR_IN)
             return ExprUsage::Used;
     }
