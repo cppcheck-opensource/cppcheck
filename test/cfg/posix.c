@@ -1408,7 +1408,7 @@ void timet_h(const struct timespec* ptp1)
     clock_settime(clk_id2, ptp1);
 
     struct timespec tp;
-    // FIXME cppcheck-suppress uninitvar
+    // cppcheck-suppress uninitvar
     clock_settime(CLOCK_REALTIME, &tp); // #6577 - false negative
     // cppcheck-suppress uninitvar
     clock_settime(clk_id3, &tp);
