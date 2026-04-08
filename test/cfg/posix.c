@@ -1312,7 +1312,7 @@ void uninitvar(int fd)
     pthread_mutex_t mutex, mutex1, mutex2, mutex3;
     // cppcheck-suppress uninitvar
     write(x1,"ab",2);
-    // TODO cppcheck-suppress uninitvar
+    // cppcheck-suppress uninitvar
     write(fd,buf,2); // #6325
     // cppcheck-suppress uninitvar
     write(fd,"ab",x2);
