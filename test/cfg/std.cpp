@@ -5003,7 +5003,7 @@ void beginEnd()
     //cppcheck-suppress ignoredReturnValue
     std::crend(v);
 
-    // cppcheck-suppress constVariable
+    // TODO cppcheck-suppress constVariable
     int arr[4];
 
     //cppcheck-suppress ignoredReturnValue
