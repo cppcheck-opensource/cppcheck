@@ -6682,8 +6682,32 @@ private:
                               "}");
         ASSERT_EQUALS("", errout_str());
 
+        // #14643
         functionVariableUsage("class S { S(int); };\n"
                               "void f() { S s = 0; }\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // #10965
+        functionVariableUsage("class A {\n"
+                              "public:\n"
+                              "    A();\n"
+                              "};\n"
+                              "extern A cb();\n"
+                              "void f() { const A c = cb(); }\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // #11704
+        functionVariableUsage("class S {\n"
+                              "public:\n"
+                              "    S();\n"
+                              "};\n"
+                              "class C {\n"
+                              "    S &s();\n"
+                              "    void f() {\n"
+                              "        const S s1 = s(); // warning\n"
+                              "        const S s2; // no warning\n"
+                              "    }\n"
+                              "};\n");
         ASSERT_EQUALS("", errout_str());
     }
 
