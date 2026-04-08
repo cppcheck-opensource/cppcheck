@@ -12745,10 +12745,10 @@ private:
         ASSERT_EQUALS("", errout_str());
 
         check("void f(std::ifstream& fin, std::set<std::string>& s) {\n"
-	        "    std::string line;\n"
-	        "    while (std::getline(fin, line)) {\n"
-	        "        s.emplace(std::move(line));\n"
-	        "    }\n"
+              "    std::string line;\n"
+              "    while (std::getline(fin, line)) {\n"
+              "        s.emplace(std::move(line));\n"
+              "    }\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
     }
