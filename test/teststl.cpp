@@ -5339,6 +5339,13 @@ private:
               "    return it;\n"
               "}\n", dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("[test.cpp:18:5]: (error, inconclusive) Invalid iterator 'it' used. [eraseDereference]\n", errout_str());
+
+        check("int f(const std::vector<int>& v) {\n" // #11895
+              "    auto it = v.end();\n"
+              "    std::advance(it, -2);\n"
+              "    return *it;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
     }
 
     void loopAlgoElementAssign() {
