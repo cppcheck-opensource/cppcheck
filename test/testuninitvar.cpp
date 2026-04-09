@@ -7784,6 +7784,13 @@ private:
                         "    *s.p = 0;\n"
                         "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        valueFlowUninit("void f() {\n"
+                        "    int x;\n"
+                        "    std::vector<int*> v{ &x };\n"
+                        "    *v[0] = 0;\n"
+                        "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void valueFlowUninitForLoop()
