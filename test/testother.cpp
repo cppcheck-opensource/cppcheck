@@ -304,6 +304,7 @@ private:
         TEST_CASE(moveForRange);
         TEST_CASE(moveTernary);
         TEST_CASE(movePointerAlias);
+        TEST_CASE(moveOutparam);
         TEST_CASE(moveTryEmplace);
 
         TEST_CASE(funcArgNamesDifferent);
@@ -12729,6 +12730,27 @@ private:
               "    s_p->size();\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:5:8]: (warning) Access of moved variable '.'. [accessMoved]\n", errout_str());
+    }
+
+    void moveOutparam()
+    {
+        check("void f(std::vector<std::string>& v) {\n" // #11300
+              "    std::string l;\n"
+              "    while (std::getline(std::cin, l)) {\n"
+              "        if (!l.empty()) {\n"
+              "            v.emplace_back(std::move(l));\n"
+              "        }\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f(std::ifstream& fin, std::set<std::string>& s) {\n"
+              "    std::string line;\n"
+              "    while (std::getline(fin, line)) {\n"
+              "        s.emplace(std::move(line));\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void moveTryEmplace()

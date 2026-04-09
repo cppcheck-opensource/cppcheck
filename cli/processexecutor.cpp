@@ -113,6 +113,8 @@ namespace {
         {
             std::string suppr_str = suppr.toString();
             suppr_str += ";";
+            suppr_str += std::to_string(suppr.column);
+            suppr_str += ";";
             suppr_str += suppr.checked ? "1" : "0";
             suppr_str += ";";
             suppr_str += suppr.matched ? "1" : "0";
@@ -241,7 +243,7 @@ bool ProcessExecutor::handleRead(int rpipe, unsigned int &result, const std::str
         if (!buf.empty()) {
             // TODO: avoid string splitting
             auto parts = splitString(buf, ';');
-            if (parts.size() < 4)
+            if (parts.size() < 5)
             {
                 // TODO: make this non-fatal
                 std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") adding of inline suppression failed - insufficient data" << std::endl;
@@ -249,10 +251,11 @@ bool ProcessExecutor::handleRead(int rpipe, unsigned int &result, const std::str
             }
             auto suppr = SuppressionList::parseLine(parts[0]);
             suppr.isInline = (type == PipeWriter::REPORT_SUPPR_INLINE);
-            suppr.checked = parts[1] == "1";
-            suppr.matched = parts[2] == "1";
-            suppr.extraComment = parts[3];
-            for (std::size_t i = 4; i < parts.size(); i++) {
+            suppr.column = strToInt<int>(parts[1]);
+            suppr.checked = parts[2] == "1";
+            suppr.matched = parts[3] == "1";
+            suppr.extraComment = parts[4];
+            for (std::size_t i = 5; i < parts.size(); i++) {
                 suppr.extraComment += ";" + parts[i];
             }
             const std::string err = mSuppressions.nomsg.addSuppression(suppr);

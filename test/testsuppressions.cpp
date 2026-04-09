@@ -58,6 +58,7 @@ private:
     void run() override {
         mNewTemplate = true;
         TEST_CASE(parseLine);
+        TEST_CASE(parseLineInvalid);
         TEST_CASE(suppressionsBadId1);
         TEST_CASE(suppressionsDosFormat);     // Ticket #1836
         TEST_CASE(suppressionsFileNameWithColon);    // Ticket #1919 - filename includes colon
@@ -146,13 +147,62 @@ private:
 
 
     void parseLine() const {
+        ASSERT_EQUALS("bad", SuppressionList::parseLine("bad").toString());
+        ASSERT_EQUALS("bad:test.c", SuppressionList::parseLine("bad:test.c").toString());
         ASSERT_EQUALS("bad:test.c:1", SuppressionList::parseLine("bad:test.c:1").toString());
 
         // symbol
+        ASSERT_EQUALS("bad\nsymbol=x", SuppressionList::parseLine("bad\nsymbol=x").toString());
+        ASSERT_EQUALS("bad:test.c\nsymbol=x", SuppressionList::parseLine("bad:test.c\nsymbol=x").toString());
         ASSERT_EQUALS("bad:test.c:1\nsymbol=x", SuppressionList::parseLine("bad:test.c:1\nsymbol=x").toString());
 
+        // empty symbol
+        ASSERT_EQUALS("bad", SuppressionList::parseLine("bad\nsymbol=").toString());
+        ASSERT_EQUALS("bad:test.c", SuppressionList::parseLine("bad:test.c\nsymbol=").toString());
+        ASSERT_EQUALS("bad:test.c:1", SuppressionList::parseLine("bad:test.c:1\nsymbol=").toString());
+
         // polyspace
+        ASSERT_EQUALS("bad\npolyspace=1", SuppressionList::parseLine("bad\npolyspace=1").toString());
+        ASSERT_EQUALS("bad:test.c\npolyspace=1", SuppressionList::parseLine("bad:test.c\npolyspace=1").toString());
         ASSERT_EQUALS("bad:test.c:1\npolyspace=1", SuppressionList::parseLine("bad:test.c:1\npolyspace=1").toString());
+
+        // symbol + polyspace
+        ASSERT_EQUALS("bad\nsymbol=x\npolyspace=1", SuppressionList::parseLine("bad\nsymbol=x\npolyspace=1").toString());
+        ASSERT_EQUALS("bad:test.c\nsymbol=x\npolyspace=1", SuppressionList::parseLine("bad:test.c\nsymbol=x\npolyspace=1").toString());
+        ASSERT_EQUALS("bad:test.c:1\nsymbol=x\npolyspace=1", SuppressionList::parseLine("bad:test.c:1\nsymbol=x\npolyspace=1").toString());
+
+        // polyspace + symbol
+        ASSERT_EQUALS("bad\nsymbol=x\npolyspace=1", SuppressionList::parseLine("bad\npolyspace=1\nsymbol=x").toString());
+        ASSERT_EQUALS("bad:test.c\nsymbol=x\npolyspace=1", SuppressionList::parseLine("bad:test.c\npolyspace=1\nsymbol=x").toString());
+        ASSERT_EQUALS("bad:test.c:1\nsymbol=x\npolyspace=1", SuppressionList::parseLine("bad:test.c:1\npolyspace=1\nsymbol=x").toString());
+    }
+
+    void parseLineInvalid() const {
+        // missing filename
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:"), std::runtime_error, "filename is missing");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:\n"), std::runtime_error, "filename is missing");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:\n1.c"), std::runtime_error, "filename is missing");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:#1.c"), std::runtime_error, "filename is missing"); // TODO: looks like a valid filename
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id://1.c"), std::runtime_error, "filename is missing");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id::"), std::runtime_error, "filename is missing");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id::1"), std::runtime_error, "filename is missing");
+
+        // missing/invalid line
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer)");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:\n"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer)");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:\n1"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer)");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:#1"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer)"); // TODO: looks like a valid filename
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c://1"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer)");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:zero"), std::runtime_error, "invalid line number (converting 'zero' to integer failed - not an integer)");
+
+        // invalid extras
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:1\n"), std::runtime_error, "unexpected extra ''");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:1\nsym=x"), std::runtime_error, "unexpected extra 'sym=x'");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:1\nsymbol:x"), std::runtime_error, "unexpected extra 'symbol:x'");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:1\npolyspace=0"), std::runtime_error, "unexpected extra 'polyspace=0'");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:1\npolyspace:1"), std::runtime_error, "unexpected extra 'polyspace:1'");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id\n:"), std::runtime_error, "unexpected extra ':'");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c\n:"), std::runtime_error, "unexpected extra ':'");
     }
 
     void suppressionsBadId1() const {
@@ -528,7 +578,7 @@ private:
                                         "    b++;\n"
                                         "}\n",
                                         ""));
-        ASSERT_EQUALS("[test.cpp:1:0]: (information) Unmatched suppression: uninitvar [unmatchedSuppression]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:1:1]: (information) Unmatched suppression: uninitvar [unmatchedSuppression]\n", errout_str());
 
         // suppress uninitvar for this file only
         ASSERT_EQUALS(0, (this->*check)("void f() {\n"
@@ -706,7 +756,7 @@ private:
                                         "    b++;\n"
                                         "}\n",
                                         ""));
-        ASSERT_EQUALS("[test.cpp:4:0]: (information) Unmatched suppression: uninitvar [unmatchedSuppression]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:4:5]: (information) Unmatched suppression: uninitvar [unmatchedSuppression]\n", errout_str());
 
         // suppress block inline checks
         ASSERT_EQUALS(0, (this->*check)("void f() {\n"
@@ -889,7 +939,7 @@ private:
                                         "    // cppcheck-suppress-end [uninitvar, syntaxError]\n"
                                         "}\n",
                                         ""));
-        ASSERT_EQUALS("[test.cpp:2:0]: (information) Unmatched suppression: syntaxError [unmatchedSuppression]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:5]: (information) Unmatched suppression: syntaxError [unmatchedSuppression]\n", errout_str());
 
         ASSERT_EQUALS(1, (this->*check)("// cppcheck-suppress-begin [uninitvar, syntaxError]\n"
                                         "void f() {\n"
@@ -904,7 +954,7 @@ private:
                                         "}\n"
                                         "// cppcheck-suppress-end [uninitvar, syntaxError]\n",
                                         ""));
-        ASSERT_EQUALS("[test.cpp:1:0]: (information) Unmatched suppression: syntaxError [unmatchedSuppression]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:1:1]: (information) Unmatched suppression: syntaxError [unmatchedSuppression]\n", errout_str());
 
         ASSERT_EQUALS(1, (this->*check)("// cppcheck-suppress-begin [uninitvar, syntaxError]\n"
                                         "void f() {\n"
@@ -919,7 +969,7 @@ private:
                                         "}\n"
                                         "// cppcheck-suppress-end [uninitvar, syntaxError]",
                                         ""));
-        ASSERT_EQUALS("[test.cpp:1:0]: (information) Unmatched suppression: syntaxError [unmatchedSuppression]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:1:1]: (information) Unmatched suppression: syntaxError [unmatchedSuppression]\n", errout_str());
 
         // test of multiple suppression types
         ASSERT_EQUALS(0, (this->*check)("// cppcheck-suppress-file uninitvar\n"
@@ -969,7 +1019,7 @@ private:
                                         "    a++;\n"
                                         "}\n",
                                         ""));
-        ASSERT_EQUALS("[test.cpp:4:0]: (information) Unmatched suppression: uninitvar [unmatchedSuppression]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:4:5]: (information) Unmatched suppression: uninitvar [unmatchedSuppression]\n", errout_str());
 
         // #5746 - exitcode
         ASSERT_EQUALS(1U,
@@ -998,7 +1048,7 @@ private:
                        "#define DIV(A,B) A/B\n"
                        "a = DIV(10,1);\n",
                        "");
-        ASSERT_EQUALS("[test.cpp:2:0]: (information) Unmatched suppression: abc [unmatchedSuppression]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:1]: (information) Unmatched suppression: abc [unmatchedSuppression]\n", errout_str());
     }
 
     void suppressionsSettingsFiles() {

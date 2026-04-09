@@ -7819,7 +7819,7 @@ bool Tokenizer::simplifyCAlternativeTokens()
             alt.push_back(tok);
 
             // Is this a variable declaration..
-            if (isC() && Token::Match(tok->previous(), "%type%|* %name% [;,=]"))
+            if (isC() && Token::Match(tok->previous(), "%type%|* %name% [;,=)]"))
                 return false;
 
             if (!Token::Match(tok->previous(), "%name%|%num%|%char%|%str%|)|]|> %name% %name%|%num%|%char%|%op%|%str%|("))
@@ -7836,6 +7836,10 @@ bool Tokenizer::simplifyCAlternativeTokens()
             replaceAll = true;
         } else if (Token::Match(tok, "not|compl")) {
             alt.push_back(tok);
+
+            // Is this a variable/parameter declaration
+            if (isC() && Token::Match(tok->previous(), "%type%|* %name% [;,=)]"))
+                return false;
 
             if ((Token::Match(tok->previous(), "%assign%") || Token::Match(tok->next(), "%num%")) && !Token::Match(tok->next(), ".|->")) {
                 replaceAll = true;

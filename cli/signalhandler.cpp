@@ -108,14 +108,15 @@ static const Signalmap_t listofsignals = {
  */
 static void CppcheckSignalHandler(int signo, siginfo_t * info, void * context) // cppcheck-suppress constParameterCallback - info can be const
 {
-    int type = -1;
+    const char* typeStr = "";
     pid_t killid;
     // TODO: separate these two defines
 #if defined(__linux__) && defined(REG_ERR)
     const auto* const uc = reinterpret_cast<const ucontext_t*>(context);
     killid = static_cast<pid_t>(syscall(SYS_gettid));
     if (uc) {
-        type = static_cast<int>(uc->uc_mcontext.gregs[REG_ERR]) & 2;
+        const int type = static_cast<int>(uc->uc_mcontext.gregs[REG_ERR]) & 2;
+        typeStr = (type == 0) ? "reading " : "writing ";
     }
 #else
     (void)context;
@@ -258,9 +259,7 @@ static void CppcheckSignalHandler(int signo, siginfo_t * info, void * context) /
             break;
         }
         fprintf(output, " (%sat 0x%lx).%s\n",
-                // cppcheck-suppress knownConditionTrueFalse ; FP
-                (type==-1)? "" :
-                (type==0) ? "reading " : "writing ",
+                typeStr,
                 reinterpret_cast<unsigned long>(info->si_addr),
                 isAddressOnStack ? " Stackoverflow?" : ""
                 );

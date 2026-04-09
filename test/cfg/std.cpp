@@ -586,7 +586,6 @@ void bufferAccessOutOfBounds_std_ofstream_write(std::ofstream &os, const char* s
     (void)os.write(s,n);
 }
 
-// cppcheck-suppress constParameterReference // TODO: FP
 void bufferAccessOutOfBounds_std_ifstream_get(std::ifstream& in, std::streambuf& sb)
 {
     char cBuf[10];
@@ -5003,7 +5002,7 @@ void beginEnd()
     //cppcheck-suppress ignoredReturnValue
     std::crend(v);
 
-    // cppcheck-suppress constVariable
+    // TODO cppcheck-suppress constVariable
     int arr[4];
 
     //cppcheck-suppress ignoredReturnValue
@@ -5023,6 +5022,32 @@ void beginEnd()
     std::cend(arr);
     //cppcheck-suppress ignoredReturnValue
     std::crend(arr);
+}
+
+struct S_constParameter_std_begin { // #11617
+    int a[2];
+};
+
+struct T_constParameter_std_begin {
+    std::vector<int> v;
+};
+
+void f(S_constParameter_std_begin& s) {
+    std::for_each(std::begin(s.a), std::end(s.a), [](int& i) { ++i; });
+}
+
+// cppcheck-suppress constParameterReference - FP
+void f(T_constParameter_std_begin& t) {
+    std::for_each(std::begin(t.v), std::end(t.v), [](int& i) { ++i; });
+}
+
+void g_constVariable_std_begin(int* p) { *p = 0; }
+
+int f_constVariable_std_begin() {
+    int arr[1];
+    g_constVariable_std_begin(std::begin(arr));
+    *std::begin(arr) = 1;
+    return arr[0];
 }
 
 void smartPtr_get()

@@ -21,3 +21,6 @@ Infrastructure & dependencies:
 
 Other:
 - Make it possible to specify the regular expression engine using the `engine` element in a rule XML.
+- Added CLI option `--exitcode-suppress` to specify an error ID which should not result in a non-zero exitcode.
+-
+-

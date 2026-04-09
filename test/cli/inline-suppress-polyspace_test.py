@@ -15,7 +15,7 @@ def test_unmatched_polyspace_suppression(tmp_path):
     args = ['--addon=misra', '--template=simple', '--enable=style,information', '--inline-suppr', 'test.c']
 
     out_exp = ['Checking test.c ...']
-    err_exp = ['test.c:1:0: information: Unmatched suppression: misra-c2012-8.2 [unmatchedPolyspaceSuppression]']
+    err_exp = ['test.c:1:14: information: Unmatched suppression: misra-c2012-8.2 [unmatchedPolyspaceSuppression]']
 
     assert_cppcheck(args, ec_exp=0, err_exp=err_exp, out_exp=out_exp, cwd=str(tmp_path))
 

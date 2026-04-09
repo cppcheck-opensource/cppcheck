@@ -202,3 +202,16 @@ jobs:
         with:
           name: Callgrind Output
           path: ./callgrind.*
+
+      - name: Self check (unusedFunction / corpus / no test / memcheck)
+        run: |
+          # TODO: fix -rp so the suppressions actually work
+          valgrind --error-limit=yes --leak-check=full --num-callers=50 --show-reachable=yes --track-origins=yes --gen-suppressions=all --log-fd=9 --error-exitcode=42 ./cppcheck --template=selfcheck --error-exitcode=0 --library=cppcheck-lib --library=qt -D__GNUC__ -DQT_VERSION=0x060000 -DQ_MOC_OUTPUT_REVISION=69 -DQT_CHARTS_LIB -DQT_MOC_HAS_STRINGDATA --enable=unusedFunction,information --exception-handling -rp=. --project=cmake.output.corpus/compile_commands.json --suppressions-list=.selfcheck_unused_suppressions --inline-suppr 9>memcheck.log || (cat memcheck.log && false)
+          cat memcheck.log
+        env:
+          DISABLE_VALUEFLOW: 1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Memcheck Output
+          path: ./memcheck.*

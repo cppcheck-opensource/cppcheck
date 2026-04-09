@@ -394,6 +394,8 @@ bool CheckAutoVariables::checkAutoVariableAssignment(const Token *expr, bool inc
 
 void CheckAutoVariables::errorAutoVariableAssignment(const Token *tok, bool inconclusive)
 {
+    diag(tok);
+
     if (!inconclusive) {
         reportError(tok, Severity::error, "autoVariables",
                     "Address of local auto-variable assigned to a function parameter.\n"
@@ -674,14 +676,16 @@ void CheckAutoVariables::checkVarLifetimeScope(const Token * start, const Token 
                     const Token* nextTok = nextAfterAstRightmostLeaf(tok->astTop());
                     if (!nextTok)
                         nextTok = tok->next();
-                    if (var && (!var->isLocal() || var->isStatic()) && !var->isArgument() && !(val.tokvalue && val.tokvalue->variable() && val.tokvalue->variable()->isStatic()) &&
+                    if (var && (!var->isLocal() || var->isStatic()) && (!var->isArgument() || (var->isReference() && isInScope(val.tokvalue, var->scope()))) &&
+                        !(val.tokvalue && val.tokvalue->variable() && val.tokvalue->variable()->isStatic()) &&
                         !isVariableChanged(nextTok,
                                            tok->scope()->bodyEnd,
                                            var->valueType() ? var->valueType()->pointer : 0,
                                            var->declarationId(),
                                            var->isGlobal(),
                                            *mSettings)) {
-                        errorDanglngLifetime(tok2, &val, var->isLocal());
+                        if (!diag(tok2))
+                            errorDanglngLifetime(tok2, &val, var->isLocal());
                         break;
                     }
                 }
@@ -823,8 +827,8 @@ void CheckAutoVariables::runChecks(const Tokenizer &tokenizer, ErrorLogger *erro
 {
     CheckAutoVariables checkAutoVariables(&tokenizer, &tokenizer.getSettings(), errorLogger);
     checkAutoVariables.assignFunctionArg();
-    checkAutoVariables.checkVarLifetime();
     checkAutoVariables.autoVariables();
+    checkAutoVariables.checkVarLifetime();
 }
 
 void CheckAutoVariables::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const

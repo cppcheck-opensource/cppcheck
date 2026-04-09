@@ -4800,6 +4800,13 @@ private:
               "    wscanf_s(L\"%4[^-]\", msStr1, _countof(msStr1));\n"
               "}\n", dinit(CheckOptions, $.platform = Platform::Type::Win32W));
         ASSERT_EQUALS("", errout_str());
+
+        check("void f(const char* c) {\n"
+              "    const size_t N = 5;\n"
+              "    char buf[N];\n"
+              "    sscanf_s(c, \"%4[^.]\", buf, N);\n"
+              "}\n", dinit(CheckOptions, $.platform = Platform::Type::Win64));
+        ASSERT_EQUALS("", errout_str());
     }
 
     void testQStringFormatArguments() {

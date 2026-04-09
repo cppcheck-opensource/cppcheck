@@ -29,6 +29,8 @@ static void misra_10_3_c11(void) {
     bool b = false;
     bool b0 = 0; // 10.3
     bool b1 = 1; // 10.3
+    bool bf = false; // no-warning
+    bool bt = true; // no-warning
     b = 0; // 10.3
     b = 1; // 10.3
     b = false; // no-warning

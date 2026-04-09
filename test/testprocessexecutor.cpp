@@ -51,7 +51,7 @@ public:
 
 private:
 #ifdef HAS_THREADING_MODEL_FORK
-    /*const*/ Settings settings = settingsBuilder().library("std.cfg").build();
+    /*const*/ Settings settings;
     bool useFS;
 
     std::string fprefix() const

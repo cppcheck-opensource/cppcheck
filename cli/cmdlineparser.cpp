@@ -76,9 +76,7 @@ static bool addFilesToList(const std::string& fileList, std::vector<std::string>
         files = &infile;
     }
     std::string fileName;
-    // cppcheck-suppress accessMoved - FP
     while (std::getline(*files, fileName)) { // next line
-        // cppcheck-suppress accessMoved - FP
         if (!fileName.empty()) {
             pathNames.emplace_back(std::move(fileName));
         }
@@ -92,7 +90,6 @@ static bool addIncludePathsToList(const std::string& fileList, std::list<std::st
     std::ifstream files(fileList);
     if (files) {
         std::string pathName;
-        // cppcheck-suppress accessMoved - FP
         while (std::getline(files, pathName)) { // next line
             if (!pathName.empty()) {
                 pathName = Path::removeQuotationMarks(std::move(pathName));
@@ -752,6 +749,15 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
             }
             else {
                 mLogger.printError("unknown executor: '" + type + "'.");
+                return Result::Fail;
+            }
+        }
+
+        else if (std::strncmp(argv[i], "--exitcode-suppress=", 20) == 0) {
+            const std::string suppression = argv[i]+20;
+            const std::string errmsg(mSuppressions.nofail.addSuppressionLine(suppression));
+            if (!errmsg.empty()) {
+                mLogger.printError(errmsg);
                 return Result::Fail;
             }
         }
@@ -1811,6 +1817,9 @@ void CmdLineParser::printHelp() const
         "                         provided. Note that your operating system can modify\n"
         "                         this value, e.g. '256' can become '0'.\n"
         "    --errorlist          Print a list of all the error messages in XML format.\n"
+        "    --exitcode-suppress=<spec>\n"
+        "                         Used to specify an error ID which should not result in\n"
+        "                         a non-zero exitcode."
         "    --exitcode-suppressions=<file>\n"
         "                         Used when certain messages should be displayed but\n"
         "                         should not cause a non-zero exitcode.\n"
