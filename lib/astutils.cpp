@@ -2466,17 +2466,6 @@ static bool isTrivialConstructor(const Token* tok)
     return false;
 }
 
-static bool isArray(const Token* tok)
-{
-    if (!tok)
-        return false;
-    if (tok->variable())
-        return tok->variable()->isArray();
-    if (Token::simpleMatch(tok, "."))
-        return isArray(tok->astOperand2());
-    return false;
-}
-
 bool isMutableExpression(const Token* tok)
 {
     if (!tok)
