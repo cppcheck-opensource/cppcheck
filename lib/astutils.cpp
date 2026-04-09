@@ -2545,7 +2545,7 @@ bool isVariableChangedByFunctionCall(const Token *tok, int indirect, const Setti
         const Library::ArgumentChecks::Direction argDirection = settings.library.getArgDirection(tok, 1 + argnr, indirect);
         if (argDirection == Library::ArgumentChecks::Direction::DIR_IN)
             return false;
-        if (argDirection == Library::ArgumentChecks::Direction::DIR_OUT)
+        if (argDirection == Library::ArgumentChecks::Direction::DIR_OUT || argDirection == Library::ArgumentChecks::Direction::DIR_INOUT)
             return true;
 
         const bool requireNonNull = settings.library.isnullargbad(tok, 1 + argnr);
