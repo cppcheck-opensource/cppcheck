@@ -267,8 +267,9 @@ int CppCheckExecutor::check(int argc, const char* const argv[])
         return EXIT_SUCCESS;
     }
 
-    TimerResults overallTimerResults;
-    Timer realTimeClock("Overall time", settings.showtime, &overallTimerResults, Timer::Type::OVERALL);
+    std::unique_ptr<OneShotTimer> overallTimer;
+    if (settings.showtime == ShowTime::SUMMARY || settings.showtime == ShowTime::TOP5_SUMMARY)
+        overallTimer.reset(new OneShotTimer("Overall time", settings.showtime));
 
     settings.loadSummaries();
 
@@ -276,9 +277,6 @@ int CppCheckExecutor::check(int argc, const char* const argv[])
     mFileSettings = parser.getFileSettings();
 
     const int ret = check_wrapper(settings, supprs);
-
-    realTimeClock.stop();
-    overallTimerResults.showResults(settings.showtime, false, true);
 
     return ret;
 }

@@ -38,7 +38,7 @@ namespace {
 
 // TODO: this does not include any file context when SHOWTIME_FILE thus rendering it useless - should we include the logging with the progress logging?
 // that could also get rid of the broader locking
-void TimerResults::showResults(ShowTime mode, bool metrics, bool format) const
+void TimerResults::showResults(ShowTime mode, bool metrics) const
 {
     if (mode == ShowTime::NONE)
         return;
@@ -60,11 +60,7 @@ void TimerResults::showResults(ShowTime mode, bool metrics, bool format) const
         const double sec = iter->second.getSeconds().count();
         const double secAverage = sec / static_cast<double>(iter->second.mNumberOfResults);
         if ((mode != ShowTime::TOP5_FILE && mode != ShowTime::TOP5_SUMMARY) || (ordinal<=5)) {
-            std::cout << iter->first << ": ";
-            if (format)
-                std::cout << TimerResultsData::durationToString(iter->second.mDuration);
-            else
-                std::cout << sec << "s";
+            std::cout << iter->first << ": " << sec << "s";
             if (metrics)
                 std::cout << " (avg. " << secAverage << "s - " << iter->second.mNumberOfResults  << " result(s))";
             std::cout << std::endl;
@@ -87,10 +83,9 @@ void TimerResults::reset()
     mResults.clear();
 }
 
-Timer::Timer(std::string str, ShowTime showtimeMode, TimerResultsIntf* timerResults, Type type)
+Timer::Timer(std::string str, ShowTime showtimeMode, TimerResultsIntf* timerResults)
     : mName(std::move(str))
     , mMode(showtimeMode)
-    , mType(type)
     , mStart(Clock::now())
     , mResults(timerResults)
 {}
@@ -104,14 +99,6 @@ void Timer::stop()
 {
     if (mMode == ShowTime::NONE)
         return;
-    if (mType == Type::OVERALL && mMode != ShowTime::TOP5_SUMMARY && mMode != ShowTime::SUMMARY) {
-        mMode = ShowTime::NONE;
-        return;
-    }
-    if (mType == Type::FILE && mMode != ShowTime::TOP5_FILE && mMode != ShowTime::FILE && mMode != ShowTime::FILE_TOTAL) {
-        mMode = ShowTime::NONE;
-        return;
-    }
     if (mStart != TimePoint{}) {
         if (!mResults) {
             assert(false);
@@ -124,7 +111,7 @@ void Timer::stop()
     mMode = ShowTime::NONE; // prevent multiple stops
 }
 
-std::string TimerResultsData::durationToString(std::chrono::milliseconds duration)
+static std::string durationToString(std::chrono::milliseconds duration)
 {
     // Extract hours
     auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
@@ -147,4 +134,25 @@ std::string TimerResultsData::durationToString(std::chrono::milliseconds duratio
     if (pos != std::string::npos && (pos + 4) < secondsStr.size())
         secondsStr.resize(pos + 4); // keep three decimal
     return (ellapsedTime + secondsStr + "s");
+}
+
+OneShotTimer::OneShotTimer(std::string name, ShowTime showtime)
+{
+    if (showtime == ShowTime::NONE)
+        return;
+
+    class MyResults : public TimerResultsIntf
+    {
+    private:
+        void addResults(const std::string &name, std::chrono::milliseconds duration) override
+        {
+            std::lock_guard<std::mutex> l(stdCoutLock);
+
+            // TODO: do not use std::cout directly
+            std::cout << name << ": " << durationToString(duration) << std::endl;
+        }
+    };
+
+    mResults.reset(new MyResults);
+    mTimer.reset(new Timer(std::move(name), showtime, mResults.get()));
 }

@@ -25,6 +25,7 @@
 #include <chrono>
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <utility>
@@ -52,15 +53,13 @@ struct TimerResultsData {
     std::chrono::duration<double> getSeconds() const {
         return std::chrono::duration_cast<std::chrono::duration<double>>(mDuration);
     }
-
-    static std::string durationToString(std::chrono::milliseconds duration);
 };
 
 class CPPCHECKLIB WARN_UNUSED TimerResults : public TimerResultsIntf {
 public:
     TimerResults() = default;
 
-    void showResults(ShowTime mode, bool metrics = true, bool format = false) const;
+    void showResults(ShowTime mode, bool metrics = true) const;
     void addResults(const std::string& str, std::chrono::milliseconds duration) override;
 
     void reset();
@@ -75,13 +74,7 @@ public:
     using Clock = std::chrono::high_resolution_clock;
     using TimePoint = std::chrono::time_point<Clock>;
 
-    enum class Type : std::uint8_t {
-        FILE,
-        OVERALL,
-        OTHER
-    };
-
-    Timer(std::string str, ShowTime showtimeMode, TimerResultsIntf* timerResults = nullptr, Type type = Type::OTHER);
+    Timer(std::string str, ShowTime showtimeMode, TimerResultsIntf* timerResults = nullptr);
     ~Timer();
 
     Timer(const Timer&) = delete;
@@ -98,9 +91,17 @@ public:
 private:
     const std::string mName;
     ShowTime mMode{};
-    Type mType{};
     TimePoint mStart;
     TimerResultsIntf* mResults{};
+};
+
+class CPPCHECKLIB OneShotTimer
+{
+public:
+    OneShotTimer(std::string name, ShowTime showtime);
+private:
+    std::unique_ptr<TimerResultsIntf> mResults;
+    std::unique_ptr<Timer> mTimer;
 };
 
 //---------------------------------------------------------------------------
