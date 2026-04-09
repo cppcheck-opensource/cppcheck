@@ -259,7 +259,7 @@ static void CppcheckSignalHandler(int signo, siginfo_t * info, void * context) /
             break;
         }
         fprintf(output, " (%sat 0x%lx).%s\n",
-                typeStr
+                typeStr,
                 reinterpret_cast<unsigned long>(info->si_addr),
                 isAddressOnStack ? " Stackoverflow?" : ""
                 );
