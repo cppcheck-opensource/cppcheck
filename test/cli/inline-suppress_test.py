@@ -82,7 +82,7 @@ def test_unmatched_suppression():
     ret, stdout, stderr = cppcheck(args, cwd=__script_dir)
     lines = stderr.splitlines()
     assert lines == [
-        '{}2.c:2:0: information: Unmatched suppression: some_warning_id [unmatchedSuppression]'.format(__proj_inline_suppres_path)
+        '{}2.c:2:1: information: Unmatched suppression: some_warning_id [unmatchedSuppression]'.format(__proj_inline_suppres_path)
     ]
     assert stdout == ''
     assert ret == 1, stdout
@@ -100,7 +100,7 @@ def test_unmatched_suppression_path_with_extra_stuff():
     ret, stdout, stderr = cppcheck(args, cwd=__script_dir)
     lines = stderr.splitlines()
     assert lines == [
-        '{}2.c:2:0: information: Unmatched suppression: some_warning_id [unmatchedSuppression]'.format(__proj_inline_suppres_path)
+        '{}2.c:2:1: information: Unmatched suppression: some_warning_id [unmatchedSuppression]'.format(__proj_inline_suppres_path)
     ]
     assert stdout == ''
     assert ret == 1, stdout
@@ -431,8 +431,8 @@ def __test_unused_function_unmatched(tmpdir, extra_args):
     lines = stderr.splitlines()
     lines.sort()
     assert lines == [
-        '{}unusedFunctionUnmatched.cpp:5:0: information: Unmatched suppression: uninitvar [unmatchedSuppression]'.format(__proj_inline_suppres_path),
-        '{}unusedFunctionUnmatched.cpp:5:0: information: Unmatched suppression: unusedFunction [unmatchedSuppression]'.format(__proj_inline_suppres_path)
+        '{}unusedFunctionUnmatched.cpp:5:1: information: Unmatched suppression: uninitvar [unmatchedSuppression]'.format(__proj_inline_suppres_path),
+        '{}unusedFunctionUnmatched.cpp:5:1: information: Unmatched suppression: unusedFunction [unmatchedSuppression]'.format(__proj_inline_suppres_path)
     ]
     assert stdout == ''
     assert ret == 0, stdout
@@ -478,7 +478,7 @@ def test_unused_function_disabled_unmatched():
 
     ret, stdout, stderr = cppcheck(args, cwd=__script_dir)
     assert stderr.splitlines() == [
-        '{}unusedFunctionUnmatched.cpp:5:0: information: Unmatched suppression: uninitvar [unmatchedSuppression]'.format(__proj_inline_suppres_path)
+        '{}unusedFunctionUnmatched.cpp:5:1: information: Unmatched suppression: uninitvar [unmatchedSuppression]'.format(__proj_inline_suppres_path)
     ]
     assert stdout == ''
     assert ret == 0, stdout
@@ -496,8 +496,8 @@ def test_unmatched_cfg():
 
     ret, stdout, stderr = cppcheck(args, cwd=__script_dir)
     assert stderr.splitlines() == [
-        '{}cfg.c:5:0: information: Unmatched suppression: id [unmatchedSuppression]'.format(__proj_inline_suppres_path),
-        '{}cfg.c:9:0: information: Unmatched suppression: id [unmatchedSuppression]'.format(__proj_inline_suppres_path),
+        '{}cfg.c:5:5: information: Unmatched suppression: id [unmatchedSuppression]'.format(__proj_inline_suppres_path),
+        '{}cfg.c:9:5: information: Unmatched suppression: id [unmatchedSuppression]'.format(__proj_inline_suppres_path),
     ]
     assert stdout == ''
     assert ret == 0, stdout
@@ -518,7 +518,7 @@ def test_unused_function_disabled_unmatched_j():
 
     ret, stdout, stderr = cppcheck(args, cwd=__script_dir)
     assert stderr.splitlines() == [
-        '{}unusedFunctionUnmatched.cpp:5:0: information: Unmatched suppression: uninitvar [unmatchedSuppression]'.format(__proj_inline_suppres_path)
+        '{}unusedFunctionUnmatched.cpp:5:1: information: Unmatched suppression: uninitvar [unmatchedSuppression]'.format(__proj_inline_suppres_path)
     ]
     assert stdout == ''
     assert ret == 0, stdout
@@ -536,7 +536,7 @@ def test_misra_disabled_unmatched():  #14232
 
     ret, stdout, stderr = cppcheck(args, cwd=__script_dir)
     assert stderr.splitlines() == [
-        '{}misraUnmatched.c:5:0: information: Unmatched suppression: uninitvar [unmatchedSuppression]'.format(__proj_inline_suppres_path)
+        '{}misraUnmatched.c:5:1: information: Unmatched suppression: uninitvar [unmatchedSuppression]'.format(__proj_inline_suppres_path)
     ]
     assert stdout == ''
     assert ret == 0, stdout
@@ -554,7 +554,7 @@ def test_premium_disabled_unmatched():  #13663
 
     ret, stdout, stderr = cppcheck(args, cwd=__script_dir)
     assert stderr.splitlines() == [
-        '{}premiumUnmatched.cpp:5:0: information: Unmatched suppression: uninitvar [unmatchedSuppression]'.format(__proj_inline_suppres_path)
+        '{}premiumUnmatched.cpp:5:1: information: Unmatched suppression: uninitvar [unmatchedSuppression]'.format(__proj_inline_suppres_path)
     ]
     assert stdout == ''
     assert ret == 0, stdout

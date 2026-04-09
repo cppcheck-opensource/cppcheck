@@ -261,6 +261,9 @@ void CheckUnusedFunctions::parseTokens(const Tokenizer &tokenizer, const Setting
             while (Token::Match(funcname, "%name% :: %name%"))
                 funcname = funcname->tokAt(2);
 
+            if (funcname && funcname->isName() && !funcname->function() && !tok->astParent() && Token::Match(tok, "[(,]")) // unknown type in parameter list
+                continue;
+
             if (!Token::Match(funcname, "%name% [(),;]:}<>]"))
                 continue;
         }

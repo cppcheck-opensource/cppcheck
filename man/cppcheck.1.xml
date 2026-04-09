@@ -118,6 +118,9 @@ man(1), man(7), http://www.tldp.org/HOWTO/Man-Page/
         <option>--errorlist</option>
       </arg>
       <arg choice="opt">
+        <option>--exitcode-suppress=&lt;spec&gt;</option>
+      </arg>
+      <arg choice="opt">
         <option>--exitcode-suppressions=&lt;file&gt;</option>
       </arg>
       <arg choice="opt">
@@ -341,6 +344,14 @@ Example: '-UDEBUG'</para>
         </term>
         <listitem>
           <para>Print a list of all possible error messages in XML format.</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          <option>--exitcode-suppress=&lt;spec&gt;</option>
+        </term>
+        <listitem>
+          <para>Used to specify an error ID which should not result in a non-zero exitcode.</para>
         </listitem>
       </varlistentry>
       <varlistentry>

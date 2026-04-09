@@ -304,6 +304,10 @@ private:
         TEST_CASE(suppressSingleFile);
         TEST_CASE(suppressTwo);
         TEST_CASE(suppressTwoSeparate);
+        TEST_CASE(exitcodeSuppressSingle);
+        TEST_CASE(exitcodeSuppressSingleFile);
+        TEST_CASE(exitcodeSuppressTwo);
+        TEST_CASE(exitcodeSuppressTwoSeparate);
         TEST_CASE(templates);
         TEST_CASE(templatesGcc);
         TEST_CASE(templatesVs);
@@ -1984,6 +1988,35 @@ private:
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(true, supprs->nomsg.isSuppressed(errorMessage("uninitvar", "file.cpp", 1U)));
         ASSERT_EQUALS(true, supprs->nomsg.isSuppressed(errorMessage("noConstructor", "file.cpp", 1U)));
+    }
+
+    void exitcodeSuppressSingle() {
+        REDIRECT;
+        const char * const argv[] = {"cppcheck", "--exitcode-suppress=uninitvar", "file.cpp"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
+        ASSERT_EQUALS(true, supprs->nofail.isSuppressed(errorMessage("uninitvar", "file.cpp", 1)));
+    }
+
+    void exitcodeSuppressSingleFile() {
+        REDIRECT;
+        const char * const argv[] = {"cppcheck", "--exitcode-suppress=uninitvar:file.cpp", "file.cpp"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
+        ASSERT_EQUALS(true, supprs->nofail.isSuppressed(errorMessage("uninitvar", "file.cpp", 1U)));
+    }
+
+    void exitcodeSuppressTwo() {
+        REDIRECT;
+        const char * const argv[] = {"cppcheck", "--exitcode-suppress=uninitvar,noConstructor", "file.cpp"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, parseFromArgs(argv));
+        ASSERT_EQUALS("cppcheck: error: Failed to add suppression. Invalid id \"uninitvar,noConstructor\"\n", logger->str());
+    }
+
+    void exitcodeSuppressTwoSeparate() {
+        REDIRECT;
+        const char * const argv[] = {"cppcheck", "--exitcode-suppress=uninitvar", "--exitcode-suppress=noConstructor", "file.cpp"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
+        ASSERT_EQUALS(true, supprs->nofail.isSuppressed(errorMessage("uninitvar", "file.cpp", 1U)));
+        ASSERT_EQUALS(true, supprs->nofail.isSuppressed(errorMessage("noConstructor", "file.cpp", 1U)));
     }
 
     void templates() {

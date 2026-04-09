@@ -2449,7 +2449,7 @@ void f() {
     assert exitcode == 0, stdout
     assert stdout == ''
     assert stderr.splitlines() == [
-        '{}:4:0: information: Unmatched suppression: memleak [unmatchedSuppression]'.format(test_file)
+        '{}:4:1: information: Unmatched suppression: memleak [unmatchedSuppression]'.format(test_file)
     ]
 
 

@@ -131,6 +131,7 @@ private:
         TEST_CASE(returnReference26);
         TEST_CASE(returnReference27);
         TEST_CASE(returnReference28);
+        TEST_CASE(returnReference29);
         TEST_CASE(returnReferenceFunction);
         TEST_CASE(returnReferenceContainer);
         TEST_CASE(returnReferenceLiteral);
@@ -1755,6 +1756,19 @@ private:
               "    return s.r;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void returnReference29()
+    {
+        check("const std::string& f() {\n" // #12548
+              "    return std::string{};\n"
+              "}\n"
+              "const std::string& g() {\n"
+              "    return {};\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:23]: (error) Reference to temporary returned. [returnTempReference]\n"
+                      "[test.cpp:5:12]: (error) Reference to temporary returned. [returnTempReference]\n",
+                      errout_str());
     }
 
     void returnReferenceFunction() {

@@ -16,6 +16,8 @@
 
 #include "options.h"
 
+#include "timer.h"
+
 options::options(int argc, const char* const argv[])
     : mExe(argv[0])
 {
@@ -34,6 +36,8 @@ options::options(int argc, const char* const argv[])
                 mDryRun = true;
             else if (arg == "-x")
                 mExcludeTests = true;
+            else if (arg == "-t")
+                mTimerResults.reset(new TimerResults);
             else
                 mErrors.emplace_back("unknown option '" + arg + "'");
             continue; // command-line switch
@@ -50,6 +54,15 @@ options::options(int argc, const char* const argv[])
         const std::string test = arg.substr(pos+2);
         mWhichTests[fixture].emplace(test); // run individual test
     }
+}
+
+options::~options()
+{
+    // TODO: allow more than 5 results to be shown
+    // TODO: provide higher resolution in output
+    // TODO: disable the metrics
+    if (mTimerResults)
+        mTimerResults->showResults(ShowTime::TOP5_FILE);
 }
 
 bool options::quiet() const
@@ -85,6 +98,11 @@ const std::string& options::exe() const
 bool options::exclude_tests() const
 {
     return mExcludeTests;
+}
+
+TimerResultsIntf* options::timer_results() const
+{
+    return mTimerResults.get();
 }
 
 const std::vector<std::string>& options::errors() const
