@@ -116,7 +116,7 @@ static void CppcheckSignalHandler(int signo, siginfo_t * info, void * context) /
     killid = static_cast<pid_t>(syscall(SYS_gettid));
     if (uc) {
         const int type = static_cast<int>(uc->uc_mcontext.gregs[REG_ERR]) & 2;
-        typeStr = (type == 0) ? "reading " : "writing ",
+        typeStr = (type == 0) ? "reading " : "writing ";
     }
 #else
     (void)context;
