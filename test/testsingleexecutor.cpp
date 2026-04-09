@@ -39,7 +39,7 @@ protected:
     TestSingleExecutorBase(const char * const name, bool useFS) : TestFixture(name), useFS(useFS) {}
 
 private:
-    /*const*/ Settings settings = settingsBuilder().library("std.cfg").build();
+    /*const*/ Settings settings;
     bool useFS;
 
     std::string fprefix() const

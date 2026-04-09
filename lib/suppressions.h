@@ -33,7 +33,7 @@
 #include <vector>
 #include <map>
 
-class Tokenizer;
+class TokenList;
 class ErrorMessage;
 enum class Certainty : std::uint8_t;
 class FileWithDetails;
@@ -196,8 +196,9 @@ public:
      * Create a Suppression object from a suppression line
      * @param line The line to parse.
      * @return a suppression object
+     * @throws std::runtime_error thrown if the given suppression is invalid
      */
-    static Suppression parseLine(const std::string &line);
+    static Suppression parseLine(std::string line);
 
     /**
      * @brief Don't show the given error.
@@ -284,7 +285,7 @@ public:
     /**
      * @brief Marks Inline Suppressions as checked if source line is in the token stream
      */
-    void markUnmatchedInlineSuppressionsAsChecked(const Tokenizer &tokenizer);
+    void markUnmatchedInlineSuppressionsAsChecked(const TokenList &tokenlist);
 
 private:
     mutable std::mutex mSuppressionsSync;

@@ -1421,11 +1421,6 @@ std::string Token::stringifyList(const Token* end, bool attributes) const
     return stringifyList(false, attributes, false, false, false, nullptr, end);
 }
 
-std::string Token::stringifyList(bool varid) const
-{
-    return stringifyList(varid, false, true, true, true, nullptr, nullptr);
-}
-
 void Token::astParent(Token* tok)
 {
     const Token* tok2 = tok;

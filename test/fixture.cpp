@@ -23,6 +23,7 @@
 #include "library.h"
 #include "options.h"
 #include "redirect.h"
+#include "timer.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -88,6 +89,7 @@ TestFixture::TestFixture(const char * const _name)
     : classname(_name)
 {}
 
+TestFixture::~TestFixture() = default;
 
 bool TestFixture::prepareTest(const char testname[])
 {
@@ -106,18 +108,24 @@ bool TestFixture::prepareTest(const char testname[])
     // Tests will be executed - prepare them
     mTestname = testname;
     ++countTests;
+    std::string fullTestName =  classname + "::" + mTestname;
     if (quiet_tests) {
         std::putchar('.'); // Use putchar to write through redirection of std::cout/cerr
         std::fflush(stdout);
     } else {
-        std::cout << classname << "::" << mTestname << std::endl;
+        std::cout << fullTestName << std::endl;
     }
+    if (timer_results)
+        mTimer.reset(new Timer(fullTestName, ShowTime::TOP5_SUMMARY, timer_results));
     return !dry_run;
 }
 
 void TestFixture::teardownTest()
 {
     teardownTestInternal();
+
+    if (mTimer)
+        mTimer->stop();
 
     {
         const std::string s = errout_str();
@@ -385,6 +393,7 @@ void TestFixture::processOptions(const options& args)
     dry_run = args.dry_run();
     exclude_tests = args.exclude_tests();
     exename = args.exe();
+    timer_results = args.timer_results();
 }
 
 std::size_t TestFixture::runTests(const options& args)
@@ -410,7 +419,15 @@ std::size_t TestFixture::runTests(const options& args)
                 tests = it->second;
         }
 
-        TestFixture* fixture = test->create();
+        TestFixture* fixture;
+        const auto f = [&](){
+            fixture = test->create();
+        };
+        // TODO: Timer::run() needs proper handling if no results should be collected
+        if (args.timer_results())
+            Timer::run(test->classname + " - create", ShowTime::TOP5_SUMMARY, args.timer_results(), f);
+        else
+            f();
         fixture->processOptions(args);
         fixture->run(tests);
     }

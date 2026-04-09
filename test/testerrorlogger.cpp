@@ -51,7 +51,10 @@ private:
         TEST_CASE(ErrorMessageConstructLocations);
         TEST_CASE(ErrorMessageVerbose);
         TEST_CASE(ErrorMessageVerboseLocations);
+        TEST_CASE(ErrorMessageVerboseSymbol);
+        TEST_CASE(ErrorMessageVerboseNewline);
         TEST_CASE(ErrorMessageFromInternalError);
+        TEST_CASE(ErrorMessageCode);
         TEST_CASE(CustomFormat);
         TEST_CASE(CustomFormat2);
         TEST_CASE(CustomFormatLocations);
@@ -284,6 +287,27 @@ private:
         ASSERT_EQUALS("[foo.cpp:5] -> [bar.cpp:8]: (error) Verbose error", msg.toString(true, templateFormat, ""));
     }
 
+    void ErrorMessageVerboseSymbol() const {
+        std::list<ErrorMessage::FileLocation> locs(1, fooCpp5);
+        ErrorMessage msg(std::move(locs), "", Severity::error, "$symbol:sym\nProgramming error with $symbol.\nVerbose error about $symbol", "errorId", Certainty::normal);
+        ASSERT_EQUALS(1, msg.callStack.size());
+        ASSERT_EQUALS("Programming error with sym.", msg.shortMessage());
+        ASSERT_EQUALS("Verbose error about sym", msg.verboseMessage());
+        ASSERT_EQUALS("[foo.cpp:5]: (error) Programming error with sym.", msg.toString(false, templateFormat, ""));
+        ASSERT_EQUALS("[foo.cpp:5]: (error) Verbose error about sym", msg.toString(true, templateFormat, ""));
+        ASSERT_EQUALS("sym\n", msg.symbolNames());
+    }
+
+    void ErrorMessageVerboseNewline() const {
+        std::list<ErrorMessage::FileLocation> locs(1, fooCpp5);
+        ErrorMessage msg(std::move(locs), "", Severity::error, "Programming error.\nVerbose error\nEven more verbose", "errorId", Certainty::normal);
+        ASSERT_EQUALS(1, msg.callStack.size());
+        ASSERT_EQUALS("Programming error.", msg.shortMessage());
+        ASSERT_EQUALS("Verbose error\nEven more verbose", msg.verboseMessage());
+        ASSERT_EQUALS("[foo.cpp:5]: (error) Programming error.", msg.toString(false, templateFormat, ""));
+        ASSERT_EQUALS("[foo.cpp:5]: (error) Verbose error\nEven more verbose", msg.toString(true, templateFormat, ""));
+    }
+
     void ErrorMessageFromInternalError() const {
         // TODO: test with token
         {
@@ -339,6 +363,25 @@ private:
         testReportType(ReportType::misraC2012, Severity::style, "premium-misra-c-2012-dir-4.6", "Advisory", "Dir 4.6");
         testReportType(ReportType::misraC2012, Severity::style, "misra-c2012-dir-4.6", "Advisory", "Dir 4.6");
         testReportType(ReportType::certC, Severity::error, "resourceLeak", "L3", "FIO42-C");
+    }
+
+    void ErrorMessageCode() const {
+        ScopedFile file("code.cpp",
+                        "int i;\n"
+                        "int i2;\n"
+                        "int i3;\n"
+                        );
+
+        ErrorMessage::FileLocation codeCpp3_5{"code.cpp", 3, 5};
+        std::list<ErrorMessage::FileLocation> locs = { codeCpp3_5 };
+        ErrorMessage msg(std::move(locs), "", Severity::error, "Programming error.\nVerbose error", "errorId", Certainty::normal);
+        ASSERT_EQUALS(1, msg.callStack.size());
+        ASSERT_EQUALS("Programming error.", msg.shortMessage());
+        ASSERT_EQUALS("Verbose error", msg.verboseMessage());
+        ASSERT_EQUALS("code.cpp:3:5: error: Programming error. [errorId]\n"
+                      "int i3;\n"
+                      "    ^",
+                      msg.toString(false, "{file}:{line}:{column}: {severity}:{inconclusive:inconclusive:} {message} [{id}]\n{code}", ""));
     }
 
     void CustomFormat() const {

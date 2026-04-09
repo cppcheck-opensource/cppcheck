@@ -18,9 +18,13 @@
 #define OPTIONS_H
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
+
+class TimerResultsIntf;
+class TimerResults;
 
 /**
  * @brief Class to parse command-line parameters for ./testrunner .
@@ -31,6 +35,7 @@ class options {
 public:
     /** Call from main() to populate object */
     options(int argc, const char* const argv[]);
+    ~options();
     /** Don't print the name of each method being tested. */
     bool quiet() const;
     /** Print help. */
@@ -41,6 +46,8 @@ public:
     bool dry_run() const;
     /** Exclude provided lists of tests. */
     bool exclude_tests() const;
+    /** The timer results. */
+    TimerResultsIntf* timer_results() const;
     /** Which tests should be run. */
     const std::map<std::string, std::set<std::string>>& which_tests() const;
 
@@ -61,6 +68,7 @@ private:
     bool mSummary{true};
     bool mDryRun{};
     bool mExcludeTests{};
+    std::unique_ptr<TimerResults> mTimerResults;
     std::string mExe;
 };
 

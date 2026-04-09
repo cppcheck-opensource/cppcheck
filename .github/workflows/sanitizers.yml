@@ -114,7 +114,7 @@ jobs:
           cmake --build cmake.output --target gui-tests -- -j $(nproc)
 
       - name: Run tests
-        run: ./cmake.output/bin/testrunner
+        run: ./cmake.output/bin/testrunner -t
 
       - name: Run cfg tests
         run: |
