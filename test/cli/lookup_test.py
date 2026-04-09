@@ -213,6 +213,28 @@ def test_lib_lookup_relative_noext_notfound(tmpdir):
     ]
 
 
+# TODO: this can never be found - bail out early?
+def test_lib_lookup_relative_noext_trailing_notfound(tmpdir):
+    test_file = os.path.join(tmpdir, 'test.c')
+    with open(test_file, 'wt'):
+        pass
+
+    exitcode, stdout, stderr, exe = cppcheck_ex(['--debug-lookup=library', '--library=config/gnu/', test_file])
+    exepath = os.path.dirname(exe)
+    if sys.platform == 'win32':
+        exepath = exepath.replace('\\', '/')
+    assert exitcode == 1, stdout if stdout else stderr
+    lines = __remove_std_lookup_log(stdout.splitlines(), exepath)
+    assert lines == [
+        # TODO: do not append extension
+        "looking for library 'config/gnu/.cfg'",
+        "looking for library '{}/config/gnu/.cfg'".format(exepath),
+        "looking for library '{}/cfg/config/gnu/.cfg'".format(exepath),
+        "library not found: 'config/gnu/'",
+        "cppcheck: Failed to load library configuration file 'config/gnu/'. File not found"
+    ]
+
+
 def test_lib_lookup_absolute(tmpdir):
     test_file = os.path.join(tmpdir, 'test.c')
     with open(test_file, 'wt'):
@@ -255,6 +277,48 @@ def test_lib_lookup_absolute_notfound(tmpdir):
         "looking for library '{}'".format(cfg_file),
         "library not found: '{}'".format(cfg_file),
         "cppcheck: Failed to load library configuration file '{}'. File not found".format(cfg_file)
+    ]
+
+
+def test_lib_lookup_absolute_noext_notfound(tmpdir):
+    test_file = os.path.join(tmpdir, 'test.c')
+    with open(test_file, 'wt'):
+        pass
+
+    cfg_file = os.path.join(tmpdir, 'test')
+
+    exitcode, stdout, _, exe = cppcheck_ex(['--debug-lookup=library', '--library={}'.format(cfg_file), test_file])
+    exepath = os.path.dirname(exe)
+    if sys.platform == 'win32':
+        exepath = exepath.replace('\\', '/')
+    assert exitcode == 1, stdout
+    lines = __remove_std_lookup_log(stdout.splitlines(), exepath)
+    assert lines == [
+        "looking for library '{}'".format(cfg_file),
+        "library not found: '{}'".format(cfg_file),
+        "cppcheck: Failed to load library configuration file '{}'. File not found".format(cfg_file)
+    ]
+
+
+# TODO: this can never be found - bail out early?
+def test_lib_lookup_absolute_noext_trailing_notfound(tmpdir):
+    test_file = os.path.join(tmpdir, 'test.c')
+    with open(test_file, 'wt'):
+        pass
+
+    cfg_file = os.path.join(tmpdir, 'test')
+    cfg_file_trail = cfg_file + os.path.sep
+
+    exitcode, stdout, _, exe = cppcheck_ex(['--debug-lookup=library', '--library={}'.format(cfg_file_trail), test_file])
+    exepath = os.path.dirname(exe)
+    if sys.platform == 'win32':
+        exepath = exepath.replace('\\', '/')
+    assert exitcode == 1, stdout
+    lines = __remove_std_lookup_log(stdout.splitlines(), exepath)
+    assert lines == [
+        "looking for library '{}'".format(cfg_file_trail),
+        "library not found: '{}'".format(cfg_file_trail),
+        "cppcheck: Failed to load library configuration file '{}'. File not found".format(cfg_file_trail)
     ]
 
 
@@ -552,6 +616,31 @@ def test_platform_lookup_relative_noext_notfound(tmpdir):
     ]
 
 
+# TODO: this can never be found - bail out early?
+def test_platform_lookup_relative_noext_trailing_notfound(tmpdir):
+    test_file = os.path.join(tmpdir, 'test.c')
+    with open(test_file, 'wt'):
+        pass
+
+    exitcode, stdout, stderr, exe = cppcheck_ex(['--debug-lookup=platform', '--platform=platform/none/', test_file])
+    cwd = os.getcwd()
+    exepath = os.path.dirname(exe)
+    if sys.platform == 'win32':
+        cwd = cwd.replace('\\', '/')
+        exepath = exepath.replace('\\', '/')
+    assert exitcode == 1, stdout if stdout else stderr
+    lines = stdout.splitlines()
+    assert lines == [
+        "looking for platform 'platform/none/'",
+        # TODO: should not append extension
+        "try to load platform file '{}/platform/none/.xml' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platform/none/.xml".format(cwd, cwd),
+        "try to load platform file '{}/platforms/platform/none/.xml' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platforms/platform/none/.xml".format(cwd, cwd),
+        "try to load platform file '{}/platform/none/.xml' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platform/none/.xml".format(exepath, exepath),
+        "try to load platform file '{}/platforms/platform/none/.xml' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}/platforms/platform/none/.xml".format(exepath, exepath),
+        "cppcheck: error: unrecognized platform: 'platform/none/'."
+    ]
+
+
 def test_platform_lookup_absolute(tmpdir):
     test_file = os.path.join(tmpdir, 'test.c')
     with open(test_file, 'wt'):
@@ -587,6 +676,42 @@ def test_platform_lookup_absolute_notfound(tmpdir):
         "looking for platform '{}'".format(platform_file),
         "try to load platform file '{}' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}".format(platform_file, platform_file),
         "cppcheck: error: unrecognized platform: '{}'.".format(platform_file)
+    ]
+
+
+def test_platform_lookup_absolute_noext_notfound(tmpdir):
+    test_file = os.path.join(tmpdir, 'test.c')
+    with open(test_file, 'wt'):
+        pass
+
+    platform_file = os.path.join(tmpdir, 'test')
+
+    exitcode, stdout, stderr = cppcheck(['--debug-lookup=platform', '--platform={}'.format(platform_file), test_file])
+    assert exitcode == 1, stdout if stdout else stderr
+    lines = stdout.splitlines()
+    assert lines == [
+        "looking for platform '{}'".format(platform_file),
+        "try to load platform file '{}' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}".format(platform_file, platform_file),
+        "cppcheck: error: unrecognized platform: '{}'.".format(platform_file)
+    ]
+
+
+# TODO: this can never be found - bail out early?
+def test_platform_lookup_absolute_noext_trailing_notfound(tmpdir):
+    test_file = os.path.join(tmpdir, 'test.c')
+    with open(test_file, 'wt'):
+        pass
+
+    platform_file = os.path.join(tmpdir, 'test')
+    platform_file_trail = platform_file + os.path.sep
+
+    exitcode, stdout, stderr = cppcheck(['--debug-lookup=platform', '--platform={}'.format(platform_file_trail), test_file])
+    assert exitcode == 1, stdout if stdout else stderr
+    lines = stdout.splitlines()
+    assert lines == [
+        "looking for platform '{}'".format(platform_file_trail),
+        "try to load platform file '{}' ... Error=XML_ERROR_FILE_NOT_FOUND ErrorID=3 (0x3) Line number=0: filename={}".format(platform_file_trail, platform_file_trail),
+        "cppcheck: error: unrecognized platform: '{}'.".format(platform_file_trail)
     ]
 
 
@@ -777,6 +902,26 @@ def test_addon_lookup_relative_noext_notfound(tmpdir):
     ]
 
 
+# TODO: this can never be found - bail out early?
+def test_addon_lookup_relative_noext_trailing_notfound(tmpdir):
+    test_file = os.path.join(tmpdir, 'test.c')
+    with open(test_file, 'wt'):
+        pass
+
+    exitcode, stdout, _, exe = cppcheck_ex(['--debug-lookup=addon', '--addon=addon/misra/', test_file])
+    exepath = os.path.dirname(exe)
+    exepath_sep = exepath + os.path.sep
+    assert exitcode == 1, stdout
+    lines = stdout.splitlines()
+    assert lines == [
+        # TODO: should not append extension
+        "looking for addon 'addon/misra/.py'",
+        "looking for addon '{}addon/misra/.py'".format(exepath_sep),
+        "looking for addon '{}addons/addon/misra/.py'".format(exepath_sep),  # TODO: mixed separators
+        'Did not find addon addon/misra/.py'
+    ]
+
+
 def test_addon_lookup_absolute(tmpdir):
     test_file = os.path.join(tmpdir, 'test.c')
     with open(test_file, 'wt'):
@@ -808,6 +953,42 @@ def test_addon_lookup_absolute_notfound(tmpdir):
     assert lines == [
         "looking for addon '{}'".format(addon_file),
         'Did not find addon {}'.format(addon_file)
+    ]
+
+
+def test_addon_lookup_absolute_noext_notfound(tmpdir):
+    test_file = os.path.join(tmpdir, 'test.c')
+    with open(test_file, 'wt'):
+        pass
+
+    addon_file = os.path.join(tmpdir, 'test')
+    addon_file_py = os.path.join(tmpdir, 'test.py')  # TODO: do not add extension
+
+    exitcode, stdout, stderr = cppcheck(['--debug-lookup=addon', '--addon={}'.format(addon_file), test_file])
+    assert exitcode == 1, stdout if stdout else stderr
+    lines = stdout.splitlines()
+    assert lines == [
+        "looking for addon '{}'".format(addon_file_py),
+        'Did not find addon {}'.format(addon_file_py)
+    ]
+
+
+# TODO: this can never be found - bail out early?
+def test_addon_lookup_absolute_noext_trailing_notfound(tmpdir):
+    test_file = os.path.join(tmpdir, 'test.c')
+    with open(test_file, 'wt'):
+        pass
+
+    addon_file = os.path.join(tmpdir, 'test')
+    addon_file_trail = addon_file + os.path.sep
+    addon_file_trail_py = addon_file_trail + '.py'  # TODO: do not add extension
+
+    exitcode, stdout, stderr = cppcheck(['--debug-lookup=addon', '--addon={}'.format(addon_file_trail), test_file])
+    assert exitcode == 1, stdout if stdout else stderr
+    lines = stdout.splitlines()
+    assert lines == [
+        "looking for addon '{}'".format(addon_file_trail_py),
+        'Did not find addon {}'.format(addon_file_trail_py)
     ]
 
 
