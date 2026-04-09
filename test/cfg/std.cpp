@@ -5033,32 +5033,22 @@ struct T_constParameter_std_begin {
     std::vector<int> v;
 };
 
-<<<<<<< chr_11617
 struct U_constParameter_std_begin {
     std::vector<int> v[1][1];
 };
 
-=======
->>>>>>> main
 void f(S_constParameter_std_begin& s) {
     std::for_each(std::begin(s.a), std::end(s.a), [](int& i) { ++i; });
 }
 
-<<<<<<< chr_11617
-=======
-// cppcheck-suppress constParameterReference - FP
->>>>>>> main
 void f(T_constParameter_std_begin& t) {
     std::for_each(std::begin(t.v), std::end(t.v), [](int& i) { ++i; });
 }
 
-<<<<<<< chr_11617
 void f(U_constParameter_std_begin& u) {
     std::for_each(std::begin(u.v[0][0]), std::end(u.v[0][0]), [](int& i) { ++i; });
 }
 
-=======
->>>>>>> main
 void g_constVariable_std_begin(int* p) { *p = 0; }
 
 int f_constVariable_std_begin() {
