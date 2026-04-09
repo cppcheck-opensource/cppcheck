@@ -3427,7 +3427,7 @@ static ExprUsage getFunctionUsage(const Token* tok, int indirect, const Settings
             const int nCtor = ftok->variable()->type()->classScope->numConstructors;
             if (nCtor == 0) {
                 if (indirect > 0) {
-                    std::vector<const Variable*> argvar = getArgumentVars(ftok->astParent(), argnr);
+                    const std::vector<const Variable*> argvar = getArgumentVars(ftok->astParent(), argnr);
                     if (argvar.size() == 1 && argvar[0]->valueType() && argvar[0]->valueType()->pointer == indirect)
                         return ExprUsage::NotUsed;
                 }
