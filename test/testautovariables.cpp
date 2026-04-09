@@ -131,6 +131,7 @@ private:
         TEST_CASE(returnReference26);
         TEST_CASE(returnReference27);
         TEST_CASE(returnReference28);
+        TEST_CASE(returnReference29);
         TEST_CASE(returnReferenceFunction);
         TEST_CASE(returnReferenceContainer);
         TEST_CASE(returnReferenceLiteral);
@@ -1755,6 +1756,19 @@ private:
               "    return s.r;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void returnReference29()
+    {
+        check("const std::string& f() {\n" // #12548
+              "    return std::string{};\n"
+              "}\n"
+              "const std::string& g() {\n"
+              "    return {};\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:23]: (error) Reference to temporary returned. [returnTempReference]\n"
+                      "[test.cpp:5:12]: (error) Reference to temporary returned. [returnTempReference]\n",
+                      errout_str());
     }
 
     void returnReferenceFunction() {
@@ -4033,7 +4047,7 @@ private:
               "}");
         ASSERT_EQUALS(
             "[test.cpp:3:28] -> [test.cpp:3:28] -> [test.cpp:2:9] -> [test.cpp:4:12]: (error) Returning object that points to local variable 'i' that will be invalid when returning. [returnDanglingLifetime]\n"
-            "[test.cpp:3:32] -> [test.cpp:3:32] -> [test.cpp:2:9] -> [test.cpp:4:12]: (error) Returning object that points to local variable 'i' that will be invalid when returning. [returnDanglingLifetime]\n", // duplicate
+            "[test.cpp:3:32] -> [test.cpp:3:32] -> [test.cpp:2:9] -> [test.cpp:4:12]: (error) Returning object that points to local variable 'i' that will be invalid when returning. [returnDanglingLifetime]\n",
             errout_str());
 
         check("std::vector<int*> f() {\n"
@@ -4043,7 +4057,7 @@ private:
               "}");
         ASSERT_EQUALS(
             "[test.cpp:3:25] -> [test.cpp:3:25] -> [test.cpp:2:9] -> [test.cpp:4:12]: (error) Returning object that points to local variable 'i' that will be invalid when returning. [returnDanglingLifetime]\n"
-            "[test.cpp:3:29] -> [test.cpp:3:29] -> [test.cpp:2:9] -> [test.cpp:4:12]: (error) Returning object that points to local variable 'i' that will be invalid when returning. [returnDanglingLifetime]\n", // duplicate
+            "[test.cpp:3:29] -> [test.cpp:3:29] -> [test.cpp:2:9] -> [test.cpp:4:12]: (error) Returning object that points to local variable 'i' that will be invalid when returning. [returnDanglingLifetime]\n",
             errout_str());
 
         check("std::vector<int*> f() {\n"
@@ -4052,7 +4066,7 @@ private:
               "}");
         ASSERT_EQUALS(
             "[test.cpp:3:13] -> [test.cpp:3:13] -> [test.cpp:2:9] -> [test.cpp:3:12]: (error) Returning object that points to local variable 'i' that will be invalid when returning. [returnDanglingLifetime]\n"
-            "[test.cpp:3:17] -> [test.cpp:3:17] -> [test.cpp:2:9] -> [test.cpp:3:12]: (error) Returning object that points to local variable 'i' that will be invalid when returning. [returnDanglingLifetime]\n", // duplicate
+            "[test.cpp:3:17] -> [test.cpp:3:17] -> [test.cpp:2:9] -> [test.cpp:3:12]: (error) Returning object that points to local variable 'i' that will be invalid when returning. [returnDanglingLifetime]\n",
             errout_str());
 
         check("std::vector<int*> f(int& x) {\n"

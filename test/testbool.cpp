@@ -273,7 +273,7 @@ private:
               "}");
         ASSERT_EQUALS(
             "[test.cpp:2:17]: (warning) Comparison of a boolean expression with an integer other than 0 or 1. [compareBoolExpressionWithInt]\n"
-            "[test.cpp:2:32]: (warning) Comparison of a boolean expression with an integer other than 0 or 1. [compareBoolExpressionWithInt]\n",   // duplicate
+            "[test.cpp:2:32]: (warning) Comparison of a boolean expression with an integer other than 0 or 1. [compareBoolExpressionWithInt]\n",
             errout_str());
 
         check("void f(int x) {\n"

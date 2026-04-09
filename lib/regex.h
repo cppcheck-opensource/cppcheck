@@ -25,6 +25,7 @@
 
 #include "config.h"
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -37,7 +38,13 @@ public:
     using MatchFn = std::function<void (int start, int end)>;
     virtual std::string match(const std::string& str, const MatchFn& matchFn) const = 0;
 
-    static std::shared_ptr<Regex> create(std::string pattern, std::string& err);
+    enum class Engine : std::uint8_t
+    {
+        Unknown = 0,
+        Pcre = 1
+    };
+
+    static std::shared_ptr<Regex> create(std::string pattern, Engine engine, std::string& err);
 };
 
 #endif // HAVE_RULES

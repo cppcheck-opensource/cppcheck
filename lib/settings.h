@@ -40,6 +40,8 @@
 #include <unordered_set>
 #include <utility>
 
+#include "regex.h"
+
 #if defined(USE_WINDOWS_SEH) || defined(USE_UNIX_SIGNAL_HANDLING)
 #include <cstdio>
 #endif
@@ -371,6 +373,7 @@ public:
         std::string id = "rule"; // default id
         std::string summary;
         Severity severity = Severity::style; // default severity
+        Regex::Engine engine = Regex::Engine::Pcre;
         std::shared_ptr<Regex> regex;
     };
 

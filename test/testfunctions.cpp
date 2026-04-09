@@ -222,7 +222,7 @@ private:
               "}");
         ASSERT_EQUALS(
             "[test.cpp:2:22]: (style) Obsolescent function 'index' called. It is recommended to use 'strchr' instead. [indexCalled]\n"
-            "[test.cpp:2:37]: (style) Obsolescent function 'index' called. It is recommended to use 'strchr' instead. [indexCalled]\n",   // duplicate
+            "[test.cpp:2:37]: (style) Obsolescent function 'index' called. It is recommended to use 'strchr' instead. [indexCalled]\n",
             errout_str());
     }
 

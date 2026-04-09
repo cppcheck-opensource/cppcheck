@@ -7707,7 +7707,7 @@ private:
               "}");
         ASSERT_EQUALS(
             "[test.cpp:2:22]: (style) Same expression on both sides of '&'. [duplicateExpression]\n"
-            "[test.cpp:2:29]: (style) Same expression on both sides of '&'. [duplicateExpression]\n",   // duplicate
+            "[test.cpp:2:29]: (style) Same expression on both sides of '&'. [duplicateExpression]\n",
             errout_str());
 
     }

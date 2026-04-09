@@ -86,6 +86,7 @@ private:
         TEST_CASE(attributeUnused);
         TEST_CASE(attributeMaybeUnused);
         TEST_CASE(staticFunction);
+        TEST_CASE(unnamedArg);
     }
 
     struct CheckOptions
@@ -826,6 +827,16 @@ private:
               "    f();\n"
               "}\n", dinit(CheckOptions, $.cpp = false));
         ASSERT_EQUALS("[test.c:1:6]: (style) The function 'f' should have static linkage since it is not used outside of its translation unit. [staticFunction]\n", errout_str());
+    }
+
+    void unnamedArg()
+    {
+        check("struct S {\n" // #12904
+              "    void Type() {}\n"
+              "};\n"
+              "[[unused]] void f(Type) {}\n"
+              "[[unused]] void g(Type, Type) {}\n");
+        ASSERT_EQUALS("[test.cpp:2:10]: (style) The function 'Type' is never used. [unusedFunction]\n", errout_str());
     }
 };
 

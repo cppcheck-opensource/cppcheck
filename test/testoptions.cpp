@@ -45,6 +45,7 @@ private:
         TEST_CASE(summary);
         TEST_CASE(dry_run);
         TEST_CASE(exclude_tests);
+        TEST_CASE(timer_results);
     }
 
 
@@ -166,6 +167,12 @@ private:
         options args(getArrayLength(argv), argv);
         ASSERT_EQUALS(true, args.exclude_tests());
         ASSERT(args.errors().empty());
+    }
+
+    void timer_results() const {
+        const char* argv[] = {"./test_runner", "TestClass::TestMethod", "-t"};
+        options args(getArrayLength(argv), argv);
+        ASSERT(!!args.timer_results());
     }
 };
 

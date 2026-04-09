@@ -309,11 +309,15 @@ To ignore certain folders you can use `-i`. This will skip analysis of source fi
 
 ## Visual Studio
 
-You can run Cppcheck on individual project files (\*.vcxproj) or on a whole solution (\*.sln)
+You can run Cppcheck on individual project files (\*.vcxproj) or on a whole solution (\*.sln) or (\*.slnx)
 
 Running Cppcheck on an entire Visual Studio solution:
 
     cppcheck --project=foobar.sln
+
+Running Cppcheck on an entire Visual Studio 2026 solution:
+
+    cppcheck --project=foobar.slnx
 
 Running Cppcheck on a Visual Studio project:
 

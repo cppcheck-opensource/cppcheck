@@ -223,11 +223,12 @@ def test_cppcheck_project_local_path_select_one_multiple():
 def test_cppcheck_project_local_path_analyze_all():
     __test_cppcheck_project_local_path(['--analyze-all-vs-configs'], 'Debug|Win32 Debug|x64 Release|Win32 Release|x64')
 
-def test_cppcheck_project_relative_path():
+@pytest.mark.parametrize("project_file", ["helloworld.cppcheck", "helloworld_slnx.cppcheck"])
+def test_cppcheck_project_relative_path(project_file):
     args = [
         '--template=cppcheck1',
         '--platform=win64',
-        '--project=' + os.path.join('helloworld', 'helloworld.cppcheck')
+        '--project=' + os.path.join('helloworld', project_file)
     ]
     ret, stdout, stderr = cppcheck(args, cwd=__script_dir)
     filename = os.path.join('helloworld', 'main.c')
@@ -235,11 +236,12 @@ def test_cppcheck_project_relative_path():
     assert __getVsConfigs(stdout, filename) == 'Debug|x64'
     assert stderr == '[%s:5]: (error) Division by zero.\n' % filename
 
-def test_cppcheck_project_absolute_path():
+@pytest.mark.parametrize("project_file", ["helloworld.cppcheck", "helloworld_slnx.cppcheck"])
+def test_cppcheck_project_absolute_path(project_file):
     args = [
         '--template=cppcheck1',
         '--platform=win64',
-        '--project=' + os.path.join(__proj_dir, 'helloworld.cppcheck')
+        '--project=' + os.path.join(__proj_dir, project_file)
     ]
     ret, stdout, stderr = cppcheck(args)
     filename = os.path.join(__proj_dir, 'main.c')
@@ -296,11 +298,12 @@ def test_suppress_project_absolute(tmp_path):
     assert ret == 0, stdout
     assert stderr == ''
 
-def test_exclude():
+@pytest.mark.parametrize("project_file", ["helloworld.cppcheck", "helloworld_slnx.cppcheck"])
+def test_exclude(project_file):
     args = [
         '-i' + 'helloworld',
         '--platform=win64',
-        '--project=' + os.path.join('helloworld', 'helloworld.cppcheck')
+        '--project=' + os.path.join('helloworld', project_file)
     ]
     ret, stdout, _ = cppcheck(args, cwd=__script_dir)
     assert ret == 1

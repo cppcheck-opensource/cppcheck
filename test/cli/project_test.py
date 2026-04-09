@@ -7,7 +7,7 @@ import sys
 from testutils import cppcheck
 
 
-@pytest.mark.parametrize("project_ext", ["json", "sln", "vcxproj", "bpr", "cppcheck"])
+@pytest.mark.parametrize("project_ext", ["json", "sln", "slnx", "vcxproj", "bpr", "cppcheck"])
 def test_missing_project(project_ext):
     project_file = "file.{}".format(project_ext)
 
@@ -33,6 +33,7 @@ def __test_project_error(tmpdir, ext, content, expected):
 @pytest.mark.parametrize("project_ext, expected", [
     ("json", "compilation database is not a JSON array"),
     ("sln", "Visual Studio solution file is empty"),
+    ("slnx", "Visual Studio solution file is not a valid XML - XML_ERROR_EMPTY_DOCUMENT"),
     ("vcxproj", "Visual Studio project file is not a valid XML - XML_ERROR_EMPTY_DOCUMENT"),
     ("bpr", "Borland project file is not a valid XML - XML_ERROR_EMPTY_DOCUMENT"),
     ("cppcheck", "Cppcheck GUI project file is not a valid XML - XML_ERROR_EMPTY_DOCUMENT")
@@ -136,6 +137,46 @@ def test_sln_project_file_not_found(tmpdir):
         expected = expected.replace('\\', '/')
 
     __test_project_error(tmpdir, "sln", content, expected)
+
+
+def test_slnx_no_xml_root(tmpdir):
+    content = '<?xml version="1.0" encoding="utf-8"?>'
+
+    expected = "Visual Studio solution file has no XML root node"
+
+    __test_project_error(tmpdir, "slnx", content, expected)
+
+
+def test_slnx_no_projects(tmpdir):
+    content = '<?xml version="1.0" encoding="UTF-8"?>\r\n' \
+              "<Solution>\r\n" \
+              "  <Configurations>\r\n" \
+              '    <Platform Name="x64" />\r\n' \
+              '    <Platform Name="x86" />\r\n' \
+              "  </Configurations>\r\n" \
+              "</Solution>\r\n"
+
+    expected = "no projects found in Visual Studio solution file"
+
+    __test_project_error(tmpdir, "slnx", content, expected)
+
+
+def test_slnx_project_file_not_found(tmpdir):
+    content = '<?xml version="1.0" encoding="UTF-8"?>\r\n' \
+              "<Solution>\r\n" \
+              "  <Configurations>\r\n" \
+              '    <Platform Name="x64" />\r\n' \
+              '    <Platform Name="x86" />\r\n' \
+              "  </Configurations>\r\n" \
+              '  <Project Path="test.vcxproj" />\r\n' \
+              "</Solution>\r\n"
+
+    expected = "Visual Studio project file is not a valid XML - XML_ERROR_FILE_NOT_FOUND\n" \
+               "cppcheck: error: failed to load '{}' from Visual Studio solution".format(os.path.join(tmpdir, "test.vcxproj"))
+    if sys.platform == "win32":
+        expected = expected.replace('\\', '/')
+
+    __test_project_error(tmpdir, "slnx", content, expected)
 
 
 def test_vcxproj_no_xml_root(tmpdir):

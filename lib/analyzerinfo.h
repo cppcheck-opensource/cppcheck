@@ -35,7 +35,7 @@ struct FileSettings;
 namespace tinyxml2 {
     class XMLDocument;
     class XMLElement;
-};
+}
 
 /// @addtogroup Core
 /// @{

@@ -461,7 +461,7 @@ bool isTemporary(const Token* tok, const Library* library, bool unknown)
             return false;
         return !branchTok->astOperand1()->valueType()->isTypeEqual(branchTok->astOperand2()->valueType());
     }
-    if (Token::simpleMatch(tok, "(") && tok->astOperand1() &&
+    if (Token::Match(tok, "(|{") && tok->astOperand1() &&
         (tok->astOperand2() || Token::simpleMatch(tok->next(), ")"))) {
         if (Token::simpleMatch(tok->astOperand1(), "typeid"))
             return false;
@@ -498,9 +498,6 @@ bool isTemporary(const Token* tok, const Library* library, bool unknown)
     // Currying a function is unknown in cppcheck
     if (Token::simpleMatch(tok, "(") && Token::simpleMatch(tok->astOperand1(), "("))
         return unknown;
-    if (Token::simpleMatch(tok, "{") && Token::simpleMatch(tok->astParent(), "return") && tok->astOperand1() &&
-        !tok->astOperand2())
-        return isTemporary(tok->astOperand1(), library);
     return true;
 }
 
@@ -3470,6 +3467,9 @@ static ExprUsage getFunctionUsage(const Token* tok, int indirect, const Settings
         bool hasIndirect = false;
         const bool isuninitbad = settings.library.isuninitargbad(ftok, argnr + 1, indirect, &hasIndirect);
         if (isuninitbad && (!addressOf || isnullbad))
+            return ExprUsage::Used;
+        const Library::ArgumentChecks::Direction argDirection = settings.library.getArgDirection(ftok, argnr + 1, indirect);
+        if (argDirection == Library::ArgumentChecks::Direction::DIR_IN)
             return ExprUsage::Used;
     }
     return ExprUsage::Inconclusive;
