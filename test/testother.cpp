@@ -12551,8 +12551,7 @@ private:
               "    A c = a;\n"
               "}");
         ASSERT_EQUALS("[test.cpp:4:7]: (warning, inconclusive) Access of moved variable 'a'. [accessMoved]\n"
-                      "[test.cpp:5:11]: (warning, inconclusive) Access of moved variable 'a'. [accessMoved]\n",
-                      errout_str());
+                      "[test.cpp:5:11]: (warning, inconclusive) Access of moved variable 'a'. [accessMoved]\n", errout_str());
     }
 
     void moveAndReturn() {
