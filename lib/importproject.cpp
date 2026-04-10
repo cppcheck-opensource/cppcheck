@@ -330,6 +330,11 @@ ImportProject::Type ImportProject::import(const std::string &filename, Settings 
             setRelativePaths(filename);
             return ImportProject::Type::VS_SLN;
         }
+    } else if (endsWith(filename, ".slnx")) {
+        if (importSlnx(filename, fileFilters)) {
+            setRelativePaths(filename);
+            return ImportProject::Type::VS_SLNX;
+        }
     } else if (endsWith(filename, ".vcxproj")) {
         std::map<std::string, std::string, cppcheck::stricmp> variables;
         std::vector<SharedItemsProject> sharedItemsProjects;
@@ -493,6 +498,54 @@ bool ImportProject::importSln(std::istream &istr, const std::string &path, const
             return false;
         }
         found = true;
+    }
+
+    if (!found) {
+        errors.emplace_back("no projects found in Visual Studio solution file");
+        return false;
+    }
+
+    return true;
+}
+
+bool ImportProject::importSlnx(const std::string& filename, const std::vector<std::string>& fileFilters)
+{
+    tinyxml2::XMLDocument doc;
+    const tinyxml2::XMLError error = doc.LoadFile(filename.c_str());
+    if (error != tinyxml2::XML_SUCCESS) {
+        errors.emplace_back(std::string("Visual Studio solution file is not a valid XML - ") + tinyxml2::XMLDocument::ErrorIDToName(error));
+        return false;
+    }
+
+    const tinyxml2::XMLElement* const rootnode = doc.FirstChildElement();
+    if (rootnode == nullptr) {
+        errors.emplace_back("Visual Studio solution file has no XML root node");
+        return false;
+    }
+
+    std::map<std::string, std::string, cppcheck::stricmp> variables;
+    variables["SolutionDir"] = Path::simplifyPath(Path::getPathFromFilename(filename));
+
+    bool found = false;
+    std::vector<SharedItemsProject> sharedItemsProjects;
+
+    for (const tinyxml2::XMLElement* node = rootnode->FirstChildElement(); node; node = node->NextSiblingElement()) {
+        const char* name = node->Name();
+        if (std::strcmp(name, "Project") == 0) {
+            const char* labelAttribute = node->Attribute("Path");
+            if (labelAttribute) {
+                std::string vcxproj(labelAttribute);
+                vcxproj = Path::toNativeSeparators(std::move(vcxproj));
+                if (!Path::isAbsolute(vcxproj))
+                    vcxproj = variables["SolutionDir"] + vcxproj;
+                vcxproj = Path::fromNativeSeparators(std::move(vcxproj));
+                if (!importVcxproj(vcxproj, variables, "", fileFilters, sharedItemsProjects)) {
+                    errors.emplace_back("failed to load '" + vcxproj + "' from Visual Studio solution");
+                    return false;
+                }
+                found = true;
+            }
+        }
     }
 
     if (!found) {

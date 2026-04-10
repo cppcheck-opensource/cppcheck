@@ -81,8 +81,8 @@ private:
         ASSERT_EQUALS(true, findLambdaEndToken("[](void) mutable -> const * int { return x; }"));
         ASSERT_EQUALS(true, findLambdaEndToken("[](void) constexpr -> const ** int { return x; }"));
         ASSERT_EQUALS(true, findLambdaEndToken("[](void) constexpr -> const * const* int { return x; }"));
-        ASSERT_EQUALS(false, findLambdaEndToken("int** a[] { new int*[2] { new int, new int} }", "[ ]"));
-        ASSERT_EQUALS(false, findLambdaEndToken("int** a[] { new int*[2] { new int, new int} }", "[ 2"));
+        ASSERT_EQUALS(false, findLambdaEndToken("int** a[] { new int*[2] { new int, new int} };", "[ ]"));
+        ASSERT_EQUALS(false, findLambdaEndToken("int** a[] { new int*[2] { new int, new int} };", "[ 2"));
         ASSERT_EQUALS(false, findLambdaEndToken("shared_ptr<Type *[]> sp{ new Type *[2] {new Type, new Type}, Deleter<Type>{ 2 } };", "[ 2"));
         ASSERT_EQUALS(true, findLambdaEndToken("int i = 5 * []{ return 7; }();", "[", /*checkNext*/ false));
     }

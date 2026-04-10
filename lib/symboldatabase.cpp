@@ -6430,7 +6430,7 @@ const Function* SymbolDatabase::findFunction(const Token* const tok) const
         }
     }
     // Check for constructor
-    if (Token::Match(tok, "%name% (|{")) {
+    if (!Token::simpleMatch(tok->tokAt(-2), "this .") && Token::Match(tok, "%name% (|{")) {
         ValueType vt = ValueType::parseDecl(tok, mSettings);
         if (vt.typeScope)
             return vt.typeScope->findFunction(tok, false);

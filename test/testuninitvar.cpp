@@ -7776,6 +7776,14 @@ private:
                         "  return (&s)->y;\n"
                         "}\n");
         ASSERT_EQUALS("[test.cpp:5:16]: (error) Uninitialized variable: s.y [uninitvar]\n", errout_str());
+
+        valueFlowUninit("struct S { int* p; };\n" // #14640
+                        "void f() {\n"
+                        "    int x;\n"
+                        "    S s{ &x };\n"
+                        "    *s.p = 0;\n"
+                        "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void valueFlowUninitForLoop()

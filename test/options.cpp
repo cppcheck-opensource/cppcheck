@@ -16,25 +16,53 @@
 
 #include "options.h"
 
-options::options(int argc, const char* const argv[])
-    : mWhichTests(argv + 1, argv + argc)
-    ,mQuiet(mWhichTests.count("-q") != 0)
-    ,mHelp(mWhichTests.count("-h") != 0 || mWhichTests.count("--help"))
-    ,mSummary(mWhichTests.count("-n") == 0)
-    ,mDryRun(mWhichTests.count("-d") != 0)
-    ,mExcludeTests(mWhichTests.count("-x") != 0)
-    ,mExe(argv[0])
-{
-    for (auto it = mWhichTests.cbegin(); it != mWhichTests.cend();) {
-        if (!it->empty() && (((*it)[0] == '-') || (it->find("::") != std::string::npos && mWhichTests.count(it->substr(0, it->find("::"))))))
-            it = mWhichTests.erase(it);
-        else
-            ++it;
-    }
+#include "timer.h"
 
-    if (mWhichTests.empty()) {
-        mWhichTests.insert("");
+options::options(int argc, const char* const argv[])
+    : mExe(argv[0])
+{
+    const std::set<std::string> args(argv + 1, argv + argc);
+    for (const auto& arg : args) {
+        if (arg.empty())
+            continue; // empty argument
+        if (arg[0] == '-') {
+            if (arg == "-q")
+                mQuiet = true;
+            else if (arg == "-h" || arg == "--help")
+                mHelp = true;
+            else if (arg == "-n")
+                mSummary = false;
+            else if (arg == "-d")
+                mDryRun = true;
+            else if (arg == "-x")
+                mExcludeTests = true;
+            else if (arg == "-t")
+                mTimerResults.reset(new TimerResults);
+            else
+                mErrors.emplace_back("unknown option '" + arg + "'");
+            continue; // command-line switch
+        }
+        const auto pos = arg.find("::");
+        if (pos == std::string::npos) {
+            mWhichTests[arg] = {}; // run whole fixture
+            continue;
+        }
+        const std::string fixture = arg.substr(0, pos);
+        const auto it = mWhichTests.find(fixture);
+        if (it != mWhichTests.cend() && it->second.empty())
+            continue; // whole fixture is already included
+        const std::string test = arg.substr(pos+2);
+        mWhichTests[fixture].emplace(test); // run individual test
     }
+}
+
+options::~options()
+{
+    // TODO: allow more than 5 results to be shown
+    // TODO: provide higher resolution in output
+    // TODO: disable the metrics
+    if (mTimerResults)
+        mTimerResults->showResults(ShowTime::TOP5_FILE);
 }
 
 bool options::quiet() const
@@ -57,7 +85,7 @@ bool options::dry_run() const
     return mDryRun;
 }
 
-const std::set<std::string>& options::which_test() const
+const std::map<std::string, std::set<std::string>>& options::which_tests() const
 {
     return mWhichTests;
 }
@@ -70,4 +98,14 @@ const std::string& options::exe() const
 bool options::exclude_tests() const
 {
     return mExcludeTests;
+}
+
+TimerResultsIntf* options::timer_results() const
+{
+    return mTimerResults.get();
+}
+
+const std::vector<std::string>& options::errors() const
+{
+    return mErrors;
 }

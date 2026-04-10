@@ -1222,7 +1222,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
 
                 if (mSettings.inlineSuppressions) {
                     // Need to call this even if the hash will skip this configuration
-                    mSuppressions.nomsg.markUnmatchedInlineSuppressionsAsChecked(tokenizer);
+                    mSuppressions.nomsg.markUnmatchedInlineSuppressionsAsChecked(tokenizer.list);
                 }
 
                 // Skip if we already met the same simplified token list

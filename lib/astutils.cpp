@@ -461,7 +461,7 @@ bool isTemporary(const Token* tok, const Library* library, bool unknown)
             return false;
         return !branchTok->astOperand1()->valueType()->isTypeEqual(branchTok->astOperand2()->valueType());
     }
-    if (Token::simpleMatch(tok, "(") && tok->astOperand1() &&
+    if (Token::Match(tok, "(|{") && tok->astOperand1() &&
         (tok->astOperand2() || Token::simpleMatch(tok->next(), ")"))) {
         if (Token::simpleMatch(tok->astOperand1(), "typeid"))
             return false;
@@ -498,9 +498,6 @@ bool isTemporary(const Token* tok, const Library* library, bool unknown)
     // Currying a function is unknown in cppcheck
     if (Token::simpleMatch(tok, "(") && Token::simpleMatch(tok->astOperand1(), "("))
         return unknown;
-    if (Token::simpleMatch(tok, "{") && Token::simpleMatch(tok->astParent(), "return") && tok->astOperand1() &&
-        !tok->astOperand2())
-        return isTemporary(tok->astOperand1(), library);
     return true;
 }
 
@@ -2548,10 +2545,11 @@ bool isVariableChangedByFunctionCall(const Token *tok, int indirect, const Setti
         const Library::ArgumentChecks::Direction argDirection = settings.library.getArgDirection(tok, 1 + argnr, indirect);
         if (argDirection == Library::ArgumentChecks::Direction::DIR_IN)
             return false;
+        if (argDirection == Library::ArgumentChecks::Direction::DIR_OUT)
+            return true;
 
         const bool requireNonNull = settings.library.isnullargbad(tok, 1 + argnr);
-        if (argDirection == Library::ArgumentChecks::Direction::DIR_OUT ||
-            argDirection == Library::ArgumentChecks::Direction::DIR_INOUT) {
+        if (argDirection == Library::ArgumentChecks::Direction::DIR_INOUT) {
             if (indirect == 0 && isArray(tok1))
                 return true;
             const bool requireInit = settings.library.isuninitargbad(tok, 1 + argnr);
@@ -3425,8 +3423,14 @@ static ExprUsage getFunctionUsage(const Token* tok, int indirect, const Settings
         // TODO: resolve multiple constructors
         if (ftok->variable()->type() && ftok->variable()->type()->classScope) {
             const int nCtor = ftok->variable()->type()->classScope->numConstructors;
-            if (nCtor == 0)
+            if (nCtor == 0) {
+                if (indirect > 0) {
+                    const std::vector<const Variable*> argvar = getArgumentVars(ftok->astParent(), argnr);
+                    if (argvar.size() == 1 && argvar[0]->valueType() && argvar[0]->valueType()->pointer == indirect)
+                        return ExprUsage::NotUsed;
+                }
                 return ExprUsage::Used;
+            }
             if (nCtor == 1) {
                 const Scope* scope = ftok->variable()->type()->classScope;
                 auto it = std::find_if(scope->functionList.begin(), scope->functionList.end(), [](const Function& f) {
@@ -3471,6 +3475,11 @@ static ExprUsage getFunctionUsage(const Token* tok, int indirect, const Settings
         const bool isuninitbad = settings.library.isuninitargbad(ftok, argnr + 1, indirect, &hasIndirect);
         if (isuninitbad && (!addressOf || isnullbad))
             return ExprUsage::Used;
+        const Library::ArgumentChecks::Direction argDirection = settings.library.getArgDirection(ftok, argnr + 1, indirect);
+        if (argDirection == Library::ArgumentChecks::Direction::DIR_IN) // TODO: DIR_INOUT?
+            return ExprUsage::Used;
+        if (argDirection == Library::ArgumentChecks::Direction::DIR_OUT)
+            return ExprUsage::NotUsed;
     }
     return ExprUsage::Inconclusive;
 }

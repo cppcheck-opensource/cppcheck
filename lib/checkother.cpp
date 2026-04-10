@@ -4015,8 +4015,6 @@ void CheckOther::checkFuncArgNamesDifferent()
         std::vector<const Token *>  definitions(function->argCount());
         const Token * decl = function->argDef->next();
         for (int j = 0; j < function->argCount(); ++j) {
-            declarations[j] = nullptr;
-            definitions[j] = nullptr;
             // get the definition
             const Variable * variable = function->getArgumentVar(j);
             if (variable) {
@@ -4032,7 +4030,7 @@ void CheckOther::checkFuncArgNamesDifferent()
                     break;
                 }
                 // skip over template
-                if (decl->link())
+                if (decl->link() && decl->str() == "<")
                     decl = decl->link();
                 else if (decl->varId())
                     declarations[j] = decl;

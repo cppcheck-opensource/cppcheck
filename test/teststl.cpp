@@ -4719,6 +4719,13 @@ private:
               "    auto a = + s.c_str();\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("std::string f(const std::string& a) {\n" // #14600
+              "    std::string b(a.c_str() + 1 + 2);\n"
+              "    return b;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:17]: (performance) Constructing a std::string from the result of c_str() is slow and redundant. [stlcstrConstructor]\n",
+                      errout_str());
     }
 
     void uselessCalls() {

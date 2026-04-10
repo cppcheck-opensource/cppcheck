@@ -23,6 +23,7 @@
 #include "library.h"
 #include "options.h"
 #include "redirect.h"
+#include "timer.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -88,6 +89,7 @@ TestFixture::TestFixture(const char * const _name)
     : classname(_name)
 {}
 
+TestFixture::~TestFixture() = default;
 
 bool TestFixture::prepareTest(const char testname[])
 {
@@ -97,24 +99,33 @@ bool TestFixture::prepareTest(const char testname[])
     prepareTestInternal();
 
     // Check if tests should be executed
-    if (testToRun.empty() || testToRun == testname) {
-        // Tests will be executed - prepare them
-        mTestname = testname;
-        ++countTests;
-        if (quiet_tests) {
-            std::putchar('.'); // Use putchar to write through redirection of std::cout/cerr
-            std::fflush(stdout);
-        } else {
-            std::cout << classname << "::" << mTestname << std::endl;
-        }
-        return !dry_run;
+    if (!testsToRun.empty()) {
+        const bool match = testsToRun.count(testname);
+        if ((match && exclude_tests) || (!match && !exclude_tests))
+            return false;
     }
-    return false;
+
+    // Tests will be executed - prepare them
+    mTestname = testname;
+    ++countTests;
+    std::string fullTestName =  classname + "::" + mTestname;
+    if (quiet_tests) {
+        std::putchar('.'); // Use putchar to write through redirection of std::cout/cerr
+        std::fflush(stdout);
+    } else {
+        std::cout << fullTestName << std::endl;
+    }
+    if (timer_results)
+        mTimer.reset(new Timer(fullTestName, ShowTime::TOP5_SUMMARY, timer_results));
+    return !dry_run;
 }
 
 void TestFixture::teardownTest()
 {
     teardownTestInternal();
+
+    if (mTimer)
+        mTimer->stop();
 
     {
         const std::string s = errout_str();
@@ -350,9 +361,9 @@ void TestFixture::printHelp()
         "    -x                   Exclude the specified tests.\n";
 }
 
-void TestFixture::run(const std::string &str)
+void TestFixture::run(const std::set<std::string> &tests)
 {
-    testToRun = str;
+    testsToRun = tests;
     try {
         if (quiet_tests) {
             std::cout << '\n' << classname << ':';
@@ -380,7 +391,9 @@ void TestFixture::processOptions(const options& args)
 {
     quiet_tests = args.quiet();
     dry_run = args.dry_run();
+    exclude_tests = args.exclude_tests();
     exename = args.exe();
+    timer_results = args.timer_results();
 }
 
 std::size_t TestFixture::runTests(const options& args)
@@ -388,27 +401,35 @@ std::size_t TestFixture::runTests(const options& args)
     countTests = 0;
     errmsg.str("");
 
+    const auto& which_tests = args.which_tests();
+    const auto exclude_tests = args.exclude_tests();
+
     // TODO: bail out when given class/test is not found?
-    for (std::string classname : args.which_test()) {
-        std::string testname;
-        const std::string::size_type pos = classname.find("::");
-        if (pos != std::string::npos) {
-            // TODO: excluding indiviual tests is not supported yet
-            testname = classname.substr(pos + 2);
-            classname.erase(pos);
+    for (TestInstance * test : TestRegistry::theInstance().tests())
+    {
+        std::set<std::string> tests;
+        if (!which_tests.empty()) {
+            const auto it = which_tests.find(test->classname);
+            const bool match = it != which_tests.cend();
+            if (match && exclude_tests && it->second.empty()) // only bailout when the whole fixture is excluded
+                continue;
+            if (!match && !exclude_tests)
+                continue;
+            if (match)
+                tests = it->second;
         }
 
-        for (TestInstance * test : TestRegistry::theInstance().tests()) {
-            if (!classname.empty()) {
-                const bool match = test->classname == classname;
-                if ((match && args.exclude_tests()) || (!match && !args.exclude_tests()))
-                    continue;
-            }
-
-            TestFixture* fixture = test->create();
-            fixture->processOptions(args);
-            fixture->run(testname);
-        }
+        TestFixture* fixture;
+        const auto f = [&](){
+            fixture = test->create();
+        };
+        // TODO: Timer::run() needs proper handling if no results should be collected
+        if (args.timer_results())
+            Timer::run(test->classname + " - create", ShowTime::TOP5_SUMMARY, args.timer_results(), f);
+        else
+            f();
+        fixture->processOptions(args);
+        fixture->run(tests);
     }
 
     if (args.summary() && !args.dry_run()) {

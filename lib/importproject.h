@@ -63,6 +63,7 @@ public:
         FAILURE,
         COMPILE_DB,
         VS_SLN,
+        VS_SLNX,
         VS_VCXPROJ,
         BORLAND,
         CPPCHECK_GUI
@@ -120,6 +121,7 @@ private:
     void setRelativePaths(const std::string &filename);
 
     bool importSln(std::istream &istr, const std::string &path, const std::vector<std::string> &fileFilters);
+    bool importSlnx(const std::string& filename, const std::vector<std::string>& fileFilters);
     SharedItemsProject importVcxitems(const std::string &filename, const std::vector<std::string> &fileFilters, std::vector<SharedItemsProject> &cache);
     bool importBcb6Prj(const std::string &projectFilename);
 

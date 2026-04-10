@@ -419,6 +419,7 @@ namespace utils {
     constexpr typename std::add_const<T>::type & as_const(T& t) noexcept
     {
         static_assert(!std::is_const<T>::value, "object is already const");
+        static_assert(!std::is_pointer<T>::value, "object is a pointer");
         // NOLINTNEXTLINE(bugprone-return-const-ref-from-parameter) - potential false positive
         return t;
     }

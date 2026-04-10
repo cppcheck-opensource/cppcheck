@@ -679,6 +679,13 @@ jobs:
           test -z "$(nm processexecutor.o)"
           # TODO: test NO_* defines
 
+      - name: Test testrunner inclusion/exclusion
+        run: |
+          ! ./testrunner -d TestUtils | grep -v TestUtils > /dev/null
+          ! ./testrunner -d TestUtils::trim | grep -v TestUtils::trim > /dev/null
+          ! ./testrunner -d -x TestUtils | grep TestUtils > /dev/null
+          ! ./testrunner -d -x TestUtils:trim | grep TestUtils:trim > /dev/null
+
       - name: Show all ignored files
         if: false  # TODO: currently lists all the contents of ignored folders - we only need what actually matched
         run: |

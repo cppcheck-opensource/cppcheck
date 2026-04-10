@@ -42,7 +42,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Cygwin
-        uses: cygwin/cygwin-install-action@master
+        uses: cygwin/cygwin-install-action@v6
         with:
           site: https://mirrors.cicku.me/cygwin/
           platform: ${{ matrix.platform }}

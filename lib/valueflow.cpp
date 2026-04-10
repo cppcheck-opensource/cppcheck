@@ -7214,12 +7214,15 @@ struct ValueFlowPassRunner {
     {
         std::size_t values = 0;
         std::size_t n = state.settings.vfOptions.maxIterations;
+        const bool doProgress = state.settings.reportProgress >= 0;
         while (n > 0 && values != getTotalValues()) {
             values = getTotalValues();
             const std::size_t passnum = state.settings.vfOptions.maxIterations - n + 1;
             const std::string passnum_s = std::to_string(passnum);
             if (std::any_of(passes.begin(), passes.end(), [&](const ValuePtr<ValueFlowPass>& pass) {
-                ProgressReporter progressReporter(state.errorLogger, state.settings.reportProgress, state.tokenlist.getSourceFilePath(), std::string("ValueFlow::") + pass->name() + (' ' + passnum_s));
+                // the string concatination is a hot spot in TestIO::testScanfArgument and TestIO::testPrintfArgumentVariables
+                std::string stage = doProgress ? std::string("ValueFlow::") + pass->name() + (' ' + passnum_s) : "";
+                ProgressReporter progressReporter(state.errorLogger, state.settings.reportProgress, state.tokenlist.getSourceFilePath(), std::move(stage));
                 return run(pass, passnum);
             }))
                 return true;

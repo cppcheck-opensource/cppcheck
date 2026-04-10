@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="helloworld.vcxproj" />
+</Solution>

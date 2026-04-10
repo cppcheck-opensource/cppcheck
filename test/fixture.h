@@ -34,6 +34,7 @@
 #include <exception>
 #include <list>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -42,6 +43,8 @@
 
 class options;
 class Tokenizer;
+class Timer;
+class TimerResultsIntf;
 
 class TestFixture : public ErrorLogger {
 private:
@@ -56,9 +59,11 @@ private:
 
 protected:
     std::string exename;
-    std::string testToRun;
+    std::set<std::string> testsToRun;
     bool quiet_tests{};
     bool dry_run{};
+    bool exclude_tests{};
+    TimerResultsIntf* timer_results{};
     bool mNewTemplate{};
 
     virtual void run() = 0;
@@ -284,19 +289,22 @@ private:
     std::ostringstream mOutput;
     std::ostringstream mErrout;
 
+    std::unique_ptr<Timer> mTimer;
+
     void reportOut(const std::string &outmsg, Color c = Color::Reset) override;
     void reportErr(const ErrorMessage &msg) override;
     void reportMetric(const std::string &metric) override
     {
         (void) metric;
     }
-    void run(const std::string &str);
+    void run(const std::set<std::string> &tests);
 
 public:
     static void printHelp();
     const std::string classname;
 
     explicit TestFixture(const char * _name);
+    ~TestFixture() override;
 
     static std::size_t runTests(const options& args);
 };

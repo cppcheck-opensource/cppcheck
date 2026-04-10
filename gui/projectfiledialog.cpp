@@ -111,7 +111,7 @@ static std::string suppressionAsText(const SuppressionList::Suppression& s)
 
 QStringList ProjectFileDialog::getProjectConfigs(const QString &fileName)
 {
-    if (!fileName.endsWith(".sln") && !fileName.endsWith(".vcxproj"))
+    if (!fileName.endsWith(".sln") && !fileName.endsWith(".slnx") && !fileName.endsWith(".vcxproj"))
         return QStringList();
     QStringList ret;
     ImportProject importer;
@@ -596,7 +596,7 @@ void ProjectFileDialog::updatePathsAndDefines()
 {
     const QString &fileName = mUI->mEditImportProject->text();
     const bool importProject = !fileName.isEmpty();
-    const bool hasConfigs = fileName.endsWith(".sln") || fileName.endsWith(".vcxproj");
+    const bool hasConfigs = fileName.endsWith(".sln") || fileName.endsWith(".slnx") || fileName.endsWith(".vcxproj");
     mUI->mBtnClearImportProject->setEnabled(importProject);
     mUI->mListCheckPaths->setEnabled(!importProject);
     mUI->mListIncludeDirs->setEnabled(!importProject);
@@ -626,7 +626,7 @@ void ProjectFileDialog::browseImportProject()
     const QFileInfo inf(mProjectFile->getFilename());
     const QDir &dir = inf.absoluteDir();
     QMap<QString,QString> filters;
-    filters[tr("Visual Studio")] = "*.sln *.vcxproj";
+    filters[tr("Visual Studio")] = "*.sln *.slnx *.vcxproj";
     filters[tr("Compile database")] = "compile_commands.json";
     filters[tr("Borland C++ Builder 6")] = "*.bpr";
     QString fileName = QFileDialog::getOpenFileName(this, tr("Import Project"),

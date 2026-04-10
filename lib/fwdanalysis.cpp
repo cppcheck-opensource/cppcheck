@@ -362,7 +362,7 @@ FwdAnalysis::Result FwdAnalysis::checkRecursive(const Token *expr, const Token *
                     while (argnr < args.size() && args[argnr] != parent)
                         argnr++;
                     if (argnr < args.size()) {
-                        if (mSettings.library.getArgDirection(ftok->astOperand1(), argnr + 1) == Library::ArgumentChecks::Direction::DIR_OUT)
+                        if (mSettings.library.getArgDirection(ftok->astOperand1(), argnr + 1, /*indirect*/ 1) == Library::ArgumentChecks::Direction::DIR_OUT)
                             continue;
                     }
                 }

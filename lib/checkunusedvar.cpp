@@ -424,6 +424,9 @@ static const Token* doAssignment(Variables &variables, const Token *tok, bool de
     Variables::VariableUsage *var1 = variables.find(varid1);
 
     if (var1) {
+        if (var1->mType == Variables::pointerArray)
+            variables.use(varid1, tok);
+
         // jump behind '='
         tok = tok->next();
         while (!tok->isAssignmentOp()) {
@@ -567,8 +570,10 @@ static const Token* doAssignment(Variables &variables, const Token *tok, bool de
                 } else if (var1->mType == Variables::standard && addressOf) {
                     variables.alias(varid1, varid2, true);
                 } else {
-                    if ((var2->mType == Variables::pointer || var2->mType == Variables::pointerArray) && tok->strAt(1) == "[")
+                    if (var2->mType == Variables::pointer || var2->mType == Variables::pointerArray) {
+                        variables.alias(varid1, varid2, true);
                         variables.readAliases(varid2, tok);
+                    }
 
                     variables.read(varid2, tok);
                 }
@@ -1393,7 +1398,6 @@ void CheckUnusedVar::checkFunctionVariableUsage()
 
             // skip things that are only partially implemented to prevent false positives
             if (usage.mType == Variables::pointerPointer ||
-                usage.mType == Variables::pointerArray ||
                 usage.mType == Variables::referenceArray)
                 continue;
 

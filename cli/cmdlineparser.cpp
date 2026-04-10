@@ -76,9 +76,7 @@ static bool addFilesToList(const std::string& fileList, std::vector<std::string>
         files = &infile;
     }
     std::string fileName;
-    // cppcheck-suppress accessMoved - FP
     while (std::getline(*files, fileName)) { // next line
-        // cppcheck-suppress accessMoved - FP
         if (!fileName.empty()) {
             pathNames.emplace_back(std::move(fileName));
         }
@@ -92,7 +90,6 @@ static bool addIncludePathsToList(const std::string& fileList, std::list<std::st
     std::ifstream files(fileList);
     if (files) {
         std::string pathName;
-        // cppcheck-suppress accessMoved - FP
         while (std::getline(files, pathName)) { // next line
             if (!pathName.empty()) {
                 pathName = Path::removeQuotationMarks(std::move(pathName));
@@ -756,6 +753,15 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
             }
         }
 
+        else if (std::strncmp(argv[i], "--exitcode-suppress=", 20) == 0) {
+            const std::string suppression = argv[i]+20;
+            const std::string errmsg(mSuppressions.nofail.addSuppressionLine(suppression));
+            if (!errmsg.empty()) {
+                mLogger.printError(errmsg);
+                return Result::Fail;
+            }
+        }
+
         // Filter errors
         else if (std::strncmp(argv[i], "--exitcode-suppressions=", 24) == 0) {
             // exitcode-suppressions=filename.txt
@@ -1188,7 +1194,9 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
             }
             if (projectType == ImportProject::Type::COMPILE_DB)
                 mSettings.maxConfigsProject = 1;
-            if (projectType == ImportProject::Type::VS_SLN || projectType == ImportProject::Type::VS_VCXPROJ) {
+            if (projectType == ImportProject::Type::VS_SLN ||
+                projectType == ImportProject::Type::VS_SLNX ||
+                projectType == ImportProject::Type::VS_VCXPROJ) {
                 mSettings.libraries.emplace_back("windows");
             }
             for (const auto &error : project.errors)
@@ -1214,7 +1222,9 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                 mLogger.printError("--project-configuration parameter is empty.");
                 return Result::Fail;
             }
-            if (projectType != ImportProject::Type::VS_SLN && projectType != ImportProject::Type::VS_VCXPROJ) {
+            if (projectType != ImportProject::Type::VS_SLN &&
+                projectType != ImportProject::Type::VS_SLNX &&
+                projectType != ImportProject::Type::VS_VCXPROJ) {
                 mLogger.printError("--project-configuration has no effect - no Visual Studio project provided.");
                 return Result::Fail;
             }
@@ -1294,7 +1304,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
             }
 
             std::string regex_err;
-            auto regex = Regex::create(rule.pattern, regex_err);
+            auto regex = Regex::create(rule.pattern, Regex::Engine::Pcre, regex_err);
             if (!regex) {
                 mLogger.printError("failed to compile rule pattern '" + rule.pattern + "' (" + regex_err + ").");
                 return Result::Fail;
@@ -1351,6 +1361,16 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                                 }
                             }
                         }
+                        else if (std::strcmp(subname, "engine") == 0) {
+                            const char * const engine = empty_if_null(subtext);
+                            if (std::strcmp(engine, "pcre") == 0) {
+                                rule.engine = Regex::Engine::Pcre;
+                            }
+                            else {
+                                mLogger.printError(std::string("unknown regex engine '") + engine + "'.");
+                                return Result::Fail;
+                            }
+                        }
                         else {
                             mLogger.printError("unable to load rule-file '" + ruleFile + "' - unknown element '" + subname + "' encountered in 'rule'.");
                             return Result::Fail;
@@ -1378,7 +1398,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                     }
 
                     std::string regex_err;
-                    auto regex = Regex::create(rule.pattern, regex_err);
+                    auto regex = Regex::create(rule.pattern, rule.engine, regex_err);
                     if (!regex) {
                         mLogger.printError("unable to load rule-file '" + ruleFile + "' - pattern '" + rule.pattern + "' failed to compile (" + regex_err + ").");
                         return Result::Fail;
@@ -1649,7 +1669,9 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         mSettings.platform.defaultSign = defaultSign;
 
     if (!mSettings.analyzeAllVsConfigs) {
-        if (projectType != ImportProject::Type::VS_SLN && projectType != ImportProject::Type::VS_VCXPROJ) {
+        if (projectType != ImportProject::Type::VS_SLN &&
+            projectType != ImportProject::Type::VS_SLNX &&
+            projectType != ImportProject::Type::VS_VCXPROJ) {
             if (mAnalyzeAllVsConfigsSetOnCmdLine) {
                 mLogger.printError("--no-analyze-all-vs-configs has no effect - no Visual Studio project provided.");
                 return Result::Fail;
@@ -1795,6 +1817,9 @@ void CmdLineParser::printHelp() const
         "                         provided. Note that your operating system can modify\n"
         "                         this value, e.g. '256' can become '0'.\n"
         "    --errorlist          Print a list of all the error messages in XML format.\n"
+        "    --exitcode-suppress=<spec>\n"
+        "                         Used to specify an error ID which should not result in\n"
+        "                         a non-zero exitcode."
         "    --exitcode-suppressions=<file>\n"
         "                         Used when certain messages should be displayed but\n"
         "                         should not cause a non-zero exitcode.\n"
@@ -1935,13 +1960,13 @@ void CmdLineParser::printHelp() const
 
     oss <<
         "    --project=<file>     Run Cppcheck on project. The <file> can be a Visual\n"
-        "                         Studio Solution (*.sln), Visual Studio Project\n"
+        "                         Studio Solution (*.sln) or (*.slnx), Visual Studio Project\n"
         "                         (*.vcxproj), compile database (compile_commands.json),\n"
         "                         or Borland C++ Builder 6 (*.bpr). The files to analyse,\n"
         "                         include paths, defines, platform and undefines in\n"
         "                         the specified file will be used.\n"
         "    --project-configuration=<config>\n"
-        "                         If used together with a Visual Studio Solution (*.sln)\n"
+        "                         If used together with a Visual Studio Solution (*.sln) or (*.slnx)\n"
         "                         or Visual Studio Project (*.vcxproj) you can limit\n"
         "                         the configuration cppcheck should check.\n"
         "                         For example: '--project-configuration=Release|Win32'\n"

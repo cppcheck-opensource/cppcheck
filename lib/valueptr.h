@@ -53,12 +53,12 @@ public:
             mPtr.reset(mClone(rhs.get()));
         }
     }
-    ValuePtr(ValuePtr&& rhs) NOEXCEPT : mPtr(std::move(rhs.mPtr)), mClone(std::move(rhs.mClone)) {}
+    ValuePtr(ValuePtr&& rhs) noexcept : mPtr(std::move(rhs.mPtr)), mClone(std::move(rhs.mClone)) {}
 
-    T* get() NOEXCEPT {
+    T* get() noexcept {
         return mPtr.get();
     }
-    const T* get() const NOEXCEPT {
+    const T* get() const noexcept {
         return mPtr.get();
     }
 
@@ -69,14 +69,14 @@ public:
         return *get();
     }
 
-    T* operator->() NOEXCEPT {
+    T* operator->() noexcept {
         return get();
     }
-    const T* operator->() const NOEXCEPT {
+    const T* operator->() const noexcept {
         return get();
     }
 
-    void swap(ValuePtr& rhs) NOEXCEPT {
+    void swap(ValuePtr& rhs) noexcept {
         using std::swap;
         swap(mPtr, rhs.mPtr);
         swap(mClone, rhs.mClone);
@@ -88,7 +88,7 @@ public:
     }
 
     // NOLINTNEXTLINE(google-explicit-constructor)
-    operator bool() const NOEXCEPT {
+    operator bool() const noexcept {
         return !!mPtr;
     }
 

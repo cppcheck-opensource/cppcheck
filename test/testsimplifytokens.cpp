@@ -208,7 +208,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // result..
-        return tokenizer.tokens()->stringifyList(true);
+        return tokenizer.tokens()->stringifyList(true, false, true, true, true);
     }
 
 

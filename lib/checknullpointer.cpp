@@ -59,20 +59,13 @@ static bool checkNullpointerFunctionCallPlausibility(const Function* func, unsig
     return !func || (func->argCount() >= arg && func->getArgumentVar(arg - 1) && func->getArgumentVar(arg - 1)->isPointer());
 }
 
-/**
- * @brief parse a function call and extract information about variable usage
- * @param tok first token
- * @param var variables that the function read / write.
- * @param library --library files data
- * @param checkNullArg perform isnullargbad check for each argument?
- */
-void CheckNullPointer::parseFunctionCall(const Token &tok, std::list<const Token *> &var, const Library &library, bool checkNullArg)
+std::list<const Token*> CheckNullPointer::parseFunctionCall(const Token &tok, const Library &library, bool checkNullArg)
 {
     if (Token::Match(&tok, "%name% ( )") || !tok.tokAt(2))
-        return;
+        return {};
 
     const std::vector<const Token *> args = getArguments(&tok);
-
+    std::list<const Token*> var;
     for (int argnr = 1; argnr <= args.size(); ++argnr) {
         const Token *param = args[argnr - 1];
         if ((!checkNullArg || library.isnullargbad(&tok, argnr)) && checkNullpointerFunctionCallPlausibility(tok.function(), argnr))
@@ -87,14 +80,14 @@ void CheckNullPointer::parseFunctionCall(const Token &tok, std::list<const Token
     if (library.formatstr_function(&tok)) {
         const int formatStringArgNr = library.formatstr_argno(&tok);
         if (formatStringArgNr < 0 || formatStringArgNr >= args.size())
-            return;
+            return var;
 
         // 1st parameter..
         if (Token::Match(&tok, "snprintf|vsnprintf|fnprintf|vfnprintf") && args.size() > 1 && !(args[1] && args[1]->hasKnownIntValue() && args[1]->getKnownIntValue() == 0)) // Only if length (second parameter) is not zero
             var.push_back(args[0]);
 
         if (args[formatStringArgNr]->tokType() != Token::eString)
-            return;
+            return var;
         const std::string &formatString = args[formatStringArgNr]->strValue();
         int argnr = formatStringArgNr + 1;
         const bool scan = library.formatstr_scan(&tok);
@@ -116,7 +109,7 @@ void CheckNullPointer::parseFunctionCall(const Token &tok, std::list<const Token
                     }
                     ++i;
                     if (i == formatString.end())
-                        return;
+                        return var;
                 }
                 if (_continue)
                     continue;
@@ -129,6 +122,7 @@ void CheckNullPointer::parseFunctionCall(const Token &tok, std::list<const Token
             }
         }
     }
+    return var;
 }
 
 namespace {
@@ -166,8 +160,7 @@ bool CheckNullPointer::isPointerDeRef(const Token *tok, bool &unknown, const Set
             ftok = ftok->previous();
         }
         if (ftok && ftok->previous()) {
-            std::list<const Token *> varlist;
-            parseFunctionCall(*ftok->previous(), varlist, settings.library, checkNullArg);
+            const std::list<const Token *> varlist = parseFunctionCall(*ftok->previous(), settings.library, checkNullArg);
             if (std::find(varlist.cbegin(), varlist.cend(), tok) != varlist.cend()) {
                 return true;
             }
@@ -376,8 +369,7 @@ void CheckNullPointer::nullConstantDereference()
                     if (var && !var->isPointer() && !var->isArray() && var->isStlStringType())
                         nullPointerError(tok);
                 } else { // function call
-                    std::list<const Token *> var;
-                    parseFunctionCall(*tok, var, mSettings->library);
+                    const std::list<const Token *> var = parseFunctionCall(*tok, mSettings->library);
 
                     // is one of the var items a NULL pointer?
                     for (const Token *vartok : var) {
@@ -456,6 +448,8 @@ void CheckNullPointer::nullPointerError(const Token *tok, const std::string &var
         reportError(tok, Severity::warning, "nullPointerOutOfResources", "Null pointer dereference", CWE_NULL_POINTER_DEREFERENCE, Certainty::normal);
         return;
     }
+    if (diag(tok))
+        return;
 
     if (!value) {
         reportError(tok, Severity::error, "nullPointer", "Null pointer dereference", CWE_NULL_POINTER_DEREFERENCE, inconclusive ? Certainty::inconclusive : Certainty::normal);

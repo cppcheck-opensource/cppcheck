@@ -304,6 +304,7 @@ private:
         TEST_CASE(moveForRange);
         TEST_CASE(moveTernary);
         TEST_CASE(movePointerAlias);
+        TEST_CASE(moveOutparam);
 
         TEST_CASE(funcArgNamesDifferent);
         TEST_CASE(funcArgOrderDifferent);
@@ -7707,7 +7708,7 @@ private:
               "}");
         ASSERT_EQUALS(
             "[test.cpp:2:22]: (style) Same expression on both sides of '&'. [duplicateExpression]\n"
-            "[test.cpp:2:29]: (style) Same expression on both sides of '&'. [duplicateExpression]\n",   // duplicate
+            "[test.cpp:2:29]: (style) Same expression on both sides of '&'. [duplicateExpression]\n",
             errout_str());
 
     }
@@ -12730,6 +12731,27 @@ private:
         ASSERT_EQUALS("[test.cpp:5:8]: (warning) Access of moved variable '.'. [accessMoved]\n", errout_str());
     }
 
+    void moveOutparam()
+    {
+        check("void f(std::vector<std::string>& v) {\n" // #11300
+              "    std::string l;\n"
+              "    while (std::getline(std::cin, l)) {\n"
+              "        if (!l.empty()) {\n"
+              "            v.emplace_back(std::move(l));\n"
+              "        }\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f(std::ifstream& fin, std::set<std::string>& s) {\n"
+              "    std::string line;\n"
+              "    while (std::getline(fin, line)) {\n"
+              "        s.emplace(std::move(line));\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
     void funcArgNamesDifferent() {
         check("void func1(int a, int b, int c);\n"
               "void func1(int a, int b, int c) { }\n"
@@ -12754,6 +12776,21 @@ private:
                       "[test.cpp:9:20] -> [test.cpp:14:22]: (style, inconclusive) Function 'func4' argument 1 names different: declaration 'a' definition 'A'. [funcArgNamesDifferent]\n"
                       "[test.cpp:9:31] -> [test.cpp:14:29]: (style, inconclusive) Function 'func4' argument 2 names different: declaration 'b' definition 'B'. [funcArgNamesDifferent]\n"
                       "[test.cpp:9:42] -> [test.cpp:14:36]: (style, inconclusive) Function 'func4' argument 3 names different: declaration 'c' definition 'C'. [funcArgNamesDifferent]\n", errout_str());
+
+        check("using F1 = void (*)();\n" // #14633
+              "void f(F1 a);\n"
+              "void f(F1 b) {}\n"
+              "typedef void (*F2)();\n"
+              "void g(F2 a);\n"
+              "void g(F2 b) {}\n"
+              "void h(void (*a)());\n"
+              "void h(void (*b)()) {}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:2:11] -> [test.cpp:3:11]: (style, inconclusive) Function 'f' argument 1 names different: declaration 'a' definition 'b'. [funcArgNamesDifferent]\n"
+            "[test.cpp:5:11] -> [test.cpp:6:11]: (style, inconclusive) Function 'g' argument 1 names different: declaration 'a' definition 'b'. [funcArgNamesDifferent]\n"
+            "[test.cpp:7:15] -> [test.cpp:8:15]: (style, inconclusive) Function 'h' argument 1 names different: declaration 'a' definition 'b'. [funcArgNamesDifferent]\n",
+            errout_str());
+
     }
 
     void funcArgOrderDifferent() {

@@ -1989,6 +1989,23 @@ static bool isc_strConcat(const Token* tok)
     return false;
 }
 
+static bool isc_strInPlusChain(const Token* tok, const Library::Container* container)
+{
+    if (!tok || !tok->valueType() || !tok->valueType()->pointer)
+        return false;
+    bool result = false;
+    visitAstNodes(tok, [&](const Token* tok2) {
+        if (Token::simpleMatch(tok2, "+"))
+            return ChildrenToVisit::op1_and_op2;
+        if (isc_strCall(tok2, container)) {
+            result = true;
+            return ChildrenToVisit::done;
+        }
+        return ChildrenToVisit::none;
+    });
+    return result;
+}
+
 static bool isc_strAssignment(const Token* tok)
 {
     if (!Token::simpleMatch(tok, "="))
@@ -2003,7 +2020,7 @@ static bool isc_strConstructor(const Token* tok)
 {
     if (!tok->valueType() || !Token::Match(tok, "%var% (|{"))
         return false;
-    return isc_strCall(tok->tokAt(1)->astOperand2(), tok->valueType()->container);
+    return isc_strInPlusChain(tok->tokAt(1)->astOperand2(), tok->valueType()->container);
 }
 
 namespace {

@@ -188,15 +188,15 @@ namespace {
     std::string PcreRegex::compile()
     {
         if (mRe)
-            return "pcre_compile failed: regular expression has already been compiled";
+            return "regular expression has already been compiled";
 
         const char *pcreCompileErrorStr = nullptr;
         int erroffset = 0;
         pcre * const re = pcre_compile(mPattern.c_str(),0,&pcreCompileErrorStr,&erroffset,nullptr);
         if (!re) {
             if (pcreCompileErrorStr)
-                return "pcre_compile failed: " + std::string(pcreCompileErrorStr);
-            return "pcre_compile failed: unknown error";
+                return pcreCompileErrorStr;
+            return "unknown error";
         }
 
         // Optimize the regex, but only if PCRE_CONFIG_JIT is available
@@ -209,7 +209,7 @@ namespace {
         if (pcreStudyErrorStr) {
             // pcre_compile() worked, but pcre_study() returned an error. Free the resources allocated by pcre_compile().
             pcre_free(re);
-            return "pcre_study failed: " + std::string(pcreStudyErrorStr);
+            return std::string(pcreStudyErrorStr) + " (pcre_study)";
         }
         mExtra = pcreExtra;
 #endif
@@ -222,7 +222,7 @@ namespace {
     std::string PcreRegex::match(const std::string& str, const MatchFn& match) const
     {
         if (!mRe)
-            return "pcre_exec failed: regular expression has not been compiled yet";
+            return "regular expression has not been compiled yet";
 
         int pos = 0;
         int ovector[30]= {0};
@@ -231,7 +231,7 @@ namespace {
             if (pcreExecRet == PCRE_ERROR_NOMATCH)
                 return "";
             if (pcreExecRet < 0) {
-                return "pcre_exec failed (pos: " + std::to_string(pos) + "): " + pcreErrorCodeToString(pcreExecRet);
+                return pcreErrorCodeToString(pcreExecRet) + " (pos: " + std::to_string(pos) + ")";
             }
             const auto pos1 = static_cast<unsigned int>(ovector[0]);
             const auto pos2 = static_cast<unsigned int>(ovector[1]);
@@ -246,10 +246,22 @@ namespace {
     }
 }
 
-std::shared_ptr<Regex> Regex::create(std::string pattern, std::string& err)
+template<typename T>
+static T* createAndCompileRegex(std::string pattern, std::string& err)
 {
-    auto* regex = new PcreRegex(std::move(pattern));
+    T* regex = new T(std::move(pattern));
     err = regex->compile();
+    return regex;
+}
+
+std::shared_ptr<Regex> Regex::create(std::string pattern, Engine engine, std::string& err)
+{
+    Regex* regex = nullptr;
+    if (engine == Engine::Pcre)
+        regex = createAndCompileRegex<PcreRegex>(std::move(pattern), err);
+    else {
+        err = "unknown regular expression engine";
+    }
     if (!err.empty()) {
         delete regex;
         return nullptr;

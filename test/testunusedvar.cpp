@@ -2876,25 +2876,25 @@ private:
                               "{\n"
                               "    int * i[2];\n"
                               "}");
-        TODO_ASSERT_EQUALS("[test.cpp:3:9]: (style) Unused variable: i [unusedVariable]\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:11]: (style) Unused variable: i [unusedVariable]\n", errout_str());
 
         functionVariableUsage("void foo()\n"
                               "{\n"
                               "    const int * i[2];\n"
                               "}");
-        TODO_ASSERT_EQUALS("[test.cpp:3:9]: (style) Unused variable: i [unusedVariable]\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:17]: (style) Unused variable: i [unusedVariable]\n", errout_str());
 
         functionVariableUsage("void foo()\n"
                               "{\n"
                               "    void * i[2];\n"
                               "}");
-        TODO_ASSERT_EQUALS("[test.cpp:3:9]: (style) Unused variable: i [unusedVariable]\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:12]: (style) Unused variable: i [unusedVariable]\n", errout_str());
 
         functionVariableUsage("void foo()\n"
                               "{\n"
                               "    const void * i[2];\n"
                               "}");
-        TODO_ASSERT_EQUALS("[test.cpp:3:9]: (style) Unused variable: i [unusedVariable]\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:18]: (style) Unused variable: i [unusedVariable]\n", errout_str());
 
         functionVariableUsage("void foo()\n"
                               "{\n"
