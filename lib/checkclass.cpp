@@ -1177,7 +1177,7 @@ void CheckClass::uninitVarError(const Token *tok, bool isprivate, FunctionType f
         if (functionType == FunctionType::eCopyConstructor)
             message += "copy ";
         else if (functionType == FunctionType::eMoveConstructor)
-             message += "move ";
+            message += "move ";
         message += "constructor.";
     }
     if (derived)
