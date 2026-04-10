@@ -947,7 +947,7 @@ void CheckMemoryLeakStructMember::checkStructVariable(const Variable* const vari
                 }
 
                 // Returning from function..
-                else if ((tok3->scope()->type != ScopeType::eLambda || tok3->scope() == variable->scope()) && tok3->str() == "return") {
+                else if (((tok3->scope()->type != ScopeType::eLambda && tok3->scope()->type != ScopeType::eSwitch) || tok3->scope() == variable->scope()) && tok3->str() == "return") {
                     // Returning from function without deallocating struct member?
                     if (!Token::Match(tok3, "return %varid% ;", structid) &&
                         !Token::Match(tok3, "return & %varid%", structid) &&
