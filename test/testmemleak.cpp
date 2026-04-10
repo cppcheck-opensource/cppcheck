@@ -2066,7 +2066,7 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("struct S { int *p; };
+        check("struct S { int *p; };\n"
               "S f(int i) {\n"
               "    S s;\n"
               "    switch(i) {\n"
