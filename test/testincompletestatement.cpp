@@ -750,6 +750,14 @@ private:
               "    g<sizeof(wchar_t)>();\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct S;\n" // #14664
+              "S* a[1];\n"
+              "void f() {\n"
+              "    a[0];\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:6]: (warning) Redundant code: Found unused array access. [constStatement]\n",
+                      errout_str());
     }
 
     void vardecl() {
