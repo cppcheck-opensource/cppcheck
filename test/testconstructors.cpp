@@ -763,7 +763,7 @@ private:
         check("struct S {\n" // #14546
               "    int a = 0, b;\n"
               "};\n");
-        ASSERT_EQUALS("[test.cpp:1:10]: (warning) Member variable 'S::b' is not initialized in the constructor. [uninitMemberVar]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:1:10]: (warning) Member variable 'S::b' has no initializer. [uninitMemberVarNoCtor]\n", errout_str());
 
         check("struct S {\n"
               "    int a, b;\n"

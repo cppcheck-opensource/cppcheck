@@ -372,7 +372,7 @@ void CheckClass::constructors()
 
                 const Variable& var = *usage.var;
                 if (diagVars.count(&var) == 0)
-                    uninitVarError(scope->bodyStart, false, FunctionType::eConstructor, var.scope()->className, var.name(), false, false);
+                    uninitVarError(scope->bodyStart, false, FunctionType::eConstructor, var.scope()->className, var.name(), false, false, true);
             }
         }
     }
@@ -1167,17 +1167,22 @@ void CheckClass::noExplicitConstructorError(const Token *tok, const std::string 
     reportError(tok, Severity::style, "noExplicitConstructor", "$symbol:" + classname + '\n' + message + '\n' + verbose, CWE398, Certainty::normal);
 }
 
-void CheckClass::uninitVarError(const Token *tok, bool isprivate, FunctionType functionType, const std::string &classname, const std::string &varname, bool derived, bool inconclusive)
+void CheckClass::uninitVarError(const Token *tok, bool isprivate, FunctionType functionType, const std::string &classname, const std::string &varname, bool derived, bool inconclusive, bool noCtor)
 {
-    std::string ctor;
-    if (functionType == FunctionType::eCopyConstructor)
-        ctor = "copy ";
-    else if (functionType == FunctionType::eMoveConstructor)
-        ctor = "move ";
-    std::string message("Member variable '$symbol' is not initialized in the " + ctor + "constructor.");
+    std::string message("Member variable '$symbol' ");
+    if (noCtor)
+        message += "has no initializer.";
+    else {
+        message += "is not initialized in the ";
+        if (functionType == FunctionType::eCopyConstructor)
+            message += "copy ";
+        else if (functionType == FunctionType::eMoveConstructor)
+             message += "move ";
+        message += "constructor.";
+    }
     if (derived)
         message += " Maybe it should be initialized directly in the class " + classname + "?";
-    std::string id = std::string("uninit") + (derived ? "Derived" : "") + "MemberVar" + (isprivate ? "Private" : "");
+    std::string id = std::string("uninit") + (derived ? "Derived" : "") + "MemberVar" + (isprivate ? "Private" : "") + (noCtor ? "NoCtor" : "");
     const std::string verbose {message + " Member variables of native types, pointers, or references are left uninitialized when the class is instantiated. That may cause bugs or undefined behavior."};
     reportError(tok, Severity::warning, id, "$symbol:" + classname + "::" + varname + '\n' + message + '\n' + verbose, CWE398, inconclusive ? Certainty::inconclusive : Certainty::normal);
 }

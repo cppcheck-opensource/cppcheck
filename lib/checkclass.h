@@ -155,7 +155,7 @@ private:
     void noCopyConstructorError(const Scope *scope, bool isdefault, const Token *alloc, bool inconclusive);
     void noOperatorEqError(const Scope *scope, bool isdefault, const Token *alloc, bool inconclusive);
     void noDestructorError(const Scope *scope, bool isdefault, const Token *alloc);
-    void uninitVarError(const Token *tok, bool isprivate, FunctionType functionType, const std::string &classname, const std::string &varname, bool derived, bool inconclusive);
+    void uninitVarError(const Token *tok, bool isprivate, FunctionType functionType, const std::string &classname, const std::string &varname, bool derived, bool inconclusive, bool noCtor = false);
     void uninitVarError(const Token *tok, const std::string &classname, const std::string &varname);
     void missingMemberCopyError(const Token *tok, FunctionType functionType, const std::string& classname, const std::string& varname);
     void operatorEqVarError(const Token *tok, const std::string &classname, const std::string &varname, bool inconclusive);
