@@ -33,7 +33,6 @@
 #include "helpers.h"
 
 #include <cstring>
-#include <list>
 #include <map>
 #include <set>
 #include <stdexcept>

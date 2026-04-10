@@ -121,7 +121,7 @@ jobs:
 
       - name: Self check (unusedFunction / no test / no gui)
         run: |
-          supprs="--suppress=unusedFunction:lib/errorlogger.h:197 --suppress=unusedFunction:lib/importproject.cpp:1584 --suppress=unusedFunction:lib/importproject.cpp:1608"
+          supprs="--suppress=unusedFunction:lib/errorlogger.h:197 --suppress=unusedFunction:lib/importproject.cpp:1583 --suppress=unusedFunction:lib/importproject.cpp:1607"
           ./cppcheck -q --template=selfcheck --error-exitcode=1 --library=cppcheck-lib -D__CPPCHECK__ -D__GNUC__ --enable=unusedFunction,information --exception-handling -rp=. --project=cmake.output.notest_nogui/compile_commands.json --suppressions-list=.selfcheck_unused_suppressions --inline-suppr $supprs
         env:
           DISABLE_VALUEFLOW: 1

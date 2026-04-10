@@ -53,7 +53,6 @@
 #include <memory>
 #include <set>
 #include <sstream>
-#include <unordered_set>
 #include <utility>
 
 #ifdef HAVE_RULES

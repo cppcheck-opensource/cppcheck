@@ -43,7 +43,6 @@
 #include <functional>
 #include <initializer_list>
 #include <iterator>
-#include <list>
 #include <set>
 #include <type_traits>
 
