@@ -371,7 +371,7 @@ void CheckClass::constructors()
                     continue;
 
                 const Variable& var = *usage.var;
-                if (diagVars.find(&var) == diagVars.end())
+                if (diagVars.count(&var))
                     uninitVarError(scope->bodyStart, false, FunctionType::eConstructor, var.scope()->className, var.name(), false, false);
             }
         }
