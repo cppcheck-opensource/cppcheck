@@ -4846,6 +4846,15 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:6:9] -> [test.cpp:9:9]: (warning) Identical condition 'a', second condition is always false [identicalConditionAfterEarlyExit]\n",
                       errout_str());
+
+        check("bool b() { return false; }\n" // #10452
+              "void f() {\n"
+              "    if (b()) {}\n"
+              "    if (!b()) {}\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:10]: (style) Condition 'b()' is always false [knownConditionTrueFalse]\n"
+                      "[test.cpp:4:9]: (style) Condition '!b()' is always true [knownConditionTrueFalse]\n",
+                      errout_str());
     }
 
     void alwaysTrueSymbolic()
