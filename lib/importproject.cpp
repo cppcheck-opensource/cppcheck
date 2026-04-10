@@ -668,7 +668,7 @@ namespace {
     private:
 
         static std::string executeOp1(const Token* tok, const ProjectConfiguration &p) {
-            return  execute(tok->astOperand1(), p);
+            return execute(tok->astOperand1(), p);
         }
 
         static std::string executeOp2(const Token* tok, const ProjectConfiguration &p) {
@@ -678,7 +678,9 @@ namespace {
         static std::string execute(const Token* tok, const ProjectConfiguration &p) {
             if (!tok)
                 throw std::runtime_error("Missing operator");
-            auto boolResult = [](bool b) -> std::string { return b ? "True" : "False"; };
+            auto boolResult = [](bool b) -> std::string {
+                return b ? "True" : "False";
+            };
             if (tok->isUnaryOp("!"))
                 return boolResult(executeOp1(tok, p) == "False");
             if (tok->str() == "==")
