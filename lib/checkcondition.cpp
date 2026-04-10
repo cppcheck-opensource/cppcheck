@@ -1524,11 +1524,6 @@ void CheckCondition::alwaysTrueFalse()
             }
             if (!tok->hasKnownIntValue())
                 continue;
-            if (Token::Match(tok->previous(), "%name% (") && tok->previous()->function()) {
-                const Function* f = tok->previous()->function();
-                if (f->functionScope && Token::Match(f->functionScope->bodyStart, "{ return true|false ;"))
-                    continue;
-            }
             const Token* condition = nullptr;
             {
                 // is this a condition..
