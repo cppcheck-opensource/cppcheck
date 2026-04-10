@@ -4074,7 +4074,8 @@ void CheckOther::funcArgNamesDifferent(const std::string & functionName, nonneg 
                                        const Token* declaration, const Token* definition)
 {
     std::list<const Token *> tokens = { declaration,definition };
-    reportError(tokens, Severity::style, "funcArgNamesDifferent",
+    const std::string id = (declaration != nullptr) == (definition != nullptr) ? "funcArgNamesDifferent" : "funcArgNamesDifferentUnnamed";
+    reportError(tokens, Severity::style, id,
                 "$symbol:" + functionName + "\n"
                 "Function '$symbol' argument " + std::to_string(index + 1) + " names different: declaration '" +
                 (declaration ? declaration->str() : "<unnamed>") + "' definition '" +

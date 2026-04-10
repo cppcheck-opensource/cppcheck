@@ -12776,8 +12776,8 @@ private:
               "void h(int);\n"
               "void h(int) {}\n");
         ASSERT_EQUALS(
-            "[test.cpp:1:12]: (style, inconclusive) Function 'f' argument 1 names different: declaration 'a' definition '<unnamed>'. [funcArgNamesDifferent]\n"
-            "[test.cpp:4:12]: (style, inconclusive) Function 'g' argument 1 names different: declaration '<unnamed>' definition 'b'. [funcArgNamesDifferent]\n",
+            "[test.cpp:1:12]: (style, inconclusive) Function 'f' argument 1 names different: declaration 'a' definition '<unnamed>'. [funcArgNamesDifferentUnnamed]\n"
+            "[test.cpp:4:12]: (style, inconclusive) Function 'g' argument 1 names different: declaration '<unnamed>' definition 'b'. [funcArgNamesDifferentUnnamed]\n",
             errout_str());
     }
 
