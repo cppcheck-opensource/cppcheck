@@ -47,14 +47,16 @@ void TimerResults::showResults(ShowTime mode) const
         std::lock_guard<std::mutex> l(mResultsSync);
 
         data.reserve(mResults.size());
-        data.insert(data.begin(), mResults.cbegin(), mResults.cend());
+        for (const auto& key : mResultsOrder)
+            data.emplace_back(*mResults.find(key));
     }
-    std::sort(data.begin(), data.end(), more_second_sec);
+    if (mode == ShowTime::TOP5_FILE || mode == ShowTime::TOP5_SUMMARY)
+        std::sort(data.begin(), data.end(), more_second_sec);
 
     // lock the whole logging operation to avoid multiple threads printing their results at the same time
     std::lock_guard<std::mutex> l(stdCoutLock);
 
-    std::cout << std::endl;
+    std::cout << std::endl; // TODO: get rid of this
 
     size_t ordinal = 1; // maybe it would be nice to have an ordinal in output later!
     for (auto iter=data.cbegin(); iter!=data.cend(); ++iter) {
@@ -71,6 +73,9 @@ void TimerResults::addResults(const std::string& str, std::chrono::milliseconds 
 {
     std::lock_guard<std::mutex> l(mResultsSync);
 
+    const auto it = mResults.find(str);
+    if (it == mResults.end())
+        mResultsOrder.emplace_back(str);
     mResults[str].mDuration += duration;
     mResults[str].mNumberOfResults++;
 }
@@ -79,6 +84,7 @@ void TimerResults::reset()
 {
     std::lock_guard<std::mutex> l(mResultsSync);
     mResults.clear();
+    mResultsOrder.clear();
 }
 
 Timer::Timer(std::string str, ShowTime showtimeMode, TimerResultsIntf* timerResults, Type type)

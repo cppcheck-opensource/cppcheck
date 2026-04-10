@@ -28,6 +28,7 @@
 #include <mutex>
 #include <string>
 #include <utility>
+#include <vector>
 
 enum class ShowTime : std::uint8_t {
     NONE,
@@ -67,6 +68,7 @@ public:
 
 private:
     std::map<std::string, TimerResultsData> mResults;
+    std::vector<std::string> mResultsOrder;
     mutable std::mutex mResultsSync;
 };
 
