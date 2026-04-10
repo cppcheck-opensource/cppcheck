@@ -692,7 +692,7 @@ namespace {
             if (tok->str() == "||")
                 return boolResult(executeOp1(tok, p) == "True" || executeOp2(tok, p) == "True");
             if (tok->str() == "(" && Token::Match(tok->previous(), "$ ( %name% . %name% (")) {
-                const std::string propertyName = tok->next()->str();
+                const std::string& propertyName = tok->strAt(1);
                 std::string propertyValue;
                 if (propertyName == "Configuration")
                     propertyValue = p.configuration;
@@ -1706,6 +1706,5 @@ bool cppcheck::testing::evaluateVcxprojCondition(const std::string& condition, c
     ProjectConfiguration p;
     p.configuration = configuration;
     p.platformStr = platform;
-    std::vector<std::string> errors;
     return ConditionalGroup::evalCondition(condition, p);
 }
