@@ -2064,7 +2064,7 @@ private:
               "    }\n"
               "    return g(&a);\n"
               "}\n");
-        TODO_ASSERT_EQUALS("", "[test.cpp:9:9]: (error) Memory leak: a.str [memleak]\n", errout_str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void ifelse() {
