@@ -1812,34 +1812,29 @@ bool isSameExpression(bool macro, const Token *tok1, const Token *tok2, const Se
 
 static bool isZeroBoundCond(const Token * const cond, bool reverse)
 {
-    if (cond == nullptr || cond->astOperand1() == nullptr || cond->astOperand2() == nullptr)
+    if (cond == nullptr || !cond->isBinaryOp())
         return false;
 
-    if ((reverse && !cond->astOperand1()->hasKnownIntValue()) || (!reverse && !cond->astOperand2()->hasKnownIntValue()))
+    const Token* op = reverse ? cond->astOperand1() : cond->astOperand2();
+    if (!op->hasKnownIntValue())
         return false;
 
     // Assume unsigned
-    const bool isZero = reverse ? cond->astOperand1()->getKnownIntValue() == 0 : cond->astOperand2()->getKnownIntValue() == 0;
+    const bool isZero = op->getKnownIntValue() == 0;
+    std::string cmp = cond->str();
     if (reverse) {
-        if (cond->str() == "==" || cond->str() == "<=")
-            return isZero;
-        if (cond->str() == ">=")
-            return true;
-        if (cond->str() == ">")
-            return !isZero;
-        if (cond->str() == "<")
-            return false;
-    } else {
-        if (cond->str() == "==" || cond->str() == ">=")
-            return isZero;
-        if (cond->str() == "<=")
-            return true;
-        if (cond->str() == "<")
-            return !isZero;
-        if (cond->str() == ">")
-            return false;
+        if (cmp[0] == '>')
+            cmp[0] = '<';
+        else if (cmp[0] == '<')
+            cmp[0] = '>';
     }
 
+    if (cmp == "==" || cmp == ">=")
+        return isZero;
+    if (cmp == "<=")
+        return true;
+    if (cmp == "<")
+        return !isZero;
     return false;
 }
 
