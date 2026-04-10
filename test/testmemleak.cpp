@@ -2065,6 +2065,21 @@ private:
               "    return g(&a);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct S { int *p; };
+              "S f(int i) {\n"
+              "    S s;\n"
+              "    switch(i) {\n"
+              "    case 1:\n"
+              "        s.p = new int;\n"
+              "        break;\n"
+              "    default: {\n"
+              "        return {};\n"
+              "    }\n"
+              "    }\n"
+              "    return s;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void ifelse() {
