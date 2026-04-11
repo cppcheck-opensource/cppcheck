@@ -8039,9 +8039,9 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
                         const Token* varTok = tok->astOperand2();
                         while (Token::simpleMatch(varTok, "["))
                             varTok = varTok->astOperand1();
-                        if (Token::simpleMatch(varTok, "."))
+                        while (Token::simpleMatch(varTok, "."))
                             varTok = varTok->astOperand2();
-                        const auto* const paramVariable = varTok->variable();
+                        const Variable* const paramVariable = varTok ? varTok->variable() : nullptr;
                         if (!paramVariable ||
                             !paramVariable->valueType() ||
                             !paramVariable->valueType()->container) {
