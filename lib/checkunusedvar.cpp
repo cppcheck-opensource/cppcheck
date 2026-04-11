@@ -565,7 +565,7 @@ static const Token* doAssignment(Variables &variables, const Token *tok, bool de
                             variables.readAll(varid2, tok);
                         }
                     }
-                } else if (var1->mType == Variables::reference) {
+                } else if (var1->mType == Variables::reference || var1->mType == Variables::referenceArray) {
                     variables.alias(varid1, varid2, true);
                 } else if (var1->mType == Variables::standard && addressOf) {
                     variables.alias(varid1, varid2, true);
@@ -738,6 +738,8 @@ void CheckUnusedVar::checkFunctionVariableUsage_iterateScopes(const Scope* const
             if (type == Variables::none || isPartOfClassStructUnion(i->typeStartToken()))
                 continue;
             const Token* defValTok = i->nameToken()->next();
+            if (Token::Match(i->nameToken()->previous(), "& %var% )"))
+                defValTok = defValTok->next();
             while (defValTok && defValTok->str() == "[")
                 defValTok = defValTok->link()->next();
             if (Token::simpleMatch(defValTok, ") ("))
