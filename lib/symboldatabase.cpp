@@ -8508,7 +8508,7 @@ static size_t bitCeil(size_t x)
 
 static size_t getAlignOf(const ValueType& vt, const Settings& settings, ValueType::Accuracy accuracy, ValueType::SizeOf sizeOf, int maxRecursion = 0)
 {
-    if (maxRecursion == settings.vfOptions.maxAlignOfRecursion) {
+    if (maxRecursion > settings.vfOptions.maxAlignOfRecursion) {
         // TODO: add bailout message
         return 0;
     }
@@ -8539,7 +8539,7 @@ static size_t getAlignOf(const ValueType& vt, const Settings& settings, ValueTyp
 
 size_t ValueType::getSizeOf( const Settings& settings, Accuracy accuracy, SizeOf sizeOf, int maxRecursion) const
 {
-    if (maxRecursion == settings.vfOptions.maxSizeOfRecursion) {
+    if (maxRecursion > settings.vfOptions.maxSizeOfRecursion) {
         // TODO: add bailout message
         return 0;
     }

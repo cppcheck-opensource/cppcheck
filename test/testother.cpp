@@ -11683,6 +11683,19 @@ private:
               "void f(S<char, 3> s) {}\n");
         ASSERT_EQUALS("", errout_str());
 
+        check("struct T {\n" // #14667
+              "    U u1, u2;\n"
+              "    union {\n"
+              "        enum { E0, E1 } e;\n"
+              "        U u3;\n"
+              "        T i;\n"
+              "    } x;\n"
+              "};\n"
+              "T f(T t) {\n"
+              "    return t;\n"
+              "}");
+        ASSERT_EQUALS("", errout_str()); // don't crash
+
         Settings settingsUnix32 = settingsBuilder().platform(Platform::Type::Unix32).build();
         check("struct S {\n" // #13850
               "    int i0 : 32;\n"
