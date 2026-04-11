@@ -198,6 +198,7 @@ private:
         TEST_CASE(localvarreturn); // ticket #9167
         TEST_CASE(localvarmaybeunused);
         TEST_CASE(localvarrvalue); // ticket #13977
+        TEST_CASE(localvarreferencearray); // ticket #14637
 
         TEST_CASE(localvarthrow); // ticket #3687
 
@@ -6552,6 +6553,16 @@ private:
                               "    cb();\n"
                               "}\n");
         ASSERT_EQUALS("[test.cpp:3:21]: (style) Variable 'm' is assigned a value that is never used. [unreadVariable]\n", errout_str());
+    }
+
+    void localvarreferencearray() { // ticket #14637
+        functionVariableUsage("int f() {\n"
+                              "        int a[1];\n"
+                              "        int(&r)[1] = a;\n"
+                              "        r[0] = 0;\n"
+                              "        return r[0];\n"
+                              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void localvarthrow() { // ticket #3687
