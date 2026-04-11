@@ -1113,11 +1113,12 @@ void Tokenizer::simplifyTypedef()
                 syntaxError(t.second.getTypedefToken());
             } else {
                 const Token* const typedefToken = t.second.getTypedefToken();
+                const Token* const nameToken = t.second.nameToken();
                 TypedefInfo typedefInfo;
                 typedefInfo.name = t.second.name();
-                typedefInfo.filename = list.file(typedefToken);
-                typedefInfo.lineNumber = typedefToken->linenr();
-                typedefInfo.column = typedefToken->column();
+                typedefInfo.filename = list.file(nameToken);
+                typedefInfo.lineNumber = nameToken->linenr();
+                typedefInfo.column = nameToken->column();
                 if (Token::Match(typedefToken->next(), "struct|enum|class|union %name% {") && typedefToken->strAt(2) == typedefInfo.name) {
                     typedefInfo.tagLine = typedefToken->tokAt(2)->linenr();
                     typedefInfo.tagColumn = typedefToken->tokAt(2)->column();
