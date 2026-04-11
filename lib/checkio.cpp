@@ -352,7 +352,8 @@ void CheckIO::checkFileUsage()
                 case Filepointer::Operation::UNIMPORTANT:
                     if (f.mode == OpenMode::CLOSED)
                         useClosedFileError(tok);
-                    if (isftell && windows && f.read_mode == Filepointer::ReadMode::READ_TEXT && printPortability)
+                    // See https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/fopen-wfopen?view=msvc-170 
+                    if (isftell && f.read_mode == Filepointer::ReadMode::READ_TEXT && printPortability)
                         ftellFileError(tok);
                     break;
                 case Filepointer::Operation::UNKNOWN_OP:
@@ -415,7 +416,7 @@ void CheckIO::seekOnAppendedFileError(const Token *tok)
 void CheckIO::ftellFileError(const Token *tok)
 {
     reportError(tok, Severity::portability,
-                "ftellTextModeFile", "For a text stream, its file position indicator contains unspecified information. See Section 7.21.9.4p2 of the C11 standard", CWE474, Certainty::normal);
+                "ftellTextModeFile", "According to Microsoft, the value returned by ftell may not reflect the physical byte offset for streams opened in text mode, because text mode causes carriage return-line feed translation. See also 7.21.9.4 in C11 standard.", CWE474, Certainty::normal);
 }
 
 void CheckIO::incompatibleFileOpenError(const Token *tok, const std::string &filename)
