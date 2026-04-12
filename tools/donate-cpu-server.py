@@ -26,7 +26,7 @@ from urllib.parse import urlparse
 # Version scheme (MAJOR.MINOR.PATCH) should orientate on "Semantic Versioning" https://semver.org/
 # Every change in this script should result in increasing the version number accordingly (exceptions may be cosmetic
 # changes)
-SERVER_VERSION = "1.3.68"
+SERVER_VERSION = "1.3.69"
 
 # TODO: fetch from GitHub tags
 OLD_VERSION = '2.20.0'
@@ -1612,9 +1612,13 @@ if __name__ == "__main__":
     packageIndex = 0
     if os.path.isfile('package-index.txt'):
         with open('package-index.txt', 'rt') as f:
-            packageIndex = int(f.read())
-        if packageIndex < 0 or packageIndex >= len(packages):
-            packageIndex = 0
+            # TODO: the file might be empty - fixture out how this might happen
+            try:
+                packageIndex = int(f.read())
+            except ValueError as e:
+                logging.error("failed to convert package index to int", exc_info=sys.exc_info())
+        if packageIndex <= 0 or packageIndex >= len(packages):
+            packageIndex = int(time.time()) % len(packages)
 
     server_address_port = 8000
     if '--test' in sys.argv[1:]:
