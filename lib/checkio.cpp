@@ -245,6 +245,19 @@ void CheckIO::checkFileUsage()
                 } else if (tok->str() == "fclose") {
                     fileTok = tok->tokAt(2);
                     operation = Filepointer::Operation::CLOSE;
+
+                    // #1473 Check if fclose is in a while loop condition
+                    const Token* tmp = tok->astParent();
+                    const Token* loopTok = nullptr;
+                    while (tmp) {
+                        if (Token::simpleMatch(tmp->previous(), "while (")) {
+                            loopTok = tmp->previous();
+                            break;
+                        }
+                        tmp = tmp->astParent();
+                    }
+                    if (loopTok)
+                        useClosedFileError(tok);
                 } else if (whitelist.find(tok->str()) != whitelist.end()) {
                     fileTok = tok->tokAt(2);
                     if ((tok->str() == "ungetc" || tok->str() == "ungetwc") && fileTok)
