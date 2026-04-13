@@ -693,6 +693,7 @@ private:
     };
     struct TypedefInfo {
         std::string name;
+        std::string originalName;
         std::string filename;
         int lineNumber;
         int column;

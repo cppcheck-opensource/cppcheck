@@ -1119,9 +1119,12 @@ void Tokenizer::simplifyTypedef()
                 typedefInfo.filename = list.file(nameToken);
                 typedefInfo.lineNumber = nameToken->linenr();
                 typedefInfo.column = nameToken->column();
-                if (Token::Match(typedefToken->next(), "struct|enum|class|union %name% {") && typedefToken->strAt(2) == typedefInfo.name) {
-                    typedefInfo.tagLine = typedefToken->tokAt(2)->linenr();
-                    typedefInfo.tagColumn = typedefToken->tokAt(2)->column();
+                if (Token::Match(typedefToken->next(), "struct|enum|class|union %name% {")) {
+                    typedefInfo.originalName = typedefToken->strAt(2);
+                    if (typedefToken->strAt(2) == typedefInfo.name) {
+                        typedefInfo.tagLine = typedefToken->tokAt(2)->linenr();
+                        typedefInfo.tagColumn = typedefToken->tokAt(2)->column();
+                    }
                 }
                 typedefInfo.used = t.second.isUsed();
                 typedefInfo.isFunctionPointer = isFunctionPointer(t.second.nameToken());
@@ -6371,6 +6374,12 @@ std::string Tokenizer::dumpTypedefInfo() const
         outs += " name=\"";
         outs += typedefInfo.name;
         outs += "\"";
+
+        if (!typedefInfo.originalName.empty()) {
+            outs += " originalName=\"";
+            outs += typedefInfo.originalName;
+            outs += "\"";
+        }
 
         outs += " file=\"";
         outs += ErrorLogger::toxml(typedefInfo.filename);
