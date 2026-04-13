@@ -128,3 +128,6 @@ stage
 # PCRE Windows files
 /externals/pcre.h
 /externals/pcre64.lib
+
+# nix build
+result*
