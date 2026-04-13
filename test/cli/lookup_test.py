@@ -926,13 +926,15 @@ def test_addon_lookup_relative_noext_trailing_notfound(tmpdir):
     exitcode, stdout, _, exe = cppcheck_ex(['--debug-lookup=addon', '--addon=addon/misra/', test_file])
     exepath = os.path.dirname(exe)
     exepath_sep = exepath + os.path.sep
+    if sys.platform == 'win32':
+        exepath_sep = exepath_sep.replace('\\', '/')
     assert exitcode == 1, stdout
     lines = stdout.splitlines()
     assert lines == [
         # TODO: should not append extension
         "looking for addon 'addon/misra/.py'",
         "looking for addon '{}addon/misra/.py'".format(exepath_sep),
-        "looking for addon '{}addons/addon/misra/.py'".format(exepath_sep),  # TODO: mixed separators
+        "looking for addon '{}addons/addon/misra/.py'".format(exepath_sep),
         'Did not find addon addon/misra/.py'
     ]
 
