@@ -10361,6 +10361,8 @@ void Tokenizer::simplifyNamespaceStd()
                  mSettings.library.podtype("std::" + tok->str()) ||
                  isStdContainerOrIterator(tok, mSettings))
             insert = true;
+        else if (Token::simpleMatch(tok, "aligned_storage"))
+            insert = true;
 
         if (insert) {
             tok->previous()->insertToken("std");
@@ -11186,10 +11188,10 @@ void Tokenizer::simplifyAlignedStorage()
         return;
 
     for (Token *tok = list.front(); tok; tok = tok->next()) {
-        if (!Token::simpleMatch(tok, "aligned_storage <"))
+        if (!Token::simpleMatch(tok, "std :: aligned_storage <"))
             continue;
 
-        tok = tok->next();
+        tok = tok->tokAt(3);
         const Token *end = tok->link();
         tok = tok->next();
 
