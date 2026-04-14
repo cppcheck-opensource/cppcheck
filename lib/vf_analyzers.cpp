@@ -716,7 +716,8 @@ private:
                 return {value->intvalue == 0};
             ProgramMemory pm = pms.get(tok, ctx, getProgramState());
             MathLib::bigint out = 0;
-            if (pm.getContainerEmptyValue(tok->exprId(), out))
+            // TODO: do we really went to return an impossible value?
+            if (pm.getContainerEmptyValue(tok->exprId(), out, true))
                 return {static_cast<int>(out)};
             return {};
         }
