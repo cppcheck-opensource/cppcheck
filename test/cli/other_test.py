@@ -420,7 +420,7 @@ typedef int MISRA_5_6_VIOLATION;
     assert lines == [
         'Checking {} ...'.format(test_file)
     ]
-    assert stderr == '{}:2:1: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-2.3]\ntypedef int MISRA_5_6_VIOLATION;\n^\n'.format(test_file)
+    assert stderr == '{}:2:13: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-2.3]\ntypedef int MISRA_5_6_VIOLATION;\n            ^\n'.format(test_file)
 
 
 def test_addon_y2038(tmpdir):
@@ -2674,7 +2674,7 @@ typedef int MISRA_5_6_VIOLATION_1;
     assert exitcode == 0, stdout
     assert stdout == ''
     assert stderr.splitlines() == [
-        '{}:4:1: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-2.3]'.format(test_file),
+        '{}:4:13: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-2.3]'.format(test_file),
     ]
 
 
