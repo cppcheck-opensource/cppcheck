@@ -3824,7 +3824,7 @@ private:
                             "        explicit S2(int& i) : B(i) {}\n"
                             "    };\n"
                             "}\n";
-        const char exp[] = "struct S1 { } ; "
+        const char exp[] = "struct S1 { } ; " // #12623
                            "namespace N { "
                            "struct B { "
                            "explicit B ( int & i ) ; } ; "
@@ -3833,6 +3833,13 @@ private:
                            "} ; "
                            "}";
         ASSERT_EQUALS(exp, tok(code));
+
+        const char code2[] = "typedef stuct T* T;\n" // #14669
+                             "struct T {\n"
+                             "    T p;\n"
+                             "};\n";
+        const char exp2[] = "struct T { stuct T * p ; } ;";
+        ASSERT_EQUALS(exp2, simplifyTypedefC(code2));
     }
 
     void simplifyTypedefFunction1() {

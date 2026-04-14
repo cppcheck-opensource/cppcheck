@@ -1028,8 +1028,10 @@ bool Tokenizer::isFunctionPointer(const Token* tok) {
     return Token::Match(tok, "%name% ) (");
 }
 
-static bool matchCurrentType(const std::string& typeStr, const std::map<int, std::string>& types)
+static bool matchCurrentType(const std::string& typeStr, const std::map<int, std::string>& types, bool isC)
 {
+    if (isC)
+        return false;
     return std::any_of(types.begin(), types.end(), [&](const std::pair<int, std::string>& element) {
         return typeStr == element.second;
     });
@@ -1086,7 +1088,7 @@ void Tokenizer::simplifyTypedef()
         }
 
         auto it = typedefs.find(tok->str());
-        if (it != typedefs.end() && it->second.canReplace(tok) && !matchCurrentType(tok->str(), inType)) {
+        if (it != typedefs.end() && it->second.canReplace(tok) && !matchCurrentType(tok->str(), inType, tok->isC())) {
             std::set<std::string> r;
             std::string originalname;
             while (it != typedefs.end() && r.insert(tok->str()).second) {
