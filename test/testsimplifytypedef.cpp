@@ -243,6 +243,7 @@ private:
         TEST_CASE(simplifyTypedefFunction9);
         TEST_CASE(simplifyTypedefFunction10); // #5191
         TEST_CASE(simplifyTypedefFunction11);
+        TEST_CASE(simplifyTypedefFunction12);
 
         TEST_CASE(simplifyTypedefStruct); // #12081 - volatile struct
 
@@ -4442,6 +4443,15 @@ private:
                            "}",
                            tok(code,dinit(TokOptions, $.simplify = false)));
         ignore_errout(); // we are not interested in the output
+    }
+
+    void simplifyTypedefFunction12() {
+        const char code[] = "typedef (*pfi)(void);\n"
+                            "pfi f;\n";
+
+        const char expected[] = "int ( * f ) ( void ) ;";
+        ASSERT_EQUALS(expected, tok(code, dinit(TokOptions, $.debugwarnings = false)));
+        ASSERT_EQUALS("", errout_str());
     }
 
     void simplifyTypedefStruct() {
