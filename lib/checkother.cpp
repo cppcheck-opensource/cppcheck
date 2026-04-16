@@ -1591,6 +1591,21 @@ void CheckOther::checkPassByReference()
         if (var->isArray() && (!var->isStlType() || Token::simpleMatch(var->nameToken()->next(), "[")))
             continue;
 
+        if (var->isArgument()) {
+            const Token *tok = var->typeStartToken();
+            for (; tok; tok = tok->next()) {
+                if (Token::simpleMatch(tok, "(")) {
+                    tok = tok->link();
+                    continue;
+                }
+                if (Token::simpleMatch(tok, ")"))
+                    break;
+            }
+
+            if (Token::simpleMatch(tok, ") ;"))
+                continue;
+        }
+
         const bool isConst = var->isConst();
         if (isConst) {
             passedByValueError(var, inconclusive, isRangeBasedFor);
