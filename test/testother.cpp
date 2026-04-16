@@ -4108,6 +4108,14 @@ private:
               "    if (*pp) {}\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("class C {\n"
+              "public:\n"
+              "    explicit C(const std::string s);\n"
+              "private:\n"
+              "    std::string _s;\n"
+              "};\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void constParameterCallback() {
