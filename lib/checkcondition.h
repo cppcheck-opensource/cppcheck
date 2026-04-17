@@ -130,6 +130,7 @@ private:
                          bool result);
     void duplicateConditionError(const Token *tok1, const Token *tok2, ErrorPath errorPath);
     void overlappingElseIfConditionError(const Token *tok, nonneg int line1);
+    void overlappingInnerConditionError(const Token *tok1, const Token *tok2, ErrorPath errorPath);
     void oppositeElseIfConditionError(const Token *ifCond, const Token *elseIfCond, ErrorPath errorPath);
 
     void oppositeInnerConditionError(const Token *tok1, const Token* tok2, ErrorPath errorPath);

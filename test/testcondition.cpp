@@ -94,6 +94,8 @@ private:
         TEST_CASE(identicalConditionAfterEarlyExit);
         TEST_CASE(innerConditionModified);
 
+        TEST_CASE(overlappingInnerCondition);
+
         TEST_CASE(clarifyCondition1);     // if (a = b() < 0)
         TEST_CASE(clarifyCondition2);     // if (a & b == c)
         TEST_CASE(clarifyCondition3);     // if (! a & b)
@@ -2834,20 +2836,6 @@ private:
               "    }\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:2:12] -> [test.cpp:4:13]: (warning) Identical inner 'if' condition is always true. [identicalInnerCondition]\n", errout_str());
-
-        check("void f(int x) {\n"
-              "    if (x == 1) {\n"
-              "        if (x & 7) {}\n"
-              "    }\n"
-              "}");
-        ASSERT_EQUALS("[test.cpp:2:11] -> [test.cpp:3:15]: (warning) Identical inner 'if' condition is always true. [identicalInnerCondition]\n", errout_str());
-
-        check("void f(int x) {\n"
-              "    if (x & 7) {\n"
-              "        if (x == 1) {}\n"
-              "    }\n"
-              "}");
-        ASSERT_EQUALS("", errout_str());
     }
 
     void identicalConditionAfterEarlyExit() {
@@ -3032,6 +3020,22 @@ private:
               "    (*y)++;\n"
               "    if (x[*y] == 0) {}\n"
               "  }\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void overlappingInnerCondition() {
+        check("void f(int x) {\n"
+              "    if (x == 1) {\n"
+              "        if (x & 7) {}\n"
+              "    }\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:2:11] -> [test.cpp:3:15]: (warning) Overlapping inner 'if' condition is always true. [overlappingInnerCondition]\n", errout_str());
+
+        check("void f(int x) {\n"
+              "    if (x & 7) {\n"
+              "        if (x == 1) {}\n"
+              "    }\n"
               "}");
         ASSERT_EQUALS("", errout_str());
     }

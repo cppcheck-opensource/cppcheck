@@ -760,7 +760,7 @@ void CheckCondition::multiCondition2()
                                 } else if (!isReturnVar && isSameExpression(true, firstCondition, cond2, *mSettings, true, true, &errorPath)) {
                                     identicalInnerConditionError(firstCondition, cond2, errorPath);
                                 } else if (!isReturnVar && isOverlappingCond(cond2, firstCondition, true)) {
-                                    identicalInnerConditionError(firstCondition, cond2, errorPath);
+                                    overlappingInnerConditionError(firstCondition, cond2, errorPath);
                                 }
                             }
                             return ChildrenToVisit::none;
@@ -879,6 +879,21 @@ void CheckCondition::oppositeInnerConditionError(const Token *tok1, const Token*
     const std::string msg("Opposite inner '" + innerSmt + "' condition leads to a dead code block.\n"
                           "Opposite inner '" + innerSmt + "' condition leads to a dead code block (outer condition is '" + s1 + "' and inner condition is '" + s2 + "').");
     reportError(std::move(errorPath), Severity::warning, "oppositeInnerCondition", msg, CWE398, Certainty::normal);
+}
+
+void CheckCondition::overlappingInnerConditionError(const Token *tok1,  const Token* tok2, ErrorPath errorPath)
+{
+    if (diag(tok1, tok2))
+        return;
+    const std::string s1(tok1 ? tok1->expressionString() : "x");
+    const std::string s2(tok2 ? tok2->expressionString() : "x");
+    const std::string innerSmt = innerSmtString(tok2);
+    errorPath.emplace_back(tok1, "outer condition: " + s1);
+    errorPath.emplace_back(tok2, "overlapping inner condition: " + s2);
+
+    const std::string msg("Overlapping inner '" + innerSmt + "' condition is always true.\n"
+                          "Overlapping inner '" + innerSmt + "' condition is always true (outer condition is '" + s1 + "' and inner condition is '" + s2 + "').");
+    reportError(std::move(errorPath), Severity::warning, "overlappingInnerCondition", msg, CWE398, Certainty::normal);
 }
 
 void CheckCondition::identicalInnerConditionError(const Token *tok1, const Token* tok2, ErrorPath errorPath)
@@ -2113,6 +2128,7 @@ void CheckCondition::getErrorMessages(ErrorLogger *errorLogger, const Settings *
     c.comparisonError(nullptr, "&", 6, "==", 1, false);
     c.duplicateConditionError(nullptr, nullptr, ErrorPath{});
     c.overlappingElseIfConditionError(nullptr, 1);
+    c.overlappingInnerConditionError(nullptr, nullptr, ErrorPath());
     c.mismatchingBitAndError(nullptr, 0xf0, nullptr, 1);
     c.oppositeInnerConditionError(nullptr, nullptr, ErrorPath{});
     c.identicalInnerConditionError(nullptr, nullptr, ErrorPath{});
