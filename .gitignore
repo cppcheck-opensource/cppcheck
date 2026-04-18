@@ -2,6 +2,7 @@
 *.gcno
 *.gch
 *.o
+*.a
 *.pyc
 /cppcheck
 /cppcheck.exe

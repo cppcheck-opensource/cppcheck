@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -141,6 +141,7 @@ private:
                "- Missing or wrong width specifiers in 'scanf' format string\n"
                "- Use a file that has been closed\n"
                "- File input/output without positioning results in undefined behaviour\n"
+               "- Using 'ftell' on a file opened in text mode\n"
                "- Read to a file that has only been opened for writing (or vice versa)\n"
                "- Repositioning operation on a file opened in append mode\n"
                "- The same file can't be open for read and write at the same time on different streams\n"

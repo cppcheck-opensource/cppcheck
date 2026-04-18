@@ -352,7 +352,6 @@ void CheckIO::checkFileUsage()
                 case Filepointer::Operation::UNIMPORTANT:
                     if (f.mode == OpenMode::CLOSED)
                         useClosedFileError(tok);
-                    // See https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/fopen-wfopen?view=msvc-170 
                     if (isftell && f.read_mode == Filepointer::ReadMode::READ_TEXT && printPortability)
                         ftellFileError(tok);
                     break;
