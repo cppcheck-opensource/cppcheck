@@ -320,7 +320,6 @@ private:
 
 
     void final_class_x() {
-
         const char code[] = "class __declspec(dllexport) x final { };";
         SimpleTokenizer tokenizer(settings, *this);
         ASSERT(tokenizer.tokenize(code));
@@ -1897,6 +1896,12 @@ private:
 
         // #13892
         ASSERT_NO_THROW(checkCode("void foovm(int x[const *]);"));
+
+        // #14676
+        ASSERT_NO_THROW(checkCode("int main() {\n"
+                                  "    auto value = m[1 + qRow<>];\n"
+                                  "}\n"));
+        ignore_errout();
     }
 };
 
