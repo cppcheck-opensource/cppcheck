@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -139,7 +139,7 @@ void CheckSizeof::checkSizeofForPointerSize()
                     variable = tok;
                 else if (tok->strAt(1) == ")" && Token::Match(tok->linkAt(1)->tokAt(-2), "%var% ="))
                     variable = tok->linkAt(1)->tokAt(-2);
-                else if (tok->link() && Token::Match(tok, "> ( %name% (") && mSettings->library.getAllocFuncInfo(tok->tokAt(2)) && Token::Match(tok->link()->tokAt(-3), "%var% ="))
+                else if (tok->link() && Token::Match(tok, "> ( %name% (") && Token::Match(tok->link()->tokAt(-3), "%var% ="))
                     variable = tok->link()->tokAt(-3);
                 tokSize = tok->tokAt(4);
                 tokFunc = tok->tokAt(2);

@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -105,8 +105,9 @@ int CheckThread::executeCommand(std::string exe, std::vector<std::string> args, 
 }
 
 
-CheckThread::CheckThread(ThreadResult &result) :
-    mResult(result)
+CheckThread::CheckThread(ThreadResult &result, int threadIndex)
+    : mResult(result)
+    , mThreadIndex(threadIndex)
 {}
 
 void CheckThread::setSettings(const Settings &settings, std::shared_ptr<Suppressions> supprs)
@@ -128,7 +129,7 @@ void CheckThread::run()
 {
     mState = Running;
 
-    CppCheck cppcheck(mSettings, *mSuppressions, mResult, true, executeCommand);
+    CppCheck cppcheck(mSettings, *mSuppressions, mResult, nullptr, true, executeCommand);
 
     if (!mFiles.empty() || mAnalyseWholeProgram) {
         mAnalyseWholeProgram = false;
@@ -147,9 +148,14 @@ void CheckThread::run()
     while (file && mState == Running) {
         const std::string& fname = file->spath();
         qDebug() << "Checking file" << QString::fromStdString(fname);
+
+        const Details details{ mThreadIndex, QString::fromStdString(fname), QTime::currentTime(), };
+        emit startCheck(details);
+
         cppcheck.check(*file);
         runAddonsAndTools(mSettings, nullptr, QString::fromStdString(fname));
-        emit fileChecked(QString::fromStdString(fname));
+
+        emit finishCheck(details);
 
         if (mState == Running)
             mResult.getNextFile(file);
@@ -160,9 +166,15 @@ void CheckThread::run()
     while (fileSettings && mState == Running) {
         const std::string& fname = fileSettings->filename();
         qDebug() << "Checking file" << QString::fromStdString(fname);
+
+        const Details details{ mThreadIndex, QString::fromStdString(fname), QTime::currentTime(), };
+        emit startCheck(details);
+
         cppcheck.check(*fileSettings);
         runAddonsAndTools(mSettings, fileSettings, QString::fromStdString(fname));
-        emit fileChecked(QString::fromStdString(fname));
+
+        emit finishCheck(details);
+
 
         if (mState == Running)
             mResult.getNextFileSettings(fileSettings);
@@ -178,7 +190,7 @@ void CheckThread::run()
 
 void CheckThread::runAddonsAndTools(const Settings& settings, const FileSettings *fileSettings, const QString &fileName)
 {
-    for (const QString& addon : mAddonsAndTools) {
+    for (const QString& addon : utils::as_const(mAddonsAndTools)) {
         if (addon == CLANG_ANALYZER || addon == CLANG_TIDY) {
             if (!fileSettings)
                 continue;
@@ -238,7 +250,7 @@ void CheckThread::runAddonsAndTools(const Settings& settings, const FileSettings
 
             const std::string &buildDir = settings.buildDir;
             if (!buildDir.empty()) {
-                analyzerInfoFile = QString::fromStdString(AnalyzerInformation::getAnalyzerInfoFile(buildDir, fileSettings->filename(), fileSettings->cfg, fileSettings->fileIndex));
+                analyzerInfoFile = QString::fromStdString(AnalyzerInformation::getAnalyzerInfoFile(buildDir, fileSettings->sfilename(), fileSettings->cfg, fileSettings->file.fsFileId()));
 
                 QStringList args2(args);
                 args2.insert(0,"-E");
@@ -291,7 +303,7 @@ void CheckThread::runAddonsAndTools(const Settings& settings, const FileSettings
             {
                 const QString cmd(clangTidyCmd());
                 QString debug(cmd.contains(" ") ? ('\"' + cmd + '\"') : cmd);
-                for (const QString& arg : args) {
+                for (const QString& arg : utils::as_const(args)) {
                     if (arg.contains(" "))
                         debug += " \"" + arg + '\"';
                     else
@@ -486,3 +498,4 @@ QString CheckThread::clangTidyCmd()
 
     return QString();
 }
+

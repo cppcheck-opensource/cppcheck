@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1157,7 +1157,7 @@ public:
      * @brief find if name is in nested list
      * @param name name of nested scope
      */
-    Scope *findInNestedListRecursive(const std::string & name);
+    const Scope *findInNestedListRecursive(const std::string & name) const;
 
     void addVariable(const Token *token_, const Token *start_,
                      const Token *end_, AccessControl access_, const Type *type_,

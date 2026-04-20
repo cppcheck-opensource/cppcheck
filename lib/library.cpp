@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,10 +46,10 @@ struct Library::LibraryData
 {
     struct Platform {
         const PlatformType *platform_type(const std::string &name) const {
-            const auto it = utils::as_const(mPlatformTypes).find(name);
+            const auto it = mPlatformTypes.find(name);
             return (it != mPlatformTypes.end()) ? &(it->second) : nullptr;
         }
-        std::map<std::string, PlatformType> mPlatformTypes;
+        std::unordered_map<std::string, PlatformType> mPlatformTypes;
     };
 
     class ExportedFunctions {
@@ -123,9 +123,9 @@ struct Library::LibraryData
     std::map<std::string, AllocFunc> mDealloc; // deallocation functions
     std::map<std::string, AllocFunc> mRealloc; // reallocation functions
     std::unordered_map<std::string, FalseTrueMaybe> mNoReturn; // is function noreturn?
-    std::map<std::string, std::string> mReturnValue;
-    std::map<std::string, std::string> mReturnValueType;
-    std::map<std::string, int> mReturnValueContainer;
+    std::unordered_map<std::string, std::string> mReturnValue;
+    std::unordered_map<std::string, std::string> mReturnValueType;
+    std::unordered_map<std::string, int> mReturnValueContainer;
     std::map<std::string, std::vector<MathLib::bigint>> mUnknownReturnValues;
     std::map<std::string, bool> mReportErrors;
     std::map<std::string, bool> mProcessAfterCode;
@@ -137,7 +137,7 @@ struct Library::LibraryData
     std::map<std::string, int> mReflection; // invocation of reflection
     std::unordered_map<std::string, struct PodType> mPodTypes; // pod types
     std::map<std::string, PlatformType> mPlatformTypes; // platform independent typedefs
-    std::map<std::string, Platform> mPlatforms; // platform dependent typedefs
+    std::unordered_map<std::string, Platform> mPlatforms; // platform dependent typedefs
     std::map<std::pair<std::string,std::string>, TypeCheck> mTypeChecks;
     std::unordered_map<std::string, NonOverlappingData> mNonOverlappingData;
     std::unordered_set<std::string> mEntrypoints;
@@ -194,12 +194,13 @@ Library::Error Library::load(const char exename[], const char path[], bool debug
     }
 
     const bool is_abs_path = Path::isAbsolute(path);
+    const bool is_rel_path = Path::isRelative(path);
 
     std::string fullfilename(path);
 
     // TODO: what if the extension is not .cfg?
-    // only append extension when we provide the library name and not a path - TODO: handle relative paths?
-    if (!is_abs_path && Path::getFilenameExtension(fullfilename).empty())
+    // only append extension when we provide the library name and not a path
+    if (!is_abs_path && !is_rel_path && Path::getFilenameExtension(fullfilename).empty())
         fullfilename += ".cfg";
 
     std::string absolute_path;
@@ -210,7 +211,7 @@ Library::Error Library::load(const char exename[], const char path[], bool debug
     tinyxml2::XMLError error = xml_LoadFile(doc, fullfilename.c_str());
     if (error == tinyxml2::XML_ERROR_FILE_NOT_FOUND) {
         // only perform further lookups when the given path was not absolute
-        if (!is_abs_path && error == tinyxml2::XML_ERROR_FILE_NOT_FOUND)
+        if (!is_abs_path)
         {
             std::list<std::string> cfgfolders;
     #ifdef FILESDIR
@@ -619,6 +620,7 @@ Library::Error Library::load(const tinyxml2::XMLDocument &doc)
                 container.startPattern2 = startPattern;
                 if (!endsWith(container.startPattern, '<'))
                     container.startPattern2 += " !!::";
+                container.startPatternHasStd = startsWith(container.startPattern2, "std :: ");
             }
             const char* const endPattern = node->Attribute("endPattern");
             if (endPattern)
@@ -1322,10 +1324,10 @@ const Library::ArgumentChecks * Library::getarg(const Token *ftok, int argnr) co
     const Function* func = nullptr;
     if (isNotLibraryFunction(ftok, &func))
         return nullptr;
-    const auto it2 = utils::as_const(func->argumentChecks).find(argnr);
+    const auto it2 = func->argumentChecks.find(argnr);
     if (it2 != func->argumentChecks.cend())
         return &it2->second;
-    const auto it3 = utils::as_const(func->argumentChecks).find(-1);
+    const auto it3 = func->argumentChecks.find(-1);
     if (it3 != func->argumentChecks.cend())
         return &it3->second;
     return nullptr;
@@ -1395,12 +1397,18 @@ const Library::Container* Library::detectContainerInternal(const Token* const ty
         break;
     }
 
+    const bool hasScope = typeStart->strAt(1) == "::";
+    const bool bailIfHasStd = !withoutStd && !hasScope;
+
     for (const std::pair<const std::string, Library::Container> & c : mData->mContainers) {
         const Container& container = c.second;
         if (container.startPattern.empty())
             continue;
 
-        const int offset = (withoutStd && startsWith(container.startPattern2, "std :: ")) ? 7 : 0;
+        if (bailIfHasStd && container.startPatternHasStd)
+            continue;
+
+        const int offset = (withoutStd && container.startPatternHasStd) ? 7 : 0;
 
         // If endPattern is undefined, it will always match, but itEndPattern has to be defined.
         if (detect != IteratorOnly && container.endPattern.empty()) {
@@ -1562,8 +1570,7 @@ bool Library::isCompliantValidationExpression(const char* p)
             error |= (*(p + 1) == '-');
         }
         else if (*p == ':') {
-            // cppcheck-suppress bitwiseOnBoolean - TODO: fix this
-            error |= range | (*(p + 1) == '.');
+            error |= range || (*(p + 1) == '.');
             range = true;
             has_dot = false;
             has_E = false;
@@ -1577,8 +1584,7 @@ bool Library::isCompliantValidationExpression(const char* p)
             has_dot = false;
             has_E = false;
         } else if (*p == '.') {
-            // cppcheck-suppress bitwiseOnBoolean - TODO: fix this
-            error |= has_dot | (!std::isdigit(*(p + 1)));
+            error |= has_dot || (!std::isdigit(*(p + 1)));
             has_dot = true;
         } else if (*p == 'E' || *p == 'e') {
             error |= has_E;

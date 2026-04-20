@@ -107,7 +107,7 @@ def test_addon_relative_path():
     filename = os.path.join('helloworld', 'main.c')
     assert ret == 0, stdout
     assert stdout == ('Checking %s ...\n'
-                      'Checking %s: SOME_CONFIG...\n' % (filename, filename))
+                      'Checking %s: SOME_CONFIG=SOME_CONFIG...\n' % (filename, filename))
     assert stderr == ('[%s:5]: (error) Division by zero.\n'
                       '[%s:4]: (style) misra violation (use --rule-texts=<file> to get proper output)\n' % (filename, filename))
 
@@ -125,7 +125,7 @@ def test_addon_with_gui_project(tmp_path):
     assert ret == 0, stdout
     assert stdout.strip().split('\n') == [
         'Checking %s ...' % filename,
-        'Checking %s: SOME_CONFIG...' % filename
+        'Checking %s: SOME_CONFIG=SOME_CONFIG...' % filename
     ]
     assert stderr == ('[%s:5]: (error) Division by zero.\n'
                       '[%s:4]: (style) misra violation (use --rule-texts=<file> to get proper output)\n' % (filename, filename))
@@ -223,11 +223,12 @@ def test_cppcheck_project_local_path_select_one_multiple():
 def test_cppcheck_project_local_path_analyze_all():
     __test_cppcheck_project_local_path(['--analyze-all-vs-configs'], 'Debug|Win32 Debug|x64 Release|Win32 Release|x64')
 
-def test_cppcheck_project_relative_path():
+@pytest.mark.parametrize("project_file", ["helloworld.cppcheck", "helloworld_slnx.cppcheck"])
+def test_cppcheck_project_relative_path(project_file):
     args = [
         '--template=cppcheck1',
         '--platform=win64',
-        '--project=' + os.path.join('helloworld', 'helloworld.cppcheck')
+        '--project=' + os.path.join('helloworld', project_file)
     ]
     ret, stdout, stderr = cppcheck(args, cwd=__script_dir)
     filename = os.path.join('helloworld', 'main.c')
@@ -235,11 +236,12 @@ def test_cppcheck_project_relative_path():
     assert __getVsConfigs(stdout, filename) == 'Debug|x64'
     assert stderr == '[%s:5]: (error) Division by zero.\n' % filename
 
-def test_cppcheck_project_absolute_path():
+@pytest.mark.parametrize("project_file", ["helloworld.cppcheck", "helloworld_slnx.cppcheck"])
+def test_cppcheck_project_absolute_path(project_file):
     args = [
         '--template=cppcheck1',
         '--platform=win64',
-        '--project=' + os.path.join(__proj_dir, 'helloworld.cppcheck')
+        '--project=' + os.path.join(__proj_dir, project_file)
     ]
     ret, stdout, stderr = cppcheck(args)
     filename = os.path.join(__proj_dir, 'main.c')
@@ -296,11 +298,12 @@ def test_suppress_project_absolute(tmp_path):
     assert ret == 0, stdout
     assert stderr == ''
 
-def test_exclude():
+@pytest.mark.parametrize("project_file", ["helloworld.cppcheck", "helloworld_slnx.cppcheck"])
+def test_exclude(project_file):
     args = [
         '-i' + 'helloworld',
         '--platform=win64',
-        '--project=' + os.path.join('helloworld', 'helloworld.cppcheck')
+        '--project=' + os.path.join('helloworld', project_file)
     ]
     ret, stdout, _ = cppcheck(args, cwd=__script_dir)
     assert ret == 1
@@ -360,7 +363,7 @@ def test_missing_include_system():  # #11283
     ]
 
     _, _, stderr = cppcheck(args, cwd=__script_dir)
-    assert stderr.replace('\\', '/') == 'helloworld/main.c:1:2: information: Include file: <stdio.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]\n'
+    assert stderr.replace('\\', '/') == 'helloworld/main.c:1:2: information: Include file: <stdio.h> not found. Please note: Standard library headers do not need to be provided to get proper results. [missingIncludeSystem]\n'
 
 
 def test_sarif():

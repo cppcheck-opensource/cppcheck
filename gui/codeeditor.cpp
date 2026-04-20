@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include "codeeditor.h"
 
 #include "codeeditorstyle.h"
+#include "utils.h"
 
 #include <QChar>
 #include <QColor>
@@ -133,7 +134,7 @@ Highlighter::Highlighter(QTextDocument *parent,
                     << "volatile"
                     << "wchar_t"
                     << "while";
-    for (const QString &pattern : keywordPatterns) {
+    for (const QString &pattern : utils::as_const(keywordPatterns)) {
         rule.pattern = QRegularExpression("\\b" + pattern + "\\b");
         rule.format = mKeywordFormat;
         rule.ruleRole = RuleRole::Keyword;
@@ -216,7 +217,7 @@ void Highlighter::setStyle(const CodeEditorStyle &newStyle)
 
 void Highlighter::highlightBlock(const QString &text)
 {
-    for (const HighlightingRule &rule : mHighlightingRulesWithSymbols) {
+    for (const HighlightingRule &rule : utils::as_const(mHighlightingRulesWithSymbols)) {
         QRegularExpressionMatchIterator matchIterator = rule.pattern.globalMatch(text);
         while (matchIterator.hasNext()) {
             QRegularExpressionMatch match = matchIterator.next();

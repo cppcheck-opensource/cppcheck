@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -641,6 +641,14 @@ private:
               "    x = p != nullptr ? p : nullptr;\n"
               "}", dinit(CheckOptions, $.cpp = true));
         ASSERT_EQUALS("", errout_str());
+
+        check("void f(const char* n) {\n" // #12724
+              "    FILE* fp = fopen(n, \"r\");\n"
+              "    bool b = (fp == NULL);\n"
+              "    if (b)\n"
+              "        return;\n"
+              "}\n", dinit(CheckOptions, $.cpp = true));
+        ASSERT_EQUALS("[test.cpp:6:1]: (error) Resource leak: fp [resourceLeak]\n", errout_str());
     }
 
     void memcpy1() { // #11542

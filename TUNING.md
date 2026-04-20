@@ -46,7 +46,7 @@ In our case Clang is mostly faster than GCC. See https://trac.cppcheck.net/ticke
 
 ### Use More Advanced Optimizations
 
-By default we enforce the `-O2` optimization level. Even when using the `Release` build type in CMake which defaults to `-O3`. It might be possible that building with `-O3` might yield a perfomance increase.
+By default we enforce the `-O2` optimization level. Even when using the `Release` build type in CMake which defaults to `-O3`. It might be possible that building with `-O3` might yield a performance increase.
 
 There are also no additional code generation flags provided so the resulting binary can run on any system. You might be able to tune this and apply more optimization which is tailored to the system you will be running the binary on.
 

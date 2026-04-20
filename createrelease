@@ -12,6 +12,10 @@
 # create jira issue "CI: update cppcheck binary"
 # cd ~/cppchecksolutions/addon/tools && python3 ci-update-cppcheck.py
 #
+# update mappings..
+# cd ~/cppchecksolutions/addon/coverage
+# CPPCHECK_REPO=~/cppchecksolutions/cppcheck python3 coverage.py --code
+#
 # check every isPremiumEnabled call: TODO write helper script
 # - every id should be in --errorlist
 #   git grep 'isPremiumEnabled[(]"' | sed 's/.*isPremiumEnabled[(]"//' | sed 's/".*//' | sort | uniq > ids1.txt
@@ -47,6 +51,9 @@
 #
 # Create 2.18.x branch
 # git checkout -b 2.18.x ; git push -u origin 2.18.x
+# in fork:
+#  * add upstream: git remote add upstream git@github.com:danmar/cppcheck.git
+#  * add branch:   git fetch upstream 2.19.x
 #
 # Release notes:
 # - ensure safety critical issues are listed properly
@@ -102,6 +109,12 @@
 # ssh -t danielmarjamaki,cppcheck@shell.sourceforge.net create
 # ./build-cppcheck.sh
 #
+# create a ticket with data from http://cppcheck1.osuosl.org:8000/time_gt.html for performance tracking
+# (example: https://trac.cppcheck.net/ticket/13715)
+# - type: defect
+# - component: Performance
+# - summary: [meta] performance regressions in 2.x
+#
 # run daca with new release
 # 1. edit tools/donate-cpu-server.py. Update OLD_VERSION and SERVER_VERSION
 # 2. scp -i ~/.ssh/osuosl_id_rsa tools/donate-cpu-server.py danielmarjamaki@cppcheck1.osuosl.org:/var/daca@home/
@@ -127,28 +140,26 @@ cd ~/cppcheck
 git checkout $tag
 
 rm -rf upload
-mkdir -p upload
+mkdir -p upload/htdocs upload/frs
 
+# htdocs
 make clean
-
-# Create archives..
-git archive --format=tar --prefix=$releasename/ $tag | gzip > upload/$releasename.tar.gz
-git archive --format=tar --prefix=$releasename/ $tag | bzip2 > upload/$releasename.tar.bz2
-git archive --format=zip -9 --prefix=$releasename/ $tag > upload/$releasename.zip
-cd upload
-scp $releasename.* danielmarjamaki,cppcheck@frs.sourceforge.net:/home/frs/project/c/cp/cppcheck/cppcheck/$folder/
-rm $releasename.*
-cd ..
-
-# Generate version.txt
 make -j12
 rm -f cppcheck.cfg
-./cppcheck --version > upload/version.txt
+./cppcheck --version > upload/htdocs/version.txt
+# TODO manual, update version on webpage
 
-cd ~/cppcheck/upload
-scp version.txt danielmarjamaki,cppcheck@web.sourceforge.net:htdocs/
+# frs
+git archive --format=tar --prefix=$releasename/ $tag | gzip > upload/frs/$releasename.tar.gz
+git archive --format=tar --prefix=$releasename/ $tag | bzip2 > upload/frs/$releasename.tar.bz2
+git archive --format=zip -9 --prefix=$releasename/ $tag > upload/frs/$releasename.zip
+cp releasenotes.txt upload/frs/README.md
+# TODO msi
 
-cd ~/cppcheck
+cd upload
+scp frs/* danielmarjamaki,cppcheck@frs.sourceforge.net:/home/frs/project/c/cp/cppcheck/cppcheck/$folder/
+scp htdocs/* danielmarjamaki,cppcheck@web.sourceforge.net:htdocs/
+cd ..
 rm -rf upload
 
 # Local cppcheck binary

@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -103,16 +103,16 @@ private:
         // unsigned types getting promoted to int sizeof(int) = 4 bytes
         // and unsigned types having already a size of 4 bytes
         {
-            const std::string types[] = {"unsigned char", /*[unsigned]*/ "char", "bool", "unsigned short", "unsigned int", "unsigned long"};
+            const std::string types[] = {"unsigned char", "bool", "unsigned short", "unsigned int", "unsigned long"};
             for (const std::string& type : types) {
                 check(type + " f(" + type +" x) { return x << 31; }", dinit(CheckOptions, $.settings = &settings));
-                ASSERT_EQUALS("", errout_str());
+                ASSERT_EQUALS_MSG("", errout_str(), type);
                 check(type + " f(" + type +" x) { return x << 33; }", dinit(CheckOptions, $.settings = &settings));
-                ASSERT_EQUALS("[test.cpp:1]: (error) Shifting 32-bit value by 33 bits is undefined behaviour\n", errout_str());
+                ASSERT_EQUALS_MSG("[test.cpp:1]: (error) Shifting 32-bit value by 33 bits is undefined behaviour\n", errout_str(), type);
                 check(type + " f(int x) { return (x = (" + type + ")x << 32); }", dinit(CheckOptions, $.settings = &settings));
-                ASSERT_EQUALS("[test.cpp:1]: (error) Shifting 32-bit value by 32 bits is undefined behaviour\n", errout_str());
+                ASSERT_EQUALS_MSG("[test.cpp:1]: (error) Shifting 32-bit value by 32 bits is undefined behaviour\n", errout_str(), type);
                 check(type + " foo(" + type + " x) { return x << 31; }", dinit(CheckOptions, $.settings = &settings));
-                ASSERT_EQUALS("", errout_str());
+                ASSERT_EQUALS_MSG("", errout_str(), type);
             }
         }
         // signed types getting promoted to int sizeof(int) = 4 bytes
@@ -464,6 +464,26 @@ private:
         ASSERT_EQUALS("[test.cpp:2:3]: (style) int result is returned as long long value. If the return value is long long to avoid loss of information, then you have loss of information. [truncLongCastReturn]\n", errout_str());
         check(code2, dinit(CheckOptions, $.settings = &settingsWin));
         ASSERT_EQUALS("[test.cpp:2:3]: (style) int result is returned as long long value. If the return value is long long to avoid loss of information, then you have loss of information. [truncLongCastReturn]\n", errout_str());
+
+        const char code3[] = "long f() {\n"
+                             "    int n = 1;\n"
+                             "    return n << 12;\n"
+                             "}\n";
+        check(code3, dinit(CheckOptions, $.settings = &settings));
+        ASSERT_EQUALS("", errout_str());
+
+        const char code4[] = "long f(int n) {\n"
+                             "    return n << 12;\n"
+                             "}\n";
+        check(code4, dinit(CheckOptions, $.settings = &settings));
+        ASSERT_EQUALS("[test.cpp:2:5]: (style) int result is returned as long value. If the return value is long to avoid loss of information, then you have loss of information. [truncLongCastReturn]\n", errout_str());
+
+        const char code5[] = "long f() {\n"
+                             "    unsigned int n = 1U << 20;\n"
+                             "    return n << 20;\n"
+                             "}\n";
+        check(code5, dinit(CheckOptions, $.settings = &settings));
+        ASSERT_EQUALS("[test.cpp:3:5]: (style) int result is returned as long value. If the return value is long to avoid loss of information, then you have loss of information. [truncLongCastReturn]\n", errout_str());
 
         // typedef
         check("size_t f(int x, int y) {\n"

@@ -16,7 +16,7 @@ import copy
 # Version scheme (MAJOR.MINOR.PATCH) should orientate on "Semantic Versioning" https://semver.org/
 # Every change in this script should result in increasing the version number accordingly (exceptions may be cosmetic
 # changes)
-CLIENT_VERSION = "1.3.69"
+CLIENT_VERSION = "1.3.70"
 
 # Timeout for analysis with Cppcheck in seconds
 CPPCHECK_TIMEOUT = 30 * 60
@@ -684,7 +684,8 @@ def upload_nodata(package):
 
 class LibraryIncludes:
     def __init__(self):
-        include_mappings = {'boost': ['<boost/'],
+        include_mappings = {'avr': ['<avr/'],
+                            'boost': ['<boost/'],
                             'bsd': ['<sys/queue.h>', '<sys/tree.h>', '<sys/uio.h>','<bsd/', '<fts.h>', '<db.h>', '<err.h>', '<vis.h>'],
                             'cairo': ['<cairo.h>'],
                             'cppunit': ['<cppunit/'],
@@ -701,6 +702,7 @@ class LibraryIncludes:
                             'mfc': ['<afx.h>', '<afxwin.h>', '<afxext.h>'],
                             'microsoft_atl': ['<atlbase.h>'],
                             'microsoft_sal': ['<sal.h>'],
+                            'microsoft_unittest': ['<CppUnitTest.h>'],
                             'motif': ['<X11/', '<Xm/'],
                             'nspr': ['<prtypes.h>', '"prtypes.h"'],
                             'ntl': ['<ntl/', '"ntl/'],
@@ -713,11 +715,13 @@ class LibraryIncludes:
                             'qt': ['<QAbstractSeries>', '<QAction>', '<QActionGroup>', '<QApplication>', '<QByteArray>', '<QChartView>', '<QClipboard>', '<QCloseEvent>', '<QColor>', '<QColorDialog>', '<QComboBox>', '<QCoreApplication>', '<QCryptographicHash>', '<QDate>', '<QDateTime>', '<QDateTimeAxis>', '<QDebug>', '<QDesktopServices>', '<QDialog>', '<QDialogButtonBox>', '<QDir>', '<QElapsedTimer>', '<QFile>', '<QFileDialog>', '<QFileInfo>', '<QFileInfoList>', '<QFlags>', '<QFont>', '<QFormLayout>', '<QHelpContentWidget>', '<QHelpEngine>', '<QHelpIndexWidget>', '<QImageReader>', '<QInputDialog>', '<QKeyEvent>', '<QLabel>', '<QLineSeries>', '<QList>', '<qlist.h>', '<QLocale>', '<QMainWindow>', '<QMap>', '<QMenu>', '<QMessageBox>', '<QMetaType>', '<QMimeData>', '<QMimeDatabase>', '<QMimeType>', '<QMutex>', '<QObject>', '<qobjectdefs.h>', '<QPainter>', '<QPlainTextEdit>', '<QPrintDialog>', '<QPrinter>', '<QPrintPreviewDialog>', '<QProcess>', '<QPushButton>', '<QQueue>', '<QReadWriteLock>', '<QRegularExpression>', '<QRegularExpressionValidator>', '<QSet>', '<QSettings>', '<QShortcut>', '<QSignalMapper>', '<QStandardItemModel>', '<QString>', '<qstring.h>', '<QStringList>', '<QSyntaxHighlighter>', '<QTest>', '<QTextBrowser>', '<QTextDocument>', '<QTextEdit>', '<QTextStream>', '<QThread>', '<QTimer>', '<QTranslator>', '<QTreeView>', '<QtWidgets>', '<QUrl>', '<QValueAxis>', '<QVariant>', '<QWaitCondition>', '<QWidget>', '<QXmlStreamReader>', '<QXmlStreamWriter>', '<QtGui'],
                             'ruby': ['<ruby.h>', '<ruby/', '"ruby.h"'],
                             'sdl': ['<SDL.h>', '<SDL/SDL.h>', '<SDL2/SDL.h>'],
-                            #'selinux': ['<selinux/'],
+                            'selinux': ['<selinux/'],
+                            'sfml': ['<SFML/'],
                             'sqlite3': ['<sqlite3.h>', '"sqlite3.h"'],
                             'tinyxml2': ['<tinyxml2', '"tinyxml2'],
                             'wxsqlite3': ['<wx/wxsqlite3', '"wx/wxsqlite3'],
                             'wxwidgets': ['<wx/', '"wx/'],
+                            'zephyr': ['<zephyr/'],
                             'zlib': ['<zlib.h>'],
                             }
 

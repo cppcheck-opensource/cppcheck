@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -196,7 +196,7 @@ private:
         if (tools && !nocmd) {
             f = getExecuteCommand(fname, called);
         }
-        CppCheck cppcheck(s, supprs, errorLogger, false, f);
+        CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, f);
         ASSERT_EQUALS(1, cppcheck.check(FileWithDetails(file.path(), Path::identify(file.path(), false), 0)));
         // TODO: how to properly disable these warnings?
         errorLogger.ids.erase(std::remove_if(errorLogger.ids.begin(), errorLogger.ids.end(), [](const std::string& id) {
@@ -280,7 +280,7 @@ private:
         if (tools && !nocmd) {
             f = getExecuteCommand(fname, called);
         }
-        CppCheck cppcheck(s, supprs, errorLogger, false, f);
+        CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, f);
         FileSettings fs{file.path(), Path::identify(file.path(), false), 0};
         ASSERT_EQUALS(1, cppcheck.check(fs));
         // TODO: how to properly disable these warnings?
@@ -348,7 +348,7 @@ private:
         const Settings s = settingsBuilder().libraryxml(xmldata).build();
         Suppressions supprs;
         ErrorLogger2 errorLogger;
-        CppCheck cppcheck(s, supprs, errorLogger, false, {});
+        CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, {});
         ASSERT_EQUALS(0, cppcheck.check(FileWithDetails(file.path(), Path::identify(file.path(), false), 0)));
         // TODO: how to properly disable these warnings?
         errorLogger.ids.erase(std::remove_if(errorLogger.ids.begin(), errorLogger.ids.end(), [](const std::string& id) {
@@ -374,7 +374,7 @@ private:
         const auto s = dinit(Settings, $.templateFormat = templateFormat); // TODO: remove when we only longer rely on toString() in unique message handling
         Suppressions supprs;
         ErrorLogger2 errorLogger;
-        CppCheck cppcheck(s, supprs, errorLogger, false, {});
+        CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, {});
         ASSERT_EQUALS(1, cppcheck.check(FileWithDetails(test_file_a.path(), Path::identify(test_file_a.path(), false), 0)));
         ASSERT_EQUALS(1, cppcheck.check(FileWithDetails(test_file_b.path(), Path::identify(test_file_b.path(), false), 0)));
         // TODO: how to properly disable these warnings?
@@ -406,7 +406,7 @@ private:
         const auto s = dinit(Settings, $.templateFormat = templateFormat); // TODO: remove when we only longer rely on toString() in unique message handling?
         Suppressions supprs;
         ErrorLogger2 errorLogger;
-        CppCheck cppcheck(s, supprs, errorLogger, false, {});
+        CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, {});
         ASSERT_EQUALS(1, cppcheck.check(FileWithDetails(test_file.path(), Path::identify(test_file.path(), false), 0)));
         // TODO: how to properly disable these warnings?
         errorLogger.errmsgs.erase(std::remove_if(errorLogger.errmsgs.begin(), errorLogger.errmsgs.end(), [](const ErrorMessage& msg) {
@@ -440,7 +440,7 @@ private:
 
         {
             const auto s = dinit(Settings, $.premiumArgs = "");
-            CppCheck cppcheck(s, supprs, errorLogger, false, {});
+            CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, {});
 
             ASSERT_EQUALS(false, cppcheck.isPremiumCodingStandardId("misra-c2012-0.0"));
             ASSERT_EQUALS(false, cppcheck.isPremiumCodingStandardId("misra-c2023-0.0"));
@@ -457,7 +457,7 @@ private:
         {
             const auto s = dinit(Settings, $.premiumArgs = "--misra-c-2012 --cert-c++-2016 --autosar");
 
-            CppCheck cppcheck(s, supprs, errorLogger, false, {});
+            CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, {});
 
             ASSERT_EQUALS(false, cppcheck.isPremiumCodingStandardId("misra-c2012-0.0"));
             ASSERT_EQUALS(true, cppcheck.isPremiumCodingStandardId("premium-misra-c-2012-0.0"));
@@ -477,7 +477,7 @@ private:
         s.basePaths.emplace_back("/some/path");
         Suppressions supprs;
         ErrorLogger2 errorLogger;
-        CppCheck cppcheck(s, supprs, errorLogger, false, {});
+        CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, {});
         std::vector<std::string> files{"/some/path/test.c"};
         simplecpp::TokenList tokens1(files);
         const std::string expected = "  <rawtokens>\n"
@@ -508,7 +508,7 @@ private:
         {
             Settings s;
             s.libraries.emplace_back("std.cfg");
-            CppCheck cppcheck(s, supprs, errorLogger, false, {});
+            CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, {});
             //std::vector<std::string> files{ "/some/path/test.c" };
             const std::string expected = "  <library lib=\"std.cfg\"/>\n";
             ASSERT_EQUALS(expected, cppcheck.getLibraryDumpData());
@@ -518,7 +518,7 @@ private:
             Settings s;
             s.libraries.emplace_back("std.cfg");
             s.libraries.emplace_back("posix.cfg");
-            CppCheck cppcheck(s, supprs, errorLogger, false, {});
+            CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, {});
             const std::string expected = "  <library lib=\"std.cfg\"/>\n  <library lib=\"posix.cfg\"/>\n";
             ASSERT_EQUALS(expected, cppcheck.getLibraryDumpData());
         }
@@ -532,7 +532,7 @@ private:
         {
             const auto s = dinit(Settings, $.templateFormat = templateFormat, $.plistOutput = "output");
             const ScopedFile file("file", "");
-            CppCheck cppcheck(s, supprs, errorLogger, false, {});
+            CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, {});
             const FileWithDetails fileWithDetails {file.path(), Path::identify(file.path(), false), 0};
 
             cppcheck.checkPlistOutput(fileWithDetails, files);
@@ -544,7 +544,7 @@ private:
         {
             const auto s = dinit(Settings, $.plistOutput = "output");
             const ScopedFile file("file.c", "");
-            CppCheck cppcheck(s, supprs, errorLogger, false, {});
+            CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, {});
             const FileWithDetails fileWithDetails {file.path(), Path::identify(file.path(), false), 0};
 
             cppcheck.checkPlistOutput(fileWithDetails, files);
@@ -556,7 +556,7 @@ private:
         {
             Settings s;
             const ScopedFile file("file.c", "");
-            CppCheck cppcheck(s, supprs, errorLogger, false, {});
+            CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, {});
             cppcheck.checkPlistOutput(FileWithDetails(file.path(), Path::identify(file.path(), false), 0), files);
         }
     }
@@ -585,7 +585,7 @@ private:
         settings.addonInfos.push_back(premiumaddon);
 
         settings.premiumArgs = "misra-c-2012";
-        CppCheck check(settings, supprs, errorLogger, false, {});
+        CppCheck check(settings, supprs, errorLogger, nullptr, false, {});
         const size_t hash1 = check.calculateHash(preprocessor);
 
         settings.premiumArgs = "";
@@ -609,7 +609,7 @@ private:
                              $.debugwarnings = true);
         Suppressions supprs;
         ErrorLogger2 errorLogger;
-        CppCheck cppcheck(s, supprs, errorLogger, false, {});
+        CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, {});
         ASSERT_EQUALS(1, cppcheck.check(FileWithDetails(test_file.path(), Path::identify(test_file.path(), false), 0)));
         // TODO: how to properly disable these warnings?
         errorLogger.errmsgs.erase(std::remove_if(errorLogger.errmsgs.begin(), errorLogger.errmsgs.end(), [](const ErrorMessage& msg) {
@@ -618,7 +618,7 @@ private:
         // the internal errorlist is cleared after each check() call
         ASSERT_EQUALS(1, errorLogger.errmsgs.size());
         auto it = errorLogger.errmsgs.cbegin();
-        ASSERT_EQUALS("test.cpp:0:0: information: The configuration 'X' was not checked because its code equals another one. [purgedConfiguration]",
+        ASSERT_EQUALS("test.cpp:0:0: information: The configuration 'X=X' was not checked because its code equals another one. [purgedConfiguration]",
                       it->toString(false, templateFormat, ""));
     }
 

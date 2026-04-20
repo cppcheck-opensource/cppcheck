@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -304,7 +304,7 @@ static void conditionAlwaysTrueOrFalse(const Token *tok, const std::map<nonneg i
     if (tok->isName() || tok->str() == ".") {
         while (tok && tok->str() == ".")
             tok = tok->astOperand2();
-        const auto it = utils::as_const(variableValue).find(tok ? tok->varId() : ~0U);
+        const auto it = tok ? variableValue.find(tok->varId()) : variableValue.end();
         if (it != variableValue.end()) {
             *alwaysTrue = (it->second != 0LL);
             *alwaysFalse = (it->second == 0LL);
@@ -330,7 +330,7 @@ static void conditionAlwaysTrueOrFalse(const Token *tok, const std::map<nonneg i
         while (vartok && vartok->str() == ".")
             vartok = vartok->astOperand2();
 
-        const auto it = utils::as_const(variableValue).find(vartok ? vartok->varId() : ~0U);
+        const auto it = vartok ? variableValue.find(vartok->varId()) : variableValue.end();
         if (it == variableValue.end())
             return;
 
@@ -844,7 +844,8 @@ bool CheckUninitVar::checkScopeForVariable(const Token *tok, const Variable& var
                 }
 
                 // assume that variable is assigned
-                return true;
+                if (!Token::simpleMatch(tok->astParent(), "<<"))
+                    return true;
             }
         }
     }
@@ -906,7 +907,7 @@ bool CheckUninitVar::checkIfForWhileHead(const Token *startparentheses, const Va
                     continue;
                 uninitvarError(errorToken, errorToken->expressionString(), alloc);
             }
-            return true;
+            return !Token::Match(tok->astParent(), "!|%comp%");
         }
         // skip sizeof / offsetof
         if (isUnevaluated(tok))
@@ -965,7 +966,7 @@ const Token* CheckUninitVar::checkLoopBodyRecursive(const Token *start, const Va
                 return nullptr;
             }
 
-            bool alwaysReturnsUnused;
+            bool alwaysReturnsUnused = false;
             const Token *errorToken1 = checkLoopBodyRecursive(tok, var, alloc, membervar, bailout, alwaysReturnsUnused);
             tok = tok->link();
             if (Token::simpleMatch(tok, "} else {")) {
@@ -1242,7 +1243,7 @@ const Token* CheckUninitVar::isVariableUsage(const Token *vartok, const Library&
             return nullptr;
     }
     if (alloc != NO_ALLOC) {
-        if (Token::Match(valueExpr->astParent(), "%comp%|%oror%|&&|?|!"))
+        if (Token::Match(valueExpr->astParent(), "%comp%|%oror%|&&|?|!|%"))
             return nullptr;
         if (Token::Match(valueExpr->astParent(), "%or%|&") && valueExpr->astParent()->isBinaryOp())
             return nullptr;
@@ -1540,7 +1541,7 @@ bool CheckUninitVar::isMemberVariableUsage(const Token *tok, bool isPointer, All
         return true;
 
     // TODO: this used to be experimental - enable or remove see #5586
-    if ((false) && // NOLINT(readability-simplify-boolean-expr)
+    if ((false) && // NOLINT(readability-simplify-boolean-expr,readability-redundant-parentheses)
         !isPointer &&
         Token::Match(tok->tokAt(-2), "[(,] & %name% [,)]") &&
         isVariableUsage(tok, isPointer, alloc))

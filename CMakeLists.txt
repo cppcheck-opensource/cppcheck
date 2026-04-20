@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.13)
-project(Cppcheck VERSION 2.18.99 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.22)
+project(Cppcheck VERSION 2.20.99 LANGUAGES CXX)
 
 include(cmake/options.cmake)
 
@@ -11,11 +11,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(GNUInstallDirs)
+include(CTest)
 
 include(cmake/compilerCheck.cmake)
 include(cmake/versions.cmake)
 include(cmake/findDependencies.cmake)
 include(cmake/compileroptions.cmake)
+include(cmake/includechecks.cmake)
 include(cmake/compilerDefinitions.cmake)
 include(cmake/buildFiles.cmake)
 if(BUILD_GUI)
@@ -76,10 +78,6 @@ endif()
 # - "tags" target
 # - Cygwin handling
 # - MinGW handling
-
-if(BUILD_TESTS)
-    enable_testing()
-endif()
 
 add_custom_target(copy_cfg ALL
     ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/cfg"

@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -109,7 +109,7 @@ private:
     /**
      * Print help text to the console.
      */
-    void printHelp(bool premium) const;
+    void printHelp() const;
 
     template<typename T>
     bool parseNumberArg(const char* const arg, std::size_t offset, T& num, bool mustBePositive = false)

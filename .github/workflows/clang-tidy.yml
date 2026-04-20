@@ -43,8 +43,8 @@ jobs:
           sudo apt-get purge --auto-remove llvm python3-lldb-14 llvm-14
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
-          sudo ./llvm.sh 21
-          sudo apt-get install -y clang-tidy-21
+          sudo ./llvm.sh 22
+          sudo apt-get install -y clang-tidy-22
 
       - name: Install Qt ${{ env.QT_VERSION }}
         uses: jurplel/install-qt-action@v4
@@ -57,14 +57,14 @@ jobs:
 
       - name: Verify clang-tidy configuration
         run: |
-          clang-tidy-21 --verify-config
+          clang-tidy-22 --verify-config
 
       - name: Prepare CMake
         run: |
-          cmake -S . -B cmake.output -G "Unix Makefiles" -DHAVE_RULES=On -DBUILD_TESTS=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCPPCHK_GLIBCXX_DEBUG=Off -DWARNINGS_ARE_ERRORS=On
+          cmake -S . -B cmake.output -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCPPCHK_GLIBCXX_DEBUG=Off -DCMAKE_COMPILE_WARNING_AS_ERROR=On
         env:
-          CC: clang-21
-          CXX: clang++-21
+          CC: clang-22
+          CXX: clang++-22
 
       - name: Prepare CMake dependencies
         run: |

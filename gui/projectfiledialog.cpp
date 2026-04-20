@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,12 +40,10 @@
 #include <QByteArray>
 #include <QCheckBox>
 #include <QComboBox>
-#include <QCoreApplication>
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QFlags>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
@@ -69,6 +67,7 @@ const char CODING_STANDARD_MISRA_CPP_2023[] = "misra-cpp-2023";
 const char CODING_STANDARD_CERT_C[] = "cert-c-2016";
 const char CODING_STANDARD_CERT_CPP[] = "cert-cpp-2016";
 const char CODING_STANDARD_AUTOSAR[] = "autosar";
+const char CODING_STANDARD_SAFETY_PROFILES[] = "safety-profiles";
 
 /** Return paths from QListWidget */
 static QStringList getPaths(const QListWidget *list)
@@ -112,7 +111,7 @@ static std::string suppressionAsText(const SuppressionList::Suppression& s)
 
 QStringList ProjectFileDialog::getProjectConfigs(const QString &fileName)
 {
-    if (!fileName.endsWith(".sln") && !fileName.endsWith(".vcxproj"))
+    if (!fileName.endsWith(".sln") && !fileName.endsWith(".slnx") && !fileName.endsWith(".vcxproj"))
         return QStringList();
     QStringList ret;
     ImportProject importer;
@@ -142,22 +141,10 @@ ProjectFileDialog::ProjectFileDialog(ProjectFile *projectFile, bool premium, QWi
 
     mUI->premiumLicense->setVisible(false);
 
-    // Checkboxes for the libraries..
-    const QString applicationFilePath = QCoreApplication::applicationFilePath();
-    const QString appPath = QFileInfo(applicationFilePath).canonicalPath();
-    const QString datadir = getDataDir();
-    QStringList searchPaths;
-    searchPaths << appPath << appPath + "/cfg" << inf.canonicalPath();
-#ifdef FILESDIR
-    if (FILESDIR[0])
-        searchPaths << FILESDIR << FILESDIR "/cfg";
-#endif
-    if (!datadir.isEmpty())
-        searchPaths << datadir << datadir + "/cfg";
     QStringList libs;
     // Search the std.cfg first since other libraries could depend on it
     QString stdLibraryFilename;
-    for (const QString &sp : searchPaths) {
+    for (const QString &sp : projectFile->getSearchPaths("cfg")) {
         QDir dir(sp);
         dir.setSorting(QDir::Name);
         dir.setNameFilters(QStringList("*.cfg"));
@@ -179,7 +166,7 @@ ProjectFileDialog::ProjectFileDialog(ProjectFile *projectFile, bool premium, QWi
             break;
     }
     // Search other libraries
-    for (const QString &sp : searchPaths) {
+    for (const QString &sp : projectFile->getSearchPaths("cfg")) {
         QDir dir(sp);
         dir.setSorting(QDir::Name);
         dir.setNameFilters(QStringList("*.cfg"));
@@ -207,7 +194,7 @@ ProjectFileDialog::ProjectFileDialog(ProjectFile *projectFile, bool premium, QWi
     }
     libs.sort();
     mUI->mLibraries->clear();
-    for (const QString &lib : libs) {
+    for (const QString &lib : utils::as_const(libs)) {
         auto* item = new QListWidgetItem(lib, mUI->mLibraries);
         item->setFlags(item->flags() | Qt::ItemIsUserCheckable); // set checkable flag
         item->setCheckState(Qt::Unchecked); // AND initialize check state
@@ -218,22 +205,15 @@ ProjectFileDialog::ProjectFileDialog(ProjectFile *projectFile, bool premium, QWi
     for (const Platform::Type builtinPlatform : builtinPlatforms)
         mUI->mComboBoxPlatform->addItem(platforms.get(builtinPlatform).mTitle);
     QStringList platformFiles;
-    for (QString sp : searchPaths) {
-        if (sp.endsWith("/cfg"))
-            sp = sp.mid(0,sp.length()-3) + "platforms";
+    for (const QString& sp : projectFile->getSearchPaths("platforms")) {
         QDir dir(sp);
         dir.setSorting(QDir::Name);
         dir.setNameFilters(QStringList("*.xml"));
         dir.setFilter(QDir::Files | QDir::NoDotAndDotDot);
         for (const QFileInfo& item : dir.entryInfoList()) {
             const QString platformFile = item.fileName();
-
-            const std::vector<std::string> paths = {
-                Path::getCurrentPath(), // TODO: do we want to look in CWD?
-                applicationFilePath.toStdString(),
-            };
             Platform plat2;
-            if (!plat2.loadFromFile(paths, platformFile.toStdString()))
+            if (!plat2.loadFromFile({sp.toStdString()}, platformFile.toStdString()))
                 continue;
 
             if (platformFiles.indexOf(platformFile) == -1)
@@ -255,6 +235,7 @@ ProjectFileDialog::ProjectFileDialog(ProjectFile *projectFile, bool premium, QWi
     connect(mUI->mBtnBrowseBuildDir, &QPushButton::clicked, this, &ProjectFileDialog::browseBuildDir);
     connect(mUI->mBtnClearImportProject, &QPushButton::clicked, this, &ProjectFileDialog::clearImportProject);
     connect(mUI->mBtnBrowseImportProject, &QPushButton::clicked, this, &ProjectFileDialog::browseImportProject);
+    connect(mUI->mBtnBrowseUserInclude, &QPushButton::clicked, this, &ProjectFileDialog::browseUserInclude);
     connect(mUI->mBtnAddCheckPath, SIGNAL(clicked()), this, SLOT(addCheckPath()));
     connect(mUI->mBtnEditCheckPath, &QPushButton::clicked, this, &ProjectFileDialog::editCheckPath);
     connect(mUI->mBtnRemoveCheckPath, &QPushButton::clicked, this, &ProjectFileDialog::removeCheckPath);
@@ -323,6 +304,7 @@ void ProjectFileDialog::loadFromProjectFile(const ProjectFile *projectFile)
     setIncludepaths(projectFile->getIncludeDirs());
     setDefines(projectFile->getDefines());
     setUndefines(projectFile->getUndefines());
+    mUI->mEditUserInclude->setText(projectFile->getUserInclude());
     setCheckPaths(projectFile->getCheckPaths());
     setImportProject(projectFile->getImportProject());
     mUI->mChkAllVsConfigs->setChecked(projectFile->getAnalyzeAllVsConfigs());
@@ -414,8 +396,8 @@ void ProjectFileDialog::loadFromProjectFile(const ProjectFile *projectFile)
         mUI->mMisraC->setText("Misra C");
     else {
         mUI->mMisraC->setText("Misra C 2012  " + tr("Note: Open source Cppcheck does not fully implement Misra C 2012"));
-        updateAddonCheckBox(mUI->mMisraC, projectFile, dataDir, ADDON_MISRA);
     }
+    updateAddonCheckBox(mUI->mMisraC, projectFile, dataDir, ADDON_MISRA);
     mUI->mMisraVersion->setEnabled(mUI->mMisraC->isChecked());
     connect(mUI->mMisraC, &QCheckBox::toggled, mUI->mMisraVersion, &QComboBox::setEnabled);
 
@@ -459,6 +441,7 @@ void ProjectFileDialog::loadFromProjectFile(const ProjectFile *projectFile)
     mUI->mCertC2016->setChecked(mPremium && projectFile->getCodingStandards().contains(CODING_STANDARD_CERT_C));
     mUI->mCertCpp2016->setChecked(mPremium && projectFile->getCodingStandards().contains(CODING_STANDARD_CERT_CPP));
     mUI->mAutosar->setChecked(mPremium && projectFile->getCodingStandards().contains(CODING_STANDARD_AUTOSAR));
+    mUI->mSafetyProfiles->setChecked(mPremium && projectFile->getCodingStandards().contains(CODING_STANDARD_SAFETY_PROFILES));
 
     if (projectFile->getCertIntPrecision() <= 0)
         mUI->mEditCertIntPrecision->setText(QString());
@@ -468,6 +451,7 @@ void ProjectFileDialog::loadFromProjectFile(const ProjectFile *projectFile)
     mUI->mCertC2016->setEnabled(mPremium);
     mUI->mCertCpp2016->setEnabled(mPremium);
     mUI->mAutosar->setEnabled(mPremium);
+    mUI->mSafetyProfiles->setEnabled(mPremium);
     mUI->mLabelCertIntPrecision->setVisible(mPremium);
     mUI->mEditCertIntPrecision->setVisible(mPremium);
     mUI->mBughunting->setChecked(mPremium && projectFile->getBughunting());
@@ -499,6 +483,7 @@ void ProjectFileDialog::saveToProjectFile(ProjectFile *projectFile) const
     projectFile->setIncludes(getIncludePaths());
     projectFile->setDefines(getDefines());
     projectFile->setUndefines(getUndefines());
+    projectFile->setUserInclude(mUI->mEditUserInclude->text());
     projectFile->setCheckPaths(getCheckPaths());
     projectFile->setExcludedPaths(getExcludedPaths());
     projectFile->setLibraries(getLibraries());
@@ -560,6 +545,8 @@ void ProjectFileDialog::saveToProjectFile(ProjectFile *projectFile) const
         codingStandards << CODING_STANDARD_MISRA_CPP_2023;
     if (mUI->mAutosar->isChecked())
         codingStandards << CODING_STANDARD_AUTOSAR;
+    if (mUI->mSafetyProfiles->isChecked())
+        codingStandards << CODING_STANDARD_SAFETY_PROFILES;
     projectFile->setCodingStandards(std::move(codingStandards));
     projectFile->setCertIntPrecision(mUI->mEditCertIntPrecision->text().toInt());
     projectFile->setBughunting(mUI->mBughunting->isChecked());
@@ -612,7 +599,7 @@ void ProjectFileDialog::updatePathsAndDefines()
 {
     const QString &fileName = mUI->mEditImportProject->text();
     const bool importProject = !fileName.isEmpty();
-    const bool hasConfigs = fileName.endsWith(".sln") || fileName.endsWith(".vcxproj");
+    const bool hasConfigs = fileName.endsWith(".sln") || fileName.endsWith(".slnx") || fileName.endsWith(".vcxproj");
     mUI->mBtnClearImportProject->setEnabled(importProject);
     mUI->mListCheckPaths->setEnabled(!importProject);
     mUI->mListIncludeDirs->setEnabled(!importProject);
@@ -642,7 +629,7 @@ void ProjectFileDialog::browseImportProject()
     const QFileInfo inf(mProjectFile->getFilename());
     const QDir &dir = inf.absoluteDir();
     QMap<QString,QString> filters;
-    filters[tr("Visual Studio")] = "*.sln *.vcxproj";
+    filters[tr("Visual Studio")] = "*.sln *.slnx *.vcxproj";
     filters[tr("Compile database")] = "compile_commands.json";
     filters[tr("Borland C++ Builder 6")] = "*.bpr";
     QString fileName = QFileDialog::getOpenFileName(this, tr("Import Project"),
@@ -656,6 +643,21 @@ void ProjectFileDialog::browseImportProject()
             QListWidgetItem *item = mUI->mListVsConfigs->item(row);
             item->setCheckState(Qt::Checked);
         }
+    }
+}
+
+void ProjectFileDialog::browseUserInclude()
+{
+    const QFileInfo inf(mProjectFile->getFilename());
+    const QDir &dir = inf.absoluteDir();
+    QMap<QString,QString> filters;
+    filters[tr("C/C++ header")] = "*.h";
+    filters[tr("All files")] = "*.*";
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Include file"),
+                                                    dir.canonicalPath(),
+                                                    toFilterString(filters));
+    if (!fileName.isEmpty()) {
+        mUI->mEditUserInclude->setText(dir.relativeFilePath(fileName));
     }
 }
 

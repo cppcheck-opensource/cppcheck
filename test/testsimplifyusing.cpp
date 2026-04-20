@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #include "helpers.h"
 #include "platform.h"
 #include "settings.h"
+#include "standards.h"
 #include "token.h"
 #include "utils.h"
 
@@ -73,6 +74,9 @@ private:
         TEST_CASE(simplifyUsing34);
         TEST_CASE(simplifyUsing35);
         TEST_CASE(simplifyUsing36);
+        TEST_CASE(simplifyUsing37);
+        TEST_CASE(simplifyUsing38);
+        TEST_CASE(simplifyUsing39);
 
         TEST_CASE(simplifyUsing8970);
         TEST_CASE(simplifyUsing8971);
@@ -104,12 +108,14 @@ private:
         Platform::Type type = Platform::Type::Native;
         bool debugwarnings = true;
         bool preprocess = false;
+        Standards::cppstd_t cppstd = Standards::CPPLatest;
     };
 
 #define tok(...) tok_(__FILE__, __LINE__, __VA_ARGS__)
     template<size_t size>
     std::string tok_(const char* file, int line, const char (&code)[size], const TokOptions& options = make_default_obj()) {
-        const Settings settings = settingsBuilder(settings0).certainty(Certainty::inconclusive).debugwarnings(options.debugwarnings).platform(options.type).build();
+        const Settings settings = settingsBuilder(settings0).certainty(Certainty::inconclusive).debugwarnings(options.debugwarnings)
+                                  .platform(options.type).cpp(options.cppstd).build();
 
         if (options.preprocess) {
             SimpleTokenizer2 tokenizer(settings, *this, code, "test.cpp");
@@ -879,6 +885,57 @@ private:
                             "int c = B<int>::a;\n";
         const char expected[] = "int c ; c = B < int > :: a ;";
         ASSERT_EQUALS(expected, tok(code));
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void simplifyUsing37() {
+        const char code1[] = "using fp1_t = int(*)(int);\n"
+                             "using fp2_t = int(* const)(int);\n"
+                             "fp1_t fp1;\n"
+                             "fp2_t fp2;\n";
+        const char expected1[] = "int ( * fp1 ) ( int ) ; int ( * const fp2 ) ( int ) ;";
+        ASSERT_EQUALS(expected1, tok(code1));
+        ASSERT_EQUALS("", errout_str());
+
+        const char code2[] = "using f_t = int(int);\n"
+                             "f_t* fp1;\n"
+                             "f_t* const fp2;\n";
+        const char expected2[] = "int ( * fp1 ) ( int ) ; int ( * const fp2 ) ( int ) ;";
+        ASSERT_EQUALS(expected2, tok(code2));
+        ASSERT_EQUALS("", errout_str());
+
+        const char code3[] = "using FP = std::string (*)();\n" // #14421
+                             "using FPC = std::string (*const)();\n"
+                             "FP fp;\n"
+                             "FPC fpc{};\n";
+        const char expected3[] = "std :: string ( * fp ) ( ) ; std :: string ( * const fpc ) ( ) { } ;";
+        ASSERT_EQUALS(expected3, tok(code3));
+        ASSERT_EQUALS("", errout_str());
+
+        const char code4[] = "using F = void(*)(char);\n" // #14429
+                             "F f(int);\n";
+        const char expected4[] = "void * f ( char ) ;";
+        ASSERT_EQUALS(expected4, tok(code4));
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void simplifyUsing38() {
+        const char code[] = "using std::begin;\n" // #14424
+                            "using std::end;\n"
+                            "Unknown begin;\n"
+                            "int end;\n";
+        const char expected[] = "Unknown begin ; int end ;";
+        ASSERT_EQUALS(expected, tok(code));
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void simplifyUsing39() {
+        const char code[] = "using std::wstring;\n" // #14578
+                            "wstring ws;";
+        const char expected[] = "std :: wstring ws ;";
+        ASSERT_EQUALS(expected, tok(code));
+        ASSERT_EQUALS("", errout_str());
+        ASSERT_EQUALS(expected, tok(code, dinit(TokOptions, $.cppstd = Standards::CPP03)));
         ASSERT_EQUALS("", errout_str());
     }
 

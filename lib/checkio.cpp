@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -674,7 +674,6 @@ void CheckIO::checkFormatString(const Token * const tok,
                     ++i;
                 }
                 if (scanf_s && !skip) {
-                    numSecure++;
                     if (argListTok) {
                         argListTok = argListTok->nextArgument();
                     }
@@ -722,7 +721,7 @@ void CheckIO::checkFormatString(const Token * const tok,
                                     if (!(argInfo.isArrayOrPointer() && argInfo.element && !argInfo.typeToken->isStandardType()))
                                         invalidScanfArgTypeError_s(tok, numFormat, specifier, &argInfo);
                                 }
-                                if (scanf_s && argInfo.typeToken) {
+                                if (scanf_s) {
                                     numSecure++;
                                     if (argListTok) {
                                         argListTok = argListTok->nextArgument();
@@ -1681,7 +1680,7 @@ bool CheckIO::ArgumentInfo::isArrayOrPointer() const
 bool CheckIO::ArgumentInfo::isComplexType() const
 {
     if (variableInfo->type())
-        return (true);
+        return true;
 
     const Token* varTypeTok = typeToken;
     if (varTypeTok->str() == "std")

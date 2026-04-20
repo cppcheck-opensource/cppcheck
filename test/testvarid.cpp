@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -101,6 +101,7 @@ private:
         TEST_CASE(varid69);
         TEST_CASE(varid70); // #12660 - function
         TEST_CASE(varid71); // #12676 - wrong varid in uninstantiated templated constructor
+        TEST_CASE(varid72);
         TEST_CASE(varid_for_1);
         TEST_CASE(varid_for_2);
         TEST_CASE(varid_for_3);
@@ -148,6 +149,8 @@ private:
         TEST_CASE(varid_in_class26);
         TEST_CASE(varid_in_class27);
         TEST_CASE(varid_in_class28);
+        TEST_CASE(varid_in_class29);
+        TEST_CASE(varid_in_class30);
         TEST_CASE(varid_namespace_1);   // #7272
         TEST_CASE(varid_namespace_2);   // #7000
         TEST_CASE(varid_namespace_3);   // #8627
@@ -1399,6 +1402,12 @@ private:
         ASSERT_EQUALS(expected, tokenize(code));
     }
 
+    void varid72() {
+        const char code1[] = "static_assert(true && true);\n"; // #14386
+        const char expected1[] = "1: static_assert ( true && true ) ;\n";
+        ASSERT_EQUALS(expected1, tokenize(code1));
+    }
+
     void varid_for_1() {
         const char code[] = "void foo(int a, int b) {\n"
                             "  for (int a=1,b=2;;) {}\n"
@@ -2370,6 +2379,40 @@ private:
                                 "4: } ;\n"
                                 "5: bool b@1 ; b@1 = false ;\n"
                                 "6: } ;\n";
+        ASSERT_EQUALS(expected, tokenize(code));
+    }
+
+    void varid_in_class29() {
+        const char code[] = "struct S {\n" // #14486
+                            "    const int& r;\n"
+                            "    explicit S(const int& r) : r(r) {}\n"
+                            "    static void f() {\n"
+                            "        struct T : std::vector<int> {\n"
+                            "            bool g() const { return empty(); }\n"
+                            "        };\n"
+                            "    }\n"
+                            "};\n";
+        const char expected[] = "1: struct S {\n"
+                                "2: const int & r@1 ;\n"
+                                "3: explicit S ( const int & r@2 ) : r@1 ( r@2 ) { }\n"
+                                "4: static void f ( ) {\n"
+                                "5: struct T : std :: vector < int > {\n"
+                                "6: bool g ( ) const { return empty ( ) ; }\n"
+                                "7: } ;\n"
+                                "8: }\n"
+                                "9: } ;\n";
+        ASSERT_EQUALS(expected, tokenize(code));
+    }
+
+    void varid_in_class30() {
+        const char code[] = "void* p;\n" // #13443
+                            "struct S {\n"
+                            "    void p();\n"
+                            "};\n";
+        const char expected[] = "1: void * p@1 ;\n"
+                                "2: struct S {\n"
+                                "3: void p ( ) ;\n"
+                                "4: } ;\n";
         ASSERT_EQUALS(expected, tokenize(code));
     }
 
@@ -3490,6 +3533,16 @@ private:
 
         const char code3[] = "void f (void (*g) (int i, IN int n)) {}\n";
         ASSERT_EQUALS("1: void f ( void ( * g@1 ) ( int , IN int ) ) { }\n", tokenize(code3));
+
+        const char code4[] = "void f() {\n" // #14439
+                             "    int* p;\n"
+                             "    void (*a[1])(int* p) = { 0 };\n"
+                             "}\n";
+        ASSERT_EQUALS("1: void f ( ) {\n"
+                      "2: int * p@1 ;\n"
+                      "3: void ( * a@2 [ 1 ] ) ( int * p ) = { 0 } ;\n"
+                      "4: }\n",
+                      tokenize(code4));
     }
 
     void varid_alignas() {

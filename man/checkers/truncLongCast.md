@@ -8,7 +8,7 @@
 ## Description
 
 This checker warns when a calculation has type 'int' and it could potentially overflow that and the result is implicitly or explicitly converted to a larger
-integer type after the loss of information has already occured.
+integer type after the loss of information has already occurred.
 
 ## Motivation
 

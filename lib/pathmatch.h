@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -169,10 +169,10 @@ public:
         return pattern;
     }
 
-private:
-    friend class TestPathMatch;
+protected:
     class PathIterator;
 
+private:
     /* List of patterns */
     std::vector<std::string> mPatterns;
     /* Base path to with patterns and paths are relative */
@@ -324,7 +324,7 @@ public:
         return c == '/' || (syntax == Syntax::windows && c == '\\');
     }
 
-    /* Syntax helper, check if a chracter is a drive letter */
+    /* Syntax helper, check if a character is a drive letter */
     static bool isdrive(char c)
     {
         return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');

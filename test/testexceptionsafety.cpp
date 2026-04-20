@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -356,6 +356,21 @@ private:
         check("const char *func() noexcept { return 0; }\n"
               "const char *func1() noexcept { try { throw 1; } catch(...) {} return 0; }");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct A {\n" // #14526
+              "    void f(int = 0, int = 1) { throw 0; }\n"
+              "};\n"
+              "void g() noexcept {\n"
+              "    A a;\n"
+              "    a.f();\n"
+              "}\n"
+              "void h() noexcept {\n"
+              "    A a;\n"
+              "    a.f(1, 3);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:6:7]: (error) Unhandled exception thrown in function declared not to throw exceptions. [throwInNoexceptFunction]\n"
+                      "[test.cpp:10:7]: (error) Unhandled exception thrown in function declared not to throw exceptions. [throwInNoexceptFunction]\n",
+                      errout_str());
     }
 
     void nothrowThrow() {
@@ -518,6 +533,15 @@ private:
               "    }\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("void f(int i) {\n" // #9380
+              "    throw i;\n"
+              "}\n"
+              "int main() {\n"
+              "    f(123);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:5]: (error) Unhandled exception thrown in function that is an entry point. [throwInEntryPoint]\n",
+                      errout_str());
     }
 };
 

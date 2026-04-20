@@ -3,7 +3,7 @@ if(BUILD_GUI)
     if(WITH_QCHART)
         list(APPEND qt_components Charts)
     endif()
-    if(BUILD_TESTS)
+    if(BUILD_TESTING)
         list(APPEND qt_components Test)
     endif()
     find_package(Qt6 COMPONENTS ${qt_components} REQUIRED)
@@ -12,15 +12,6 @@ if(BUILD_GUI)
         # TODO: remove fallback
         message(WARNING "'Qt6Core_VERSION' is not set - using 6.0.0 as fallback")
         set(QT_VERSION "6.0.0")
-    endif()
-    if(MSVC)
-        # disable Visual Studio C++ memory leak detection since it causes compiler errors with Qt 6
-        # D:\a\cppcheck\Qt\6.2.4\msvc2019_64\include\QtCore/qhash.h(179,15): warning C4003: not enough arguments for function-like macro invocation 'free' [D:\a\cppcheck\cppcheck\build\gui\cppcheck-gui.vcxproj]
-        # D:\a\cppcheck\Qt\6.2.4\msvc2019_64\include\QtCore/qhash.h(179,15): error C2059: syntax error: ',' [D:\a\cppcheck\cppcheck\build\gui\cppcheck-gui.vcxproj]
-        # this is supposed to be fixed according to the following tickets but it still happens
-        # https://bugreports.qt.io/browse/QTBUG-40575
-        # https://bugreports.qt.io/browse/QTBUG-86395
-        set(DISABLE_CRTDBG_MAP_ALLOC ON)
     endif()
 
     if(BUILD_ONLINE_HELP)
@@ -43,6 +34,8 @@ if(HAVE_RULES)
     if(NOT PCRE_LIBRARY OR NOT PCRE_INCLUDE)
         message(FATAL_ERROR "pcre dependency for RULES has not been found")
     endif()
+else()
+    set(PCRE_LIBRARY "")
 endif()
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -56,7 +49,8 @@ if(NOT Python_Interpreter_FOUND)
     endif()
 else()
     if(${Python_VERSION} VERSION_LESS 3.7)
-        message(FATAL_ERROR "The minimum supported Python version is 3.7 - found ${Python_VERSION}")
+        message(WARNING "The minimum supported Python version is 3.7, found ${Python_VERSION} - disabling matchcompiler.")
+        set(USE_MATCHCOMPILER_OPT "Off")
     endif()
 endif()
 
@@ -79,6 +73,9 @@ if(NOT USE_BUNDLED_TINYXML2)
 endif()
 
 find_package(Threads REQUIRED)
+if(NOT DEFINED CMAKE_THREAD_LIBS_INIT)
+    set(CMAKE_THREAD_LIBS_INIT "")
+endif()
 
 if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.30")
     # avoid legacy warning about Boost lookup in CMake
@@ -99,7 +96,7 @@ if(USE_BOOST)
         endif()
         set(Boost_FOUND ON)
         set(Boost_INCLUDE_DIRS "${BOOST_INCLUDEDIR}")
-        # TODO: set Boost_VERSION_STRING
+        set(Boost_VERSION_STRING "")  # TODO: set proper value
     elseif(USE_BOOST STREQUAL "Auto")
         find_package(Boost)
     else()

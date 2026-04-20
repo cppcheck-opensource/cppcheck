@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1674,6 +1674,7 @@ private:
         TEST_CASE(assign3);
         TEST_CASE(assign4); // #11019
         TEST_CASE(assign5);
+        TEST_CASE(assign6);
 
         // Failed allocation
         TEST_CASE(failedAllocation);
@@ -1955,6 +1956,15 @@ private:
         ASSERT_EQUALS("", errout_str());
     }
 
+    void assign6() {
+        check("struct S { S* p; };\n" // #14524
+              "void f() {\n"
+              "    S s;\n"
+              "    s.p = static_cast<S*>(malloc(sizeof(S)));\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:1]: (error) Memory leak: s.p [memleak]\n", errout_str());
+    }
+
     void failedAllocation() {
         check("static struct ABC * foo()\n"
               "{\n"
@@ -2054,7 +2064,22 @@ private:
               "    }\n"
               "    return g(&a);\n"
               "}\n");
-        TODO_ASSERT_EQUALS("", "[test.cpp:9:9]: (error) Memory leak: a.str [memleak]\n", errout_str());
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S { int *p; };\n"
+              "S f(int i) {\n"
+              "    S s;\n"
+              "    switch(i) {\n"
+              "    case 1:\n"
+              "        s.p = new int;\n"
+              "        break;\n"
+              "    default: {\n"
+              "        return {};\n"
+              "    }\n"
+              "    }\n"
+              "    return s;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void ifelse() {
@@ -2752,6 +2777,18 @@ private:
               "    if (std::freopen(NULL, \"w+b\", fp2) == NULL) {}\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("void f() {\n" // #14172
+              "    if (malloc(4) == nullptr) {}\n"
+              "    if (::malloc(4) == nullptr) {}\n"
+              "    if (std::malloc(4) == nullptr) {}\n"
+              "    if (::std::malloc(4) == nullptr) {}\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:9]: (error) Return value of allocation function 'malloc' is not stored. [leakReturnValNotUsed]\n"
+                      "[test.cpp:3:11]: (error) Return value of allocation function 'malloc' is not stored. [leakReturnValNotUsed]\n"
+                      "[test.cpp:4:14]: (error) Return value of allocation function 'malloc' is not stored. [leakReturnValNotUsed]\n"
+                      "[test.cpp:5:16]: (error) Return value of allocation function 'malloc' is not stored. [leakReturnValNotUsed]\n",
+                      errout_str());
     }
 
     void smartPointerFunctionParam() {

@@ -53,7 +53,7 @@ jobs:
         run: |
           rem TODO: enable rules?
           rem specify Release build so matchcompiler is used
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DBUILD_ONLINE_HELP=On -DCMAKE_INSTALL_PREFIX=cppcheck-cmake-install -DCMAKE_COMPILE_WARNING_AS_ERROR=On || exit /b !errorlevel!
+          cmake -S . -B build -Werror=dev -DCMAKE_BUILD_TYPE=Release -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DBUILD_TESTING=Off -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DBUILD_ONLINE_HELP=On -DCMAKE_INSTALL_PREFIX=cppcheck-cmake-install -DCMAKE_COMPILE_WARNING_AS_ERROR=On || exit /b !errorlevel!
 
       - name: Build GUI release
         run: |
@@ -75,7 +75,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-2022, windows-2025]
-        cxxstd: [14, 17]
+        cxxstd: [14, 17, 20]
       fail-fast: false
 
     runs-on: ${{ matrix.os }}
@@ -92,11 +92,53 @@ jobs:
 
       - name: Run CMake
         run: |
-          cmake -S . -B build.cxxstd -G "Visual Studio 17 2022" -A x64 -DCMAKE_CXX_STANDARD=${{ matrix.cxxstd }} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On || exit /b !errorlevel!
+          cmake -S . -B build.cxxstd -Werror=dev -G "Visual Studio 17 2022" -A x64 -DCMAKE_CXX_STANDARD=${{ matrix.cxxstd }} -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On || exit /b !errorlevel!
 
       - name: Build
         run: |
           cmake --build build.cxxstd --config Debug || exit /b !errorlevel!
+
+  build_cmake_minimum:
+
+    runs-on: windows-2022  # use the oldest available runner
+
+    env:
+      CMAKE_VERSION: 3.22
+      CMAKE_VERSION_FULL: 3.22.6
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install CMake
+        run: |
+          curl -fsSL https://cmake.org/files/v${{ env.CMAKE_VERSION }}/cmake-${{ env.CMAKE_VERSION_FULL }}-windows-x86_64.zip -o cmake.zip || exit /b !errorlevel!
+          7z x cmake.zip || exit /b !errorlevel!
+
+      - name: Set up Visual Studio environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: 6.10.0
+          modules: 'qtcharts'
+          setup-python: 'false'
+          cache: true
+          aqtversion: '==3.1.*'  # TODO: remove when aqtinstall 3.2.2 is available
+
+      - name: Run CMake (without GUI)
+        run: |
+          :: TODO: enable DHAVE_RULES?
+          cmake-${{ env.CMAKE_VERSION_FULL }}-windows-x86_64\bin\cmake.exe -S . -B cmake.output -G "Visual Studio 17 2022" -A x64 -DHAVE_RULES=Off -DBUILD_TESTING=On
+
+      - name: Run CMake (with GUI)
+        run: |
+          :: TODO: enable DHAVE_RULES?
+          cmake-${{ env.CMAKE_VERSION_FULL }}-windows-x86_64\bin\cmake.exe -S . -B cmake.output.gui -G "Visual Studio 17 2022" -A x64 -DHAVE_RULES=Off -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On
 
   build:
     strategy:
@@ -177,7 +219,7 @@ jobs:
 
       - name: Run Debug test
         if: matrix.config == 'debug'
-        run: .\bin\debug\testrunner.exe || exit /b !errorlevel!
+        run: .\bin\debug\testrunner.exe -t || exit /b !errorlevel!
 
       - name: Build CLI release configuration using MSBuild
         if: matrix.config == 'release'
@@ -230,7 +272,7 @@ jobs:
       - name: Test SEH wrapper
         if: matrix.config == 'release'
         run: |
-          cmake -S . -B build.cmake.seh -DBUILD_TESTS=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On || exit /b !errorlevel!
+          cmake -S . -B build.cmake.seh -Werror=dev -DBUILD_TESTING=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On || exit /b !errorlevel!
           cmake --build build.cmake.seh --target test-sehwrapper || exit /b !errorlevel!
           :: TODO: how to run this without copying the file?
           copy build.cmake.seh\bin\Debug\test-sehwrapper.exe . || exit /b !errorlevel!

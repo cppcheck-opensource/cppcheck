@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -112,7 +112,7 @@ std::string CTU::FileInfo::FunctionCall::toXmlString() const
         out << ">\n";
         for (const ErrorMessage::FileLocation &loc : callValuePath)
             out << "  <path"
-                << " " << ATTR_LOC_FILENAME << "=\"" << ErrorLogger::toxml(loc.getfile()) << "\""
+                << " " << ATTR_LOC_FILENAME << "=\"" << ErrorLogger::toxml(loc.getfile(false)) << "\""
                 << " " << ATTR_LOC_LINENR << "=\"" << loc.line << "\""
                 << " " << ATTR_LOC_COLUMN << "=\"" << loc.column << "\""
                 << " " << ATTR_INFO << "=\"" << ErrorLogger::toxml(loc.getinfo()) << "\"/>\n";
@@ -512,7 +512,7 @@ static bool findPath(const std::string &callId,
     if (index >= maxCtuDepth)
         return false; // TODO: add bailout message?
 
-    const auto it = utils::as_const(callsMap).find(callId);
+    const auto it = callsMap.find(callId);
     if (it == callsMap.end())
         return false;
 
@@ -559,6 +559,20 @@ static bool findPath(const std::string &callId,
     return false;
 }
 
+static std::string getInvalidValueString(CTU::FileInfo::InvalidValueType invalidValue)
+{
+    using InvalidValueType = CTU::FileInfo::InvalidValueType;
+    switch (invalidValue) {
+    case InvalidValueType::null:
+        return "null";
+    case InvalidValueType::uninit:
+        return "uninitialized";
+    case InvalidValueType::bufferOverflow:
+        return "accessed out of bounds";
+    }
+    cppcheck::unreachable();
+}
+
 std::list<ErrorMessage::FileLocation> CTU::FileInfo::getErrorPath(InvalidValueType invalidValue,
                                                                   const CTU::FileInfo::UnsafeUsage &unsafeUsage,
                                                                   const std::map<std::string, std::list<const CTU::FileInfo::CallBase *>> &callsMap,
@@ -581,7 +595,7 @@ std::list<ErrorMessage::FileLocation> CTU::FileInfo::getErrorPath(InvalidValueTy
 
     std::list<ErrorMessage::FileLocation> locationList;
 
-    const std::string value1 = (invalidValue == InvalidValueType::null) ? "null" : "uninitialized";
+    const std::string value1 = getInvalidValueString(invalidValue);
 
     for (int index = 9; index >= 0; index--) {
         if (!path[index])

@@ -23,7 +23,7 @@ echo ''
 echo 'no test coverage:'
 $SCRIPT_DIR/../cppcheck --errorlist | grep -h -o -P 'id=\"[a-zA-Z0-9_]*\"' | sed 's/\id=//' | tr -d '\"' | sort -u | \
 while read -r id; do
-  grep -h -o -P "\[$id\]\\\\n\"" $SCRIPT_DIR/../test/*.cpp > /dev/null
+  grep -h -o -P "\[$id\][\\\\n]*\"" $SCRIPT_DIR/../test/*.cpp > /dev/null
   # shellcheck disable=SC2181
   if [ $? -ne 0 ]; then
     echo $id

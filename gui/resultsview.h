@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -307,7 +307,7 @@ public slots:
      * @param value Current progress value
      * @param description Description to accompany the progress
      */
-    void progress(int value, const QString& description);
+    void filesCheckedProgress(int value, const QString& description);
 
     /**
      * @brief Slot for new error to be displayed

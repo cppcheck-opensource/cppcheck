@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@ bool Platform::set(Type t)
     case Type::Unspecified: // unknown type sizes (sizes etc are set but are not known)
     case Type::Native: // same as system this code was compile on
         type = t;
+        windows = false;
         sizeof_bool = sizeof(bool);
         sizeof_short = sizeof(short);
         sizeof_int = sizeof(int);
@@ -62,6 +63,7 @@ bool Platform::set(Type t)
     case Type::Win32W:
     case Type::Win32A:
         type = t;
+        windows = true;
         sizeof_bool = 1; // 4 in Visual C++ 4.2
         sizeof_short = 2;
         sizeof_int = 4;
@@ -73,12 +75,13 @@ bool Platform::set(Type t)
         sizeof_wchar_t = 2;
         sizeof_size_t = 4;
         sizeof_pointer = 4;
-        defaultSign = '\0';
+        defaultSign = 's';
         char_bit = 8;
         calculateBitMembers();
         return true;
     case Type::Win64:
         type = t;
+        windows = true;
         sizeof_bool = 1;
         sizeof_short = 2;
         sizeof_int = 4;
@@ -90,12 +93,13 @@ bool Platform::set(Type t)
         sizeof_wchar_t = 2;
         sizeof_size_t = 8;
         sizeof_pointer = 8;
-        defaultSign = '\0';
+        defaultSign = 's';
         char_bit = 8;
         calculateBitMembers();
         return true;
     case Type::Unix32:
         type = t;
+        windows = false;
         sizeof_bool = 1;
         sizeof_short = 2;
         sizeof_int = 4;
@@ -107,12 +111,13 @@ bool Platform::set(Type t)
         sizeof_wchar_t = 4;
         sizeof_size_t = 4;
         sizeof_pointer = 4;
-        defaultSign = '\0';
+        defaultSign = 's';
         char_bit = 8;
         calculateBitMembers();
         return true;
     case Type::Unix64:
         type = t;
+        windows = false;
         sizeof_bool = 1;
         sizeof_short = 2;
         sizeof_int = 4;
@@ -124,7 +129,7 @@ bool Platform::set(Type t)
         sizeof_wchar_t = 4;
         sizeof_size_t = 8;
         sizeof_pointer = 8;
-        defaultSign = '\0';
+        defaultSign = 's';
         char_bit = 8;
         calculateBitMembers();
         return true;
@@ -138,6 +143,7 @@ bool Platform::set(Type t)
 
 bool Platform::set(const std::string& platformstr, std::string& errstr, const std::vector<std::string>& paths, bool debug)
 {
+    // TODO: needs to be invalidated in case it was already set
     if (platformstr == "win32A")
         set(Type::Win32A);
     else if (platformstr == "win32W")
@@ -170,11 +176,12 @@ bool Platform::loadFromFile(const std::vector<std::string>& paths, const std::st
         std::cout << "looking for platform '" + filename + "'" << std::endl;
 
     const bool is_abs_path = Path::isAbsolute(filename);
+    const bool is_rel_path = Path::isRelative(filename);
 
     std::string fullfilename(filename);
     // TODO: what if extension is not .xml?
     // only append extension when we provide the library name is not a path - TODO: handle relative paths?
-    if (!is_abs_path && Path::getFilenameExtension(fullfilename).empty())
+    if (!is_abs_path && !is_rel_path && Path::getFilenameExtension(fullfilename).empty())
         fullfilename += ".xml";
 
     // TODO: use native separators
@@ -231,10 +238,26 @@ bool Platform::loadFromFile(const std::vector<std::string>& paths, const std::st
     return loadFromXmlDocument(&doc);
 }
 
+static const char* xmlText(const tinyxml2::XMLElement* node, bool& error)
+{
+    const char* const str = node->GetText();
+    if (!str)
+        error = true;
+    return str;
+}
+
 static unsigned int xmlTextAsUInt(const tinyxml2::XMLElement* node, bool& error)
 {
     unsigned int retval = 0;
     if (node->QueryUnsignedText(&retval) != tinyxml2::XML_SUCCESS)
+        error = true;
+    return retval;
+}
+
+static unsigned int xmlTextAsBool(const tinyxml2::XMLElement* node, bool& error)
+{
+    bool retval = false;
+    if (node->QueryBoolText(&retval) != tinyxml2::XML_SUCCESS)
         error = true;
     return retval;
 }
@@ -250,11 +273,9 @@ bool Platform::loadFromXmlDocument(const tinyxml2::XMLDocument *doc)
     for (const tinyxml2::XMLElement *node = rootnode->FirstChildElement(); node; node = node->NextSiblingElement()) {
         const char* name = node->Name();
         if (std::strcmp(name, "default-sign") == 0) {
-            const char* str = node->GetText();
-            if (str)
+            const char * const str = xmlText(node, error);
+            if (!error)
                 defaultSign = *str;
-            else
-                error = true;
         } else if (std::strcmp(name, "char_bit") == 0)
             char_bit = xmlTextAsUInt(node, error);
         else if (std::strcmp(name, "sizeof") == 0) {
@@ -283,6 +304,9 @@ bool Platform::loadFromXmlDocument(const tinyxml2::XMLDocument *doc)
                 else if (std::strcmp(szname, "wchar_t") == 0)
                     sizeof_wchar_t = xmlTextAsUInt(sz, error);
             }
+        }
+        else if (std::strcmp(node->Name(), "windows") == 0) {
+            windows = xmlTextAsBool(node, error);
         }
     }
     calculateBitMembers();

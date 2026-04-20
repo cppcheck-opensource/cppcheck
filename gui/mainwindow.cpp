@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -53,6 +53,7 @@
 #include "threadresult.h"
 #include "translationhandler.h"
 #include "utils.h"
+#include "threaddetails.h"
 
 #include "ui_mainwindow.h"
 
@@ -183,6 +184,7 @@ MainWindow::MainWindow(TranslationHandler* th, QSettings* settings) :
     connect(mUI->mActionShowHidden, &QAction::triggered, mUI->mResults, &ResultsView::showHiddenResults);
     connect(mUI->mActionViewStats, &QAction::triggered, this, &MainWindow::showStatistics);
     connect(mUI->mActionLibraryEditor, &QAction::triggered, this, &MainWindow::showLibraryEditor);
+    connect(mUI->mActionShowThreadDetails, &QAction::triggered, this, &MainWindow::showThreadDetails);
 
     connect(mUI->mActionReanalyzeModified, &QAction::triggered, this, &MainWindow::reAnalyzeModified);
     connect(mUI->mActionReanalyzeAll, &QAction::triggered, this, &MainWindow::reAnalyzeAll);
@@ -595,7 +597,6 @@ void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLibrary, cons
         enableProjectActions(false);
     }
 
-    mUI->mResults->clear(true);
     mUI->mResults->setResultsSource(ResultsTree::ResultsSource::Analysis);
     mThread->clearFiles();
 
@@ -618,7 +619,7 @@ void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLibrary, cons
     if (!checkSettings.buildDir.empty()) {
         checkSettings.loadSummaries();
         std::list<std::string> sourcefiles;
-        AnalyzerInformation::writeFilesTxt(checkSettings.buildDir, sourcefiles, checkSettings.userDefines, p.fileSettings);
+        AnalyzerInformation::writeFilesTxt(checkSettings.buildDir, sourcefiles, p.fileSettings);
     }
 
     //mThread->SetanalyzeProject(true);
@@ -700,7 +701,7 @@ void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLibrar
         std::transform(fileNames.cbegin(), fileNames.cend(), std::back_inserter(sourcefiles), [](const QString& s) {
             return s.toStdString();
         });
-        AnalyzerInformation::writeFilesTxt(checkSettings.buildDir, sourcefiles, checkSettings.userDefines, {});
+        AnalyzerInformation::writeFilesTxt(checkSettings.buildDir, sourcefiles, {});
     }
 
     mThread->setCheckFiles(true);
@@ -728,7 +729,7 @@ void MainWindow::analyzeCode(const QString& code, const QString& filename)
             mUI->mResults, SLOT(debugError(ErrorItem)));
 
     // Create CppCheck instance
-    CppCheck cppcheck(checkSettings, supprs, result, true, nullptr);
+    CppCheck cppcheck(checkSettings, supprs, result, nullptr, true, nullptr);
 
     // Check
     checkLockDownUI();
@@ -767,7 +768,7 @@ QStringList MainWindow::selectFilesToAnalyze(QFileDialog::FileMode mode)
         QMap<QString,QString> filters;
         filters[tr("C/C++ Source")] = FileList::getDefaultFilters().join(" ");
         filters[tr("Compile database")] = compile_commands_json;
-        filters[tr("Visual Studio")] = "*.sln *.vcxproj";
+        filters[tr("Visual Studio")] = "*.sln *.slnx *.vcxproj";
         filters[tr("Borland C++ Builder 6")] = "*.bpr";
         QString lastFilter = mSettings->value(SETTINGS_LAST_ANALYZE_FILES_FILTER).toString();
         selected = QFileDialog::getOpenFileNames(this,
@@ -810,13 +811,14 @@ void MainWindow::analyzeFiles()
 
     const QString file0 = (!selected.empty() ? selected[0].toLower() : QString());
     if (file0.endsWith(".sln")
+        || file0.endsWith(".slnx")
         || file0.endsWith(".vcxproj")
         || file0.endsWith(compile_commands_json)
         || file0.endsWith(".bpr")) {
         ImportProject p;
         p.import(selected[0].toStdString());
 
-        if (file0.endsWith(".sln")) {
+        if (file0.endsWith(".sln") || file0.endsWith(".slnx")) {
             QStringList configs;
             for (auto it = p.fileSettings.cbegin(); it != p.fileSettings.cend(); ++it) {
                 const QString cfg(QString::fromStdString(it->cfg));
@@ -1016,9 +1018,6 @@ bool MainWindow::tryLoadLibrary(Library &library, const QString& filename)
         case Library::ErrorCode::UNKNOWN_ELEMENT:
             errmsg = tr("Unknown element");
             break;
-        default:
-            errmsg = tr("Unknown issue");
-            break;
         }
         if (!error.reason.empty())
             errmsg += " '" + QString::fromStdString(error.reason) + "'";
@@ -1072,6 +1071,7 @@ bool MainWindow::getCppcheckSettings(Settings& settings, Suppressions& supprs)
 
     settings.exename = QCoreApplication::applicationFilePath().toStdString();
     settings.templateFormat = "{file}:{line}:{column}: {severity}:{inconclusive:inconclusive:} {message} [{id}]";
+    settings.reportProgress = 10;
 
     // default to --check-level=normal for GUI for now
     settings.setCheckLevel(Settings::CheckLevel::normal);
@@ -1125,6 +1125,8 @@ bool MainWindow::getCppcheckSettings(Settings& settings, Suppressions& supprs)
         const QStringList undefines = mProjectFile->getUndefines();
         for (const QString& undefine : undefines)
             settings.userUndefs.insert(undefine.toStdString());
+
+        settings.userIncludes.push_back(mProjectFile->getUserInclude().toStdString());
 
         const QStringList libraries = mProjectFile->getLibraries();
         for (const QString& library : libraries) {
@@ -1969,6 +1971,7 @@ void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringLis
             switch (result) {
             case ImportProject::Type::COMPILE_DB:
             case ImportProject::Type::VS_SLN:
+            case ImportProject::Type::VS_SLNX:
             case ImportProject::Type::VS_VCXPROJ:
             case ImportProject::Type::BORLAND:
             case ImportProject::Type::CPPCHECK_GUI:
@@ -2110,6 +2113,20 @@ void MainWindow::showLibraryEditor()
 {
     LibraryDialog libraryDialog(this);
     libraryDialog.exec();
+}
+
+void MainWindow::showThreadDetails()
+{
+    if (ThreadDetails::instance())
+        return;
+    auto* threadDetails = new ThreadDetails(this);
+    connect(mThread, &ThreadHandler::threadDetailsUpdated,
+            threadDetails, &ThreadDetails::threadDetailsUpdated, Qt::QueuedConnection);
+    connect(mThread, &ThreadHandler::progress,
+            threadDetails, &ThreadDetails::progress, Qt::QueuedConnection);
+    threadDetails->setAttribute(Qt::WA_DeleteOnClose);
+    threadDetails->show();
+    mThread->emitThreadDetailsUpdated();
 }
 
 void MainWindow::filterResults()

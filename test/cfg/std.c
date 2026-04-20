@@ -7,7 +7,7 @@
 // No warnings about bad library configuration, unmatched suppressions, etc. exitcode=0
 //
 
-// cppcheck-suppress-file valueFlowBailout
+// cppcheck-suppress-file [valueFlowBailout,purgedConfiguration]
 
 #include <string.h>
 #include <stdio.h>
@@ -37,6 +37,17 @@
 #include <complex.h>
 #include <math.h>
 #include <stddef.h>
+
+void test_int32_min() {
+    // cppcheck-suppress shiftNegativeLHS
+    // cppcheck-suppress shiftTooManyBits ; tests that INT32_MIN is a 32-bit expression (not 64-bit expression)
+    (void)(INT32_MIN >> 40);
+}
+
+void test_int64_min() {
+    // cppcheck-suppress compareValueOutOfTypeRangeError ; tests that INT64_MIN is a signed expression
+    if (INT64_MIN < 0) {}
+}
 
 size_t invalidFunctionArgStr_wcslen(void)
 {

@@ -726,6 +726,10 @@ static void misra_10_3(uint32_t u32a, uint32_t u32b) {
     const char c = '0'; // no-warning
     bool b = true; // no-warning
     uint32_t u = UINT32_C(10); // no-warning
+    bool b0 = 0; // no-warning
+    bool b1 = 1; // no-warning
+    b = 0; // no-warning
+    b = 1; // no-warning
 }
 
 static void misra_10_4(u32 x, s32 y) {

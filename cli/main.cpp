@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 /**
  *
  * @mainpage Cppcheck
- * @version 2.18.99
+ * @version 2.20.99
  *
  * @section overview_sec Overview
  * Cppcheck is a simple tool for static analysis of C/C++ code.
@@ -56,16 +56,7 @@
  * When errors are found, they are reported back to the CppCheckExecutor through the ErrorLogger interface.
  */
 
-
 #include "cppcheckexecutor.h"
-
-#ifdef NDEBUG
-#include "errortypes.h"
-
-#include <cstdlib>
-#include <exception>
-#include <iostream>
-#endif
 
 /**
  * Main function of cppcheck
@@ -76,27 +67,6 @@
  */
 int main(int argc, char* argv[])
 {
-    // MS Visual C++ memory leak debug tracing
-#if defined(_MSC_VER) && defined(_DEBUG)
-    _CrtSetDbgFlag(_CrtSetDbgFlag(_CRTDBG_REPORT_FLAG) | _CRTDBG_LEAK_CHECK_DF);
-#endif
-
     CppCheckExecutor exec;
-
-// *INDENT-OFF*
-#ifdef NDEBUG
-    try {
-#endif
-        return exec.check(argc, argv);
-#ifdef NDEBUG
-    } catch (const InternalError& e) {
-        std::cout << e.errorMessage << std::endl;
-    } catch (const std::exception& error) {
-        std::cout << error.what() << std::endl;
-    } catch (...) {
-        std::cout << "Unknown exception" << std::endl;
-    }
-    return EXIT_FAILURE;
-#endif
-// *INDENT-ON*
+    return exec.check(argc, argv);
 }

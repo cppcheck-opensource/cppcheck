@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,8 +35,9 @@ public:
     TestBufferOverrun() : TestFixture("TestBufferOverrun") {}
 
 private:
-    /*const*/ Settings settings0 = settingsBuilder().library("std.cfg").severity(Severity::warning).severity(Severity::style).severity(Severity::portability).build();
+    /*const*/ Settings settings0 = settingsBuilder().library("std.cfg").severity(Severity::warning).severity(Severity::style).build();
     const Settings settings0_i = settingsBuilder(settings0).certainty(Certainty::inconclusive).build();
+    const Settings settings0_p = settingsBuilder(settings0).severity(Severity::portability).build();
     const Settings settings1 = settingsBuilder(settings0).severity(Severity::performance).certainty(Certainty::inconclusive).build();
 
     struct CheckOptions
@@ -3789,40 +3790,40 @@ private:
         check("void f() {\n"
               "    char a[10];\n"
               "    char *p = a + 100;\n"
-              "}");
+              "}", settings0_p);
         ASSERT_EQUALS("[test.cpp:3:17]: (portability) Undefined behaviour, pointer arithmetic 'a+100' is out of bounds. [pointerOutOfBounds]\n", errout_str());
 
         check("char *f() {\n"
               "    char a[10];\n"
               "    return a + 100;\n"
-              "}");
+              "}", settings0_p);
         ASSERT_EQUALS("[test.cpp:3:14]: (portability) Undefined behaviour, pointer arithmetic 'a+100' is out of bounds. [pointerOutOfBounds]\n", errout_str());
 
         check("void f(int i) {\n"
               "    char x[10];\n"
               "    if (i == 123) {}\n"
               "    dostuff(x+i);\n"
-              "}");
+              "}", settings0_p);
         ASSERT_EQUALS("[test.cpp:3:11] -> [test.cpp:4:14]: (portability) Undefined behaviour, when 'i' is 123 the pointer arithmetic 'x+i' is out of bounds. [pointerOutOfBoundsCond]\n", errout_str());
 
         check("void f(int i) {\n"
               "    char x[10];\n"
               "    if (i == -1) {}\n"
               "    dostuff(x+i);\n"
-              "}");
+              "}", settings0_p);
         ASSERT_EQUALS("[test.cpp:3:11] -> [test.cpp:4:14]: (portability) Undefined behaviour, when 'i' is -1 the pointer arithmetic 'x+i' is out of bounds. [pointerOutOfBoundsCond]\n", errout_str());
 
         check("void f() {\n" // #6350 - fp when there is cast of buffer
               "  wchar_t buf[64];\n"
               "  p = (unsigned char *) buf + sizeof (buf);\n"
-              "}", dinit(CheckOptions, $.cpp = false));
+              "}", settings0_p, false);
         ASSERT_EQUALS("", errout_str());
 
         check("int f() {\n"
               "    const char   d[] = \"0123456789\";\n"
               "    char *cp = d + 3;\n"
               "    return cp - d;\n"
-              "}");
+              "}", settings0_p);
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -3831,7 +3832,7 @@ private:
               "    char *p = malloc(10);\n"
               "    p += 100;\n"
               "    free(p);"
-              "}");
+              "}", settings0_p);
         TODO_ASSERT_EQUALS("[test.cpp:3]: (portability) Undefined behaviour, pointer arithmetic 'p+100' is out of bounds.\n", "", errout_str());
 
         check("void f() {\n"
@@ -3839,7 +3840,7 @@ private:
               "    p += 10;\n"
               "    *p = 0;\n"
               "    free(p);"
-              "}");
+              "}", settings0_p);
         TODO_ASSERT_EQUALS("[test.cpp:4]: (error) p is out of bounds.\n", "", errout_str());
 
         check("void f() {\n"
@@ -3848,7 +3849,7 @@ private:
               "    p -= 10;\n"
               "    *p = 0;\n"
               "    free(p);"
-              "}");
+              "}", settings0_p);
         ASSERT_EQUALS("", errout_str());
 
         check("void f() {\n"
@@ -3857,7 +3858,7 @@ private:
               "    p = p - 1;\n"
               "    *p = 0;\n"
               "    free(p);"
-              "}");
+              "}", settings0_p);
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -3865,7 +3866,7 @@ private:
         check("struct S { int a[10]; };\n"
               "void f(struct S *s) {\n"
               "    int *p = s->a + 100;\n"
-              "}");
+              "}", settings0_p);
         ASSERT_EQUALS("[test.cpp:3:19]: (portability) Undefined behaviour, pointer arithmetic 's->a+100' is out of bounds. [pointerOutOfBounds]\n", errout_str());
 
         check("template <class T> class Vector\n"
@@ -3881,36 +3882,36 @@ private:
               "    const T* P2 = PDat + 1;\n"
               "    const T* P1 = P2 - 1;\n"
               "}\n"
-              "Vector<std::array<long, 2>> Foo;\n");
+              "Vector<std::array<long, 2>> Foo;\n", settings0_p);
         ASSERT_EQUALS("", errout_str());
     }
 
     void pointer_out_of_bounds_4() {
         check("const char* f() {\n"
               "    g(\"Hello\" + 6);\n"
-              "}");
+              "}", settings0_p);
         ASSERT_EQUALS("", errout_str());
 
         check("const char* f() {\n"
               "    g(\"Hello\" + 7);\n"
-              "}");
+              "}", settings0_p);
         ASSERT_EQUALS("[test.cpp:2:15]: (portability) Undefined behaviour, pointer arithmetic '\"Hello\"+7' is out of bounds. [pointerOutOfBounds]\n", errout_str());
 
         check("const char16_t* f() {\n"
               "    g(u\"Hello\" + 6);\n"
-              "}");
+              "}", settings0_p);
         ASSERT_EQUALS("", errout_str());
 
         check("const char16_t* f() {\n"
               "    g(u\"Hello\" + 7);\n"
-              "}");
+              "}", settings0_p);
         ASSERT_EQUALS("[test.cpp:2:16]: (portability) Undefined behaviour, pointer arithmetic 'u\"Hello\"+7' is out of bounds. [pointerOutOfBounds]\n", errout_str());
 
         check("void f() {\n" // #4647
               "    int val = 5;\n"
               "    std::string hi = \"hi\" + val;\n"
               "    std::cout << hi << std::endl;\n"
-              "}\n");
+              "}\n", settings0_p);
         ASSERT_EQUALS("[test.cpp:3:27]: (portability) Undefined behaviour, pointer arithmetic '\"hi\"+val' is out of bounds. [pointerOutOfBounds]\n", errout_str());
 
         check("void f(const char* s, int len) {\n" // #11026
@@ -3920,7 +3921,7 @@ private:
               "void g() {\n"
               "    f(\"a\", 1);\n"
               "    f(\"bbb\", 3);\n"
-              "}\n");
+              "}\n", settings0_p);
         ASSERT_EQUALS("", errout_str());
 
         check("void f(int i, const char* a) {\n" // #11140
@@ -3933,14 +3934,14 @@ private:
               "void h() {\n"
               "    for (int i = 0; \"012\"[i]; ++i)\n"
               "        f(i, \"345\");\n"
-              "}\n");
+              "}\n", settings0_p);
         ASSERT_EQUALS("", errout_str());
     }
 
     void pointer_out_of_bounds_5() { // #10227
         check("int foo(char str[6]) {\n"
               "    return !((0 && *(\"STRING\" + 14) == 0) || memcmp(str, \"STRING\", 6) == 0);\n"
-              "}\n");
+              "}\n", settings0_p);
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -3950,26 +3951,26 @@ private:
         check("char *f() {\n"
               "    char x[10];\n"
               "    return x-1;\n"
-              "}");
+              "}", settings0_p);
         ASSERT_EQUALS("[test.cpp:3:13]: (portability) Undefined behaviour, pointer arithmetic 'x-1' is out of bounds. [pointerOutOfBounds]\n", errout_str());
 
         check("void f(int i) {\n"
               "    char x[10];\n"
               "    if (i == 123) {}\n"
               "    dostuff(x-i);\n"
-              "}");
+              "}", settings0_p);
         ASSERT_EQUALS("[test.cpp:3:11] -> [test.cpp:4:14]: (portability) Undefined behaviour, when 'i' is 123 the pointer arithmetic 'x-i' is out of bounds. [pointerOutOfBoundsCond]\n", errout_str());
 
         check("void f(int i) {\n"
               "    char x[10];\n"
               "    if (i == -20) {}\n"
               "    dostuff(x-i);\n"
-              "}");
+              "}", settings0_p);
         TODO_ASSERT_EQUALS("[test.cpp:4]: (portability) Undefined behaviour, when 'i' is -20 the pointer arithmetic 'x-i' is out of bounds.\n", "", errout_str());
 
         check("void f(const char *x[10]) {\n"
               "    return x-4;\n"
-              "}");
+              "}", settings0_p);
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -4173,6 +4174,15 @@ private:
               "    a[i] = NULL;\n"
               "}");
         ASSERT_EQUALS("[test.cpp:4:6]: (error) Array 'a[2]' accessed at index 2, which is out of bounds. [arrayIndexOutOfBounds]\n", errout_str());
+
+        check("void f(const uint8_t* a) {\n" // 10421
+              "    uint8_t* p = (uint8_t*)malloc(20U * sizeof(uint8_t));\n"
+              "    if (!p) return false;\n"
+              "    for (uint8_t i = 1; i < 30; ++i)\n"
+              "        p[i] = a[i];\n"
+              "    free(p);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:10]: (error) Array 'p[20]' accessed at index 29, which is out of bounds. [arrayIndexOutOfBounds]\n", errout_str());
     }
 
     // statically allocated buffer
@@ -5287,14 +5297,14 @@ private:
         check("void f() {\n"
               "    char arr[10];\n"
               "    char *p = arr + 20;\n"
-              "}");
+              "}", settings0_p);
         ASSERT_EQUALS("[test.cpp:3:19]: (portability) Undefined behaviour, pointer arithmetic 'arr+20' is out of bounds. [pointerOutOfBounds]\n", errout_str());
 
         check("char(*g())[1];\n" // #7950
               "void f() {\n"
               "    int a[2];\n"
               "    int* b = a + sizeof(*g());\n"
-              "}\n");
+              "}\n", settings0_p);
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -5351,6 +5361,15 @@ private:
             "    f(a);\n"
             "}\n");
         ASSERT_EQUALS("[test.cpp:7:12] -> [test.cpp:9:6] -> [test.cpp:3:12]: (error) Array index out of bounds; 'p' buffer size is 4 and it is accessed at offset 20. [ctuArrayIndex]\n", errout_str());
+
+        ctu("void bar(int *p) { p[4] = 42; }\n" // #13403
+            "void f() {\n"
+            "    int *p = (int*)malloc(4 * sizeof(int));\n"
+            "    if (!p) return;\n"
+            "    bar(p);\n"
+            "    free(p);\n"
+            "}\n");
+        ASSERT_EQUALS("[test.cpp:3:12] -> [test.cpp:4:9] -> [test.cpp:5:8] -> [test.cpp:1:20]: (error) Array index out of bounds; 'p' buffer size is 16 and it is accessed at offset 16. [ctuArrayIndex]\n", errout_str());
     }
 
     void ctu_array() {
@@ -5515,6 +5534,19 @@ private:
             "    f(s);\n"
             "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        setMultiline();
+        ctu("void g(char* p) {\n"
+            "    memset(p + 10, 0, 10);\n"
+            "}\n"
+            "void f() {\n"
+            "    char a[10] = {};\n"
+            "    g(a);\n"
+            "}");
+        ASSERT_EQUALS("[test.cpp:2:12]: error: Pointer arithmetic overflow; 'p' buffer size is 10 [ctuPointerArith]\n"
+                      "[test.cpp:6:6]: note: Calling function g, 1st argument is accessed out of bounds\n"
+                      "[test.cpp:2:12]: note: Using argument p\n",
+                      errout_str());
     }
 
     void objectIndex() {

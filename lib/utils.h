@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -122,6 +122,11 @@ template<std::size_t N>
 bool endsWith(const std::string& str, const char (&end)[N])
 {
     return endsWith(str, end, N - 1);
+}
+
+inline bool endsWith(const std::string& str, const std::string& end)
+{
+    return endsWith(str, end.c_str(), end.length());
 }
 
 inline static bool isPrefixStringCharLiteral(const std::string &str, char q, const std::string& p)
@@ -276,6 +281,9 @@ bool strToInt(const std::string& str, T &num, std::string* err = nullptr)
     return true;
 }
 
+/**
+ * @throws std::runtime_error thrown if conversion failed
+ */
 template<typename T>
 T strToInt(const std::string& str)
 {
@@ -395,17 +403,23 @@ static inline T* empty_if_null(T* p)
 }
 
 /**
- * Split string by given sperator.
+ * Split string by given separator.
  * @param str The string to split
- * @param sep The seperator
- * @return The list of seperate strings (including empty ones). The whole input string if no seperator found.
+ * @param sep The separator
+ * @return The list of separate strings (including empty ones). The whole input string if no separator found.
  */
 CPPCHECKLIB std::vector<std::string> splitString(const std::string& str, char sep);
 
 namespace utils {
+    /**
+     * Drop-in replacement for C++17's std::as_const
+     * @param t  The function forms the lvalue reference to const type of this argument.
+     */
     template<class T>
     constexpr typename std::add_const<T>::type & as_const(T& t) noexcept
     {
+        static_assert(!std::is_const<T>::value, "object is already const");
+        static_assert(!std::is_pointer<T>::value, "object is a pointer");
         // NOLINTNEXTLINE(bugprone-return-const-ref-from-parameter) - potential false positive
         return t;
     }

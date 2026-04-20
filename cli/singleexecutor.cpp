@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,8 +30,8 @@
 
 class ErrorLogger;
 
-SingleExecutor::SingleExecutor(CppCheck &cppcheck, const std::list<FileWithDetails> &files, const std::list<FileSettings>& fileSettings, const Settings &settings, Suppressions &suppressions, ErrorLogger &errorLogger)
-    : Executor(files, fileSettings, settings, suppressions, errorLogger)
+SingleExecutor::SingleExecutor(CppCheck &cppcheck, const std::list<FileWithDetails> &files, const std::list<FileSettings>& fileSettings, const Settings &settings, Suppressions &suppressions, ErrorLogger &errorLogger, TimerResults* timerResults)
+    : Executor(files, fileSettings, settings, suppressions, errorLogger, timerResults)
     , mCppcheck(cppcheck)
 {
     assert(mSettings.jobs == 1);
@@ -67,12 +67,10 @@ unsigned int SingleExecutor::check()
             reportStatus(c, mFileSettings.size(), c, mFileSettings.size());
     }
 
+    // TODO: show time after the whole program analysis
     // TODO: CppCheckExecutor::check_internal() is also invoking the whole program analysis - is it run twice?
     if (mCppcheck.analyseWholeProgram())
         result++;
-
-    if (mSettings.showtime == ShowTime::SUMMARY || mSettings.showtime == ShowTime::TOP5_SUMMARY)
-        CppCheck::printTimerResults(mSettings.showtime);
 
     return result;
 }

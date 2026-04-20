@@ -202,6 +202,11 @@ private slots:
     void browseImportProject();
 
     /**
+     * @brief Browse for include file
+     */
+    void browseUserInclude();
+
+    /**
      * @brief Add new path to check.
      */
     void addCheckPath();

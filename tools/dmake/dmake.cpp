@@ -250,7 +250,7 @@ static int write_vcxproj(const std::string &proj_name, const std::function<void(
     return EXIT_SUCCESS;
 }
 
-enum ClType : std::uint8_t { Compile, Include, Precompile };
+enum ClType : std::uint8_t { Compile, Include, Precompile, NoPch };
 
 static std::string make_vcxproj_cl_entry(const std::string& file, ClType type)
 {
@@ -267,6 +267,18 @@ static std::string make_vcxproj_cl_entry(const std::string& file, ClType type)
         outstr += R"(      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-PCRE|x64'">Create</PrecompiledHeader>)";
         outstr += "\r\n";
         outstr += R"(      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|x64'">Create</PrecompiledHeader>)";
+        outstr += "\r\n";
+        outstr += "    </ClCompile>\r\n";
+        return outstr;
+    }
+    if (type == NoPch) {
+        outstr += R"(    <ClCompile Include=")";
+        outstr += file;
+        outstr += R"(">)";
+        outstr += "\r\n";
+        outstr += R"(      <PrecompiledHeader>NotUsing</PrecompiledHeader>)";
+        outstr += "\r\n";
+        outstr += R"(      <ForcedIncludeFiles></ForcedIncludeFiles>)";
         outstr += "\r\n";
         outstr += "    </ClCompile>\r\n";
         return outstr;
@@ -542,8 +554,8 @@ int main(int argc, char **argv)
     });
 
     write_vcxproj("lib/cppcheck.vcxproj", [&](std::string &outstr){
-        outstr += make_vcxproj_cl_entry(R"(..\externals\simplecpp\simplecpp.cpp)", Compile);
-        outstr += make_vcxproj_cl_entry(R"(..\externals\tinyxml2\tinyxml2.cpp)", Compile);
+        outstr += make_vcxproj_cl_entry(R"(..\externals\simplecpp\simplecpp.cpp)", NoPch);
+        outstr += make_vcxproj_cl_entry(R"(..\externals\tinyxml2\tinyxml2.cpp)", NoPch);
 
         for (const std::string &libfile: libfiles_prio) {
             const std::string l = libfile.substr(4);
@@ -758,6 +770,10 @@ int main(int argc, char **argv)
          << "else ifneq ($(HAVE_RULES),)\n"
          << "    $(error invalid HAVE_RULES value '$(HAVE_RULES)')\n"
          << "endif\n\n";
+
+    // the # needs to be escaped on older make versions
+    fout << "HAVE_EXECINFO_H=$(shell echo \"\\#include <execinfo.h>\" | $(CXX) -c -xc - 2> /dev/null && echo \"1\" || echo \"0\")\n"
+         << "override CPPFLAGS += -DHAVE_EXECINFO_H=$(HAVE_EXECINFO_H)\n\n";
 
     fout << "override CXXFLAGS += $(CXXOPTS)\n";
     fout << "override CPPFLAGS += $(CPPOPTS)\n";

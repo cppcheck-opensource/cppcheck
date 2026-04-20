@@ -57,7 +57,9 @@
 #ifndef SIMPLECPP_TOKENLIST_ALLOW_PTR
 // still provide the legacy API in case we lack the performant wrappers
 #  if !defined(__cpp_lib_string_view) && !defined(__cpp_lib_span)
-#    define SIMPLECPP_TOKENLIST_ALLOW_PTR
+#    define SIMPLECPP_TOKENLIST_ALLOW_PTR 1
+#  else
+#    define SIMPLECPP_TOKENLIST_ALLOW_PTR 0
 #  endif
 #endif
 
@@ -81,7 +83,7 @@ namespace simplecpp {
             , mSize(strlen(data))
         {}
 
-        // only provide when std::span is not available so using untyped initilization won't use View
+        // only provide when std::span is not available so using untyped initialization won't use View
 #if !defined(__cpp_lib_span)
         View(const char* data, std::size_t size)
             : mData(data)
@@ -141,7 +143,7 @@ namespace simplecpp {
         }
 
         unsigned int fileIndex{};
-        unsigned int line{1};
+        unsigned int line{};
         unsigned int col{};
     };
 
@@ -267,7 +269,7 @@ namespace simplecpp {
         TokenList(const unsigned char (&data)[size], std::vector<std::string> &filenames, const std::string &filename=std::string(), OutputList *outputList = nullptr)
             : TokenList(data, size-1, filenames, filename, outputList, 0)
         {}
-#ifdef SIMPLECPP_TOKENLIST_ALLOW_PTR
+#if SIMPLECPP_TOKENLIST_ALLOW_PTR
         /** generates a token list from the given buffer */
         TokenList(const unsigned char* data, std::size_t size, std::vector<std::string> &filenames, const std::string &filename=std::string(), OutputList *outputList = nullptr)
             : TokenList(data, size, filenames, filename, outputList, 0)
@@ -311,6 +313,10 @@ namespace simplecpp {
         std::string stringify(bool linenrs = false) const;
 
         void readfile(Stream &stream, const std::string &filename=std::string(), OutputList *outputList = nullptr);
+        /**
+         * @throws std::overflow_error thrown on overflow or division by zero
+         * @throws std::runtime_error thrown on invalid expressions
+         */
         void constFold();
 
         void removeComments();

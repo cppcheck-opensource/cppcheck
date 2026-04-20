@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,7 +49,7 @@ public:
     {}
 
 private:
-    class CmdLineLoggerTest : public CmdLineLogger
+    class CmdLineLoggerTest final : public CmdLineLogger
     {
     public:
         CmdLineLoggerTest() = default;
@@ -91,7 +91,7 @@ private:
         std::string buf;
     };
 
-    class CmdLineParserTest : public CmdLineParser
+    class CmdLineParserTest final : public CmdLineParser
     {
         friend class TestCmdlineParser;
     public:
@@ -300,10 +300,14 @@ private:
         TEST_CASE(suppressionsNoFile1);
         TEST_CASE(suppressionsNoFile2);
         TEST_CASE(suppressionsNoFile3);
-        TEST_CASE(suppressionSingle);
-        TEST_CASE(suppressionSingleFile);
-        TEST_CASE(suppressionTwo);
-        TEST_CASE(suppressionTwoSeparate);
+        TEST_CASE(suppressSingle);
+        TEST_CASE(suppressSingleFile);
+        TEST_CASE(suppressTwo);
+        TEST_CASE(suppressTwoSeparate);
+        TEST_CASE(exitcodeSuppressSingle);
+        TEST_CASE(exitcodeSuppressSingleFile);
+        TEST_CASE(exitcodeSuppressTwo);
+        TEST_CASE(exitcodeSuppressTwoSeparate);
         TEST_CASE(templates);
         TEST_CASE(templatesGcc);
         TEST_CASE(templatesVs);
@@ -414,6 +418,7 @@ private:
         TEST_CASE(ruleFileInvalidSeverity1);
         TEST_CASE(ruleFileInvalidSeverity2);
         TEST_CASE(ruleFileInvalidPattern);
+        TEST_CASE(ruleFileInvalidEngine);
 #else
         TEST_CASE(ruleFileNotSupported);
 #endif
@@ -493,6 +498,7 @@ private:
         TEST_CASE(safetyOverride);
         TEST_CASE(noSafety);
         TEST_CASE(noSafetyOverride);
+        TEST_CASE(debugAnalyzerinfo);
 
         TEST_CASE(ignorepaths1);
         TEST_CASE(ignorepaths2);
@@ -1955,35 +1961,62 @@ private:
         return e;
     }
 
-    void suppressionSingle() {
+    void suppressSingle() {
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--suppress=uninitvar", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(true, supprs->nomsg.isSuppressed(errorMessage("uninitvar", "file.cpp", 1)));
     }
 
-    void suppressionSingleFile() {
+    void suppressSingleFile() {
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--suppress=uninitvar:file.cpp", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(true, supprs->nomsg.isSuppressed(errorMessage("uninitvar", "file.cpp", 1U)));
     }
 
-    void suppressionTwo() {
+    void suppressTwo() {
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--suppress=uninitvar,noConstructor", "file.cpp"};
-        TODO_ASSERT_EQUALS(static_cast<int>(CmdLineParser::Result::Success), static_cast<int>(CmdLineParser::Result::Fail), static_cast<int>(parseFromArgs(argv)));
-        TODO_ASSERT_EQUALS(true, false, supprs->nomsg.isSuppressed(errorMessage("uninitvar", "file.cpp", 1U)));
-        TODO_ASSERT_EQUALS(true, false, supprs->nomsg.isSuppressed(errorMessage("noConstructor", "file.cpp", 1U)));
-        TODO_ASSERT_EQUALS("", "cppcheck: error: Failed to add suppression. Invalid id \"uninitvar,noConstructor\"\n", logger->str());
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, parseFromArgs(argv));
+        ASSERT_EQUALS("cppcheck: error: Failed to add suppression. Invalid id \"uninitvar,noConstructor\"\n", logger->str());
     }
 
-    void suppressionTwoSeparate() {
+    void suppressTwoSeparate() {
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--suppress=uninitvar", "--suppress=noConstructor", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(true, supprs->nomsg.isSuppressed(errorMessage("uninitvar", "file.cpp", 1U)));
         ASSERT_EQUALS(true, supprs->nomsg.isSuppressed(errorMessage("noConstructor", "file.cpp", 1U)));
+    }
+
+    void exitcodeSuppressSingle() {
+        REDIRECT;
+        const char * const argv[] = {"cppcheck", "--exitcode-suppress=uninitvar", "file.cpp"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
+        ASSERT_EQUALS(true, supprs->nofail.isSuppressed(errorMessage("uninitvar", "file.cpp", 1)));
+    }
+
+    void exitcodeSuppressSingleFile() {
+        REDIRECT;
+        const char * const argv[] = {"cppcheck", "--exitcode-suppress=uninitvar:file.cpp", "file.cpp"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
+        ASSERT_EQUALS(true, supprs->nofail.isSuppressed(errorMessage("uninitvar", "file.cpp", 1U)));
+    }
+
+    void exitcodeSuppressTwo() {
+        REDIRECT;
+        const char * const argv[] = {"cppcheck", "--exitcode-suppress=uninitvar,noConstructor", "file.cpp"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, parseFromArgs(argv));
+        ASSERT_EQUALS("cppcheck: error: Failed to add suppression. Invalid id \"uninitvar,noConstructor\"\n", logger->str());
+    }
+
+    void exitcodeSuppressTwoSeparate() {
+        REDIRECT;
+        const char * const argv[] = {"cppcheck", "--exitcode-suppress=uninitvar", "--exitcode-suppress=noConstructor", "file.cpp"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
+        ASSERT_EQUALS(true, supprs->nofail.isSuppressed(errorMessage("uninitvar", "file.cpp", 1U)));
+        ASSERT_EQUALS(true, supprs->nofail.isSuppressed(errorMessage("noConstructor", "file.cpp", 1U)));
     }
 
     void templates() {
@@ -2647,7 +2680,7 @@ private:
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--rule=.*\\", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, parser->parseFromArgs(3, argv));
-        ASSERT_EQUALS("cppcheck: error: failed to compile rule pattern '.*\\' (pcre_compile failed: \\ at end of pattern).\n", logger->str());
+        ASSERT_EQUALS("cppcheck: error: failed to compile rule pattern '.*\\' (\\ at end of pattern).\n", logger->str());
     }
 #else
     void ruleNotSupported() {
@@ -2664,6 +2697,7 @@ private:
         ScopedFile file("rule.xml",
                         "<rules>\n"
                         "<rule>\n"
+                        "<engine>pcre</engine>\n"
                         "<tokenlist>raw</tokenlist>\n"
                         "<pattern>.+</pattern>\n"
                         "<message>\n"
@@ -2686,12 +2720,14 @@ private:
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(2, settings->rules.size());
         auto it = settings->rules.cbegin();
+        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->engine);
         ASSERT_EQUALS("raw", it->tokenlist);
         ASSERT_EQUALS(".+", it->pattern);
         ASSERT_EQUALS_ENUM(Severity::error, it->severity);
         ASSERT_EQUALS("ruleId1", it->id);
         ASSERT_EQUALS("ruleSummary1", it->summary);
         ++it;
+        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->engine);
         ASSERT_EQUALS("define", it->tokenlist);
         ASSERT_EQUALS(".*", it->pattern);
         ASSERT_EQUALS_ENUM(Severity::warning, it->severity);
@@ -2715,6 +2751,7 @@ private:
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(1, settings->rules.size());
         auto it = settings->rules.cbegin();
+        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->engine);
         ASSERT_EQUALS("define", it->tokenlist);
         ASSERT_EQUALS(".+", it->pattern);
         ASSERT_EQUALS_ENUM(Severity::error, it->severity);
@@ -2882,7 +2919,19 @@ private:
                         "</rule>\n");
         const char * const argv[] = {"cppcheck", "--rule-file=rule.xml", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, parser->parseFromArgs(3, argv));
-        ASSERT_EQUALS("cppcheck: error: unable to load rule-file 'rule.xml' - pattern '.+\\' failed to compile (pcre_compile failed: \\ at end of pattern).\n", logger->str());
+        ASSERT_EQUALS("cppcheck: error: unable to load rule-file 'rule.xml' - pattern '.+\\' failed to compile (\\ at end of pattern).\n", logger->str());
+    }
+
+    void ruleFileInvalidEngine() {
+        REDIRECT;
+        ScopedFile file("rule.xml",
+                        "<rule>\n"
+                        "<engine>llvm</engine>\n"
+                        "<pattern>.+</pattern>\n"
+                        "</rule>\n");
+        const char * const argv[] = {"cppcheck", "--rule-file=rule.xml", "file.cpp"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, parseFromArgs(argv));
+        ASSERT_EQUALS("cppcheck: error: unknown regex engine 'llvm'.\n", logger->str());
     }
 #else
     void ruleFileNotSupported() {
@@ -3422,6 +3471,13 @@ private:
         const char * const argv[] = {"cppcheck", "--safety", "--no-safety", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(false, settings->safety);
+    }
+
+    void debugAnalyzerinfo() {
+        REDIRECT;
+        const char * const argv[] = {"cppcheck", "--debug-analyzerinfo", "file.cpp"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
+        ASSERT_EQUALS(true, settings->debugainfo);
     }
 
     void ignorepaths1() {

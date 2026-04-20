@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -156,14 +156,14 @@ static int getMinFormatStringOutputLength(const std::vector<const Token*> &param
             outputStringSize++;
 
         if (handleNextParameter) {
-            // NOLINTNEXTLINE(cert-err34-c) - intentional use
+            // NOLINTNEXTLINE(bugprone-unchecked-string-to-number-conversion) - intentional use
             int tempDigits = std::abs(std::atoi(digits_string.c_str()));
             if (i_d_x_f_found)
                 tempDigits = std::max(tempDigits, 1);
 
             if (digits_string.find('.') != std::string::npos) {
                 const std::string endStr = digits_string.substr(digits_string.find('.') + 1);
-                // NOLINTNEXTLINE(cert-err34-c) - intentional use
+                // NOLINTNEXTLINE(bugprone-unchecked-string-to-number-conversion) - intentional use
                 const int maxLen = std::max(std::abs(std::atoi(endStr.c_str())), 1);
 
                 if (formatString[i] == 's') {
@@ -706,10 +706,10 @@ void CheckBufferOverrun::bufferOverflowError(const Token *tok, const ValueFlow::
 
 void CheckBufferOverrun::arrayIndexThenCheck()
 {
-    if (!mSettings->severity.isEnabled(Severity::portability))
+    if (!mSettings->severity.isEnabled(Severity::style))
         return;
 
-    logChecker("CheckBufferOverrun::arrayIndexThenCheck");
+    logChecker("CheckBufferOverrun::arrayIndexThenCheck"); // style
 
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * const scope : symbolDatabase->functionScopes) {

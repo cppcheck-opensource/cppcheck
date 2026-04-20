@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -195,6 +195,7 @@ private:
         TEST_CASE(const98);
         TEST_CASE(const99);
         TEST_CASE(const100);
+        TEST_CASE(const101);
 
         TEST_CASE(const_handleDefaultParameters);
         TEST_CASE(const_passThisToMemberOfOtherClass);
@@ -732,6 +733,13 @@ private:
                                   "class Derived : public Base {\n"
                                   "public:\n"
                                   "    void Two() = delete;\n"
+                                  "};\n");
+        ASSERT_EQUALS("", errout_str());
+
+        checkDuplInheritedMembers("struct B { void f(); };\n" // #14583
+                                  "struct D : B {\n"
+                                  "    template <typename>\n"
+                                  "    void f();\n"
                                   "};\n");
         ASSERT_EQUALS("", errout_str());
     }
@@ -6816,6 +6824,22 @@ private:
         ASSERT_EQUALS("[test.cpp:4:7]: (style) Either there is a missing 'override', or the member function 'S::g' can be static. [functionStatic]\n"
                       "[test.cpp:7:9]: (style) Either there is a missing 'override', or the member function 'S::h' can be static. [functionStatic]\n",
                       errout_str());
+
+        checkConst("namespace N {\n" // #14391
+                   "    void f();\n"
+                   "}\n"
+                   "struct S : U {\n"
+                   "    void g() { N::f(); }\n"
+                   "    void h() { ::N::f(); }\n"
+                   "};\n");
+        ASSERT_EQUALS("[test.cpp:5:10]: (style) Either there is a missing 'override', or the member function 'S::g' can be static. [functionStatic]\n"
+                      "[test.cpp:6:10]: (style) Either there is a missing 'override', or the member function 'S::h' can be static. [functionStatic]\n",
+                      errout_str());
+
+        checkConst("struct S : U {\n" // #14425
+                   "    void f() { this->g(); }\n"
+                   "};\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void const97() { // #13301
@@ -6947,6 +6971,16 @@ private:
                    "    void f() const {}\n"
                    "};\n");
         ASSERT_EQUALS("", errout_str()); // don't crash
+    }
+
+    void const101() {
+        checkConst("struct error {\n"
+                   "    error() = default;\n"
+                   "};\n"
+                   "struct S : U {\n"
+                   "    int f() { return this->error(); }\n"
+                   "};\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void const_handleDefaultParameters() {
@@ -7725,6 +7759,19 @@ private:
                    "    }\n"
                    "};");
         ASSERT_EQUALS("[test.cpp:8:10]: (style, inconclusive) Technically the member function 'Fred::f2' can be const. [functionConst]\n", errout_str());
+
+        checkConst("struct T {\n" // #14390
+                   "    std::vector<int*> v;\n"
+                   "    void f() {\n"
+                   "        for (const auto& p : v)\n"
+                   "            *p = 0;\n"
+                   "    }\n"
+                   "    void g() {\n"
+                   "        for (auto* p : v)\n"
+                   "            *p = 0;\n"
+                   "    }\n"
+                   "};\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void const_shared_ptr() { // #8674
@@ -8806,6 +8853,16 @@ private:
                       "};\n");
         ASSERT_EQUALS("[test.cpp:2:14] -> [test.cpp:5:6]: (style) The destructor '~D' overrides a destructor in a base class but is not marked with a 'override' specifier. [missingOverride]\n",
                       errout_str());
+
+        checkOverride("struct B {\n" // #14581
+                      "    virtual void f();\n"
+                      "};\n"
+                      "struct D : B {\n"
+                      "    void f() override;\n"
+                      "    template <typename T>\n"
+                      "    void f();\n"
+                      "};\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void overrideCVRefQualifiers() {

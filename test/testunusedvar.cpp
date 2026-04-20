@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -77,6 +77,8 @@ private:
         TEST_CASE(structmember29); // #14075
         TEST_CASE(structmember30); // #14131
         TEST_CASE(structmember31); // #14130
+        TEST_CASE(structmember32); // #14483
+        TEST_CASE(structmember33);
         TEST_CASE(structmember_macro);
         TEST_CASE(structmember_template_argument); // #13887 - do not report that member used in template argument is unused
         TEST_CASE(classmember);
@@ -152,6 +154,7 @@ private:
         TEST_CASE(localvar69);
         TEST_CASE(localvar70);
         TEST_CASE(localvar71);
+        TEST_CASE(localvar72);
         TEST_CASE(localvarloops); // loops
         TEST_CASE(localvaralias1);
         TEST_CASE(localvaralias2); // ticket #1637
@@ -268,6 +271,9 @@ private:
         TEST_CASE(globalData);
 
         TEST_CASE(structuredBinding); // #13269
+
+        TEST_CASE(pointerCast1); // #14535
+        TEST_CASE(pointerCast2);
     }
 
     struct FunctionVariableUsageOptions
@@ -2066,6 +2072,20 @@ private:
         ASSERT_EQUALS("", errout_str());
     }
 
+    void structmember32() { // #14483
+        checkStructMemberUsage("struct S {\n"
+                               "  int S::* mp;\n"
+                               "};\n");
+        ASSERT_EQUALS("[test.cpp:2:12]: (style) struct member 'S::mp' is never used. [unusedStructMember]\n", errout_str());
+    }
+
+    void structmember33() {
+        checkStructMemberUsage("struct S {\n"
+                               "  int A::B<int>::C::* mp;\n"
+                               "};\n");
+        ASSERT_EQUALS("[test.cpp:2:23]: (style) struct member 'S::mp' is never used. [unusedStructMember]\n", errout_str());
+    }
+
     void structmember_macro() {
         checkStructMemberUsageP("#define S(n) struct n { int a, b, c; };\n"
                                 "S(unused);\n");
@@ -2156,8 +2176,7 @@ private:
                               "    int i = 0;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:11]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:3:9]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:3:11]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("void foo()\n"
@@ -2233,8 +2252,7 @@ private:
                               "    bool i = false;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:12]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:3:10]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:3:12]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("void foo()\n"
@@ -2242,8 +2260,7 @@ private:
                               "    bool i = true;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:12]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:3:10]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:3:12]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("void foo()\n"
@@ -2266,8 +2283,7 @@ private:
                               "}\n",
                               dinit(FunctionVariableUsageOptions, $.cpp = false));
         ASSERT_EQUALS(
-            "[test.c:3:17]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.c:3:15]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.c:3:17]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("void foo()\n"
@@ -2275,8 +2291,7 @@ private:
                               "    int i = undefined;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:11]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:3:9]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:3:11]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("void foo()\n"
@@ -2284,8 +2299,7 @@ private:
                               "    int * i = Data;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:13]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:3:11]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:3:13]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("void foo()\n"
@@ -2293,8 +2307,7 @@ private:
                               "    void * i = Data;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:14]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:3:12]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:3:14]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("void foo()\n"
@@ -2302,8 +2315,7 @@ private:
                               "    const void * i = Data;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:20]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:3:18]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:3:20]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("void foo()\n"
@@ -2311,8 +2323,7 @@ private:
                               "    struct S * i = DATA;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:18]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:3:16]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:3:18]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("void foo()\n"
@@ -2320,8 +2331,7 @@ private:
                               "    const struct S * i = DATA;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:24]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:3:22]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:3:24]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("void foo()\n"
@@ -2341,8 +2351,7 @@ private:
                               "    undefined * i = X;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:19]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:3:17]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:3:19]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("void foo()\n"
@@ -2351,8 +2360,7 @@ private:
                               "    int j = i;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:4:11]: (style) Variable 'j' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:4:9]: (style) Variable 'j' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:4:11]: (style) Variable 'j' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("void foo()\n"
@@ -2378,8 +2386,7 @@ private:
                               "    char *i = \"123456789\";\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:13]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:3:11]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:3:13]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("void foo()\n"
@@ -2387,8 +2394,7 @@ private:
                               "    int i = 0;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:11]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:3:9]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:3:11]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("void foo()\n"
@@ -2624,8 +2630,7 @@ private:
                               "    int i = 0;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:2:11]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:2:9]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:2:11]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
         // extracttests.enable
     }
@@ -2874,25 +2879,25 @@ private:
                               "{\n"
                               "    int * i[2];\n"
                               "}");
-        TODO_ASSERT_EQUALS("[test.cpp:3:9]: (style) Unused variable: i [unusedVariable]\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:11]: (style) Unused variable: i [unusedVariable]\n", errout_str());
 
         functionVariableUsage("void foo()\n"
                               "{\n"
                               "    const int * i[2];\n"
                               "}");
-        TODO_ASSERT_EQUALS("[test.cpp:3:9]: (style) Unused variable: i [unusedVariable]\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:17]: (style) Unused variable: i [unusedVariable]\n", errout_str());
 
         functionVariableUsage("void foo()\n"
                               "{\n"
                               "    void * i[2];\n"
                               "}");
-        TODO_ASSERT_EQUALS("[test.cpp:3:9]: (style) Unused variable: i [unusedVariable]\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:12]: (style) Unused variable: i [unusedVariable]\n", errout_str());
 
         functionVariableUsage("void foo()\n"
                               "{\n"
                               "    const void * i[2];\n"
                               "}");
-        TODO_ASSERT_EQUALS("[test.cpp:3:9]: (style) Unused variable: i [unusedVariable]\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:18]: (style) Unused variable: i [unusedVariable]\n", errout_str());
 
         functionVariableUsage("void foo()\n"
                               "{\n"
@@ -3081,8 +3086,7 @@ private:
                               "}");
         ASSERT_EQUALS("[test.cpp:7:15]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n"
                       "[test.cpp:3:9]: (style) Unused variable: i [unusedVariable]\n"
-                      "[test.cpp:5:13]: (style) Unused variable: i [unusedVariable]\n"
-                      "[test.cpp:7:13]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+                      "[test.cpp:5:13]: (style) Unused variable: i [unusedVariable]\n",
                       errout_str());
 
         functionVariableUsage("void foo(int x)\n"
@@ -3730,8 +3734,7 @@ private:
                               "    const std::string x = Bar();\n"  // <- warning
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:16:25]: (style) Variable 'x' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:16:23]: (style) Variable 'x' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:16:25]: (style) Variable 'x' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
     }
 
@@ -3915,8 +3918,7 @@ private:
                               "    return i;\n"
                               "}\n");
         ASSERT_EQUALS(
-            "[test.cpp:2:18]: (style) Variable 'j' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:2:16]: (style) Variable 'j' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:2:18]: (style) Variable 'j' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("int f() {\n"
@@ -3924,8 +3926,7 @@ private:
                               "    return j;\n"
                               "}\n");
         ASSERT_EQUALS(
-            "[test.cpp:2:11]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:2:9]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:2:11]: (style) Variable 'i' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("void f() {\n" // #10846
@@ -4047,6 +4048,15 @@ private:
         functionVariableUsage("struct A { explicit A(int i); };\n" // #12363
                               "void f() { A a(0); }\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void localvar72() {
+        functionVariableUsage("void f()\n"
+                              "{\n"
+                              "  struct S {};\n"
+                              "  int S::* mp;\n"
+                              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:12]: (style) Unused variable: mp [unusedVariable]\n", errout_str());
     }
 
     void localvarloops() {
@@ -4172,8 +4182,7 @@ private:
                               "    int *b = &a;\n"
                               "}");
         ASSERT_EQUALS("[test.cpp:4:12]: (style) Variable 'b' is assigned a value that is never used. [unreadVariable]\n"
-                      "[test.cpp:3:9]: (style) Unused variable: a [unusedVariable]\n"
-                      "[test.cpp:4:10]: (style) Variable 'b' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+                      "[test.cpp:3:9]: (style) Unused variable: a [unusedVariable]\n",
                       errout_str());
 
         functionVariableUsage("void foo()\n"
@@ -4182,8 +4191,7 @@ private:
                               "    int *b = a;\n"
                               "}");
         ASSERT_EQUALS("[test.cpp:4:12]: (style) Variable 'b' is assigned a value that is never used. [unreadVariable]\n"
-                      "[test.cpp:3:9]: (style) Unused variable: a [unusedVariable]\n"
-                      "[test.cpp:4:10]: (style) Variable 'b' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+                      "[test.cpp:3:9]: (style) Unused variable: a [unusedVariable]\n",
                       errout_str());
 
         functionVariableUsage("void foo()\n"
@@ -4263,8 +4271,7 @@ private:
                               "    int *b = &a;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:4:12]: (style) Variable 'b' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:4:10]: (style) Variable 'b' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:4:12]: (style) Variable 'b' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         // a is not a local variable and b is aliased to it
@@ -4273,8 +4280,7 @@ private:
                               "    int *b = &a;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:12]: (style) Variable 'b' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:3:10]: (style) Variable 'b' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:3:12]: (style) Variable 'b' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         // a is not a local variable and b is aliased to it
@@ -4287,8 +4293,7 @@ private:
                               "    }\n"
                               "};");
         ASSERT_EQUALS(
-            "[test.cpp:6:16]: (style) Variable 'b' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:6:14]: (style) Variable 'b' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:6:16]: (style) Variable 'b' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("int a;\n"
@@ -4497,8 +4502,7 @@ private:
                               "    *d = 0;\n"
                               "}");
         ASSERT_EQUALS("[test.cpp:5:12]: (style) Variable 'c' is assigned a value that is never used. [unreadVariable]\n"
-                      "[test.cpp:3:9]: (style) Unused variable: a [unusedVariable]\n"
-                      "[test.cpp:5:10]: (style) Variable 'c' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+                      "[test.cpp:3:9]: (style) Unused variable: a [unusedVariable]\n",
                       errout_str());
 
         functionVariableUsage("void foo()\n"
@@ -4544,8 +4548,7 @@ private:
                               "}");
         TODO_ASSERT_EQUALS(
             "[test.cpp:4:13]: (style) Variable 'a' is assigned a value that is never used. [unreadVariable]\n",
-            "[test.cpp:5:13]: (style) Variable 'c' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:5:11]: (style) Variable 'c' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:5:13]: (style) Variable 'c' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("void foo()\n"
@@ -4602,8 +4605,7 @@ private:
                               "    struct S * s = (struct S *)a;\n"
                               "}");
         ASSERT_EQUALS("[test.cpp:5:18]: (style) Variable 's' is assigned a value that is never used. [unreadVariable]\n"
-                      "[test.cpp:4:10]: (style) Unused variable: a [unusedVariable]\n"
-                      "[test.cpp:5:16]: (style) Variable 's' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+                      "[test.cpp:4:10]: (style) Unused variable: a [unusedVariable]\n",
                       errout_str());
 
         functionVariableUsage("struct S { char c[100]; };\n"
@@ -4613,8 +4615,7 @@ private:
                               "    const struct S * s = (const struct S *)a;\n"
                               "}");
         ASSERT_EQUALS("[test.cpp:5:24]: (style) Variable 's' is assigned a value that is never used. [unreadVariable]\n"
-                      "[test.cpp:4:10]: (style) Unused variable: a [unusedVariable]\n"
-                      "[test.cpp:5:22]: (style) Variable 's' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+                      "[test.cpp:4:10]: (style) Unused variable: a [unusedVariable]\n",
                       errout_str());
 
         functionVariableUsage("struct S { char c[100]; };\n"
@@ -4624,8 +4625,7 @@ private:
                               "    struct S * s = static_cast<struct S *>(a);\n"
                               "}");
         ASSERT_EQUALS("[test.cpp:5:18]: (style) Variable 's' is assigned a value that is never used. [unreadVariable]\n"
-                      "[test.cpp:4:10]: (style) Unused variable: a [unusedVariable]\n"
-                      "[test.cpp:5:16]: (style) Variable 's' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+                      "[test.cpp:4:10]: (style) Unused variable: a [unusedVariable]\n",
                       errout_str());
 
         functionVariableUsage("struct S { char c[100]; };\n"
@@ -4635,8 +4635,7 @@ private:
                               "    const struct S * s = static_cast<const struct S *>(a);\n"
                               "}");
         ASSERT_EQUALS("[test.cpp:5:24]: (style) Variable 's' is assigned a value that is never used. [unreadVariable]\n"
-                      "[test.cpp:4:10]: (style) Unused variable: a [unusedVariable]\n"
-                      "[test.cpp:5:22]: (style) Variable 's' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+                      "[test.cpp:4:10]: (style) Unused variable: a [unusedVariable]\n",
                       errout_str());
 
         functionVariableUsage("int a[10];\n"
@@ -4696,8 +4695,7 @@ private:
                               "    int * a = &ab.a;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:4:13]: (style) Variable 'a' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:4:11]: (style) Variable 'a' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:4:13]: (style) Variable 'a' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("struct AB { int a; int b; } ab;\n"
@@ -4715,8 +4713,7 @@ private:
                               "    int * a = &ab.a;\n"
                               "}");
         ASSERT_EQUALS("[test.cpp:5:13]: (style) Variable 'a' is assigned a value that is never used. [unreadVariable]\n"
-                      "[test.cpp:4:15]: (style) Variable 'ab' is not assigned a value. [unassignedVariable]\n"
-                      "[test.cpp:5:11]: (style) Variable 'a' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+                      "[test.cpp:4:15]: (style) Variable 'ab' is not assigned a value. [unassignedVariable]\n",
                       errout_str());
 
         functionVariableUsage("struct AB { int a; int b; };\n"
@@ -5338,8 +5335,7 @@ private:
                               "    struct ABC abc = { 1, 2, 3 };\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:4:20]: (style) Variable 'abc' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:4:16]: (style) Variable 'abc' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:4:20]: (style) Variable 'abc' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
     }
 
@@ -5399,8 +5395,7 @@ private:
                               "    return 0;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:9]: (style) Variable 'a' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:3:7]: (style) Variable 'a' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:3:9]: (style) Variable 'a' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         // extracttests.disable
@@ -5410,8 +5405,7 @@ private:
                               "    return 0;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:9]: (style) Variable 'a' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:3:7]: (style) Variable 'a' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:3:9]: (style) Variable 'a' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         // extracttests.enable
@@ -5701,8 +5695,7 @@ private:
                               "        return 1;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:15]: (style) Variable 'y' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:3:13]: (style) Variable 'y' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:3:15]: (style) Variable 'y' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("int foo(int x)\n"
@@ -5822,6 +5815,22 @@ private:
                               "    for (int i = 0; (pci = cdi_list_get(pciDevices, i)); i++)\n"
                               "    {}\n"
                               "}");
+        ASSERT_EQUALS("", errout_str());
+
+        functionVariableUsage("void f(const int* b, int x) {\n" // #11125
+                              "    int a[6];\n"
+                              "    int i = 0;\n"
+                              "    for (int j = 0; j < 6; ++j) {\n"
+                              "        if (b[j] != 0) {\n"
+                              "            a[i] = j;\n"
+                              "            ++i;\n"
+                              "        }\n"
+                              "    }\n"
+                              "    if (i > 1) {\n"
+                              "        a[i] = a[0];\n"
+                              "        (void)a[x];\n"
+                              "    }\n"
+                              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -6372,16 +6381,14 @@ private:
                               "    std::string s = \"foo\";\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:2:19]: (style) Variable 's' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:2:17]: (style) Variable 's' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:2:19]: (style) Variable 's' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("void foo() {\n" // #8901
                               "    const std::string s = \"foo\";\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:2:25]: (style) Variable 's' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:2:23]: (style) Variable 's' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:2:25]: (style) Variable 's' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("std::string foo() {\n"
@@ -6421,8 +6428,7 @@ private:
                               "    const bool b = true;\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:2:18]: (style) Variable 'b' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:2:16]: (style) Variable 'b' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:2:18]: (style) Variable 'b' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
     }
 
@@ -6566,8 +6572,7 @@ private:
                               "    std::string x = foo();\n"
                               "}");
         ASSERT_EQUALS(
-            "[test.cpp:2:19]: (style) Variable 'x' is assigned a value that is never used. [unreadVariable]\n"
-            "[test.cpp:2:17]: (style) Variable 'x' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+            "[test.cpp:2:19]: (style) Variable 'x' is assigned a value that is never used. [unreadVariable]\n",
             errout_str());
 
         functionVariableUsage("void f() {\n"
@@ -6679,6 +6684,34 @@ private:
                               "    C c(12);\n"
                               "}");
         ASSERT_EQUALS("", errout_str());
+
+        // #14643
+        functionVariableUsage("class S { S(int); };\n"
+                              "void f() { S s = 0; }\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // #10965
+        functionVariableUsage("class A {\n"
+                              "public:\n"
+                              "    A();\n"
+                              "};\n"
+                              "extern A cb();\n"
+                              "void f() { const A c = cb(); }\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // #11704
+        functionVariableUsage("class S {\n"
+                              "public:\n"
+                              "    S();\n"
+                              "};\n"
+                              "class C {\n"
+                              "    S &s();\n"
+                              "    void f() {\n"
+                              "        const S s1 = s(); // warning\n"
+                              "        const S s2; // no warning\n"
+                              "    }\n"
+                              "};\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void localVarSmartPtr() {
@@ -6708,7 +6741,7 @@ private:
                               "    auto a2 = std::unique_ptr<A>(new A());\n"
                               "}\n");
         ASSERT_EQUALS("[test.cpp:7:12]: (style) Variable 'a' is assigned a value that is never used. [unreadVariable]\n"
-                      "[test.cpp:8:13]: (style) Variable 'a2' is assigned a value that is never used. [unreadVariable]\n", // duplicate
+                      "[test.cpp:8:13]: (style) Variable 'a2' is assigned a value that is never used. [unreadVariable]\n",
                       errout_str());
 
         functionVariableUsage("void g();\n" // #11094
@@ -6732,6 +6765,13 @@ private:
         functionVariableUsage("struct S { S(); };\n" // #11108
                               "void f(std::unique_ptr<S> p) {\n"
                               "    p = nullptr;\n"
+                              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        functionVariableUsage("struct S { S(); };\n" // #14160
+                              "void f() {\n"
+                              "    auto p = std::make_unique<S>();\n"
+                              "    auto q = std::make_unique<U>();\n"
                               "}\n");
         ASSERT_EQUALS("", errout_str());
     }
@@ -7032,6 +7072,13 @@ private:
                               "    funcPtr();\n"
                               "}");
         ASSERT_EQUALS("", errout_str());
+
+        // #14661
+        functionVariableUsage("int main() {\n"
+                              "    void (*const funcPtr[])(void) = {x};\n"
+                              "    funcPtr[0]();\n"
+                              "}");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void localvarAddr() { // #7747
@@ -7319,6 +7366,24 @@ private:
         functionVariableUsage("int main()\n"
                               "{\n"
                               "    [[maybe_unused]] auto [a2, b3] = std::make_pair(42, 0.42);\n"
+                              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void pointerCast1() { // #14535
+        functionVariableUsage("void f(int* p)\n"
+                              "{\n"
+                              "    int* p2 = p;\n"
+                              "    ((int *)(p2))[0] = 0;\n"
+                              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void pointerCast2() {
+        functionVariableUsage("void f(int* p)\n"
+                              "{\n"
+                              "    int* p2 = p;\n"
+                              "    static_cast<int*>(p2)[0] = 0;\n"
                               "}\n");
         ASSERT_EQUALS("", errout_str());
     }

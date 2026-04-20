@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,9 @@
 #include "color.h"
 #include "errorlogger.h"
 #include "filesettings.h"
+#include "checkthread.h"
 
+#include <cstddef>
 #include <list>
 #include <mutex>
 #include <string>
@@ -83,22 +85,25 @@ public:
     {
         (void) metric;
     }
+    // NOLINTNEXTLINE(readability-avoid-const-params-in-decls) - false positive this is an overload
+    void reportProgress(const std::string &filename, const char stage[], const std::size_t value) final;
 
 public slots:
 
     /**
-     * @brief Slot threads use to signal this class that a specific file is checked
-     * @param file File that is checked
+     * @brief Slot threads use to signal this class that it finish checking a file
+     * @param details Details about what file finished being checked and by what thread
      */
-    void fileChecked(const QString &file);
+    void finishCheck(CheckThread::Details details);
+
 signals:
     /**
-     * @brief Progress signal
-     * @param value Current progress
-     * @param description Description of the current stage
+     * @brief Files checked progress
+     * @param value Current progress (0 - PROGRESS_MAX)
+     * @param description Description of the current stage (example: "13/45 files checked")
      */
     // NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name) - caused by generated MOC code
-    void progress(int value, const QString& description);
+    void filesCheckedProgress(int value, const QString& description);
 
     /**
      * @brief Signal of a new error
@@ -124,6 +129,8 @@ signals:
     // NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name) - caused by generated MOC code
     void debugError(const ErrorItem &item);
 
+    void progress(QString filename, QString stage, std::size_t value);
+
 protected:
 
     /**
@@ -142,17 +149,11 @@ protected:
     std::list<FileSettings> mFileSettings;
     std::list<FileSettings>::const_iterator mItNextFileSettings{mFileSettings.cbegin()};
 
-    /**
-     * @brief Max progress
-     *
-     */
-    quint64 mMaxProgress{};
+    /** @brief Total file size */
+    quint64 mTotalFileSize{};
 
-    /**
-     * @brief Current progress
-     *
-     */
-    quint64 mProgress{};
+    /** @brief File size of checked files */
+    quint64 mCheckedFileSize{};
 
     /**
      * @brief Current number of files checked

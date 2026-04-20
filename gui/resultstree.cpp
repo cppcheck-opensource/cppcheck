@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@
 #include "showtypes.h"
 #include "suppressions.h"
 #include "threadhandler.h"
+#include "utils.h"
 #include "xmlreportv2.h"
 
 #include <algorithm>
@@ -49,9 +50,7 @@
 #include <QIcon>
 #include <QItemSelectionModel>
 #include <QKeyEvent>
-#include <QList>
 #include <QLocale>
-#include <QMap>
 #include <QMenu>
 #include <QMessageBox>
 #include <QModelIndex>
@@ -377,9 +376,10 @@ QString ResultsTree::severityToTranslatedString(Severity severity)
         return tr("internal");
 
     case Severity::none:
-    default:
         return QString();
     }
+
+    cppcheck::unreachable();
 }
 
 ResultItem *ResultsTree::findFileItem(const QString &name) const
@@ -713,7 +713,7 @@ void ResultsTree::contextMenuEvent(QContextMenuEvent * e)
                 {
                     auto *action = new QAction(tr("No tag"), tagMenu);
                     tagMenu->addAction(action);
-                    connect(action, &QAction::triggered, [=]() {
+                    connect(action, &QAction::triggered, [this]() {
                         tagSelectedItems(QString());
                     });
                 }
@@ -721,7 +721,7 @@ void ResultsTree::contextMenuEvent(QContextMenuEvent * e)
                 for (const QString& tagstr : currentProject->getTags()) {
                     auto *action = new QAction(tagstr, tagMenu);
                     tagMenu->addAction(action);
-                    connect(action, &QAction::triggered, [=]() {
+                    connect(action, &QAction::triggered, [tagstr, this]() {
                         tagSelectedItems(tagstr);
                     });
                 }

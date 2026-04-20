@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,7 +40,6 @@ enum class ReportType : std::uint8_t {
 
 namespace checkers {
     extern CPPCHECKLIB const std::map<std::string, std::string> allCheckers;
-    extern CPPCHECKLIB const std::map<std::string, std::string> premiumCheckers;
 
     struct CPPCHECKLIB MisraInfo {
         int a;

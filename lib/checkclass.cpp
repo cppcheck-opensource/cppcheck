@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1872,12 +1872,12 @@ CheckClass::Bool CheckClass::isInverted(const Token *tok, const Token *rhs)
                                                      || (Token::simpleMatch(itr->astOperand2(), "this") && Token::simpleMatch(itr->astOperand1(), "&") && Token::simpleMatch(itr->astOperand1()->next(), rhs->str().c_str(), rhs->str().size())))) {
             //Do nothing
         } else {
-            return Bool::BAILOUT;
+            return Bool::Bailout;
         }
     }
     if (res)
-        return Bool::TRUE;
-    return Bool::FALSE;
+        return Bool::True;
+    return Bool::False;
 }
 
 const Token * CheckClass::getIfStmtBodyStart(const Token *tok, const Token *rhs)
@@ -1885,11 +1885,11 @@ const Token * CheckClass::getIfStmtBodyStart(const Token *tok, const Token *rhs)
     const Token *top = tok->astTop();
     if (Token::simpleMatch(top->link(), ") {")) {
         switch (isInverted(tok->astParent(), rhs)) {
-        case Bool::BAILOUT:
+        case Bool::Bailout:
             return nullptr;
-        case Bool::TRUE:
+        case Bool::True:
             return top->link()->next();
-        case Bool::FALSE:
+        case Bool::False:
             return top->link()->linkAt(1);
         }
     }
@@ -2287,6 +2287,9 @@ bool CheckClass::isMemberVar(const Scope *scope, const Token *tok) const
         } else if (tok->str() == "]") {
             tok = tok->link()->previous();
             again = true;
+        } else if (Token::Match(tok, "%name% ::")) {
+            tok = tok->tokAt(2);
+            again = true;
         }
     } while (again);
 
@@ -2350,6 +2353,8 @@ bool CheckClass::isMemberVar(const Scope *scope, const Token *tok) const
 bool CheckClass::isMemberFunc(const Scope *scope, const Token *tok)
 {
     if (!tok->function()) {
+        if (Token::simpleMatch(tok->astParent(), ".") && Token::simpleMatch(tok->astParent()->astOperand1(), "this"))
+            return true;
         for (const Function &func : scope->functionList) {
             if (func.name() == tok->str()) {
                 const Token* tok2 = tok->tokAt(2);
@@ -2540,8 +2545,10 @@ bool CheckClass::checkConstFunc(const Scope *scope, const Function *func, Member
                     }
                 }
             } else if (lhs->str() == ":" && lhs->astParent() && lhs->astParent()->str() == "(") { // range-based for-loop (C++11)
-                // TODO: We could additionally check what is done with the elements to avoid false negatives. Here we just rely on "const" keyword being used.
-                if (lhs->astParent()->strAt(1) != "const")
+                const Variable* loopVar = lhs->astOperand1()->variable();
+                if (!loopVar || !loopVar->valueType())
+                    return false;
+                if (!loopVar->valueType()->isConst(loopVar->valueType()->pointer))
                     return false;
             } else {
                 if (lhs->isAssignmentOp()) {
@@ -2743,15 +2750,17 @@ namespace { // avoid one-definition-rule violation
 
 void CheckClass::initializerListOrder()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("initializerList"))
-        return;
+    if (!mSettings->isPremiumEnabled("initializerList")) {
+        if (!mSettings->severity.isEnabled(Severity::style))
+            return;
 
-    // This check is not inconclusive.  However it only determines if the initialization
-    // order is incorrect.  It does not determine if being out of order causes
-    // a real error.  Out of order is not necessarily an error but you can never
-    // have an error if the list is in order so this enforces defensive programming.
-    if (!mSettings->certainty.isEnabled(Certainty::inconclusive))
-        return;
+        // This check is not inconclusive.  However it only determines if the initialization
+        // order is incorrect.  It does not determine if being out of order causes
+        // a real error.  Out of order is not necessarily an error but you can never
+        // have an error if the list is in order so this enforces defensive programming.
+        if (!mSettings->certainty.isEnabled(Certainty::inconclusive))
+            return;
+    }
 
     logChecker("CheckClass::initializerListOrder"); // style,inconclusive
 
@@ -3118,6 +3127,8 @@ static std::vector<DuplMemberFuncInfo> getDuplInheritedMemberFunctionsRecursive(
                 continue;
             if (classFuncIt.tokenDef->isExpandedMacro())
                 continue;
+            if (classFuncIt.templateDef)
+                continue;
             for (const Function& parentClassFuncIt : parentClassIt.type->classScope->functionList) {
                 if (classFuncIt.name() == parentClassFuncIt.name() &&
                     (parentClassFuncIt.access != AccessControl::Private || !skipPrivate) &&
@@ -3185,9 +3196,9 @@ enum class CtorType : std::uint8_t {
 
 void CheckClass::checkCopyCtorAndEqOperator()
 {
-    // This is disabled because of #8388
+    // TODO: This is disabled because of #8388
     // The message must be clarified. How is the behaviour different?
-    if ((true) || !mSettings->severity.isEnabled(Severity::warning)) // NOLINT(readability-simplify-boolean-expr)
+    if ((true) || !mSettings->severity.isEnabled(Severity::warning)) // NOLINT(readability-simplify-boolean-expr,readability-redundant-parentheses)
         return;
 
     // logChecker
@@ -3259,6 +3270,8 @@ void CheckClass::checkOverride()
             if (func.hasOverrideSpecifier() || func.hasFinalSpecifier())
                 continue;
             if (func.tokenDef->isExpandedMacro())
+                continue;
+            if (func.templateDef)
                 continue;
             const Function *baseFunc = func.getOverriddenFunction();
             if (baseFunc)

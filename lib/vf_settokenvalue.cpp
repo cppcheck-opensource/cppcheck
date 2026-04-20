@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -72,7 +72,7 @@ namespace ValueFlow
             return value;
         if (!parent->isBinaryOp())
             return value;
-        if (!parent->isConstOp())
+        if (!parent->isConstOp() && !parent->isAssignmentOp())
             return value;
         if (!astIsIntegral(parent->astOperand1(), false))
             return value;
@@ -88,7 +88,7 @@ namespace ValueFlow
         ValueType::Sign sign = ValueType::Sign::UNSIGNED;
         if (n1 < n2)
             sign = vt2->sign;
-        else if (n1 > n2)
+        else // (n1 >= n2)
             sign = vt1->sign;
         Value v = castValue(value, sign, std::max(n1, n2) * 8);
         v.wideintvalue = value.intvalue;
@@ -126,32 +126,31 @@ namespace ValueFlow
         return value.isIntValue() || value.isFloatValue();
     }
 
-    static void setTokenValueCast(Token *parent, const ValueType &valueType, const Value &value, const Settings &settings)
+    static void setTokenValueCast(Token *parent, const ValueType &valueType, Value value, const Settings &settings)
     {
         if (valueType.pointer || value.isImpossible())
-            setTokenValue(parent,value,settings);
+            setTokenValue(parent,std::move(value),settings);
         else if (valueType.type == ValueType::Type::CHAR)
-            setTokenValue(parent, castValue(value, valueType.sign, settings.platform.char_bit), settings);
+            setTokenValue(parent, castValue(std::move(value), valueType.sign, settings.platform.char_bit), settings);
         else if (valueType.type == ValueType::Type::SHORT)
-            setTokenValue(parent, castValue(value, valueType.sign, settings.platform.short_bit), settings);
+            setTokenValue(parent, castValue(std::move(value), valueType.sign, settings.platform.short_bit), settings);
         else if (valueType.type == ValueType::Type::INT)
-            setTokenValue(parent, castValue(value, valueType.sign, settings.platform.int_bit), settings);
+            setTokenValue(parent, castValue(std::move(value), valueType.sign, settings.platform.int_bit), settings);
         else if (valueType.type == ValueType::Type::LONG)
-            setTokenValue(parent, castValue(value, valueType.sign, settings.platform.long_bit), settings);
+            setTokenValue(parent, castValue(std::move(value), valueType.sign, settings.platform.long_bit), settings);
         else if (valueType.type == ValueType::Type::LONGLONG)
-            setTokenValue(parent, castValue(value, valueType.sign, settings.platform.long_long_bit), settings);
+            setTokenValue(parent, castValue(std::move(value), valueType.sign, settings.platform.long_long_bit), settings);
         else if (valueType.isFloat() && isNumeric(value)) {
-            Value floatValue = value;
-            floatValue.valueType = Value::ValueType::FLOAT;
             if (value.isIntValue())
-                floatValue.floatValue = static_cast<double>(value.intvalue);
-            setTokenValue(parent, std::move(floatValue), settings);
+                value.floatValue = static_cast<double>(value.intvalue);
+            value.valueType = Value::ValueType::FLOAT;
+            setTokenValue(parent, std::move(value), settings);
         } else if (value.isIntValue()) {
             const long long charMax = settings.platform.signedCharMax();
             const long long charMin = settings.platform.signedCharMin();
             if (charMin <= value.intvalue && value.intvalue <= charMax) {
                 // unknown type, but value is small so there should be no truncation etc
-                setTokenValue(parent,value,settings);
+                setTokenValue(parent,std::move(value),settings);
             }
         }
     }
@@ -307,22 +306,23 @@ namespace ValueFlow
                 value.valueType = Value::ValueType::INT;
                 setTokenValue(next, std::move(value), settings);
             } else if (yields == Library::Container::Yield::EMPTY) {
-                Value v(value);
-                v.valueType = Value::ValueType::INT;
-                v.bound = Value::Bound::Point;
+                const Value::Bound bound = value.bound;
+                const long long intvalue = value.intvalue;
+                value.valueType = Value::ValueType::INT;
+                value.bound = Value::Bound::Point;
                 if (value.isImpossible()) {
-                    if (value.intvalue == 0)
-                        v.setKnown();
-                    else if ((value.bound == Value::Bound::Upper && value.intvalue > 0) ||
-                             (value.bound == Value::Bound::Lower && value.intvalue < 0)) {
-                        v.intvalue = 0;
-                        v.setKnown();
+                    if (intvalue == 0)
+                        value.setKnown();
+                    else if ((bound == Value::Bound::Upper && intvalue > 0) ||
+                             (bound == Value::Bound::Lower && intvalue < 0)) {
+                        value.intvalue = 0;
+                        value.setKnown();
                     } else
-                        v.setPossible();
+                        value.setPossible();
                 } else {
-                    v.intvalue = !v.intvalue;
+                    value.intvalue = !value.intvalue;
                 }
-                setTokenValue(next, std::move(v), settings);
+                setTokenValue(next, std::move(value), settings);
             }
             return;
         }
@@ -346,27 +346,26 @@ namespace ValueFlow
                 setTokenValue(parent, std::move(value), settings);
                 return;
             }
-            Value pvalue = value;
             if (!value.subexpressions.empty() && Token::Match(parent, ". %var%")) {
                 if (contains(value.subexpressions, parent->strAt(1)))
-                    pvalue.subexpressions.clear();
+                    value.subexpressions.clear();
                 else
                     return;
             }
             if (parent->isUnaryOp("&")) {
-                pvalue.indirect++;
-                setTokenValue(parent, std::move(pvalue), settings);
+                value.indirect++;
+                setTokenValue(parent, std::move(value), settings);
             } else if (Token::Match(parent, ". %var%") && parent->astOperand1() == tok && parent->astOperand2()) {
-                if (parent->originalName() == "->" && pvalue.indirect > 0)
-                    pvalue.indirect--;
-                setTokenValue(parent->astOperand2(), std::move(pvalue), settings);
+                if (parent->originalName() == "->" && value.indirect > 0)
+                    value.indirect--;
+                setTokenValue(parent->astOperand2(), std::move(value), settings);
             } else if (Token::Match(parent->astParent(), ". %var%") && parent->astParent()->astOperand1() == parent) {
-                if (parent->astParent()->originalName() == "->" && pvalue.indirect > 0)
-                    pvalue.indirect--;
-                setTokenValue(parent->astParent()->astOperand2(), std::move(pvalue), settings);
-            } else if (parent->isUnaryOp("*") && pvalue.indirect > 0) {
-                pvalue.indirect--;
-                setTokenValue(parent, std::move(pvalue), settings);
+                if (parent->astParent()->originalName() == "->" && value.indirect > 0)
+                    value.indirect--;
+                setTokenValue(parent->astParent()->astOperand2(), std::move(value), settings);
+            } else if (parent->isUnaryOp("*") && value.indirect > 0) {
+                value.indirect--;
+                setTokenValue(parent, std::move(value), settings);
             }
             return;
         }
@@ -382,7 +381,7 @@ namespace ValueFlow
                 && tok->valueType()->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer)
                 >= valueType.getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer))
                 return;
-            setTokenValueCast(parent, valueType, value, settings);
+            setTokenValueCast(parent, valueType, std::move(value), settings);
         }
 
         else if (parent->str() == ":") {
@@ -421,11 +420,10 @@ namespace ValueFlow
                 if (ret)
                     return;
 
-                Value v(std::move(value));
-                v.conditional = true;
-                v.changeKnownToPossible();
+                value.conditional = true;
+                value.changeKnownToPossible();
 
-                setTokenValue(parent, std::move(v), settings);
+                setTokenValue(parent, std::move(value), settings);
             }
         }
 
@@ -713,15 +711,13 @@ namespace ValueFlow
             std::vector<const Token*> args = getArguments(value.tokvalue);
             if (const Library::Function* f = settings.library.getFunction(parent->previous())) {
                 if (f->containerYield == Library::Container::Yield::SIZE) {
-                    Value v(std::move(value));
-                    v.valueType = Value::ValueType::INT;
-                    v.intvalue = args.size();
-                    setTokenValue(parent, std::move(v), settings);
+                    value.valueType = Value::ValueType::INT;
+                    value.intvalue = args.size();
+                    setTokenValue(parent, std::move(value), settings);
                 } else if (f->containerYield == Library::Container::Yield::EMPTY) {
-                    Value v(std::move(value));
-                    v.intvalue = args.empty();
-                    v.valueType = Value::ValueType::INT;
-                    setTokenValue(parent, std::move(v), settings);
+                    value.intvalue = args.empty();
+                    value.valueType = Value::ValueType::INT;
+                    setTokenValue(parent, std::move(value), settings);
                 }
             }
         }

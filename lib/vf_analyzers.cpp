@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -139,7 +139,7 @@ struct ValueFlowAnalyzer : Analyzer {
                 return result;
             }
             ConditionState lhs = analyzeCondition(tok->astOperand1(), depth - 1);
-            if (lhs.isUnknownDependent())
+            if (lhs.isUnknownDependent() || !tok->astOperand2())
                 return lhs;
             ConditionState rhs = analyzeCondition(tok->astOperand2(), depth - 1);
             if (rhs.isUnknownDependent())
@@ -1207,7 +1207,7 @@ struct SingleValueFlowAnalyzer : ValueFlowAnalyzer {
             return false;
         if (value.isImpossible())
             return false;
-        if (isConditional() && !value.isKnown() && !value.isImpossible())
+        if (isConditional() && !value.isKnown())
             return true;
         if (value.isSymbolicValue())
             return false;
@@ -1238,6 +1238,7 @@ struct SingleValueFlowAnalyzer : ValueFlowAnalyzer {
         return false;
     }
 
+private:
     ValuePtr<Analyzer> reanalyze(Token* tok, const std::string& msg) const override {
         ValueFlow::Value newValue = value;
         newValue.errorPath.emplace_back(tok, msg);
@@ -1436,6 +1437,7 @@ struct SubExpressionAnalyzer : ExpressionAnalyzer {
         partialReads->emplace_back(tok, v);
     }
 
+private:
     // No reanalysis for subexpression
     ValuePtr<Analyzer> reanalyze(Token* /*tok*/, const std::string& /*msg*/) const override {
         return {};

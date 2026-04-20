@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -995,6 +995,14 @@ private:
               "char f(S* s) { return s->p ? 'a' : s->p->c; }\n");
         ASSERT_EQUALS("[test.cpp:2:24] -> [test.cpp:2:37]: (warning) Either the condition 's->p' is redundant or there is possible null pointer dereference: s->p. [nullPointerRedundantCheck]\n",
                       errout_str());
+
+        check("int f(const int a[]) {\n" // #14544
+              "    int i = 0;\n"
+              "    if (!a)\n"
+              "        a = &i;\n"
+              "    return *a;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void nullpointer5() {
@@ -2458,6 +2466,14 @@ private:
               "    if (h(i) && *i == 1) {}\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("void f(int i) {\n" // #13797
+              "    int* p = nullptr;\n"
+              "    if (!i) {\n"
+              "        *p = 0;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:10]: (error) Null pointer dereference: p [nullPointer]\n", errout_str());
     }
 
     void nullpointer78() // #7802
@@ -3473,8 +3489,7 @@ private:
               "    printf(\"%s\", s);\n"
               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:18]: (error) Null pointer dereference: s [nullPointer]\n"
-            "[test.cpp:3:18]: (error) Null pointer dereference [nullPointer]\n",
+            "[test.cpp:3:18]: (error) Null pointer dereference: s [nullPointer]\n",
             errout_str());
 
         check("void f() {\n"
@@ -3498,8 +3513,7 @@ private:
               "    printf(\"%u%s\", 123, s);\n"
               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:25]: (error) Null pointer dereference: s [nullPointer]\n"
-            "[test.cpp:3:25]: (error) Null pointer dereference [nullPointer]\n",
+            "[test.cpp:3:25]: (error) Null pointer dereference: s [nullPointer]\n",
             errout_str());
 
 
@@ -3544,16 +3558,14 @@ private:
               "    sscanf(s, \"%s\", 0);\n"
               "}");
         ASSERT_EQUALS(
-            "[test.cpp:2:21]: (error) Null pointer dereference [nullPointer]\n"
-            "[test.cpp:2:21]: (error) Null pointer dereference [nullPointer]\n",   // duplicate
+            "[test.cpp:2:21]: (error) Null pointer dereference [nullPointer]\n",
             errout_str());
 
         check("void f() {\n"
               "    scanf(\"%d\", 0);\n"
               "}");
         ASSERT_EQUALS(
-            "[test.cpp:2:17]: (error) Null pointer dereference [nullPointer]\n"
-            "[test.cpp:2:17]: (error) Null pointer dereference [nullPointer]\n",   // duplicate
+            "[test.cpp:2:17]: (error) Null pointer dereference [nullPointer]\n",
             errout_str());
 
         check("void f(char* foo) {\n"
@@ -3574,9 +3586,7 @@ private:
               "    sscanf(dummy, \"%d\", iVal);\n"
               "}");
         ASSERT_EQUALS(
-            "[test.cpp:3:25]: (error) Null pointer dereference: iVal [nullPointer]\n"
-            "[test.cpp:3:25]: (error) Null pointer dereference [nullPointer]\n"
-            "[test.cpp:3:25]: (error) Null pointer dereference [nullPointer]\n",   // duplicate
+            "[test.cpp:3:25]: (error) Null pointer dereference: iVal [nullPointer]\n",
             errout_str());
 
         check("void f(char *dummy) {\n"
@@ -3595,8 +3605,7 @@ private:
               "    sscanf(dummy, \"%*d%u\", 0);\n"
               "}");
         ASSERT_EQUALS(
-            "[test.cpp:2:28]: (error) Null pointer dereference [nullPointer]\n"
-            "[test.cpp:2:28]: (error) Null pointer dereference [nullPointer]\n",   // duplicate
+            "[test.cpp:2:28]: (error) Null pointer dereference [nullPointer]\n",
             errout_str());
     }
 
@@ -3742,6 +3751,15 @@ private:
                "    return 1 ? 1 : *(int*)0 = 1;\n"
                "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check ("struct S {\n" // #13220
+               "    explicit S(int* p) : i(*p) {\n"
+               "        if (p) {}\n"
+               "    }\n"
+               "    int i;\n"
+               "};\n");
+        ASSERT_EQUALS("[test.cpp:3:13] -> [test.cpp:2:29]: (warning) Either the condition 'p' is redundant or there is possible null pointer dereference: p. [nullPointerRedundantCheck]\n",
+                      errout_str());
     }
 
     void nullpointerDelete() {
@@ -3769,6 +3787,21 @@ private:
               "    if (x)\n"
               "        g(x);\n"
               "}");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct T {\n" // #14308
+              "    bool b{};\n"
+              "    T* next{};\n"
+              "};\n"
+              "bool g(const T*& r) {\n"
+              "    const T* t = r;\n"
+              "    r = t->next;\n"
+              "    return t->b;\n"
+              "}\n"
+              "void f(const T* tok) {\n"
+              "    if (g(tok)) {}\n"
+              "    if (tok) {}\n"
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -3920,7 +3953,8 @@ private:
               "  std::string s(p);\n"
               "  return s;\n"
               "}\n", dinit(CheckOptions, $.inconclusive = true));
-        ASSERT_EQUALS("", errout_str());
+        ASSERT_EQUALS("[test.cpp:6:17]: (warning, inconclusive) Possible null pointer dereference: p [nullPointer]\n",
+                      errout_str());
 
         check("void f() {\n" // #11078
               "    const char* p = nullptr;\n"
@@ -3934,6 +3968,15 @@ private:
         check("const char* g(long) { return nullptr; }\n" // #11561
               "void f() { std::string s = g(0L); }\n");
         ASSERT_EQUALS("[test.cpp:2:29]: (error) Null pointer dereference: g(0L) [nullPointer]\n",
+                      errout_str());
+
+        check("const char* g() { return nullptr; }\n" // #14098
+              "std::string f() {\n"
+              "    std::string s{ g() };\n"
+              "    return s + std::string(g());\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:21]: (error) Null pointer dereference: g() [nullPointer]\n"
+                      "[test.cpp:4:29]: (error) Null pointer dereference: g() [nullPointer]\n",
                       errout_str());
     }
 
@@ -4283,8 +4326,7 @@ private:
             Library library;
             ASSERT(LibraryHelper::loadxmldata(library, xmldata, sizeof(xmldata)));
 
-            std::list<const Token *> null;
-            CheckNullPointer::parseFunctionCall(*xtok, null, library);
+            const std::list<const Token *> null = CheckNullPointer::parseFunctionCall(*xtok, library);
             ASSERT_EQUALS(0U, null.size());
         }
 
@@ -4302,8 +4344,7 @@ private:
             Library library;
             ASSERT(LibraryHelper::loadxmldata(library, xmldata, sizeof(xmldata)));
 
-            std::list<const Token *> null;
-            CheckNullPointer::parseFunctionCall(*xtok, null, library);
+            const std::list<const Token *> null = CheckNullPointer::parseFunctionCall(*xtok, library);
             ASSERT_EQUALS(1U, null.size());
             ASSERT_EQUALS("a", null.front()->str());
         }

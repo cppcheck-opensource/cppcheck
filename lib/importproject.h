@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,13 +49,17 @@ namespace cppcheck {
             return caseInsensitiveStringCompare(lhs,rhs) < 0;
         }
     };
+
+    namespace testing
+    {
+        CPPCHECKLIB bool evaluateVcxprojCondition(const std::string& condition, const std::string& configuration, const std::string& platform);
+    }
 }
 
 /**
  * @brief Importing project settings.
  */
 class CPPCHECKLIB WARN_UNUSED ImportProject {
-    friend class TestImporter;
 public:
     enum class Type : std::uint8_t {
         NONE,
@@ -64,15 +68,17 @@ public:
         FAILURE,
         COMPILE_DB,
         VS_SLN,
+        VS_SLNX,
         VS_VCXPROJ,
         BORLAND,
         CPPCHECK_GUI
     };
 
-    static void fsParseCommand(FileSettings& fs, const std::string& command, bool doUnescape);
+protected:
     static void fsSetDefines(FileSettings& fs, std::string defs);
     static void fsSetIncludePaths(FileSettings& fs, const std::string &basepath, const std::list<std::string> &in, std::map<std::string, std::string, cppcheck::stricmp> &variables);
 
+public:
     std::list<FileSettings> fileSettings;
     std::vector<std::string> errors;
 
@@ -103,8 +109,8 @@ public:
 protected:
     bool importCompileCommands(std::istream &istr);
     bool importCppcheckGuiProject(std::istream &istr, Settings &settings, Suppressions &supprs);
+    static std::string collectArgs(const std::string &cmd, std::vector<std::string> &args);
 
-private:
     struct SharedItemsProject {
         bool successful = false;
         std::string pathToProjectFile;
@@ -112,13 +118,17 @@ private:
         std::vector<std::string> sourceFiles;
     };
 
-    bool importSln(std::istream &istr, const std::string &path, const std::vector<std::string> &fileFilters);
-    SharedItemsProject importVcxitems(const std::string &filename, const std::vector<std::string> &fileFilters, std::vector<SharedItemsProject> &cache);
     bool importVcxproj(const std::string &filename, std::map<std::string, std::string, cppcheck::stricmp> &variables, const std::string &additionalIncludeDirectories, const std::vector<std::string> &fileFilters, std::vector<SharedItemsProject> &cache);
     bool importVcxproj(const std::string &filename, const tinyxml2::XMLDocument &doc, std::map<std::string, std::string, cppcheck::stricmp> &variables, const std::string &additionalIncludeDirectories, const std::vector<std::string> &fileFilters, std::vector<SharedItemsProject> &cache);
-    bool importBcb6Prj(const std::string &projectFilename);
 
+private:
+    static void parseArgs(FileSettings &fs, const std::vector<std::string> &args);
     void setRelativePaths(const std::string &filename);
+
+    bool importSln(std::istream &istr, const std::string &path, const std::vector<std::string> &fileFilters);
+    bool importSlnx(const std::string& filename, const std::vector<std::string>& fileFilters);
+    SharedItemsProject importVcxitems(const std::string &filename, const std::vector<std::string> &fileFilters, std::vector<SharedItemsProject> &cache);
+    bool importBcb6Prj(const std::string &projectFilename);
 
     std::string mPath;
     std::set<std::string> mAllVSConfigs;
@@ -141,6 +151,7 @@ namespace CppcheckXml {
     static constexpr char DefineNameAttrib[] = "name";
     static constexpr char UndefinesElementName[] = "undefines";
     static constexpr char UndefineName[] = "undefine";
+    static constexpr char UserIncludeElementName[] = "user-include";
     static constexpr char PathsElementName[] = "paths";
     static constexpr char PathName[] = "dir";
     static constexpr char PathNameAttrib[] = "name";
@@ -191,6 +202,10 @@ namespace CppcheckXml {
     static constexpr char ProjectNameElementName[] = "project-name";
 }
 
+namespace testing
+{
+    CPPCHECKLIB bool evaluateVcxprojCondition(const std::string& condition, const std::string& configuration, const std::string& platform);
+}
 /// @}
 //---------------------------------------------------------------------------
 #endif // importprojectH

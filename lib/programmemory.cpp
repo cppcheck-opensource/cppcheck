@@ -194,7 +194,7 @@ void ProgramMemory::erase_if(const std::function<bool(const ExprIdToken&)>& pred
     if (mValues->empty())
         return;
 
-    // TODO: how to delay until we actuallly modify?
+    // TODO: how to delay until we actually modify?
     copyOnWrite();
 
     for (auto it = mValues->begin(); it != mValues->end();) {
@@ -205,7 +205,7 @@ void ProgramMemory::erase_if(const std::function<bool(const ExprIdToken&)>& pred
     }
 }
 
-void ProgramMemory::swap(ProgramMemory &pm) NOEXCEPT
+void ProgramMemory::swap(ProgramMemory &pm) noexcept
 {
     mValues.swap(pm.mValues);
 }

@@ -2,7 +2,7 @@
 
 extern uint32_t end;
 
-//#define KEEP // if uncomment this then wont crash
+//#define KEEP // if uncomment this then won't crash
 
 KEEP static const int32_t ptr_to_end = &end;
 

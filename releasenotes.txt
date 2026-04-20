@@ -1,11 +1,11 @@
 
-Release Notes for Cppcheck 2.20
+Release Notes for Cppcheck 2.21
 
 Major bug fixes & crashes:
 -
 
 New checks:
--
+- MISRA C 2012 rule 10.3 now warns on assigning integer literals 0 and 1 to bool in C99 and later while preserving the existing C89 behavior.
 
 C/C++ support:
 -
@@ -17,4 +17,10 @@ Changed interface:
 -
 
 Infrastructure & dependencies:
+-
+
+Other:
+- Make it possible to specify the regular expression engine using the `engine` element in a rule XML.
+- Added CLI option `--exitcode-suppress` to specify an error ID which should not result in a non-zero exitcode.
+-
 -

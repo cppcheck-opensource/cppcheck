@@ -1,5 +1,5 @@
 // Cppcheck - A tool for static C/C++ code analysis
-// Copyright (C) 2007-2025 Cppcheck team.
+// Copyright (C) 2007-2026 Cppcheck team.
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -1328,7 +1328,7 @@ private:
         const Token *tok = Token::findsimplematch(tokenizer.tokens(), "\"hello\"");
         ASSERT(!!tok);
         ASSERT(!!tok->valueType());
-        ASSERT_EQUALS("const signed char *", tok->valueType()->str());
+        ASSERT_EQUALS("const char *", tok->valueType()->str());
     }
 
     void stdinLoc() {

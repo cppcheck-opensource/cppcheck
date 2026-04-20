@@ -972,6 +972,10 @@ void ignoredReturnValue_wxDC_GetSizeMM(const wxDC &dc, wxCoord *width, wxCoord *
     (void)dc.GetSizeMM();
 }
 
+void ignoredReturnValue_wxPanel_Layout(wxPanel* panel) { // #14403
+    panel->Layout();
+}
+
 wxSizerItem* invalidFunctionArgBool_wxSizer_Add(wxSizer *sizer, wxWindow * window, const wxSizerFlags &flags)
 {
     // No warning is expected for

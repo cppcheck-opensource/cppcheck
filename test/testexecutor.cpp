@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ class DummyExecutor : public Executor
 {
 public:
     DummyExecutor(const std::list<FileWithDetails> &files, const std::list<FileSettings>& fileSettings, const Settings &settings, Suppressions &suppressions, ErrorLogger &errorLogger)
-        : Executor(files, fileSettings, settings, suppressions, errorLogger)
+        : Executor(files, fileSettings, settings, suppressions, errorLogger, nullptr)
     {}
 
     NORETURN unsigned int check() override

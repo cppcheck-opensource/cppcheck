@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -224,6 +224,8 @@ private:
         TEST_CASE(template180);
         TEST_CASE(template181);
         TEST_CASE(template182); // #13770
+        TEST_CASE(template183);
+        TEST_CASE(template184);
         TEST_CASE(template_specialization_1);  // #7868 - template specialization template <typename T> struct S<C<T>> {..};
         TEST_CASE(template_specialization_2);  // #7868 - template specialization template <typename T> struct S<C<T>> {..};
         TEST_CASE(template_specialization_3);
@@ -321,12 +323,12 @@ private:
         TEST_CASE(dumpTemplateArgFrom);
     }
 
-    class TemplateSimplifierTest : public TemplateSimplifier
+    class TemplateSimplifierTest final : public TemplateSimplifier
     {
         friend class TestSimplifyTemplate;
     };
 
-    class TokenizerTest : public Tokenizer
+    class TokenizerTest final : public Tokenizer
     {
         friend class TestSimplifyTemplate;
     public:
@@ -4678,6 +4680,51 @@ private:
         ASSERT_EQUALS(exp, tok(code));
     }
 
+    void template183() { // #11498
+        const char code[] = "template <typename T>\n"
+                            "struct S {\n"
+                            "    void f();\n"
+                            "    using X = decltype(&S<T>::f);\n"
+                            "private:\n"
+                            "    X x;\n"
+                            "};\n"
+                            "S<int> s;\n";
+        const char exp[] = "struct S<int> ; "
+                           "S<int> s ; "
+                           "struct S<int> { "
+                           "void f ( ) ; "
+                           "private: "
+                           "decltype ( & S<int> :: f ) x ; "
+                           "} ;";
+        ASSERT_EQUALS(exp, tok(code));
+    }
+
+    void template184() {
+        const char code[] = "template <typename T>\n"
+                            "T g(T x) {\n"
+                            "  return x;\n"
+                            "}\n"
+                            "template <>\n"
+                            "float g<float>(float x) {\n"
+                            "  return x + 1.0f;\n"
+                            "}\n"
+                            "void f(int i) {\n"
+                            "  g(i);\n"
+                            "  g(1.0f);\n"
+                            "}\n";
+        const char exp[] = "float g<float> ( float x ) ; "
+                           "template < typename T > "
+                           "T g ( T x ) { return x ; } "
+                           "float g<float> ( float x ) {"
+                           " return x + 1.0f ; "
+                           "} "
+                           "void f ( int i ) {"
+                           " g ( i ) ;"
+                           " g<float> ( 1.0f ) ; "
+                           "}";
+        ASSERT_EQUALS(exp, tok(code)); // TODO: instantiate g<int>(int)
+    }
+
     void template_specialization_1() {  // #7868 - template specialization template <typename T> struct S<C<T>> {..};
         const char code[] = "template <typename T> struct C {};\n"
                             "template <typename T> struct S {a};\n"
@@ -6372,7 +6419,7 @@ private:
                                 "class E<1,3> { "
                                 "template < int ... I > "
                                 "int f ( int n , std :: integer_sequence < int , I ... > ) { "
-                                "return ( ( ( I == n ) ? : 0 ) + ... ) ; "
+                                "return ( ( ( I == n ) ? ( 1 , 3 ) : 0 ) + ... ) ; "  // TODO the simplification is not quite correct
                                 "} "
                                 "} ;";
         ASSERT_EQUALS(expected, tok(code));
@@ -6390,6 +6437,18 @@ private:
                                  "A<int,S> a ; "
                                  "struct A<int,S> { } ;";
         ASSERT_EQUALS(expected2, tok(code2));
+
+        const char code3[] = "template <int... N>\n" // #14477
+                             "    int f() {\n"
+                             "    return (0 | ... | (1, 2, 4));\n"
+                             "}\n"
+                             "int main() {\n"
+                             "    return f<1, 2, 4>();\n"
+                             "}\n";
+        const char expected3[] = "int f<1,2,4> ( ) ; "
+                                 "int main ( ) { return f<1,2,4> ( ) ; } "
+                                 "int f<1,2,4> ( ) { return ( 0 | ... | ( 1 , 2 , 4 ) ) ; }";
+        ASSERT_EQUALS(expected3, tok(code3));
     }
 
     void template_variable_1() {

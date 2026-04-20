@@ -124,7 +124,7 @@ static void ShowUsage()
 
 static void ShowVersion()
 {
-// TODO: should only *not* show a dialog when we are on a commnd-line
+// TODO: should only *not* show a dialog when we are on a command-line
 #if defined(_WIN32)
     AboutDialog *dlg = new AboutDialog(CppCheck::version(), CppCheck::extraVersion(), 0);
     dlg->exec();

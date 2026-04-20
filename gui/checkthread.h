@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@
 #include <QString>
 #include <QStringList>
 #include <QThread>
+#include <QTime>
 
 class ThreadResult;
 
@@ -49,7 +50,14 @@ class ThreadResult;
 class CheckThread : public QThread {
     Q_OBJECT
 public:
-    explicit CheckThread(ThreadResult &result);
+    struct Details {
+        int threadIndex;
+        QString file;
+        QTime startTime;
+    };
+
+public:
+    CheckThread(ThreadResult &result, int threadIndex);
 
     /**
      * @brief Set settings for cppcheck
@@ -78,12 +86,6 @@ public:
         mSuppressionsUi = s;
     }
 
-    /**
-     * @brief method that is run in a thread
-     *
-     */
-    void run() override;
-
     void stop();
 
     /**
@@ -108,8 +110,8 @@ signals:
      */
     void done();
 
-    // NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name) - caused by generated MOC code
-    void fileChecked(const QString &file);
+    void startCheck(CheckThread::Details details);
+    void finishCheck(CheckThread::Details details);
 protected:
 
     /**
@@ -132,11 +134,18 @@ protected:
     std::atomic<State> mState{Ready};
 
     ThreadResult &mResult;
+    int mThreadIndex{};
 
     Settings mSettings;
     std::shared_ptr<Suppressions> mSuppressions;
 
 private:
+    /**
+     * @brief method that is run in a thread
+     *
+     */
+    void run() override;
+
     void runAddonsAndTools(const Settings& settings, const FileSettings *fileSettings, const QString &fileName);
 
     void parseClangErrors(const QString &tool, const QString &file0, QString err);
@@ -150,5 +159,6 @@ private:
     QStringList mClangIncludePaths;
     QList<SuppressionList::Suppression> mSuppressionsUi;
 };
+Q_DECLARE_METATYPE(CheckThread::Details);
 /// @}
 #endif // CHECKTHREAD_H

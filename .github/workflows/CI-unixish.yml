@@ -58,13 +58,13 @@ jobs:
       - name: CMake build on ubuntu (with GUI / system tinyxml2)
         if: contains(matrix.os, 'ubuntu')
         run: |
-          cmake -S . -B cmake.output.tinyxml2 -G "Unix Makefiles" -DHAVE_RULES=On -DBUILD_TESTS=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DUSE_BUNDLED_TINYXML2=Off -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake -S . -B cmake.output.tinyxml2 -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DUSE_BUNDLED_TINYXML2=Off -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build cmake.output.tinyxml2 -- -j$(nproc)
 
       - name: CMake build on macos (with GUI / system tinyxml2)
         if: contains(matrix.os, 'macos')
         run: |
-          cmake -S . -B cmake.output.tinyxml2 -G "Unix Makefiles" -DHAVE_RULES=On -DBUILD_TESTS=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DUSE_BUNDLED_TINYXML2=Off -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DQt6_DIR=$(brew --prefix qt@6)/lib/cmake/Qt6
+          cmake -S . -B cmake.output.tinyxml2 -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DUSE_BUNDLED_TINYXML2=Off -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DQt6_DIR=$(brew --prefix qt@6)/lib/cmake/Qt6
           cmake --build cmake.output.tinyxml2 -- -j$(nproc)
 
       - name: Run CMake test (system tinyxml2)
@@ -127,12 +127,12 @@ jobs:
       - name: Run CMake on ubuntu (with GUI)
         if: contains(matrix.os, 'ubuntu')
         run: |
-          cmake -S . -B cmake.output -G "Unix Makefiles" -DHAVE_RULES=On -DBUILD_TESTS=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_INSTALL_PREFIX=cppcheck-cmake-install
+          cmake -S . -B cmake.output -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_INSTALL_PREFIX=cppcheck-cmake-install
 
       - name: Run CMake on macos (with GUI)
         if: contains(matrix.os, 'macos')
         run: |
-          cmake -S . -B cmake.output -G "Unix Makefiles" -DHAVE_RULES=On -DBUILD_TESTS=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_INSTALL_PREFIX=cppcheck-cmake-install -DQt6_DIR=$(brew --prefix qt@6)/lib/cmake/Qt6
+          cmake -S . -B cmake.output -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_INSTALL_PREFIX=cppcheck-cmake-install -DQt6_DIR=$(brew --prefix qt@6)/lib/cmake/Qt6
 
       - name: Run CMake build
         run: |
@@ -154,13 +154,13 @@ jobs:
       - name: Run CMake on ubuntu (no CLI)
         if: matrix.os == 'ubuntu-22.04'
         run: |
-          cmake -S . -B cmake.output_nocli -G "Unix Makefiles" -DBUILD_CLI=Off
+          cmake -S . -B cmake.output_nocli -Werror=dev -DBUILD_TESTING=Off -DBUILD_CLI=Off
 
       - name: Run CMake on ubuntu (no CLI / with tests)
         if: matrix.os == 'ubuntu-22.04'
         run: |
           # the test and CLI code are too intertwined so for now we need to reject that
-          if cmake -S . -B cmake.output_nocli_tests -G "Unix Makefiles" -DBUILD_TESTS=On -DBUILD_CLI=Off; then
+          if cmake -S . -B cmake.output_nocli_tests -Werror=dev -DBUILD_TESTING=On -DBUILD_CLI=Off; then
             exit 1
           else
             exit 0
@@ -169,18 +169,18 @@ jobs:
       - name: Run CMake on ubuntu (no CLI / with GUI)
         if: matrix.os == 'ubuntu-22.04'
         run: |
-          cmake -S . -B cmake.output_nocli_gui -G "Unix Makefiles" -DBUILD_CLI=Off -DBUILD_GUI=On
+          cmake -S . -B cmake.output_nocli_gui -Werror=dev -DBUILD_TESTING=Off -DBUILD_CLI=Off -DBUILD_GUI=On
 
       - name: Run CMake on ubuntu (no GUI)
         if: matrix.os == 'ubuntu-22.04'
         run: |
-          cmake -S . -B cmake.output_nogui -G "Unix Makefiles" -DBUILD_GUI=Off
+          cmake -S . -B cmake.output_nogui -Werror=dev -DBUILD_TESTING=Off -DBUILD_GUI=Off
 
       - name: Run CMake on ubuntu (no GUI / with triage)
         if: matrix.os == 'ubuntu-22.04'
         run: |
           # cannot build triage without GUI
-          if cmake -S . -B cmake.output_nogui_triage -G "Unix Makefiles" -DBUILD_GUI=Off -DBUILD_TRIAGE=On; then
+          if cmake -S . -B cmake.output_nogui_triage -Werror=dev -DBUILD_TESTING=Off -DBUILD_GUI=Off -DBUILD_TRIAGE=On; then
             exit 1
           else
             exit 0
@@ -189,14 +189,23 @@ jobs:
       - name: Run CMake on ubuntu (no CLI / no GUI)
         if: matrix.os == 'ubuntu-22.04'
         run: |
-          cmake -S . -B cmake.output_nocli_nogui -G "Unix Makefiles" -DBUILD_GUI=Off
+          cmake -S . -B cmake.output_nocli_nogui -Werror=dev -DBUILD_TESTING=Off -DBUILD_GUI=Off
 
   build_cmake_cxxstd:
 
     strategy:
       matrix:
         os: [ubuntu-22.04, macos-15]
-        cxxstd: [14, 17]
+        cxxstd: [14, 17, 20]
+        # FIXME: macos-15 fails to compile with C++20
+        #
+        # /Users/runner/work/cppcheck/cppcheck/cmake.output/gui/test/projectfile/moc_testprojectfile.cpp:84:1: error: 'constinit' specifier is incompatible with C++ standards before C++20 [-Werror,-Wc++20-compat]
+        #    84 | Q_CONSTINIT const QMetaObject TestProjectFile::staticMetaObject = { {
+        #       | ^
+        # /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qcompilerdetection.h:1409:23: note: expanded from macro 'Q_CONSTINIT'
+        exclude:
+          - os: macos-15
+            cxxstd: 20
       fail-fast: false # Prefer quick result
 
     runs-on: ${{ matrix.os }}
@@ -234,12 +243,12 @@ jobs:
       - name: Run CMake on ubuntu (with GUI)
         if: contains(matrix.os, 'ubuntu')
         run: |
-          cmake -S . -B cmake.output -G "Unix Makefiles" -DCMAKE_CXX_STANDARD=${{ matrix.cxxstd }} -DHAVE_RULES=On -DBUILD_TESTS=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake -S . -B cmake.output -Werror=dev -DCMAKE_CXX_STANDARD=${{ matrix.cxxstd }} -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Run CMake on macos (with GUI)
         if: contains(matrix.os, 'macos')
         run: |
-          cmake -S . -B cmake.output -G "Unix Makefiles" -DCMAKE_CXX_STANDARD=${{ matrix.cxxstd }} -DHAVE_RULES=On -DBUILD_TESTS=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DQt6_DIR=$(brew --prefix qt@6)/lib/cmake/Qt6
+          cmake -S . -B cmake.output -Werror=dev -DCMAKE_CXX_STANDARD=${{ matrix.cxxstd }} -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DQt6_DIR=$(brew --prefix qt@6)/lib/cmake/Qt6
 
       - name: Run CMake build
         run: |
@@ -364,7 +373,7 @@ jobs:
         run: |
           # make sure we fail when Boost is requested and not available.
           # will fail because no package configuration is available.
-          if cmake -S . -B cmake.output.boost-force-noavail -G "Unix Makefiles" -DUSE_BOOST=On; then
+          if cmake -S . -B cmake.output.boost-force-noavail -Werror=dev -DBUILD_TESTING=Off -DUSE_BOOST=On; then
             exit 1
           else
             exit 0
@@ -377,12 +386,12 @@ jobs:
 
       - name: Run CMake on macOS (force Boost)
         run: |
-          cmake -S . -B cmake.output.boost-force -G "Unix Makefiles" -DUSE_BOOST=On
+          cmake -S . -B cmake.output.boost-force -Werror=dev -DBUILD_TESTING=Off -DUSE_BOOST=On
 
       - name: Run CMake on macOS (no Boost)
         run: |
           # make sure Boost is not used when disabled even though it is available
-          cmake -S . -B cmake.output.boost-no -G "Unix Makefiles" -DUSE_BOOST=Off
+          cmake -S . -B cmake.output.boost-no -Werror=dev -DBUILD_TESTING=Off -DUSE_BOOST=Off
           if grep -q '\-DHAVE_BOOST' ./cmake.output.boost-no/compile_commands.json; then
             exit 1
           else
@@ -391,12 +400,48 @@ jobs:
 
       - name: Run CMake on macOS (with Boost)
         run: |
-          cmake -S . -B cmake.output.boost -G "Unix Makefiles" -DBUILD_TESTS=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake -S . -B cmake.output.boost -Werror=dev -DBUILD_TESTING=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           grep -q '\-DHAVE_BOOST' ./cmake.output.boost/compile_commands.json
 
       - name: Build with CMake on macOS (with Boost)
         run: |
           cmake --build cmake.output.boost -- -j$(nproc)
+
+  build_cmake_minimum:  # TODO: move to docker workflow?
+
+    runs-on: ubuntu-22.04  # use the oldest available runner
+
+    env:
+      CMAKE_VERSION: 3.22
+      CMAKE_VERSION_FULL: 3.22.6
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install missing software
+        run: |
+          sudo apt-get update
+          sudo apt-get install libxml2-utils
+          # qt6-tools-dev-tools for lprodump
+          # qt6-l10n-tools for lupdate
+          sudo apt-get install qt6-base-dev libqt6charts6-dev qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools libglx-dev libgl1-mesa-dev
+
+      - name: Install CMake
+        run: |
+          wget https://cmake.org/files/v${{ env.CMAKE_VERSION }}/cmake-${{ env.CMAKE_VERSION_FULL }}-linux-x86_64.tar.gz
+          tar xf cmake-${{ env.CMAKE_VERSION_FULL }}-linux-x86_64.tar.gz
+
+      - name: Run CMake (without GUI)
+        run: |
+          export PATH=cmake-${{ env.CMAKE_VERSION_FULL }}-linux-x86_64/bin:$PATH
+          cmake -S . -B cmake.output -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=On
+
+      - name: Run CMake (with GUI)
+        run: |
+          export PATH=cmake-${{ env.CMAKE_VERSION_FULL }}-linux-x86_64/bin:$PATH
+          cmake -S . -B cmake.output.gui -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On
 
   build:
 
@@ -551,7 +596,7 @@ jobs:
 
       - name: Test Signalhandler
         run: |
-          cmake -S . -B build.cmake.signal -G "Unix Makefiles" -DBUILD_TESTS=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On
+          cmake -S . -B build.cmake.signal -Werror=dev -DBUILD_TESTING=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On
           cmake --build build.cmake.signal --target test-signalhandler -- -j$(nproc)
           # TODO: how to run this without copying the file?
           cp build.cmake.signal/bin/test-s* .
@@ -562,7 +607,7 @@ jobs:
       - name: Test Stacktrace
         if: contains(matrix.os, 'ubuntu')
         run: |
-          cmake -S . -B build.cmake.stack -G "Unix Makefiles" -DBUILD_TESTS=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On
+          cmake -S . -B build.cmake.stack -Werror=dev -DBUILD_TESTING=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On
           cmake --build build.cmake.stack --target test-stacktrace -- -j$(nproc)
           # TODO: how to run this without copying the file?
           cp build.cmake.stack/bin/test-s* .
@@ -634,6 +679,13 @@ jobs:
           test -z "$(nm processexecutor.o)"
           # TODO: test NO_* defines
 
+      - name: Test testrunner inclusion/exclusion
+        run: |
+          ! ./testrunner -d TestUtils | grep -v TestUtils > /dev/null
+          ! ./testrunner -d TestUtils::trim | grep -v TestUtils::trim > /dev/null
+          ! ./testrunner -d -x TestUtils | grep TestUtils > /dev/null
+          ! ./testrunner -d -x TestUtils:trim | grep TestUtils:trim > /dev/null
+
       - name: Show all ignored files
         if: false  # TODO: currently lists all the contents of ignored folders - we only need what actually matched
         run: |
@@ -676,7 +728,7 @@ jobs:
 
       - name: CMake
         run: |
-          cmake -S . -B cmake.output -DHAVE_RULES=On -DBUILD_TESTS=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DUSE_MATCHCOMPILER=Verify -DENABLE_CHECK_INTERNAL=On -DCPPCHK_GLIBCXX_DEBUG=Off -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On
+          cmake -S . -B cmake.output -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DUSE_MATCHCOMPILER=Verify -DENABLE_CHECK_INTERNAL=On -DCPPCHK_GLIBCXX_DEBUG=Off -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On
 
       - name: Generate dependencies
         run: |
@@ -686,31 +738,4 @@ jobs:
 
       - name: Self check
         run: |
-          selfcheck_options="-q -j$(nproc) --std=c++11 --template=selfcheck --showtime=file-total -D__GNUC__ --error-exitcode=1 --inline-suppr --suppressions-list=.selfcheck_suppressions --library=gnu --inconclusive --enable=style,performance,portability,warning,missingInclude,information --exception-handling --debug-warnings --check-level=exhaustive"
-          cppcheck_options="-D__CPPCHECK__ -DCHECK_INTERNAL -DHAVE_RULES --library=cppcheck-lib -Ilib -Iexternals/simplecpp/ -Iexternals/tinyxml2"
-          gui_options="-DQT_VERSION=0x060000 -DQ_MOC_OUTPUT_REVISION=68 -DQT_CHARTS_LIB -DQT_MOC_HAS_STRINGDATA --library=qt"
-          ec=0
-          
-          # TODO: add --check-config          
-         
-          # early exit
-          if [ $ec -eq 1 ]; then
-            exit $ec
-          fi
-          
-          # self check externals
-          ./cppcheck $selfcheck_options externals || ec=1
-          # self check lib/cli
-          mkdir b1
-          ./cppcheck $selfcheck_options $cppcheck_options --cppcheck-build-dir=b1 --addon=naming.json frontend || ec=1
-          ./cppcheck $selfcheck_options $cppcheck_options --cppcheck-build-dir=b1 --addon=naming.json -Ifrontend cli || ec=1
-          ./cppcheck $selfcheck_options $cppcheck_options --cppcheck-build-dir=b1 --addon=naming.json --enable=internal lib || ec=1
-          # check gui with qt settings
-          mkdir b2
-          ./cppcheck $selfcheck_options $cppcheck_options $gui_options --cppcheck-build-dir=b2 --addon=naming.json --suppress=simplifyUsing:*/moc_*.cpp -Icmake.output/gui -Ifrontend -Igui gui/*.cpp cmake.output/gui || ec=1
-          # self check test and tools
-          ./cppcheck $selfcheck_options $cppcheck_options -Ifrontend -Icli test/*.cpp  || ec=1
-          ./cppcheck $selfcheck_options $cppcheck_options -Icli tools/dmake/*.cpp || ec=1
-          # triage
-          ./cppcheck $selfcheck_options $cppcheck_options $gui_options -Icmake.output/tools/triage -Igui tools/triage/*.cpp cmake.output/tools/triage || ec=1
-          exit $ec
+          ./selfcheck.sh

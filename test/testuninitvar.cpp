@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -76,6 +76,7 @@ private:
         TEST_CASE(uninitvar12); // #10218 - stream read
         TEST_CASE(uninitvar13); // #9772
         TEST_CASE(uninitvar14);
+        TEST_CASE(uninitvar15); // #13685
         TEST_CASE(uninitvar_unconditionalTry);
         TEST_CASE(uninitvar_funcptr); // #6404
         TEST_CASE(uninitvar_operator); // #6680
@@ -97,6 +98,7 @@ private:
         TEST_CASE(uninitvar_memberfunction);
         TEST_CASE(uninitvar_nonmember); // crash in ycmd test
         TEST_CASE(uninitvarDesignatedInitializers);
+        TEST_CASE(uninitvarMemberPointer);
 
         TEST_CASE(isVariableUsageDeref); // *p
         TEST_CASE(isVariableUsageDerefValueflow); // *p
@@ -570,6 +572,13 @@ private:
                                "}");
                 ASSERT_EQUALS("[test.cpp:3:17]: (error) Uninitialized variable: p [legacyUninitvar]\n", errout_str());
             }
+
+            checkUninitVar("void f() {\n" // #13908
+                           "    int* i = new int;\n"
+                           "    std::cout << i << \", \" << *i;\n"
+                           "    delete i;\n"
+                           "}\n");
+            ASSERT_EQUALS("[test.cpp:3:32]: (error) Memory is allocated but not initialized: i [uninitdata]\n", errout_str());
         }
 
         // #8494 : Overloaded & operator
@@ -2035,7 +2044,7 @@ private:
                        "        return;\n"
                        "    char c = *s;\n"
                        "}");
-        TODO_ASSERT_EQUALS("[test.cpp:6]: (error) Memory is allocated but not initialized: s\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:6:15]: (error) Memory is allocated but not initialized: s [uninitdata]\n", errout_str());
 
         // #3708 - false positive when using ptr typedef
         checkUninitVar("void f() {\n"
@@ -2137,6 +2146,31 @@ private:
                        "    int* p = (int*)malloc(n * sizeof(int));\n"
                        "    for (int i = 0; i < n; ++i)\n"
                        "        *(p + i) = 0;\n"
+                       "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        checkUninitVar("int* f() {\n" // #14448
+                       "    int* p = (int*)malloc(4);\n"
+                       "    if (!p)\n"
+                       "        return nullptr;\n"
+                       "    if (*p) {}\n"
+                       "    return p;\n"
+                       "}\n");
+        ASSERT_EQUALS("[test.cpp:5:9]: (error) Memory is allocated but not initialized: *p [uninitdata]\n", errout_str());
+
+        checkUninitVar("int* f() {\n"
+                       "    int* p = (int*)malloc(4);\n"
+                       "    if (p == nullptr)\n"
+                       "        return nullptr;\n"
+                       "    if (*p) {}\n"
+                       "    return p;\n"
+                       "}\n");
+        ASSERT_EQUALS("[test.cpp:5:9]: (error) Memory is allocated but not initialized: *p [uninitdata]\n", errout_str());
+
+        checkUninitVar("char* f(size_t nBytes, size_t nAlign) {\n" // #14485
+                       "    char* p = reinterpret_cast<char*>(malloc(nBytes));\n"
+                       "    if ((uintptr_t)p % nAlign != 0) {}\n"
+                       "    return p;\n"
                        "}\n");
         ASSERT_EQUALS("", errout_str());
     }
@@ -3612,6 +3646,17 @@ private:
         // Check for redundant code..
         CheckUninitVar checkuninitvar(&tokenizer, &settings, this);
         (checkuninitvar.valueFlowUninit)();
+    }
+
+    void uninitvar15() { // #13685
+        const char code[] = "int f() {\n"
+                            "    int x;\n"
+                            "    if (!({ int *p = &x; *p = 1; 1; }))\n"
+                            "        return 0;\n"
+                            "    return x;\n"
+                            "}";
+        valueFlowUninit(code, false);
+        ASSERT_EQUALS("", errout_str());
     }
 
     void valueFlowUninit2_value()
@@ -6642,6 +6687,38 @@ private:
                         "    return ret;\n"
                         "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        valueFlowUninit("int f() {\n" // #12944
+                        "    int i;\n"
+                        "    auto x = [&]() { return i; };\n"
+                        "    i = 5;\n"
+                        "    return x();\n"
+                        "}\n"
+                        "int g() {\n"
+                        "    int i;\n"
+                        "    {\n"
+                        "        auto x = [&]() { return i; };\n"
+                        "        i = 5;\n"
+                        "        return x();\n"
+                        "    }\n"
+                        "}\n"
+                        "int h() {\n"
+                        "    int j;\n"
+                        "    return [&]() { return j; }();\n"
+                        "}\n");
+        ASSERT_EQUALS("[test.cpp:17:27]: (error) Uninitialized variable: j [uninitvar]\n", errout_str());
+
+        valueFlowUninit("int f() {\n" // #14582
+                        "    int a[1];\n"
+                        "    static_cast<int*>(a)[0] = 0;\n"
+                        "    return a[0];\n"
+                        "}\n"
+                        "int g() {\n"
+                        "    int a[1];\n"
+                        "    ((int*)a)[0] = 0;\n"
+                        "    return a[0];\n"
+                        "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void valueFlowUninitBreak() { // Do not show duplicate warnings about the same uninitialized value
@@ -7710,6 +7787,21 @@ private:
                         "  return (&s)->y;\n"
                         "}\n");
         ASSERT_EQUALS("[test.cpp:5:16]: (error) Uninitialized variable: s.y [uninitvar]\n", errout_str());
+
+        valueFlowUninit("struct S { int* p; };\n" // #14640
+                        "void f() {\n"
+                        "    int x;\n"
+                        "    S s{ &x };\n"
+                        "    *s.p = 0;\n"
+                        "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        valueFlowUninit("void f() {\n"
+                        "    int x;\n"
+                        "    std::vector<int*> v{ &x };\n"
+                        "    *v[0] = 0;\n"
+                        "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void valueFlowUninitForLoop()
@@ -7782,6 +7874,16 @@ private:
                        "  return f(&(struct a){.b = 0, .c = 0});\n"
                        "}");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void uninitvarMemberPointer() {
+        checkUninitVar("void f()\n"
+                       "{\n"
+                       "  struct S {};\n"
+                       "  int S::* mp;\n"
+                       "  if (mp) {}\n"
+                       "}\n");
+        ASSERT_EQUALS("[test.cpp:5:7]: (error) Uninitialized variable: mp [legacyUninitvar]\n", errout_str());
     }
 
     void isVariableUsageDeref() {

@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ PathMatch::PathMatch(std::vector<std::string> patterns, std::string basepath, Sy
 
 bool PathMatch::match(const std::string &path, Filemode mode) const
 {
-    return std::any_of(mPatterns.cbegin(), mPatterns.cend(), [=] (const std::string &pattern) {
+    return std::any_of(mPatterns.cbegin(), mPatterns.cend(), [&] (const std::string &pattern) {
         return match(pattern, path, mBasepath, mode, mSyntax);
     });
 }
@@ -145,7 +145,7 @@ bool PathMatch::match(const std::string &pattern, const std::string &path, const
             continue;
         }
 
-        /* No more path seperators to try from */
+        /* No more path separators to try from */
         return false;
     }
 }

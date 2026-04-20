@@ -3,6 +3,7 @@ qt_wrap_cpp(test-resultstree_SRC
         ${CMAKE_SOURCE_DIR}/gui/resultstree.h
         ${CMAKE_SOURCE_DIR}/gui/resultitem.h
         ${CMAKE_SOURCE_DIR}/gui/applicationlist.h
+        ${CMAKE_SOURCE_DIR}/gui/common.h
         ${CMAKE_SOURCE_DIR}/gui/projectfile.h
         ${CMAKE_SOURCE_DIR}/gui/threadhandler.h
         ${CMAKE_SOURCE_DIR}/gui/threadresult.h
@@ -14,6 +15,7 @@ add_executable(test-resultstree
         testresultstree.cpp
         ${CMAKE_SOURCE_DIR}/gui/resultstree.cpp
         ${CMAKE_SOURCE_DIR}/gui/resultitem.cpp
+        ${CMAKE_SOURCE_DIR}/gui/common.cpp
         ${CMAKE_SOURCE_DIR}/gui/erroritem.cpp
         ${CMAKE_SOURCE_DIR}/gui/showtypes.cpp
         ${CMAKE_SOURCE_DIR}/gui/report.cpp

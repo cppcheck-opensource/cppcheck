@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,18 +34,19 @@ void ThreadResult::reportOut(const std::string &outmsg, Color /*c*/)
     emit log(QString::fromStdString(outmsg));
 }
 
-void ThreadResult::fileChecked(const QString &file)
+// NOLINTNEXTLINE(performance-unnecessary-value-param)
+void ThreadResult::finishCheck(CheckThread::Details details)
 {
     std::lock_guard<std::mutex> locker(mutex);
 
-    mProgress += QFile(file).size();
+    mCheckedFileSize += QFile(details.file).size();
     mFilesChecked++;
 
-    if (mMaxProgress > 0) {
-        const int value = static_cast<int>(PROGRESS_MAX * mProgress / mMaxProgress);
+    if (mTotalFileSize > 0) {
+        const int value = static_cast<int>(PROGRESS_MAX * mCheckedFileSize / mTotalFileSize);
         const QString description = tr("%1 of %2 files checked").arg(mFilesChecked).arg(mTotalFiles);
 
-        emit progress(value, description);
+        emit filesCheckedProgress(value, description);
     }
 }
 
@@ -57,6 +58,11 @@ void ThreadResult::reportErr(const ErrorMessage &msg)
         emit error(item);
     else
         emit debugError(item);
+}
+
+// NOLINTNEXTLINE(readability-avoid-const-params-in-decls) - false positive this is an overload
+void ThreadResult::reportProgress(const std::string &filename, const char stage[], const std::size_t value) {
+    emit progress(QString::fromStdString(filename), stage, value);
 }
 
 void ThreadResult::getNextFile(const FileWithDetails*& file)
@@ -87,7 +93,7 @@ void ThreadResult::setFiles(std::list<FileWithDetails> files)
     mTotalFiles = files.size();
     mFiles = std::move(files);
     mItNextFile = mFiles.cbegin();
-    mProgress = 0;
+    mCheckedFileSize = 0;
     mFilesChecked = 0;
 
     // Determine the total size of all of the files to check, so that we can
@@ -95,7 +101,7 @@ void ThreadResult::setFiles(std::list<FileWithDetails> files)
     quint64 sizeOfFiles = std::accumulate(mFiles.cbegin(), mFiles.cend(), 0, [](quint64 total, const FileWithDetails& file) {
         return total + file.size();
     });
-    mMaxProgress = sizeOfFiles;
+    mTotalFileSize = sizeOfFiles;
 }
 
 void ThreadResult::setProject(const ImportProject &prj)
@@ -105,13 +111,13 @@ void ThreadResult::setProject(const ImportProject &prj)
     mItNextFile = mFiles.cbegin();
     mFileSettings = prj.fileSettings;
     mItNextFileSettings = mFileSettings.cbegin();
-    mProgress = 0;
+    mCheckedFileSize = 0;
     mFilesChecked = 0;
     mTotalFiles = prj.fileSettings.size();
 
     // Determine the total size of all of the files to check, so that we can
     // show an accurate progress estimate
-    mMaxProgress = std::accumulate(prj.fileSettings.begin(), prj.fileSettings.end(), quint64{ 0 }, [](quint64 v, const FileSettings& fs) {
+    mTotalFileSize = std::accumulate(prj.fileSettings.begin(), prj.fileSettings.end(), quint64{ 0 }, [](quint64 v, const FileSettings& fs) {
         return v + QFile(QString::fromStdString(fs.filename())).size();
     });
 }

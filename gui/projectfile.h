@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2024 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -139,6 +139,14 @@ public:
      */
     const QStringList& getUndefines() const {
         return mUndefines;
+    }
+
+    const QString& getUserInclude() const {
+        return mUserInclude;
+    }
+
+    void setUserInclude(const QString& userInclude) {
+        mUserInclude = userInclude;
     }
 
     /**
@@ -446,6 +454,10 @@ public:
     /** Use Clang parser */
     bool clangParser;
 
+    /** Get paths where we should glob for certain files (dir="cfg"/"platforms"/etc */
+    QStringList getSearchPaths(const QString& dir) const;
+    static QStringList getSearchPaths(const QString& projectPath, const QString& appPath, const QString& datadir, const QString& dir);
+
 protected:
 
     /**
@@ -596,6 +608,9 @@ private:
      * @brief List of undefines.
      */
     QStringList mUndefines;
+
+    /** @brief --include file */
+    QString mUserInclude;
 
     /**
      * @brief List of paths to check.

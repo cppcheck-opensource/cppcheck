@@ -149,6 +149,8 @@
               <File Id='mips32.xml' Name='mips32.xml' Source='$(var.PtfsDir)\mips32.xml' />
               <File Id='cray_sv1.xml' Name='cray_sv1.xml' Source='$(var.PtfsDir)\cray_sv1.xml' />
               <File Id='msp430_eabi_large_datamodel.xml' Name='msp430_eabi_large_datamodel.xml' Source='$(var.PtfsDir)\msp430_eabi_large_datamodel.xml' />
+              <File Id='riscv32.xml' Name='riscv32.xml' Source='$(var.PtfsDir)\riscv32.xml' />
+              <File Id='riscv64.xml' Name='riscv64.xml' Source='$(var.PtfsDir)\riscv64.xml' />
             </Component>
           </Directory>
           <Directory Id='AddonsFolder' Name='addons'>

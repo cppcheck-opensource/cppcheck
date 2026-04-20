@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -56,7 +56,7 @@ public:
     TokenList(const TokenList &) = delete;
     TokenList &operator=(const TokenList &) = delete;
 
-    TokenList(TokenList&& other) NOEXCEPT = default;
+    TokenList(TokenList&& other) noexcept = default;
 
     /** @return the source file path. e.g. "file.cpp" */
     const std::string& getSourceFilePath() const;

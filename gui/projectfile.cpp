@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 
 #include <utility>
 
+#include <QCoreApplication>
 #include <QFile>
 #include <QDir>
 #include <QIODevice>
@@ -62,6 +63,7 @@ void ProjectFile::clear()
     mIncludeDirs.clear();
     mDefines.clear();
     mUndefines.clear();
+    mUserInclude.clear();
     mPaths.clear();
     mExcludedPaths.clear();
     mLibraries.clear();
@@ -164,6 +166,9 @@ bool ProjectFile::read(const QString &filename)
             // Find preprocessor define from inside project element
             if (xmlReader.name() == QString(CppcheckXml::UndefinesElementName))
                 readStringList(mUndefines, xmlReader, CppcheckXml::UndefineName);
+
+            if (xmlReader.name() == QString(CppcheckXml::UserIncludeElementName))
+                mUserInclude = readString(xmlReader);
 
             // Find exclude list from inside project element
             if (xmlReader.name() == QString(CppcheckXml::ExcludeElementName))
@@ -346,15 +351,13 @@ bool ProjectFile::readBool(QXmlStreamReader &reader)
 
 int ProjectFile::readInt(QXmlStreamReader &reader, int defaultValue)
 {
-    int ret = defaultValue;
     do {
         const QXmlStreamReader::TokenType type = reader.readNext();
         switch (type) {
         case QXmlStreamReader::Characters:
-            ret = reader.text().toString().toInt();
-            FALLTHROUGH;
+            return reader.text().toString().toInt();
         case QXmlStreamReader::EndElement:
-            return ret;
+            return defaultValue;
         // Not handled
         case QXmlStreamReader::StartElement:
         case QXmlStreamReader::NoToken:
@@ -372,15 +375,13 @@ int ProjectFile::readInt(QXmlStreamReader &reader, int defaultValue)
 
 QString ProjectFile::readString(QXmlStreamReader &reader)
 {
-    QString ret;
     do {
         const QXmlStreamReader::TokenType type = reader.readNext();
         switch (type) {
         case QXmlStreamReader::Characters:
-            ret = reader.text().toString();
-            FALLTHROUGH;
+            return reader.text().toString();
         case QXmlStreamReader::EndElement:
-            return ret;
+            return {};
         // Not handled
         case QXmlStreamReader::StartElement:
         case QXmlStreamReader::NoToken:
@@ -891,7 +892,7 @@ bool ProjectFile::write(const QString &filename)
 
     if (!mIncludeDirs.isEmpty()) {
         xmlWriter.writeStartElement(CppcheckXml::IncludeDirElementName);
-        for (const QString& incdir : mIncludeDirs) {
+        for (const QString& incdir : utils::as_const(mIncludeDirs)) {
             xmlWriter.writeStartElement(CppcheckXml::DirElementName);
             xmlWriter.writeAttribute(CppcheckXml::DirNameAttrib, incdir);
             xmlWriter.writeEndElement();
@@ -901,11 +902,17 @@ bool ProjectFile::write(const QString &filename)
 
     if (!mDefines.isEmpty()) {
         xmlWriter.writeStartElement(CppcheckXml::DefinesElementName);
-        for (const QString& define : mDefines) {
+        for (const QString& define : utils::as_const(mDefines)) {
             xmlWriter.writeStartElement(CppcheckXml::DefineName);
             xmlWriter.writeAttribute(CppcheckXml::DefineNameAttrib, define);
             xmlWriter.writeEndElement();
         }
+        xmlWriter.writeEndElement();
+    }
+
+    if (!mUserInclude.isEmpty()) {
+        xmlWriter.writeStartElement(CppcheckXml::UserIncludeElementName);
+        xmlWriter.writeCharacters(mUserInclude);
         xmlWriter.writeEndElement();
     }
 
@@ -923,7 +930,7 @@ bool ProjectFile::write(const QString &filename)
 
     if (!mPaths.isEmpty()) {
         xmlWriter.writeStartElement(CppcheckXml::PathsElementName);
-        for (const QString& path : mPaths) {
+        for (const QString& path : utils::as_const(mPaths)) {
             xmlWriter.writeStartElement(CppcheckXml::PathName);
             xmlWriter.writeAttribute(CppcheckXml::PathNameAttrib, path);
             xmlWriter.writeEndElement();
@@ -933,7 +940,7 @@ bool ProjectFile::write(const QString &filename)
 
     if (!mExcludedPaths.isEmpty()) {
         xmlWriter.writeStartElement(CppcheckXml::ExcludeElementName);
-        for (const QString& path : mExcludedPaths) {
+        for (const QString& path : utils::as_const(mExcludedPaths)) {
             xmlWriter.writeStartElement(CppcheckXml::ExcludePathName);
             xmlWriter.writeAttribute(CppcheckXml::ExcludePathNameAttrib, path);
             xmlWriter.writeEndElement();
@@ -948,7 +955,7 @@ bool ProjectFile::write(const QString &filename)
 
     if (!mSuppressions.isEmpty()) {
         xmlWriter.writeStartElement(CppcheckXml::SuppressionsElementName);
-        for (const SuppressionList::Suppression &suppression : mSuppressions) {
+        for (const SuppressionList::Suppression &suppression : utils::as_const(mSuppressions)) {
             xmlWriter.writeStartElement(CppcheckXml::SuppressionElementName);
             if (!suppression.fileName.empty())
                 xmlWriter.writeAttribute("fileName", QString::fromStdString(suppression.fileName));
@@ -1168,11 +1175,31 @@ QString ProjectFile::getAddonFilePath(QString filesDir, const QString &addon)
 #endif
     ;
 
-    for (const QString& path : searchPaths) {
+    for (const QString& path : utils::as_const(searchPaths)) {
         QString f = path + addon + ".py";
         if (QFile(f).exists())
             return f;
     }
 
     return QString();
+}
+
+QStringList ProjectFile::getSearchPaths(const QString& projectPath, const QString& appPath, const QString& datadir, const QString& dir) {
+    QStringList ret;
+    ret << appPath << (appPath + "/" + dir) << projectPath;
+#ifdef FILESDIR
+    if (FILESDIR[0])
+        ret << FILESDIR << (FILESDIR "/" + dir);
+#endif
+    if (!datadir.isEmpty())
+        ret << datadir << (datadir + "/" + dir);
+    return ret;
+}
+
+QStringList ProjectFile::getSearchPaths(const QString& dir) const {
+    const QFileInfo inf(mFilename);
+    const QString applicationFilePath = QCoreApplication::applicationFilePath();
+    const QString appPath = QFileInfo(applicationFilePath).canonicalPath();
+    const QString datadir = getDataDir();
+    return getSearchPaths(inf.canonicalFilePath(), appPath, datadir, dir);
 }

@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ struct FileSettings;
 namespace tinyxml2 {
     class XMLDocument;
     class XMLElement;
-};
+}
 
 /// @addtogroup Core
 /// @{
@@ -57,14 +57,19 @@ class CPPCHECKLIB AnalyzerInformation {
 public:
     ~AnalyzerInformation();
 
-    static void writeFilesTxt(const std::string &buildDir, const std::list<std::string> &sourcefiles, const std::string &userDefines, const std::list<FileSettings> &fileSettings);
+    static void writeFilesTxt(const std::string &buildDir, const std::list<std::string> &sourcefiles, const std::list<FileSettings> &fileSettings);
 
     /** Close current TU.analyzerinfo file */
     void close();
-    bool analyzeFile(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, int fileIndex, std::size_t hash, std::list<ErrorMessage> &errors);
+    /**
+     * @throws std::runtime_error thrown if the output file is already open or the output file cannot be opened
+     */
+    bool analyzeFile(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId, std::size_t hash, std::list<ErrorMessage> &errors, bool debug = false);
     void reportErr(const ErrorMessage &msg);
     void setFileInfo(const std::string &check, const std::string &fileInfo);
-    static std::string getAnalyzerInfoFile(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, int fileIndex);
+    static std::string getAnalyzerInfoFile(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId);
+
+    void reopen(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId);
 
     static const char sep = ':';
 
@@ -73,22 +78,21 @@ public:
         bool parse(const std::string& filesTxtLine);
         std::string afile;
         std::string cfg;
-        int fileIndex = 0;
+        std::size_t fsFileId = 0;
         std::string sourceFile;
     };
 
-    static void processFilesTxt(const std::string& buildDir, const std::function<void(const char* checkattr, const tinyxml2::XMLElement* e, const Info& filesTxtInfo)>& handler);
+    static std::string processFilesTxt(const std::string& buildDir, const std::function<void(const char* checkattr, const tinyxml2::XMLElement* e, const Info& filesTxtInfo)>& handler, bool debug = false);
 
 protected:
-    static std::string getFilesTxt(const std::list<std::string> &sourcefiles, const std::string &userDefines, const std::list<FileSettings> &fileSettings);
+    static std::string getFilesTxt(const std::list<std::string> &sourcefiles, const std::list<FileSettings> &fileSettings);
 
-    static std::string getAnalyzerInfoFileFromFilesTxt(std::istream& filesTxt, const std::string &sourcefile, const std::string &cfg, int fileIndex);
+    static std::string getAnalyzerInfoFileFromFilesTxt(std::istream& filesTxt, const std::string &sourcefile, const std::string &cfg, int fsFileId);
 
-    static bool skipAnalysis(const tinyxml2::XMLDocument &analyzerInfoDoc, std::size_t hash, std::list<ErrorMessage> &errors);
+    static std::string skipAnalysis(const tinyxml2::XMLDocument &analyzerInfoDoc, std::size_t hash, std::list<ErrorMessage> &errors);
 
 private:
     std::ofstream mOutputStream;
-    std::string mAnalyzerInfoFile;
 };
 
 /// @}

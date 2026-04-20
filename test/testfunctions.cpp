@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -86,6 +86,7 @@ private:
         TEST_CASE(checkMissingReturn5);
         TEST_CASE(checkMissingReturn6); // #13180
         TEST_CASE(checkMissingReturn7); // #14370 - FN try/catch
+        TEST_CASE(checkMissingReturnStdInt); // #14482 - FN std::int32_t
 
         // std::move for locar variable
         TEST_CASE(returnLocalStdMove1);
@@ -221,7 +222,7 @@ private:
               "}");
         ASSERT_EQUALS(
             "[test.cpp:2:22]: (style) Obsolescent function 'index' called. It is recommended to use 'strchr' instead. [indexCalled]\n"
-            "[test.cpp:2:37]: (style) Obsolescent function 'index' called. It is recommended to use 'strchr' instead. [indexCalled]\n",   // duplicate
+            "[test.cpp:2:37]: (style) Obsolescent function 'index' called. It is recommended to use 'strchr' instead. [indexCalled]\n",
             errout_str());
     }
 
@@ -1918,6 +1919,11 @@ private:
         ASSERT_EQUALS("[test.cpp:3:19]: (error) Found an exit path from function with non-void return type that has missing return statement [missingReturn]\n", errout_str());
     }
 
+    void checkMissingReturnStdInt() {// #14482 - FN
+        check("std::int32_t f() {}\n");
+        ASSERT_EQUALS("[test.cpp:1:19]: (error) Found an exit path from function with non-void return type that has missing return statement [missingReturn]\n", errout_str());
+    }
+
     // NRVO check
     void returnLocalStdMove1() {
         check("struct A{}; A f() { A var; return std::move(var); }");
@@ -2214,6 +2220,12 @@ private:
               "    return b;\n"
               "}\n", s);
         TODO_ASSERT_EQUALS("", "[test.cpp:6:5]: (debug) auto token with no type. [autoNoType]\n", errout_str());
+
+        check("template <typename T>\n" // #13509
+              "void f(const T& t) {\n"
+              "    t.g();\n"
+              "}\n", s);
+        ASSERT_EQUALS("", errout_str());
     }
 
     void checkUseStandardLibrary1() {

@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -318,6 +318,8 @@ const Token * getTokenArgumentFunction(const Token * tok, int& argn);
 Token* getTokenArgumentFunction(Token* tok, int& argn);
 
 std::vector<const Variable*> getArgumentVars(const Token* tok, int argnr);
+
+bool isMutableExpression(const Token* tok);
 
 /** Is variable changed by function call?
  * In case the answer of the question is inconclusive, e.g. because the function declaration is not known

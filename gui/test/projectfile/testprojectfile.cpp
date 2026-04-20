@@ -136,6 +136,24 @@ void TestProjectFile::getAddonFilePath() const
     QCOMPARE(ProjectFile::getAddonFilePath(tempdir.path(), filepath), filepath);
 }
 
+void TestProjectFile::getSearchPaths() const
+{
+#ifdef FILESDIR
+    const QString f(FILESDIR "\n"        // example: "/usr/local/share/cppcheck\n"
+                    FILESDIR "/dir\n");  // example: "/usr/local/share/cppcheck/dir\n"
+#else
+    const QString f;
+#endif
+
+    QCOMPARE(ProjectFile::getSearchPaths("projectPath", "appPath", "datadir", "dir").join("\n"),
+             "appPath\n"
+             "appPath/dir\n"
+             "projectPath\n" +
+             f +
+             "datadir\n"
+             "datadir/dir");
+}
+
 void TestProjectFile::getInlineSuppressionDefaultValue() const
 {
     ProjectFile projectFile;

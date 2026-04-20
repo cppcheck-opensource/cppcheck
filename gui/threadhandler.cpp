@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include "filesettings.h"
 #include "resultsview.h"
 #include "settings.h"
+#include "utils.h"
 
 #include <algorithm>
 #include <string>
@@ -146,26 +147,34 @@ void ThreadHandler::createThreads(const int count)
     removeThreads();
     //Create new threads
     for (int i = mThreads.size(); i < count; i++) {
-        mThreads << new CheckThread(mResults);
+        mThreads << new CheckThread(mResults, i + 1);
         connect(mThreads.last(), &CheckThread::done,
                 this, &ThreadHandler::threadDone, Qt::QueuedConnection);
-        connect(mThreads.last(), &CheckThread::fileChecked,
-                &mResults, &ThreadResult::fileChecked, Qt::QueuedConnection);
+        connect(mThreads.last(), &CheckThread::finishCheck,
+                &mResults, &ThreadResult::finishCheck, Qt::QueuedConnection);
+        connect(mThreads.last(), &CheckThread::startCheck,
+                this, &ThreadHandler::startCheck, Qt::QueuedConnection);
+        connect(mThreads.last(), &CheckThread::finishCheck,
+                this, &ThreadHandler::finishCheck, Qt::QueuedConnection);
     }
 }
 
 
 void ThreadHandler::removeThreads()
 {
-    for (CheckThread* thread : mThreads) {
+    for (CheckThread* thread : utils::as_const(mThreads)) {
         if (thread->isRunning()) {
             thread->stop();
             thread->wait();
         }
         disconnect(thread, &CheckThread::done,
                    this, &ThreadHandler::threadDone);
-        disconnect(thread, &CheckThread::fileChecked,
-                   &mResults, &ThreadResult::fileChecked);
+        disconnect(thread, &CheckThread::finishCheck,
+                   &mResults, &ThreadResult::finishCheck);
+        disconnect(mThreads.last(), &CheckThread::startCheck,
+                   this, &ThreadHandler::startCheck);
+        disconnect(mThreads.last(), &CheckThread::finishCheck,
+                   this, &ThreadHandler::finishCheck);
         delete thread;
     }
 
@@ -208,15 +217,15 @@ void ThreadHandler::stop()
     mCheckStartTime = QDateTime();
     mAnalyseWholeProgram = false;
     mCtuInfo.clear();
-    for (CheckThread* thread : mThreads) {
+    for (CheckThread* thread : utils::as_const(mThreads)) {
         thread->stop();
     }
 }
 
 void ThreadHandler::initialize(const ResultsView *view)
 {
-    connect(&mResults, &ThreadResult::progress,
-            view, &ResultsView::progress);
+    connect(&mResults, &ThreadResult::filesCheckedProgress,
+            view, &ResultsView::filesCheckedProgress);
 
     connect(&mResults, &ThreadResult::error,
             view, &ResultsView::error);
@@ -226,6 +235,9 @@ void ThreadHandler::initialize(const ResultsView *view)
 
     connect(&mResults, &ThreadResult::debugError,
             this, &ThreadHandler::debugError);
+
+    connect(&mResults, &ThreadResult::progress,
+            this, &ThreadHandler::progress);
 }
 
 void ThreadHandler::loadSettings(const QSettings &settings)
@@ -316,4 +328,25 @@ QDateTime ThreadHandler::getCheckStartTime() const
 void ThreadHandler::setCheckStartTime(QDateTime checkStartTime)
 {
     mCheckStartTime = std::move(checkStartTime);
+}
+
+// cppcheck-suppress passedByValueCallback
+// NOLINTNEXTLINE(performance-unnecessary-value-param)
+void ThreadHandler::startCheck(CheckThread::Details details)
+{
+    mThreadDetails[details.threadIndex] = details;
+    emitThreadDetailsUpdated();
+}
+
+// cppcheck-suppress passedByValueCallback
+// NOLINTNEXTLINE(performance-unnecessary-value-param)
+void ThreadHandler::finishCheck(CheckThread::Details details)
+{
+    mThreadDetails.remove(details.threadIndex);
+    emitThreadDetailsUpdated();
+}
+
+void ThreadHandler::emitThreadDetailsUpdated()
+{
+    emit threadDetailsUpdated(mThreadDetails);
 }

@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -57,6 +57,7 @@ private:
         TEST_CASE(getAbsolutePath);
         TEST_CASE(exists);
         TEST_CASE(fromNativeSeparators);
+        TEST_CASE(isRelative);
     }
 
     void removeQuotationMarks() const {
@@ -202,6 +203,8 @@ private:
         //ASSERT_EQUALS("", Path::join("S:/a", "S:/b"));
         //ASSERT_EQUALS("", Path::join("S:/a", "S:\\b"));
         //ASSERT_EQUALS("", Path::join("S:/a", "/b"));
+
+        ASSERT_EQUALS("a/b/c", Path::join("a", "b", "c"));
     }
 
     void isDirectory() const {
@@ -315,7 +318,7 @@ private:
         ASSERT_EQUALS(Standards::Language::CPP, Path::identify("/mnt/c/foo/index.cpp", false));
         ASSERT_EQUALS(Standards::Language::CPP, Path::identify("/mnt/c/foo/index.Cpp", false));
 
-        // TODO: check for case-insenstive filesystem instead
+        // TODO: check for case-insensitive filesystem instead
         // In unix .C is considered C++
 #if !defined(_WIN32) && !(defined(__APPLE__) && defined(__MACH__))
         ASSERT_EQUALS(Standards::Language::CPP, Path::identify("index.C", false));
@@ -533,7 +536,7 @@ private:
 
 #ifndef _WIN32
         // the underlying realpath() call only returns something if the path actually exists
-        ASSERT_THROW_EQUALS_2(Path::getAbsoluteFilePath("testabspath2.txt"), std::runtime_error, "path 'testabspath2.txt' does not exist");
+        ASSERT_THROW_EQUALS(Path::getAbsoluteFilePath("testabspath2.txt"), std::runtime_error, "path 'testabspath2.txt' does not exist");
 #else
         ASSERT_EQUALS(Path::toNativeSeparators(Path::join(cwd, "testabspath2.txt")), Path::getAbsoluteFilePath("testabspath2.txt"));
 #endif
@@ -572,7 +575,7 @@ private:
 #endif
 
 #ifndef _WIN32
-        ASSERT_THROW_EQUALS_2(Path::getAbsoluteFilePath("C:\\path\\files.txt"), std::runtime_error, "path 'C:\\path\\files.txt' does not exist");
+        ASSERT_THROW_EQUALS(Path::getAbsoluteFilePath("C:\\path\\files.txt"), std::runtime_error, "path 'C:\\path\\files.txt' does not exist");
 #endif
 
         // TODO: test UNC paths
@@ -617,6 +620,33 @@ private:
         ASSERT_EQUALS("/lib/file.c", Path::fromNativeSeparators("\\lib\\file.c"));
         ASSERT_EQUALS("//lib/file.c", Path::fromNativeSeparators("\\\\lib\\file.c"));
         ASSERT_EQUALS("./lib/file.c", Path::fromNativeSeparators(".\\lib\\file.c"));
+    }
+
+    void isRelative() const {
+        ASSERT_EQUALS(true, Path::isRelative("dir/file"));
+        ASSERT_EQUALS(true, Path::isRelative("dir\\file"));
+
+        // TODO: is this expected?
+        ASSERT_EQUALS(true, Path::isRelative("file/"));
+        ASSERT_EQUALS(true, Path::isRelative("file\\"));
+
+        ASSERT_EQUALS(false, Path::isRelative("file"));
+
+#ifdef _WIN32
+        // this is a relative path on Windows
+        ASSERT_EQUALS(true, Path::isRelative("/dir/file"));
+#else
+        ASSERT_EQUALS(false, Path::isRelative("/dir/file"));
+#endif
+
+#ifdef _WIN32
+        // TODO: this is not detected as absolute path in _WIN32 builds
+        ASSERT_EQUALS(false, Path::isRelative("c:\\dir\\file"));
+        ASSERT_EQUALS(false, Path::isRelative("c:/dir/file"));
+#else
+        ASSERT_EQUALS(true, Path::isRelative("c:\\dir\\file"));
+        ASSERT_EQUALS(true, Path::isRelative("c:/dir/file"));
+#endif
     }
 };
 

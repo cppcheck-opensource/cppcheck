@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -619,6 +619,8 @@ static bool isNonConstFunctionCall(const Token *ftok, const Library &library)
         return false;
     if (ftok->function() && ftok->function()->isConst())
         return false;
+    if (ftok->isControlFlowKeyword())
+        return false;
     return true;
 }
 
@@ -1059,7 +1061,7 @@ static bool parseComparison(const Token *comp, bool &not1, std::string &op, std:
 {
     not1 = false;
     while (comp && comp->str() == "!") {
-        not1 = !(not1);
+        not1 = !not1;
         comp = comp->astOperand1();
     }
 
@@ -1096,7 +1098,7 @@ static bool parseComparison(const Token *comp, bool &not1, std::string &op, std:
         expr = comp;
     }
 
-    inconclusive = inconclusive || ((value)[0] == '\'' && !(op == "!=" || op == "=="));
+    inconclusive = inconclusive || (value[0] == '\'' && !(op == "!=" || op == "=="));
 
     // Only float and int values are currently handled
     return MathLib::isInt(value) || MathLib::isFloat(value) || (value[0] == '\'');
@@ -1288,13 +1290,13 @@ void CheckCondition::checkIncorrectLogicOperator()
                 continue;
 
             // the expr are not the token of the value but they provide better context
-            const double d1 = (isfloat) ? MathLib::toDoubleNumber(value1) : 0;
-            const double d2 = (isfloat) ? MathLib::toDoubleNumber(value2) : 0;
-            const MathLib::bigint i1 = (isfloat) ? 0 : MathLib::toBigNumber(value1, expr1);
-            const MathLib::bigint i2 = (isfloat) ? 0 : MathLib::toBigNumber(value2, expr2);
+            const double d1 = isfloat ? MathLib::toDoubleNumber(value1) : 0;
+            const double d2 = isfloat ? MathLib::toDoubleNumber(value2) : 0;
+            const MathLib::bigint i1 = isfloat ? 0 : MathLib::toBigNumber(value1, expr1);
+            const MathLib::bigint i2 = isfloat ? 0 : MathLib::toBigNumber(value2, expr2);
             const bool useUnsignedInt = (std::numeric_limits<MathLib::bigint>::max()==i1) || (std::numeric_limits<MathLib::bigint>::max()==i2);
-            const MathLib::biguint u1 = (useUnsignedInt) ? MathLib::toBigUNumber(value1, expr1) : 0;
-            const MathLib::biguint u2 = (useUnsignedInt) ? MathLib::toBigUNumber(value2, expr2) : 0;
+            const MathLib::biguint u1 = useUnsignedInt ? MathLib::toBigUNumber(value1, expr1) : 0;
+            const MathLib::biguint u2 = useUnsignedInt ? MathLib::toBigUNumber(value2, expr2) : 0;
             // evaluate if expression is always true/false
             bool alwaysTrue = true, alwaysFalse = true;
             bool firstTrue = true, secondTrue = true;
@@ -1502,10 +1504,11 @@ void CheckCondition::clarifyConditionError(const Token *tok, bool assign, bool b
 
 void CheckCondition::alwaysTrueFalse()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) &&
-        !mSettings->isPremiumEnabled("alwaysTrue") &&
-        !mSettings->isPremiumEnabled("alwaysFalse") &&
-        !mSettings->isPremiumEnabled("knownConditionTrueFalse"))
+    const bool pedantic = mSettings->isPremiumEnabled("alwaysTrue") ||
+                          mSettings->isPremiumEnabled("alwaysFalse") ||
+                          mSettings->isPremiumEnabled("knownConditionTrueFalse");
+
+    if (!pedantic && !mSettings->severity.isEnabled(Severity::style))
         return;
 
     logChecker("CheckCondition::alwaysTrueFalse"); // style
@@ -1544,6 +1547,8 @@ void CheckCondition::alwaysTrueFalse()
                          Token::simpleMatch(parent->astParent()->astParent()->previous(), "for ("))
                     condition = parent->astParent()->astParent()->previous();
                 else if (Token::Match(tok, "%comp%"))
+                    condition = tok;
+                else if (tok->str() == "(" && astIsBool(parent) && Token::Match(parent, "%assign%"))
                     condition = tok;
                 else
                     continue;
@@ -1586,7 +1591,8 @@ void CheckCondition::alwaysTrueFalse()
                                  true,
                                  true))
                 continue;
-            if (isConstVarExpression(tok, [](const Token* tok) {
+
+            if (!pedantic && isConstVarExpression(tok, [](const Token* tok) {
                 return Token::Match(tok, "[|(|&|+|-|*|/|%|^|>>|<<") && !Token::simpleMatch(tok, "( )");
             }))
                 continue;
@@ -1647,11 +1653,20 @@ void CheckCondition::alwaysTrueFalse()
     }
 }
 
+static std::string getConditionString(const Token* condition)
+{
+    if (Token::simpleMatch(condition, "return"))
+        return "Return value";
+    if (Token::simpleMatch(condition, "(") && Token::Match(condition->astParent(), "%assign%"))
+        return "Assigned value";
+    return "Condition";
+}
+
 void CheckCondition::alwaysTrueFalseError(const Token* tok, const Token* condition, const ValueFlow::Value* value)
 {
     const bool alwaysTrue = value && (value->intvalue != 0 || value->isImpossible());
     const std::string expr = tok ? tok->expressionString() : std::string("x");
-    const std::string conditionStr = (Token::simpleMatch(condition, "return") ? "Return value" : "Condition");
+    const std::string conditionStr = getConditionString(condition);
     const std::string errmsg = conditionStr + " '" + expr + "' is always " + bool_to_string(alwaysTrue);
     ErrorPath errorPath = getErrorPath(tok, value, errmsg);
     reportError(std::move(errorPath),
@@ -1960,8 +1975,6 @@ void CheckCondition::checkCompareValueOutOfTypeRange()
                     continue;
                 if (valueTok->getKnownIntValue() < 0 && valueTok->valueType() && valueTok->valueType()->sign != ValueType::Sign::SIGNED)
                     continue;
-                if (valueTok->valueType() && valueTok->valueType()->isTypeEqual(typeTok->valueType()))
-                    continue;
                 std::uint8_t bits = 0;
                 switch (typeTok->valueType()->type) {
                 case ValueType::Type::BOOL:
@@ -2000,6 +2013,8 @@ void CheckCondition::checkCompareValueOutOfTypeRange()
 
                 bool result{};
                 const auto kiv = valueTok->getKnownIntValue();
+                if (kiv == 0)
+                    continue; // prevent overlap with TestOther::unsignedPositive/unsignedLessThanZero
                 if (tok->str() == "==")
                     result = false;
                 else if (tok->str() == "!=")

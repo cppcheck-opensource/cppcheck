@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -162,6 +162,7 @@ ErrorMessage::ErrorMessage(ErrorPath errorPath, const TokenList *tokenList, Seve
     // hash = calculateWarningHash(tokenList, hashWarning.str());
 }
 
+// TODO: improve errorhandling?
 ErrorMessage::ErrorMessage(const tinyxml2::XMLElement * const errmsg)
     : severity(Severity::none),
     cwe(0U),
@@ -1079,8 +1080,15 @@ std::string getGuideline(const std::string &errId, ReportType reportType,
     case ReportType::misraC2012:
     case ReportType::misraC2023:
     case ReportType::misraC2025:
-        if (errId.rfind("misra-c20", 0) == 0 || errId.rfind("premium-misra-c-20", 0) == 0)
-            guideline = errId.substr(errId.rfind('-') + 1);
+        if (errId.rfind("misra-c20", 0) == 0 || errId.rfind("premium-misra-c-20", 0) == 0) {
+            auto pos1 = errId.find("20") + 5;
+            if (pos1 >= errId.size())
+                break;
+            if (errId.compare(pos1,4,"dir-",0,4) == 0)
+                pos1 += 4;
+            const auto endpos = errId.find('-', pos1);
+            guideline = errId.substr(pos1, endpos-pos1);
+        }
         break;
     case ReportType::misraCpp2008:
         if (errId.rfind("premium-misra-cpp-2008", 0) == 0)

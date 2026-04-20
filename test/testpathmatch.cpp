@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,11 @@ public:
     TestPathMatch() : TestFixture("TestPathMatch") {}
 
 private:
+    class PathMatchTest final : public PathMatch
+    {
+        friend class TestPathMatch;
+    };
+
     static constexpr auto unix = PathMatch::Syntax::unix;
     static constexpr auto windows = PathMatch::Syntax::windows;
     static constexpr auto ifreg = PathMatch::Filemode::regular;
@@ -277,7 +282,7 @@ private:
     void pathiterator() const {
         /* See https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats
          * for information on Windows path syntax. */
-        using PathIterator = PathMatch::PathIterator;
+        using PathIterator = PathMatchTest::PathIterator;
         ASSERT_EQUALS("/", PathIterator("/", nullptr, unix).read());
         ASSERT_EQUALS("/", PathIterator("//", nullptr, unix).read());
         ASSERT_EQUALS("/", PathIterator("/", "/", unix).read());
@@ -291,7 +296,7 @@ private:
         ASSERT_EQUALS("", PathIterator(nullptr, "", unix).read());
         ASSERT_EQUALS("", PathIterator(nullptr, nullptr, unix).read());
         ASSERT_EQUALS("c:", PathIterator("C:", nullptr, windows).read());
-        /* C: without slash is a bit ambigous. It should probably not be considered a root because it's
+        /* C: without slash is a bit ambiguous. It should probably not be considered a root because it's
          * not fully qualified (it designates the current directory on the C drive),
          * so this test could be considered to be unspecified behavior. */
         ASSERT_EQUALS("c:", PathIterator("C:", "../..", windows).read());

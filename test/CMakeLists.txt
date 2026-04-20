@@ -1,4 +1,4 @@
-if (BUILD_TESTS)
+if (BUILD_TESTING)
     add_subdirectory(signal)
     add_subdirectory(seh)
 
@@ -79,7 +79,7 @@ if (BUILD_TESTS)
             set(oneValueArgs PLATFORM NAME)
             set(multiValueArgs ADD_LIBRARY)
 
-            cmake_parse_arguments(PARSE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+            cmake_parse_arguments(PARSE "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
             get_filename_component(LIBRARY ${CFG_TEST} NAME_WE)
             # TODO: get rid of this
             if(PARSE_ADD_LIBRARY)

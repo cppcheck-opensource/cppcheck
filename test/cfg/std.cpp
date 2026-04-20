@@ -586,7 +586,6 @@ void bufferAccessOutOfBounds_std_ofstream_write(std::ofstream &os, const char* s
     (void)os.write(s,n);
 }
 
-// cppcheck-suppress constParameterReference // TODO: FP
 void bufferAccessOutOfBounds_std_ifstream_get(std::ifstream& in, std::streambuf& sb)
 {
     char cBuf[10];
@@ -5003,7 +5002,7 @@ void beginEnd()
     //cppcheck-suppress ignoredReturnValue
     std::crend(v);
 
-    // cppcheck-suppress constVariable
+    // TODO cppcheck-suppress constVariable
     int arr[4];
 
     //cppcheck-suppress ignoredReturnValue
@@ -5023,6 +5022,39 @@ void beginEnd()
     std::cend(arr);
     //cppcheck-suppress ignoredReturnValue
     std::crend(arr);
+}
+
+struct S_constParameter_std_begin { // #11617
+    int a[2];
+};
+
+struct T_constParameter_std_begin {
+    std::vector<int> v;
+};
+
+struct U_constParameter_std_begin {
+    std::vector<int> v[1][1];
+};
+
+void f(S_constParameter_std_begin& s) {
+    std::for_each(std::begin(s.a), std::end(s.a), [](int& i) { ++i; });
+}
+
+void f(T_constParameter_std_begin& t) {
+    std::for_each(std::begin(t.v), std::end(t.v), [](int& i) { ++i; });
+}
+
+void f(U_constParameter_std_begin& u) {
+    std::for_each(std::begin(u.v[0][0]), std::end(u.v[0][0]), [](int& i) { ++i; });
+}
+
+void g_constVariable_std_begin(int* p) { *p = 0; }
+
+int f_constVariable_std_begin() {
+    int arr[1];
+    g_constVariable_std_begin(std::begin(arr));
+    *std::begin(arr) = 1;
+    return arr[0];
 }
 
 void smartPtr_get()
@@ -5164,6 +5196,20 @@ void constVariablePointer_push_back(std::vector<T*>& d, const std::vector<T*>& s
         T* newE = new T(*e);
         d.push_back(newE);
     }
+}
+
+struct S_constVariablePointer_wstring { // #14575
+    std::wstring m;
+    const std::wstring& get() const { return m; }
+};
+
+S_constVariablePointer_wstring* g_constVariablePointer_wstring();
+
+void h_constVariablePointer_wstring(const wchar_t*);
+
+void f_constVariablePointer_wstring() {
+    S_constVariablePointer_wstring* s = g_constVariablePointer_wstring(); // cppcheck-suppress constVariablePointer
+    h_constVariablePointer_wstring(s->get().c_str());
 }
 
 std::streampos constParameterPointer_istream_tellg(std::istream* p) { // #13801

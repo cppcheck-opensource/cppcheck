@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -68,8 +68,8 @@ enum class Color : std::uint8_t;
 using std::memset;
 
 
-ProcessExecutor::ProcessExecutor(const std::list<FileWithDetails> &files, const std::list<FileSettings>& fileSettings, const Settings &settings, Suppressions &suppressions, ErrorLogger &errorLogger, CppCheck::ExecuteCmdFn executeCommand)
-    : Executor(files, fileSettings, settings, suppressions, errorLogger)
+ProcessExecutor::ProcessExecutor(const std::list<FileWithDetails> &files, const std::list<FileSettings>& fileSettings, const Settings &settings, Suppressions &suppressions, ErrorLogger &errorLogger, TimerResults* timerResults, CppCheck::ExecuteCmdFn executeCommand)
+    : Executor(files, fileSettings, settings, suppressions, errorLogger, timerResults)
     , mExecuteCommand(std::move(executeCommand))
 {
     assert(mSettings.jobs > 1);
@@ -112,6 +112,8 @@ namespace {
         static std::string suppressionToString(const SuppressionList::Suppression &suppr)
         {
             std::string suppr_str = suppr.toString();
+            suppr_str += ";";
+            suppr_str += std::to_string(suppr.column);
             suppr_str += ";";
             suppr_str += suppr.checked ? "1" : "0";
             suppr_str += ";";
@@ -241,7 +243,7 @@ bool ProcessExecutor::handleRead(int rpipe, unsigned int &result, const std::str
         if (!buf.empty()) {
             // TODO: avoid string splitting
             auto parts = splitString(buf, ';');
-            if (parts.size() < 4)
+            if (parts.size() < 5)
             {
                 // TODO: make this non-fatal
                 std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") adding of inline suppression failed - insufficient data" << std::endl;
@@ -249,10 +251,11 @@ bool ProcessExecutor::handleRead(int rpipe, unsigned int &result, const std::str
             }
             auto suppr = SuppressionList::parseLine(parts[0]);
             suppr.isInline = (type == PipeWriter::REPORT_SUPPR_INLINE);
-            suppr.checked = parts[1] == "1";
-            suppr.matched = parts[2] == "1";
-            suppr.extraComment = parts[3];
-            for (std::size_t i = 4; i < parts.size(); i++) {
+            suppr.column = strToInt<int>(parts[1]);
+            suppr.checked = parts[2] == "1";
+            suppr.matched = parts[3] == "1";
+            suppr.extraComment = parts[4];
+            for (std::size_t i = 5; i < parts.size(); i++) {
                 suppr.extraComment += ";" + parts[i];
             }
             const std::string err = mSuppressions.nomsg.addSuppression(suppr);
@@ -344,7 +347,7 @@ unsigned int ProcessExecutor::check()
                 close(pipes[0]);
 
                 PipeWriter pipewriter(pipes[1]);
-                CppCheck fileChecker(mSettings, mSuppressions, pipewriter, false, mExecuteCommand);
+                CppCheck fileChecker(mSettings, mSuppressions, pipewriter, mTimerResults, false, mExecuteCommand);
                 unsigned int resultOfCheck = 0;
 
                 if (iFileSettings != mFileSettings.end()) {
@@ -449,9 +452,7 @@ unsigned int ProcessExecutor::check()
         }
     }
 
-    // TODO: wee need to get the timing information from the subprocess
-    if (mSettings.showtime == ShowTime::SUMMARY || mSettings.showtime == ShowTime::TOP5_SUMMARY)
-        CppCheck::printTimerResults(mSettings.showtime);
+    // TODO: we need to get the timing information from the subprocess
 
     return result;
 }

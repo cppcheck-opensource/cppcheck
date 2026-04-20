@@ -9,6 +9,9 @@
 
 #include <cairo.h>
 
+#if CAIRO_VERSION >= CAIRO_VERSION_ENCODE(1, 2, 3)
+#endif
+
 void validCode(cairo_surface_t *target)
 {
     cairo_t * cairo1 = cairo_create(target);

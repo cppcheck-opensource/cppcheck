@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,8 +40,8 @@
 #include <utility>
 #include <vector>
 
-ThreadExecutor::ThreadExecutor(const std::list<FileWithDetails> &files, const std::list<FileSettings>& fileSettings, const Settings &settings, Suppressions &suppressions, ErrorLogger &errorLogger, CppCheck::ExecuteCmdFn executeCommand)
-    : Executor(files, fileSettings, settings, suppressions, errorLogger)
+ThreadExecutor::ThreadExecutor(const std::list<FileWithDetails> &files, const std::list<FileSettings>& fileSettings, const Settings &settings, Suppressions &suppressions, ErrorLogger &errorLogger, TimerResults* timerResults, CppCheck::ExecuteCmdFn executeCommand)
+    : Executor(files, fileSettings, settings, suppressions, errorLogger, timerResults)
     , mExecuteCommand(std::move(executeCommand))
 {
     assert(mSettings.jobs > 1);
@@ -87,8 +87,8 @@ private:
 class ThreadData
 {
 public:
-    ThreadData(ThreadExecutor &threadExecutor, ErrorLogger &errorLogger, const Settings &settings, Suppressions& supprs, const std::list<FileWithDetails> &files, const std::list<FileSettings> &fileSettings, CppCheck::ExecuteCmdFn executeCommand)
-        : mFiles(files), mFileSettings(fileSettings), mSettings(settings), mSuppressions(supprs), mExecuteCommand(std::move(executeCommand)), logForwarder(threadExecutor, errorLogger)
+    ThreadData(ThreadExecutor &threadExecutor, ErrorLogger &errorLogger, TimerResults *timerResults, const Settings &settings, Suppressions& supprs, const std::list<FileWithDetails> &files, const std::list<FileSettings> &fileSettings, CppCheck::ExecuteCmdFn executeCommand)
+        : mFiles(files), mFileSettings(fileSettings), mTimerResults(timerResults), mSettings(settings), mSuppressions(supprs), mExecuteCommand(std::move(executeCommand)), mLogForwarder(threadExecutor, errorLogger)
     {
         mItNextFile = mFiles.begin();
         mItNextFileSettings = mFileSettings.begin();
@@ -119,8 +119,8 @@ public:
         return false;
     }
 
-    unsigned int check(ErrorLogger &errorLogger, const FileWithDetails *file, const FileSettings *fs) const {
-        CppCheck fileChecker(mSettings, mSuppressions, errorLogger, false, mExecuteCommand);
+    unsigned int check(const FileWithDetails *file, const FileSettings *fs) {
+        CppCheck fileChecker(mSettings, mSuppressions, mLogForwarder, mTimerResults, false, mExecuteCommand);
 
         unsigned int result;
         if (fs) {
@@ -155,7 +155,7 @@ public:
         mProcessedSize += fileSize;
         mProcessedFiles++;
         if (!mSettings.quiet)
-            logForwarder.reportStatus(mProcessedFiles, mTotalFiles, mProcessedSize, mTotalFileSize);
+            mLogForwarder.reportStatus(mProcessedFiles, mTotalFiles, mProcessedSize, mTotalFileSize);
     }
 
 private:
@@ -170,12 +170,12 @@ private:
     std::size_t mTotalFileSize{};
 
     std::mutex mFileSync;
+    TimerResults *mTimerResults;
     const Settings &mSettings;
     Suppressions &mSuppressions;
     CppCheck::ExecuteCmdFn mExecuteCommand;
 
-public:
-    SyncLogForwarder logForwarder;
+    SyncLogForwarder mLogForwarder;
 };
 
 static unsigned int STDCALL threadProc(ThreadData *data)
@@ -187,7 +187,7 @@ static unsigned int STDCALL threadProc(ThreadData *data)
     std::size_t fileSize;
 
     while (data->next(file, fs, fileSize)) {
-        result += data->check(data->logForwarder, file, fs);
+        result += data->check(file, fs);
 
         data->status(fileSize);
     }
@@ -200,7 +200,7 @@ unsigned int ThreadExecutor::check()
     std::vector<std::future<unsigned int>> threadFutures;
     threadFutures.reserve(mSettings.jobs);
 
-    ThreadData data(*this, mErrorLogger, mSettings, mSuppressions, mFiles, mFileSettings, mExecuteCommand);
+    ThreadData data(*this, mErrorLogger, mTimerResults, mSettings, mSuppressions, mFiles, mFileSettings, mExecuteCommand);
 
     for (unsigned int i = 0; i < mSettings.jobs; ++i) {
         try {
@@ -215,9 +215,6 @@ unsigned int ThreadExecutor::check()
     unsigned int result = std::accumulate(threadFutures.begin(), threadFutures.end(), 0U, [](unsigned int v, std::future<unsigned int>& f) {
         return v + f.get();
     });
-
-    if (mSettings.showtime == ShowTime::SUMMARY || mSettings.showtime == ShowTime::TOP5_SUMMARY)
-        CppCheck::printTimerResults(mSettings.showtime);
 
     return result;
 }

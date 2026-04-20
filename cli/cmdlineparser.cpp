@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -76,9 +76,7 @@ static bool addFilesToList(const std::string& fileList, std::vector<std::string>
         files = &infile;
     }
     std::string fileName;
-    // cppcheck-suppress accessMoved - FP
     while (std::getline(*files, fileName)) { // next line
-        // cppcheck-suppress accessMoved - FP
         if (!fileName.empty()) {
             pathNames.emplace_back(std::move(fileName));
         }
@@ -92,7 +90,6 @@ static bool addIncludePathsToList(const std::string& fileList, std::list<std::st
     std::ifstream files(fileList);
     if (files) {
         std::string pathName;
-        // cppcheck-suppress accessMoved - FP
         while (std::getline(files, pathName)) { // next line
             if (!pathName.empty()) {
                 pathName = Path::removeQuotationMarks(std::move(pathName));
@@ -206,8 +203,6 @@ bool CmdLineParser::fillSettingsFromArgs(int argc, const char* const argv[])
     assert(!(!pathnamesRef.empty() && !fileSettingsRef.empty()));
 
     if (!fileSettingsRef.empty()) {
-        // TODO: de-duplicate
-
         std::list<FileSettings> fileSettings;
         if (!mSettings.fileFilters.empty()) {
             // filter only for the selected filenames from all project files
@@ -224,6 +219,8 @@ bool CmdLineParser::fillSettingsFromArgs(int argc, const char* const argv[])
         else {
             fileSettings = fileSettingsRef;
         }
+
+        // TODO: de-duplicate
 
         mFileSettings.clear();
 
@@ -265,19 +262,6 @@ bool CmdLineParser::fillSettingsFromArgs(int argc, const char* const argv[])
             return false;
         }
 
-        // de-duplicate files
-        {
-            auto it = filesResolved.begin();
-            while (it != filesResolved.end()) {
-                const std::string& name = it->path();
-                // TODO: log if duplicated files were dropped
-                filesResolved.erase(std::remove_if(std::next(it), filesResolved.end(), [&](const FileWithDetails& entry) {
-                    return entry.path() == name;
-                }), filesResolved.end());
-                ++it;
-            }
-        }
-
         std::list<FileWithDetails> files;
         if (!mSettings.fileFilters.empty()) {
             files = filterFiles(mSettings.fileFilters, filesResolved);
@@ -289,6 +273,19 @@ bool CmdLineParser::fillSettingsFromArgs(int argc, const char* const argv[])
         }
         else {
             files = std::move(filesResolved);
+        }
+
+        // de-duplicate files
+        {
+            auto it = files.begin();
+            while (it != files.end()) {
+                const std::string& absname = it->abspath();
+                // TODO: log if duplicated files were dropped
+                files.erase(std::remove_if(std::next(it), files.end(), [&](const FileWithDetails& entry) {
+                    return entry.abspath() == absname;
+                }), files.end());
+                ++it;
+            }
         }
 
         frontend::applyLang(files, mSettings, mEnforcedLang);
@@ -353,7 +350,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         return Result::Fail;
 
     if (argc <= 1) {
-        printHelp(mSettings.premium);
+        printHelp();
         return Result::Exit;
     }
 
@@ -388,7 +385,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
 
         // Print help
         if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0) {
-            printHelp(mSettings.premium);
+            printHelp();
             return Result::Exit;
         }
 
@@ -621,6 +618,9 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
             mSettings.cppHeaderProbe = true;
         }
 
+        else if (std::strcmp(argv[i], "--debug-analyzerinfo") == 0)
+            mSettings.debugainfo = true;
+
         else if (std::strcmp(argv[i], "--debug-ast") == 0)
             mSettings.debugast = true;
 
@@ -749,6 +749,15 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
             }
             else {
                 mLogger.printError("unknown executor: '" + type + "'.");
+                return Result::Fail;
+            }
+        }
+
+        else if (std::strncmp(argv[i], "--exitcode-suppress=", 20) == 0) {
+            const std::string suppression = argv[i]+20;
+            const std::string errmsg(mSuppressions.nofail.addSuppressionLine(suppression));
+            if (!errmsg.empty()) {
+                mLogger.printError(errmsg);
                 return Result::Fail;
             }
         }
@@ -1115,7 +1124,8 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                 "misra-c++-2023",
                 "misra-cpp-2023",
                 "bughunting",
-                "safety",  // TODO: deprecate in favor of the regular --saftey/--no-safety
+                "safety",  // TODO: deprecate in favor of the regular --safety/--no-safety
+                "safety-profiles",
                 "debug-progress"};
             // valid options --premium-..=
             const std::set<std::string> valid2{
@@ -1133,7 +1143,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                 mSettings.premiumArgs += " ";
             const std::string p(argv[i] + 10);
             const std::string p2(p.find('=') != std::string::npos ? p.substr(0, p.find('=')) : "");
-            const bool isCodingStandard = startsWith(p, "autosar") || startsWith(p,"cert-") || startsWith(p,"misra-");
+            const bool isCodingStandard = startsWith(p, "autosar") || startsWith(p,"cert-") || startsWith(p,"misra-") || p == "safety-profiles";
             const std::string p3(endsWith(p,":all") && isCodingStandard ? p.substr(0,p.rfind(':')) : p);
             if (!valid.count(p3) && !valid2.count(p2)) {
                 mLogger.printError("invalid --premium option '" + (p2.empty() ? p : p2) + "'.");
@@ -1184,7 +1194,9 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
             }
             if (projectType == ImportProject::Type::COMPILE_DB)
                 mSettings.maxConfigsProject = 1;
-            if (projectType == ImportProject::Type::VS_SLN || projectType == ImportProject::Type::VS_VCXPROJ) {
+            if (projectType == ImportProject::Type::VS_SLN ||
+                projectType == ImportProject::Type::VS_SLNX ||
+                projectType == ImportProject::Type::VS_VCXPROJ) {
                 mSettings.libraries.emplace_back("windows");
             }
             for (const auto &error : project.errors)
@@ -1210,7 +1222,9 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                 mLogger.printError("--project-configuration parameter is empty.");
                 return Result::Fail;
             }
-            if (projectType != ImportProject::Type::VS_SLN && projectType != ImportProject::Type::VS_VCXPROJ) {
+            if (projectType != ImportProject::Type::VS_SLN &&
+                projectType != ImportProject::Type::VS_SLNX &&
+                projectType != ImportProject::Type::VS_VCXPROJ) {
                 mLogger.printError("--project-configuration has no effect - no Visual Studio project provided.");
                 return Result::Fail;
             }
@@ -1290,7 +1304,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
             }
 
             std::string regex_err;
-            auto regex = Regex::create(rule.pattern, regex_err);
+            auto regex = Regex::create(rule.pattern, Regex::Engine::Pcre, regex_err);
             if (!regex) {
                 mLogger.printError("failed to compile rule pattern '" + rule.pattern + "' (" + regex_err + ").");
                 return Result::Fail;
@@ -1347,6 +1361,16 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                                 }
                             }
                         }
+                        else if (std::strcmp(subname, "engine") == 0) {
+                            const char * const engine = empty_if_null(subtext);
+                            if (std::strcmp(engine, "pcre") == 0) {
+                                rule.engine = Regex::Engine::Pcre;
+                            }
+                            else {
+                                mLogger.printError(std::string("unknown regex engine '") + engine + "'.");
+                                return Result::Fail;
+                            }
+                        }
                         else {
                             mLogger.printError("unable to load rule-file '" + ruleFile + "' - unknown element '" + subname + "' encountered in 'rule'.");
                             return Result::Fail;
@@ -1374,7 +1398,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                     }
 
                     std::string regex_err;
-                    auto regex = Regex::create(rule.pattern, regex_err);
+                    auto regex = Regex::create(rule.pattern, rule.engine, regex_err);
                     if (!regex) {
                         mLogger.printError("unable to load rule-file '" + ruleFile + "' - pattern '" + rule.pattern + "' failed to compile (" + regex_err + ").");
                         return Result::Fail;
@@ -1645,7 +1669,9 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         mSettings.platform.defaultSign = defaultSign;
 
     if (!mSettings.analyzeAllVsConfigs) {
-        if (projectType != ImportProject::Type::VS_SLN && projectType != ImportProject::Type::VS_VCXPROJ) {
+        if (projectType != ImportProject::Type::VS_SLN &&
+            projectType != ImportProject::Type::VS_SLNX &&
+            projectType != ImportProject::Type::VS_VCXPROJ) {
             if (mAnalyzeAllVsConfigsSetOnCmdLine) {
                 mLogger.printError("--no-analyze-all-vs-configs has no effect - no Visual Studio project provided.");
                 return Result::Fail;
@@ -1700,7 +1726,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
     return Result::Success;
 }
 
-void CmdLineParser::printHelp(bool premium) const
+void CmdLineParser::printHelp() const
 {
     std::ostringstream oss;
     // TODO: display product name
@@ -1791,6 +1817,9 @@ void CmdLineParser::printHelp(bool premium) const
         "                         provided. Note that your operating system can modify\n"
         "                         this value, e.g. '256' can become '0'.\n"
         "    --errorlist          Print a list of all the error messages in XML format.\n"
+        "    --exitcode-suppress=<spec>\n"
+        "                         Used to specify an error ID which should not result in\n"
+        "                         a non-zero exitcode."
         "    --exitcode-suppressions=<file>\n"
         "                         Used when certain messages should be displayed but\n"
         "                         should not cause a non-zero exitcode.\n"
@@ -1901,7 +1930,7 @@ void CmdLineParser::printHelp(bool premium) const
         "    --plist-output=<path>\n"
         "                         Generate Clang-plist output files in folder.\n";
 
-    if (premium) {
+    if (mSettings.premium) {
         oss <<
             "    --premium=<option>\n"
             "                         Coding standards:\n"
@@ -1931,13 +1960,13 @@ void CmdLineParser::printHelp(bool premium) const
 
     oss <<
         "    --project=<file>     Run Cppcheck on project. The <file> can be a Visual\n"
-        "                         Studio Solution (*.sln), Visual Studio Project\n"
+        "                         Studio Solution (*.sln) or (*.slnx), Visual Studio Project\n"
         "                         (*.vcxproj), compile database (compile_commands.json),\n"
         "                         or Borland C++ Builder 6 (*.bpr). The files to analyse,\n"
         "                         include paths, defines, platform and undefines in\n"
         "                         the specified file will be used.\n"
         "    --project-configuration=<config>\n"
-        "                         If used together with a Visual Studio Solution (*.sln)\n"
+        "                         If used together with a Visual Studio Solution (*.sln) or (*.slnx)\n"
         "                         or Visual Studio Project (*.vcxproj) you can limit\n"
         "                         the configuration cppcheck should check.\n"
         "                         For example: '--project-configuration=Release|Win32'\n"

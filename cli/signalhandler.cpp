@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,8 +23,6 @@
 #include "signalhandler.h"
 
 #if defined(USE_UNIX_SIGNAL_HANDLING)
-
-#include "utils.h"
 
 #ifdef USE_UNIX_BACKTRACE_SUPPORT
 #include "stacktrace.h"
@@ -108,23 +106,24 @@ static const Signalmap_t listofsignals = {
  * but when ending up here something went terribly wrong anyway.
  * And all which is left is just printing some information and terminate.
  */
-static void CppcheckSignalHandler(int signo, siginfo_t * info, void * context)
+static void CppcheckSignalHandler(int signo, siginfo_t * info, void * context) // cppcheck-suppress constParameterCallback - info can be const
 {
-    int type = -1;
+    const char* typeStr = "";
     pid_t killid;
     // TODO: separate these two defines
 #if defined(__linux__) && defined(REG_ERR)
     const auto* const uc = reinterpret_cast<const ucontext_t*>(context);
     killid = static_cast<pid_t>(syscall(SYS_gettid));
     if (uc) {
-        type = static_cast<int>(uc->uc_mcontext.gregs[REG_ERR]) & 2;
+        const int type = static_cast<int>(uc->uc_mcontext.gregs[REG_ERR]) & 2;
+        typeStr = (type == 0) ? "reading " : "writing ";
     }
 #else
     (void)context;
     killid = getpid();
 #endif
 
-    const auto it = utils::as_const(listofsignals).find(signo);
+    const auto it = listofsignals.find(signo);
     const char * const signame = (it==listofsignals.end()) ? "unknown" : it->second.c_str();
     bool unexpectedSignal=true; // unexpected indicates program failure
     bool terminate=true; // exit process/thread
@@ -238,7 +237,7 @@ static void CppcheckSignalHandler(int signo, siginfo_t * info, void * context)
         }
         fprintf(output, " (at 0x%lx).%s\n",
                 reinterpret_cast<unsigned long>(info->si_addr),
-                (isAddressOnStack)?" Stackoverflow?":"");
+                isAddressOnStack ? " Stackoverflow?" : "");
         break;
     case SIGINT:
         unexpectedSignal=false;     // legal usage: interrupt application via CTRL-C
@@ -260,11 +259,9 @@ static void CppcheckSignalHandler(int signo, siginfo_t * info, void * context)
             break;
         }
         fprintf(output, " (%sat 0x%lx).%s\n",
-                // cppcheck-suppress knownConditionTrueFalse ; FP
-                (type==-1)? "" :
-                (type==0) ? "reading " : "writing ",
+                typeStr,
                 reinterpret_cast<unsigned long>(info->si_addr),
-                (isAddressOnStack)?" Stackoverflow?":""
+                isAddressOnStack ? " Stackoverflow?" : ""
                 );
         break;
     case SIGUSR1:

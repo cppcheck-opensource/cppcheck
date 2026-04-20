@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2085,8 +2085,11 @@ void TemplateSimplifier::expandTemplate(
         std::stack<const Token *> templates;
         int scopeCount = 0;
         for (; tok3; tok3 = tok3->next()) {
-            if (tok3->str() == "{")
+            if (tok3->str() == "{") {
+                if (isFunction && isSpecialization && inTemplateDefinition)
+                    break;
                 ++scopeCount;
+            }
             else if (tok3->str() == "}")
                 --scopeCount;
             if (scopeCount < 0)
@@ -2104,8 +2107,6 @@ void TemplateSimplifier::expandTemplate(
                     Token * const beforeTypeToken = mTokenList.back();
                     bool pointerType = false;
                     const bool isVariadicTemplateArg = templateDeclaration.isVariadic() && itype + 1 == typeParametersInDeclaration.size();
-                    if (isVariadicTemplateArg && mTypesUsedInTemplateInstantiation.size() > 1 && !Token::Match(tok3->next(), "...|<"))
-                        continue;
                     if (isVariadicTemplateArg && Token::Match(tok3, "%name% ... %name%"))
                         tok3 = tok3->tokAt(2);
                     if (!isVariadicTemplateArg && copy && Token::Match(mTypesUsedInTemplateInstantiation[itype].token(), "%num% ,|>|>>") &&
@@ -2130,6 +2131,7 @@ void TemplateSimplifier::expandTemplate(
                         }
                     }
                     const std::string endStr(isVariadicTemplateArg ? ">" : ",>");
+                    Token* begPar = nullptr;
                     for (Token *typetok = mTypesUsedInTemplateInstantiation[itype].token();
                          typetok && (typeindentlevel > 0 || endStr.find(typetok->str()[0]) == std::string::npos);
                          typetok = typetok->next()) {
@@ -2153,6 +2155,10 @@ void TemplateSimplifier::expandTemplate(
                             --typeindentlevel;
                         Token *back;
                         if (copy) {
+                            if (isVariadicTemplateArg && typetok == mTypesUsedInTemplateInstantiation[itype].token() && typetok->isLiteral()) {
+                                mTokenList.addtoken("(", mTokenList.back());
+                                begPar = mTokenList.back();
+                            }
                             mTokenList.addtoken(typetok, tok3);
                             back = mTokenList.back();
                         } else
@@ -2180,6 +2186,10 @@ void TemplateSimplifier::expandTemplate(
                         }
                         if (copy)
                             back->templateArgFrom(typetok);
+                    }
+                    if (begPar) {
+                        mTokenList.addtoken(")", mTokenList.back());
+                        Token::createMutualLinks(begPar, mTokenList.back());
                     }
                     if (pointerType && Token::simpleMatch(beforeTypeToken, "const")) {
                         mTokenList.addtoken(beforeTypeToken);
@@ -2859,9 +2869,9 @@ bool TemplateSimplifier::simplifyCalculations(Token* frontToken, const Token *ba
                 } else if ((((Token::Match(tok->previous(), "[=[(,] 0 * %name%|%num% ,|]|)|;|=|%cop%") ||
                               Token::Match(tok->previous(), "return|case 0 *|&& %name%|%num% ,|:|;|=|%cop%")) &&
                              validTokenEnd(bounded, tok, backToken, 3)) ||
-                            (((Token::Match(tok->previous(), "[=[(,] 0 * (") ||
-                               Token::Match(tok->previous(), "return|case 0 *|&& (")) &&
-                              validTokenEnd(bounded, tok, backToken, 2))))) {
+                            ((Token::Match(tok->previous(), "[=[(,] 0 * (") ||
+                              Token::Match(tok->previous(), "return|case 0 *|&& (")) &&
+                             validTokenEnd(bounded, tok, backToken, 2)))) {
                     tok->deleteNext();
                     if (tok->strAt(1) == "(")
                         eraseTokens(tok, tok->linkAt(1));
@@ -3152,7 +3162,7 @@ bool TemplateSimplifier::simplifyTemplateInstantiations(
                                               "templateRecursion",
                                               "TemplateSimplifier: max template recursion ("
                                               + std::to_string(mSettings.maxTemplateRecursion)
-                                              + ") reached for template '"+typeForNewName+"'. You might want to limit Cppcheck recursion.",
+                                              + ") reached for template '"+typeForNewName+"'.",
                                               Certainty::normal);
                     mErrorLogger.reportErr(errmsg);
                 }

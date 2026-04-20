@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -972,6 +972,32 @@ private:
                     "bool g() { return f(\" \"); }\n");
         ASSERT_EQUALS("[test.cpp:1:44]: error: Out of bounds access in 's[500]', if 's' size is 1 and '500' is 500 [containerOutOfBounds]\n",
                       errout_str());
+
+        checkNormal("int main() {\n" // #14342
+                    "    const int a[] = { 1, 2, 3 };\n"
+                    "    std::span<const int> x{ a };\n"
+                    "    return x[3];\n"
+                    "}\n");
+        ASSERT_EQUALS("[test.cpp:4:13]: error: Out of bounds access in 'x[3]', if 'x' size is 1 and '3' is 3 [containerOutOfBounds]\n",
+                      errout_str());
+
+        checkNormal("int main() {\n"
+                    "    const char a[] = \"abc\";\n"
+                    "    std::string_view x{ a };\n"
+                    "    return x[5];\n"
+                    "}\n");
+        ASSERT_EQUALS("[test.cpp:4:13]: error: Out of bounds access in 'x[5]', if 'x' size is 4 and '5' is 5 [containerOutOfBounds]\n",
+                      errout_str());
+
+        checkNormal("int f(const std::string& v) {\n"
+                    "    return v[2];\n"
+                    "}\n"
+                    "int main() {\n"
+                    "    std::string_view x{ \"a\" };\n"
+                    "    return f(std::string(x));\n"
+                    "}\n");
+        ASSERT_EQUALS("[test.cpp:2:13]: error: Out of bounds access in 'v[2]', if 'v' size is 1 and '2' is 2 [containerOutOfBounds]\n",
+                      errout_str());
     }
 
     void outOfBoundsSymbolic()
@@ -984,6 +1010,12 @@ private:
         ASSERT_EQUALS(
             "[test.cpp:2:12] -> [test.cpp:4:21]: (warning) Either the condition 'col>textline.size()' is redundant or 'col' can have the value textline.size(). Expression 'textline[col]' causes access out of bounds. [containerOutOfBounds]\n",
             errout_str());
+
+        check("void f(const std::vector<int>& v) {\n" // #12742
+              "    for (unsigned i = 0; i < v.size();)\n"
+              "        (void)v[i++];\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void outOfBoundsIndexExpression() {
@@ -4648,6 +4680,52 @@ private:
               "    return s->x.c_str();\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("std::string f(const std::string& s) {\n" // #14533
+              "    auto x = std::string(\"abc\") + s.c_str();\n"
+              "    auto y = s.c_str() + std::string(\"def\");\n"
+              "    return x + y;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:33]: (performance) Concatenating the result of c_str() and a std::string is slow and redundant. [stlcstrConcat]\n"
+                      "[test.cpp:3:24]: (performance) Concatenating the result of c_str() and a std::string is slow and redundant. [stlcstrConcat]\n",
+                      errout_str());
+
+        check("std::string get();\n"
+              "std::string f(const std::string& s) {\n"
+              "    return get() + s.c_str();\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:18]: (performance) Concatenating the result of c_str() and a std::string is slow and redundant. [stlcstrConcat]\n",
+                      errout_str());
+
+        check("std::string get();\n" // #14536
+              "    std::string f(const std::string& s) {\n"
+              "    return s + get().c_str();\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:14]: (performance) Concatenating the result of c_str() and a std::string is slow and redundant. [stlcstrConcat]\n",
+                      errout_str());
+
+        check("std::string get();\n"
+              "std::string f(std::string & s) {\n"
+              "    s = get().c_str();\n"
+              "    std::string s2{ get().c_str() };\n"
+              "    return s2;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:5]: (performance) Assigning the result of c_str() to a std::string is slow and redundant. [stlcstrAssignment]\n"
+                      "[test.cpp:4:17]: (performance) Constructing a std::string from the result of c_str() is slow and redundant. [stlcstrConstructor]\n",
+                      errout_str());
+
+        check("void f() {\n"
+              "    std::string s;\n"
+              "    auto a = + s.c_str();\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("std::string f(const std::string& a) {\n" // #14600
+              "    std::string b(a.c_str() + 1 + 2);\n"
+              "    return b;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:17]: (performance) Constructing a std::string from the result of c_str() is slow and redundant. [stlcstrConstructor]\n",
+                      errout_str());
     }
 
     void uselessCalls() {
@@ -5261,6 +5339,13 @@ private:
               "    return it;\n"
               "}\n", dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("[test.cpp:18:5]: (error, inconclusive) Invalid iterator 'it' used. [eraseDereference]\n", errout_str());
+
+        check("int f(const std::vector<int>& v) {\n" // #11895
+              "    auto it = v.end();\n"
+              "    std::advance(it, -2);\n"
+              "    return *it;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
     }
 
     void loopAlgoElementAssign() {

@@ -75,7 +75,7 @@ public:
         }
 
         /**
-         * @throws InternalError thrown on invalid/unhandled calculation or divison by zero
+         * @throws InternalError thrown on invalid/unhandled calculation or division by zero
          */
         static value calc(char op, const value &v1, const value &v2);
         int compare(const value &v) const;
@@ -138,7 +138,7 @@ public:
     static std::string subtract(const std::string & first, const std::string & second);
     static std::string multiply(const std::string & first, const std::string & second);
     /**
-     * @throws InternalError thrown on overflow or divison by zero
+     * @throws InternalError thrown on overflow or division by zero
      */
     static std::string divide(const std::string & first, const std::string & second);
     /**

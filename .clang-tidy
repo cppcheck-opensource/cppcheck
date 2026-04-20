@@ -18,18 +18,19 @@ Checks: >
         -objc-*,
         -openmp-*,
         -zircon-*,
-        cert-err34-c,
         cppcoreguidelines-pro-type-static-cast-downcast,
         cppcoreguidelines-rvalue-reference-param-not-moved,
         google-explicit-constructor,
         -bugprone-assignment-in-if-condition,
         -bugprone-branch-clone,
+        -bugprone-command-processor,
         -bugprone-easily-swappable-parameters,
         -bugprone-empty-catch,
         -bugprone-macro-parentheses,
         -bugprone-narrowing-conversions,
         -bugprone-signed-char-misuse,
         -bugprone-switch-missing-default-case,
+        -bugprone-throwing-static-initialization,
         -bugprone-unchecked-optional-access,
         -clang-analyzer-*,
         -concurrency-mt-unsafe,
@@ -41,7 +42,9 @@ Checks: >
         -modernize-avoid-c-arrays,
         -modernize-deprecated-ios-base-aliases,
         -misc-include-cleaner,
+        -misc-multiple-inheritance,
         -misc-unused-using-decls,
+        -modernize-avoid-c-style-cast,
         -modernize-loop-convert,
         -modernize-macro-to-enum,
         -modernize-raw-string-literal,
@@ -67,11 +70,14 @@ Checks: >
         -readability-identifier-length,
         -readability-identifier-naming,
         -readability-implicit-bool-conversion,
+        -readability-inconsistent-ifelse-braces,
         -readability-isolate-declaration,
         -readability-magic-numbers,
+        -readability-redundant-parentheses,
         -readability-suspicious-call-argument,
         -readability-uppercase-literal-suffix,
-        -readability-use-concise-preprocessor-directives
+        -readability-use-concise-preprocessor-directives,
+        -misc-unconventional-assign-operator
 WarningsAsErrors: '*'
 HeaderFilterRegex: '(cli|gui|frontend|lib|oss-fuzz|test|triage)\/[a-z_]+\.h'
 ExcludeHeaderFilterRegex: 'ui_.*.h'
@@ -81,4 +87,8 @@ CheckOptions:
   - key:             readability-simplify-boolean-expr.SimplifyDeMorgan
     value:           '0'
   - key:             modernize-use-trailing-return-type.TransformFunctions
+    value:           false
+  - key:             misc-override-with-different-visibility.DisallowedVisibilityChange
+    value:           widening
+  - key:             misc-use-internal-linkage.AnalyzeTypes
     value:           false

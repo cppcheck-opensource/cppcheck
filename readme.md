@@ -36,7 +36,7 @@ You can stop the script whenever you like with Ctrl C.
 
 ## Compiling
 
-Cppcheck requires a C++ compiler with (partial) C++11 support. Minimum required versions are GCC 5.1 / Clang 3.5 / Visual Studio 2015.
+Cppcheck requires a C++ compiler with (partial) C++11 support. Minimum required versions are GCC 5.1 / Clang 3.5 / AppleClang 6.0 / Visual Studio 2015.
 
 To build the GUI application, you need to use the CMake build system.
 
@@ -52,7 +52,7 @@ The minimum required Python version is 3.7.
 
 ### CMake
 
-The minimum required version is CMake 3.13.
+The minimum required version is CMake 3.22.
 
 Example, compiling Cppcheck with cmake:
 
@@ -71,7 +71,7 @@ For release builds it is recommended that you use:
 -DUSE_MATCHCOMPILER=ON
 
 For building the tests use the flag.
--DBUILD_TESTS=ON
+-DBUILD_TESTING=ON
 
 Using cmake you can generate project files for Visual Studio,XCode,etc.
 

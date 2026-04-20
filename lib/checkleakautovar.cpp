@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,10 +34,12 @@
 #include "tokenize.h"
 #include "tokenlist.h"
 #include "utils.h"
+#include "vfvalue.h"
 
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <deque>
 #include <list>
 #include <vector>
 
@@ -191,11 +193,20 @@ static bool isVarUsedInTree(const Token *tok, nonneg int varid)
 {
     if (!tok)
         return false;
-    if (tok->varId() == varid)
-        return true;
-    if (tok->str() == "(" && Token::simpleMatch(tok->astOperand1(), "sizeof"))
-        return false;
-    return isVarUsedInTree(tok->astOperand1(), varid) || isVarUsedInTree(tok->astOperand2(), varid);
+    std::deque<const Token*> nodes{ tok };
+    while (!nodes.empty()) {
+        const Token* node = nodes.front();
+        if (node->varId() == varid)
+            return true;
+        if (node->str() != "(" || !Token::simpleMatch(node->astOperand1(), "sizeof")) {
+            if (node->astOperand1())
+                nodes.emplace_back(node->astOperand1());
+            if (node->astOperand2())
+                nodes.emplace_back(node->astOperand2());
+        }
+        nodes.pop_front();
+    }
+    return false;
 }
 
 static bool isPointerReleased(const Token *startToken, const Token *endToken, nonneg int varid)
@@ -283,6 +294,18 @@ static const Token* getReturnValueFromOutparamAlloc(const Token* alloc, const Se
             return ftok->next()->astParent()->astOperand1();
     }
     return nullptr;
+}
+
+static std::vector<const Token*> getComparisonTokens(const Token* tok)
+{
+    std::vector<const Token*> result{ tok };
+    if (tok->hasKnownValue(ValueFlow::Value::ValueType::SYMBOLIC))
+        result.push_back(tok->getKnownValue(ValueFlow::Value::ValueType::SYMBOLIC)->tokvalue);
+    for (const Token* op : { tok->astOperand1(), tok->astOperand2() }) {
+        if (op && op->hasKnownValue(ValueFlow::Value::ValueType::SYMBOLIC))
+            result.push_back(op->getKnownValue(ValueFlow::Value::ValueType::SYMBOLIC)->tokvalue);
+    }
+    return result;
 }
 
 bool CheckLeakAutoVar::checkScope(const Token * const startToken,
@@ -434,7 +457,7 @@ bool CheckLeakAutoVar::checkScope(const Token * const startToken,
                         if (tok2->str() == ";") {
                             break;
                         }
-                        if (tok2->varId()) {
+                        if (tok2->varId() && !Token::Match(tok2->astParent(), "%comp%|!")) {
                             varInfo.erase(tok2->varId());
                         }
                     }
@@ -568,53 +591,56 @@ bool CheckLeakAutoVar::checkScope(const Token * const startToken,
                     astOperand2AfterCommas = astOperand2AfterCommas->astOperand2();
 
                 // Recursively scan variable comparisons in condition
-                visitAstNodes(astOperand2AfterCommas, [&](const Token *tok3) {
-                    if (!tok3)
-                        return ChildrenToVisit::none;
-                    if (tok3->str() == "&&" || tok3->str() == "||") {
-                        // FIXME: handle && ! || better
-                        return ChildrenToVisit::op1_and_op2;
-                    }
-                    if (tok3->str() == "(" && Token::Match(tok3->astOperand1(), "UNLIKELY|LIKELY")) {
-                        return ChildrenToVisit::op2;
-                    }
-                    if (tok3->str() == "(" && tok3->previous()->isName()) {
-                        const std::vector<const Token *> params = getArguments(tok3->previous());
-                        for (const Token *par : params) {
-                            if (!par->isComparisonOp())
-                                continue;
-                            const Token *vartok = nullptr;
-                            if (isVarTokComparison(par, &vartok, alloc_success_conds) ||
-                                (isVarTokComparison(par, &vartok, alloc_failed_conds))) {
-                                varInfo1.erase(vartok->varId());
-                                varInfo2.erase(vartok->varId());
+                for (const Token* compTok : getComparisonTokens(astOperand2AfterCommas)) {
+                    visitAstNodes(compTok, [&](const Token* tok3) {
+                        if (!tok3)
+                            return ChildrenToVisit::none;
+                        if (tok3->str() == "&&" || tok3->str() == "||") {
+                            // FIXME: handle && ! || better
+                            return ChildrenToVisit::op1_and_op2;
+                        }
+                        if (tok3->str() == "(" && Token::Match(tok3->astOperand1(), "UNLIKELY|LIKELY")) {
+                            return ChildrenToVisit::op2;
+                        }
+                        if (tok3->str() == "(" && tok3->previous()->isName()) {
+                            const std::vector<const Token*> params = getArguments(tok3->previous());
+                            for (const Token* par : params) {
+                                if (!par->isComparisonOp())
+                                    continue;
+                                const Token* vartok = nullptr;
+                                if (isVarTokComparison(par, &vartok, alloc_success_conds) ||
+                                    (isVarTokComparison(par, &vartok, alloc_failed_conds))) {
+                                    varInfo1.erase(vartok->varId());
+                                    varInfo2.erase(vartok->varId());
+                                }
+                            }
+                            return ChildrenToVisit::none;
+                        }
+
+                        const Token* vartok = nullptr;
+                        if (isVarTokComparison(tok3, &vartok, alloc_success_conds)) {
+                            varInfo2.reallocToAlloc(vartok->varId());
+                            varInfo2.erase(vartok->varId());
+                            if (astIsVariableComparison(tok3, "!=", "0", &vartok) &&
+                                (notzero.find(vartok->varId()) != notzero.end()))
+                                varInfo2.clear();
+
+                            if (std::any_of(varInfo1.alloctype.begin(), varInfo1.alloctype.end(), [&](const std::pair<int, VarInfo::AllocInfo>& info) {
+                                if (info.second.status != VarInfo::ALLOC)
+                                    return false;
+                                const Token* ret = getReturnValueFromOutparamAlloc(info.second.allocTok, *mSettings);
+                                return ret && vartok && ret->varId() && ret->varId() == vartok->varId();
+                            })) {
+                                varInfo1.clear();
                             }
                         }
-                        return ChildrenToVisit::none;
-                    }
-
-                    const Token *vartok = nullptr;
-                    if (isVarTokComparison(tok3, &vartok, alloc_success_conds)) {
-                        varInfo2.reallocToAlloc(vartok->varId());
-                        varInfo2.erase(vartok->varId());
-                        if (astIsVariableComparison(tok3, "!=", "0", &vartok) &&
-                            (notzero.find(vartok->varId()) != notzero.end()))
-                            varInfo2.clear();
-
-                        if (std::any_of(varInfo1.alloctype.begin(), varInfo1.alloctype.end(), [&](const std::pair<int, VarInfo::AllocInfo>& info) {
-                            if (info.second.status != VarInfo::ALLOC)
-                                return false;
-                            const Token* ret = getReturnValueFromOutparamAlloc(info.second.allocTok, *mSettings);
-                            return ret && vartok && ret->varId() && ret->varId() == vartok->varId();
-                        })) {
-                            varInfo1.clear();
+                        else if (isVarTokComparison(tok3, &vartok, alloc_failed_conds)) {
+                            varInfo1.reallocToAlloc(vartok->varId());
+                            varInfo1.erase(vartok->varId());
                         }
-                    } else if (isVarTokComparison(tok3, &vartok, alloc_failed_conds)) {
-                        varInfo1.reallocToAlloc(vartok->varId());
-                        varInfo1.erase(vartok->varId());
-                    }
-                    return ChildrenToVisit::none;
-                });
+                        return ChildrenToVisit::none;
+                    });
+                }
 
                 if (!skipIfBlock && !checkScope(closingParenthesis->next(), varInfo1, notzero, recursiveCount)) {
                     varInfo.clear();
@@ -1138,7 +1164,7 @@ void CheckLeakAutoVar::leakIfAllocated(const Token *vartok,
     const std::map<int, VarInfo::AllocInfo> &alloctype = varInfo.alloctype;
     const auto& possibleUsage = varInfo.possibleUsage;
 
-    const auto var = utils::as_const(alloctype).find(vartok->varId());
+    const auto var = alloctype.find(vartok->varId());
     if (var != alloctype.cend() && var->second.status == VarInfo::ALLOC) {
         const auto use = possibleUsage.find(vartok->varId());
         if (use == possibleUsage.end()) {

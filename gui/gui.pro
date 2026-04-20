@@ -70,7 +70,8 @@ FORMS = about.ui \
         librarydialog.ui \
         libraryaddfunctiondialog.ui \
         libraryeditargdialog.ui \
-        newsuppressiondialog.ui
+        newsuppressiondialog.ui \
+        threaddetails.ui
 
 TRANSLATIONS =  cppcheck_de.ts \
                 cppcheck_es.ts \
@@ -156,6 +157,7 @@ HEADERS += aboutdialog.h \
            settingsdialog.h \
            showtypes.h \
            statsdialog.h \
+           threaddetails.h \
            threadhandler.h \
            threadresult.h \
            translationhandler.h \
@@ -199,6 +201,7 @@ SOURCES += aboutdialog.cpp \
            settingsdialog.cpp \
            showtypes.cpp \
            statsdialog.cpp \
+           threaddetails.cpp \
            threadhandler.cpp \
            threadresult.cpp \
            translationhandler.cpp \

@@ -169,9 +169,67 @@ def test_progress(tmpdir):
             "progress: Tokenize (typedef) 62%\n"
             "progress: Tokenize (typedef) 75%\n"
             "progress: Tokenize (typedef) 87%\n"
-            "progress: SymbolDatabase 0%\n"
-            "progress: SymbolDatabase 12%\n"
-            "progress: SymbolDatabase 87%\n"
+            "progress: Tokenize (typedef) 100%\n"
+            "progress: SymbolDatabase (find all scopes) 0%\n"
+            "progress: SymbolDatabase (find all scopes) 12%\n"
+            "progress: SymbolDatabase (find all scopes) 87%\n"
+            "progress: SymbolDatabase (find all scopes) 100%\n"
+            "progress: ValueFlow 0%\n"
+            "progress: ValueFlow::valueFlowImpossibleValues(tokenlist, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowImpossibleValues(tokenlist, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowSymbolicOperators(symboldatabase, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowSymbolicOperators(symboldatabase, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowCondition(SymbolicConditionHandler{}, tokenlist, symboldatabase, errorLogger, settings, skippedFunctions) 1 0%\n"
+            "progress: ValueFlow::valueFlowCondition(SymbolicConditionHandler{}, tokenlist, symboldatabase, errorLogger, settings, skippedFunctions) 1 100%\n"
+            "progress: ValueFlow::valueFlowSymbolicInfer(symboldatabase, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowSymbolicInfer(symboldatabase, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowArrayBool(tokenlist, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowArrayBool(tokenlist, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowArrayElement(tokenlist, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowArrayElement(tokenlist, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowRightShift(tokenlist, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowRightShift(tokenlist, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowCondition(ContainerConditionHandler{}, tokenlist, symboldatabase, errorLogger, settings, skippedFunctions) 1 0%\n"
+            "progress: ValueFlow::valueFlowCondition(ContainerConditionHandler{}, tokenlist, symboldatabase, errorLogger, settings, skippedFunctions) 1 100%\n"
+            "progress: ValueFlow::valueFlowAfterAssign(tokenlist, symboldatabase, errorLogger, settings, skippedFunctions) 1 0%\n"
+            "progress: ValueFlow::valueFlowAfterAssign(tokenlist, symboldatabase, errorLogger, settings, skippedFunctions) 1 100%\n"
+            "progress: ValueFlow::valueFlowAfterSwap(tokenlist, symboldatabase, errorLogger, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowAfterSwap(tokenlist, symboldatabase, errorLogger, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowCondition(SimpleConditionHandler{}, tokenlist, symboldatabase, errorLogger, settings, skippedFunctions) 1 0%\n"
+            "progress: ValueFlow::valueFlowCondition(SimpleConditionHandler{}, tokenlist, symboldatabase, errorLogger, settings, skippedFunctions) 1 100%\n"
+            "progress: ValueFlow::valueFlowInferCondition(tokenlist, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowInferCondition(tokenlist, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowSwitchVariable(tokenlist, symboldatabase, errorLogger, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowSwitchVariable(tokenlist, symboldatabase, errorLogger, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowForLoop(tokenlist, symboldatabase, errorLogger, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowForLoop(tokenlist, symboldatabase, errorLogger, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowSubFunction(tokenlist, symboldatabase, errorLogger, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowSubFunction(tokenlist, symboldatabase, errorLogger, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowFunctionReturn(tokenlist, errorLogger, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowFunctionReturn(tokenlist, errorLogger, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowLifetime(tokenlist, errorLogger, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowLifetime(tokenlist, errorLogger, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowFunctionDefaultParameter(tokenlist, symboldatabase, errorLogger, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowFunctionDefaultParameter(tokenlist, symboldatabase, errorLogger, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowUninit(tokenlist, errorLogger, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowUninit(tokenlist, errorLogger, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowAfterMove(tokenlist, symboldatabase, errorLogger, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowAfterMove(tokenlist, symboldatabase, errorLogger, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowSmartPointer(tokenlist, errorLogger, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowSmartPointer(tokenlist, errorLogger, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowIterators(tokenlist, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowIterators(tokenlist, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowCondition(IteratorConditionHandler{}, tokenlist, symboldatabase, errorLogger, settings, skippedFunctions) 1 0%\n"
+            "progress: ValueFlow::valueFlowCondition(IteratorConditionHandler{}, tokenlist, symboldatabase, errorLogger, settings, skippedFunctions) 1 100%\n"
+            "progress: ValueFlow::valueFlowIteratorInfer(tokenlist, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowIteratorInfer(tokenlist, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowContainerSize(tokenlist, symboldatabase, errorLogger, settings, skippedFunctions) 1 0%\n"
+            "progress: ValueFlow::valueFlowContainerSize(tokenlist, symboldatabase, errorLogger, settings, skippedFunctions) 1 100%\n"
+            "progress: ValueFlow::valueFlowSafeFunctions(tokenlist, symboldatabase, errorLogger, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowSafeFunctions(tokenlist, symboldatabase, errorLogger, settings) 1 100%\n"
+            "progress: ValueFlow 100%\n"
+            "progress: Run checkers 0%\n"
+            "progress: Run checkers 100%\n"
             )
     assert stderr == ""
 
@@ -730,7 +788,7 @@ def test_addon_misc(tmpdir):
         f.write("""
 extern void f()
 {
-    char char* [] = {"a" "b"}
+    const char* c[] = {"a" "b"};
 }
         """)
 
@@ -742,7 +800,7 @@ extern void f()
     assert lines == [
         'Checking {} ...'.format(test_file)
     ]
-    assert stderr == '{}:4:26: style: String concatenation in array initialization, missing comma? [misc-stringConcatInArrayInit]\n'.format(test_file)
+    assert stderr == '{}:4:28: style: String concatenation in array initialization, missing comma? [misc-stringConcatInArrayInit]\n'.format(test_file)
 
 
 def test_invalid_addon_json(tmpdir):
@@ -896,30 +954,121 @@ def test_unused_function_include(tmpdir):
     __test_unused_function_include(tmpdir, [])
 
 
-# TODO: test with all other types
-def test_showtime_top5_file(tmpdir):
-    test_file = os.path.join(tmpdir, 'test.cpp')
+# TODO: test with clang-tidy
+# TODO: test with --addon
+# TODO: test with FileSettings
+# TODO: test with multiple files
+def __test_showtime(tmp_path, showtime, exp_res, exp_last, extra_args=None):
+    test_file = tmp_path / 'test.cpp'
     with open(test_file, 'wt') as f:
-        f.write("""
-                int main(int argc)
-                {
-                }
-                """)
+        f.write(
+"""
+void f()
+{
+    (void)(*((int*)0)); // cppcheck-suppress nullPointer
+}
+""")
 
-    args = ['--showtime=top5_file', '--quiet', test_file]
+    args = [
+        f'--showtime={showtime}',
+        '--quiet',
+        '--inline-suppr',
+        str(test_file)
+    ]
+
+    if extra_args:
+        args += extra_args
 
     exitcode, stdout, stderr = cppcheck(args)
-    assert exitcode == 0  # TODO: needs to be 1
+    assert exitcode == 0
     lines = stdout.splitlines()
-    assert len(lines) == 7
-    assert lines[0] == ''
-    for i in range(1, 5):
-        if lines[i].startswith('valueFlowLifetime'):
-            assert lines[i].endswith(' - 2 result(s))')
-        elif lines[i].startswith('valueFlowEnumValue'):
-            assert lines[i].endswith(' - 2 result(s))')
-        else:
-            assert lines[i].endswith(' result(s))')
+    exp_len = exp_res
+    if 'cppcheck internal API usage' in stdout:
+        exp_len += 1
+    exp_len += 1  # last line
+    assert len(lines) == exp_len
+    for i in range(1, exp_res):
+        assert 'avg.' in lines[i]
+    assert lines[exp_len-1].startswith(exp_last)
+    assert not 'avg.' in lines[exp_len-1]
+    assert stderr == ''
+
+
+def test_showtime_top5_file(tmp_path):
+    __test_showtime(tmp_path, 'top5_file', 5, 'Check time: ')
+
+
+# TODO: remove extra args when --executor=process works works
+def test_showtime_top5_summary(tmp_path):
+    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', ['-j1'])
+
+
+# TODO: remove when --executor=process works works
+def test_showtime_top5_summary_j_thread(tmp_path):
+    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', ['-j2', '--executor=thread'])
+
+
+# TODO: remove override when fixed
+@pytest.mark.skipif(sys.platform == 'win32', reason="requires ProcessExecutor")
+@pytest.mark.xfail(strict=True)  # TODO: need to transfer the timer results to parent process - see #4452
+def test_showtime_top5_summary_j_process(tmp_path):
+    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', ['-j2', '--executor=process'])
+
+
+def test_showtime_file(tmp_path):
+    __test_showtime(tmp_path, 'file', 79, 'Check time: ')
+
+
+# TODO: remove extra args when --executor=process works works
+def test_showtime_summary(tmp_path):
+    __test_showtime(tmp_path, 'summary', 79, 'Overall time: ', ['-j1'])
+
+
+# TODO: remove when --executor=process works works
+def test_showtime_summary_j_thread(tmp_path):
+    __test_showtime(tmp_path, 'summary', 79, 'Overall time: ', ['-j2', '--executor=thread'])
+
+
+# TODO: remove override when fixed
+@pytest.mark.skipif(sys.platform == 'win32', reason="requires ProcessExecutor")
+@pytest.mark.xfail(strict=True)  # TODO: need to transfer the timer results to parent process - see #4452
+def test_showtime_summary_j_process(tmp_path):
+    __test_showtime(tmp_path, 'summary', 79, 'Overall time: ', ['-j2', '--executor=process'])
+
+
+def test_showtime_file_total(tmp_path):
+    __test_showtime(tmp_path, 'file-total', 0, 'Check time: ')
+
+
+def test_showtime_unique(tmp_path):
+    test_file = tmp_path / 'test.cpp'
+    with open(test_file, 'wt') as f:
+        f.write(
+"""
+void f()
+{
+    (void)(*((int*)0)); // cppcheck-suppress nullPointer
+}
+""")
+
+    args = [
+        '--showtime=summary',
+        '--quiet',
+        '--inline-suppr',
+        str(test_file)
+    ]
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0
+    multi_res = []
+    for line in stdout.splitlines():
+        # TODO: remove when we no longer emit empty line
+        if not line:
+            continue
+        if any(i in line for i in ['1 result(s)', 'Overall time:']):
+            continue
+        multi_res.append(line)
+    assert multi_res == []
     assert stderr == ''
 
 
@@ -1216,7 +1365,7 @@ def test_file_duplicate_2(tmpdir):
     assert stderr == ''
 
 
-def test_file_duplicate_3(tmpdir):
+def test_file_duplicate_3(tmpdir):  # #12834
     test_file_a = os.path.join(tmpdir, 'a.c')
     with open(test_file_a, 'wt'):
         pass
@@ -1230,43 +1379,18 @@ def test_file_duplicate_3(tmpdir):
     in_file_f = os.path.join(tmpdir, 'dummy', '..', 'a.c')
 
     args = [in_file_a, in_file_b, in_file_c, in_file_d, in_file_e, in_file_f, str(tmpdir)]
-    args.append('-j1') # TODO: remove when fixed
 
     exitcode, stdout, stderr = cppcheck(args, cwd=tmpdir)
     assert exitcode == 0, stdout if stdout else stderr
     lines = stdout.splitlines()
-    # TODO: only a single file should be checked
-    if sys.platform == 'win32':
-        assert lines == [
-            'Checking {} ...'.format('a.c'),
-            '1/6 files checked 16% done',
-            'Checking {} ...'.format('a.c'),
-            '2/6 files checked 33% done',
-            'Checking {} ...'.format('a.c'),
-            '3/6 files checked 50% done',
-            'Checking {} ...'.format(test_file_a),
-            '4/6 files checked 66% done',
-            'Checking {} ...'.format(test_file_a),
-            '5/6 files checked 83% done',
-            'Checking {} ...'.format(test_file_a),
-            '6/6 files checked 100% done'
-        ]
-    else:
-        assert lines == [
-            'Checking {} ...'.format('a.c'),
-            '1/4 files checked 25% done',
-            'Checking {} ...'.format('a.c'),
-            '2/4 files checked 50% done',
-            'Checking {} ...'.format(test_file_a),
-            '3/4 files checked 75% done',
-            'Checking {} ...'.format(test_file_a),
-            '4/4 files checked 100% done'
-        ]
+    assert lines == [
+        'Checking {} ...'.format('a.c')
+    ]
     assert stderr == ''
 
 
 @pytest.mark.skipif(sys.platform != 'win32', reason="requires Windows")
-def test_file_duplicate_4(tmpdir):
+def test_file_duplicate_4(tmpdir):  # #12834
     test_file_a = os.path.join(tmpdir, 'a.c')
     with open(test_file_a, 'wt'):
         pass
@@ -1284,25 +1408,12 @@ def test_file_duplicate_4(tmpdir):
     for a in args1:
         args2.append(a.replace('\\', '/'))
     args = args1 + args2
-    args.append('-j1') # TODO: remove when fixed
 
     exitcode, stdout, stderr = cppcheck(args, cwd=tmpdir)
     assert exitcode == 0, stdout if stdout else stderr
     lines = stdout.splitlines()
-    # TODO: only a single file should be checked
     assert lines == [
-        'Checking {} ...'.format('a.c'),
-        '1/6 files checked 16% done',
-        'Checking {} ...'.format('a.c'),
-        '2/6 files checked 33% done',
-        'Checking {} ...'.format('a.c'),
-        '3/6 files checked 50% done',
-        'Checking {} ...'.format(test_file_a),
-        '4/6 files checked 66% done',
-        'Checking {} ...'.format(test_file_a),
-        '5/6 files checked 83% done',
-        'Checking {} ...'.format(test_file_a),
-        '6/6 files checked 100% done'
+        'Checking {} ...'.format('a.c')
     ]
     assert stderr == ''
 
@@ -2335,7 +2446,7 @@ void f() {
     assert exitcode == 0, stdout
     assert stdout == ''
     assert stderr.splitlines() == [
-        '{}:4:0: information: Unmatched suppression: memleak [unmatchedSuppression]'.format(test_file)
+        '{}:4:1: information: Unmatched suppression: memleak [unmatchedSuppression]'.format(test_file)
     ]
 
 
@@ -2353,8 +2464,6 @@ def test_inline_suppr_builddir(tmp_path):
     __test_inline_suppr(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j1'])
 
 
-# TODO: the suppressions are generated outside of the scope which captures the analysis information
-@pytest.mark.xfail(strict=True)
 def test_inline_suppr_builddir_cached(tmp_path):
     build_dir = tmp_path / 'b1'
     os.mkdir(build_dir)
@@ -2368,8 +2477,6 @@ def test_inline_suppr_builddir_j(tmp_path):
     __test_inline_suppr(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j2'])
 
 
-# TODO: the suppressions are generated outside of the scope which captures the analysis information
-@pytest.mark.xfail(strict=True)
 def test_inline_suppr_builddir_j_cached(tmp_path):
     build_dir = tmp_path / 'b1'
     os.mkdir(build_dir)
@@ -3351,12 +3458,47 @@ def test_suppress_unmatched_wildcard(tmp_path):  # #13660
     exitcode, stdout, stderr = cppcheck(args, cwd=tmp_path)
     assert exitcode == 0, stdout
     assert stdout.splitlines() == []
-    # TODO: invalid locations - see #13659
     assert stderr.splitlines() == [
-        'test*.c:-1:0: information: Unmatched suppression: id [unmatchedSuppression]',
-        'test*.c:-1:0: information: Unmatched suppression: id2 [unmatchedSuppression]',
-        'tes?.c:-1:0: information: Unmatched suppression: id2 [unmatchedSuppression]'
+        'test*.c:0:0: information: Unmatched suppression: id [unmatchedSuppression]',
+        'test*.c:0:0: information: Unmatched suppression: id2 [unmatchedSuppression]',
+        'tes?.c:0:0: information: Unmatched suppression: id2 [unmatchedSuppression]'
     ]
+
+
+def test_suppress_unmatched_wildcard_cached(tmp_path):  # #14585
+    test_file = tmp_path / 'test.c'
+    with open(test_file, 'wt') as f:
+        f.write(
+"""void f()
+{
+    (void)(*((int*)0));
+}
+""")
+
+    build_dir = tmp_path / 'b1'
+    os.makedirs(build_dir)
+
+    # need to run in the temporary folder because the path of the suppression has to match
+    args = [
+        '-q',
+        '--template=simple',
+        '--enable=information',
+        '--cppcheck-build-dir={}'.format(build_dir),
+        '--suppress=nullPointer:test*.c',
+        'test.c'
+    ]
+
+    stderr_exp = []
+
+    exitcode, stdout, stderr = cppcheck(args, cwd=tmp_path)
+    assert exitcode == 0, stdout
+    assert stdout.splitlines() == []
+    assert stderr.splitlines() == stderr_exp
+
+    exitcode, stdout, stderr = cppcheck(args, cwd=tmp_path)
+    assert exitcode == 0, stdout
+    assert stdout.splitlines() == []
+    assert stderr.splitlines() == stderr_exp
 
 
 def test_suppress_unmatched_wildcard_unchecked(tmp_path):
@@ -3380,12 +3522,11 @@ def test_suppress_unmatched_wildcard_unchecked(tmp_path):
     exitcode, stdout, stderr = cppcheck(args, cwd=tmp_path)
     assert exitcode == 0, stdout
     assert stdout.splitlines() == []
-    # TODO: invalid locations - see #13659
     assert stderr.splitlines() == [
-        'test*.c:-1:0: information: Unmatched suppression: id [unmatchedSuppression]',
-        'tes?.c:-1:0: information: Unmatched suppression: id [unmatchedSuppression]',
-        '*:-1:0: information: Unmatched suppression: id2 [unmatchedSuppression]',
-        'test*.c:-1:0: information: Unmatched suppression: * [unmatchedSuppression]'
+        'test*.c:0:0: information: Unmatched suppression: id [unmatchedSuppression]',
+        'tes?.c:0:0: information: Unmatched suppression: id [unmatchedSuppression]',
+        '*:0:0: information: Unmatched suppression: id2 [unmatchedSuppression]',
+        'test*.c:0:0: information: Unmatched suppression: * [unmatchedSuppression]'
     ]
 
 
@@ -3839,12 +3980,12 @@ error2:lib\\test.c
     ret, stdout, stderr = cppcheck(args)
     assert stdout == ''
     assert stderr.splitlines() == [
-        f'{lib_file}:-1:0: information: Unmatched suppression: error [unmatchedSuppression]',
-        f'{lib_file}:-1:0: information: Unmatched suppression: error2 [unmatchedSuppression]',
-        f'{lib_file}:-1:0: information: Unmatched suppression: error3 [unmatchedSuppression]',
-        f'{lib_file}:-1:0: information: Unmatched suppression: error4 [unmatchedSuppression]',
-        f'{lib_file}:-1:0: information: Unmatched suppression: error5 [unmatchedSuppression]',
-        f'{lib_file}:-1:0: information: Unmatched suppression: error6 [unmatchedSuppression]'
+        f'{lib_file}:0:0: information: Unmatched suppression: error [unmatchedSuppression]',
+        f'{lib_file}:0:0: information: Unmatched suppression: error2 [unmatchedSuppression]',
+        f'{lib_file}:0:0: information: Unmatched suppression: error3 [unmatchedSuppression]',
+        f'{lib_file}:0:0: information: Unmatched suppression: error4 [unmatchedSuppression]',
+        f'{lib_file}:0:0: information: Unmatched suppression: error5 [unmatchedSuppression]',
+        f'{lib_file}:0:0: information: Unmatched suppression: error6 [unmatchedSuppression]'
     ]
     assert ret == 0, stdout
 
@@ -4018,7 +4159,7 @@ def test_no_valid_configuration(tmp_path):
         '{}:1:2: error: No header in #include [syntaxError]'.format(test_file),
         '{}:1:2: error: No header in #include [syntaxError]'.format(test_file),
         '{}:1:2: error: No header in #include [syntaxError]'.format(test_file),
-        '{}:0:0: information: This file is not analyzed. Cppcheck failed to extract a valid configuration. Use -v for more details. [noValidConfiguration]'.format(test_file)
+        '{}:0:0: information: This file is not analyzed. No working configuration could be extracted. Use -v for more details. [noValidConfiguration]'.format(test_file)
     ]
 
 
@@ -4100,22 +4241,189 @@ def __test_active_checkers(tmp_path, active_cnt, total_cnt, use_misra=False, use
 
 
 def test_active_unusedfunction_only(tmp_path):
-    __test_active_checkers(tmp_path, 1, 975, use_unusedfunction_only=True)
+    __test_active_checkers(tmp_path, 1, 186, use_unusedfunction_only=True)
 
 
 def test_active_unusedfunction_only_builddir(tmp_path):
     checkers_exp = [
         'CheckUnusedFunctions::check'
     ]
-    __test_active_checkers(tmp_path, 1, 975, use_unusedfunction_only=True, checkers_exp=checkers_exp)
+    __test_active_checkers(tmp_path, 1, 186, use_unusedfunction_only=True, checkers_exp=checkers_exp)
 
 
 def test_active_unusedfunction_only_misra(tmp_path):
-    __test_active_checkers(tmp_path, 1, 1175, use_unusedfunction_only=True, use_misra=True)
+    __test_active_checkers(tmp_path, 1, 386, use_unusedfunction_only=True, use_misra=True)
 
 
 def test_active_unusedfunction_only_misra_builddir(tmp_path):
     checkers_exp = [
         'CheckUnusedFunctions::check'
     ]
-    __test_active_checkers(tmp_path, 1, 1175, use_unusedfunction_only=True, use_misra=True, checkers_exp=checkers_exp)
+    __test_active_checkers(tmp_path, 1, 386, use_unusedfunction_only=True, use_misra=True, checkers_exp=checkers_exp)
+
+
+def test_analyzerinfo(tmp_path):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, "w") as f:
+        f.write(
+"""void f()
+{
+    (void)(*((int*)0));
+}
+""")
+
+    build_dir = tmp_path / 'b1'
+    os.makedirs(build_dir)
+
+    test_a1_file = build_dir / 'test.a1'
+
+    args = [
+        '-q',
+        '--debug-analyzerinfo',
+        '--template=simple',
+        '--cppcheck-build-dir={}'.format(build_dir),
+        '--enable=all',
+        str(test_file)
+    ]
+
+    stderr_exp = [
+        '{}:3:14: error: Null pointer dereference: (int*)0 [nullPointer]'.format(test_file),
+        "{}:1:6: style: The function 'f' is never used. [unusedFunction]".format(test_file)
+    ]
+
+    def run_and_assert_cppcheck(stdout_exp):
+        exitcode, stdout, stderr = cppcheck(args)
+        assert exitcode == 0, stdout
+        assert stdout.splitlines() == stdout_exp
+        assert stderr.splitlines() == stderr_exp
+
+    test_file_s = str(test_file).replace('\\', '/')
+    test_a1_file_s = str(test_a1_file).replace('\\', '/')
+
+    # no cached results
+    run_and_assert_cppcheck([
+        "no cached result '{}' for '{}' found".format(test_a1_file_s, test_file_s)
+    ])
+
+    # cached results
+    run_and_assert_cppcheck([
+        "skipping analysis - loaded 1 cached finding(s) from '{}' for '{}'".format(test_a1_file_s, test_file_s)
+    ])
+
+    # modified file
+    with open(test_file, 'a') as f:
+        f.write('\n#define DEF')
+
+    run_and_assert_cppcheck([
+        "discarding cached result from '{}' for '{}' - hash mismatch".format(test_a1_file_s, test_file_s)
+    ])
+
+    # invalid XML
+    with open(test_a1_file, 'a') as f:
+        f.write('.')
+
+    run_and_assert_cppcheck([
+        "discarding cached result - failed to load '{}' for '{}' (XML_ERROR_PARSING_TEXT)".format(test_a1_file_s, test_file_s)
+    ])
+
+    # missing root node
+    with open(test_a1_file, 'w') as f:
+        f.write('<?xml version="1.0"?>')
+
+    run_and_assert_cppcheck([
+        "discarding cached result from '{}' for '{}' - no root node found".format(test_a1_file_s, test_file_s)
+    ])
+
+    # mismatched root node
+    with open(test_a1_file, 'w') as f:
+        f.write('<?xml version="1.0"?><root/>')
+
+    run_and_assert_cppcheck([
+        "discarding cached result from '{}' for '{}' - unexpected root node".format(test_a1_file_s, test_file_s)
+    ])
+
+    # missing 'hash' attribute
+    with open(test_a1_file, 'w') as f:
+        f.write('<?xml version="1.0"?><analyzerinfo/>')
+
+    run_and_assert_cppcheck([
+        "discarding cached result from '{}' for '{}' - no 'hash' attribute found".format(test_a1_file_s, test_file_s)
+    ])
+
+    # invalid 'hash' attribute
+    with open(test_a1_file, 'w') as f:
+        f.write('<?xml version="1.0"?><analyzerinfo hash="hash"/>')
+
+    run_and_assert_cppcheck([
+        "discarding cached result from '{}' for '{}' - hash mismatch".format(test_a1_file_s, test_file_s)
+    ])
+
+    # TODO:
+    # - invalid error
+    # - internalError
+
+
+def test_ctu_function_call_path_slash(tmp_path):  # #14591
+    test_file = tmp_path / 'test.cpp'
+    with open(test_file, "w") as f:
+        f.write(
+"""void g(T* p)
+{
+    *p = 0;
+}
+
+void f(T* p)
+{
+    p = nullptr;
+    g(p);
+}
+""")
+
+    build_dir = tmp_path / 'b1'
+    os.makedirs(build_dir)
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--cppcheck-build-dir={}'.format(build_dir),
+        str(test_file)
+    ]
+
+    exitcode, _, _ = cppcheck(args)
+    assert exitcode == 0
+
+    test_a1_file = build_dir / 'test.a1'
+    analyzerinfo = ElementTree.fromstring(test_a1_file.read_text())
+    function_call_paths = analyzerinfo.findall('FileInfo/function-call/path')
+    assert len(function_call_paths) == 1
+    file = function_call_paths[0].attrib['file']
+    assert file
+    assert not '\\' in file  # the path was incorrectly converted to native
+
+
+# TODO: Remove duplication/builddir when 7079 is merged
+def test_inline_block_suppr_builddir_twice(tmp_path):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, 'wt') as f:
+        f.write("""
+// cppcheck-suppress-begin [zerodiv]
+x = 10 / 0;
+// cppcheck-suppress-end [zerodiv]
+""")
+
+    build_dir = tmp_path / 'b'
+    os.mkdir(build_dir)
+
+    args = [
+        '-q',
+        '--cppcheck-build-dir={}'.format(build_dir),
+        '--enable=all',
+        '--inline-suppr',
+        str(test_file)
+    ]
+
+    for _ in range(2):
+        exitcode, stdout, stderr = cppcheck(args)
+        assert exitcode == 0
+        assert stdout == ''
+        assert stderr == ''

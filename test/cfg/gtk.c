@@ -11,7 +11,15 @@
 #include <glib.h>
 #include <glib/gtypes.h>
 #include <glib/gi18n.h>
+#include <gtk/gtk.h>
 
+
+#if GLIB_CHECK_VERSION(2, 3, 4)
+#endif
+#if GTK_CHECK_VERSION(4, 5, 6)
+#endif
+#if ATK_CHECK_VERSION(2, 3, 6)
+#endif
 
 void validCode(int argInt, GHashTableIter * hash_table_iter, GHashTable * hash_table)
 {

@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -101,7 +101,7 @@ namespace ValueFlow
             return value;
 
         const MathLib::biguint unsignedMaxValue = std::numeric_limits<MathLib::biguint>::max() >> ((sizeof(unsignedMaxValue) - value_size) * 8);
-        const MathLib::biguint signBit = 1ULL << (value_size * 8 - 1);
+        const MathLib::biguint signBit = 1ULL << ((value_size * 8) - 1);
         value &= unsignedMaxValue;
         if (dst_sign == ValueType::Sign::SIGNED && (value & signBit))
             value |= ~unsignedMaxValue;
@@ -230,9 +230,7 @@ namespace ValueFlow
                     setTokenValue(tok->tokAt(4), std::move(value), settings);
                 }
             } else if (Token::Match(tok2, "%var% )")) {
-                const Variable *var = tok2->variable();
-                // only look for single token types (no pointers or references yet)
-                if (var && var->typeStartToken() == var->typeEndToken()) {
+                if (const Variable *var = tok2->variable()) {
                     // find the size of the type
                     size_t size = 0;
                     if (var->isEnumType()) {
@@ -323,7 +321,7 @@ namespace ValueFlow
             if (!tok->isTemplateArg())
                 value.setKnown();
             setTokenValue(tok->next(), std::move(value), settings);
-        } else if (Token::simpleMatch(tok, "= { } ;")) {
+        } else if (Token::simpleMatch(tok, "= { }")) {
             const Token* lhs = tok->astOperand1();
             if (lhs && lhs->valueType() && (lhs->valueType()->isIntegral() || lhs->valueType()->pointer > 0)) {
                 Value value(0);

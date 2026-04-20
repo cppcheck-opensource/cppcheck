@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -424,7 +424,7 @@ int multiComparePercent(const Token *tok, const char*& haystack, nonneg int vari
                 return 1;
         } else { // %varid%
             if (varid == 0) {
-                throw InternalError(tok, "Internal error. Token::Match called with varid 0. Please report this to Cppcheck developers");
+                throw InternalError(tok, "Internal error. Token::Match called with varid 0.");
             }
 
             haystack += 6;
@@ -554,7 +554,7 @@ int multiCompareImpl(const Token *tok, const char *haystack, nonneg int varid)
     const char *needle = tok->str().c_str();
     const char *needlePointer = needle;
     for (;;) {
-        if (needlePointer == needle && haystack[0] == '%' && haystack[1] != '|' && haystack[1] != '\0' && haystack[1] != ' ') {
+        if (needlePointer == needle && haystack[0] == '%' && haystack[1] != '|' && haystack[1] != '\0' && haystack[1] != ' ' && haystack[1] != '=') {
             const int ret = multiComparePercent(tok, haystack, varid);
             if (ret < 2)
                 return ret;
@@ -1419,11 +1419,6 @@ std::string Token::stringifyList(bool varid, bool attributes, bool linenumbers, 
 std::string Token::stringifyList(const Token* end, bool attributes) const
 {
     return stringifyList(false, attributes, false, false, false, nullptr, end);
-}
-
-std::string Token::stringifyList(bool varid) const
-{
-    return stringifyList(varid, false, true, true, true, nullptr, nullptr);
 }
 
 void Token::astParent(Token* tok)
@@ -2361,6 +2356,8 @@ const ::Type* Token::typeOf(const Token* tok, const Token** typeTok)
         return tok->variable()->type();
     if (tok->function())
         return tok->function()->retType;
+    if (tok->valueType() && tok->valueType()->typeScope && tok->valueType()->typeScope->definedType)
+        return tok->valueType()->typeScope->definedType;
     if (Token::simpleMatch(tok, "return")) {
         // cppcheck-suppress shadowFunction - TODO: fix this
         const Scope *scope = tok->scope();
@@ -2752,4 +2749,11 @@ const SmallVector<ReferenceToken>& Token::refs(bool temporary) const
     if (!mImpl->mRefs)
         mImpl->mRefs.reset(new SmallVector<ReferenceToken>(followAllReferences(this, false)));
     return *mImpl->mRefs;
+}
+
+bool Token::isMutableExpr() const
+{
+    if (mImpl->mMutableExpr == -1)
+        mImpl->mMutableExpr = isMutableExpression(this);
+    return !!mImpl->mMutableExpr;
 }

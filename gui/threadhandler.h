@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include "suppressions.h"
 #include "threadresult.h"
 
+#include <cstddef>
 #include <list>
 #include <memory>
 #include <set>
@@ -178,6 +179,11 @@ public:
      */
     void setCheckStartTime(QDateTime checkStartTime);
 
+    /**
+     * @brief Emit the threadDetailsUpdated signal
+     */
+    void emitThreadDetailsUpdated();
+
 signals:
     /**
      * @brief Signal that all threads are done
@@ -191,6 +197,11 @@ signals:
     // NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name) - caused by generated MOC code
     void debugError(const ErrorItem &item);
 
+    /**
+     * @brief Emitted when thread details are updated.
+     */
+    void threadDetailsUpdated(QMap<int, CheckThread::Details> threadDetails);
+
 public slots:
 
     /**
@@ -198,6 +209,22 @@ public slots:
      *
      */
     void stop();
+
+    /**
+     * @brief Slot threads use to signal this class that it started checking a file
+     * @param details Details about what file is being checked and by what thread
+     */
+    void startCheck(CheckThread::Details details);
+
+    /**
+     * @brief Slot threads use to signal this class that it finish checking a file
+     * @param details Details about what file finished being checked and by what thread
+     */
+    void finishCheck(CheckThread::Details details);
+
+signals:
+    void progress(QString filename, QString stage, std::size_t value);
+
 protected slots:
     /**
      * @brief Slot that a single thread is done
@@ -285,6 +312,12 @@ protected:
     Settings mCheckSettings;
     std::shared_ptr<Suppressions> mCheckSuppressions;
     /// @}
+
+    /**
+     * @brief Details about currently running threads
+     */
+    QMap<int, CheckThread::Details> mThreadDetails;
+
 private:
 
     /**

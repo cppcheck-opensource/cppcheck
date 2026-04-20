@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@
 #include "path.h"
 #include "summaries.h"
 #include "suppressions.h"
-#include "utils.h"
 #include "vfvalue.h"
 
 #include <cctype>
@@ -29,7 +28,6 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
-#include <map>
 #include <utility>
 
 #include "json.h"
@@ -109,7 +107,7 @@ std::string Settings::loadCppcheckCfg(Settings& settings, Suppressions& suppress
     }
     const picojson::object& obj = json.get<picojson::object>();
     {
-        const auto it = utils::as_const(obj).find("productName");
+        const auto it = obj.find("productName");
         if (it != obj.cend()) {
             const auto& v = it->second;
             if (!v.is<std::string>())
@@ -118,7 +116,7 @@ std::string Settings::loadCppcheckCfg(Settings& settings, Suppressions& suppress
         }
     }
     {
-        const auto it = utils::as_const(obj).find("manualUrl");
+        const auto it = obj.find("manualUrl");
         if (it != obj.cend()) {
             const auto& v = it->second;
             if (!v.is<std::string>())
@@ -127,7 +125,7 @@ std::string Settings::loadCppcheckCfg(Settings& settings, Suppressions& suppress
         }
     }
     {
-        const auto it = utils::as_const(obj).find("about");
+        const auto it = obj.find("about");
         if (it != obj.cend()) {
             const auto& v = it->second;
             if (!v.is<std::string>())
@@ -136,7 +134,7 @@ std::string Settings::loadCppcheckCfg(Settings& settings, Suppressions& suppress
         }
     }
     {
-        const auto it = utils::as_const(obj).find("addons");
+        const auto it = obj.find("addons");
         if (it != obj.cend()) {
             const auto& entry = it->second;
             if (!entry.is<picojson::array>())
@@ -154,7 +152,7 @@ std::string Settings::loadCppcheckCfg(Settings& settings, Suppressions& suppress
         }
     }
     {
-        const auto it = utils::as_const(obj).find("suppressions");
+        const auto it = obj.find("suppressions");
         if (it != obj.cend()) {
             const auto& entry = it->second;
             if (!entry.is<picojson::array>())
@@ -171,7 +169,7 @@ std::string Settings::loadCppcheckCfg(Settings& settings, Suppressions& suppress
         }
     }
     {
-        const auto it = utils::as_const(obj).find("safety");
+        const auto it = obj.find("safety");
         if (it != obj.cend()) {
             const auto& v = it->second;
             if (!v.is<bool>())
@@ -354,7 +352,6 @@ static const std::set<std::string> autosarCheckers{
     "bufferAccessOutOfBounds",
     "comparePointers",
     "constParameter",
-    "cstyleCast",
     "ctuOneDefinitionRuleViolation",
     "doubleFree",
     "duplInheritedMember",
@@ -396,7 +393,6 @@ static const std::set<std::string> autosarCheckers{
     "unsignedLessThanZero",
     "unusedFunction",
     "unusedStructMember",
-    "unusedValue",
     "unusedVariable",
     "useInitializationList",
     "variableScope",
@@ -459,6 +455,14 @@ static const std::set<std::string> certCCheckers{
 static const std::set<std::string> certCppCheckers{
     "IOWithoutPositioning",
     "accessMoved",
+    "argumentSize",
+    "arrayIndexOutOfBounds",
+    "arrayIndexOutOfBoundsCond",
+    "arrayIndexThenCheck",
+    "autoVariables",
+    "autovarInvalidDeallocation",
+    "bitwiseOnBoolean",
+    "bufferAccessOutOfBounds",
     "comparePointers",
     "containerOutOfBounds",
     "ctuOneDefinitionRuleViolation",
@@ -466,25 +470,50 @@ static const std::set<std::string> certCppCheckers{
     "danglingReference",
     "danglingTempReference",
     "danglingTemporaryLifetime",
-    "deallocThrow",
+    "deallocret",
     "deallocuse",
     "doubleFree",
     "eraseDereference",
+    "exceptDeallocThrow",
     "exceptThrowInDestructor",
+    "floatConversionOverflow",
     "initializerList",
+    "integerOverflow",
     "invalidContainer",
+    "invalidFunctionArg",
+    "invalidLengthModifierError",
+    "invalidLifetime",
+    "invalidScanfFormatWidth",
+    "invalidscanf",
+    "leakReturnValNotUsed",
+    "leakUnsafeArgAlloc",
     "memleak",
+    "memleakOnRealloc",
     "mismatchAllocDealloc",
     "missingReturn",
+    "negativeIndex",
     "nullPointer",
+    "nullPointerArithmetic",
+    "nullPointerArithmeticRedundantCheck",
+    "nullPointerDefaultArg",
+    "nullPointerRedundantCheck",
+    "objectIndex",
     "operatorEqToSelf",
+    "pointerOutOfBounds",
+    "pointerOutOfBoundsCond",
+    "preprocessorErrorDirective",
+    "resourceLeak",
     "returnDanglingLifetime",
     "sizeofCalculation",
+    "stringLiteralWrite",
     "uninitStructMember",
     "uninitdata",
     "uninitvar",
+    "useClosedFile",
     "virtualCallInConstructor",
-    "virtualDestructor"
+    "virtualDestructor",
+    "wrongPrintfScanfArgNum",
+    "wrongPrintfScanfParameterPositionError"
 };
 
 static const std::set<std::string> misrac2012Checkers{
@@ -524,6 +553,7 @@ static const std::set<std::string> misrac2012Checkers{
     "unknownEvaluationOrder",
     "unreachableCode",
     "unreadVariable",
+    "unusedFunction",
     "unusedLabel",
     "unusedVariable",
     "useClosedFile",
@@ -567,6 +597,7 @@ static const std::set<std::string> misrac2023Checkers{
     "unknownEvaluationOrder",
     "unreachableCode",
     "unreadVariable",
+    "unusedFunction",
     "unusedLabel",
     "unusedVariable",
     "useClosedFile",
@@ -610,6 +641,7 @@ static const std::set<std::string> misrac2025Checkers{
     "unknownEvaluationOrder",
     "unreachableCode",
     "unreadVariable",
+    "unusedFunction",
     "unusedLabel",
     "unusedVariable",
     "useClosedFile",
@@ -623,6 +655,7 @@ static const std::set<std::string> misracpp2008Checkers{
     "constVariable",
     "cstyleCast",
     "ctuOneDefinitionRuleViolation",
+    "dangerousTypeCast",
     "danglingLifetime",
     "duplInheritedMember",
     "duplicateBreak",

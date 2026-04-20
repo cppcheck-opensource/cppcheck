@@ -18,8 +18,14 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup Label="SourceFiles">
-    <ClCompile Include="..\externals\simplecpp\simplecpp.cpp" />
-    <ClCompile Include="..\externals\tinyxml2\tinyxml2.cpp" />
+    <ClCompile Include="..\externals\simplecpp\simplecpp.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+    </ClCompile>
+    <ClCompile Include="..\externals\tinyxml2\tinyxml2.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+    </ClCompile>
     <ClCompile Include="valueflow.cpp" />
     <ClCompile Include="tokenize.cpp" />
     <ClCompile Include="symboldatabase.cpp" />

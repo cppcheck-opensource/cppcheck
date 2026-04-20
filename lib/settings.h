@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,6 +39,8 @@
 #include <vector>
 #include <unordered_set>
 #include <utility>
+
+#include "regex.h"
 
 #if defined(USE_WINDOWS_SEH) || defined(USE_UNIX_SIGNAL_HANDLING)
 #include <cstdio>
@@ -188,6 +190,9 @@ public:
 
     /** @brief Are we running from DACA script? */
     bool daca{};
+
+    /** @brief Is --debug-analyzerinfo given? */
+    bool debugainfo{};
 
     /** @brief Is --debug-ast given? */
     bool debugast{};
@@ -368,6 +373,7 @@ public:
         std::string id = "rule"; // default id
         std::string summary;
         Severity severity = Severity::style; // default severity
+        Regex::Engine engine = Regex::Engine::Pcre;
         std::shared_ptr<Regex> regex;
     };
 
@@ -474,7 +480,7 @@ public:
         /** @brief the maximum iterations to execute */
         std::size_t maxIterations = 4;
 
-        /** @brief maximum numer if-branches */
+        /** @brief maximum number if-branches */
         int maxIfCount = -1;
 
         /** @brief maximum number of sets of arguments to pass to subfuncions */

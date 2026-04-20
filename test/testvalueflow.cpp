@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1742,6 +1742,15 @@ private:
         values = tokenValues(code, "( D )");
         ASSERT_EQUALS(1U, values.size());
         TODO_ASSERT_EQUALS(2 * settings.platform.sizeof_pointer, 1, values.back().intvalue);
+
+        code = "int f() {\n" // #11335
+               "    int* a[2];"
+               "    return sizeof(a);\n"
+               "}";
+        values = tokenValues(code, "( a");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(2 * settings.platform.sizeof_pointer, values.back().intvalue);
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueKind::Known, values.back().valueKind);
     }
 
     void valueFlowComma()
@@ -3112,6 +3121,12 @@ private:
                "    return x;\n"
                "}\n";
         ASSERT_EQUALS(false, testValueOfXKnown(code, 9U, 1));
+
+        code = "int32_t f() {\n"
+               "    const int32_t x = 0xffffffff;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXKnown(code, 3U, -1));
     }
 
     void valueFlowAfterSwap()
@@ -5805,6 +5820,36 @@ private:
                "    bool b = x;\n"
                "}\n";
         ASSERT_EQUALS(false, testValueOfX(code, 3U, 1));
+
+        code = "int f(int a) {\n"
+               "    int x = a ^ a;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 3U, 0));
+
+        code = "int f(int a) {\n"
+               "    int x = a /= a;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 3U, 1));
+
+        code = "int f(int a) {\n"
+               "    int x = a -= a;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 3U, 0));
+
+        code = "int f(int a) {\n"
+               "    int x = a %= a;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 3U, 0));
+
+        code = "int f(int a) {\n"
+               "    int x = a ^= a;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 3U, 0));
     }
 
     void valueFlowUninit() {
@@ -6451,6 +6496,11 @@ private:
                "    return x;\n"
                "}\n";
         ASSERT_EQUALS(true, testValueOfXKnown(code, 5U, 0));
+
+        code = "void f() {\n"
+               "    if (int* x = {}) {}\n"
+               "}\n";
+        ASSERT_EQUALS(true, testKnownValueOfTok(code, "=", 0));
     }
 
     static std::string isPossibleContainerSizeValue(std::list<ValueFlow::Value> values,
@@ -7406,6 +7456,12 @@ private:
                "    return a[0];\n"
                "}";
         ASSERT(!isKnownContainerSizeValue(tokenValues(code, "a ["), 6).empty());
+
+        code = "void f(const char a[]) {\n" // #14518
+               "    std::string s(a);\n"
+               "    if (s.empty()) {}\n"
+               "}";
+        ASSERT(!isKnownContainerSizeValue(tokenValues(code, "s ."), 0).empty());
     }
 
     void valueFlowContainerElement()
@@ -8904,6 +8960,18 @@ private:
                "    return x;\n"
                "}\n";
         ASSERT_EQUALS(false, testValueOfXKnown(code, 3U, "a", 0));
+
+        code = "void f(int n) {\n"
+               "    int x = 0 - n;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(false, testValueOfX(code, 3U, "n", ValueFlow::Value::ValueType::SYMBOLIC));
+
+        code = "void f(int n) {\n"
+               "    int x = n - 0;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 3U, "n", ValueFlow::Value::ValueType::SYMBOLIC));
     }
 
     void valueFlowSymbolicStrlen()

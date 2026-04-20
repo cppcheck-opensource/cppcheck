@@ -189,6 +189,12 @@ bool Path::isAbsolute(const std::string& path)
 #endif
 }
 
+bool Path::isRelative(const std::string& path)
+{
+    const std::string p = fromNativeSeparators(path);
+    return (p.find('/') != std::string::npos) && !isAbsolute(path);
+}
+
 std::string Path::getRelativePath(const std::string& absolutePath, const std::vector<std::string>& basePaths)
 {
     for (const std::string &bp : basePaths) {
@@ -387,7 +393,7 @@ std::string Path::getAbsoluteFilePath(const std::string& filePath)
     if (absolute)
         absolute_path = absolute;
     free(absolute);
-    // only throw on realpath() fialure to resolve a path when the given one was non-existent
+    // only throw on realpath() failure to resolve a path when the given one was non-existent
     if (!spath.empty() && absolute_path.empty() && !exists(spath))
         throw std::runtime_error("path '" + filePath + "' does not exist");
 #else
@@ -457,4 +463,9 @@ std::string Path::join(std::string path1, std::string path2)
     if (path2.front() == '/')
         return path2;
     return ((path1.back() == '/') ? path1 : (path1 + "/")) + path2;
+}
+
+std::string Path::join(std::string path1, std::string path2, std::string path3)
+{
+    return Path::join(Path::join(std::move(path1), std::move(path2)), std::move(path3));
 }

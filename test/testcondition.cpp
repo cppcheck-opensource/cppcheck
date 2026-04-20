@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
 #include "settings.h"
 
 #include <cstddef>
-#include <limits>
 #include <string>
 
 class TestCondition : public TestFixture {
@@ -110,6 +109,8 @@ private:
         TEST_CASE(alwaysTrueContainer);
         TEST_CASE(alwaysTrueLoop);
         TEST_CASE(alwaysTrueTryCatch);
+        TEST_CASE(alwaysTrueSideEffect);
+        TEST_CASE(alwaysTruePremiumMisra);
         TEST_CASE(multiConditionAlwaysTrue);
         TEST_CASE(duplicateCondition);
 
@@ -2673,6 +2674,12 @@ private:
         check("void f1(const std::string &s) { if(s.size() >= 0) if(s.empty()) {}} "); // CheckOther says: Unsigned expression 's.size()' can't be negative so it is unnecessary to test it. [unsignedPositive]
         ASSERT_EQUALS("", errout_str());
 
+        check("void f1(const std::string &s) { if(42 < s.size()) if(s.empty()) {}}");
+        ASSERT_EQUALS("[test.cpp:1:39] -> [test.cpp:1:61]: (warning) Opposite inner 'if' condition leads to a dead code block. [oppositeInnerCondition]\n", errout_str());
+
+        check("void f1(const std::string &s) { if(s.empty()) if(42 < s.size()) {}}");
+        ASSERT_EQUALS("[test.cpp:1:43] -> [test.cpp:1:53]: (warning) Opposite inner 'if' condition leads to a dead code block. [oppositeInnerCondition]\n", errout_str());
+
         // TODO: These are identical condition since size cannot be negative
         check("void f1(const std::string &s) { if(s.size() <= 0) if(s.empty()) {}}");
         ASSERT_EQUALS("", errout_str());
@@ -2819,6 +2826,14 @@ private:
                "    }\n"
                "}");
         ASSERT_EQUALS("", errout_str());
+
+        check("void f(const int* p, const int* e) {\n" // #14595
+              "    for (; p;) {\n"
+              "        if (p == e) {}\n"
+              "        if (p) {}\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:12] -> [test.cpp:4:13]: (warning) Identical inner 'if' condition is always true. [identicalInnerCondition]\n", errout_str());
     }
 
     void identicalConditionAfterEarlyExit() {
@@ -3639,6 +3654,24 @@ private:
               "    else return 0;\n"
               "}");
         ASSERT_EQUALS("[test.cpp:2:16] -> [test.cpp:3:9]: (warning) Identical condition 'handle!=nullptr', second condition is always false [identicalConditionAfterEarlyExit]\n", errout_str());
+
+        check("void f(const char* p) {\n" // #13716
+              "    if (!p) {}\n"
+              "    if (p == NULL) {}\n"
+              "    if (p == nullptr) {}\n"
+              "    if (p == 0) {}\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:2:9] -> [test.cpp:3:11]: (style) The if condition is the same as the previous if condition [duplicateCondition]\n",
+                      errout_str());
+
+        check("int f(const char* p) {\n" // #13717
+              "    if (p) {}\n"
+              "    else if (!p) {}\n"
+              "    else if (p == NULL) {}\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:2:9] -> [test.cpp:3:14]: (style) Expression is always true because 'else if' condition is opposite to previous condition at line 2. [multiCondition]\n"
+                      "[test.cpp:4:16]: (style) Expression is always false because 'else if' condition matches previous condition at line 3. [multiCondition]\n",
+                      errout_str());
 
         check("void f(void* x, void* y) {\n"
               "    if (x == nullptr && y == nullptr)\n"
@@ -4582,11 +4615,7 @@ private:
               "        if (o[1] == '\\0') {}\n"
               "    }\n"
               "}\n");
-        if (std::numeric_limits<char>::is_signed) {
-            ASSERT_EQUALS("[test.cpp:6:18]: (style) Condition 'o[1]=='\\0'' is always false [knownConditionTrueFalse]\n", errout_str());
-        } else {
-            ASSERT_EQUALS("[test.cpp:4:25] -> [test.cpp:6:18]: (style) Condition 'o[1]=='\\0'' is always false [knownConditionTrueFalse]\n", errout_str());
-        }
+        ASSERT_EQUALS("[test.cpp:6:18]: (style) Condition 'o[1]=='\\0'' is always false [knownConditionTrueFalse]\n", errout_str());
 
         check("void f(int x) {\n" // #11449
               "    int i = x;\n"
@@ -4660,7 +4689,7 @@ private:
               "        }\n"
               "    }\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:5:18]: (style) Condition 'S::s' is always true [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:10] -> [test.cpp:5:18]: (warning) Identical inner 'if' condition is always true. [identicalInnerCondition]\n", errout_str());
 
         check("void f() {\n" // #10811
               "    int i = 0;\n"
@@ -4787,6 +4816,42 @@ private:
               "    }\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct S {\n" // #14392
+              "    bool g() const { return m; }\n"
+              "    bool m{};\n"
+              "};\n"
+              "bool f(S s) {\n"
+              "    if (s.g()) {\n"
+              "        bool b = s.g();\n"
+              "        return b;\n"
+              "    }\n"
+              "    return false;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:6:12] -> [test.cpp:7:21]: (style) Assigned value 's.g()' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("void f(const void* p) {\n" // #11519
+              "    bool b = false;\n"
+              "    if (!p && !b) {}\n"
+              "    if (!b) {}\n"
+              "    (void)b;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:15]: (style) Condition '!b' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:4:9]: (style) Condition '!b' is always true [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        check("struct C {\n" // #12532
+              "    void f() const;\n"
+              "    int a, b;\n"
+              "};\n"
+              "void C::f() const {\n"
+              "    if (a)\n"
+              "        return;\n"
+              "    if (!b) {}\n"
+              "    if (a) {}\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:6:9] -> [test.cpp:9:9]: (warning) Identical condition 'a', second condition is always false [identicalConditionAfterEarlyExit]\n",
+                      errout_str());
     }
 
     void alwaysTrueSymbolic()
@@ -5322,11 +5387,7 @@ private:
               "       buffer.back() == '\\n' ||\n"
               "       buffer.back() == '\\0') {}\n"
               "}\n");
-        if (std::numeric_limits<char>::is_signed) {
-            ASSERT_EQUALS("[test.cpp:5:22]: (style) Condition 'buffer.back()=='\\0'' is always false [knownConditionTrueFalse]\n", errout_str());
-        } else {
-            ASSERT_EQUALS("[test.cpp:3:22] -> [test.cpp:5:22]: (style) Condition 'buffer.back()=='\\0'' is always false [knownConditionTrueFalse]\n", errout_str());
-        }
+        ASSERT_EQUALS("[test.cpp:5:22]: (style) Condition 'buffer.back()=='\\0'' is always false [knownConditionTrueFalse]\n", errout_str());
 
         // #9353
         check("struct X { std::string s; };\n"
@@ -5588,6 +5649,32 @@ private:
               "    if (s != \"abc\") {}\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void alwaysTrueSideEffect() {
+        check("bool check(const char* const);\n" // #14416
+              "void create(const char*);\n"
+              "void f(const char* n) {\n"
+              "    if (!check(n)) {\n"
+              "        create(n);\n"
+              "        if (check(n)) {}\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void alwaysTruePremiumMisra() {
+        const char code[] = "void f() {\n"
+                            "  if (3 > 2) {}\n"
+                            "}";
+
+        check(code);
+        ASSERT_EQUALS("", errout_str());
+
+        Settings misraSettings;
+        misraSettings.premiumArgs = "--misra-c-2012";
+        check(code, misraSettings);
+        ASSERT_EQUALS("[test.cpp:2:9]: (style) Condition '3>2' is always true [knownConditionTrueFalse]\n", errout_str());
     }
 
     void multiConditionAlwaysTrue() {
@@ -5864,6 +5951,28 @@ private:
               "    if (strlen(s2) > 0) {}\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("void g(int*);\n" // #14428
+              "int f(int* const p) {\n"
+              "    int i = 0;\n"
+              "    if (*p == 0)\n"
+              "        g(p);\n"
+              "    if (*p == 0)\n"
+              "        i = 1;\n"
+              "    return i;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void g(const int*);\n"
+              "int f(const int* const p) {\n"
+              "    int i = 0;\n"
+              "    if (*p == 0)\n"
+              "        g(p);\n"
+              "    if (*p == 0)\n"
+              "        i = 1;\n"
+              "    return i;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:12] -> [test.cpp:6:12]: (style) The if condition is the same as the previous if condition [duplicateCondition]\n", errout_str());
     }
 
     void checkInvalidTestForOverflow() {
@@ -6221,28 +6330,24 @@ private:
 
         check("void f(const unsigned char u) {\n"
               "    if (u >  0) {}\n"
-              "    if (u <  0) {}\n" // warn
-              "    if (u >= 0) {}\n" // warn
+              "    if (u <  0) {}\n"
+              "    if (u >= 0) {}\n"
               "    if (u <= 0) {}\n"
               "    if (u >  255) {}\n" // warn
               "    if (u <  255) {}\n"
               "    if (u >= 255) {}\n"
               "    if (u <= 255) {}\n" // warn
               "    if (0   <  u) {}\n"
-              "    if (0   >  u) {}\n" // warn
-              "    if (0   <= u) {}\n" // warn
+              "    if (0   >  u) {}\n"
+              "    if (0   <= u) {}\n"
               "    if (0   >= u) {}\n"
               "    if (255 <  u) {}\n" // warn
               "    if (255 >  u) {}\n"
               "    if (255 <= u) {}\n"
               "    if (255 >= u) {}\n" // warn
               "}\n", settingsUnix64);
-        ASSERT_EQUALS("[test.cpp:3:14]: (style) Comparing expression of type 'const unsigned char' against value 0. Condition is always false. [compareValueOutOfTypeRangeError]\n"
-                      "[test.cpp:4:14]: (style) Comparing expression of type 'const unsigned char' against value 0. Condition is always true. [compareValueOutOfTypeRangeError]\n"
-                      "[test.cpp:6:14]: (style) Comparing expression of type 'const unsigned char' against value 255. Condition is always false. [compareValueOutOfTypeRangeError]\n"
+        ASSERT_EQUALS("[test.cpp:6:14]: (style) Comparing expression of type 'const unsigned char' against value 255. Condition is always false. [compareValueOutOfTypeRangeError]\n"
                       "[test.cpp:9:14]: (style) Comparing expression of type 'const unsigned char' against value 255. Condition is always true. [compareValueOutOfTypeRangeError]\n"
-                      "[test.cpp:11:9]: (style) Comparing expression of type 'const unsigned char' against value 0. Condition is always false. [compareValueOutOfTypeRangeError]\n"
-                      "[test.cpp:12:9]: (style) Comparing expression of type 'const unsigned char' against value 0. Condition is always true. [compareValueOutOfTypeRangeError]\n"
                       "[test.cpp:14:9]: (style) Comparing expression of type 'const unsigned char' against value 255. Condition is always false. [compareValueOutOfTypeRangeError]\n"
                       "[test.cpp:17:9]: (style) Comparing expression of type 'const unsigned char' against value 255. Condition is always true. [compareValueOutOfTypeRangeError]\n",
                       errout_str());
@@ -6251,6 +6356,15 @@ private:
               "    if (b != 2) {}\n"
               "}\n", settingsUnix64);
         ASSERT_EQUALS("[test.cpp:2:14]: (style) Comparing expression of type 'bool' against value 2. Condition is always true. [compareValueOutOfTypeRangeError]\n",
+                      errout_str());
+
+        check("void f(const std::uint32_t& u) {\n" // #9078
+              "    if (u >= UINT32_MAX) {}\n"
+              "    if (u <= UINT32_MAX) {}\n"
+              "    if (u > UINT32_MAX) {}\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:14]: (style) Comparing expression of type 'const unsigned int &' against value 4294967295. Condition is always true. [compareValueOutOfTypeRangeError]\n"
+                      "[test.cpp:4:13]: (style) Comparing expression of type 'const unsigned int &' against value 4294967295. Condition is always false. [compareValueOutOfTypeRangeError]\n",
                       errout_str());
     }
 

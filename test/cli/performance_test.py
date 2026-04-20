@@ -146,6 +146,29 @@ int foo(int a, int b)
     my_env["DISABLE_VALUEFLOW"] = "1"
     cppcheck([filename], env=my_env)
 
+@pytest.mark.timeout(35)
+def test_stack_overflow_AST(tmpdir):
+    # 14435
+    filename = os.path.join(tmpdir, 'hang.cpp')
+    with open(filename, 'wt') as f:
+        f.write("""
+#define ROW 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+#define ROW8 ROW ROW ROW ROW ROW ROW ROW ROW
+#define ROW64 ROW8 ROW8 ROW8 ROW8 ROW8 ROW8 ROW8 ROW8
+#define ROW512 ROW64 ROW64 ROW64 ROW64 ROW64 ROW64 ROW64 ROW64
+#define ROW4096 ROW512 ROW512 ROW512 ROW512 ROW512 ROW512 ROW512 ROW512
+#define ROW32768 ROW4096 ROW4096 ROW4096 ROW4096 ROW4096 ROW4096 ROW4096 ROW4096
+void f(std::vector<int>& v) {
+	v = {
+		ROW32768 0
+	};
+}
+        """)
+
+    my_env = os.environ.copy()
+    my_env["DISABLE_VALUEFLOW"] = "1"
+    cppcheck([filename], env=my_env)
+
 
 @pytest.mark.timeout(10)
 def test_slow_initlist_varchanged(tmpdir):

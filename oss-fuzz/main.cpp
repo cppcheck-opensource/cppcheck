@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -63,7 +63,7 @@ static const FileWithDetails s_file("test.cpp", Standards::Language::CPP, 0);
 static void doCheck(const uint8_t *data, size_t dataSize)
 {
     Suppressions supprs;
-    CppCheck cppcheck(s_settings, supprs, s_errorLogger, false, nullptr);
+    CppCheck cppcheck(s_settings, supprs, s_errorLogger, nullptr, false, nullptr);
     cppcheck.checkBuffer(s_file, reinterpret_cast<const char*>(data), dataSize);
 }
 

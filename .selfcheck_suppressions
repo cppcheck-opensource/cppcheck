@@ -1,8 +1,6 @@
 missingIncludeSystem
 # should not be reported - see #13387
 checkersReport
-# false positive - see #14308
-nullPointerRedundantCheck:externals/simplecpp/simplecpp.cpp:3246
 
 # warnings in Qt generated code we cannot fix
 funcArgNamesDifferent:*/moc_checkthread.cpp
@@ -12,7 +10,7 @@ funcArgNamesDifferent:*/moc_resultsview.cpp
 funcArgNamesDifferent:*/moc_threadhandler.cpp
 funcArgNamesDifferent:*/moc_threadresult.cpp
 naming-varname:*/gui/ui_*.h
-functionStatic:*/ui_fileview.h
+functionStatic:*/gui/ui_*.h
 
 # --debug-warnings suppressions
 valueFlowBailout
@@ -40,5 +38,6 @@ naming-privateMemberVariable:externals/tinyxml2/tinyxml2.h
 functionStatic:externals/tinyxml2/tinyxml2.cpp
 funcArgNamesDifferent:externals/tinyxml2/tinyxml2.cpp
 nullPointerRedundantCheck:externals/tinyxml2/tinyxml2.cpp
+knownConditionTrueFalse:externals/tinyxml2/tinyxml2.cpp
 useStlAlgorithm:externals/simplecpp/simplecpp.cpp
 missingMemberCopy:externals/simplecpp/simplecpp.h

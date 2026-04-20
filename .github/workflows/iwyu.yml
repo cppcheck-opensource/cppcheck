@@ -15,18 +15,15 @@ jobs:
 
     strategy:
       matrix:
-        # "opensuse/tumbleweed:latest" / "fedora:latest" / "debian:unstable" / "archlinux:latest"
+        # "opensuse/tumbleweed:latest" / "fedora:rawhide" / "debian:unstable" / "archlinux:latest"
         include:
           - os: ubuntu-22.04
-            image: "fedora:latest"
+            image: "fedora:rawhide"
             stdlib: libstdc++
-            clang_inc: '-isystem/usr/lib/clang/20/include'
-          # TODO: disable because it currently fails with "error: <cstddef> tried including <stddef.h> but didn't find libc++'s <stddef.h> header."
-          #- os: ubuntu-22.04
-          #  image: "fedora:latest"
-          #  stdlib: libc++
-          #  clang_inc: '-isystem/usr/lib/clang/20/include'
-          - os: macos-13
+          - os: ubuntu-22.04
+            image: "fedora:rawhide"
+            stdlib: libc++
+          - os: macos-26
             image: ""
             stdlib: libc++  # no libstdc++ on macOS
             mapping_file_opt: '-Xiwyu --mapping_file=$(realpath ./macos.imp)'
@@ -100,18 +97,21 @@ jobs:
         if: contains(matrix.os, 'macos')
         run: |
           brew install include-what-you-use pcre coreutils
-          ln -s iwyu_tool.py /usr/local/bin/iwyu_tool
+          # on Apple Silicon files are symlinked under /opt/homebrew/bin
+          ln -s /opt/homebrew/bin/iwyu_tool.py /usr/local/bin/iwyu_tool
 
       # Fails on OpenSUSE:
       # Warning: Failed to restore: Tar failed with error: Unable to locate executable file: tar. Please verify either the file path exists or the file can be found within a directory specified by the PATH environment variable. Also check the file mode to verify the file is executable.
       # Also the shell is broken afterwards:
       # OCI runtime exec failed: exec failed: unable to start container process: exec: "sh": executable file not found in $PATH: unknown
+      #
+      # On macos-26 we need to perform the Python setup because the default installation is managed externally managed
       - name: Install Qt ${{ env.QT_VERSION }}
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
           modules: 'qtcharts'
-          setup-python: 'false'
+          setup-python: ${{ contains(matrix.os, 'macos') }}
           install-deps: false
           cache: true
 
@@ -125,7 +125,7 @@ jobs:
 
       - name: Prepare CMake
         run: |
-          cmake -S . -B cmake.output -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DHAVE_RULES=On -DBUILD_TESTS=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCPPCHK_GLIBCXX_DEBUG=Off -DUSE_MATCHCOMPILER=Off -DEXTERNALS_AS_SYSTEM=On -DUSE_LIBCXX=${{ matrix.stdlib == 'libc++' }}
+          cmake -S . -B cmake.output -Werror=dev -DCMAKE_BUILD_TYPE=Release -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCPPCHK_GLIBCXX_DEBUG=Off -DUSE_MATCHCOMPILER=Off -DEXTERNALS_AS_SYSTEM=On -DUSE_LIBCXX=${{ matrix.stdlib == 'libc++' }}
         env:
           CC: clang
           CXX: clang++
@@ -147,8 +147,7 @@ jobs:
 
       - name: iwyu_tool
         run: |
-          # TODO: remove -stdlib= - it should have been taken from the compilation database
-          iwyu_tool -p cmake.output -j $(nproc) -- -w -Xiwyu --max_line_length=1024 -Xiwyu --comment_style=long -Xiwyu --quoted_includes_first -Xiwyu --update_comments -stdlib=${{ matrix.stdlib }} ${{ matrix.mapping_file_opt }} ${{ matrix.clang_inc }} > iwyu.log
+          iwyu_tool -p cmake.output -j $(nproc) -- -w -Xiwyu --max_line_length=1024 -Xiwyu --comment_style=long -Xiwyu --quoted_includes_first -Xiwyu --update_comments ${{ matrix.mapping_file_opt }} ${{ matrix.clang_inc }} > iwyu.log
 
       # TODO: run with all configurations
       - name: test/cfg
@@ -214,13 +213,13 @@ jobs:
           sudo apt-get purge --auto-remove llvm python3-lldb-14 llvm-14
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
-          sudo ./llvm.sh 21
-          sudo apt-get install -y clang-tools-21
+          sudo ./llvm.sh 22
+          sudo apt-get install -y clang-tools-22
 
       - name: Install libc++
         if: matrix.stdlib == 'libc++'
         run: |
-          sudo apt-get install -y libc++-21-dev
+          sudo apt-get install -y libc++-22-dev
 
       - name: Install Qt ${{ env.QT_VERSION }}
         uses: jurplel/install-qt-action@v4
@@ -233,10 +232,10 @@ jobs:
 
       - name: Prepare CMake
         run: |
-          cmake -S . -B cmake.output -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DHAVE_RULES=On -DBUILD_TESTS=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCPPCHK_GLIBCXX_DEBUG=Off -DUSE_MATCHCOMPILER=Off -DEXTERNALS_AS_SYSTEM=On -DUSE_LIBCXX=${{ matrix.use_libcxx }}
+          cmake -S . -B cmake.output -Werror=dev -DCMAKE_BUILD_TYPE=Release -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCPPCHK_GLIBCXX_DEBUG=Off -DUSE_MATCHCOMPILER=Off -DEXTERNALS_AS_SYSTEM=On -DUSE_LIBCXX=${{ matrix.use_libcxx }}
         env:
-          CC: clang-21
-          CXX: clang++-21
+          CC: clang-22
+          CXX: clang++-22
 
       - name: Prepare CMake dependencies
         run: |
@@ -253,7 +252,7 @@ jobs:
       - name: clang-include-cleaner
         run: |
           # TODO: run multi-threaded
-          find $PWD/cli $PWD/lib $PWD/test $PWD/gui -maxdepth 1 -name "*.cpp" | xargs -t -n 1 clang-include-cleaner-21 --print=changes --extra-arg=-w --extra-arg=-stdlib=${{ matrix.stdlib }} -p cmake.output > clang-include-cleaner.log 2>&1
+          find $PWD/cli $PWD/lib $PWD/test $PWD/gui -maxdepth 1 -name "*.cpp" | xargs -t -n 1 clang-include-cleaner-22 --print=changes --extra-arg=-w --extra-arg=-stdlib=${{ matrix.stdlib }} -p cmake.output > clang-include-cleaner.log 2>&1
 
       - uses: actions/upload-artifact@v4
         if: success() || failure()

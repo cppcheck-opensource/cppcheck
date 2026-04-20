@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -424,6 +424,9 @@ static const Token* doAssignment(Variables &variables, const Token *tok, bool de
     Variables::VariableUsage *var1 = variables.find(varid1);
 
     if (var1) {
+        if (var1->mType == Variables::pointerArray)
+            variables.use(varid1, tok);
+
         // jump behind '='
         tok = tok->next();
         while (!tok->isAssignmentOp()) {
@@ -567,8 +570,10 @@ static const Token* doAssignment(Variables &variables, const Token *tok, bool de
                 } else if (var1->mType == Variables::standard && addressOf) {
                     variables.alias(varid1, varid2, true);
                 } else {
-                    if ((var2->mType == Variables::pointer || var2->mType == Variables::pointerArray) && tok->strAt(1) == "[")
+                    if (var2->mType == Variables::pointer || var2->mType == Variables::pointerArray) {
+                        variables.alias(varid1, varid2, true);
                         variables.readAliases(varid2, tok);
+                    }
 
                     variables.read(varid2, tok);
                 }
@@ -733,7 +738,9 @@ void CheckUnusedVar::checkFunctionVariableUsage_iterateScopes(const Scope* const
             if (type == Variables::none || isPartOfClassStructUnion(i->typeStartToken()))
                 continue;
             const Token* defValTok = i->nameToken()->next();
-            if (Token::Match(i->nameToken()->previous(), "* %var% ) (")) // function pointer. Jump behind parameter list.
+            while (defValTok && defValTok->str() == "[")
+                defValTok = defValTok->link()->next();
+            if (Token::simpleMatch(defValTok, ") ("))
                 defValTok = defValTok->linkAt(1)->next();
             for (; defValTok; defValTok = defValTok->next()) {
                 if (defValTok->str() == "[")
@@ -1198,6 +1205,7 @@ void CheckUnusedVar::checkFunctionVariableUsage()
         const Token *nextStructuredBindingTok = nullptr;
         std::vector<std::pair<const Token*, const Token*>> unusedStructuredBindingTokens;
         size_t structuredBindingTokCount = 0;
+        std::set<const Variable*> diagUnreadVariable; // prevent duplicate warnings
 
         for (const Token *tok = scope->bodyStart; tok != scope->bodyEnd; tok = tok->next()) {
             if (nextStructuredBindingTok) {
@@ -1351,6 +1359,20 @@ void CheckUnusedVar::checkFunctionVariableUsage()
             if (tok->previous() && tok->previous()->variable() && tok->previous()->variable()->nameToken()->scope()->type == ScopeType::eUnion)
                 continue;
 
+            if (const ValueType *vt = expr->valueType()) {
+                if (vt->type == ValueType::RECORD &&
+                    !vt->pointer &&
+                    vt->typeScope &&
+                    vt->typeScope->definedType &&
+                    !symbolDatabase->isRecordTypeWithoutSideEffects(vt->typeScope->definedType))
+                    continue;
+
+                if (vt->type == ValueType::SMART_POINTER &&
+                    vt->smartPointerType &&
+                    !symbolDatabase->isRecordTypeWithoutSideEffects(vt->smartPointerType))
+                    continue;
+            }
+
             FwdAnalysis fwdAnalysis(*mSettings);
             const Token* scopeEnd = ValueFlow::getEndOfExprScope(expr, scope, /*smallest*/ false);
             if (fwdAnalysis.unusedValue(expr, start, scopeEnd)) {
@@ -1366,8 +1388,10 @@ void CheckUnusedVar::checkFunctionVariableUsage()
                 if (!expr->variable() || !expr->variable()->isMaybeUnused()) {
                     if (structuredBindingTokCount > 0)
                         unusedStructuredBindingTokens.emplace_back(tok, expr);
-                    else
+                    else {
                         unreadVariableError(tok, expr->expressionString(), false);
+                        diagUnreadVariable.emplace(expr->variable());
+                    }
                 }
             }
         }
@@ -1390,7 +1414,6 @@ void CheckUnusedVar::checkFunctionVariableUsage()
 
             // skip things that are only partially implemented to prevent false positives
             if (usage.mType == Variables::pointerPointer ||
-                usage.mType == Variables::pointerArray ||
                 usage.mType == Variables::referenceArray)
                 continue;
 
@@ -1420,7 +1443,7 @@ void CheckUnusedVar::checkFunctionVariableUsage()
                      !(var->valueType() && var->valueType()->container) &&
                      !(var->isStatic() && isReturnedByRef(var, scope->function)))
                 unassignedVariableError(usage._var->nameToken(), varname);
-            else if (!usage._var->isMaybeUnused() && !usage._modified && !usage._read && var) {
+            else if (!usage._var->isMaybeUnused() && !usage._modified && !usage._read && var && diagUnreadVariable.count(usage._var) == 0) {
                 const Token* vnt = var->nameToken();
                 bool error = false;
                 if (vnt->next()->isSplittedVarDeclEq() || (!var->isReference() && vnt->strAt(1) == "=")) {

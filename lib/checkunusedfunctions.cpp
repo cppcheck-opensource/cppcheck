@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -261,11 +261,14 @@ void CheckUnusedFunctions::parseTokens(const Tokenizer &tokenizer, const Setting
             while (Token::Match(funcname, "%name% :: %name%"))
                 funcname = funcname->tokAt(2);
 
+            if (funcname && funcname->isName() && !funcname->function() && !tok->astParent() && Token::Match(tok, "[(,]")) // unknown type in parameter list
+                continue;
+
             if (!Token::Match(funcname, "%name% [(),;]:}<>]"))
                 continue;
         }
 
-        if (!funcname || funcname->isKeyword() || funcname->isStandardType() || funcname->varId() || funcname->enumerator() || funcname->type())
+        if (!funcname || funcname->isKeyword() || funcname->isStandardType() || funcname->varId() || funcname->enumerator() || funcname->type() || funcname->isLiteral())
             continue;
 
         // funcname ( => Assert that the end parentheses isn't followed by {
@@ -385,7 +388,7 @@ bool CheckUnusedFunctions::check(const Settings& settings, ErrorLogger& errorLog
             if (func.filename != "+")
                 filename = func.filename;
             errors.emplace_back(filename, func.fileIndex, func.lineNumber, func.column, it->first);
-        } else if (func.isC && !func.isStatic && !func.usedOtherFile) {
+        } else if (func.isC && !func.isStatic) {
             std::string filename;
             if (func.filename != "+")
                 filename = func.filename;
@@ -482,7 +485,12 @@ void CheckUnusedFunctions::analyseWholeProgram(const Settings &settings, ErrorLo
         }
     };
 
-    AnalyzerInformation::processFilesTxt(buildDir, handler);
+    const std::string err = AnalyzerInformation::processFilesTxt(buildDir, handler, settings.debugainfo);
+    if (!err.empty()) {
+        const ErrorMessage errmsg({}, "", Severity::error, err, "internalError", Certainty::normal);
+        errorLogger.reportErr(errmsg);
+        return;
+    }
 
     for (auto decl = decls.cbegin(); decl != decls.cend(); ++decl) {
         const std::string &functionName = stripTemplateParameters(decl->first);

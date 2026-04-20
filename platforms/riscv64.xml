@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<platform>
+  <char_bit>8</char_bit>
+  <default-sign>unsigned</default-sign>
+  <sizeof>
+    <bool>1</bool>
+    <short>2</short>
+    <int>4</int>
+    <long>8</long>
+    <long-long>8</long-long>
+    <float>4</float>
+    <double>8</double>
+    <long-double>16</long-double>
+    <pointer>8</pointer>
+    <size_t>8</size_t>
+    <wchar_t>4</wchar_t>
+  </sizeof>
+</platform>

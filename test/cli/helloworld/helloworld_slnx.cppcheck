@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="1">
+    <root name="."/>
+    <importproject>helloworld.slnx</importproject>
+    <analyze-all-vs-configs>false</analyze-all-vs-configs>
+</project>

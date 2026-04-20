@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,6 +36,11 @@ public:
     TestToken() : TestFixture("TestToken") {}
 
 private:
+    class TokenTest final : public Token
+    {
+        friend class TestToken;
+    };
+
     const TokenList list{settingsDefault, Standards::Language::C};
 
     std::vector<std::string> arithmeticalOps;
@@ -59,6 +64,7 @@ private:
         TEST_CASE(multiCompare3);                   // false positive for %or% on code using "|="
         TEST_CASE(multiCompare4);
         TEST_CASE(multiCompare5);
+        TEST_CASE(multiCompare6);
         TEST_CASE(charTypes);
         TEST_CASE(stringTypes);
         TEST_CASE(getStrLength);
@@ -165,15 +171,15 @@ private:
             auto tokensFrontBack = std::make_shared<TokensFrontBack>();
             Token one(list, std::move(tokensFrontBack));
             one.str("one");
-            ASSERT_EQUALS(1, Token::multiCompare(&one, "one|two", 0));
+            ASSERT_EQUALS(1, TokenTest::multiCompare(&one, "one|two", 0));
         }
 
         {
             auto tokensFrontBack = std::make_shared<TokensFrontBack>();
             Token two(list, std::move(tokensFrontBack));
             two.str("two");
-            ASSERT_EQUALS(1, Token::multiCompare(&two, "one|two", 0));
-            ASSERT_EQUALS(1, Token::multiCompare(&two, "verybig|two|", 0));
+            ASSERT_EQUALS(1, TokenTest::multiCompare(&two, "one|two", 0));
+            ASSERT_EQUALS(1, TokenTest::multiCompare(&two, "verybig|two|", 0));
         }
 
         // Test for empty string found
@@ -181,45 +187,45 @@ private:
             auto tokensFrontBack = std::make_shared<TokensFrontBack>();
             Token notfound(list, std::move(tokensFrontBack));
             notfound.str("notfound");
-            ASSERT_EQUALS(0, Token::multiCompare(&notfound, "one|two|", 0));
+            ASSERT_EQUALS(0, TokenTest::multiCompare(&notfound, "one|two|", 0));
 
             // Test for not found
-            ASSERT_EQUALS(-1, Token::multiCompare(&notfound, "one|two", 0));
+            ASSERT_EQUALS(-1, TokenTest::multiCompare(&notfound, "one|two", 0));
         }
 
         {
             auto tokensFrontBack = std::make_shared<TokensFrontBack>();
             Token s(list, std::move(tokensFrontBack));
             s.str("s");
-            ASSERT_EQUALS(-1, Token::multiCompare(&s, "verybig|two", 0));
+            ASSERT_EQUALS(-1, TokenTest::multiCompare(&s, "verybig|two", 0));
         }
 
         {
             auto tokensFrontBack = std::make_shared<TokensFrontBack>();
             Token ne(list, std::move(tokensFrontBack));
             ne.str("ne");
-            ASSERT_EQUALS(-1, Token::multiCompare(&ne, "one|two", 0));
+            ASSERT_EQUALS(-1, TokenTest::multiCompare(&ne, "one|two", 0));
         }
 
         {
             auto tokensFrontBack = std::make_shared<TokensFrontBack>();
             Token a(list, std::move(tokensFrontBack));
             a.str("a");
-            ASSERT_EQUALS(-1, Token::multiCompare(&a, "abc|def", 0));
+            ASSERT_EQUALS(-1, TokenTest::multiCompare(&a, "abc|def", 0));
         }
 
         {
             auto tokensFrontBack = std::make_shared<TokensFrontBack>();
             Token abcd(list, std::move(tokensFrontBack));
             abcd.str("abcd");
-            ASSERT_EQUALS(-1, Token::multiCompare(&abcd, "abc|def", 0));
+            ASSERT_EQUALS(-1, TokenTest::multiCompare(&abcd, "abc|def", 0));
         }
 
         {
             auto tokensFrontBack = std::make_shared<TokensFrontBack>();
             Token def(list, std::move(tokensFrontBack));
             def.str("default");
-            ASSERT_EQUALS(-1, Token::multiCompare(&def, "abc|def", 0));
+            ASSERT_EQUALS(-1, TokenTest::multiCompare(&def, "abc|def", 0));
         }
 
         // %op%
@@ -227,15 +233,15 @@ private:
             auto tokensFrontBack = std::make_shared<TokensFrontBack>();
             Token plus(list, std::move(tokensFrontBack));
             plus.str("+");
-            ASSERT_EQUALS(1, Token::multiCompare(&plus, "one|%op%", 0));
-            ASSERT_EQUALS(1, Token::multiCompare(&plus, "%op%|two", 0));
+            ASSERT_EQUALS(1, TokenTest::multiCompare(&plus, "one|%op%", 0));
+            ASSERT_EQUALS(1, TokenTest::multiCompare(&plus, "%op%|two", 0));
         }
         {
             auto tokensFrontBack = std::make_shared<TokensFrontBack>();
             Token x(list, std::move(tokensFrontBack));
             x.str("x");
-            ASSERT_EQUALS(-1, Token::multiCompare(&x, "one|%op%", 0));
-            ASSERT_EQUALS(-1, Token::multiCompare(&x, "%op%|two", 0));
+            ASSERT_EQUALS(-1, TokenTest::multiCompare(&x, "one|%op%", 0));
+            ASSERT_EQUALS(-1, TokenTest::multiCompare(&x, "%op%|two", 0));
         }
 
     }
@@ -314,7 +320,18 @@ private:
         auto tokensFrontBack = std::make_shared<TokensFrontBack>();
         Token tok(list, std::move(tokensFrontBack));
         tok.str("||");
-        ASSERT_EQUALS(true, Token::multiCompare(&tok, "+|%or%|%oror%", 0) >= 0);
+        ASSERT_EQUALS(true, TokenTest::multiCompare(&tok, "+|%or%|%oror%", 0) >= 0);
+    }
+
+    void multiCompare6() const {
+        {
+            const SimpleTokenList stl("x %= y;");
+            ASSERT_EQUALS(true, Token::Match(stl.front(), "%name% %= %name%"));
+        }
+        {
+            const SimpleTokenList stl("x += y;");
+            ASSERT_EQUALS(false, Token::Match(stl.front(), "%name% %= %name%"));
+        }
     }
 
     void charTypes() const {
@@ -705,7 +722,7 @@ private:
         ASSERT(var.tokenize("int a ; int b ;"));
 
         // Varid == 0 should throw exception
-        ASSERT_THROW_INTERNAL_EQUALS((void)Token::Match(var.tokens(), "%type% %varid% ; %type% %name%", 0),INTERNAL,"Internal error. Token::Match called with varid 0. Please report this to Cppcheck developers");
+        ASSERT_THROW_INTERNAL_EQUALS((void)Token::Match(var.tokens(), "%type% %varid% ; %type% %name%", 0),INTERNAL,"Internal error. Token::Match called with varid 0.");
 
         ASSERT_EQUALS(true, Token::Match(var.tokens(), "%type% %varid% ; %type% %name%", 1));
         ASSERT_EQUALS(true, Token::Match(var.tokens(), "%type% %name% ; %type% %varid%", 2));

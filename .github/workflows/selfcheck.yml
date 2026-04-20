@@ -64,7 +64,7 @@ jobs:
       # unusedFunction - start
       - name: CMake
         run: |
-          cmake -S . -B cmake.output -G "Unix Makefiles" -DHAVE_RULES=On -DBUILD_TESTS=On -DBUILD_GUI=ON -DWITH_QCHART=ON -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCPPCHK_GLIBCXX_DEBUG=Off
+          cmake -S . -B cmake.output -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=ON -DWITH_QCHART=ON -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCPPCHK_GLIBCXX_DEBUG=Off
 
       - name: Generate dependencies
         run: |
@@ -90,7 +90,7 @@ jobs:
       # unusedFunction notest - start
       - name: CMake (no test)
         run: |
-          cmake -S . -B cmake.output.notest -G "Unix Makefiles" -DHAVE_RULES=On -DBUILD_TESTS=Off -DBUILD_GUI=ON -DBUILD_TRIAGE=On -DWITH_QCHART=ON -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCPPCHK_GLIBCXX_DEBUG=Off
+          cmake -S . -B cmake.output.notest -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=Off -DBUILD_GUI=ON -DBUILD_TRIAGE=On -DWITH_QCHART=ON -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCPPCHK_GLIBCXX_DEBUG=Off
 
       - name: Generate dependencies (no test)
         run: |
@@ -112,7 +112,7 @@ jobs:
       # unusedFunction notest nogui - start
       - name: CMake (no test / no gui)
         run: |
-          cmake -S . -B cmake.output.notest_nogui -G "Unix Makefiles" -DHAVE_RULES=On -DBUILD_TESTS=Off -DENABLE_CHECK_INTERNAL=On -DCPPCHK_GLIBCXX_DEBUG=Off
+          cmake -S . -B cmake.output.notest_nogui -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=Off -DENABLE_CHECK_INTERNAL=On -DCPPCHK_GLIBCXX_DEBUG=Off
 
       - name: Generate dependencies (no test / no gui)
         run: |
@@ -121,7 +121,7 @@ jobs:
 
       - name: Self check (unusedFunction / no test / no gui)
         run: |
-          supprs="--suppress=unusedFunction:lib/errorlogger.h:196 --suppress=unusedFunction:lib/importproject.cpp:1516 --suppress=unusedFunction:lib/importproject.cpp:1540"
+          supprs="--suppress=unusedFunction:lib/errorlogger.h:197 --suppress=unusedFunction:lib/importproject.cpp:1665 --suppress=unusedFunction:lib/importproject.cpp:1689"
           ./cppcheck -q --template=selfcheck --error-exitcode=1 --library=cppcheck-lib -D__CPPCHECK__ -D__GNUC__ --enable=unusedFunction,information --exception-handling -rp=. --project=cmake.output.notest_nogui/compile_commands.json --suppressions-list=.selfcheck_unused_suppressions --inline-suppr $supprs
         env:
           DISABLE_VALUEFLOW: 1
@@ -131,7 +131,7 @@ jobs:
       # unusedFunction notest nocli - start
       - name: CMake (no test / no cli)
         run: |
-          cmake -S . -B cmake.output.notest_nocli -G "Unix Makefiles" -DHAVE_RULES=On -DBUILD_TESTS=Off -DBUILD_CLI=Off -DBUILD_GUI=ON -DWITH_QCHART=ON -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCPPCHK_GLIBCXX_DEBUG=Off
+          cmake -S . -B cmake.output.notest_nocli -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=Off -DBUILD_CLI=Off -DBUILD_GUI=ON -DWITH_QCHART=ON -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCPPCHK_GLIBCXX_DEBUG=Off
 
       - name: Generate dependencies (no test / no cli)
         run: |
@@ -154,7 +154,7 @@ jobs:
       # unusedFunction notest nocli nogui - start
       - name: CMake (no test / no cli / no gui)
         run: |
-          cmake -S . -B cmake.output.notest_nocli_nogui -G "Unix Makefiles" -DHAVE_RULES=On -DBUILD_TESTS=Off -DBUILD_CLI=Off -DBUILD_GUI=Off -DENABLE_CHECK_INTERNAL=On -DCPPCHK_GLIBCXX_DEBUG=Off
+          cmake -S . -B cmake.output.notest_nocli_nogui -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=Off -DBUILD_CLI=Off -DBUILD_GUI=Off -DENABLE_CHECK_INTERNAL=On -DCPPCHK_GLIBCXX_DEBUG=Off
 
       - name: Generate dependencies (no test / no cli / no gui)
         run: |
@@ -177,7 +177,7 @@ jobs:
 
       - name: CMake (corpus / no test)
         run: |
-          cmake -S cppcheck-2.8 -B cmake.output.corpus -G "Unix Makefiles" -DHAVE_RULES=On -DBUILD_TESTS=Off -DBUILD_GUI=ON -DUSE_QT6=On -DWITH_QCHART=ON -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCPPCHK_GLIBCXX_DEBUG=Off -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake -S cppcheck-2.8 -B cmake.output.corpus -DHAVE_RULES=On -DBUILD_TESTING=Off -DBUILD_GUI=ON -DUSE_QT6=On -DWITH_QCHART=ON -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCPPCHK_GLIBCXX_DEBUG=Off -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
       - name: Generate dependencies (corpus)
         run: |
@@ -202,3 +202,16 @@ jobs:
         with:
           name: Callgrind Output
           path: ./callgrind.*
+
+      - name: Self check (unusedFunction / corpus / no test / memcheck)
+        run: |
+          # TODO: fix -rp so the suppressions actually work
+          valgrind --error-limit=yes --leak-check=full --num-callers=50 --show-reachable=yes --track-origins=yes --gen-suppressions=all --log-fd=9 --error-exitcode=42 ./cppcheck --template=selfcheck --error-exitcode=0 --library=cppcheck-lib --library=qt -D__GNUC__ -DQT_VERSION=0x060000 -DQ_MOC_OUTPUT_REVISION=69 -DQT_CHARTS_LIB -DQT_MOC_HAS_STRINGDATA --enable=unusedFunction,information --exception-handling -rp=. --project=cmake.output.corpus/compile_commands.json --suppressions-list=.selfcheck_unused_suppressions --inline-suppr 9>memcheck.log || (cat memcheck.log && false)
+          cat memcheck.log
+        env:
+          DISABLE_VALUEFLOW: 1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Memcheck Output
+          path: ./memcheck.*

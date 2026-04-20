@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -56,11 +56,11 @@ struct TimerResultsData {
     static std::string durationToString(std::chrono::milliseconds duration);
 };
 
-class CPPCHECKLIB TimerResults : public TimerResultsIntf {
+class CPPCHECKLIB WARN_UNUSED TimerResults : public TimerResultsIntf {
 public:
     TimerResults() = default;
 
-    void showResults(ShowTime mode) const;
+    void showResults(ShowTime mode, bool metrics = true, bool format = false) const;
     void addResults(const std::string& str, std::chrono::milliseconds duration) override;
 
     void reset();

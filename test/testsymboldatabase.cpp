@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,7 +31,6 @@
 #include <cstdint>
 #include <cstring>
 #include <iterator>
-#include <limits>
 #include <list>
 #include <set>
 #include <sstream>
@@ -442,6 +441,7 @@ private:
         TEST_CASE(createSymbolDatabaseFindAllScopes8); // #12761
         TEST_CASE(createSymbolDatabaseFindAllScopes9);
         TEST_CASE(createSymbolDatabaseFindAllScopes10);
+        TEST_CASE(createSymbolDatabaseFindAllScopes11);
 
         TEST_CASE(createSymbolDatabaseIncompleteVars);
 
@@ -464,6 +464,7 @@ private:
         TEST_CASE(enum17);
         TEST_CASE(enum18);
         TEST_CASE(enum19);
+        TEST_CASE(enum20); // #14419
 
         TEST_CASE(struct1);
 
@@ -585,6 +586,7 @@ private:
         TEST_CASE(valueType2);
         TEST_CASE(valueType3);
         TEST_CASE(valueTypeThis);
+        TEST_CASE(valueTypeChar);
 
         TEST_CASE(variadic1); // #7453
         TEST_CASE(variadic2); // #7649
@@ -1871,11 +1873,11 @@ private:
 
         // TODO: we should provide our own error message
 #ifdef _MSC_VER
-        ASSERT_THROW_EQUALS_2(db->getVariableFromVarId(3), std::out_of_range, "invalid vector subscript");
+        ASSERT_THROW_EQUALS(db->getVariableFromVarId(3), std::out_of_range, "invalid vector subscript");
 #elif !defined(_LIBCPP_VERSION)
-        ASSERT_THROW_EQUALS_2(db->getVariableFromVarId(3), std::out_of_range, "vector::_M_range_check: __n (which is 3) >= this->size() (which is 3)");
+        ASSERT_THROW_EQUALS(db->getVariableFromVarId(3), std::out_of_range, "vector::_M_range_check: __n (which is 3) >= this->size() (which is 3)");
 #else
-        ASSERT_THROW_EQUALS_2(db->getVariableFromVarId(3), std::out_of_range, "vector");
+        ASSERT_THROW_EQUALS(db->getVariableFromVarId(3), std::out_of_range, "vector");
 #endif
     }
 
@@ -6109,6 +6111,24 @@ private:
         }
     }
 
+    void createSymbolDatabaseFindAllScopes11() // #13685
+    {
+        GET_SYMBOL_DB("int f() {\n"
+                      "    int x;\n"
+                      "    if (!({ int *p = &x; *p = 1; 1; }))\n"
+                      "        return 0;\n"
+                      "    return x;\n"
+                      "}\n");
+        ASSERT(db && db->scopeList.size() == 4);
+
+        auto it = db->scopeList.begin();
+        std::advance(it, 3);
+        const Scope& compoundScope = *it;
+        ASSERT_EQUALS_ENUM(ScopeType::eUnconditional, compoundScope.type);
+        ASSERT_EQUALS_ENUM(ScopeType::eFunction, compoundScope.nestedIn->type);
+        ASSERT_EQUALS("f", compoundScope.nestedIn->className);
+    }
+
     void createSymbolDatabaseIncompleteVars()
     {
         {
@@ -6857,6 +6877,23 @@ private:
             const Token* K = Token::findsimplematch(J, "K");
             ASSERT(K && K->valueType() && K->valueType()->isEnum());
             ASSERT_EQUALS(K->valueType()->type, ValueType::CHAR);
+        }
+    }
+
+    void enum20() { // #14419
+        {
+            GET_SYMBOL_DB("enum class myclass : uint8_t { A = 0U };\n");
+            const Token *A = Token::findsimplematch(tokenizer.tokens(), "A");
+            ASSERT(A && A->valueType() && A->valueType()->isEnum());
+            ASSERT_EQUALS_ENUM(ValueType::CHAR, A->valueType()->type);
+            ASSERT_EQUALS_ENUM(ValueType::UNSIGNED, A->valueType()->sign);
+        }
+        {
+            GET_SYMBOL_DB("enum myclass : uint8_t { A = 0U };\n");
+            const Token *A = Token::findsimplematch(tokenizer.tokens(), "A");
+            ASSERT(A && A->valueType() && A->valueType()->isEnum());
+            ASSERT_EQUALS_ENUM(ValueType::CHAR, A->valueType()->type);
+            ASSERT_EQUALS_ENUM(ValueType::UNSIGNED, A->valueType()->sign);
         }
     }
 
@@ -7778,20 +7815,12 @@ private:
         f = Token::findsimplematch(tokenizer.tokens(), "get ( get ( v7 ) ) ;");
         ASSERT(f);
         ASSERT(f->function());
-        if (std::numeric_limits<char>::is_signed) {
-            ASSERT_EQUALS(10, f->function()->tokenDef->linenr());
-        } else {
-            ASSERT_EQUALS(5, f->function()->tokenDef->linenr());
-        }
+        ASSERT_EQUALS(10, f->function()->tokenDef->linenr());
 
         f = Token::findsimplematch(tokenizer.tokens(), "get ( get ( v8 ) ) ;");
         ASSERT(f);
         ASSERT(f->function());
-        if (std::numeric_limits<char>::is_signed) {
-            ASSERT_EQUALS(5, f->function()->tokenDef->linenr());
-        } else {
-            ASSERT_EQUALS(11, f->function()->tokenDef->linenr());
-        }
+        ASSERT_EQUALS(11, f->function()->tokenDef->linenr());
 
         f = Token::findsimplematch(tokenizer.tokens(), "get ( get ( v9 ) ) ;");
         ASSERT(f);
@@ -9941,6 +9970,18 @@ private:
             ASSERT_EQUALS("iterator(std :: vector <)", tok->valueType()->str());
         }
         {
+            GET_SYMBOL_DB("struct S { std::vector<int> v[1][1]; };\n"
+                          "void f(S& s) {\n"
+                          "    auto it = std::begin(s.v[0][0]);\n"
+                          "}\n");
+            ASSERT_EQUALS("", errout_str());
+
+            const Token* tok = tokenizer.tokens();
+            tok = Token::findsimplematch(tok, "auto");
+            ASSERT(tok && tok->valueType());
+            ASSERT_EQUALS("iterator(std :: vector <)", tok->valueType()->str());
+        }
+        {
             GET_SYMBOL_DB("void f(std::vector<int>::iterator beg, std::vector<int>::iterator end) {\n"
                           "    auto it = std::find(beg, end, 0);\n"
                           "}\n");
@@ -10125,6 +10166,13 @@ private:
     void valueTypeThis() {
         ASSERT_EQUALS("C *", typeOf("class C { C() { *this = 0; } };", "this"));
         ASSERT_EQUALS("const C *", typeOf("class C { void foo() const; }; void C::foo() const { *this = 0; }", "this"));
+    }
+
+    void valueTypeChar() {
+        Settings s = settings2;
+        s.platform.defaultSign = 's';
+        ASSERT_EQUALS("char", typeOf("char c; c = 'x';", "c =", true, &s));
+        ASSERT_EQUALS("char", typeOf("char buf[10]; buf[0] = 'x';", "[ 0 ]", true, &s));
     }
 
     void variadic1() { // #7453

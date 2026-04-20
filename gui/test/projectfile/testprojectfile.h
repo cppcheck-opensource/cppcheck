@@ -28,6 +28,7 @@ private slots:
     void loadSimpleNoroot() const;
 
     void getAddonFilePath() const;
+    void getSearchPaths() const;
 
     void getInlineSuppressionDefaultValue() const;
     void getInlineSuppression() const;

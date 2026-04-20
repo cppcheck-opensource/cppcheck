@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,12 +24,12 @@
 #include "config.h"
 #include "mathlib.h"
 #include "standards.h"
+#include "utils.h"
 
 #include <cassert>
 #include <climits>
 #include <cstddef>
 #include <cstdint>
-#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -132,6 +132,8 @@ public:
 
     char defaultSign;  // unsigned:'u', signed:'s', unknown:'\0'
 
+    bool windows{false}; // indicates if the platform is Windows
+
     enum Type : std::uint8_t {
         Unspecified, // No platform specified
         Native, // whatever system this code was compiled on
@@ -167,9 +169,7 @@ public:
      * @return true if Windows platform type.
      */
     bool isWindows() const {
-        return type == Type::Win32A ||
-               type == Type::Win32W ||
-               type == Type::Win64;
+        return windows;
     }
 
     const char *toString() const {
@@ -194,9 +194,8 @@ public:
             return "unix64";
         case Type::File:
             return "platformFile";
-        default:
-            throw std::runtime_error("unknown platform");
         }
+        cppcheck::unreachable();
     }
 
     long long unsignedCharMax() const {

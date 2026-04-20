@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -298,12 +298,12 @@ namespace {
                     if (!condTok)
                         break;
                     Analyzer::Action condAction = analyzeRecursive(condTok);
+                    if (condAction.isModified())
+                        break;
                     const bool inLoop = Token::Match(condTok->astTop()->previous(), "for|while (");
                     // Evaluate condition of for and while loops first
                     if (inLoop) {
                         if (Token::findmatch(tok->link(), "goto|break", tok))
-                            break;
-                        if (condAction.isModified())
                             break;
                         valueFlowGenericForward(condTok, analyzer, tokenlist, errorLogger, settings);
                     }

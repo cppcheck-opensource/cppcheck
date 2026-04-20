@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,8 +39,6 @@ struct Suppressions;
  */
 class CppCheckExecutor {
 public:
-    friend class TestSuppressions;
-
     /**
      * Constructor
      */
@@ -61,17 +59,16 @@ public:
      */
     int check(int argc, const char* const argv[]);
 
-private:
+protected:
 
     /**
      * Execute a shell command and read the output from it. Returns exitcode of the executed command,.
      */
     static int executeCommand(std::string exe, std::vector<std::string> args, std::string redirect, std::string &output_);
 
-protected:
-
     static bool reportUnmatchedSuppressions(const Settings &settings, const SuppressionList& suppressions, const std::list<FileWithDetails> &files, const std::list<FileSettings>& fileSettings, ErrorLogger& errorLogger);
 
+private:
     /**
      * Wrapper around check_internal
      *   - installs optional platform dependent signal handling

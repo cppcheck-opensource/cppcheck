@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -80,7 +80,6 @@ enum class TokenDebug : std::uint8_t { None, ValueFlow, ValueType };
  * The Token class also has other functions for management of token list, matching tokens, etc.
  */
 class CPPCHECKLIB Token {
-    friend class TestToken;
 
 public:
     enum CppcheckAttributesType : std::uint8_t { LOW, HIGH };
@@ -172,6 +171,8 @@ private:
 
         std::unique_ptr<SmallVector<ReferenceToken>> mRefs;
         std::unique_ptr<SmallVector<ReferenceToken>> mRefsTemp;
+
+        std::int8_t mMutableExpr{-1};
 
         void setCppcheckAttribute(CppcheckAttributesType type, MathLib::bigint value);
         bool getCppcheckAttribute(CppcheckAttributesType type, MathLib::bigint &value) const;
@@ -916,6 +917,7 @@ private:
         return tok->link();
     }
 
+protected:
     /**
      * Needle is build from multiple alternatives. If one of
      * them is equal to haystack, return value is 1. If there
@@ -1108,7 +1110,7 @@ public:
             options.files = true;
             return options;
         }
-        // cppcheck-suppress unusedFunction
+        // cppcheck-suppress unusedFunction - used in tests only
         static stringifyOptions forDebugVarId() {
             stringifyOptions options = forDebug();
             options.varid = true;
@@ -1140,7 +1142,6 @@ public:
 
     std::string stringifyList(const stringifyOptions& options, const std::vector<std::string>* fileNames = nullptr, const Token* end = nullptr) const;
     std::string stringifyList(const Token* end, bool attributes = true) const;
-    std::string stringifyList(bool varid = false) const;
 
     /**
      * Stringify a list of token, from current instance on.
@@ -1363,6 +1364,9 @@ public:
 
     // provides and caches result of a followAllReferences() call
     const SmallVector<ReferenceToken>& refs(bool temporary = true) const;
+
+    // provides and caches the result of a isMutableExpression() call
+    bool isMutableExpr() const;
 
     /**
      * Sets the original name.

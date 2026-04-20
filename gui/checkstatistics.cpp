@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,8 @@
  */
 
 #include "checkstatistics.h"
+
+#include "utils.h"
 
 #include <QDebug>
 #include <QList>
@@ -59,7 +61,6 @@ void CheckStatistics::addItem(const QString &tool, ShowTypes::ShowType type)
         ::addItem(mInformation, lower);
         break;
     case ShowTypes::ShowNone:
-    default:
         qDebug() << "Unknown error type - not added to statistics.";
         break;
     }
@@ -99,10 +100,10 @@ unsigned CheckStatistics::getCount(const QString &tool, ShowTypes::ShowType type
     case ShowTypes::ShowInformation:
         return mInformation.value(lower,0);
     case ShowTypes::ShowNone:
-    default:
         qDebug() << "Unknown error type - returning zero statistics.";
         return 0;
     }
+    cppcheck::unreachable();
 }
 
 QStringList CheckStatistics::getTools() const

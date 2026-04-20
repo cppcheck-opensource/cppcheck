@@ -4,7 +4,6 @@ import os
 import re
 import requests
 
-
 def print_checkers(glob_pattern:str):
     checkers = {}
     for filename in glob.glob(glob_pattern):
@@ -48,11 +47,6 @@ namespace checkers {
     const std::map<std::string, std::string> allCheckers{""" % (datetime.date.today().year,))
 print_checkers(os.path.expanduser('~/cppchecksolutions/cppcheck/lib/*.cpp'))
 print("    };\n")
-
-print('    const std::map<std::string, std::string> premiumCheckers{')
-print_checkers(os.path.expanduser('~/cppchecksolutions/addon/src/*.cpp'))
-print('    };')
-
 
 print("""
     const char Req[] = "Required";

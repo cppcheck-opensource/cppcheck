@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@ protected:
     TestSingleExecutorBase(const char * const name, bool useFS) : TestFixture(name), useFS(useFS) {}
 
 private:
-    /*const*/ Settings settings = settingsBuilder().library("std.cfg").build();
+    /*const*/ Settings settings;
     bool useFS;
 
     std::string fprefix() const
@@ -97,9 +97,10 @@ private:
         s.templateFormat = "{callstack}: ({severity}) {inconclusive:inconclusive: }{message}"; // TODO: remove when we only longer rely on toString() in unique message handling?
 
         Suppressions supprs;
+        TimerResults timerResults;
 
         // NOLINTNEXTLINE(performance-unnecessary-value-param)
-        CppCheck cppcheck(s, supprs, *this, true, [](std::string,std::vector<std::string>,std::string,std::string&){
+        CppCheck cppcheck(s, supprs, *this, &timerResults, true, [](std::string,std::vector<std::string>,std::string,std::string&){
             return EXIT_SUCCESS;
         });
 
@@ -112,7 +113,7 @@ private:
         if (useFS)
             filelist.clear();
 
-        SingleExecutor executor(cppcheck, filelist, fileSettings, s, supprs, *this);
+        SingleExecutor executor(cppcheck, filelist, fileSettings, s, supprs, *this, &timerResults);
         ASSERT_EQUALS(result, executor.check());
     }
 
@@ -127,9 +128,7 @@ private:
         TEST_CASE(one_error_less_files);
         TEST_CASE(one_error_several_files);
         TEST_CASE(showtime_top5_file);
-        TEST_CASE(showtime_top5_summary);
         TEST_CASE(showtime_file);
-        TEST_CASE(showtime_summary);
         TEST_CASE(showtime_file_total);
         TEST_CASE(suppress_error_library);
         TEST_CASE(unique_errors);
@@ -242,22 +241,8 @@ private:
               dinit(CheckOptions,
                     $.showtime = ShowTime::TOP5_FILE));
         const std::string output_s = GET_REDIRECT_OUTPUT;
-        // for each file: top5 results + overall + total
-        ASSERT_EQUALS((5 + 1 + 1) * 2LL, cppcheck::count_all_of(output_s, '\n'));
-    }
-
-    void showtime_top5_summary() {
-        REDIRECT;
-        check(2, 0,
-              "int main() {}",
-              dinit(CheckOptions,
-                    $.showtime = ShowTime::TOP5_SUMMARY));
-        const std::string output_s = GET_REDIRECT_OUTPUT;
-        // once: top5 results + newline
-        ASSERT_EQUALS(5 + 1, cppcheck::count_all_of(output_s, '\n'));
-        // should only report the top5 once
-        ASSERT(output_s.find("1 result(s)") == std::string::npos);
-        ASSERT(output_s.find("2 result(s)") != std::string::npos);
+        // for each file: top5 results + check time
+        ASSERT_EQUALS((5 + 1) * 2LL, cppcheck::count_all_of(output_s, '\n'));
     }
 
     void showtime_file() {
@@ -268,18 +253,6 @@ private:
                     $.showtime = ShowTime::FILE));
         const std::string output_s = GET_REDIRECT_OUTPUT;
         ASSERT_EQUALS(0, cppcheck::count_all_of(output_s, "Overall time:"));
-    }
-
-    void showtime_summary() {
-        REDIRECT;
-        check(2, 0,
-              "int main() {}",
-              dinit(CheckOptions,
-                    $.showtime = ShowTime::SUMMARY));
-        const std::string output_s = GET_REDIRECT_OUTPUT;
-        // should only report the actual summary once
-        ASSERT(output_s.find("1 result(s)") == std::string::npos);
-        ASSERT(output_s.find("2 result(s)") != std::string::npos);
     }
 
     void showtime_file_total() {

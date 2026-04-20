@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,12 +35,6 @@
 #  define CPPCHECKLIB
 #endif
 
-// MS Visual C++ memory leak debug tracing
-#if !defined(DISABLE_CRTDBG_MAP_ALLOC) && defined(_MSC_VER) && defined(_DEBUG)
-#  define _CRTDBG_MAP_ALLOC
-#  include <crtdbg.h>
-#endif
-
 // compatibility macros
 #ifndef __has_builtin
 #define __has_builtin(x) 0
@@ -56,16 +50,6 @@
 
 #ifndef __has_feature
 #define __has_feature(x) 0
-#endif
-
-// C++11 noexcept
-#if defined(__cpp_noexcept_function_type) || \
-    (defined(__GNUC__) && (__GNUC__ >= 5)) \
-    || defined(__clang__) \
-    || defined(__CPPCHECK__)
-#  define NOEXCEPT noexcept
-#else
-#  define NOEXCEPT
 #endif
 
 // C++11 noreturn
@@ -102,6 +86,7 @@
 #  define UNUSED
 #endif
 
+// TODO: AppleClang versions do not align with Clang versions - add check for proper version
 // warn_unused
 #if __has_cpp_attribute (gnu::warn_unused) || \
     (defined(__clang__) && (__clang_major__ >= 15))
@@ -121,6 +106,7 @@
 #  define DEPRECATED
 #endif
 
+// TODO: AppleClang versions do not align with Clang versions - add check for proper version
 // returns_nonnull
 #if __has_cpp_attribute (gnu::returns_nonnull)
 #  define RET_NONNULL [[gnu::returns_nonnull]]
@@ -212,8 +198,14 @@
 #define USE_WINDOWS_SEH
 #endif
 
-#if !defined(NO_UNIX_BACKTRACE_SUPPORT) && defined(__GNUC__) && !defined(__APPLE__) && !defined(__CYGWIN__) && !defined(__MINGW32__) && !defined(__NetBSD__) && !defined(__OpenBSD__) && !defined(__SVR4) && !defined(__QNX__) && !defined(_AIX)
+#if !defined(NO_UNIX_BACKTRACE_SUPPORT)
+#if defined(HAVE_EXECINFO_H)
+#if HAVE_EXECINFO_H
 #define USE_UNIX_BACKTRACE_SUPPORT
+#endif
+#elif defined(__GNUC__) && !defined(__APPLE__) && !defined(__CYGWIN__) && !defined(__MINGW32__) && !defined(__NetBSD__) && !defined(__OpenBSD__) && !defined(__SVR4) && !defined(__QNX__) && !defined(_AIX)
+#define USE_UNIX_BACKTRACE_SUPPORT
+#endif
 #endif
 
 #if !defined(NO_UNIX_SIGNAL_HANDLING) && defined(__GNUC__) && !defined(__MINGW32__) && !defined(__OS2__)

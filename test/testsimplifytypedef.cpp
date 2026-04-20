@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -229,6 +229,8 @@ private:
         TEST_CASE(simplifyTypedef156);
         TEST_CASE(simplifyTypedef157);
         TEST_CASE(simplifyTypedef158);
+        TEST_CASE(simplifyTypedef159);
+        TEST_CASE(simplifyTypedef160);
 
         TEST_CASE(simplifyTypedefFunction1);
         TEST_CASE(simplifyTypedefFunction2); // ticket #1685
@@ -258,9 +260,10 @@ private:
         TEST_CASE(typedefInfo1);
         TEST_CASE(typedefInfo2);
         TEST_CASE(typedefInfo3);
+        TEST_CASE(typedefInfo4);
     }
 
-    class TokenizerTest : public Tokenizer
+    class TokenizerTest final : public Tokenizer
     {
         friend class TestSimplifyTypedef;
     public:
@@ -3803,6 +3806,35 @@ private:
         TODO_ASSERT_EQUALS(exp, cur, tok(code));
     }
 
+    void simplifyTypedef159() {
+        const char code[] = "typedef void (*const func_t)();\n" // #14387
+                            "func_t g() { return nullptr; }\n";
+        const char exp[] = "void * const g ( ) { return nullptr ; }";
+        ASSERT_EQUALS(exp, tok(code));
+    }
+
+    void simplifyTypedef160() {
+        const char code[] = "struct S1 {};\n"
+                            "typedef struct S1 S2;\n"
+                            "namespace N {\n"
+                            "    struct B {\n"
+                            "        explicit B(int& i);\n"
+                            "    };\n"
+                            "    struct S2 : B {\n"
+                            "        explicit S2(int& i) : B(i) {}\n"
+                            "    };\n"
+                            "}\n";
+        const char exp[] = "struct S1 { } ; "
+                           "namespace N { "
+                           "struct B { "
+                           "explicit B ( int & i ) ; } ; "
+                           "struct S2 : B { "
+                           "explicit S2 ( int & i ) : B ( i ) { } "
+                           "} ; "
+                           "}";
+        ASSERT_EQUALS(exp, tok(code));
+    }
+
     void simplifyTypedefFunction1() {
         {
             const char code[] = "typedef void (*my_func)();\n"
@@ -4498,7 +4530,7 @@ private:
         // Search for the simplified short token and check its original Name, start from front to get the variable in the struct
         token = Token::findsimplematch(tokenizer.list.front(), "short", tokenizer.list.back());
         ASSERT_EQUALS("int16_t", token->originalName());
-        // Search for the simplified * token -> function pointer gets "(*" tokens infront of it
+        // Search for the simplified * token -> function pointer gets "(*" tokens in front of it
         token = Token::findsimplematch(endOfTypeDef, "*", tokenizer.list.back());
         ASSERT_EQUALS("rFunctionPointer_fp", token->originalName());
     }
@@ -4601,7 +4633,7 @@ private:
                       "      <token line=\"2\" column=\"35\" str=\")\"/>\n"
                       "    </info>\n"
                       "    <info name=\"int16_t\" file=\"file.c\" line=\"1\" column=\"1\" used=\"1\" isFunctionPointer=\"0\"/>\n"
-                      "    <info name=\"pfp16\" file=\"file.c\" line=\"4\" column=\"20\" used=\"0\" isFunctionPointer=\"1\">\n"
+                      "    <info name=\"pfp16\" file=\"file.c\" line=\"4\" column=\"4\" used=\"0\" isFunctionPointer=\"1\">\n"
                       "      <token line=\"4\" column=\"4\" str=\"typedef\"/>\n"
                       "      <token line=\"4\" column=\"12\" str=\"void\"/>\n"
                       "      <token line=\"4\" column=\"12\" str=\"(\"/>\n"
@@ -4629,6 +4661,17 @@ private:
                                                 "     b = a + 2;\n"
                                                 "}\n");
         ASSERT_EQUALS("",xml);
+    }
+
+    void typedefInfo4() {
+        const std::string xml = dumpTypedefInfo("typedef struct coord {\n"
+                                                "    uint16_t x;\n"
+                                                "    uint16_t y;\n"
+                                                "} coord;\n"
+                                                "coord c;");
+        ASSERT_EQUALS("  <typedef-info>\n"
+                      "    <info name=\"coord\" file=\"file.c\" line=\"1\" column=\"1\" tagline=\"1\" tagcolumn=\"16\" used=\"1\" isFunctionPointer=\"0\"/>\n"
+                      "  </typedef-info>\n", xml);
     }
 };
 

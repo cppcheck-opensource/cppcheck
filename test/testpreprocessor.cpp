@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -281,6 +281,7 @@ private:
 
         // inline suppression, missingInclude/missingIncludeSystem
         TEST_CASE(inline_suppressions);
+        TEST_CASE(inline_suppressions_not_next_line);
 
         // remark comment
         TEST_CASE(remarkComment1);
@@ -318,10 +319,15 @@ private:
         TEST_CASE(getConfigs11); // #9832 - include guards
         TEST_CASE(getConfigs12); // #14222
         TEST_CASE(getConfigs13); // #14222
-        TEST_CASE(getConfigs14); // #1059
-        TEST_CASE(getConfigs15); // #1059
-        TEST_CASE(getConfigs16); // #1059
-        TEST_CASE(getConfigs17); // #1059
+        TEST_CASE(getConfigs_gte); // #1059
+        TEST_CASE(getConfigs_lte); // #1059
+        TEST_CASE(getConfigs_gt); // #1059
+        TEST_CASE(getConfigs_lt); // #1059
+        TEST_CASE(getConfigs_eq_compound); // #1059
+        TEST_CASE(getConfigs_gte_compound); // #1059
+        TEST_CASE(getConfigs_lte_compound); // #1059
+        TEST_CASE(getConfigs_gt_compound); // #1059
+        TEST_CASE(getConfigs_lt_compound); // #1059
         TEST_CASE(getConfigsError);
 
         TEST_CASE(getConfigsD1);
@@ -333,6 +339,9 @@ private:
         TEST_CASE(getConfigsU5);
         TEST_CASE(getConfigsU6);
         TEST_CASE(getConfigsU7);
+
+        TEST_CASE(getConfigsAndCodeIssue14317);
+        TEST_CASE(getConfigsMostGeneralConfigIssue14317);
 
         TEST_CASE(if_sizeof);
 
@@ -435,7 +444,7 @@ private:
                                 "#else\n"
                                 "#error abcd\n"
                                 "#endif\n";
-        ASSERT_EQUALS("\nA\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nA=A\n", getConfigsStr(filedata));
     }
 
     void error2() {
@@ -495,7 +504,7 @@ private:
                                  "#else\n"
                                  "#error 2\n"
                                  "#endif\n";
-        ASSERT_EQUALS("\nA\nA;B\nB\n", getConfigsStr(filedata1));
+        ASSERT_EQUALS("\nA=A\nA=A;B=B\nB=B\n", getConfigsStr(filedata1));
 
         const char filedata2[] = "#ifndef A\n"
                                  "#error 1\n"
@@ -527,7 +536,7 @@ private:
                                 "#else\n"
                                 "#error \"2\"\n"
                                 "#endif\n";
-        ASSERT_EQUALS("\nB\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nB=B\n", getConfigsStr(filedata));
     }
 
     void error8() {
@@ -540,7 +549,7 @@ private:
                                 "#ifndef C\n"
                                 "#error aa\n"
                                 "#endif";
-        ASSERT_EQUALS("A;B;C\nA;C\nC\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("A=A;B=B;C\nA=A;C\nC\n", getConfigsStr(filedata));
     }
 
     void setPlatformInfo() {
@@ -581,7 +590,7 @@ private:
                                 "#endfile\n"
                                 "#ifdef ABC\n"
                                 "#endif";
-        ASSERT_EQUALS("\nABC\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nABC=ABC\n", getConfigsStr(filedata));
     }
 
     void includeguard2() {
@@ -592,7 +601,7 @@ private:
                                 "\n"
                                 "#endif\n"
                                 "#endfile\n";
-        ASSERT_EQUALS("\nABC\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nABC=ABC\n", getConfigsStr(filedata));
     }
 
 
@@ -611,7 +620,7 @@ private:
         // Expected configurations: "" and "ABC"
         ASSERT_EQUALS(2, actual.size());
         ASSERT_EQUALS("\n\n\nint main ( ) { }", actual.at(""));
-        ASSERT_EQUALS("\n#line 1 \"abc.h\"\nclass A { } ;\n#line 4 \"file.c\"\n int main ( ) { }", actual.at("ABC"));
+        ASSERT_EQUALS("\n#line 1 \"abc.h\"\nclass A { } ;\n#line 4 \"file.c\"\n int main ( ) { }", actual.at("ABC=ABC"));
     }
 
     void if0() {
@@ -648,7 +657,7 @@ private:
                                     "#else\n"
                                     "GHI\n"
                                     "#endif\n";
-            ASSERT_EQUALS("\nDEF1\nDEF2\n", getConfigsStr(filedata));
+            ASSERT_EQUALS("\nDEF1=DEF1\nDEF2=DEF2\n", getConfigsStr(filedata));
         }
     }
 
@@ -668,7 +677,7 @@ private:
                                 "#if defined(A) && defined(B)\n"
                                 "ab\n"
                                 "#endif\n";
-        ASSERT_EQUALS("\nA\nA;B\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nA=A\nA=A;B=B\n", getConfigsStr(filedata));
 
         if_cond2b();
         if_cond2c();
@@ -685,7 +694,7 @@ private:
                                 "#else\n"
                                 "a\n"
                                 "#endif\n";
-        TODO_ASSERT_EQUALS("\nA;B\n", "\nA\nB\n", getConfigsStr(filedata));
+        TODO_ASSERT_EQUALS("\nA;B=B\n", "\nA\nB=B\n", getConfigsStr(filedata));
     }
 
     void if_cond2c() {
@@ -699,7 +708,7 @@ private:
                                 "#else\n"
                                 "a\n"
                                 "#endif\n";
-        TODO_ASSERT_EQUALS("\nA\nA;B\n", "\nA\nB\n", getConfigsStr(filedata));
+        TODO_ASSERT_EQUALS("\nA\nA;B=B\n", "\nA\nB=B\n", getConfigsStr(filedata));
     }
 
     void if_cond2d() {
@@ -718,7 +727,7 @@ private:
                                 "!b\n"
                                 "#endif\n"
                                 "#endif\n";
-        ASSERT_EQUALS("\nA\nA;B\nB\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nA\nA;B=B\nB=B\n", getConfigsStr(filedata));
     }
 
     void if_cond2e() {
@@ -737,7 +746,7 @@ private:
                                 "abc\n"
                                 "#endif\n"
                                 "#endif\n";
-        ASSERT_EQUALS("\nA\nA;B;C\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nA=A\nA=A;B=B;C=C\n", getConfigsStr(filedata));
     }
 
     void if_cond4() {
@@ -758,7 +767,7 @@ private:
                                     "#endif\n"
                                     "}\n"
                                     "#endif\n";
-            ASSERT_EQUALS("\nA\nA;B\n", getConfigsStr(filedata));
+            ASSERT_EQUALS("\nA\nA;B=B\n", getConfigsStr(filedata));
         }
 
         {
@@ -793,20 +802,20 @@ private:
                                 "#if defined(B) && defined(A)\n"
                                 "ef\n"
                                 "#endif\n";
-        ASSERT_EQUALS("\nA;B\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nA=A;B=B\n", getConfigsStr(filedata));
     }
 
     void if_cond6() {
         const char filedata[] = "\n"
                                 "#if defined(A) && defined(B))\n"
                                 "#endif\n";
-        ASSERT_EQUALS("\nA;B\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nA=A;B=B\n", getConfigsStr(filedata));
     }
 
     void if_cond8() {
         const char filedata[] = "#if defined(A) + defined(B) + defined(C) != 1\n"
                                 "#endif\n";
-        TODO_ASSERT_EQUALS("\nA\n", "\nA;B;C\n", getConfigsStr(filedata));
+        TODO_ASSERT_EQUALS("\nA=A\n", "\nA=A;B=B;C=C\n", getConfigsStr(filedata));
     }
 
 
@@ -865,7 +874,7 @@ private:
         const char filedata[] = "#if defined(DEF_10) || defined(DEF_11)\n"
                                 "a1;\n"
                                 "#endif\n";
-        ASSERT_EQUALS("\nDEF_10;DEF_11\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nDEF_10=DEF_10;DEF_11=DEF_11\n", getConfigsStr(filedata));
     }
 
     void if_or_2() {
@@ -1529,7 +1538,7 @@ private:
         ASSERT_EQUALS(2, actual.size());
         const std::string expected("void f ( ) {\n\n\n}");
         ASSERT_EQUALS(expected, actual.at(""));
-        ASSERT_EQUALS(expected, actual.at("A"));
+        ASSERT_EQUALS(expected, actual.at("A=A"));
     }
 
     void handle_error() {
@@ -1649,7 +1658,7 @@ private:
         // Compare results..
         ASSERT_EQUALS(2, actual.size());
         ASSERT_EQUALS("\n\n\n\n\n$20", actual.at(""));
-        ASSERT_EQUALS("\n\n\n\n\n$10", actual.at("A"));
+        ASSERT_EQUALS("\n\n\n\n\n$10", actual.at("A=A"));
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -1701,7 +1710,7 @@ private:
         // Compare results..
         ASSERT_EQUALS(2, actual.size());
         ASSERT_EQUALS("", actual.at(""));
-        ASSERT_EQUALS("\nA\n\n\nA", actual.at("ABC"));
+        ASSERT_EQUALS("\nA\n\n\nA", actual.at("ABC=ABC"));
     }
 
     void define_if1() {
@@ -1942,9 +1951,9 @@ private:
         // Compare results..
         ASSERT_EQUALS(4, actual.size());
         ASSERT(actual.find("") != actual.end());
-        ASSERT(actual.find("BAR") != actual.end());
-        ASSERT(actual.find("FOO") != actual.end());
-        ASSERT(actual.find("BAR;FOO") != actual.end());
+        ASSERT(actual.find("BAR=BAR") != actual.end());
+        ASSERT(actual.find("FOO=FOO") != actual.end());
+        ASSERT(actual.find("BAR=BAR;FOO=FOO") != actual.end());
     }
 
 
@@ -1978,9 +1987,9 @@ private:
         // cases should be fixed whenever this other bug is fixed
         ASSERT_EQUALS(2U, actual.size());
 
-        ASSERT_EQUALS_MSG(true, (actual.find("A") != actual.end()), "A is expected to be checked but it was not checked");
+        ASSERT_EQUALS_MSG(true, (actual.find("A=A") != actual.end()), "A is expected to be checked but it was not checked");
 
-        ASSERT_EQUALS_MSG(true, (actual.find("A;A;B") == actual.end()), "A;A;B is expected to NOT be checked but it was checked");
+        ASSERT_EQUALS_MSG(true, (actual.find("A=A;A=A;B=B") == actual.end()), "A;A;B is expected to NOT be checked but it was checked");
     }
 
     void invalid_define_1() {
@@ -2025,6 +2034,38 @@ private:
         ASSERT_EQUALS(false, suppr.matched);
 
         ignore_errout(); // we are not interested in the output
+    }
+
+    void inline_suppressions_not_next_line() {
+        const auto settings = dinit(Settings,
+                                    $.inlineSuppressions = true,
+                                        $.checks.enable (Checks::missingInclude));
+
+        const char code[] = "// cppcheck-suppress missingInclude\n"
+                            "// some other comment\n"
+                            "#include \"missing.h\"\n"
+                            "// cppcheck-suppress missingIncludeSystem\n"
+                            "\n" // Empty line
+                            "#include <missing2.h>\n";
+        SuppressionList inlineSuppr;
+        (void)getcodeforcfg(settings, *this, code, "", "test.c", &inlineSuppr);
+
+        auto suppressions = inlineSuppr.getSuppressions();
+        ASSERT_EQUALS(2, suppressions.size());
+
+        auto suppr = suppressions.front();
+        suppressions.pop_front();
+        ASSERT_EQUALS("missingInclude", suppr.errorId);
+        ASSERT_EQUALS("test.c", suppr.fileName);
+        ASSERT_EQUALS(3, suppr.lineNumber);
+
+        suppr = suppressions.front();
+        suppressions.pop_front();
+        ASSERT_EQUALS("missingIncludeSystem", suppr.errorId);
+        ASSERT_EQUALS("test.c", suppr.fileName);
+        ASSERT_EQUALS(6, suppr.lineNumber);
+
+        ignore_errout();
     }
 
     void remarkComment1() {
@@ -2146,7 +2187,7 @@ private:
                                 "    qwerty\n"
                                 "#endif  \n";
 
-        ASSERT_EQUALS("\nWIN32\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nWIN32=WIN32\n", getConfigsStr(filedata));
     }
 
     void getConfigs2() {
@@ -2167,7 +2208,7 @@ private:
                                 "c\n"
                                 "#endif\n";
 
-        ASSERT_EQUALS("\nABC\nABC;DEF\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nABC=ABC\nABC=ABC;DEF=DEF\n", getConfigsStr(filedata));
     }
 
     void getConfigs4() {
@@ -2177,7 +2218,7 @@ private:
                                 "#ifdef ABC\n"
                                 "A\n"
                                 "#endif\n";
-        ASSERT_EQUALS("\nABC\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nABC=ABC\n", getConfigsStr(filedata));
     }
 
     void getConfigs5() {
@@ -2189,7 +2230,7 @@ private:
                                 "C\n"
                                 "#endif\n"
                                 "#endif\n";
-        ASSERT_EQUALS("\nABC\nDEF\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nABC=ABC\nDEF=DEF\n", getConfigsStr(filedata));
     }
 
     void getConfigs7() {
@@ -2199,7 +2240,7 @@ private:
                                 "B\n"
                                 "#endif\n"
                                 "#endif\n";
-        ASSERT_EQUALS("\nABC\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nABC=ABC\n", getConfigsStr(filedata));
     }
 
     void getConfigs7a() {
@@ -2219,7 +2260,7 @@ private:
                                 "B\n"
                                 "#endif\n"
                                 "#endif\n";
-        ASSERT_EQUALS("\nABC\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nABC=ABC\n", getConfigsStr(filedata));
     }
 
     void getConfigs7c() {
@@ -2229,7 +2270,7 @@ private:
                                 "B\n"
                                 "#endif\n"
                                 "#endif\n";
-        ASSERT_EQUALS("\nABC\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nABC=ABC\n", getConfigsStr(filedata));
     }
 
     void getConfigs7d() {
@@ -2239,7 +2280,7 @@ private:
                                 "B\n"
                                 "#endif\n"
                                 "#endif\n";
-        ASSERT_EQUALS("\nABC\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nABC=ABC\n", getConfigsStr(filedata));
     }
 
     void getConfigs7e() {
@@ -2252,7 +2293,7 @@ private:
                                 "#endif\n"
                                 "#endfile\n"
                                 "#endif\n";
-        ASSERT_EQUALS("\nABC\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nABC=ABC\n", getConfigsStr(filedata));
     }
 
     void getConfigs8() {
@@ -2295,32 +2336,259 @@ private:
         ASSERT_EQUALS("\n", getConfigsStr(filedata, nullptr, "gnu.cfg"));
     }
 
-    void getConfigs14() { // #1059
-        const char filedata[] = "#if A >= 1\n"
-                                "1\n"
-                                "#endif\n";
-        ASSERT_EQUALS("\nA=1\n", getConfigsStr(filedata));
+    void getConfigs_gte() { // #1059
+        {
+            const char filedata[] = "#if A >= 1\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=1\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A >= 201112L\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=201112L\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A >= 12147483647\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=12147483647\n", getConfigsStr(filedata));
+        }
     }
 
-    void getConfigs15() { // #1059
-        const char filedata[] = "#if A <= 1\n"
-                                "1\n"
-                                "#endif\n";
-        ASSERT_EQUALS("\nA=1\n", getConfigsStr(filedata));
+    void getConfigs_lte() { // #1059
+        {
+            const char filedata[] = "#if A <= 1\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=1\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A <= 201112L\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=201112L\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A <= 12147483647\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=12147483647\n", getConfigsStr(filedata));
+        }
     }
 
-    void getConfigs16() { // #1059
-        const char filedata[] = "#if A > 1\n"
-                                "1\n"
-                                "#endif\n";
-        ASSERT_EQUALS("\nA=2\n", getConfigsStr(filedata));
+    void getConfigs_gt() { // #1059
+        {
+            const char filedata[] = "#if A > 1\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=2\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A > 1L\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=2\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A > 1U\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=2\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A > 1UL\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=2\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A > 1Z\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=2\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A > 0x1\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=2\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A > 01\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=2\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A > 0b1\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=2\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A > 1t\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_THROW_INTERNAL_EQUALS(getConfigsStr(filedata), INTERNAL, "Internal Error. MathLib::toBigNumber: input was not completely consumed: 1t");
+        }
+        {
+            const char filedata[] = "#if A > 1.0\n"
+                                    "1\n"
+                                    "#endif\n";
+            TODO_ASSERT_THROW(getConfigsStr(filedata), InternalError); // floating point literals are not allowed
+        }
+        {
+            const char filedata[] = "#if A > 12147483647\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=12147483648\n", getConfigsStr(filedata));
+        }
     }
 
-    void getConfigs17() { // #1059
-        const char filedata[] = "#if A < 1\n"
-                                "1\n"
-                                "#endif\n";
-        ASSERT_EQUALS("\nA=0\n", getConfigsStr(filedata));
+    void getConfigs_lt() { // #1059
+        {
+            const char filedata[] = "#if A < 1\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=0\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A < 1L\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=0\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A < 1U\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=0\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A < 1UL\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=0\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A < 1Z\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=0\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A < 0x1\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=0\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A < 01\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=0\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A < 0b1\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=0\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A < 1t\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_THROW_INTERNAL_EQUALS(getConfigsStr(filedata), INTERNAL, "Internal Error. MathLib::toBigNumber: input was not completely consumed: 1t");
+        }
+        {
+            const char filedata[] = "#if A < 1.0\n"
+                                    "1\n"
+                                    "#endif\n";
+            TODO_ASSERT_THROW(getConfigsStr(filedata), InternalError); // floating point literals are not allowed
+        }
+        {
+            const char filedata[] = "#if A < 12147483647\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=12147483646\n", getConfigsStr(filedata));
+        }
+    }
+
+    void getConfigs_eq_compound() { // #1059
+        {
+            const char filedata[] = "#if A == 1 && defined(B)\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=1;B=B\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A == 201112L && defined(B)\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=201112L;B=B\n", getConfigsStr(filedata));
+        }
+    }
+
+    void getConfigs_gte_compound() { // #1059
+        {
+            const char filedata[] = "#if A >= 1 && defined(B)\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=1;B=B\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A >= 201112L && defined(B)\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=201112L;B=B\n", getConfigsStr(filedata));
+        }
+    }
+
+    void getConfigs_lte_compound() { // #1059
+        {
+            const char filedata[] = "#if A <= 1 && defined(B)\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=1;B=B\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A <= 201112L && defined(B)\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=201112L;B=B\n", getConfigsStr(filedata));
+        }
+    }
+
+    void getConfigs_gt_compound() { // #1059
+        {
+            const char filedata[] = "#if A > 1 && defined(B)\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=2;B=B\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A > 201112L && defined(B)\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=201113;B=B\n", getConfigsStr(filedata));
+        }
+    }
+
+    void getConfigs_lt_compound() { // #1059
+        {
+            const char filedata[] = "#if A < 1 && defined(B)\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=0;B=B\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if A < 201112L && defined(B)\n"
+                                    "1\n"
+                                    "#endif\n";
+            ASSERT_EQUALS("\nA=201111;B=B\n", getConfigsStr(filedata));
+        }
     }
 
     void getConfigsError() {
@@ -2334,7 +2602,7 @@ private:
                                  "#error \"!Y\"\n"
                                  "#endif\n"
                                  "#endif\n";
-        ASSERT_EQUALS("\nX;Y\nY\n", getConfigsStr(filedata2));
+        ASSERT_EQUALS("\nX=X;Y\nY\n", getConfigsStr(filedata2));
     }
 
     void getConfigsD1() {
@@ -2344,14 +2612,14 @@ private:
                                 "#endif\n"
                                 "#endif\n";
         ASSERT_EQUALS("\n", getConfigsStr(filedata, "-DX"));
-        ASSERT_EQUALS("\nX\nY\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nX=X\nY=Y\n", getConfigsStr(filedata));
     }
 
     void getConfigsU1() {
         const char filedata[] = "#ifdef X\n"
                                 "#endif\n";
         ASSERT_EQUALS("\n", getConfigsStr(filedata, "-UX"));
-        ASSERT_EQUALS("\nX\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nX=X\n", getConfigsStr(filedata));
     }
 
     void getConfigsU2() {
@@ -2375,8 +2643,8 @@ private:
         const char filedata[] = "#if defined(X) || defined(Y) || defined(Z)\n"
                                 "#else\n"
                                 "#endif\n";
-        ASSERT_EQUALS("\nY;Z\n", getConfigsStr(filedata, "-UX"));
-        ASSERT_EQUALS("\nX;Y;Z\n", getConfigsStr(filedata));
+        ASSERT_EQUALS("\nY=Y;Z=Z\n", getConfigsStr(filedata, "-UX"));
+        ASSERT_EQUALS("\nX=X;Y=Y;Z=Z\n", getConfigsStr(filedata));
     }
 
     void getConfigsU5() {
@@ -2398,6 +2666,53 @@ private:
                             "#else\n"
                             "#endif\n";
         ASSERT_EQUALS("\nY\n", getConfigsStr(code, "-DX"));
+    }
+
+    void getConfigsAndCodeIssue14317() {
+        const char filedata[] = "bool test() {\n"
+                                "return\n"
+                                "#if defined(isless)\n"
+                                "0 != isless(1.0, 2.0)\n"
+                                "#else\n"
+                                "0\n"
+                                "#endif\n"
+                                ";\n"
+                                "}\n";
+        // Test getConfigsStr()
+        ASSERT_EQUALS("\nisless=isless\n", getConfigsStr(filedata));
+
+        // Test getcode()
+        // Preprocess => actual result..
+        const std::map<std::string, std::string> actual = getcode(settings0, *this, filedata);
+
+        // Expected configurations: "" and "ABC"
+        ASSERT_EQUALS(2, actual.size());
+        ASSERT_EQUALS("bool test ( ) {\nreturn\n\n\n\n0\n\n;\n}", actual.at(""));
+        ASSERT_EQUALS("bool test ( ) {\nreturn\n\n0 != $isless ( 1.0 , 2.0 )\n\n\n\n;\n}", actual.at("isless=isless"));
+    }
+
+    void getConfigsMostGeneralConfigIssue14317() {
+        // Verifies that the most general X (out of X=X and X) and Y=Y is returned
+        // For Z: First Z=Z is added to ret, then the ifndef else branch replaces Z=Z with the more general Z
+        const char filedata[] = "#ifdef X\n"
+                                "print(X);\n"
+                                "#endif\n"
+                                "#if X\n"
+                                "print(X+1);\n"
+                                "#endif\n"
+                                "#if defined(Y)\n"
+                                "print(Y);\n"
+                                "#endif\n"
+                                "#ifdef Z\n"
+                                "print(Z);\n"
+                                "#endif\n"
+                                "#ifndef Z\n"
+                                "print(Z+1);\n"
+                                "#else\n"
+                                "print(Z+2);\n"
+                                "#endif\n";
+        // Test getConfigsStr()
+        ASSERT_EQUALS("\nX\nY=Y\nZ\n", getConfigsStr(filedata));
     }
 
     void if_sizeof() { // #4071
@@ -2563,7 +2878,7 @@ private:
         const char code[] = "#include <header.h>";
         (void)getcodeforcfg(settings, *this, code, "", "test.c");
 
-        ASSERT_EQUALS("test.c:1:2: information: Include file: <header.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]\n", errout_str());
+        ASSERT_EQUALS("test.c:1:2: information: Include file: <header.h> not found. Please note: Standard library headers do not need to be provided to get proper results. [missingIncludeSystem]\n", errout_str());
     }
 
     // test for missing system include
@@ -2578,7 +2893,7 @@ private:
         const char code[] = "#include <header.h>";
         (void)getcodeforcfg(settings, *this, code, "", "test.c");
 
-        ASSERT_EQUALS("test.c:1:2: information: Include file: <header.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]\n", errout_str());
+        ASSERT_EQUALS("test.c:1:2: information: Include file: <header.h> not found. Please note: Standard library headers do not need to be provided to get proper results. [missingIncludeSystem]\n", errout_str());
     }
 
     // test for existing system include in system include path
@@ -2631,7 +2946,7 @@ private:
         std::string code("#include <" + header + ">");
         (void)getcodeforcfg(settings, *this, code.data(), code.size(), "", "test.c");
 
-        ASSERT_EQUALS("test.c:1:2: information: Include file: <" + header + "> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]\n", errout_str());
+        ASSERT_EQUALS("test.c:1:2: information: Include file: <" + header + "> not found. Please note: Standard library headers do not need to be provided to get proper results. [missingIncludeSystem]\n", errout_str());
     }
 
     // test for missing local and system include
@@ -2654,8 +2969,8 @@ private:
         (void)getcodeforcfg(settings, *this, code, "", "test.c");
 
         ASSERT_EQUALS("test.c:1:2: information: Include file: \"missing.h\" not found. [missingInclude]\n"
-                      "test.c:2:2: information: Include file: <header.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]\n"
-                      "test.c:3:2: information: Include file: <missing2.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]\n", errout_str());
+                      "test.c:2:2: information: Include file: <header.h> not found. Please note: Standard library headers do not need to be provided to get proper results. [missingIncludeSystem]\n"
+                      "test.c:3:2: information: Include file: <missing2.h> not found. Please note: Standard library headers do not need to be provided to get proper results. [missingIncludeSystem]\n", errout_str());
     }
 
     void testMissingIncludeCheckConfig() {
@@ -2691,11 +3006,11 @@ private:
         (void)getcodeforcfg(settings, *this, code.data(), code.size(), "", "test.c");
 
         ASSERT_EQUALS("test.c:1:2: information: Include file: \"missing.h\" not found. [missingInclude]\n"
-                      "test.c:2:2: information: Include file: <header.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]\n"
-                      "test.c:3:2: information: Include file: <missing2.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]\n"
+                      "test.c:2:2: information: Include file: <header.h> not found. Please note: Standard library headers do not need to be provided to get proper results. [missingIncludeSystem]\n"
+                      "test.c:3:2: information: Include file: <missing2.h> not found. Please note: Standard library headers do not need to be provided to get proper results. [missingIncludeSystem]\n"
                       "test.c:6:2: information: Include file: \"header4.h\" not found. [missingInclude]\n"
                       "test.c:9:2: information: Include file: \"" + missing3 + "\" not found. [missingInclude]\n"
-                      "test.c:11:2: information: Include file: <" + missing4 + "> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]\n", errout_str());
+                      "test.c:11:2: information: Include file: <" + missing4 + "> not found. Please note: Standard library headers do not need to be provided to get proper results. [missingIncludeSystem]\n", errout_str());
     }
 
     void hasInclude() {
@@ -2783,7 +3098,7 @@ private:
             std::vector<std::string> files;
             TokenList tokenlist{settingsDefault, Standards::Language::CPP};
             // TODO: can this happen from application code? if yes we need to turn it into a proper error
-            ASSERT_THROW_EQUALS_2(preprocess(code, files, "test.cpp", tokenlist, dui), std::runtime_error, "unexpected simplecpp::Output type 9");
+            ASSERT_THROW_EQUALS(preprocess(code, files, "test.cpp", tokenlist, dui), std::runtime_error, "unexpected simplecpp::Output type 9");
             ASSERT(!tokenlist.front()); // nothing is tokenized when an unknown standard is provided
         }
     }

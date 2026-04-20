@@ -25,9 +25,6 @@ premium-cert-str34-c
 # we intentionally pass structs
 premium-cert-dcl39-c-*
 
-# we need to declare reserved identifier _CRTDBG_MAP_ALLOC
-premium-cert-dcl51-cpp
-
 # we don't want to check the return values of fclose/sprintf/etc
 premium-cert-err33-c
 
@@ -199,7 +196,7 @@ premium-misra-cpp-2023-12.3.1
 # TODO ensure overrides match
 premium-misra-cpp-2023-13.3.2
 
-# TODO use the same parameter names in overriden methods.
+# TODO use the same parameter names in overridden methods.
 premium-misra-cpp-2023-13.3.3
 
 # we sometimes use both public/private data members by intention

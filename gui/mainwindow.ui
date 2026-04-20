@@ -64,7 +64,7 @@
     <item>
      <layout class="QHBoxLayout" name="mLayoutInformation">
       <property name="sizeConstraint">
-       <enum>QLayout::SetDefaultConstraint</enum>
+       <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
       </property>
       <item>
        <widget class="QLabel" name="mLabelInformation">
@@ -84,13 +84,13 @@
          <string>Checking for updates</string>
         </property>
         <property name="textFormat">
-         <enum>Qt::RichText</enum>
+         <enum>Qt::TextFormat::RichText</enum>
         </property>
         <property name="openExternalLinks">
          <bool>true</bool>
         </property>
         <property name="textInteractionFlags">
-         <set>Qt::TextBrowserInteraction</set>
+         <set>Qt::TextInteractionFlag::TextBrowserInteraction</set>
         </property>
        </widget>
       </item>
@@ -104,7 +104,7 @@
       <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
-         <enum>Qt::Horizontal</enum>
+         <enum>Qt::Orientation::Horizontal</enum>
         </property>
         <property name="sizeHint" stdset="0">
          <size>
@@ -124,7 +124,7 @@
      <x>0</x>
      <y>0</y>
      <width>640</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="mMenuFile">
@@ -192,6 +192,7 @@
     <addaction name="mActionShowScratchpad"/>
     <addaction name="mActionViewStats"/>
     <addaction name="mActionLibraryEditor"/>
+    <addaction name="mActionShowThreadDetails"/>
    </widget>
    <widget class="QMenu" name="mMenuHelp">
     <property name="title">
@@ -1038,6 +1039,14 @@
   <action name="mActionEULA">
    <property name="text">
     <string>EULA...</string>
+   </property>
+  </action>
+  <action name="mActionShowThreadDetails">
+   <property name="text">
+    <string>Thread Details</string>
+   </property>
+   <property name="toolTip">
+    <string>Show thread details</string>
    </property>
   </action>
  </widget>
