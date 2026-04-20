@@ -4500,7 +4500,7 @@ private:
                           "2: struct T { struct S s ; } ;\n"
                           "3: struct U { struct T t ; } ;\n"
                           "4: void f ( ) {\n"
-                          "5: struct U u@4 ; u@4 = { .@UNIQUE t@5 = { . s = { . s = 1 } } } ;\n"
+                          "5: struct U u@4 ; u@4 = { .@UNIQUE t@5 = { .@UNIQUE s@6 = { .@UNIQUE s@7 = 1 } } } ;\n"
                           "6: }\n";
         ASSERT_EQUALS(exp, tokenizeExpr(code));
     }
