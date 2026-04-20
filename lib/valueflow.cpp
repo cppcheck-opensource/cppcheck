@@ -430,12 +430,7 @@ static void valueFlowNumber(TokenList &tokenlist, const Settings& settings)
 
     if (tokenlist.isCPP() || settings.standards.c >= Standards::C23) {
         for (Token *tok = tokenlist.front(); tok; tok = tok->next()) {
-            if (tok->isName() && !tok->varId() && Token::Match(tok, "%bool%")) {
-                ValueFlow::Value value(tok->str() == "true");
-                if (!tok->isTemplateArg())
-                    value.setKnown();
-                setTokenValue(tok, std::move(value), settings);
-            } else if (Token::Match(tok, "[(,] NULL [,)]")) {
+            if (Token::Match(tok, "[(,] NULL [,)]")) {
                 // NULL function parameters are not simplified in the
                 // normal tokenlist
                 ValueFlow::Value value(0);

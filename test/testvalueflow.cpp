@@ -1207,6 +1207,16 @@ private:
         ASSERT_EQUALS(1U, values.size());
         ASSERT_EQUALS(123, values.empty() ? 0 : values.front().intvalue);
 
+        code = "x = true ? 2 : 3;\n"; // #14369
+        values = tokenValues(code, "?");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(2, values.empty() ? 0 : values.front().intvalue);
+
+        code = "x = false ? 2 : 3;\n"; // #14369
+        values = tokenValues(code, "?");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(3, values.empty() ? 0 : values.front().intvalue);
+
         code  = "int f() {\n"
                 "    const int i = 1;\n"
                 "    int x = i < 0 ? 0 : 1;\n"
