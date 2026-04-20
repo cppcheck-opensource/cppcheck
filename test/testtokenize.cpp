@@ -7819,7 +7819,7 @@ private:
 
         ASSERT_NO_THROW(tokenizeAndStringify("void f() {\n" // #14395
                                              "    for (int i : [](int a, int b) { ++a; ++b; return std::vector<int>{a, b}; }(1, 2)) {}\n"
-                                             "}\n"));        
+                                             "}\n"));
 
         ASSERT_NO_THROW(tokenizeAndStringify("int y = a[x<>];")); // #14676
 
