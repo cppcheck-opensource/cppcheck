@@ -1328,7 +1328,7 @@ private:
         ASSERT_EQUALS(expected2, tokenize(code2));
 
         const char code3[] = "extern void (*arr[10])(uint32_t some);\n";
-        const char expected3[] = "1: extern void ( * arr@1 [ 10 ] ) ( uint32_t some@2 ) ;\n";
+        const char expected3[] = "1: extern void ( * arr@1 [ 10 ] ) ( uint32_t some ) ;\n";
         ASSERT_EQUALS(expected3, tokenize(code3));
 
         const char code4[] = "_Static_assert(sizeof((struct S){0}.i) == 4);\n"; // #12729
