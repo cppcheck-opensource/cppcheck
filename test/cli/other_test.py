@@ -4427,3 +4427,133 @@ x = 10 / 0;
         assert exitcode == 0
         assert stdout == ''
         assert stderr == ''
+
+
+def test_dui_include(tmp_path):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, "w") as f:
+        f.write('void f() {}')
+
+    inc_file = tmp_path / 'inc.h'
+    with open(inc_file, "w") as f:
+        f.write(
+"""
+void f_i()
+{
+    (void)(*((int*)0));
+}
+""")
+
+    args = [
+        '-q',
+        '--template=simple',
+        f'--include={inc_file}',
+        str(test_file)
+    ]
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0
+    assert stdout == ''
+    assert stderr.splitlines() == [
+        f'{inc_file}:4:14: error: Null pointer dereference: (int*)0 [nullPointer]'
+    ]
+
+
+def test_dui_include_missing(tmp_path):  # #14675
+    test_file = tmp_path / 'test.c'
+    with open(test_file, "w") as f:
+        f.write('void f() {}')
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--include=missing.h',
+        str(test_file)
+    ]
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0
+    assert stdout == ''
+    assert stderr.splitlines() == [
+        f"{test_file}:0:0: error: Can not open include file 'missing.h' that is explicitly included. [missingIncludeExplicit]"
+    ]
+
+
+def test_dui_include_relative(tmp_path):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, "w") as f:
+        f.write('void f() {}')
+
+    inc_file = tmp_path / 'inc.h'
+    with open(inc_file, "w") as f:
+        f.write(
+"""
+void f_i()
+{
+    (void)(*((int*)0));
+}
+""")
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--include=inc.h',
+        str(test_file)
+    ]
+
+    exitcode, stdout, stderr = cppcheck(args, cwd=tmp_path)
+    assert exitcode == 0
+    assert stdout == ''
+    assert stderr.splitlines() == [
+        'inc.h:4:14: error: Null pointer dereference: (int*)0 [nullPointer]'
+    ]
+
+
+def test_dui_include_relative_missing(tmp_path):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, "w") as f:
+        f.write('void f() {}')
+
+    inc_file = tmp_path / 'inc.h'
+    with open(inc_file, "w") as f:
+        f.write(
+"""
+void f_i()
+{
+    (void)(*((int*)0));
+}
+""")
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--include=inc.h',
+        str(test_file)
+    ]
+
+    exitcode, stdout, stderr = cppcheck(args,)
+    assert exitcode == 0
+    assert stdout == ''
+    assert stderr.splitlines() == [
+        f"{test_file}:0:0: error: Can not open include file 'inc.h' that is explicitly included. [missingIncludeExplicit]"
+    ]
+
+
+def test_dui_include_absolute_missing(tmp_path):  # #14675
+    test_file = tmp_path / 'test.c'
+    with open(test_file, "w") as f:
+        f.write('void f() {}')
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--include=/share/include/missing.h',
+        str(test_file)
+    ]
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0
+    assert stdout == ''
+    assert stderr.splitlines() == [
+        f"{test_file}:0:0: error: Can not open include file '/share/include/missing.h' that is explicitly included. [missingIncludeExplicit]"
+    ]
