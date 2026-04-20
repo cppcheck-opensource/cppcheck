@@ -4714,6 +4714,16 @@ void Tokenizer::setVarIdPass1()
     bool initlist = false;
     bool inlineFunction = false;
     for (Token *tok = list.front(); tok; tok = tok->next()) {
+        if (Token::simpleMatch(tok, ") (") && Token::simpleMatch(tok->link(), "( *")) {
+            const Token *typeTok = tok->link()->previous();
+            while (Token::Match(typeTok, "*|&")) {
+                typeTok = tok->previous();
+            }
+            if (Token::Match(typeTok, "%type%")) {
+                tok = tok->linkAt(1);
+                continue;
+            }
+        }
         if (tok->isOp())
             continue;
         if (cpp && Token::simpleMatch(tok, "template <")) {
