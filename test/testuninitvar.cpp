@@ -2173,6 +2173,14 @@ private:
                        "    return p;\n"
                        "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        checkUninitVar("struct S { char c[10]; };\n" // #11290
+                       "S* f() {\n"
+                       "    S* s = (S*)malloc(sizeof(S));\n"
+                       "    sprintf(s->c, \"abc\");\n"
+                       "    return s;\n"
+                       "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     // class / struct..
