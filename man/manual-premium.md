@@ -1042,28 +1042,6 @@ Cppcheck is distributed with a few addons which are listed below.
 
 ## Supported addons
 
-### `misra.py`
-
-[`misra.py`](https://github.com/danmar/cppcheck/blob/main/addons/misra.py) is used to verify compliance with MISRA C 2012, a proprietary set of guidelines to avoid questionable code, developed for embedded systems.
-
-The `misra.py` script does not provide rule texts, those should be downloaded from [MISRA](https://gitlab.com/MISRA/MISRA-C/MISRA-C-2012/tools).
-
-To load the rule texts, create a configuration file. Example `misra.json`:
-
-    {
-        "script": "misra.py",
-        "args": [
-            "--rule-texts=misra_c_2012__headlines_for_cppcheck - AMD1+AMD2.txt"
-        ],
-        "ctu": true
-    }
-
-To use that `misra.json` in Cppcheck analysis, use option `--addon=misra.json`:
-
-    cppcheck --addon=misra.json --enable=style somefile.c
-
-Misra checkers in open source Cppcheck only cover MISRA rules partially and for full coverage use Cppcheck Premium.
-
 ### `namingng.py`
 
 [`namingng.py`](https://github.com/danmar/cppcheck/blob/main/addons/namingng.py) allows you to configure and check naming conventions.
