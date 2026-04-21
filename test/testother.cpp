@@ -12651,6 +12651,24 @@ private:
               "    }\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:4:36]: (warning) Access of moved variable 'l'. [accessMoved]\n", errout_str());
+
+        check("struct S {\n" // #13179
+              "    operator bool() const { return !m.empty(); }\n"
+              "    std::string m;\n"
+              "};\n"
+              "S get();\n"
+              "void set(S);\n"
+              "void f() {\n"
+              "    while (S s = get()) {\n"
+              "        set(std::move(s));\n"
+              "    }\n"
+              "}\n"
+              "void g() {\n"
+              "    while (S s{ get() }) {\n"
+              "        set(std::move(s));\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void moveCallback()
