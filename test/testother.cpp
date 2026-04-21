@@ -2909,6 +2909,9 @@ private:
         check("struct X { int a[5]; }; extern \"C\" void f(X v) { }");
         ASSERT_EQUALS("", errout_str());
 
+        check("struct X { int a[5]; }; void f(const X v);");
+        ASSERT_EQUALS("", errout_str());
+
         check("struct X { int a[5]; }; void f(const X v) { (void) v; }");
         ASSERT_EQUALS("[test.cpp:1:40]: (performance) Function parameter 'v' should be passed by const reference. [passedByValue]\n", errout_str());
 
