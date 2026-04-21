@@ -37,7 +37,6 @@
 #include <cmath>
 #include <functional>
 #include <iterator>
-#include <list>
 #include <memory>
 #include <stack>
 #include <stdexcept>

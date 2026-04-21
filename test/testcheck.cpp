@@ -19,7 +19,6 @@
 #include "check.h"
 #include "fixture.h"
 
-#include <list>
 #include <string>
 
 class TestCheck : public TestFixture {

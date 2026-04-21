@@ -32,7 +32,6 @@
 #include <cassert>
 #include <iostream>
 #include <map>
-#include <memory>
 #include <stack>
 #include <type_traits>
 #include <utility>

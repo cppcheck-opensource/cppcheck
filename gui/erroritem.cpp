@@ -20,7 +20,6 @@
 
 #include "common.h"
 
-#include <list>
 
 QErrorPathItem::QErrorPathItem(const ErrorMessage::FileLocation &loc)
     : file(QString::fromStdString(loc.getfile(false)))

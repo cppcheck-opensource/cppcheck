@@ -8,7 +8,6 @@
 
 // cppcheck-suppress-file valueFlowBailout
 
-#include <string>
 
 #include <cppunit/Exception.h>
 #include <cppunit/Portability.h>
