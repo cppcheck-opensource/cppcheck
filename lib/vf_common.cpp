@@ -384,7 +384,7 @@ namespace ValueFlow
         v.debugPath.emplace_back(tok, std::move(s));
     }
 
-    MathLib::bigint valueFlowGetStrLength(const Token* tok)
+    MathLib::bigint valueFlowGetStrLength(const Token* tok, const Settings& settings)
     {
         if (tok->tokType() == Token::eString)
             return Token::getStrLength(tok);
@@ -394,8 +394,10 @@ namespace ValueFlow
             return v->intvalue;
         if (const Value* v = tok->getKnownValue(Value::ValueType::TOK)) {
             if (v->tokvalue != tok)
-                return valueFlowGetStrLength(v->tokvalue);
+                return valueFlowGetStrLength(v->tokvalue, settings);
         }
+        if (const Token* cont = settings.library.getContainerFromYield(tok, Library::Container::Yield::BUFFER_NT))
+            return valueFlowGetStrLength(cont, settings);
         return 0;
     }
 }

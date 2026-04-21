@@ -1547,7 +1547,7 @@ struct ContainerExpressionAnalyzer : ExpressionAnalyzer {
             case Library::Container::Action::APPEND: {
                 std::vector<const Token*> args = getArguments(tok->astParent()->tokAt(2));
                 if (args.size() == 1) // TODO: handle overloads
-                    n = ValueFlow::valueFlowGetStrLength(tok->astParent()->tokAt(3));
+                    n = ValueFlow::valueFlowGetStrLength(tok->astParent()->tokAt(3), settings);
                 if (n == 0) // TODO: handle known empty append
                     val->setPossible();
                 break;

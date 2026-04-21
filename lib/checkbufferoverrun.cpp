@@ -36,6 +36,7 @@
 #include "utils.h"
 #include "valueflow.h"
 #include "vfvalue.h"
+#include "vf_common.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -83,7 +84,7 @@ static const Token* getRealBufferTok(const Token* tok) {
     return (op->valueType() && op->valueType()->pointer) ? op : tok;
 }
 
-static int getMinFormatStringOutputLength(const std::vector<const Token*> &parameters, nonneg int formatStringArgNr)
+static int getMinFormatStringOutputLength(const std::vector<const Token*> &parameters, nonneg int formatStringArgNr, const Settings& settings)
 {
     if (formatStringArgNr <= 0 || formatStringArgNr > parameters.size())
         return 0;
@@ -138,8 +139,8 @@ static int getMinFormatStringOutputLength(const std::vector<const Token*> &param
                 break;
             case 's':
                 parameterLength = 0;
-                if (inputArgNr < parameters.size() && parameters[inputArgNr]->tokType() == Token::eString)
-                    parameterLength = Token::getStrLength(parameters[inputArgNr]);
+                if (inputArgNr < parameters.size())
+                    parameterLength = ValueFlow::valueFlowGetStrLength(parameters[inputArgNr], settings);
 
                 handleNextParameter = true;
                 break;
@@ -602,7 +603,7 @@ static bool checkBufferSize(const Token *ftok, const Library::ArgumentChecks::Mi
     switch (minsize.type) {
     case Library::ArgumentChecks::MinSize::Type::STRLEN:
         if (settings.library.isargformatstr(ftok, minsize.arg)) {
-            return getMinFormatStringOutputLength(args, minsize.arg) < bufferSize;
+            return getMinFormatStringOutputLength(args, minsize.arg, settings) < bufferSize;
         } else if (arg) {
             const Token *strtoken = arg->getValueTokenMaxStrLength();
             if (strtoken)
