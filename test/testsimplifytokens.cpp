@@ -2207,6 +2207,9 @@ private:
                                 "for ( i = 0 ; ( i < sz ) && ( sz > 3 ) ; ++ i ) { }\n"
                                 "}";
         ASSERT_EQUALS(expected, tokenizeAndStringify(code, dinit(TokenizeAndStringifyOptions, $.cpp = false)));
+        ASSERT_EQUALS("[test.c:3:25]: (debug) valueflow.cpp:4550:(valueFlow) bailout: variable '(i<sz)&&(sz>3)' used in loop [valueFlowBailout]\n"
+                      "[test.c:3:25]: (debug) valueflow.cpp:4550:(valueFlow) bailout: variable '(i<sz)&&(sz>3)' used in loop [valueFlowBailout]\n",
+                      errout_str());
     }
 
     void simplifyKnownVariables49() { // #3691
