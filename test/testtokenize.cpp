@@ -1703,6 +1703,7 @@ private:
                                            "  for ( ; x; )\n"
                                            "  l1: l2: --x;\n"
                                            "}"));
+        ASSERT_EQUALS("[test.cpp:2:11]: (debug) valueflow.cpp:4574:(valueFlow) bailout: variable 'x' used in loop [valueFlowBailout]\n", errout_str());
 
         // Labels before {
         ASSERT_EQUALS("void f ( int x ) {\n"
@@ -1713,6 +1714,7 @@ private:
                                            "  for ( ; x; )\n"
                                            "  l1: l2: { -- x; }\n"
                                            "}"));
+        ASSERT_EQUALS("[test.cpp:2:11]: (debug) valueflow.cpp:4574:(valueFlow) bailout: variable 'x' used in loop [valueFlowBailout]\n", errout_str());
 
         // Labels before try/catch
         ASSERT_EQUALS("void f ( int x ) {\n"
@@ -1727,6 +1729,7 @@ private:
                                            "    try { throw 1; }\n"
                                            "    catch(...) { --x; }\n"
                                            "}"));
+        ASSERT_EQUALS("[test.cpp:2:11]: (debug) valueflow.cpp:4574:(valueFlow) bailout: variable 'x' used in loop [valueFlowBailout]\n", errout_str());
     }
 
 
