@@ -262,3 +262,21 @@ jobs:
         with:
           name: Logs (clang-include-cleaner - ${{ matrix.stdlib }})
           path: ./*.log
+
+  diskarzhan:
+
+    runs-on: ubuntu-22.04
+    if: ${{ github.repository_owner == 'danmar' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install Python packages
+        run: |
+          pip install diskarzhan
+
+      - name: diskarzhan
+        run: |
+          diskarzhan `find cli frontend lib gui test tools/triage -name '*.cpp' -or -name '*.h' ! -name precompiled.h | grep -v test/cli` 
