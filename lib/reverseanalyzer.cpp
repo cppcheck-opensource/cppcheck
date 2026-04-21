@@ -110,8 +110,11 @@ namespace {
         {
             if (Token::simpleMatch(tok->tokAt(-2), "} else {"))
                 tok = tok->linkAt(-2);
-            if (Token::simpleMatch(tok->previous(), ") {"))
+            if (Token::simpleMatch(tok->previous(), ") {")) {
+                if (Token::simpleMatch(tok->linkAt(-1)->astOperand2(), ";"))
+                    return tok->linkAt(-1)->astOperand2();
                 return tok->linkAt(-1);
+            }
             if (Token::simpleMatch(tok->previous(), "do {"))
                 return tok->previous();
             return tok;
@@ -232,7 +235,7 @@ namespace {
                         if (!Token::Match(assignTop->astOperand1(), "%assign%")) {
                             continueB &= updateRecursive(assignTop->astOperand1());
                         }
-                        if (!assignTop->astParent())
+                        if (!assignTop->astParent() || Token::simpleMatch(assignTop->astParent(), ";"))
                             break;
                         assignTop = assignTop->astParent();
                     }
