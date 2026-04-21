@@ -3710,6 +3710,19 @@ private:
               "            i++;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("void f(const int* p) {\n" // #6710
+              "    for (int i = *p; i < 5; ++i) {}\n"
+              "    if (p) {}\n"
+              "}\n"
+              "struct S { int a; };\n"
+              "void g(const S* s) {\n"
+              "    for (int i = s->a; i < 5; ++i) {}\n"
+              "    if (s) {}\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:9] -> [test.cpp:2:19]: (warning) Either the condition 'p' is redundant or there is possible null pointer dereference: p. [nullPointerRedundantCheck]\n"
+                      "[test.cpp:8:9] -> [test.cpp:7:18]: (warning) Either the condition 's' is redundant or there is possible null pointer dereference: s. [nullPointerRedundantCheck]\n",
+                      errout_str());
     }
 
     void nullpointerDeadCode() {
