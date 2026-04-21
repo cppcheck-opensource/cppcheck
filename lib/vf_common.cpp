@@ -154,7 +154,7 @@ namespace ValueFlow
             if (!tok->isTemplateArg())
                 value.setKnown();
             setTokenValue(tok, std::move(value), settings);
-        } else if ((tok->isCpp() || settings.standards.c >= Standards::C23) && (tok->isName() && !tok->varId() && Token::Match(tok, "%bool%"))) {
+        } else if ((tok->isCpp() || settings.standards.c >= Standards::C23) && (tok->isName() && tok->varId() == 0 && Token::Match(tok, "%bool%"))) {
             Value value(tok->str() == "true");
             if (!tok->isTemplateArg())
                 value.setKnown();
