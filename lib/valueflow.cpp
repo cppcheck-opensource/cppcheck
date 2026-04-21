@@ -4966,6 +4966,24 @@ static void valueFlowCondition(const ValuePtr<ConditionHandler>& handler,
     handler->afterCondition(tokenlist, symboldatabase, errorLogger, settings, skippedFunctions);
 }
 
+static const Token* getConditionVariable(const Token* tok)
+{
+    if (tok->str() == "!")
+        return tok->astOperand1();
+
+    if (const Token* parent = tok->astParent()) {
+        if (Token::Match(parent, "%oror%|&&|?") ||
+            Token::Match(parent->previous(), "if|while (") ||
+            (parent->str() == ";" && Token::simpleMatch(parent->astParent(), ";"))) {
+            if (Token::simpleMatch(tok, "="))
+                return tok->astOperand1();
+            if (!Token::Match(tok, "%comp%|%assign%"))
+                return tok;
+        }
+    }
+    return nullptr;
+}
+
 struct SimpleConditionHandler : ConditionHandler {
     std::vector<Condition> parse(const Token* tok, const Settings& /*settings*/) const override {
 
@@ -4984,19 +5002,7 @@ struct SimpleConditionHandler : ConditionHandler {
         if (!conds.empty())
             return conds;
 
-        const Token* vartok = nullptr;
-
-        if (tok->str() == "!") {
-            vartok = tok->astOperand1();
-
-        } else if (tok->astParent() && (Token::Match(tok->astParent(), "%oror%|&&|?") ||
-                                        Token::Match(tok->astParent()->previous(), "if|while ("))) {
-            if (Token::simpleMatch(tok, "="))
-                vartok = tok->astOperand1();
-            else if (!Token::Match(tok, "%comp%|%assign%"))
-                vartok = tok;
-        }
-
+        const Token* vartok = getConditionVariable(tok);
         if (!vartok)
             return {};
         Condition cond;
