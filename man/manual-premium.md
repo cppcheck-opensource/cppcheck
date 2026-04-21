@@ -1,6 +1,5 @@
 ---
 title: Cppcheck Premium manual
-subtitle: Version 2.21 dev
 author: Cppcheck team, Cppcheck Solutions AB
 lang: en
 documentclass: report
