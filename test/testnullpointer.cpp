@@ -3723,6 +3723,14 @@ private:
         ASSERT_EQUALS("[test.cpp:3:9] -> [test.cpp:2:19]: (warning) Either the condition 'p' is redundant or there is possible null pointer dereference: p. [nullPointerRedundantCheck]\n"
                       "[test.cpp:8:9] -> [test.cpp:7:18]: (warning) Either the condition 's' is redundant or there is possible null pointer dereference: s. [nullPointerRedundantCheck]\n",
                       errout_str());
+
+        check("struct S { int a; };\n" // #6492
+              "void h(const S* s) {\n"
+              "    for (int i = s->a; s; ++i) {}\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:24] -> [test.cpp:3:18]: (warning) Either the condition 's' is redundant or there is possible null pointer dereference: s. [nullPointerRedundantCheck]\n",
+                      errout_str());
+
     }
 
     void nullpointerDeadCode() {
