@@ -2518,8 +2518,6 @@ bool isMutableExpression(const Token* tok)
     if (tok->astOperand1() && Token::simpleMatch(tok, "["))
         return isMutableExpression(tok->astOperand1());
     if (const Variable* var = tok->variable()) {
-        if (var->nameToken() == tok)
-            return false;
         if (var->isConst() && !var->isPointer() && (!var->isArray() || !var->isArgument()))
             return false;
     }
