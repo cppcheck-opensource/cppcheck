@@ -10328,6 +10328,13 @@ static bool isStdSmartPointer(const Token* tok, const Settings& settings)
     return ptr && startsWith(ptr->name, "std::");
 }
 
+static bool isLibraryType(const Token* tok, const Settings& settings)
+{
+    return settings.library.hasAnyTypeCheck("std::" + tok->str()) ||
+           settings.library.podtype("std::" + tok->str()) ||
+           isStdContainerOrIterator(tok, settings);
+}
+
 // Add std:: in front of std classes, when using namespace std; was given
 void Tokenizer::simplifyNamespaceStd()
 {
@@ -10345,11 +10352,7 @@ void Tokenizer::simplifyNamespaceStd()
             continue;
         if (Token::Match(tok->previous(), ".|::|namespace"))
             continue;
-        if (mSettings.library.hasAnyTypeCheck("std::" + tok->str()) ||
-            mSettings.library.podtype("std::" + tok->str()) ||
-            isStdContainerOrIterator(tok, mSettings))
-            insert = true;
-        else if (Token::simpleMatch(tok->next(), "(")) {
+        if (Token::simpleMatch(tok->next(), "(")) {
             if (TokenList::isFunctionHead(tok->next(), "{"))
                 userFunctions.insert(tok->str());
             else if (TokenList::isFunctionHead(tok->next(), ";")) {
@@ -10359,10 +10362,13 @@ void Tokenizer::simplifyNamespaceStd()
                 if (start != tok && start->isName() && !start->isKeyword() && (!start->previous() || Token::Match(start->previous(), "[;{}]")))
                     userFunctions.insert(tok->str());
             }
-            if (userFunctions.find(tok->str()) == userFunctions.end() && mSettings.library.matchArguments(tok, "std::" + tok->str()))
+            if ((userFunctions.find(tok->str()) == userFunctions.end() && mSettings.library.matchArguments(tok, "std::" + tok->str())) ||
+                (tok->tokAt(-1)->isKeyword() && isLibraryType(tok, mSettings)))
                 insert = true;
         } else if (Token::simpleMatch(tok->next(), "<") &&
                    (isStdContainerOrIterator(tok, mSettings) || isStdSmartPointer(tok, mSettings)))
+            insert = true;
+        else if (isLibraryType(tok, mSettings))
             insert = true;
         else if (Token::simpleMatch(tok, "aligned_storage"))
             insert = true;
