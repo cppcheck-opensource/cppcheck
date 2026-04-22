@@ -203,7 +203,7 @@ void TestProjectFile::emptyUserInclude() const
 {
     ProjectFile projectFile;
     Settings settings;
-    projectFile.setUserInclude("");
+    projectFile.setUserInclude("   ");
     projectFile.setSettingsUserIncludes(settings);
     QCOMPARE(settings.userIncludes.size(), 0);
 }
