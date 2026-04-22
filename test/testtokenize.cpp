@@ -5310,10 +5310,15 @@ private:
                        "}";
             ASSERT_EQUALS(expected, tokenizeAndStringify(code));
         }
+
         {
             const char code[] = "using namespace std;\n"
+                                "void move() {}\n"
+                                "void string() {}\n"
                                 "string_view f() { return string(); }\n";
-            expected = "std :: string_view f ( ) { return std :: string ( ) ; }";
+            expected = "void move ( ) { }\n"
+                       "void string ( ) { }\n"
+                       "std :: string_view f ( ) { return std :: string ( ) ; }";
             ASSERT_EQUALS(expected, tokenizeAndStringify(code));
         }
     }
