@@ -36,4 +36,6 @@ private slots:
     void getCheckingSuppressionsRelative() const;
     void getCheckingSuppressionsAbsolute() const;
     void getCheckingSuppressionsStar() const;
+
+    void emptyUserInclude() const;
 };
