@@ -10332,23 +10332,23 @@ void Tokenizer::simplifyBitfields()
     }
 }
 
-static bool isStdContainerOrIterator(const Token* tok, const Settings& settings)
+static bool isStdContainerOrIterator(const Token* tok, const Library& library)
 {
-    const Library::Container* ctr = settings.library.detectContainerOrIterator(tok, nullptr, /*withoutStd*/ true);
+    const Library::Container* ctr = library.detectContainerOrIterator(tok, nullptr, /*withoutStd*/ true);
     return ctr && startsWith(ctr->startPattern, "std ::");
 }
 
-static bool isStdSmartPointer(const Token* tok, const Settings& settings)
+static bool isStdSmartPointer(const Token* tok, const Library& library)
 {
-    const Library::SmartPointer* ptr = settings.library.detectSmartPointer(tok, /*withoutStd*/ true);
+    const Library::SmartPointer* ptr = library.detectSmartPointer(tok, /*withoutStd*/ true);
     return ptr && startsWith(ptr->name, "std::");
 }
 
-static bool isLibraryType(const Token* tok, const Settings& settings)
+static bool isLibraryType(const Token* tok, const Library& library)
 {
-    return settings.library.hasAnyTypeCheck("std::" + tok->str()) ||
-           settings.library.podtype("std::" + tok->str()) ||
-           isStdContainerOrIterator(tok, settings);
+    return library.hasAnyTypeCheck("std::" + tok->str()) ||
+           library.podtype("std::" + tok->str()) ||
+           isStdContainerOrIterator(tok, library);
 }
 
 // Add std:: in front of std classes, when using namespace std; was given
@@ -10379,12 +10379,12 @@ void Tokenizer::simplifyNamespaceStd()
                     userFunctions.insert(tok->str());
             }
             if ((userFunctions.find(tok->str()) == userFunctions.end() && mSettings.library.matchArguments(tok, "std::" + tok->str())) ||
-                (tok->tokAt(-1)->isKeyword() && isLibraryType(tok, mSettings)))
+                (tok->tokAt(-1)->isKeyword() && isLibraryType(tok, mSettings.library)))
                 insert = true;
         } else if (Token::simpleMatch(tok->next(), "<") &&
-                   (isStdContainerOrIterator(tok, mSettings) || isStdSmartPointer(tok, mSettings)))
+                   (isStdContainerOrIterator(tok, mSettings.library) || isStdSmartPointer(tok, mSettings.library)))
             insert = true;
-        else if (isLibraryType(tok, mSettings))
+        else if (isLibraryType(tok, mSettings.library))
             insert = true;
         else if (Token::simpleMatch(tok, "aligned_storage"))
             insert = true;

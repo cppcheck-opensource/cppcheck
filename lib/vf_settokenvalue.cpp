@@ -47,7 +47,7 @@
 
 namespace ValueFlow
 {
-    static Library::Container::Yield getContainerYield(Token* tok, const Settings& settings, Token*& parent)
+    static Library::Container::Yield getContainerYield(Token* tok, const Library& library, Token*& parent)
     {
         if (Token::Match(tok, ". %name% (") && tok->astParent() == tok->tokAt(2) && tok->astOperand1() &&
             tok->astOperand1()->valueType()) {
@@ -57,7 +57,7 @@ namespace ValueFlow
         }
         if (Token::Match(tok->previous(), "%name% (")) {
             parent = tok;
-            if (const Library::Function* f = settings.library.getFunction(tok->previous())) {
+            if (const Library::Function* f = library.getFunction(tok->previous())) {
                 return f->containerYield;
             }
         }
@@ -95,7 +95,7 @@ namespace ValueFlow
         return v;
     }
 
-    static const Token *getCastTypeStartToken(const Token *parent, const Settings& settings)
+    static const Token *getCastTypeStartToken(const Token *parent, const Library& library)
     {
         // TODO: This might be a generic utility function?
         if (!Token::Match(parent, "{|("))
@@ -114,7 +114,7 @@ namespace ValueFlow
                 ftok = ftok->next();
             while (Token::Match(ftok, "%name% ::"))
                 ftok = ftok->tokAt(2);
-            if (settings.library.isNotLibraryFunction(ftok))
+            if (library.isNotLibraryFunction(ftok))
                 return parent->next();
         }
         if (parent->astOperand2() && Token::Match(parent->astOperand1(), "const_cast|dynamic_cast|reinterpret_cast|static_cast <"))
@@ -301,7 +301,7 @@ namespace ValueFlow
                 }
             }
             Token* next = nullptr;
-            const Library::Container::Yield yields = getContainerYield(parent, settings, next);
+            const Library::Container::Yield yields = getContainerYield(parent, settings.library, next);
             if (yields == Library::Container::Yield::SIZE) {
                 value.valueType = Value::ValueType::INT;
                 setTokenValue(next, std::move(value), settings);
@@ -371,7 +371,7 @@ namespace ValueFlow
         }
 
         // cast..
-        if (const Token *castType = getCastTypeStartToken(parent, settings)) {
+        if (const Token *castType = getCastTypeStartToken(parent, settings.library)) {
             if (contains({Value::ValueType::INT, Value::ValueType::SYMBOLIC}, value.valueType) &&
                 Token::simpleMatch(parent->astOperand1(), "dynamic_cast"))
                 return;

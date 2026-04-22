@@ -365,7 +365,7 @@ const Token *ValueFlow::parseCompareInt(const Token *tok, ValueFlow::Value &true
     });
 }
 
-static bool isEscapeScope(const Token* tok, const Settings& settings, bool unknown = false)
+static bool isEscapeScope(const Token* tok, const Library& library, bool unknown = false)
 {
     if (!Token::simpleMatch(tok, "{"))
         return false;
@@ -374,7 +374,7 @@ static bool isEscapeScope(const Token* tok, const Settings& settings, bool unkno
     if (termTok && termTok->scope() == tok->scope())
         return true;
     std::string unknownFunction;
-    if (settings.library.isScopeNoReturn(tok->link(), &unknownFunction))
+    if (library.isScopeNoReturn(tok->link(), &unknownFunction))
         return unknownFunction.empty() || unknown;
     return false;
 }
@@ -3044,7 +3044,7 @@ static void valueFlowLifetime(TokenList &tokenlist, ErrorLogger &errorLogger, co
             // Skip if its a free function that doesnt yield an iterator to the container
             if (Token::Match(parent->previous(), "%name% (") &&
                 !contains({Library::Container::Yield::START_ITERATOR, Library::Container::Yield::END_ITERATOR},
-                          astFunctionYield(parent->previous(), settings)))
+                          astFunctionYield(parent->previous(), settings.library)))
                 continue;
 
             ValueFlow::Value master;
@@ -3056,7 +3056,7 @@ static void valueFlowLifetime(TokenList &tokenlist, ErrorLogger &errorLogger, co
                 master.lifetimeKind = ValueFlow::Value::LifetimeKind::Iterator;
             } else if (astIsIterator(parent) && Token::Match(parent->previous(), "%name% (") &&
                        contains({Library::Container::Yield::START_ITERATOR, Library::Container::Yield::END_ITERATOR},
-                                astFunctionYield(parent->previous(), settings))) {
+                                astFunctionYield(parent->previous(), settings.library))) {
                 master.errorPath.emplace_back(parent, "Iterator to container is created here.");
                 master.lifetimeKind = ValueFlow::Value::LifetimeKind::Iterator;
             } else if ((astIsPointer(parent->tokAt(2)) &&
@@ -3479,7 +3479,7 @@ static void valueFlowConditionExpressions(const TokenList& tokenlist,
             }
 
             // Check if the block terminates early
-            if (isEscapeScope(blockTok, settings)) {
+            if (isEscapeScope(blockTok, settings.library)) {
                 const Scope* scope2 = scope;
                 // If escaping a loop then only use the loop scope
                 if (isBreakOrContinueScope(blockTok->link())) {
@@ -6339,9 +6339,9 @@ static void valueFlowSmartPointer(TokenList &tokenlist, ErrorLogger & errorLogge
     }
 }
 
-static Library::Container::Yield findIteratorYield(Token* tok, const Token*& ftok, const Settings& settings)
+static Library::Container::Yield findIteratorYield(Token* tok, const Token*& ftok, const Library& library)
 {
-    auto yield = astContainerYield(tok, settings.library, &ftok);
+    auto yield = astContainerYield(tok, library, &ftok);
     if (ftok)
         return yield;
 
@@ -6349,7 +6349,7 @@ static Library::Container::Yield findIteratorYield(Token* tok, const Token*& fto
         return yield;
 
     // begin/end free functions
-    return astFunctionYield(tok->astParent()->previous(), settings, &ftok);
+    return astFunctionYield(tok->astParent()->previous(), library, &ftok);
 }
 
 static void valueFlowIterators(TokenList& tokenlist, const Settings& settings)
@@ -6362,7 +6362,7 @@ static void valueFlowIterators(TokenList& tokenlist, const Settings& settings)
         if (!astIsContainer(tok))
             continue;
         const Token* ftok = nullptr;
-        const Library::Container::Yield yield = findIteratorYield(tok, ftok, settings);
+        const Library::Container::Yield yield = findIteratorYield(tok, ftok, settings.library);
         if (!ftok)
             continue;
         if (yield == Library::Container::Yield::START_ITERATOR) {

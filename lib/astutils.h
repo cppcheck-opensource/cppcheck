@@ -166,7 +166,7 @@ bool astIsContainerString(const Token* tok);
 Library::Container::Action astContainerAction(const Token* tok, const Library& library, const Token** ftok = nullptr);
 Library::Container::Yield astContainerYield(const Token* tok, const Library& library, const Token** ftok = nullptr);
 
-Library::Container::Yield astFunctionYield(const Token* tok, const Settings& settings, const Token** ftok = nullptr);
+Library::Container::Yield astFunctionYield(const Token* tok, const Library& library, const Token** ftok = nullptr);
 
 /** Is given token a range-declaration in a range-based for loop */
 bool astIsRangeBasedForDecl(const Token* tok);

@@ -320,12 +320,12 @@ Library::Container::Yield astContainerYield(const Token* tok, const Library& lib
     return ftokCont.second->getYield(ftokCont.first->str());
 }
 
-Library::Container::Yield astFunctionYield(const Token* tok, const Settings& settings, const Token** ftok)
+Library::Container::Yield astFunctionYield(const Token* tok, const Library& library, const Token** ftok)
 {
     if (!tok)
         return Library::Container::Yield::NO_YIELD;
 
-    const auto* function = settings.library.getFunction(tok);
+    const auto* function = library.getFunction(tok);
     if (!function)
         return Library::Container::Yield::NO_YIELD;
 
