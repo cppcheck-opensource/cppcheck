@@ -10345,7 +10345,11 @@ void Tokenizer::simplifyNamespaceStd()
             continue;
         if (Token::Match(tok->previous(), ".|::|namespace"))
             continue;
-        if (Token::simpleMatch(tok->next(), "(")) {
+        if (mSettings.library.hasAnyTypeCheck("std::" + tok->str()) ||
+            mSettings.library.podtype("std::" + tok->str()) ||
+            isStdContainerOrIterator(tok, mSettings))
+            insert = true;
+        else if (Token::simpleMatch(tok->next(), "(")) {
             if (TokenList::isFunctionHead(tok->next(), "{"))
                 userFunctions.insert(tok->str());
             else if (TokenList::isFunctionHead(tok->next(), ";")) {
@@ -10359,10 +10363,6 @@ void Tokenizer::simplifyNamespaceStd()
                 insert = true;
         } else if (Token::simpleMatch(tok->next(), "<") &&
                    (isStdContainerOrIterator(tok, mSettings) || isStdSmartPointer(tok, mSettings)))
-            insert = true;
-        else if (mSettings.library.hasAnyTypeCheck("std::" + tok->str()) ||
-                 mSettings.library.podtype("std::" + tok->str()) ||
-                 isStdContainerOrIterator(tok, mSettings))
             insert = true;
         else if (Token::simpleMatch(tok, "aligned_storage"))
             insert = true;
