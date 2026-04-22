@@ -5288,12 +5288,7 @@ private:
                        "if ( ! p ) {\n"
                        "throw std :: runtime_error ( \"abc\" ) ; }\n"
                        "}";
-            TODO_ASSERT_EQUALS(expected,
-                               "void f ( const std :: unique_ptr < int > & p ) {\n"
-                               "if ( ! p ) {\n"
-                               "throw runtime_error ( \"abc\" ) ; }\n"
-                               "}",
-                               tokenizeAndStringify(code));
+            ASSERT_EQUALS(expected, tokenizeAndStringify(code));
         }
 
         {
@@ -5313,6 +5308,12 @@ private:
                        "v . push_back ( 1 ) ;\n"
                        "return std :: move ( v ) ;\n"
                        "}";
+            ASSERT_EQUALS(expected, tokenizeAndStringify(code));
+        }
+        {
+            const char code[] = "using namespace std;\n"
+                                "string_view f() { return string(); }\n";
+            expected = "std :: string_view f ( ) { return std :: string ( ) ; }";
             ASSERT_EQUALS(expected, tokenizeAndStringify(code));
         }
     }
