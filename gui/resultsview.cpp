@@ -123,6 +123,7 @@ void ResultsView::clear(bool results)
     }
 
     mUI->mDetails->setText(QString());
+    mUI->mCode->clear();
 
     mStatistics->clear();
     delete mCheckSettings;
