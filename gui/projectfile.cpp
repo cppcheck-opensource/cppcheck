@@ -1080,7 +1080,7 @@ void ProjectFile::writeStringList(QXmlStreamWriter &xmlWriter, const QStringList
 
 void ProjectFile::setSettingsUserIncludes(Settings &settings) const
 {
-    if (!mUserInclude.trimmed().isEmpty())
+    if (!mUserInclude.isEmpty())
         settings.userIncludes.push_back(mUserInclude.toStdString());
 }
 

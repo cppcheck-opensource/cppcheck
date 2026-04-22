@@ -146,7 +146,7 @@ public:
     }
 
     void setUserInclude(const QString& userInclude) {
-        mUserInclude = userInclude;
+        mUserInclude = userInclude.trimmed();
     }
 
     /**
