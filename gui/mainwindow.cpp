@@ -1122,7 +1122,7 @@ bool MainWindow::getCppcheckSettings(Settings& settings, Suppressions& supprs)
         for (const QString& undefine : undefines)
             settings.userUndefs.insert(undefine.toStdString());
 
-        settings.userIncludes.push_back(mProjectFile->getUserInclude().toStdString());
+        mProjectFile->setSettingsUserIncludes(settings);
 
         const QStringList libraries = mProjectFile->getLibraries();
         for (const QString& library : libraries) {

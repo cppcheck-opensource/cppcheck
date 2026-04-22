@@ -452,7 +452,12 @@ public:
 
     /** Get paths where we should glob for certain files (dir="cfg"/"platforms"/etc */
     QStringList getSearchPaths(const QString& dir) const;
+
     static QStringList getSearchPaths(const QString& projectPath, const QString& appPath, const QString& datadir, const QString& dir);
+
+    /** Set user includes in settings if non-empty */
+    void setSettingsUserIncludes(Settings &settings) const;
+
 
 protected:
 
