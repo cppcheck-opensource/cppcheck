@@ -717,7 +717,7 @@ private:
             ProgramMemory pm = pms.get(tok, ctx, getProgramState());
             MathLib::bigint out = 0;
             if (pm.getContainerEmptyValue(tok->exprId(), out))
-                return {static_cast<int>(out)};
+                return {out};
             return {};
         }
         return {};
