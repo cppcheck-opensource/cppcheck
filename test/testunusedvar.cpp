@@ -249,6 +249,7 @@ private:
         TEST_CASE(localvarDelete);
         TEST_CASE(localvarLambda); // #8941, #8948
         TEST_CASE(localvarStructuredBinding); // #10368
+        TEST_CASE(localvarPtrToPtr);
 
         TEST_CASE(localvarCppInitialization);
         TEST_CASE(localvarCpp11Initialization);
@@ -6954,6 +6955,16 @@ private:
                               "    std::map<int, double> m;\n"
                               "    m[2] = 2.0;\n"
                               "    for (auto& [k, v] : m) {}\n"
+                              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void localvarPtrToPtr() {
+        functionVariableUsage("int main() {\n"
+                              "  int *p, **pp = &p;\n"
+                              "  int i = 123;\n"
+                              "  *pp = &i;\n"
+                              "  return *p;\n"
                               "}\n");
         ASSERT_EQUALS("", errout_str());
     }
