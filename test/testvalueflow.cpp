@@ -320,7 +320,7 @@ private:
     }
 
 #define testValueOfX(...) testValueOfX_(__FILE__, __LINE__, __VA_ARGS__)
-    bool testValueOfX_(const char* file, int line, const char code[], unsigned int linenr, int value, const Settings *s = nullptr) {
+    bool testValueOfX_(const char* file, int line, const char code[], unsigned int linenr, MathLib::bigint value, const Settings *s = nullptr) {
         const Settings *settings1 = s ? s : &settings;
 
         // Tokenize..
@@ -3973,6 +3973,14 @@ private:
                "    return x;\n"
                "}";
         ASSERT_EQUALS(true, testValueOfX(code, 4U, 246));
+
+        code = "int64_t f() {\n"
+               "    const int64_t val = 1LL << 33;\n"
+               "    int64_t x = val;\n"
+               "    x += val;\n"
+               "    return x;\n"
+               "}";
+        ASSERT_EQUALS(true, testValueOfX(code, 5U, 1LL << 34));
     }
 
     void valueFlowForwardCorrelatedVariables() {
