@@ -2677,7 +2677,7 @@ void CheckOther::checkDuplicateBranch()
                 const std::string branch2 = tokElse->stringifyList(scope.bodyEnd->linkAt(2));
 
                 // check for duplicates
-                if (branch1 == branch2) {
+                if (branch1 == branch2 && branch1 != ";") {
                     duplicateBranchError(scope.classDef, scope.bodyEnd->next(), ErrorPath{});
                     continue;
                 }
