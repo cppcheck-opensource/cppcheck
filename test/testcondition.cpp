@@ -6375,6 +6375,13 @@ private:
         ASSERT_EQUALS("[test.cpp:3:14]: (style) Comparing expression of type 'const unsigned int &' against value 4294967295. Condition is always true. [compareValueOutOfTypeRangeError]\n"
                       "[test.cpp:4:13]: (style) Comparing expression of type 'const unsigned int &' against value 4294967295. Condition is always false. [compareValueOutOfTypeRangeError]\n",
                       errout_str());
+
+        check("void f() {\n"
+              "    long long ll = 1024 * 1024 * 1024;\n"
+              "    if (ll * 8 < INT_MAX) {}\n"
+              "    if (INT_MAX > ll * 8) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void knownConditionCast() {
