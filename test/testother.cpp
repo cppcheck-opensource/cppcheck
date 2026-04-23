@@ -7304,6 +7304,15 @@ private:
               "    }\n"
               "}");
         ASSERT_EQUALS("", errout_str());
+
+        check("void f(int i) {\n"
+              "  if (1 == i) {\n"
+              "    ;\n"
+              "  } else {\n"
+              "    ;\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void duplicateBranch6() {
