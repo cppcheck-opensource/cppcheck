@@ -200,6 +200,7 @@ private:
         TEST_CASE(duplicateExpression18);
         TEST_CASE(duplicateExpression19);
         TEST_CASE(duplicateExpression20);
+        TEST_CASE(duplicateExpression21);
         TEST_CASE(duplicateExpressionLoop);
         TEST_CASE(duplicateValueTernary);
         TEST_CASE(duplicateValueTernarySizeof); // #13773
@@ -8186,6 +8187,35 @@ private:
         ASSERT_EQUALS("", errout_str());
     }
 
+   void duplicateExpression21() {
+        check("struct S { int i; };\n" // #12795
+              "struct T {\n"
+              "    std::map<std::string, S*> m;\n"
+              "    S* get(const std::string& s) { return m[s]; }\n"
+              "    void modify() { for (const auto& e : m) e.second->i = 0; }\n"
+              "};\n"
+              "void f(T& t) {\n"
+              "    const S* p = t.get(\"abc\");\n"
+              "    const int o = p->i;\n"
+              "    t.modify();\n"
+              "    if (p->i == o) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S { int i; };\n"
+              "    struct T {\n"
+              "    std::vector<S*> m;\n"
+              "    void modify() { for (auto e : m) e->i = 0; }\n"
+              "};\n"
+              "void f(T& t) {\n"
+              "    const S* p = t.m[0];\n"
+              "    const int o = p->i;\n"
+              "    t.modify();\n"
+              "    if (p->i == o) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
     void duplicateExpressionLoop() {
         check("void f() {\n"
               "    int a = 1;\n"
@@ -8897,8 +8927,7 @@ private:
               "    if (i == j) {}\n"
               "}");
         ASSERT_EQUALS(
-            "[test.cpp:4:9] -> [test.cpp:3:9]: (style, inconclusive) Same expression used in consecutive assignments of 'i' and 'j'. [duplicateAssignExpression]\n"
-            "[test.cpp:3:14] -> [test.cpp:4:14] -> [test.cpp:6:11]: (style) The comparison 'i == j' is always true because 'i' and 'j' represent the same value. [knownConditionTrueFalse]\n",
+            "[test.cpp:4:9] -> [test.cpp:3:9]: (style, inconclusive) Same expression used in consecutive assignments of 'i' and 'j'. [duplicateAssignExpression]\n",
             errout_str());
 
         check("struct A { int x; int y; };"
@@ -8910,8 +8939,7 @@ private:
               "    if (i == a.x) {}\n"
               "}");
         ASSERT_EQUALS(
-            "[test.cpp:4:9] -> [test.cpp:3:9]: (style, inconclusive) Same expression used in consecutive assignments of 'i' and 'j'. [duplicateAssignExpression]\n"
-            "[test.cpp:3:14] -> [test.cpp:6:11]: (style) The comparison 'i == a.x' is always true because 'i' and 'a.x' represent the same value. [knownConditionTrueFalse]\n",
+            "[test.cpp:4:9] -> [test.cpp:3:9]: (style, inconclusive) Same expression used in consecutive assignments of 'i' and 'j'. [duplicateAssignExpression]\n",
             errout_str());
 
         check("struct A { int x; int y; };"
@@ -8923,8 +8951,7 @@ private:
               "    if (j == a.x) {}\n"
               "}");
         ASSERT_EQUALS(
-            "[test.cpp:4:9] -> [test.cpp:3:9]: (style, inconclusive) Same expression used in consecutive assignments of 'i' and 'j'. [duplicateAssignExpression]\n"
-            "[test.cpp:4:14] -> [test.cpp:6:11]: (style) The comparison 'j == a.x' is always true because 'j' and 'a.x' represent the same value. [knownConditionTrueFalse]\n",
+            "[test.cpp:4:9] -> [test.cpp:3:9]: (style, inconclusive) Same expression used in consecutive assignments of 'i' and 'j'. [duplicateAssignExpression]\n",
             errout_str());
 
         // Issue #8612
@@ -9992,9 +10019,7 @@ private:
               "    u.g();\n"
               "    if (c == m->get()) {}\n"
               "}\n");
-        TODO_ASSERT_EQUALS("",
-                           "[test.cpp:16:33] -> [test.cpp:18:11]: (style) The comparison 'c == m->get()' is always true because 'c' and 'm->get()' represent the same value. [knownConditionTrueFalse]\n",
-                           errout_str());
+        ASSERT_EQUALS("", errout_str());
 
         check("struct S {\n" // #12925
               "    const std::string & f() const { return str; }\n"
