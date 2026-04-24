@@ -5109,6 +5109,22 @@ private:
                       "[test.cpp:7:11]: (style) Condition 'i==a.x' is always true [knownConditionTrueFalse]\n"
                       "[test.cpp:8:11]: (style) Condition 'j==a.x' is always true [knownConditionTrueFalse]\n",
                       errout_str());
+
+        check("struct S { int i; };\n" // #12795
+              "struct T {\n"
+              "    std::map<std::string, S*> m;\n"
+              "    S* get(const std::string& s) { return m[s]; }\n"
+              "    void modify() { for (const auto& e : m) e.second->i = 0; }\n"
+              "};\n"
+              "void f(T& t) {\n"
+              "    const S* p = t.get(\"abc\");\n"
+              "    const int o = p->i;\n"
+              "    t.modify();\n"
+              "    if (p->i == o) {}\n"
+              "}\n");
+        TODO_ASSERT_EQUALS("",
+                           "[test.cpp:11:14]: (style) Condition 'p->i==o' is always true [knownConditionTrueFalse]\n",
+                           errout_str());
     }
 
     void alwaysTrueInfer() {
