@@ -5094,6 +5094,21 @@ private:
               "    if (i < 0) {}\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct A { int x; int y; };"
+              "void use(int);\n"
+              "void test(A a) {\n"
+              "    int i = a.x;\n"
+              "    int j = a.x;\n"
+              "    use(j);\n"
+              "    if (i == j) {}\n"
+              "    if (i == a.x) {}\n"
+              "    if (j == a.x) {}\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:6:11]: (style) Condition 'i==j' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:7:11]: (style) Condition 'i==a.x' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:8:11]: (style) Condition 'j==a.x' is always true [knownConditionTrueFalse]\n",
+                      errout_str());
     }
 
     void alwaysTrueInfer() {
