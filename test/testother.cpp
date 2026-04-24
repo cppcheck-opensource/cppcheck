@@ -8187,7 +8187,7 @@ private:
         ASSERT_EQUALS("", errout_str());
     }
 
-   void duplicateExpression21() {
+    void duplicateExpression21() {
         check("struct S { int i; };\n" // #12795
               "struct T {\n"
               "    std::map<std::string, S*> m;\n"
