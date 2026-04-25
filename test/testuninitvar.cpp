@@ -65,6 +65,7 @@ private:
         TEST_CASE(valueFlowUninit2_value);
         TEST_CASE(valueFlowUninit_uninitvar2);
         TEST_CASE(valueFlowUninit_functioncall);
+        TEST_CASE(valueFlowUninit_lambda); // #12944
         TEST_CASE(uninitStructMember);  // struct members
         TEST_CASE(uninitvar2_while);
         TEST_CASE(uninitvar2_4494);      // #4494
@@ -4461,6 +4462,17 @@ private:
                         "    return f(i, 0);\n"
                         "}");
         ASSERT_EQUALS("[test.cpp:8:14] -> [test.cpp:4:12]: (warning) Uninitialized variable: i [uninitvar]\n", errout_str());
+    }
+
+    void valueFlowUninit_lambda() {  // #12944
+        valueFlowUninit( "void Fun()\n"
+                         "{\n"
+                         "    int var;\n"
+                         "    auto lam = [&]() { int x = var; };\n"
+                         "    var = 5;\n"
+                         "    lam();\n"
+                         "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void uninitStructMember() { // struct members
