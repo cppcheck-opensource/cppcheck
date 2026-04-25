@@ -558,6 +558,7 @@ bool ImportProject::importSlnx(const std::string& filename, const std::vector<st
 
 namespace {
     struct ProjectConfiguration {
+        ProjectConfiguration() = default;
         explicit ProjectConfiguration(const tinyxml2::XMLElement *cfg) {
             const char *a = cfg->Attribute("Include");
             if (a)
@@ -603,18 +604,30 @@ namespace {
 
         // see https://learn.microsoft.com/en-us/visualstudio/msbuild/msbuild-conditions
         // properties are .NET String objects and you can call any of its members on them
-        bool conditionIsTrue(const ProjectConfiguration &p) const {
+        bool conditionIsTrue(const ProjectConfiguration &p, const std::string &filename, std::vector<std::string> &errors) const {
             if (mCondition.empty())
                 return true;
-            std::string c = '(' + mCondition + ");";
+            try {
+                return evalCondition(mCondition, p);
+            }
+            catch (const std::runtime_error& r)
+            {
+                errors.emplace_back(filename + ": Can not evaluate condition '" + mCondition + "': " + r.what());
+                return false;
+            }
+        }
+
+        static bool evalCondition(const std::string& condition, const ProjectConfiguration &p) {
+            std::string c = '(' + condition + ")";
             replaceAll(c, "$(Configuration)", p.configuration);
             replaceAll(c, "$(Platform)", p.platformStr);
 
-            // TODO: improve evaluation
             const Settings s;
             TokenList tokenlist(s, Standards::Language::C);
-            tokenlist.createTokensFromBuffer(c.data(), c.size()); // TODO: check result
-            // TODO: put in a helper
+            if (!tokenlist.createTokensFromBuffer(c.data(), c.size())) {
+                throw std::runtime_error("Can not tokenize condition");
+            }
+
             // generate links
             {
                 std::stack<Token*> lpar;
@@ -623,25 +636,88 @@ namespace {
                         lpar.push(tok2);
                     else if (tok2->str() == ")") {
                         if (lpar.empty())
-                            break;
+                            throw std::runtime_error("unmatched ')' in condition " + condition);
                         Token::createMutualLinks(lpar.top(), tok2);
                         lpar.pop();
                     }
                 }
+                if (!lpar.empty())
+                    throw std::runtime_error("'(' without closing ')'!");
             }
+
+            // Replace "And" and "Or" with "&&" and "||"
+            for (Token *tok = tokenlist.front(); tok; tok = tok->next()) {
+                if (tok->str() == "And")
+                    tok->str("&&");
+                else if (tok->str() == "Or")
+                    tok->str("||");
+            }
+
             tokenlist.createAst();
+
+            // Locate ast top and execute the condition
             for (const Token *tok = tokenlist.front(); tok; tok = tok->next()) {
-                if (tok->str() == "(" && tok->astOperand1() && tok->astOperand2()) {
-                    // TODO: this is wrong - it is Contains() not Equals()
-                    if (tok->astOperand1()->expressionString() == "Configuration.Contains")
-                        return ('\'' + p.configuration + '\'') == tok->astOperand2()->str();
+                if (tok->astParent()) {
+                    return execute(tok->astTop(), p) == "True";
                 }
-                if (tok->str() == "==" && tok->astOperand1() && tok->astOperand2() && tok->astOperand1()->str() == tok->astOperand2()->str())
-                    return true;
             }
-            return false;
+            throw std::runtime_error("Invalid condition: '" + condition + "'");
         }
+
+
     private:
+
+        static std::string executeOp1(const Token* tok, const ProjectConfiguration &p) {
+            return execute(tok->astOperand1(), p);
+        }
+
+        static std::string executeOp2(const Token* tok, const ProjectConfiguration &p) {
+            return execute(tok->astOperand2(), p);
+        }
+
+        static std::string execute(const Token* tok, const ProjectConfiguration &p) {
+            if (!tok)
+                throw std::runtime_error("Missing operator");
+            auto boolResult = [](bool b) -> std::string {
+                return b ? "True" : "False";
+            };
+            if (tok->isUnaryOp("!"))
+                return boolResult(executeOp1(tok, p) == "False");
+            if (tok->str() == "==")
+                return boolResult(executeOp1(tok, p) == executeOp2(tok, p));
+            if (tok->str() == "!=")
+                return boolResult(executeOp1(tok, p) != executeOp2(tok, p));
+            if (tok->str() == "&&")
+                return boolResult(executeOp1(tok, p) == "True" && executeOp2(tok, p) == "True");
+            if (tok->str() == "||")
+                return boolResult(executeOp1(tok, p) == "True" || executeOp2(tok, p) == "True");
+            if (tok->str() == "(" && Token::Match(tok->previous(), "$ ( %name% . %name% (")) {
+                const std::string& propertyName = tok->strAt(1);
+                std::string propertyValue;
+                if (propertyName == "Configuration")
+                    propertyValue = p.configuration;
+                else if (propertyName == "Platform")
+                    propertyValue = p.platformStr;
+                else
+                    throw std::runtime_error("Unhandled property '" + propertyName + "'");
+                const std::string& method = tok->strAt(3);
+                std::string arg = executeOp2(tok->tokAt(4), p);
+                if (arg.size() >= 2 && arg[0] == '\'')
+                    arg = arg.substr(1, arg.size() - 2);
+                if (method == "Contains")
+                    return boolResult(propertyValue.find(arg) != std::string::npos);
+                if (method == "EndsWith")
+                    return boolResult(endsWith(propertyValue,arg.c_str(),arg.size()));
+                if (method == "StartsWith")
+                    return boolResult(startsWith(propertyValue,arg));
+                throw std::runtime_error("Unhandled method '" + method + "'");
+            }
+            if (tok->str().size() >= 2 && tok->str()[0] == '\'') // String Literal
+                return tok->str();
+
+            throw std::runtime_error("Unknown/unhandled operator/operand '" + tok->str() + "'");
+        }
+
         std::string mCondition;
     };
 
@@ -947,7 +1023,7 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
             }
             std::string additionalIncludePaths;
             for (const ItemDefinitionGroup &i : itemDefinitionGroupList) {
-                if (!i.conditionIsTrue(p))
+                if (!i.conditionIsTrue(p, cfilename, errors))
                     continue;
                 fs.standard = Standards::getCPP(i.cppstd);
                 fs.defines += ';' + i.preprocessorDefinitions;
@@ -965,7 +1041,7 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
             }
             bool useUnicode = false;
             for (const ConfigurationPropertyGroup &c : configurationPropertyGroups) {
-                if (!c.conditionIsTrue(p))
+                if (!c.conditionIsTrue(p, cfilename, errors))
                     continue;
                 // in msbuild the last definition wins
                 useUnicode = c.useUnicode;
@@ -1408,6 +1484,10 @@ bool ImportProject::importCppcheckGuiProject(std::istream &istr, Settings &setti
         else if (strcmp(name, CppcheckXml::UndefinesElementName) == 0) {
             for (const std::string &u : readXmlStringList(node, "", CppcheckXml::UndefineName, nullptr))
                 temp.userUndefs.insert(u);
+        } else if (strcmp(name, CppcheckXml::UserIncludeElementName) == 0) {
+            const char* i = node->GetText();
+            if (i)
+                temp.userIncludes.emplace_back(i);
         } else if (strcmp(name, CppcheckXml::ImportProjectElementName) == 0) {
             const std::string t_str = empty_if_null(node->GetText());
             if (!t_str.empty())
@@ -1529,6 +1609,7 @@ bool ImportProject::importCppcheckGuiProject(std::istream &istr, Settings &setti
     settings.includePaths = temp.includePaths; // TODO: append instead of overwrite
     settings.userDefines = temp.userDefines; // TODO: append instead of overwrite
     settings.userUndefs = temp.userUndefs; // TODO: append instead of overwrite
+    settings.userIncludes = temp.userIncludes; // TODO: append instead of overwrite
     for (const std::string &addon : temp.addons)
         settings.addons.emplace(addon);
     settings.clang = temp.clang;
@@ -1622,3 +1703,13 @@ void ImportProject::setRelativePaths(const std::string &filename)
     }
 }
 
+// only used by tests (testimportproject.cpp::testVcxprojConditions):
+// cppcheck-suppress unusedFunction
+bool cppcheck::testing::evaluateVcxprojCondition(const std::string& condition, const std::string& configuration,
+                                                 const std::string& platform)
+{
+    ProjectConfiguration p;
+    p.configuration = configuration;
+    p.platformStr = platform;
+    return ConditionalGroup::evalCondition(condition, p);
+}

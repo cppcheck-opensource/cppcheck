@@ -292,6 +292,7 @@ private:
 
         TEST_CASE(attributeAlignasBefore);
         TEST_CASE(attributeAlignasAfter);
+        TEST_CASE(simplifyAlignedStorage);
 
         TEST_CASE(splitTemplateRightAngleBrackets);
 
@@ -4378,6 +4379,21 @@ private:
         ASSERT(var->hasAttributeAlignas());
         ASSERT(var->getAttributeAlignas().size() == 1);
         ASSERT_EQUALS(var->getAttributeAlignas()[0], "long");
+    }
+
+    void simplifyAlignedStorage() {
+        const char code[] = "std::aligned_storage<sizeof(long), alignof(long)>::type buffer;";
+        const char expected[] = "std :: aligned_storage < sizeof ( long ) , alignof ( long ) > :: type buffer ;";
+
+        SimpleTokenizer tokenizer(settings2, *this);
+        ASSERT(tokenizer.tokenize(code));
+
+        ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
+
+        const Token *buffer = Token::findsimplematch(tokenizer.tokens(), "buffer");
+        ASSERT(buffer);
+        ASSERT(buffer->hasAttributeAlignas());
+        ASSERT_EQUALS("alignof ( long )", buffer->getAttributeAlignas()[0]);
     }
 
     void splitTemplateRightAngleBrackets() {

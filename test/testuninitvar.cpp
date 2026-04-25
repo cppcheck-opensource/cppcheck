@@ -2173,6 +2173,14 @@ private:
                        "    return p;\n"
                        "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        checkUninitVar("struct S { char c[10]; };\n" // #11290
+                       "S* f() {\n"
+                       "    S* s = (S*)malloc(sizeof(S));\n"
+                       "    sprintf(s->c, \"abc\");\n"
+                       "    return s;\n"
+                       "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     // class / struct..
@@ -7782,6 +7790,13 @@ private:
                         "    int x;\n"
                         "    S s{ &x };\n"
                         "    *s.p = 0;\n"
+                        "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        valueFlowUninit("void f() {\n"
+                        "    int x;\n"
+                        "    std::vector<int*> v{ &x };\n"
+                        "    *v[0] = 0;\n"
                         "}\n");
         ASSERT_EQUALS("", errout_str());
     }

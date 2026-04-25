@@ -249,8 +249,8 @@ private:
               dinit(CheckOptions,
                     $.showtime = ShowTime::TOP5_FILE));
         const std::string output_s = GET_REDIRECT_OUTPUT;
-        // for each file: top5 results + newline + overall
-        ASSERT_EQUALS((5 + 1 + 1) * 2LL, cppcheck::count_all_of(output_s, '\n'));
+        // for each file: top5 results + check time
+        ASSERT_EQUALS((5 + 1) * 2LL, cppcheck::count_all_of(output_s, '\n'));
     }
 
     void showtime_file() {

@@ -57,6 +57,7 @@ private:
         TEST_CASE(getAbsolutePath);
         TEST_CASE(exists);
         TEST_CASE(fromNativeSeparators);
+        TEST_CASE(isRelative);
     }
 
     void removeQuotationMarks() const {
@@ -202,6 +203,8 @@ private:
         //ASSERT_EQUALS("", Path::join("S:/a", "S:/b"));
         //ASSERT_EQUALS("", Path::join("S:/a", "S:\\b"));
         //ASSERT_EQUALS("", Path::join("S:/a", "/b"));
+
+        ASSERT_EQUALS("a/b/c", Path::join("a", "b", "c"));
     }
 
     void isDirectory() const {
@@ -617,6 +620,33 @@ private:
         ASSERT_EQUALS("/lib/file.c", Path::fromNativeSeparators("\\lib\\file.c"));
         ASSERT_EQUALS("//lib/file.c", Path::fromNativeSeparators("\\\\lib\\file.c"));
         ASSERT_EQUALS("./lib/file.c", Path::fromNativeSeparators(".\\lib\\file.c"));
+    }
+
+    void isRelative() const {
+        ASSERT_EQUALS(true, Path::isRelative("dir/file"));
+        ASSERT_EQUALS(true, Path::isRelative("dir\\file"));
+
+        // TODO: is this expected?
+        ASSERT_EQUALS(true, Path::isRelative("file/"));
+        ASSERT_EQUALS(true, Path::isRelative("file\\"));
+
+        ASSERT_EQUALS(false, Path::isRelative("file"));
+
+#ifdef _WIN32
+        // this is a relative path on Windows
+        ASSERT_EQUALS(true, Path::isRelative("/dir/file"));
+#else
+        ASSERT_EQUALS(false, Path::isRelative("/dir/file"));
+#endif
+
+#ifdef _WIN32
+        // TODO: this is not detected as absolute path in _WIN32 builds
+        ASSERT_EQUALS(false, Path::isRelative("c:\\dir\\file"));
+        ASSERT_EQUALS(false, Path::isRelative("c:/dir/file"));
+#else
+        ASSERT_EQUALS(true, Path::isRelative("c:\\dir\\file"));
+        ASSERT_EQUALS(true, Path::isRelative("c:/dir/file"));
+#endif
     }
 };
 

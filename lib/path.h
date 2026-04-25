@@ -119,6 +119,13 @@ public:
     static bool isAbsolute(const std::string& path);
 
     /**
+     * @brief Check if given path is relative
+     * @param path Path to check
+     * @return true if given path is relative
+     */
+    static bool isRelative(const std::string& path);
+
+    /**
      * @brief Create a relative path from an absolute one, if absolute path is inside the basePaths.
      * @param absolutePath Path to be made relative.
      * @param basePaths Paths to which it may be made relative.
@@ -206,6 +213,13 @@ public:
      * @return the joined path with normalized slashes
      */
     static std::string join(std::string path1, std::string path2);
+
+    /**
+     * @brief join 3 paths with '/' separators
+     * if path2 is an absolute path path1 will be dismissed.
+     * @return the joined path with normalized slashes
+     */
+    static std::string join(std::string path1, std::string path2, std::string path3);
 };
 
 /// @}

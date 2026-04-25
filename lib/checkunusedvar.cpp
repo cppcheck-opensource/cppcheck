@@ -565,7 +565,7 @@ static const Token* doAssignment(Variables &variables, const Token *tok, bool de
                             variables.readAll(varid2, tok);
                         }
                     }
-                } else if (var1->mType == Variables::reference) {
+                } else if (var1->mType == Variables::reference || var1->mType == Variables::referenceArray) {
                     variables.alias(varid1, varid2, true);
                 } else if (var1->mType == Variables::standard && addressOf) {
                     variables.alias(varid1, varid2, true);
@@ -738,7 +738,11 @@ void CheckUnusedVar::checkFunctionVariableUsage_iterateScopes(const Scope* const
             if (type == Variables::none || isPartOfClassStructUnion(i->typeStartToken()))
                 continue;
             const Token* defValTok = i->nameToken()->next();
-            if (Token::Match(i->nameToken()->previous(), "* %var% ) (")) // function pointer. Jump behind parameter list.
+            if (Token::Match(i->nameToken()->previous(), "& %var% )"))
+                defValTok = defValTok->next();
+            while (defValTok && defValTok->str() == "[")
+                defValTok = defValTok->link()->next();
+            if (Token::simpleMatch(defValTok, ") ("))
                 defValTok = defValTok->linkAt(1)->next();
             for (; defValTok; defValTok = defValTok->next()) {
                 if (defValTok->str() == "[")
@@ -1356,6 +1360,20 @@ void CheckUnusedVar::checkFunctionVariableUsage()
             // Is variable in lhs a union member?
             if (tok->previous() && tok->previous()->variable() && tok->previous()->variable()->nameToken()->scope()->type == ScopeType::eUnion)
                 continue;
+
+            if (const ValueType *vt = expr->valueType()) {
+                if (vt->type == ValueType::RECORD &&
+                    !vt->pointer &&
+                    vt->typeScope &&
+                    vt->typeScope->definedType &&
+                    !symbolDatabase->isRecordTypeWithoutSideEffects(vt->typeScope->definedType))
+                    continue;
+
+                if (vt->type == ValueType::SMART_POINTER &&
+                    vt->smartPointerType &&
+                    !symbolDatabase->isRecordTypeWithoutSideEffects(vt->smartPointerType))
+                    continue;
+            }
 
             FwdAnalysis fwdAnalysis(*mSettings);
             const Token* scopeEnd = ValueFlow::getEndOfExprScope(expr, scope, /*smallest*/ false);

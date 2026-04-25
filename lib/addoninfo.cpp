@@ -39,24 +39,36 @@ static std::string getFullPath(const std::string &fileName, const std::string &e
         return "";
 
     const std::string exepath = Path::getPathFromFilename(exename);
-    if (debug)
-        std::cout << "looking for addon '" << (exepath + fileName) << "'" << std::endl;
-    if (Path::isFile(exepath + fileName))
-        return exepath + fileName;
-    if (debug)
-        std::cout << "looking for addon '" << (exepath + "addons/" + fileName) << "'" << std::endl;
-    if (Path::isFile(exepath + "addons/" + fileName))
-        return exepath + "addons/" + fileName;
+    {
+        std::string p = Path::join(exepath, fileName);
+        if (debug)
+            std::cout << "looking for addon '" << p << "'" << std::endl;
+        if (Path::isFile(p))
+            return p;
+    }
+    {
+        std::string p = Path::join(exepath, "addons", fileName);
+        if (debug)
+            std::cout << "looking for addon '" << p << "'" << std::endl;
+        if (Path::isFile(p))
+            return p;
+    }
 
 #ifdef FILESDIR
-    if (debug)
-        std::cout << "looking for addon '" << (FILESDIR + ("/" + fileName)) << "'" << std::endl;
-    if (Path::isFile(FILESDIR + ("/" + fileName)))
-        return FILESDIR + ("/" + fileName);
-    if (debug)
-        std::cout << "looking for addon '" << (FILESDIR + ("/addons/" + fileName)) << "'" << std::endl;
-    if (Path::isFile(FILESDIR + ("/addons/" + fileName)))
-        return FILESDIR + ("/addons/" + fileName);
+    {
+        std::string p = Path::join(FILESDIR, fileName);
+        if (debug)
+            std::cout << "looking for addon '" << p << "'" << std::endl;
+        if (Path::isFile(p))
+            return p;
+    }
+    {
+        std::string p = Path::join(FILESDIR, "addons", fileName);
+        if (debug)
+            std::cout << "looking for addon '" << p << "'" << std::endl;
+        if (Path::isFile(p))
+            return p;
+    }
 #endif
     return "";
 }

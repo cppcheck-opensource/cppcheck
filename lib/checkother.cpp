@@ -4061,7 +4061,9 @@ void CheckOther::checkFuncArgNamesDifferent()
         // check for different argument names
         if (style && inconclusive) {
             for (int j = 0; j < function->argCount(); ++j) {
-                if (declarations[j] && definitions[j] && declarations[j]->str() != definitions[j]->str())
+                const bool warn = (declarations[j] != nullptr) != (definitions[j] != nullptr) ||
+                                  (declarations[j] && definitions[j] && declarations[j]->str() != definitions[j]->str());
+                if (warn)
                     funcArgNamesDifferent(function->name(), j, declarations[j], definitions[j]);
             }
         }
@@ -4072,11 +4074,12 @@ void CheckOther::funcArgNamesDifferent(const std::string & functionName, nonneg 
                                        const Token* declaration, const Token* definition)
 {
     std::list<const Token *> tokens = { declaration,definition };
-    reportError(tokens, Severity::style, "funcArgNamesDifferent",
+    const std::string id = (declaration != nullptr) == (definition != nullptr) ? "funcArgNamesDifferent" : "funcArgNamesDifferentUnnamed";
+    reportError(tokens, Severity::style, id,
                 "$symbol:" + functionName + "\n"
                 "Function '$symbol' argument " + std::to_string(index + 1) + " names different: declaration '" +
-                (declaration ? declaration->str() : std::string("A")) + "' definition '" +
-                (definition ? definition->str() : std::string("B")) + "'.", CWE628, Certainty::inconclusive);
+                (declaration ? declaration->str() : "<unnamed>") + "' definition '" +
+                (definition ? definition->str() : "<unnamed>") + "'.", CWE628, Certainty::inconclusive);
 }
 
 void CheckOther::funcArgOrderDifferent(const std::string & functionName,

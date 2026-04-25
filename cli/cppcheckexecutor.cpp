@@ -267,7 +267,8 @@ int CppCheckExecutor::check(int argc, const char* const argv[])
         return EXIT_SUCCESS;
     }
 
-    Timer realTimeClock("", settings.showtime, nullptr, Timer::Type::OVERALL);
+    TimerResults overallTimerResults;
+    Timer realTimeClock("Overall time", settings.showtime, &overallTimerResults, Timer::Type::OVERALL);
 
     settings.loadSummaries();
 
@@ -275,6 +276,9 @@ int CppCheckExecutor::check(int argc, const char* const argv[])
     mFileSettings = parser.getFileSettings();
 
     const int ret = check_wrapper(settings, supprs);
+
+    realTimeClock.stop();
+    overallTimerResults.showResults(settings.showtime, false, true);
 
     return ret;
 }

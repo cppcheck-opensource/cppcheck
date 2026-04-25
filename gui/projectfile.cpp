@@ -63,6 +63,7 @@ void ProjectFile::clear()
     mIncludeDirs.clear();
     mDefines.clear();
     mUndefines.clear();
+    mUserInclude.clear();
     mPaths.clear();
     mExcludedPaths.clear();
     mLibraries.clear();
@@ -165,6 +166,9 @@ bool ProjectFile::read(const QString &filename)
             // Find preprocessor define from inside project element
             if (xmlReader.name() == QString(CppcheckXml::UndefinesElementName))
                 readStringList(mUndefines, xmlReader, CppcheckXml::UndefineName);
+
+            if (xmlReader.name() == QString(CppcheckXml::UserIncludeElementName))
+                mUserInclude = readString(xmlReader);
 
             // Find exclude list from inside project element
             if (xmlReader.name() == QString(CppcheckXml::ExcludeElementName))
@@ -347,15 +351,13 @@ bool ProjectFile::readBool(QXmlStreamReader &reader)
 
 int ProjectFile::readInt(QXmlStreamReader &reader, int defaultValue)
 {
-    int ret = defaultValue;
     do {
         const QXmlStreamReader::TokenType type = reader.readNext();
         switch (type) {
         case QXmlStreamReader::Characters:
-            ret = reader.text().toString().toInt();
-            FALLTHROUGH;
+            return reader.text().toString().toInt();
         case QXmlStreamReader::EndElement:
-            return ret;
+            return defaultValue;
         // Not handled
         case QXmlStreamReader::StartElement:
         case QXmlStreamReader::NoToken:
@@ -373,15 +375,13 @@ int ProjectFile::readInt(QXmlStreamReader &reader, int defaultValue)
 
 QString ProjectFile::readString(QXmlStreamReader &reader)
 {
-    QString ret;
     do {
         const QXmlStreamReader::TokenType type = reader.readNext();
         switch (type) {
         case QXmlStreamReader::Characters:
-            ret = reader.text().toString();
-            FALLTHROUGH;
+            return reader.text().toString();
         case QXmlStreamReader::EndElement:
-            return ret;
+            return {};
         // Not handled
         case QXmlStreamReader::StartElement:
         case QXmlStreamReader::NoToken:
@@ -910,6 +910,12 @@ bool ProjectFile::write(const QString &filename)
         xmlWriter.writeEndElement();
     }
 
+    if (!mUserInclude.isEmpty()) {
+        xmlWriter.writeStartElement(CppcheckXml::UserIncludeElementName);
+        xmlWriter.writeCharacters(mUserInclude);
+        xmlWriter.writeEndElement();
+    }
+
     if (!mVsConfigurations.isEmpty()) {
         writeStringList(xmlWriter,
                         mVsConfigurations,
@@ -1070,6 +1076,12 @@ void ProjectFile::writeStringList(QXmlStreamWriter &xmlWriter, const QStringList
         xmlWriter.writeEndElement();
     }
     xmlWriter.writeEndElement();
+}
+
+void ProjectFile::setSettingsUserIncludes(Settings &settings) const
+{
+    if (!mUserInclude.isEmpty())
+        settings.userIncludes.push_back(mUserInclude.toStdString());
 }
 
 QStringList ProjectFile::fromNativeSeparators(const QStringList &paths)

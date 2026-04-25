@@ -529,6 +529,11 @@ private:
     void simplifyNamespaceAliases();
 
     /**
+     * Handle std::aligned_storage<...>
+     */
+    void simplifyAlignedStorage();
+
+    /**
      * Convert C++17 style nested namespace to older style
      */
     void simplifyNestedNamespace();
@@ -693,6 +698,7 @@ private:
     };
     struct TypedefInfo {
         std::string name;
+        std::string originalName;
         std::string filename;
         int lineNumber{};
         int column{};

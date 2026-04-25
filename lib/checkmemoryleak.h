@@ -266,7 +266,7 @@ private:
 
     void checkStructVariable(const Variable*  variable) const;
 
-    void getErrorMessages(ErrorLogger * errorLogger, const Settings * settings) const override;
+    void getErrorMessages(ErrorLogger* /*errorLogger*/, const Settings* /*settings*/) const override;
 
     static std::string myName() {
         return "Memory leaks (struct members)";

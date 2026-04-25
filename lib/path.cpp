@@ -189,6 +189,12 @@ bool Path::isAbsolute(const std::string& path)
 #endif
 }
 
+bool Path::isRelative(const std::string& path)
+{
+    const std::string p = fromNativeSeparators(path);
+    return (p.find('/') != std::string::npos) && !isAbsolute(path);
+}
+
 std::string Path::getRelativePath(const std::string& absolutePath, const std::vector<std::string>& basePaths)
 {
     for (const std::string &bp : basePaths) {
@@ -457,4 +463,9 @@ std::string Path::join(std::string path1, std::string path2)
     if (path2.front() == '/')
         return path2;
     return ((path1.back() == '/') ? path1 : (path1 + "/")) + path2;
+}
+
+std::string Path::join(std::string path1, std::string path2, std::string path3)
+{
+    return Path::join(Path::join(std::move(path1), std::move(path2)), std::move(path3));
 }

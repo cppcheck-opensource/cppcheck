@@ -1807,21 +1807,31 @@ bool isSameExpression(bool macro, const Token *tok1, const Token *tok2, const Se
     return commutativeEquals;
 }
 
-static bool isZeroBoundCond(const Token * const cond)
+static bool isZeroBoundCond(const Token * const cond, bool reverse)
 {
-    if (cond == nullptr)
+    if (cond == nullptr || !cond->isBinaryOp())
         return false;
+
+    const Token* op = reverse ? cond->astOperand1() : cond->astOperand2();
+    if (!op->hasKnownIntValue())
+        return false;
+
     // Assume unsigned
-    // TODO: Handle reverse conditions
-    const bool isZero = cond->astOperand2()->getValue(0);
-    if (cond->str() == "==" || cond->str() == ">=")
+    const bool isZero = op->getKnownIntValue() == 0;
+    std::string cmp = cond->str();
+    if (reverse) {
+        if (cmp[0] == '>')
+            cmp[0] = '<';
+        else if (cmp[0] == '<')
+            cmp[0] = '>';
+    }
+
+    if (cmp == "==" || cmp == ">=")
         return isZero;
-    if (cond->str() == "<=")
+    if (cmp == "<=")
         return true;
-    if (cond->str() == "<")
+    if (cmp == "<")
         return !isZero;
-    if (cond->str() == ">")
-        return false;
     return false;
 }
 
@@ -1885,7 +1895,7 @@ bool isOppositeCond(bool isNot, const Token * const cond1, const Token * const c
             if (isSameExpression(true, cond1->astOperand2(), cond2->astOperand2(), settings, pure, followVar, errors))
                 return isDifferentKnownValues(cond1->astOperand1(), cond2->astOperand1());
         }
-        // TODO: Handle reverse conditions
+
         if (Library::isContainerYield(cond1, Library::Container::Yield::EMPTY, "empty") &&
             Library::isContainerYield(cond2->astOperand1(), Library::Container::Yield::SIZE, "size") &&
             isSameExpression(true,
@@ -1895,7 +1905,19 @@ bool isOppositeCond(bool isNot, const Token * const cond1, const Token * const c
                              pure,
                              followVar,
                              errors)) {
-            return !isZeroBoundCond(cond2);
+            return !isZeroBoundCond(cond2, false);
+        }
+
+        if (Library::isContainerYield(cond1, Library::Container::Yield::EMPTY, "empty") &&
+            Library::isContainerYield(cond2->astOperand2(), Library::Container::Yield::SIZE, "size") &&
+            isSameExpression(true,
+                             cond1->astOperand1()->astOperand1(),
+                             cond2->astOperand2()->astOperand1()->astOperand1(),
+                             settings,
+                             pure,
+                             followVar,
+                             errors)) {
+            return !isZeroBoundCond(cond2, true);
         }
 
         if (Library::isContainerYield(cond2, Library::Container::Yield::EMPTY, "empty") &&
@@ -1907,7 +1929,19 @@ bool isOppositeCond(bool isNot, const Token * const cond1, const Token * const c
                              pure,
                              followVar,
                              errors)) {
-            return !isZeroBoundCond(cond1);
+            return !isZeroBoundCond(cond1, false);
+        }
+
+        if (Library::isContainerYield(cond2, Library::Container::Yield::EMPTY, "empty") &&
+            Library::isContainerYield(cond1->astOperand2(), Library::Container::Yield::SIZE, "size") &&
+            isSameExpression(true,
+                             cond2->astOperand1()->astOperand1(),
+                             cond1->astOperand2()->astOperand1()->astOperand1(),
+                             settings,
+                             pure,
+                             followVar,
+                             errors)) {
+            return !isZeroBoundCond(cond1, true);
         }
     }
 
@@ -2120,7 +2154,8 @@ bool isWithoutSideEffects(const Token* tok, bool checkArrayAccess, bool checkRef
         tok = tok->astOperand2();
     if (tok && tok->varId()) {
         const Variable* var = tok->variable();
-        return var && ((!var->isClass() && (checkReference || !var->isReference())) || var->isPointer() || (checkArrayAccess ? var->isStlType() && !var->isStlType(CheckClass::stl_containers_not_const) : var->isStlType()));
+        return var && ((!var->isClass() && (checkReference || !var->isReference())) || var->isPointer() ||
+                       (checkArrayAccess ? var->isArray() || (var->isStlType() && !var->isStlType(CheckClass::stl_containers_not_const)) : var->isStlType()));
     }
     return true;
 }
@@ -2466,17 +2501,6 @@ static bool isTrivialConstructor(const Token* tok)
     return false;
 }
 
-static bool isArray(const Token* tok)
-{
-    if (!tok)
-        return false;
-    if (tok->variable())
-        return tok->variable()->isArray();
-    if (Token::simpleMatch(tok, "."))
-        return isArray(tok->astOperand2());
-    return false;
-}
-
 bool isMutableExpression(const Token* tok)
 {
     if (!tok)
@@ -2494,8 +2518,6 @@ bool isMutableExpression(const Token* tok)
     if (tok->astOperand1() && Token::simpleMatch(tok, "["))
         return isMutableExpression(tok->astOperand1());
     if (const Variable* var = tok->variable()) {
-        if (var->nameToken() == tok)
-            return false;
         if (var->isConst() && !var->isPointer() && (!var->isArray() || !var->isArgument()))
             return false;
     }
@@ -2545,18 +2567,10 @@ bool isVariableChangedByFunctionCall(const Token *tok, int indirect, const Setti
         const Library::ArgumentChecks::Direction argDirection = settings.library.getArgDirection(tok, 1 + argnr, indirect);
         if (argDirection == Library::ArgumentChecks::Direction::DIR_IN)
             return false;
-        if (argDirection == Library::ArgumentChecks::Direction::DIR_OUT)
+        if (argDirection == Library::ArgumentChecks::Direction::DIR_OUT || argDirection == Library::ArgumentChecks::Direction::DIR_INOUT)
             return true;
 
         const bool requireNonNull = settings.library.isnullargbad(tok, 1 + argnr);
-        if (argDirection == Library::ArgumentChecks::Direction::DIR_INOUT) {
-            if (indirect == 0 && isArray(tok1))
-                return true;
-            const bool requireInit = settings.library.isuninitargbad(tok, 1 + argnr);
-            // Assume that if the variable must be initialized then the indirection is 1
-            if (indirect > 0 && requireInit && requireNonNull)
-                return true;
-        }
         if (Token::simpleMatch(tok->tokAt(-2), "std :: tie"))
             return true;
         // if the library says 0 is invalid
@@ -3085,8 +3099,7 @@ static const Token* findExpressionChangedImpl(const Token* expr,
         }
         bool global = false;
         if (tok->variable()) {
-            global = !tok->variable()->isLocal() && !tok->variable()->isArgument() &&
-                     !(tok->variable()->isMember() && !tok->variable()->isStatic());
+            global = !tok->variable()->isLocal() && !tok->variable()->isArgument();
         } else if (tok->isIncompleteVar() && !tok->isIncompleteConstant()) {
             global = true;
         }
@@ -3418,7 +3431,7 @@ static ExprUsage getFunctionUsage(const Token* tok, int indirect, const Settings
     // variable init/constructor call?
     if (!func && ftok->variable() && ftok == ftok->variable()->nameToken()) {
         // STL types or containers don't initialize external variables
-        if (ftok->variable()->isStlType() || (ftok->variable()->valueType() && ftok->variable()->valueType()->container))
+        if (indirect == 0 && (ftok->variable()->isStlType() || (ftok->variable()->valueType() && ftok->variable()->valueType()->container)))
             return ExprUsage::Used;
         // TODO: resolve multiple constructors
         if (ftok->variable()->type() && ftok->variable()->type()->classScope) {
@@ -3680,21 +3693,27 @@ bool isGlobalData(const Token *expr)
             globalData = true;
             return ChildrenToVisit::none;
         }
-        if (Token::Match(tok, "[*[]") && tok->astOperand1() && tok->astOperand1()->variable()) {
+        if (Token::Match(tok, "[*[]") && tok->astOperand1()) {
             // TODO check if pointer points at local data
-            const Variable *lhsvar = tok->astOperand1()->variable();
-            const ValueType *lhstype = tok->astOperand1()->valueType();
-            if (lhsvar->isPointer() || !lhstype || lhstype->type == ValueType::Type::ITERATOR) {
-                globalData = true;
-                return ChildrenToVisit::none;
+            const Token *lhs = tok->astOperand1();
+            if (lhs->isCast()) {
+                lhs = lhs->astOperand2() ? lhs->astOperand2() : lhs->astOperand1();
             }
-            if (lhsvar->isArgument() && lhsvar->isArray()) {
-                globalData = true;
-                return ChildrenToVisit::none;
-            }
-            if (lhsvar->isArgument() && lhstype->type <= ValueType::Type::VOID && !lhstype->container) {
-                globalData = true;
-                return ChildrenToVisit::none;
+            if (lhs && lhs->variable()) {
+                const Variable *lhsvar = lhs->variable();
+                const ValueType *lhstype = lhs->valueType();
+                if (lhsvar->isPointer() || !lhstype || lhstype->type == ValueType::Type::ITERATOR) {
+                    globalData = true;
+                    return ChildrenToVisit::none;
+                }
+                if (lhsvar->isArgument() && lhsvar->isArray()) {
+                    globalData = true;
+                    return ChildrenToVisit::none;
+                }
+                if (lhsvar->isArgument() && lhstype->type <= ValueType::Type::VOID && !lhstype->container) {
+                    globalData = true;
+                    return ChildrenToVisit::none;
+                }
             }
         }
         if (tok->varId() == 0 && tok->isName() && tok->strAt(-1) != ".") {

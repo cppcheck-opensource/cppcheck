@@ -1028,10 +1028,12 @@ bool Tokenizer::isFunctionPointer(const Token* tok) {
     return Token::Match(tok, "%name% ) (");
 }
 
-static bool matchCurrentType(const std::string& typeStr, const std::map<int, std::string>& types)
+static bool matchCurrentType(const Token* tok, std::map<int, std::string>& types)
 {
+    if (tok->isC())
+        return false;
     return std::any_of(types.begin(), types.end(), [&](const std::pair<int, std::string>& element) {
-        return typeStr == element.second;
+        return tok->str() == element.second;
     });
 }
 
@@ -1086,7 +1088,7 @@ void Tokenizer::simplifyTypedef()
         }
 
         auto it = typedefs.find(tok->str());
-        if (it != typedefs.end() && it->second.canReplace(tok) && !matchCurrentType(tok->str(), inType)) {
+        if (it != typedefs.end() && it->second.canReplace(tok) && !matchCurrentType(tok, inType)) {
             std::set<std::string> r;
             std::string originalname;
             while (it != typedefs.end() && r.insert(tok->str()).second) {
@@ -1113,14 +1115,18 @@ void Tokenizer::simplifyTypedef()
                 syntaxError(t.second.getTypedefToken());
             } else {
                 const Token* const typedefToken = t.second.getTypedefToken();
+                const Token* const nameToken = t.second.nameToken();
                 TypedefInfo typedefInfo;
                 typedefInfo.name = t.second.name();
-                typedefInfo.filename = list.file(typedefToken);
-                typedefInfo.lineNumber = typedefToken->linenr();
-                typedefInfo.column = typedefToken->column();
-                if (Token::Match(typedefToken->next(), "struct|enum|class|union %name% {") && typedefToken->strAt(2) == typedefInfo.name) {
-                    typedefInfo.tagLine = typedefToken->tokAt(2)->linenr();
-                    typedefInfo.tagColumn = typedefToken->tokAt(2)->column();
+                typedefInfo.filename = list.file(nameToken);
+                typedefInfo.lineNumber = nameToken->linenr();
+                typedefInfo.column = nameToken->column();
+                if (Token::Match(typedefToken->next(), "struct|enum|class|union %name% {")) {
+                    typedefInfo.originalName = typedefToken->strAt(2);
+                    if (typedefToken->strAt(2) == typedefInfo.name) {
+                        typedefInfo.tagLine = typedefToken->tokAt(2)->linenr();
+                        typedefInfo.tagColumn = typedefToken->tokAt(2)->column();
+                    }
                 }
                 typedefInfo.used = t.second.isUsed();
                 typedefInfo.isFunctionPointer = isFunctionPointer(t.second.nameToken());
@@ -3013,6 +3019,9 @@ bool Tokenizer::simplifyUsing()
         if (!usingEnd)
             continue;
 
+        for (Token *typeTok = start; typeTok != usingEnd; typeTok = typeTok->next())
+            typeTok->isSimplifiedTypedef(true);
+
         // Move struct defined in using out of using.
         // using T = struct t { }; => struct t { }; using T = struct t;
         // fixme: this doesn't handle attributes
@@ -4490,6 +4499,10 @@ static void setVarIdStructMembers(Token *&tok1,
                 } else {
                     tok->varId(it->second);
                 }
+            }
+            if (Token::Match(tok, "%name% = { . %name% =|{")) {
+                setVarIdStructMembers(tok, structMembers, varId);
+                tok = tok->linkAt(2);
             }
             tok = tok->next();
         }
@@ -6008,6 +6021,9 @@ bool Tokenizer::simplifyTokenList1(const char FileName[])
     // Link < with >
     createLinks2();
 
+    // Handle std::aligned_storage<...>
+    simplifyAlignedStorage();
+
     // Mark C++ casts
     markCppCasts();
 
@@ -6367,6 +6383,12 @@ std::string Tokenizer::dumpTypedefInfo() const
         outs += " name=\"";
         outs += typedefInfo.name;
         outs += "\"";
+
+        if (!typedefInfo.originalName.empty()) {
+            outs += " originalName=\"";
+            outs += typedefInfo.originalName;
+            outs += "\"";
+        }
 
         outs += " file=\"";
         outs += ErrorLogger::toxml(typedefInfo.filename);
@@ -8992,7 +9014,7 @@ void Tokenizer::findGarbageCode() const
             syntaxError(tok);
         if (Token::Match(tok, "[;([{] %comp%|%oror%|%or%|%|/"))
             syntaxError(tok);
-        if (Token::Match(tok, "%cop%|= ]") && !Token::simpleMatch(tok, "*") && !(cpp && Token::Match(tok->previous(), "%type%|[|,|%num% &|=|> ]")))
+        if (Token::Match(tok, "%cop%|= ]") && !Token::simpleMatch(tok, "*") && !(cpp && Token::Match(tok->previous(), "<|%type%|[|,|%num% &|=|> ]")))
             syntaxError(tok);
         if (Token::Match(tok, "[+-] [;,)]}]") && !(cpp && Token::simpleMatch(tok->previous(), "operator")))
             syntaxError(tok);
@@ -10358,6 +10380,8 @@ void Tokenizer::simplifyNamespaceStd()
                  mSettings.library.podtype("std::" + tok->str()) ||
                  isStdContainerOrIterator(tok, mSettings))
             insert = true;
+        else if (Token::simpleMatch(tok, "aligned_storage"))
+            insert = true;
 
         if (insert) {
             tok->previous()->insertToken("std");
@@ -11170,6 +11194,57 @@ void Tokenizer::simplifyNamespaceAliases()
                 tok->deleteThis();
             }
         }
+    }
+}
+
+void Tokenizer::simplifyAlignedStorage()
+{
+    if (!isCPP())
+        return;
+
+    const Standards::cppstd_t std = mSettings.standards.cpp;
+    if (std < Standards::CPP11 || std >= Standards::CPP23)
+        return;
+
+    for (Token *tok = list.front(); tok; tok = tok->next()) {
+        if (!Token::simpleMatch(tok, "std :: aligned_storage <"))
+            continue;
+
+        tok = tok->tokAt(3);
+        const Token *end = tok->link();
+        tok = tok->next();
+
+        if (!tok)
+            break;
+
+        if (!end)
+            continue;
+
+        for (; tok != end; tok = tok->next()) {
+            if (Token::simpleMatch(tok, ",")) {
+                tok = tok->next();
+                break;
+            }
+
+            if (Token::Match(tok, "(|<"))
+                tok = tok->link();
+        }
+
+        std::string str;
+        for (; tok != end; tok = tok->next()) {
+            str += " " + tok->str();
+        }
+
+        if (str.empty())
+            continue;
+
+        if (!Token::Match(tok, "> :: type %name%"))
+            continue;
+
+        str = str.substr(1);
+
+        tok = tok->tokAt(3);
+        tok->addAttributeAlignas(str);
     }
 }
 

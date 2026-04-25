@@ -420,7 +420,7 @@ typedef int MISRA_5_6_VIOLATION;
     assert lines == [
         'Checking {} ...'.format(test_file)
     ]
-    assert stderr == '{}:2:1: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-2.3]\ntypedef int MISRA_5_6_VIOLATION;\n^\n'.format(test_file)
+    assert stderr == '{}:2:13: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-2.3]\ntypedef int MISRA_5_6_VIOLATION;\n            ^\n'.format(test_file)
 
 
 def test_addon_y2038(tmpdir):
@@ -983,17 +983,14 @@ void f()
     assert exitcode == 0
     lines = stdout.splitlines()
     exp_len = exp_res
-    if exp_res:
-        exp_len += 1  # empty line at the beginning - only added when individual results exist
     if 'cppcheck internal API usage' in stdout:
         exp_len += 1
     exp_len += 1  # last line
     assert len(lines) == exp_len
-    if exp_res:
-        assert lines[0] == ''
     for i in range(1, exp_res):
         assert 'avg.' in lines[i]
     assert lines[exp_len-1].startswith(exp_last)
+    assert not 'avg.' in lines[exp_len-1]
     assert stderr == ''
 
 
@@ -2677,7 +2674,7 @@ typedef int MISRA_5_6_VIOLATION_1;
     assert exitcode == 0, stdout
     assert stdout == ''
     assert stderr.splitlines() == [
-        '{}:4:1: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-2.3]'.format(test_file),
+        '{}:4:13: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-2.3]'.format(test_file),
     ]
 
 
@@ -4430,3 +4427,133 @@ x = 10 / 0;
         assert exitcode == 0
         assert stdout == ''
         assert stderr == ''
+
+
+def test_dui_include(tmp_path):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, "w") as f:
+        f.write('void f() {}')
+
+    inc_file = tmp_path / 'inc.h'
+    with open(inc_file, "w") as f:
+        f.write(
+"""
+void f_i()
+{
+    (void)(*((int*)0));
+}
+""")
+
+    args = [
+        '-q',
+        '--template=simple',
+        f'--include={inc_file}',
+        str(test_file)
+    ]
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0
+    assert stdout == ''
+    assert stderr.splitlines() == [
+        f'{inc_file}:4:14: error: Null pointer dereference: (int*)0 [nullPointer]'
+    ]
+
+
+def test_dui_include_missing(tmp_path):  # #14675
+    test_file = tmp_path / 'test.c'
+    with open(test_file, "w") as f:
+        f.write('void f() {}')
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--include=missing.h',
+        str(test_file)
+    ]
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0
+    assert stdout == ''
+    assert stderr.splitlines() == [
+        f"{test_file}:0:0: error: Can not open include file 'missing.h' that is explicitly included. [missingIncludeExplicit]"
+    ]
+
+
+def test_dui_include_relative(tmp_path):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, "w") as f:
+        f.write('void f() {}')
+
+    inc_file = tmp_path / 'inc.h'
+    with open(inc_file, "w") as f:
+        f.write(
+"""
+void f_i()
+{
+    (void)(*((int*)0));
+}
+""")
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--include=inc.h',
+        str(test_file)
+    ]
+
+    exitcode, stdout, stderr = cppcheck(args, cwd=tmp_path)
+    assert exitcode == 0
+    assert stdout == ''
+    assert stderr.splitlines() == [
+        'inc.h:4:14: error: Null pointer dereference: (int*)0 [nullPointer]'
+    ]
+
+
+def test_dui_include_relative_missing(tmp_path):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, "w") as f:
+        f.write('void f() {}')
+
+    inc_file = tmp_path / 'inc.h'
+    with open(inc_file, "w") as f:
+        f.write(
+"""
+void f_i()
+{
+    (void)(*((int*)0));
+}
+""")
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--include=inc.h',
+        str(test_file)
+    ]
+
+    exitcode, stdout, stderr = cppcheck(args,)
+    assert exitcode == 0
+    assert stdout == ''
+    assert stderr.splitlines() == [
+        f"{test_file}:0:0: error: Can not open include file 'inc.h' that is explicitly included. [missingIncludeExplicit]"
+    ]
+
+
+def test_dui_include_absolute_missing(tmp_path):  # #14675
+    test_file = tmp_path / 'test.c'
+    with open(test_file, "w") as f:
+        f.write('void f() {}')
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--include=/share/include/missing.h',
+        str(test_file)
+    ]
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0
+    assert stdout == ''
+    assert stderr.splitlines() == [
+        f"{test_file}:0:0: error: Can not open include file '/share/include/missing.h' that is explicitly included. [missingIncludeExplicit]"
+    ]

@@ -3,12 +3,46 @@ missingIncludeSystem
 checkersReport
 
 # warnings in Qt generated code we cannot fix
+funcArgNamesDifferentUnnamed:*/moc_aboutdialog.cpp
+funcArgNamesDifferentUnnamed:*/moc_applicationdialog.cpp
+funcArgNamesDifferentUnnamed:*/moc_applicationlist.cpp
 funcArgNamesDifferent:*/moc_checkthread.cpp
+funcArgNamesDifferentUnnamed:*/moc_checkthread.cpp
+funcArgNamesDifferentUnnamed:*/moc_codeeditor.cpp
 funcArgNamesDifferent:*/moc_codeeditstylecontrols.cpp
+funcArgNamesDifferentUnnamed:*/moc_codeeditstylecontrols.cpp
+funcArgNamesDifferentUnnamed:*/moc_compliancereportdialog.cpp
+funcArgNamesDifferentUnnamed:*/moc_codeeditstyledialog.cpp
+funcArgNamesDifferentUnnamed:*/moc_fileviewdialog.cpp
+funcArgNamesDifferentUnnamed:*/moc_helpdialog.cpp
+funcArgNamesDifferentUnnamed:*/moc_libraryaddfunctiondialog.cpp
+funcArgNamesDifferentUnnamed:*/moc_librarydialog.cpp
+funcArgNamesDifferentUnnamed:*/moc_libraryeditargdialog.cpp
+funcArgNamesDifferentUnnamed:*/moc_mainwindow.cpp
+funcArgNamesDifferentUnnamed:*/moc_newsuppressiondialog.cpp
+funcArgNamesDifferentUnnamed:*/moc_platforms.cpp
+funcArgNamesDifferentUnnamed:*/moc_projectfile.cpp
+funcArgNamesDifferentUnnamed:*/moc_projectfiledialog.cpp
 funcArgNamesDifferent:*/moc_resultstree.cpp
+funcArgNamesDifferentUnnamed:*/moc_resultstree.cpp
 funcArgNamesDifferent:*/moc_resultsview.cpp
+funcArgNamesDifferentUnnamed:*/moc_resultsview.cpp
+funcArgNamesDifferentUnnamed:*/moc_scratchpad.cpp
+funcArgNamesDifferentUnnamed:*/moc_settingsdialog.cpp
+funcArgNamesDifferentUnnamed:*/moc_statsdialog.cpp
+funcArgNamesDifferentUnnamed:*/moc_testcppchecklibrarydata.cpp
+funcArgNamesDifferentUnnamed:*/moc_testfilelist.cpp
+funcArgNamesDifferentUnnamed:*/moc_testprojectfile.cpp
+funcArgNamesDifferentUnnamed:*/moc_testresultstree.cpp
+funcArgNamesDifferentUnnamed:*/moc_testtranslationhandler.cpp
+funcArgNamesDifferentUnnamed:*/moc_testxmlreportv2.cpp
+funcArgNamesDifferentUnnamed:*/moc_threaddetails.cpp
 funcArgNamesDifferent:*/moc_threadhandler.cpp
+funcArgNamesDifferentUnnamed:*/moc_threadhandler.cpp
 funcArgNamesDifferent:*/moc_threadresult.cpp
+funcArgNamesDifferentUnnamed:*/moc_threadresult.cpp
+funcArgNamesDifferentUnnamed:*/moc_translationhandler.cpp
+funcArgNamesDifferentUnnamed:*/moc_txtreport.cpp
 naming-varname:*/gui/ui_*.h
 functionStatic:*/gui/ui_*.h
 
@@ -37,7 +71,10 @@ invalidPrintfArgType_sint:externals/tinyxml2/tinyxml2.h
 naming-privateMemberVariable:externals/tinyxml2/tinyxml2.h
 functionStatic:externals/tinyxml2/tinyxml2.cpp
 funcArgNamesDifferent:externals/tinyxml2/tinyxml2.cpp
+funcArgNamesDifferentUnnamed:externals/tinyxml2/tinyxml2.cpp
+funcArgNamesDifferentUnnamed:externals/tinyxml2/tinyxml2.h
 nullPointerRedundantCheck:externals/tinyxml2/tinyxml2.cpp
 knownConditionTrueFalse:externals/tinyxml2/tinyxml2.cpp
 useStlAlgorithm:externals/simplecpp/simplecpp.cpp
+funcArgNamesDifferentUnnamed:externals/simplecpp/simplecpp.h
 missingMemberCopy:externals/simplecpp/simplecpp.h

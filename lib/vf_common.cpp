@@ -154,6 +154,11 @@ namespace ValueFlow
             if (!tok->isTemplateArg())
                 value.setKnown();
             setTokenValue(tok, std::move(value), settings);
+        } else if ((tok->isCpp() || settings.standards.c >= Standards::C23) && (tok->isName() && tok->varId() == 0 && Token::Match(tok, "%bool%"))) {
+            Value value(tok->str() == "true");
+            if (!tok->isTemplateArg())
+                value.setKnown();
+            setTokenValue(tok, std::move(value), settings);
         } else if (Token::simpleMatch(tok, "sizeof (")) {
             if (tok->next()->astOperand2() && !tok->next()->astOperand2()->isLiteral() && tok->next()->astOperand2()->valueType() &&
                 (tok->next()->astOperand2()->valueType()->pointer == 0 || // <- TODO this is a bailout, abort when there are array->pointer conversions

@@ -198,6 +198,7 @@ private:
         TEST_CASE(localvarreturn); // ticket #9167
         TEST_CASE(localvarmaybeunused);
         TEST_CASE(localvarrvalue); // ticket #13977
+        TEST_CASE(localvarreferencearray); // ticket #14637
 
         TEST_CASE(localvarthrow); // ticket #3687
 
@@ -249,6 +250,7 @@ private:
         TEST_CASE(localvarDelete);
         TEST_CASE(localvarLambda); // #8941, #8948
         TEST_CASE(localvarStructuredBinding); // #10368
+        TEST_CASE(localvarPtrToPtr);
 
         TEST_CASE(localvarCppInitialization);
         TEST_CASE(localvarCpp11Initialization);
@@ -271,6 +273,9 @@ private:
         TEST_CASE(globalData);
 
         TEST_CASE(structuredBinding); // #13269
+
+        TEST_CASE(pointerCast1); // #14535
+        TEST_CASE(pointerCast2);
     }
 
     struct FunctionVariableUsageOptions
@@ -6554,6 +6559,16 @@ private:
         ASSERT_EQUALS("[test.cpp:3:21]: (style) Variable 'm' is assigned a value that is never used. [unreadVariable]\n", errout_str());
     }
 
+    void localvarreferencearray() { // ticket #14637
+        functionVariableUsage("int f() {\n"
+                              "        int a[1];\n"
+                              "        int(&r)[1] = a;\n"
+                              "        r[0] = 0;\n"
+                              "        return r[0];\n"
+                              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
     void localvarthrow() { // ticket #3687
         functionVariableUsage("void foo() {\n"
                               "    try {}"
@@ -6681,6 +6696,34 @@ private:
                               "    C c(12);\n"
                               "}");
         ASSERT_EQUALS("", errout_str());
+
+        // #14643
+        functionVariableUsage("class S { S(int); };\n"
+                              "void f() { S s = 0; }\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // #10965
+        functionVariableUsage("class A {\n"
+                              "public:\n"
+                              "    A();\n"
+                              "};\n"
+                              "extern A cb();\n"
+                              "void f() { const A c = cb(); }\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // #11704
+        functionVariableUsage("class S {\n"
+                              "public:\n"
+                              "    S();\n"
+                              "};\n"
+                              "class C {\n"
+                              "    S &s();\n"
+                              "    void f() {\n"
+                              "        const S s1 = s(); // warning\n"
+                              "        const S s2; // no warning\n"
+                              "    }\n"
+                              "};\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void localVarSmartPtr() {
@@ -6734,6 +6777,13 @@ private:
         functionVariableUsage("struct S { S(); };\n" // #11108
                               "void f(std::unique_ptr<S> p) {\n"
                               "    p = nullptr;\n"
+                              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        functionVariableUsage("struct S { S(); };\n" // #14160
+                              "void f() {\n"
+                              "    auto p = std::make_unique<S>();\n"
+                              "    auto q = std::make_unique<U>();\n"
                               "}\n");
         ASSERT_EQUALS("", errout_str());
     }
@@ -6920,6 +6970,16 @@ private:
         ASSERT_EQUALS("", errout_str());
     }
 
+    void localvarPtrToPtr() {
+        functionVariableUsage("int main() {\n"
+                              "  int *p, **pp = &p;\n"
+                              "  int i = 123;\n"
+                              "  *pp = &i;\n"
+                              "  return *p;\n"
+                              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
     void localvarCppInitialization() {
         functionVariableUsage("void foo() {\n"
                               "    int buf[6];\n"
@@ -7032,6 +7092,13 @@ private:
         functionVariableUsage("int main() {\n"
                               "    void(*funcPtr)(void) = x;\n"
                               "    funcPtr();\n"
+                              "}");
+        ASSERT_EQUALS("", errout_str());
+
+        // #14661
+        functionVariableUsage("int main() {\n"
+                              "    void (*const funcPtr[])(void) = {x};\n"
+                              "    funcPtr[0]();\n"
                               "}");
         ASSERT_EQUALS("", errout_str());
     }
@@ -7321,6 +7388,24 @@ private:
         functionVariableUsage("int main()\n"
                               "{\n"
                               "    [[maybe_unused]] auto [a2, b3] = std::make_pair(42, 0.42);\n"
+                              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void pointerCast1() { // #14535
+        functionVariableUsage("void f(int* p)\n"
+                              "{\n"
+                              "    int* p2 = p;\n"
+                              "    ((int *)(p2))[0] = 0;\n"
+                              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void pointerCast2() {
+        functionVariableUsage("void f(int* p)\n"
+                              "{\n"
+                              "    int* p2 = p;\n"
+                              "    static_cast<int*>(p2)[0] = 0;\n"
                               "}\n");
         ASSERT_EQUALS("", errout_str());
     }

@@ -2064,7 +2064,22 @@ private:
               "    }\n"
               "    return g(&a);\n"
               "}\n");
-        TODO_ASSERT_EQUALS("", "[test.cpp:9:9]: (error) Memory leak: a.str [memleak]\n", errout_str());
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S { int *p; };\n"
+              "S f(int i) {\n"
+              "    S s;\n"
+              "    switch(i) {\n"
+              "    case 1:\n"
+              "        s.p = new int;\n"
+              "        break;\n"
+              "    default: {\n"
+              "        return {};\n"
+              "    }\n"
+              "    }\n"
+              "    return s;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void ifelse() {

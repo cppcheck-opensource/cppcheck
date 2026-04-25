@@ -202,6 +202,11 @@ private slots:
     void browseImportProject();
 
     /**
+     * @brief Browse for include file
+     */
+    void browseUserInclude();
+
+    /**
      * @brief Add new path to check.
      */
     void addCheckPath();
@@ -275,7 +280,7 @@ private slots:
     /**
      * @brief Edit suppression (double clicking on suppression)
      */
-    void editSuppression(const QModelIndex &index);
+    void editSuppression(const QModelIndex& /*index*/);
 
     /**
      * @brief Browse for misra file

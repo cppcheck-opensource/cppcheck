@@ -60,7 +60,7 @@ class CPPCHECKLIB WARN_UNUSED TimerResults : public TimerResultsIntf {
 public:
     TimerResults() = default;
 
-    void showResults(ShowTime mode) const;
+    void showResults(ShowTime mode, bool metrics = true, bool format = false) const;
     void addResults(const std::string& str, std::chrono::milliseconds duration) override;
 
     void reset();

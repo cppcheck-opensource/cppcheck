@@ -176,11 +176,12 @@ bool Platform::loadFromFile(const std::vector<std::string>& paths, const std::st
         std::cout << "looking for platform '" + filename + "'" << std::endl;
 
     const bool is_abs_path = Path::isAbsolute(filename);
+    const bool is_rel_path = Path::isRelative(filename);
 
     std::string fullfilename(filename);
     // TODO: what if extension is not .xml?
     // only append extension when we provide the library name is not a path - TODO: handle relative paths?
-    if (!is_abs_path && Path::getFilenameExtension(fullfilename).empty())
+    if (!is_abs_path && !is_rel_path && Path::getFilenameExtension(fullfilename).empty())
         fullfilename += ".xml";
 
     // TODO: use native separators

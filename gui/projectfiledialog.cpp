@@ -235,6 +235,7 @@ ProjectFileDialog::ProjectFileDialog(ProjectFile *projectFile, bool premium, QWi
     connect(mUI->mBtnBrowseBuildDir, &QPushButton::clicked, this, &ProjectFileDialog::browseBuildDir);
     connect(mUI->mBtnClearImportProject, &QPushButton::clicked, this, &ProjectFileDialog::clearImportProject);
     connect(mUI->mBtnBrowseImportProject, &QPushButton::clicked, this, &ProjectFileDialog::browseImportProject);
+    connect(mUI->mBtnBrowseUserInclude, &QPushButton::clicked, this, &ProjectFileDialog::browseUserInclude);
     connect(mUI->mBtnAddCheckPath, SIGNAL(clicked()), this, SLOT(addCheckPath()));
     connect(mUI->mBtnEditCheckPath, &QPushButton::clicked, this, &ProjectFileDialog::editCheckPath);
     connect(mUI->mBtnRemoveCheckPath, &QPushButton::clicked, this, &ProjectFileDialog::removeCheckPath);
@@ -303,6 +304,7 @@ void ProjectFileDialog::loadFromProjectFile(const ProjectFile *projectFile)
     setIncludepaths(projectFile->getIncludeDirs());
     setDefines(projectFile->getDefines());
     setUndefines(projectFile->getUndefines());
+    mUI->mEditUserInclude->setText(projectFile->getUserInclude());
     setCheckPaths(projectFile->getCheckPaths());
     setImportProject(projectFile->getImportProject());
     mUI->mChkAllVsConfigs->setChecked(projectFile->getAnalyzeAllVsConfigs());
@@ -481,6 +483,7 @@ void ProjectFileDialog::saveToProjectFile(ProjectFile *projectFile) const
     projectFile->setIncludes(getIncludePaths());
     projectFile->setDefines(getDefines());
     projectFile->setUndefines(getUndefines());
+    projectFile->setUserInclude(mUI->mEditUserInclude->text());
     projectFile->setCheckPaths(getCheckPaths());
     projectFile->setExcludedPaths(getExcludedPaths());
     projectFile->setLibraries(getLibraries());
@@ -640,6 +643,21 @@ void ProjectFileDialog::browseImportProject()
             QListWidgetItem *item = mUI->mListVsConfigs->item(row);
             item->setCheckState(Qt::Checked);
         }
+    }
+}
+
+void ProjectFileDialog::browseUserInclude()
+{
+    const QFileInfo inf(mProjectFile->getFilename());
+    const QDir &dir = inf.absoluteDir();
+    QMap<QString,QString> filters;
+    filters[tr("C/C++ header")] = "*.h";
+    filters[tr("All files")] = "*.*";
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Include file"),
+                                                    dir.canonicalPath(),
+                                                    toFilterString(filters));
+    if (!fileName.isEmpty()) {
+        mUI->mEditUserInclude->setText(dir.relativeFilePath(fileName));
     }
 }
 

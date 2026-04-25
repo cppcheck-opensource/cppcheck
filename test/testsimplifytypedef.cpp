@@ -3824,7 +3824,7 @@ private:
                             "        explicit S2(int& i) : B(i) {}\n"
                             "    };\n"
                             "}\n";
-        const char exp[] = "struct S1 { } ; "
+        const char exp[] = "struct S1 { } ; " // #12623
                            "namespace N { "
                            "struct B { "
                            "explicit B ( int & i ) ; } ; "
@@ -3833,6 +3833,13 @@ private:
                            "} ; "
                            "}";
         ASSERT_EQUALS(exp, tok(code));
+
+        const char code2[] = "typedef stuct T* T;\n" // #14669
+                             "struct T {\n"
+                             "    T p;\n"
+                             "};\n";
+        const char exp2[] = "struct T { stuct T * p ; } ;";
+        ASSERT_EQUALS(exp2, simplifyTypedefC(code2));
     }
 
     void simplifyTypedefFunction1() {
@@ -4608,7 +4615,7 @@ private:
     void typedefInfo1() {
         const std::string xml = dumpTypedefInfo("typedef int A;\nA x;");
         ASSERT_EQUALS("  <typedef-info>\n"
-                      "    <info name=\"A\" file=\"file.c\" line=\"1\" column=\"1\" used=\"1\" isFunctionPointer=\"0\"/>\n"
+                      "    <info name=\"A\" file=\"file.c\" line=\"1\" column=\"13\" used=\"1\" isFunctionPointer=\"0\"/>\n"
                       "  </typedef-info>\n",
                       xml);
     }
@@ -4620,7 +4627,7 @@ private:
                                                 "   typedef fp16 ( *pfp16 ) ( void );\n"
                                                 "}\n");
         ASSERT_EQUALS("  <typedef-info>\n"
-                      "    <info name=\"fp16\" file=\"file.c\" line=\"2\" column=\"1\" used=\"1\" isFunctionPointer=\"1\">\n"
+                      "    <info name=\"fp16\" file=\"file.c\" line=\"2\" column=\"17\" used=\"1\" isFunctionPointer=\"1\">\n"
                       "      <token line=\"2\" column=\"1\" str=\"typedef\"/>\n"
                       "      <token line=\"2\" column=\"9\" str=\"void\"/>\n"
                       "      <token line=\"2\" column=\"14\" str=\"(\"/>\n"
@@ -4632,7 +4639,7 @@ private:
                       "      <token line=\"2\" column=\"33\" str=\"n\"/>\n"
                       "      <token line=\"2\" column=\"35\" str=\")\"/>\n"
                       "    </info>\n"
-                      "    <info name=\"int16_t\" file=\"file.c\" line=\"1\" column=\"1\" used=\"1\" isFunctionPointer=\"0\"/>\n"
+                      "    <info name=\"int16_t\" file=\"file.c\" line=\"1\" column=\"22\" used=\"1\" isFunctionPointer=\"0\"/>\n"
                       "    <info name=\"pfp16\" file=\"file.c\" line=\"4\" column=\"4\" used=\"0\" isFunctionPointer=\"1\">\n"
                       "      <token line=\"4\" column=\"4\" str=\"typedef\"/>\n"
                       "      <token line=\"4\" column=\"12\" str=\"void\"/>\n"
@@ -4670,7 +4677,7 @@ private:
                                                 "} coord;\n"
                                                 "coord c;");
         ASSERT_EQUALS("  <typedef-info>\n"
-                      "    <info name=\"coord\" file=\"file.c\" line=\"1\" column=\"1\" tagline=\"1\" tagcolumn=\"16\" used=\"1\" isFunctionPointer=\"0\"/>\n"
+                      "    <info name=\"coord\" originalName=\"coord\" file=\"file.c\" line=\"4\" column=\"3\" tagline=\"1\" tagcolumn=\"16\" used=\"1\" isFunctionPointer=\"0\"/>\n"
                       "  </typedef-info>\n", xml);
     }
 };
