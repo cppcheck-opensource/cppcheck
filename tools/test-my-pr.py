@@ -27,10 +27,10 @@ def format_float(a, b=1):
 def ftp_get(url):
     try:
         response = requests.get(url, timeout=300)
-        if response.ok:
-            return response.content
-    except Exception:
-        pass
+        response.raise_for_status()
+        return response.content
+    except requests.RequestException as err:
+        print('Failed to fetch {}: {}'.format(url, err))
     return None
 
 
