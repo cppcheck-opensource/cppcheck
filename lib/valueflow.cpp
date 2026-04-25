@@ -5163,9 +5163,9 @@ struct SymbolicConditionHandler : SimpleConditionHandler {
 };
 
 static bool valueFlowForLoop2(const Token *tok,
-                              ProgramMemory *memory1,
-                              ProgramMemory *memory2,
-                              ProgramMemory *memoryAfter,
+                              ProgramMemory &memory1,
+                              ProgramMemory &memory2,
+                              ProgramMemory &memoryAfter,
                               const Settings& settings)
 {
     // for ( firstExpression ; secondExpression ; thirdExpression )
@@ -5208,13 +5208,10 @@ static bool valueFlowForLoop2(const Token *tok,
     }
     // TODO: add bailout message
 
-    if (memory1)
-        memory1->swap(startMemory);
+    memory1.swap(startMemory);
     if (!error) {
-        if (memory2)
-            memory2->swap(endMemory);
-        if (memoryAfter)
-            memoryAfter->swap(programMemory);
+        memory2.swap(endMemory);
+        memoryAfter.swap(programMemory);
     }
 
     return true;
@@ -5389,7 +5386,7 @@ static void valueFlowForLoop(const TokenList &tokenlist, const SymbolDatabase& s
             valueFlowForLoopSimplifyAfter(tok, varid, afterValue, tokenlist, errorLogger, settings);
         } else {
             ProgramMemory mem1, mem2, memAfter;
-            if (valueFlowForLoop2(tok, &mem1, &mem2, &memAfter, settings)) {
+            if (valueFlowForLoop2(tok, mem1, mem2, memAfter, settings)) {
                 for (const auto& p : mem1) {
                     if (!p.second.isIntValue())
                         continue;
