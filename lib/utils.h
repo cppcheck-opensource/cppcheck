@@ -237,7 +237,7 @@ bool strToInt(const std::string& str, T &num, std::string* err = nullptr)
             *err = "needs to be positive";
         return false;
     }
-    if (str.front() != '+' && str.front() != '-' && !isdigit(str.front())) {
+    if (str.front() != '+' && str.front() != '-' && isdigit(str.front()) == 0) {
         if (err)
             *err = "not an integer";
         return false;
@@ -282,7 +282,7 @@ bool strToInt(const std::string& str, T &num, std::string* err = nullptr)
             *err = "needs to be positive";
         return false;
     }
-    if (str.front() != '+' && !isdigit(str.front())) {
+    if (str.front() != '+' && isdigit(str.front()) == 0) {
         if (err)
             *err = "not an integer";
         return false;
