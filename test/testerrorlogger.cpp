@@ -599,7 +599,7 @@ private:
                                "0 "
                                "0 ";
             ErrorMessage msg;
-            ASSERT_THROW_INTERNAL_EQUALS(msg.deserialize(str), INTERNAL, "Internal Error: Deserialization of error message failed - invalid CWE ID - not an integer");
+            ASSERT_THROW_INTERNAL_EQUALS(msg.deserialize(str), INTERNAL, "Internal Error: Deserialization of error message failed - invalid CWE ID - not an integer (invalid_argument)");
         }
         {
             // invalid hash
@@ -615,7 +615,7 @@ private:
                                "0 "
                                "0 ";
             ErrorMessage msg;
-            ASSERT_THROW_INTERNAL_EQUALS(msg.deserialize(str), INTERNAL, "Internal Error: Deserialization of error message failed - invalid hash - not an integer");
+            ASSERT_THROW_INTERNAL_EQUALS(msg.deserialize(str), INTERNAL, "Internal Error: Deserialization of error message failed - invalid hash - not an integer (invalid_argument)");
         }
         {
             // out-of-range CWE ID

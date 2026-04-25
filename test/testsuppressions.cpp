@@ -188,12 +188,12 @@ private:
         ASSERT_THROW_EQUALS(SuppressionList::parseLine("id::1"), std::runtime_error, "filename is missing");
 
         // missing/invalid line
-        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer)");
-        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:\n"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer)");
-        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:\n1"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer)");
-        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:#1"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer)"); // TODO: looks like a valid filename
-        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c://1"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer)");
-        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:zero"), std::runtime_error, "invalid line number (converting 'zero' to integer failed - not an integer)");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer (invalid_argument))");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:\n"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer (invalid_argument))");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:\n1"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer (invalid_argument))");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:#1"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer (invalid_argument))"); // TODO: looks like a valid filename
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c://1"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer (invalid_argument))");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:zero"), std::runtime_error, "invalid line number (converting 'zero' to integer failed - not an integer (invalid_argument))");
 
         // invalid extras
         ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:1\n"), std::runtime_error, "unexpected extra ''");
