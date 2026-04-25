@@ -3750,25 +3750,6 @@ static void valueFlowSymbolicOperators(const SymbolDatabase& symboldatabase, con
     }
 }
 
-struct SymbolicInferModel : InferModel {
-    const Token* expr;
-    explicit SymbolicInferModel(const Token* tok) : expr(tok) {
-        assert(expr->exprId() != 0);
-    }
-    bool match(const ValueFlow::Value& value) const override
-    {
-        return value.isSymbolicValue() && value.tokvalue && value.tokvalue->exprId() == expr->exprId();
-    }
-    ValueFlow::Value yield(MathLib::bigint value) const override
-    {
-        ValueFlow::Value result(value);
-        result.valueType = ValueFlow::Value::ValueType::SYMBOLIC;
-        result.tokvalue = expr;
-        result.setKnown();
-        return result;
-    }
-};
-
 static void valueFlowSymbolicInfer(const SymbolDatabase& symboldatabase, const Settings& settings)
 {
     for (const Scope* scope : symboldatabase.functionScopes) {
@@ -3796,11 +3777,11 @@ static void valueFlowSymbolicInfer(const SymbolDatabase& symboldatabase, const S
 
             std::vector<ValueFlow::Value> values;
             {
-                SymbolicInferModel leftModel{tok->astOperand1()};
+                auto leftModel = makeSymbolicInferModel(tok->astOperand1());
                 values = infer(leftModel, tok->str(), 0, tok->astOperand2()->values());
             }
             if (values.empty()) {
-                SymbolicInferModel rightModel{tok->astOperand2()};
+                auto rightModel = makeSymbolicInferModel(tok->astOperand2());
                 values = infer(rightModel, tok->str(), tok->astOperand1()->values(), 0);
             }
             for (ValueFlow::Value& value : values) {
@@ -5008,32 +4989,6 @@ struct SimpleConditionHandler : ConditionHandler {
     }
 };
 
-struct IteratorInferModel : InferModel {
-    virtual ValueFlow::Value::ValueType getType() const = 0;
-    bool match(const ValueFlow::Value& value) const override {
-        return value.valueType == getType();
-    }
-    ValueFlow::Value yield(MathLib::bigint value) const override
-    {
-        ValueFlow::Value result(value);
-        result.valueType = getType();
-        result.setKnown();
-        return result;
-    }
-};
-
-struct EndIteratorInferModel : IteratorInferModel {
-    ValueFlow::Value::ValueType getType() const override {
-        return ValueFlow::Value::ValueType::ITERATOR_END;
-    }
-};
-
-struct StartIteratorInferModel : IteratorInferModel {
-    ValueFlow::Value::ValueType getType() const override {
-        return ValueFlow::Value::ValueType::ITERATOR_END;
-    }
-};
-
 static bool isIntegralOnlyOperator(const Token* tok) {
     return Token::Match(tok, "%|<<|>>|&|^|~|%or%");
 }
@@ -5069,8 +5024,8 @@ static void valueFlowInferCondition(TokenList& tokenlist, const Settings& settin
             continue;
         if (Token::Match(tok, "%comp%|-") && tok->astOperand1() && tok->astOperand2()) {
             if (astIsIterator(tok->astOperand1()) || astIsIterator(tok->astOperand2())) {
-                static const std::array<ValuePtr<InferModel>, 2> iteratorModels = {EndIteratorInferModel{},
-                                                                                   StartIteratorInferModel{}};
+                static const std::array<ValuePtr<InferModel>, 2> iteratorModels = {makeEndIteratorInferModel(),
+                                                                                   makeStartIteratorInferModel()};
                 for (const ValuePtr<InferModel>& model : iteratorModels) {
                     std::vector<ValueFlow::Value> result =
                         infer(model, tok->str(), tok->astOperand1()->values(), tok->astOperand2()->values());
