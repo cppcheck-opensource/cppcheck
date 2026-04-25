@@ -242,6 +242,11 @@ bool strToInt(const std::string& str, T &num, std::string* err = nullptr)
             *err = "not an integer";
         return false;
     }
+    if (str.size() > 1 && str.front() == '0') {
+        if (err)
+            *err = "not an integer";
+        return false;
+    }
     if (tmp < std::numeric_limits<T>::min() || tmp > std::numeric_limits<T>::max()) {
         if (err)
             *err = "out of range (limits)";
@@ -278,6 +283,11 @@ bool strToInt(const std::string& str, T &num, std::string* err = nullptr)
         return false;
     }
     if (str.front() != '+' && !isdigit(str.front())) {
+        if (err)
+            *err = "not an integer";
+        return false;
+    }
+    if (str.size() > 1 && str.front() == '0') {
         if (err)
             *err = "not an integer";
         return false;

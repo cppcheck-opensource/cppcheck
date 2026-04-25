@@ -247,7 +247,7 @@ private:
         ASSERT_THROW_EQUALS(::strToInt<int>("1U"), std::runtime_error, "converting '1U' to integer failed - not an integer (pos)");
         ASSERT_THROW_EQUALS(::strToInt<int>("1L"), std::runtime_error, "converting '1L' to integer failed - not an integer (pos)");
         ASSERT_THROW_EQUALS(::strToInt<int>("1Z"), std::runtime_error, "converting '1Z' to integer failed - not an integer (pos)");
-        // ASSERT_THROW_EQUALS(::strToInt<int>("01"), std::runtime_error, "converting '01' to integer failed - not an integer"); // TODO: should fail
+        ASSERT_THROW_EQUALS(::strToInt<int>("01"), std::runtime_error, "converting '01' to integer failed - not an integer");
         ASSERT_THROW_EQUALS(::strToInt<int>("0x1"), std::runtime_error, "converting '0x1' to integer failed - not an integer (pos)");
         ASSERT_THROW_EQUALS(::strToInt<int>("0b1"), std::runtime_error, "converting '0b1' to integer failed - not an integer (pos)");
         ASSERT_THROW_EQUALS(::strToInt<int>("one"), std::runtime_error, "converting 'one' to integer failed - not an integer (invalid_argument)");
@@ -264,7 +264,7 @@ private:
         ASSERT_THROW_EQUALS(::strToInt<unsigned int>("1U"), std::runtime_error, "converting '1U' to integer failed - not an integer (pos)");
         ASSERT_THROW_EQUALS(::strToInt<unsigned int>("1L"), std::runtime_error, "converting '1L' to integer failed - not an integer (pos)");
         ASSERT_THROW_EQUALS(::strToInt<unsigned int>("1Z"), std::runtime_error, "converting '1Z' to integer failed - not an integer (pos)");
-        // ASSERT_THROW_EQUALS(::strToInt<unsigned int>("01"), std::runtime_error, "converting '01' to integer failed - not an integer"); // TODO: should fail
+        ASSERT_THROW_EQUALS(::strToInt<unsigned int>("01"), std::runtime_error, "converting '01' to integer failed - not an integer");
         ASSERT_THROW_EQUALS(::strToInt<unsigned int>("0x1"), std::runtime_error, "converting '0x1' to integer failed - not an integer (pos)");
         ASSERT_THROW_EQUALS(::strToInt<unsigned int>("0b1"), std::runtime_error, "converting '0b1' to integer failed - not an integer (pos)");
         ASSERT_THROW_EQUALS(::strToInt<unsigned int>("one"), std::runtime_error, "converting 'one' to integer failed - not an integer (invalid_argument)");
