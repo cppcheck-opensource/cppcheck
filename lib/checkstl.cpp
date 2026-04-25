@@ -2152,11 +2152,21 @@ void CheckStl::string_c_str()
                 const Token* tok2 = tok->next();
                 if (Token::Match(tok2, "std :: string|wstring (") &&
                     Token::Match(tok2->linkAt(3), ") . c_str|data ( ) ;")) {
-                    err = true;
-                } else if (Token::simpleMatch(tok2, "(") &&
-                           Token::Match(tok2->link(), ") . c_str|data ( ) ;")) {
+
+                    returnType == charPtr ? string_c_strError(tok) : string_c_strReturn(tok);
+                    continue;
+                }
+
+                if (Token::simpleMatch(tok2, "(") &&
+                    Token::Match(tok2->link(), ") . c_str|data ( ) ;")) {
                     // Check for "+ localvar" or "+ std::string(" inside the bracket
-                    bool is_implicit_std_string = printInconclusive;
+
+                    if (printInconclusive) {
+                        returnType == charPtr ? string_c_strError(tok, true) : string_c_strReturn(tok, true);
+                        continue;
+                    }
+
+                    bool is_implicit_std_string = false;
                     const Token *search_end = tok2->link();
                     for (const Token *search_tok = tok2->next(); search_tok != search_end; search_tok = search_tok->next()) {
                         if (Token::Match(search_tok, "+ %var%") && isLocal(search_tok->next()) &&
@@ -2170,8 +2180,10 @@ void CheckStl::string_c_str()
                         }
                     }
 
-                    if (is_implicit_std_string)
-                        err = true;
+                    if (is_implicit_std_string) {
+                        returnType == charPtr ? string_c_strError(tok) : string_c_strReturn(tok);
+                        continue;
+                    }
                 }
 
                 bool local = false;
@@ -2215,10 +2227,7 @@ void CheckStl::string_c_str()
                 }
 
                 if (err) {
-                    if (returnType == charPtr)
-                        string_c_strError(tok);
-                    else
-                        string_c_strReturn(tok);
+                    returnType == charPtr ? string_c_strError(tok) : string_c_strReturn(tok);
                 }
             }
         }
@@ -2231,16 +2240,16 @@ void CheckStl::string_c_strThrowError(const Token* tok)
                 "Dangerous usage of c_str(). The string is destroyed after the c_str() call so the thrown pointer is invalid.");
 }
 
-void CheckStl::string_c_strError(const Token* tok)
+void CheckStl::string_c_strError(const Token* tok, bool inconclusive)
 {
     reportError(tok, Severity::error, "stlcstr", "Dangerous usage of c_str(). The value returned by c_str() is invalid after this call.\n"
-                "Dangerous usage of c_str(). The c_str() return value is only valid until its string is deleted.", CWE664, Certainty::normal);
+                "Dangerous usage of c_str(). The c_str() return value is only valid until its string is deleted.", CWE664, inconclusive ? Certainty::inconclusive : Certainty::normal);
 }
 
-void CheckStl::string_c_strReturn(const Token* tok)
+void CheckStl::string_c_strReturn(const Token* tok, bool inconclusive)
 {
     reportError(tok, Severity::performance, "stlcstrReturn", "Returning the result of c_str() in a function that returns std::string is slow and redundant.\n"
-                "The conversion from const char* as returned by c_str() to std::string creates an unnecessary string copy. Solve that by directly returning the string.", CWE704, Certainty::normal);
+                "The conversion from const char* as returned by c_str() to std::string creates an unnecessary string copy. Solve that by directly returning the string.", CWE704, inconclusive ? Certainty::inconclusive : Certainty::normal);
 }
 
 void CheckStl::string_c_strParam(const Token* tok, nonneg int number, const std::string& argtype)
