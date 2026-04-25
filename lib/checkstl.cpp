@@ -1227,7 +1227,7 @@ void CheckStl::invalidContainer()
                     errorPath.insert(errorPath.end(), info.errorPath.cbegin(), info.errorPath.cend());
                     errorPath.insert(errorPath.end(), r.errorPath.cbegin(), r.errorPath.cend());
                     if (v) {
-                        invalidContainerError(info.tok, r.tok, v, std::move(errorPath));
+                        invalidContainerError(info.tok, v, std::move(errorPath));
                     } else {
                         invalidContainerReferenceError(info.tok, r.tok, std::move(errorPath));
                     }
@@ -1252,7 +1252,7 @@ void CheckStl::invalidContainerLoopError(const Token* tok, const Token* loopTok,
     reportError(std::move(errorPath), Severity::error, "invalidContainerLoop", msg, CWE664, Certainty::normal);
 }
 
-void CheckStl::invalidContainerError(const Token *tok, const Token * /*contTok*/, const ValueFlow::Value *val, ErrorPath errorPath)
+void CheckStl::invalidContainerError(const Token *tok, const ValueFlow::Value *val, ErrorPath errorPath)
 {
     const bool inconclusive = val ? val->isInconclusive() : false;
     if (val)
@@ -3504,7 +3504,7 @@ void CheckStl::getErrorMessages(ErrorLogger* errorLogger, const Settings* settin
     c.iteratorsError(nullptr, "container1", "container2");
     c.iteratorsError(nullptr, nullptr, "container");
     c.invalidContainerLoopError(nullptr, nullptr, ErrorPath{});
-    c.invalidContainerError(nullptr, nullptr, nullptr, ErrorPath{});
+    c.invalidContainerError(nullptr, nullptr, ErrorPath{});
     c.invalidContainerReferenceError(nullptr, nullptr, ErrorPath{});
     c.mismatchingContainerIteratorError(nullptr, nullptr, nullptr);
     c.mismatchingContainersError(nullptr, nullptr);

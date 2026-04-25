@@ -1422,6 +1422,8 @@ int CheckUninitVar::isFunctionParUsage(const Token *vartok, const Library& libra
             const bool isnullbad = library.isnullargbad(start->previous(), argumentNumber + 1);
             if (indirect == 0 && pointer && !address && isnullbad && alloc == NO_ALLOC)
                 return 1;
+            if (vartok->varId() == 0 && vartok->valueType())
+                indirect = vartok->valueType()->pointer;
             bool hasIndirect = false;
             const bool isuninitbad = library.isuninitargbad(start->previous(), argumentNumber + 1, indirect, &hasIndirect);
             if (alloc != NO_ALLOC)

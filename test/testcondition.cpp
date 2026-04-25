@@ -94,6 +94,8 @@ private:
         TEST_CASE(identicalConditionAfterEarlyExit);
         TEST_CASE(innerConditionModified);
 
+        TEST_CASE(overlappingInnerCondition);
+
         TEST_CASE(clarifyCondition1);     // if (a = b() < 0)
         TEST_CASE(clarifyCondition2);     // if (a & b == c)
         TEST_CASE(clarifyCondition3);     // if (! a & b)
@@ -3022,6 +3024,22 @@ private:
         ASSERT_EQUALS("", errout_str());
     }
 
+    void overlappingInnerCondition() {
+        check("void f(int x) {\n"
+              "    if (x == 1) {\n"
+              "        if (x & 7) {}\n"
+              "    }\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:2:11] -> [test.cpp:3:15]: (warning) Overlapping inner 'if' condition is always true. [overlappingInnerCondition]\n", errout_str());
+
+        check("void f(int x) {\n"
+              "    if (x & 7) {\n"
+              "        if (x == 1) {}\n"
+              "    }\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
+    }
+
     // clarify conditions with = and comparison
     void clarifyCondition1() {
         check("void f() {\n"
@@ -5094,6 +5112,37 @@ private:
               "    if (i < 0) {}\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct A { int x; int y; };"
+              "void use(int);\n"
+              "void test(A a) {\n"
+              "    int i = a.x;\n"
+              "    int j = a.x;\n"
+              "    use(j);\n"
+              "    if (i == j) {}\n"
+              "    if (i == a.x) {}\n"
+              "    if (j == a.x) {}\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:6:11]: (style) Condition 'i==j' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:7:11]: (style) Condition 'i==a.x' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:8:11]: (style) Condition 'j==a.x' is always true [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        check("struct S { int i; };\n" // #12795
+              "struct T {\n"
+              "    std::map<std::string, S*> m;\n"
+              "    S* get(const std::string& s) { return m[s]; }\n"
+              "    void modify() { for (const auto& e : m) e.second->i = 0; }\n"
+              "};\n"
+              "void f(T& t) {\n"
+              "    const S* p = t.get(\"abc\");\n"
+              "    const int o = p->i;\n"
+              "    t.modify();\n"
+              "    if (p->i == o) {}\n"
+              "}\n");
+        TODO_ASSERT_EQUALS("",
+                           "[test.cpp:11:14]: (style) Condition 'p->i==o' is always true [knownConditionTrueFalse]\n",
+                           errout_str());
     }
 
     void alwaysTrueInfer() {
@@ -6375,6 +6424,13 @@ private:
         ASSERT_EQUALS("[test.cpp:3:14]: (style) Comparing expression of type 'const unsigned int &' against value 4294967295. Condition is always true. [compareValueOutOfTypeRangeError]\n"
                       "[test.cpp:4:13]: (style) Comparing expression of type 'const unsigned int &' against value 4294967295. Condition is always false. [compareValueOutOfTypeRangeError]\n",
                       errout_str());
+
+        check("void f() {\n"
+              "    long long ll = 1024 * 1024 * 1024;\n"
+              "    if (ll * 8 < INT_MAX) {}\n"
+              "    if (INT_MAX > ll * 8) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void knownConditionCast() {

@@ -200,6 +200,7 @@ private:
         TEST_CASE(duplicateExpression18);
         TEST_CASE(duplicateExpression19);
         TEST_CASE(duplicateExpression20);
+        TEST_CASE(duplicateExpression21);
         TEST_CASE(duplicateExpressionLoop);
         TEST_CASE(duplicateValueTernary);
         TEST_CASE(duplicateValueTernarySizeof); // #13773
@@ -1794,7 +1795,7 @@ private:
 
     void varScope39() {
         check("struct S {\n" // #12405
-              "    void f(const std::string&) const;\n"
+              "    void f(const std::string& s) const;\n"
               "    const int* g(std::string&) const;\n"
               "};\n"
               "void h(int);\n"
@@ -3623,7 +3624,7 @@ private:
               "class D\n"
               "{\n"
               "public:\n"
-              "  explicit D(int&);\n"
+              "  explicit D(int& i);\n"
               "\n"
               "private:\n"
               "  C c;\n"
@@ -3644,7 +3645,7 @@ private:
               "class D\n"
               "{\n"
               "public:\n"
-              "  explicit D(int&) noexcept;\n"
+              "  explicit D(int& i) noexcept;\n"
               "\n"
               "private:\n"
               "  C c;\n"
@@ -3664,7 +3665,7 @@ private:
               "class D\n"
               "{\n"
               "public:\n"
-              "  explicit D(int&);\n"
+              "  explicit D(int& i);\n"
               "\n"
               "private:\n"
               "  C c;\n"
@@ -3685,7 +3686,7 @@ private:
               "class D\n"
               "{\n"
               "public:\n"
-              "  explicit D(int&);\n"
+              "  explicit D(int& i);\n"
               "\n"
               "private:\n"
               "  C c;\n"
@@ -3706,7 +3707,7 @@ private:
               "class D\n"
               "{\n"
               "public:\n"
-              "  explicit D(int&);\n"
+              "  explicit D(int& i);\n"
               "\n"
               "private:\n"
               "  C c;\n"
@@ -6784,7 +6785,7 @@ private:
               "    AMethodObject(double, double, double);\n"
               "};\n"
               "struct S {\n"
-              "    static void A(double, double, double);\n"
+              "    static void A(double a1, double a2, double a3);\n"
               "};\n"
               "void S::A(double const a1, double const a2, double const a3) {\n"
               "    AMethodObject(a1, a2, a3);\n"
@@ -8021,7 +8022,7 @@ private:
               "public:\n"
               "    double getScale() const { return m_range * m_zoom; }\n"
               "    void setZoom(double z) { m_zoom = z; }\n"
-              "    void dostuff(int);\n"
+              "    void dostuff(int x);\n"
               "private:\n"
               "    double m_zoom;\n"
               "    double m_range;\n"
@@ -8183,6 +8184,35 @@ private:
     void duplicateExpression20() {
         check("enum { N = 1 };\n" // #14202
               "int f() { return N - 1; }");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void duplicateExpression21() {
+        check("struct S { int i; };\n" // #12795
+              "struct T {\n"
+              "    std::map<std::string, S*> m;\n"
+              "    S* get(const std::string& s) { return m[s]; }\n"
+              "    void modify() { for (const auto& e : m) e.second->i = 0; }\n"
+              "};\n"
+              "void f(T& t) {\n"
+              "    const S* p = t.get(\"abc\");\n"
+              "    const int o = p->i;\n"
+              "    t.modify();\n"
+              "    if (p->i == o) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S { int i; };\n"
+              "    struct T {\n"
+              "    std::vector<S*> m;\n"
+              "    void modify() { for (auto e : m) e->i = 0; }\n"
+              "};\n"
+              "void f(T& t) {\n"
+              "    const S* p = t.m[0];\n"
+              "    const int o = p->i;\n"
+              "    t.modify();\n"
+              "    if (p->i == o) {}\n"
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -8897,8 +8927,7 @@ private:
               "    if (i == j) {}\n"
               "}");
         ASSERT_EQUALS(
-            "[test.cpp:4:9] -> [test.cpp:3:9]: (style, inconclusive) Same expression used in consecutive assignments of 'i' and 'j'. [duplicateAssignExpression]\n"
-            "[test.cpp:3:14] -> [test.cpp:4:14] -> [test.cpp:6:11]: (style) The comparison 'i == j' is always true because 'i' and 'j' represent the same value. [knownConditionTrueFalse]\n",
+            "[test.cpp:4:9] -> [test.cpp:3:9]: (style, inconclusive) Same expression used in consecutive assignments of 'i' and 'j'. [duplicateAssignExpression]\n",
             errout_str());
 
         check("struct A { int x; int y; };"
@@ -8910,8 +8939,7 @@ private:
               "    if (i == a.x) {}\n"
               "}");
         ASSERT_EQUALS(
-            "[test.cpp:4:9] -> [test.cpp:3:9]: (style, inconclusive) Same expression used in consecutive assignments of 'i' and 'j'. [duplicateAssignExpression]\n"
-            "[test.cpp:3:14] -> [test.cpp:6:11]: (style) The comparison 'i == a.x' is always true because 'i' and 'a.x' represent the same value. [knownConditionTrueFalse]\n",
+            "[test.cpp:4:9] -> [test.cpp:3:9]: (style, inconclusive) Same expression used in consecutive assignments of 'i' and 'j'. [duplicateAssignExpression]\n",
             errout_str());
 
         check("struct A { int x; int y; };"
@@ -8923,8 +8951,7 @@ private:
               "    if (j == a.x) {}\n"
               "}");
         ASSERT_EQUALS(
-            "[test.cpp:4:9] -> [test.cpp:3:9]: (style, inconclusive) Same expression used in consecutive assignments of 'i' and 'j'. [duplicateAssignExpression]\n"
-            "[test.cpp:4:14] -> [test.cpp:6:11]: (style) The comparison 'j == a.x' is always true because 'j' and 'a.x' represent the same value. [knownConditionTrueFalse]\n",
+            "[test.cpp:4:9] -> [test.cpp:3:9]: (style, inconclusive) Same expression used in consecutive assignments of 'i' and 'j'. [duplicateAssignExpression]\n",
             errout_str());
 
         // Issue #8612
@@ -9992,9 +10019,7 @@ private:
               "    u.g();\n"
               "    if (c == m->get()) {}\n"
               "}\n");
-        TODO_ASSERT_EQUALS("",
-                           "[test.cpp:16:33] -> [test.cpp:18:11]: (style) The comparison 'c == m->get()' is always true because 'c' and 'm->get()' represent the same value. [knownConditionTrueFalse]\n",
-                           errout_str());
+        ASSERT_EQUALS("", errout_str());
 
         check("struct S {\n" // #12925
               "    const std::string & f() const { return str; }\n"
@@ -12651,6 +12676,24 @@ private:
               "    }\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:4:36]: (warning) Access of moved variable 'l'. [accessMoved]\n", errout_str());
+
+        check("struct S {\n" // #13179
+              "    operator bool() const { return !m.empty(); }\n"
+              "    std::string m;\n"
+              "};\n"
+              "S get();\n"
+              "void set(S);\n"
+              "void f() {\n"
+              "    while (S s = get()) {\n"
+              "        set(std::move(s));\n"
+              "    }\n"
+              "}\n"
+              "void g() {\n"
+              "    while (S s{ get() }) {\n"
+              "        set(std::move(s));\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void moveCallback()
@@ -12822,6 +12865,16 @@ private:
             "[test.cpp:7:15] -> [test.cpp:8:15]: (style, inconclusive) Function 'h' argument 1 names different: declaration 'a' definition 'b'. [funcArgNamesDifferent]\n",
             errout_str());
 
+        check("void f(int a);\n" // #14632
+              "void f(int) {}\n"
+              "void g(int);\n"
+              "void g(int b) {}\n"
+              "void h(int);\n"
+              "void h(int) {}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:1:12]: (style, inconclusive) Function 'f' argument 1 names different: declaration 'a' definition '<unnamed>'. [funcArgNamesDifferentUnnamed]\n"
+            "[test.cpp:4:12]: (style, inconclusive) Function 'g' argument 1 names different: declaration '<unnamed>' definition 'b'. [funcArgNamesDifferentUnnamed]\n",
+            errout_str());
     }
 
     void funcArgOrderDifferent() {

@@ -2518,8 +2518,6 @@ bool isMutableExpression(const Token* tok)
     if (tok->astOperand1() && Token::simpleMatch(tok, "["))
         return isMutableExpression(tok->astOperand1());
     if (const Variable* var = tok->variable()) {
-        if (var->nameToken() == tok)
-            return false;
         if (var->isConst() && !var->isPointer() && (!var->isArray() || !var->isArgument()))
             return false;
     }
@@ -3101,8 +3099,7 @@ static const Token* findExpressionChangedImpl(const Token* expr,
         }
         bool global = false;
         if (tok->variable()) {
-            global = !tok->variable()->isLocal() && !tok->variable()->isArgument() &&
-                     !(tok->variable()->isMember() && !tok->variable()->isStatic());
+            global = !tok->variable()->isLocal() && !tok->variable()->isArgument();
         } else if (tok->isIncompleteVar() && !tok->isIncompleteConstant()) {
             global = true;
         }

@@ -997,8 +997,9 @@ static std::string simplecppErrToId(simplecpp::Output::Type type)
         return "includeNestedTooDeeply";
     case simplecpp::Output::FILE_NOT_FOUND:
         return "missingFile";
-    // should never occur
     case simplecpp::Output::EXPLICIT_INCLUDE_NOT_FOUND:
+        return "missingIncludeExplicit";
+    // should never occur
     case simplecpp::Output::DUI_ERROR:
     // handled separately
     case simplecpp::Output::MISSING_HEADER:
@@ -1074,6 +1075,7 @@ void Preprocessor::getErrorMessages(ErrorLogger &errorLogger, const Settings &se
     preprocessor.error(loc, "message", simplecpp::Output::UNHANDLED_CHAR_ERROR);
     preprocessor.error(loc, "message", simplecpp::Output::INCLUDE_NESTED_TOO_DEEPLY);
     preprocessor.error(loc, "message", simplecpp::Output::FILE_NOT_FOUND);
+    preprocessor.error(loc, "message", simplecpp::Output::EXPLICIT_INCLUDE_NOT_FOUND);
     preprocessor.invalidSuppression(loc, "message");
 }
 

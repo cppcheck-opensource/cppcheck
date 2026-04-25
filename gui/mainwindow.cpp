@@ -30,7 +30,6 @@
 #include "errortypes.h"
 #include "filelist.h"
 #include "filesettings.h"
-#include "compliancereportdialog.h"
 #include "fileviewdialog.h"
 #include "helpdialog.h"
 #include "importproject.h"
@@ -193,7 +192,6 @@ MainWindow::MainWindow(TranslationHandler* th, QSettings* settings) :
 
     connect(mUI->mActionStop, &QAction::triggered, this, &MainWindow::stopAnalysis);
     connect(mUI->mActionSave, &QAction::triggered, this, &MainWindow::save);
-    connect(mUI->mActionComplianceReport, &QAction::triggered, this, &MainWindow::complianceReport);
 
     // About menu
     connect(mUI->mActionAbout, &QAction::triggered, this, &MainWindow::about);
@@ -244,8 +242,6 @@ MainWindow::MainWindow(TranslationHandler* th, QSettings* settings) :
         enableProjectActions(false);
         formatAndSetTitle();
     }
-
-    mUI->mActionComplianceReport->setVisible(isCppcheckPremium());
 
     enableCheckButtons(true);
 
@@ -1126,7 +1122,7 @@ bool MainWindow::getCppcheckSettings(Settings& settings, Suppressions& supprs)
         for (const QString& undefine : undefines)
             settings.userUndefs.insert(undefine.toStdString());
 
-        settings.userIncludes.push_back(mProjectFile->getUserInclude().toStdString());
+        mProjectFile->setSettingsUserIncludes(settings);
 
         const QStringList libraries = mProjectFile->getLibraries();
         for (const QString& library : libraries) {
@@ -1530,10 +1526,6 @@ void MainWindow::enableCheckButtons(bool enable)
     }
 
     mUI->mActionAnalyzeDirectory->setEnabled(enable);
-
-    if (isCppcheckPremium()) {
-        mUI->mActionComplianceReport->setEnabled(enable && mProjectFile && (mProjectFile->getAddons().contains("misra") || !mProjectFile->getCodingStandards().empty()));
-    }
 }
 
 void MainWindow::enableResultsButtons()
@@ -1705,28 +1697,6 @@ void MainWindow::save()
         mUI->mResults->save(selectedFile, type, mCppcheckCfgProductName);
         setPath(SETTINGS_LAST_RESULT_PATH, selectedFile);
     }
-}
-
-void MainWindow::complianceReport()
-{
-    if (!mUI->mResults->isSuccess()) {
-        QMessageBox m(QMessageBox::Critical,
-                      "Cppcheck",
-                      tr("Cannot generate a compliance report right now, an analysis must finish successfully. Try to reanalyze the code and ensure there are no critical errors."),
-                      QMessageBox::Ok,
-                      this);
-        m.exec();
-        return;
-    }
-
-    QTemporaryFile tempResults;
-    (void)tempResults.open(); // TODO: check result
-    tempResults.close();
-
-    mUI->mResults->save(tempResults.fileName(), Report::XMLV2, mCppcheckCfgProductName);
-
-    ComplianceReportDialog dlg(mProjectFile, tempResults.fileName(), mUI->mResults->getStatistics()->getCheckersReport());
-    dlg.exec();
 }
 
 void MainWindow::resultsAdded()

@@ -3730,7 +3730,6 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:3:24] -> [test.cpp:3:18]: (warning) Either the condition 's' is redundant or there is possible null pointer dereference: s. [nullPointerRedundantCheck]\n",
                       errout_str());
-
     }
 
     void nullpointerDeadCode() {

@@ -134,8 +134,6 @@ void ResultsView::clear(bool results)
     mUI->mProgress->setFormat("%p%");
 
     mUI->mLabelCriticalErrors->setVisible(false);
-
-    mSuccess = false;
 }
 
 void ResultsView::clear(const QString &filename)
@@ -319,7 +317,6 @@ void ResultsView::setCheckSettings(const Settings &settings)
 
 void ResultsView::checkingStarted(int count)
 {
-    mSuccess = true;
     mUI->mProgress->setVisible(true);
     mUI->mProgress->setMaximum(PROGRESS_MAX);
     mUI->mProgress->setValue(0);
@@ -394,8 +391,6 @@ void ResultsView::translate()
 
 void ResultsView::readErrorsXml(const QString &filename)
 {
-    mSuccess = false; // Don't know if results come from an aborted analysis
-
     const int version = XmlReport::determineVersion(filename);
     if (version == 0) {
         QMessageBox msgBox;
@@ -545,7 +540,6 @@ void ResultsView::on_mListLog_customContextMenuRequested(const QPoint &pos)
 
 void ResultsView::stopAnalysis()
 {
-    mSuccess = false;
     mUI->mLabelCriticalErrors->setText(tr("Analysis was stopped"));
     mUI->mLabelCriticalErrors->setVisible(true);
 }
@@ -568,10 +562,5 @@ void ResultsView::handleCriticalError(const ErrorItem &item)
         msg += ". " + tr("Analysis was aborted.");
         mUI->mLabelCriticalErrors->setText(msg);
         mUI->mLabelCriticalErrors->setVisible(true);
-        mSuccess = false;
     }
-}
-
-bool ResultsView::isSuccess() const {
-    return mSuccess;
 }

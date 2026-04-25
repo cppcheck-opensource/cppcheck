@@ -199,5 +199,14 @@ void TestProjectFile::getCheckingSuppressionsStar() const
     QCOMPARE(projectFile.getCheckingSuppressions()[0].fileName, "*.cpp");
 }
 
+void TestProjectFile::emptyUserInclude() const
+{
+    ProjectFile projectFile;
+    Settings settings;
+    projectFile.setUserInclude("   ");
+    projectFile.setSettingsUserIncludes(settings);
+    QCOMPARE(settings.userIncludes.size(), 0);
+}
+
 QTEST_MAIN(TestProjectFile)
 

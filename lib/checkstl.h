@@ -187,7 +187,7 @@ private:
     void sizeError(const Token* tok);
     void redundantIfRemoveError(const Token* tok);
     void invalidContainerLoopError(const Token* tok, const Token* loopTok, ErrorPath errorPath);
-    void invalidContainerError(const Token *tok, const Token * contTok, const ValueFlow::Value *val, ErrorPath errorPath);
+    void invalidContainerError(const Token *tok, const ValueFlow::Value *val, ErrorPath errorPath);
     void invalidContainerReferenceError(const Token* tok, const Token* contTok, ErrorPath errorPath);
 
     void uselessCallsReturnValueError(const Token* tok, const std::string& varname, const std::string& function);

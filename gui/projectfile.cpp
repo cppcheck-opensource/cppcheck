@@ -1078,6 +1078,12 @@ void ProjectFile::writeStringList(QXmlStreamWriter &xmlWriter, const QStringList
     xmlWriter.writeEndElement();
 }
 
+void ProjectFile::setSettingsUserIncludes(Settings &settings) const
+{
+    if (!mUserInclude.isEmpty())
+        settings.userIncludes.push_back(mUserInclude.toStdString());
+}
+
 QStringList ProjectFile::fromNativeSeparators(const QStringList &paths)
 {
     QStringList ret;

@@ -6,6 +6,7 @@ Major bug fixes & crashes:
 
 New checks:
 - MISRA C 2012 rule 10.3 now warns on assigning integer literals 0 and 1 to bool in C99 and later while preserving the existing C89 behavior.
+- funcArgNamesDifferentUnnamed warns on function declarations/definitions where a parameter in either location is unnamed
 
 C/C++ support:
 -

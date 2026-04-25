@@ -146,7 +146,7 @@ public:
     }
 
     void setUserInclude(const QString& userInclude) {
-        mUserInclude = userInclude;
+        mUserInclude = userInclude.trimmed();
     }
 
     /**
@@ -187,10 +187,6 @@ public:
      */
     const QString& getPlatform() const {
         return mPlatform;
-    }
-
-    const QString& getProjectName() const {
-        return mProjectName;
     }
 
     void setProjectName(QString projectName) {
@@ -456,7 +452,12 @@ public:
 
     /** Get paths where we should glob for certain files (dir="cfg"/"platforms"/etc */
     QStringList getSearchPaths(const QString& dir) const;
+
     static QStringList getSearchPaths(const QString& projectPath, const QString& appPath, const QString& datadir, const QString& dir);
+
+    /** Set user includes in settings if non-empty */
+    void setSettingsUserIncludes(Settings &settings) const;
+
 
 protected:
 

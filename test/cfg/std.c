@@ -45,7 +45,7 @@ void test_int32_min() {
 }
 
 void test_int64_min() {
-    // cppcheck-suppress compareValueOutOfTypeRangeError ; tests that INT64_MIN is a signed expression
+    // TODO cppcheck-suppress knownConditionTrueFalse // #13814
     if (INT64_MIN < 0) {}
 }
 

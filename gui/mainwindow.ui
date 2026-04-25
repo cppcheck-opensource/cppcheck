@@ -140,7 +140,6 @@
     <addaction name="separator"/>
     <addaction name="mActionProjectMRU"/>
     <addaction name="mActionSave"/>
-    <addaction name="mActionComplianceReport"/>
     <addaction name="separator"/>
     <addaction name="mActionPrintPreview"/>
     <addaction name="mActionPrint"/>

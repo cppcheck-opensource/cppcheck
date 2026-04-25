@@ -676,7 +676,7 @@ private:
     std::vector<MathLib::bigint> evaluateInt(const Token* tok, F getProgramMemory) const
     {
         if (const ValueFlow::Value* v = tok->getKnownValue(ValueFlow::Value::ValueType::INT))
-            return {static_cast<int>(v->intvalue)};
+            return {v->intvalue};
         std::vector<MathLib::bigint> result;
         ProgramMemory pm = getProgramMemory();
         if (Token::Match(tok, "&&|%oror%")) {
@@ -717,7 +717,7 @@ private:
             ProgramMemory pm = pms.get(tok, ctx, getProgramState());
             MathLib::bigint out = 0;
             if (pm.getContainerEmptyValue(tok->exprId(), out))
-                return {static_cast<int>(out)};
+                return {out};
             return {};
         }
         return {};
