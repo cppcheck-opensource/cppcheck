@@ -141,6 +141,7 @@
     <ClInclude Include="clangimport.h" />
     <ClInclude Include="color.h" />
     <ClInclude Include="config.h" />
+    <ClInclude Include="constnessptr.h" />
     <ClInclude Include="cppcheck.h" />
     <ClInclude Include="ctu.h" />
     <ClInclude Include="errorlogger.h" />
