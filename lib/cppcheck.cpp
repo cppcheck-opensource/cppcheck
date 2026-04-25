@@ -502,7 +502,7 @@ static std::vector<picojson::value> executeAddon(const AddonInfo &addonInfo,
             //std::cout << "addon '" << addonInfo.name <<  "' result is not a JSON" << std::endl;
 
             result.erase(result.find_last_not_of('\n') + 1, std::string::npos); // Remove trailing newlines
-            throw InternalError(nullptr, "Failed to execute '" + pythonExe + " " + args + "'. " + result);
+            throw InternalError(nullptr, "Failed to execute '" + pythonExe + " " + args + "'. Expected '{' but got '" + line[0] + "' as first character.", "Output was: '" + result + "'");
         }
 
         //std::cout << "addon '" << addonInfo.name <<  "' result is " << line << std::endl;

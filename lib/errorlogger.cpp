@@ -265,12 +265,19 @@ ErrorMessage ErrorMessage::fromInternalError(const InternalError &internalError,
             locationList.emplace_back(tokenList->getSourceFilePath(), 0, 0);
         }
     }
+    std::string prefixedMessage = (msg.empty() ? "" : (msg + ": ")) + internalError.errorMessage;
     ErrorMessage errmsg(std::move(locationList),
                         tokenList ? tokenList->getSourceFilePath() : filename,
                         Severity::error,
-                        (msg.empty() ? "" : (msg + ": ")) + internalError.errorMessage,
+                        prefixedMessage,
                         internalError.id,
                         Certainty::normal);
+
+    // ErrorMessage assumes a message looking like "short message\nverbose message".
+    // The internal error may not reflect that format, leading to obscure messages if verbose
+    // logging is requested: the first (often most informative) line will simply vanish.
+    // Solve this by setting mVerboseMessage to the complete original message:
+    errmsg.mVerboseMessage = prefixedMessage;
     // TODO: find a better way
     if (!internalError.details.empty())
         errmsg.mVerboseMessage = errmsg.mVerboseMessage + ": " + internalError.details;
