@@ -24,6 +24,7 @@ import os
 import argparse
 import string
 import copy
+import junit_xml
 
 try:
     from itertools import izip as zip
@@ -1537,6 +1538,9 @@ class MisraChecker:
         # ie rule 1.2 becomes 102
         self.ruleTexts = {}
         self.ruleText_filename = None
+
+        self.junit_testcases = []
+        self.junit_filehandle = None
 
         # Dictionary of dictionaries for rules to suppress
         # Dict1 is keyed by rule number in the hundreds format of
@@ -4523,6 +4527,11 @@ class MisraChecker:
             if this_violation not in self.existing_violations:
                 self.existing_violations.add(this_violation)
                 cppcheckdata.reportError(location, cppcheck_severity, errmsg, 'misra', errorId, misra_severity)
+                if self.junit_filehandle:
+                    loc = '[%s:%i]' % (location.file, location.linenr)
+                    tc = junit_xml.TestCase(loc, 'misra', 1.0)
+                    tc.add_error_info(errmsg, loc, errorId)
+                    self.junit_testcases.append(tc)
 
                 if misra_severity not in self.violations:
                     self.violations[misra_severity] = []
@@ -5058,6 +5067,7 @@ def get_args_parser():
     parser.add_argument("-generate-table", help=argparse.SUPPRESS, action="store_true")
     parser.add_argument("-verify", help=argparse.SUPPRESS, action="store_true")
     parser.add_argument("--severity", type=str, help="Set a custom severity string, for example 'error' or 'warning'. ")
+    parser.add_argument("--junit-file-export", type=str, help="Filename to export report as JUnit XML")
     return parser
 
 
@@ -5086,6 +5096,16 @@ def main():
             if args.verify_rule_texts:
                 print('Fatal error: file is not found: ' + filename)
                 sys.exit(1)
+
+    if args.junit_file_export:
+        filename = os.path.expanduser(args.junit_file_export)
+        filename = os.path.normpath(filename)
+        if os.path.isfile(filename):
+            print('JUnit file already exists and will be overwritten')
+        try:
+            checker.junit_filehandle =  open(filename, 'w+')
+        except FileNotFoundError as e:
+            print(f'An error occurred: {e}')
 
 
     if args.verify_rule_texts and not args.rule_texts:
@@ -5164,6 +5184,10 @@ def main():
 
     if args.show_suppressed_rules:
         checker.showSuppressedRules()
+    if args.junit_file_export:
+        ts = junit_xml.TestSuite("MISRA2012_TS", checker.junit_testcases)
+        junit_xml.TestSuite.to_file(checker.junit_filehandle, [ts], prettyprint=True)
+        checker.junit_filehandle.close()
 
 
 if __name__ == '__main__':
