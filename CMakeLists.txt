@@ -3,6 +3,8 @@ project(Cppcheck VERSION 2.20.99 LANGUAGES CXX)
 
 include(cmake/options.cmake)
 
+include(cmake/platformCheck.cmake)
+
 include(cmake/cxx11.cmake)
 use_cxx11()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
