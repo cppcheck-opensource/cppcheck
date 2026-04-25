@@ -17,10 +17,10 @@ jobs:
       matrix:
         # "opensuse/tumbleweed:latest" / "fedora:rawhide" / "debian:unstable" / "archlinux:latest"
         include:
-          - os: ubuntu-22.04
+          - os: ubuntu-24.04
             image: "fedora:rawhide"
             stdlib: libstdc++
-          - os: ubuntu-22.04
+          - os: ubuntu-24.04
             image: "fedora:rawhide"
             stdlib: libc++
           - os: macos-26
@@ -191,7 +191,7 @@ jobs:
             use_libcxx: On
       fail-fast: false
 
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: ${{ github.repository_owner == 'danmar' }}
 
     env:

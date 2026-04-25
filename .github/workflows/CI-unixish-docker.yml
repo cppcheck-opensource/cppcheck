@@ -14,14 +14,14 @@ on:
 
 permissions:
   contents: read
-  
+
 jobs:
   build_cmake:
 
     strategy:
       matrix:
         include:
-          - image: "ubuntu:24.04"
+          - image: "ubuntu:22.04"
             with_gui: true
             full_build: true
           - image: "ubuntu:25.10"
@@ -32,7 +32,7 @@ jobs:
             full_build: false  # FIXME: test-signalhandler.cpp fails to build since feenableexcept() is missing
       fail-fast: false # Prefer quick result
 
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     # TODO: is this actually applied to the guest?
     env:
@@ -87,10 +87,10 @@ jobs:
 
     strategy:
       matrix:
-        image: ["ubuntu:24.04", "ubuntu:25.10", "alpine:3.23"]
+        image: ["ubuntu:25.10", "alpine:3.23"]
       fail-fast: false # Prefer quick result
 
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     container:
       image: ${{ matrix.image }}

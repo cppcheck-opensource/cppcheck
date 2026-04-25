@@ -18,7 +18,7 @@ permissions:
 jobs:
   analyze:
     name: Analyze
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       security-events: write
 
@@ -36,7 +36,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         persist-credentials: false
-      
+
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3

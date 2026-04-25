@@ -20,7 +20,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-15]
+        os: [ubuntu-24.04, macos-15]
       fail-fast: false # Prefer quick result
 
     runs-on: ${{ matrix.os }}
@@ -75,7 +75,10 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-15]
+        os: [ubuntu-24.04, macos-15]
+        include:
+          - os: ubuntu-24.04
+            latest: true
       fail-fast: false # Prefer quick result
 
     runs-on: ${{ matrix.os }}
@@ -98,13 +101,13 @@ jobs:
       # TODO: bail out on warnings with latest GCC
       - name: Set up GCC
         uses: egor-tensin/setup-gcc@v1
-        if: false  # matrix.os == 'ubuntu-22.04'
+        if: false  # matrix.os == 'ubuntu-24.04'
         with:
           version: 13
           platform: x64
 
       - name: Select compiler
-        if: false  # matrix.os == 'ubuntu-22.04'
+        if: false  # matrix.os == 'ubuntu-24.04'
         run: |
           echo "CXX=g++-13" >> $GITHUB_ENV
 
@@ -152,12 +155,12 @@ jobs:
           cmake --build cmake.output --target install
 
       - name: Run CMake on ubuntu (no CLI)
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.latest
         run: |
           cmake -S . -B cmake.output_nocli -Werror=dev -DBUILD_TESTING=Off -DBUILD_CLI=Off
 
       - name: Run CMake on ubuntu (no CLI / with tests)
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.latest
         run: |
           # the test and CLI code are too intertwined so for now we need to reject that
           if cmake -S . -B cmake.output_nocli_tests -Werror=dev -DBUILD_TESTING=On -DBUILD_CLI=Off; then
@@ -167,17 +170,17 @@ jobs:
           fi
 
       - name: Run CMake on ubuntu (no CLI / with GUI)
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.latest
         run: |
           cmake -S . -B cmake.output_nocli_gui -Werror=dev -DBUILD_TESTING=Off -DBUILD_CLI=Off -DBUILD_GUI=On
 
       - name: Run CMake on ubuntu (no GUI)
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.latest
         run: |
           cmake -S . -B cmake.output_nogui -Werror=dev -DBUILD_TESTING=Off -DBUILD_GUI=Off
 
       - name: Run CMake on ubuntu (no GUI / with triage)
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.latest
         run: |
           # cannot build triage without GUI
           if cmake -S . -B cmake.output_nogui_triage -Werror=dev -DBUILD_TESTING=Off -DBUILD_GUI=Off -DBUILD_TRIAGE=On; then
@@ -187,7 +190,7 @@ jobs:
           fi
 
       - name: Run CMake on ubuntu (no CLI / no GUI)
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.latest
         run: |
           cmake -S . -B cmake.output_nocli_nogui -Werror=dev -DBUILD_TESTING=Off -DBUILD_GUI=Off
 
@@ -195,7 +198,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-15]
+        os: [ubuntu-24.04, macos-15]
         cxxstd: [14, 17, 20]
         # FIXME: macos-15 fails to compile with C++20
         #
@@ -258,7 +261,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-15]
+        os: [ubuntu-24.04, macos-15]
       fail-fast: false # Prefer quick result
 
     runs-on: ${{ matrix.os }}
@@ -292,7 +295,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-15]
+        os: [ubuntu-24.04, macos-15]
       fail-fast: false # Prefer quick result
 
     runs-on: ${{ matrix.os }}
@@ -326,7 +329,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-15]
+        os: [ubuntu-24.04, macos-15]
       fail-fast: false # Prefer quick result
 
     runs-on: ${{ matrix.os }}
@@ -409,7 +412,7 @@ jobs:
 
   build_cmake_minimum:  # TODO: move to docker workflow?
 
-    runs-on: ubuntu-22.04  # use the oldest available runner
+    runs-on: ubuntu-24.04  # use the oldest available runner
 
     env:
       CMAKE_VERSION: 3.22
@@ -447,9 +450,11 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-15]
+        os: [ubuntu-24.04, macos-15]
         include:
           - xdist_n: auto
+          - os: ubuntu-24.04
+            latest: true
           # FIXME: test_color_tty fails with xdist - see #13278
           - os: macos-15
             xdist_n: '1'
@@ -474,8 +479,8 @@ jobs:
           sudo apt-get install libxml2-utils
 
       # packages for strict cfg checks
-      - name: Install missing software on ubuntu 22.04 (cfg)
-        if: matrix.os == 'ubuntu-22.04'
+      - name: Install missing software on ubuntu (cfg)
+        if: matrix.latest
         run: |
           sudo apt-get install libcairo2-dev libcurl4-openssl-dev liblua5.3-dev libssl-dev libsqlite3-dev libcppunit-dev libsigc++-2.0-dev libgtk-3-dev libboost-all-dev libselinux-dev libwxgtk3.0-gtk3-dev xmlstarlet qtbase5-dev
 
@@ -568,12 +573,12 @@ jobs:
           TEST_CPPCHECK_INJECT_BUILDDIR: injected
 
       - name: Run cfg tests
-        if: matrix.os != 'ubuntu-22.04'
+        if: ${{ !matrix.latest }}
         run: |
           make -j$(nproc) checkcfg
 
       - name: Run cfg tests (strict)
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.latest
         run: |
           make -j$(nproc) checkcfg
         env:
@@ -649,7 +654,7 @@ jobs:
 
       # TODO: run with "-n auto" when misra_test.py can be run in parallel
       - name: test addons (Python)
-        if: matrix.os != 'ubuntu-22.04'
+        if: matrix.os != 'ubuntu-24.04'
         run: |
           python3 -m pytest -Werror --strict-markers -vv -n 1 addons/test
         env:
@@ -658,20 +663,20 @@ jobs:
       # TODO: run with "-n auto" when misra_test.py can be run in parallel
       # we cannot specify -Werror since xml/etree/ElementTree.py in Python 3.10 contains an unclosed file
       - name: test addons (Python)
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.latest
         run: |
           python3 -m pytest --strict-markers -vv -n 1 addons/test
         env:
           PYTHONPATH: ./addons
 
       - name: Build democlient
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.latest
         run: |
           warnings="-pedantic -Wall -Wextra -Wcast-qual -Wno-deprecated-declarations -Wfloat-equal -Wmissing-declarations -Wmissing-format-attribute -Wno-long-long -Wpacked -Wredundant-decls -Wundef -Wno-shadow -Wno-missing-field-initializers -Wno-missing-braces -Wno-sign-compare -Wno-multichar"
           g++ $warnings -c -Ilib -Iexternals/tinyxml2 democlient/democlient.cpp
 
       - name: Test disabled executors
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.latest
         run: |
           g++ -Ilib -c cli/threadexecutor.cpp -DDISALLOW_THREAD_EXECUTOR
           test -z "$(nm threadexecutor.o)"
@@ -700,7 +705,7 @@ jobs:
   selfcheck:
     needs: build # wait for all tests to be successful first
 
-    runs-on: ubuntu-22.04 # run on the latest image only
+    runs-on: ubuntu-24.04 # run on the latest image only
 
     steps:
       - uses: actions/checkout@v4

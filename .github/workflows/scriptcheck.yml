@@ -18,7 +18,7 @@ permissions:
 jobs:
   build:
 
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +45,7 @@ jobs:
   scriptcheck:
 
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         python-version: [3.7, 3.8, 3.9, '3.10', '3.11', '3.12', '3.13', '3.14']
@@ -203,7 +203,7 @@ jobs:
   dmake:
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-15, windows-2025]
+        os: [ubuntu-24.04, macos-15, windows-2025]
       fail-fast: false
 
     runs-on: ${{ matrix.os }}
