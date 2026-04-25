@@ -5313,12 +5313,12 @@ private:
 
         {
             const char code[] = "using namespace std;\n"
+                                "string_view f() { return string(); }\n"
                                 "void move() {}\n"
-                                "void string() {}\n"
-                                "string_view f() { return string(); }\n";
-            expected = "void move ( ) { }\n"
-                       "void string ( ) { }\n"
-                       "std :: string_view f ( ) { return std :: string ( ) ; }";
+                                "void string() {}\n";
+            expected = "std :: string_view f ( ) { return std :: string ( ) ; }\n"
+                       "void move ( ) { }\n"
+                       "void string ( ) { }";
             ASSERT_EQUALS(expected, tokenizeAndStringify(code));
         }
     }
