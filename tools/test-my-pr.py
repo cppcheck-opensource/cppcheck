@@ -16,7 +16,6 @@ import random
 import re
 import requests
 import subprocess
-import time
 
 
 def format_float(a, b=1):
