@@ -223,19 +223,43 @@ private:
 
     void strToInt() {
         ASSERT_EQUALS(1, ::strToInt<int>("1"));
+        ASSERT_EQUALS(1, ::strToInt<int>("+1"));
         ASSERT_EQUALS(-1, ::strToInt<int>("-1"));
         ASSERT_EQUALS(1, ::strToInt<std::size_t>("1"));
+        ASSERT_EQUALS(1, ::strToInt<std::size_t>("+1"));
+        ASSERT_EQUALS(0, ::strToInt<int>("0"));
+        ASSERT_EQUALS(0, ::strToInt<int>("+0"));
+        ASSERT_EQUALS(0, ::strToInt<int>("-0"));
+        ASSERT_EQUALS(0, ::strToInt<std::size_t>("0"));
+        ASSERT_EQUALS(0, ::strToInt<std::size_t>("+0"));
         ASSERT_THROW_EQUALS(::strToInt<int>(""), std::runtime_error, "converting '' to integer failed - not an integer");
         ASSERT_THROW_EQUALS(::strToInt<std::size_t>(""), std::runtime_error, "converting '' to integer failed - not an integer");
         ASSERT_THROW_EQUALS(::strToInt<int>(" "), std::runtime_error, "converting ' ' to integer failed - not an integer");
         ASSERT_THROW_EQUALS(::strToInt<std::size_t>(" "), std::runtime_error, "converting ' ' to integer failed - not an integer");
         ASSERT_THROW_EQUALS(::strToInt<unsigned int>("-1"), std::runtime_error, "converting '-1' to integer failed - needs to be positive");
+        ASSERT_THROW_EQUALS(::strToInt<unsigned int>("-0"), std::runtime_error, "converting '-0' to integer failed - needs to be positive");
+        ASSERT_THROW_EQUALS(::strToInt<std::size_t>("-1"), std::runtime_error, "converting '-1' to integer failed - needs to be positive");
+        ASSERT_THROW_EQUALS(::strToInt<std::size_t>("-0"), std::runtime_error, "converting '-0' to integer failed - needs to be positive");
         ASSERT_THROW_EQUALS(::strToInt<int>("1ms"), std::runtime_error, "converting '1ms' to integer failed - not an integer");
         ASSERT_THROW_EQUALS(::strToInt<int>("1.0"), std::runtime_error, "converting '1.0' to integer failed - not an integer");
+        ASSERT_THROW_EQUALS(::strToInt<int>("+1.0"), std::runtime_error, "converting '+1.0' to integer failed - not an integer");
+        ASSERT_THROW_EQUALS(::strToInt<int>("-1.0"), std::runtime_error, "converting '-1.0' to integer failed - not an integer");
         ASSERT_THROW_EQUALS(::strToInt<int>("one"), std::runtime_error, "converting 'one' to integer failed - not an integer");
+        //ASSERT_THROW_EQUALS(::strToInt<int>(" 1"), std::runtime_error, "converting ' 1' to integer failed - not an integer"); // TODO: should fail
+        //ASSERT_THROW_EQUALS(::strToInt<int>("\t1"), std::runtime_error, "converting '\t1' to integer failed - not an integer"); // TODO should fail
+        ASSERT_THROW_EQUALS(::strToInt<int>("1 "), std::runtime_error, "converting '1 ' to integer failed - not an integer");
+        ASSERT_THROW_EQUALS(::strToInt<int>("1\t"), std::runtime_error, "converting '1\t' to integer failed - not an integer");
+        ASSERT_THROW_EQUALS(::strToInt<int>("+ 1"), std::runtime_error, "converting '+ 1' to integer failed - not an integer");
         ASSERT_THROW_EQUALS(::strToInt<unsigned int>("1ms"), std::runtime_error, "converting '1ms' to integer failed - not an integer");
         ASSERT_THROW_EQUALS(::strToInt<unsigned int>("1.0"), std::runtime_error, "converting '1.0' to integer failed - not an integer");
+        ASSERT_THROW_EQUALS(::strToInt<unsigned int>("+1.0"), std::runtime_error, "converting '+1.0' to integer failed - not an integer");
+        ASSERT_THROW_EQUALS(::strToInt<unsigned int>("-1.0"), std::runtime_error, "converting '-1.0' to integer failed - not an integer");
         ASSERT_THROW_EQUALS(::strToInt<unsigned int>("one"), std::runtime_error, "converting 'one' to integer failed - not an integer");
+        //ASSERT_THROW_EQUALS(::strToInt<unsigned int>(" 1"), std::runtime_error, "converting ' 1' to integer failed - not an integer"); // TODO: should fail
+        //ASSERT_THROW_EQUALS(::strToInt<unsigned int>("\t1"), std::runtime_error, "converting '\t1' to integer failed - not an integer"); // TODO: should fail
+        ASSERT_THROW_EQUALS(::strToInt<unsigned int>("1 "), std::runtime_error, "converting '1 ' to integer failed - not an integer");
+        ASSERT_THROW_EQUALS(::strToInt<unsigned int>("1\t"), std::runtime_error, "converting '1\t' to integer failed - not an integer");
+        ASSERT_THROW_EQUALS(::strToInt<unsigned int>("- 1"), std::runtime_error, "converting '- 1' to integer failed - not an integer");
         ASSERT_THROW_EQUALS(::strToInt<int>(std::to_string(static_cast<int64_t>(std::numeric_limits<int>::max()) + 1)), std::runtime_error, "converting '2147483648' to integer failed - out of range (limits)");
         ASSERT_THROW_EQUALS(::strToInt<int>(std::to_string(static_cast<int64_t>(std::numeric_limits<int>::min()) - 1)), std::runtime_error, "converting '-2147483649' to integer failed - out of range (limits)");
         ASSERT_THROW_EQUALS(::strToInt<int8_t>(std::to_string(static_cast<int64_t>(std::numeric_limits<int8_t>::max()) + 1)), std::runtime_error, "converting '128' to integer failed - out of range (limits)");
