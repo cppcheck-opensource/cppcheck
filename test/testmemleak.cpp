@@ -25,7 +25,6 @@
 #include "token.h"
 
 #include <cstddef>
-#include <list>
 
 class TestMemleak : public TestFixture {
 public:

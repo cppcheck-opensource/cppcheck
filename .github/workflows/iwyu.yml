@@ -2,10 +2,7 @@
 # Environment reference https://help.github.com/en/actions/reference/virtual-environments-for-github-hosted-runners
 name: include-what-you-use
 
-on:
-  schedule:
-    - cron: '0 0 * * 0'
-  workflow_dispatch:
+on: [pull_request, push]
 
 permissions:
   contents: read
@@ -71,7 +68,7 @@ jobs:
       - name: Install missing software on Fedora
         if: contains(matrix.image, 'fedora')
         run: |
-          dnf install -y cmake clang pcre-devel
+          dnf install -y cmake clang
           dnf install -y libglvnd-devel  # fixes missing dependency for Qt in CMake
           dnf install -y p7zip-plugins  # required as fallback for py7zr in Qt installation
           dnf install -y python3-pip  # fixes missing pip module in jurplel/install-qt-action
@@ -125,7 +122,8 @@ jobs:
 
       - name: Prepare CMake
         run: |
-          cmake -S . -B cmake.output -Werror=dev -DCMAKE_BUILD_TYPE=Release -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCPPCHK_GLIBCXX_DEBUG=Off -DUSE_MATCHCOMPILER=Off -DEXTERNALS_AS_SYSTEM=On -DUSE_LIBCXX=${{ matrix.stdlib == 'libc++' }}
+          # TODO: re-enable HAVE_RULES when we no lomnger rely on PCRE1
+          cmake -S . -B cmake.output -Werror=dev -DCMAKE_BUILD_TYPE=Release -DHAVE_RULES=Off -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCPPCHK_GLIBCXX_DEBUG=Off -DUSE_MATCHCOMPILER=Off -DEXTERNALS_AS_SYSTEM=On -DUSE_LIBCXX=${{ matrix.stdlib == 'libc++' }}
         env:
           CC: clang
           CXX: clang++
@@ -265,3 +263,21 @@ jobs:
         with:
           name: Logs (clang-include-cleaner - ${{ matrix.stdlib }})
           path: ./*.log
+
+  diskarzhan:
+
+    runs-on: ubuntu-22.04
+    if: ${{ github.repository_owner == 'danmar' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install Python packages
+        run: |
+          pip install diskarzhan
+
+      - name: diskarzhan
+        run: |
+          diskarzhan `find cli frontend lib gui test tools/triage -name '*.cpp' -or -name '*.h' ! -name precompiled.h | grep -v test/cli` 

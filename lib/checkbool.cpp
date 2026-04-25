@@ -28,8 +28,6 @@
 #include "tokenize.h"
 #include "vfvalue.h"
 
-#include <list>
-#include <vector>
 //---------------------------------------------------------------------------
 
 // Register this check class (by creating a static instance of it)

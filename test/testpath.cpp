@@ -21,7 +21,6 @@
 #include "helpers.h"
 #include "standards.h"
 
-#include <initializer_list>
 #include <list>
 #include <set>
 #include <string>

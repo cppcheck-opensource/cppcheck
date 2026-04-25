@@ -36,7 +36,6 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <initializer_list>
 #include <limits>
 #include <list>
 #include <set>

@@ -35,7 +35,6 @@
 #include <algorithm>
 #include <cctype>
 #include <cstring>
-#include <functional>
 #include <map>
 #include <sstream>
 #include <tuple>

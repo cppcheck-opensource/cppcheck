@@ -34,7 +34,6 @@
 #include <cstring>
 #include <iostream>
 #include <list>
-#include <memory>
 #include <stdexcept>
 #include <string>
 #include <unordered_set>
