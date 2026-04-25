@@ -146,9 +146,6 @@ if __name__ == "__main__":
         args.packages = getpackages()
         random.shuffle(args.packages)
 
-    if args.p is None and args.packages:
-        args.p = len(args.packages)
-
     print('\n'.join(args.packages[:20]))
 
     if not lib.check_requirements():
