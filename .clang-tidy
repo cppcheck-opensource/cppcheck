@@ -36,7 +36,6 @@ Checks: >
         -concurrency-mt-unsafe,
         -misc-const-correctness,
         -misc-no-recursion,
-        -misc-non-private-member-variables-in-classes,
         -misc-throw-by-value-catch-by-reference,
         -misc-use-anonymous-namespace,
         -modernize-avoid-c-arrays,
