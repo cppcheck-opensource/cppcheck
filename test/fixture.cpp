@@ -116,7 +116,7 @@ bool TestFixture::prepareTest(const char testname[])
         std::cout << fullTestName << std::endl;
     }
     if (timer_results)
-        mTimer.reset(new Timer(fullTestName, ShowTime::TOP5_SUMMARY, timer_results));
+        mTimer.reset(new Timer(fullTestName, timer_results));
     return !dry_run;
 }
 
@@ -423,11 +423,7 @@ std::size_t TestFixture::runTests(const options& args)
         const auto f = [&](){
             fixture = test->create();
         };
-        // TODO: Timer::run() needs proper handling if no results should be collected
-        if (args.timer_results())
-            Timer::run(test->classname + " - create", ShowTime::TOP5_SUMMARY, args.timer_results(), f);
-        else
-            f();
+        Timer::run(test->classname + " - create", args.timer_results(), f);
         fixture->processOptions(args);
         fixture->run(tests);
     }

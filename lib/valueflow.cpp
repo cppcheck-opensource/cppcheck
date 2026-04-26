@@ -7272,7 +7272,7 @@ struct ValueFlowPassRunner {
                 name += ' ';
                 name += std::to_string(it);
             }
-            Timer t(name, state.settings.showtime, timerResults);
+            Timer t(name, timerResults);
             pass->run(state);
         } else {
             pass->run(state);

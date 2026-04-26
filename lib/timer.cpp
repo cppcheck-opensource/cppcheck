@@ -80,12 +80,10 @@ void TimerResults::reset()
     mResults.clear();
 }
 
-Timer::Timer(std::string str, ShowTime showtimeMode, TimerResultsIntf* timerResults)
+Timer::Timer(std::string str, TimerResultsIntf* timerResults)
     : mName(std::move(str))
     , mResults(timerResults)
 {
-    if (showtimeMode == ShowTime::NONE)
-        return;
     if (!mResults)
         return;
     mStart = Clock::now();
@@ -150,5 +148,5 @@ OneShotTimer::OneShotTimer(std::string name, ShowTime showtime)
     };
 
     mResults.reset(new MyResults);
-    mTimer.reset(new Timer(std::move(name), showtime, mResults.get()));
+    mTimer.reset(new Timer(std::move(name), mResults.get()));
 }

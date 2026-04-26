@@ -421,7 +421,9 @@ bool CppCheckExecutor::reportUnmatchedSuppressions(const Settings &settings, con
 int CppCheckExecutor::check_internal(const Settings& settings, Suppressions& supprs) const
 {
     StdLogger stdLogger(settings);
-    TimerResults timerResults;
+    std::unique_ptr<TimerResults> timerResults;
+    if (settings.showtime != ShowTime::NONE)
+        timerResults.reset(new TimerResults);
 
     if (settings.reportProgress >= 0)
         stdLogger.resetLatestProgressOutputTime();
@@ -442,33 +444,35 @@ int CppCheckExecutor::check_internal(const Settings& settings, Suppressions& sup
     if (!settings.checkersReportFilename.empty())
         std::remove(settings.checkersReportFilename.c_str());
 
-    CppCheck cppcheck(settings, supprs, stdLogger, &timerResults, true, executeCommand);
+    CppCheck cppcheck(settings, supprs, stdLogger, timerResults.get(), true, executeCommand);
 
     unsigned int returnValue = 0;
     if (settings.useSingleJob()) {
         // Single process
-        SingleExecutor executor(cppcheck, mFiles, mFileSettings, settings, supprs, stdLogger, &timerResults);
+        SingleExecutor executor(cppcheck, mFiles, mFileSettings, settings, supprs, stdLogger, timerResults.get());
         returnValue = executor.check();
     } else {
 #if defined(HAS_THREADING_MODEL_THREAD)
         if (settings.executor == Settings::ExecutorType::Thread) {
-            ThreadExecutor executor(mFiles, mFileSettings, settings, supprs, stdLogger, &timerResults, CppCheckExecutor::executeCommand);
+            ThreadExecutor executor(mFiles, mFileSettings, settings, supprs, stdLogger, timerResults.get(), CppCheckExecutor::executeCommand);
             returnValue = executor.check();
         }
 #endif
 #if defined(HAS_THREADING_MODEL_FORK)
         if (settings.executor == Settings::ExecutorType::Process) {
-            ProcessExecutor executor(mFiles, mFileSettings, settings, supprs, stdLogger, &timerResults, CppCheckExecutor::executeCommand);
+            ProcessExecutor executor(mFiles, mFileSettings, settings, supprs, stdLogger, timerResults.get(), CppCheckExecutor::executeCommand);
             returnValue = executor.check();
         }
 #endif
     }
 
     // TODO: show time *after* the whole program analysis
-    if (settings.showtime == ShowTime::SUMMARY)
-        timerResults.showResults();
-    else if (settings.showtime == ShowTime::TOP5_SUMMARY)
-        timerResults.showResults(5);
+    if (timerResults) {
+        if (settings.showtime == ShowTime::SUMMARY)
+            timerResults->showResults();
+        else if (settings.showtime == ShowTime::TOP5_SUMMARY)
+            timerResults->showResults(5);
+    }
 
     // TODO: is this run again instead of using previously cached results?
     returnValue |= cppcheck.analyseWholeProgram(settings.buildDir, mFiles, mFileSettings, stdLogger.getCtuInfo());

@@ -3508,7 +3508,7 @@ bool Tokenizer::simplifyTokens1(const std::string &configuration, int fileIndex)
     mConfiguration = configuration;
 
     if (mTimerResults) {
-        Timer t("Tokenizer::simplifyTokens1::simplifyTokenList1", mSettings.showtime, mTimerResults);
+        Timer t("Tokenizer::simplifyTokens1::simplifyTokenList1", mTimerResults);
         if (!simplifyTokenList1(list.getFiles().front().c_str()))
             return false;
     } else {
@@ -3516,18 +3516,16 @@ bool Tokenizer::simplifyTokens1(const std::string &configuration, int fileIndex)
             return false;
     }
 
-    const ShowTime showTime = mTimerResults ? mSettings.showtime : ShowTime::NONE;
-
-    Timer::run("Tokenizer::simplifyTokens1::createAst", showTime, mTimerResults, [&]() {
+    Timer::run("Tokenizer::simplifyTokens1::createAst", mTimerResults, [&]() {
         list.createAst();
         list.validateAst(mSettings.debugnormal);
     });
 
-    Timer::run("Tokenizer::simplifyTokens1::createSymbolDatabase", showTime, mTimerResults, [&]() {
+    Timer::run("Tokenizer::simplifyTokens1::createSymbolDatabase", mTimerResults, [&]() {
         createSymbolDatabase();
     });
 
-    Timer::run("Tokenizer::simplifyTokens1::setValueType", showTime, mTimerResults, [&]() {
+    Timer::run("Tokenizer::simplifyTokens1::setValueType", mTimerResults, [&]() {
         mSymbolDatabase->setValueTypeInTokenList(false);
         mSymbolDatabase->setValueTypeInTokenList(true);
     });
@@ -3542,7 +3540,7 @@ bool Tokenizer::simplifyTokens1(const std::string &configuration, int fileIndex)
     const bool doValueFlow = !disableValueflowEnv || (std::strcmp(disableValueflowEnv, "1") != 0);
 
     if (doValueFlow) {
-        Timer::run("Tokenizer::simplifyTokens1::ValueFlow", showTime, mTimerResults, [&]() {
+        Timer::run("Tokenizer::simplifyTokens1::ValueFlow", mTimerResults, [&]() {
             ValueFlow::setValues(list, *mSymbolDatabase, mErrorLogger, mSettings, mTimerResults);
         });
 
@@ -5753,10 +5751,8 @@ bool Tokenizer::simplifyTokenList1(const char FileName[])
 
     validate();
 
-    const ShowTime showTime = mTimerResults ? mSettings.showtime : ShowTime::NONE;
-
     // Bail out if code is garbage
-    Timer::run("Tokenizer::simplifyTokens1::simplifyTokenList1::findGarbageCode", showTime, mTimerResults, [&]() {
+    Timer::run("Tokenizer::simplifyTokens1::simplifyTokenList1::findGarbageCode", mTimerResults, [&]() {
         findGarbageCode();
     });
 
@@ -5893,7 +5889,7 @@ bool Tokenizer::simplifyTokenList1(const char FileName[])
     simplifyTypedefLHS();
 
     // typedef..
-    Timer::run("Tokenizer::simplifyTokens1::simplifyTokenList1::simplifyTypedef", showTime, mTimerResults, [&]() {
+    Timer::run("Tokenizer::simplifyTokens1::simplifyTokenList1::simplifyTypedef", mTimerResults, [&]() {
         simplifyTypedef();
     });
 
@@ -5987,7 +5983,7 @@ bool Tokenizer::simplifyTokenList1(const char FileName[])
         simplifyTypeIntrinsics();
 
         // Handle templates..
-        Timer::run("Tokenizer::simplifyTokens1::simplifyTokenList1::simplifyTemplates", showTime, mTimerResults, [&]() {
+        Timer::run("Tokenizer::simplifyTokens1::simplifyTokenList1::simplifyTemplates", mTimerResults, [&]() {
             simplifyTemplates();
         });
 
@@ -6014,7 +6010,7 @@ bool Tokenizer::simplifyTokenList1(const char FileName[])
 
     validate(); // #6772 "segmentation fault (invalid code) in Tokenizer::setVarId"
 
-    Timer::run("Tokenizer::simplifyTokens1::simplifyTokenList1::setVarId", showTime, mTimerResults, [&](){
+    Timer::run("Tokenizer::simplifyTokens1::simplifyTokenList1::setVarId", mTimerResults, [&](){
         setVarId();
     });
 
