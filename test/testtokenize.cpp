@@ -1703,7 +1703,6 @@ private:
                                            "  for ( ; x; )\n"
                                            "  l1: l2: --x;\n"
                                            "}"));
-        ignore_errout();
 
         // Labels before {
         ASSERT_EQUALS("void f ( int x ) {\n"
@@ -1714,7 +1713,6 @@ private:
                                            "  for ( ; x; )\n"
                                            "  l1: l2: { -- x; }\n"
                                            "}"));
-        ignore_errout();
 
         // Labels before try/catch
         ASSERT_EQUALS("void f ( int x ) {\n"
@@ -1729,7 +1727,6 @@ private:
                                            "    try { throw 1; }\n"
                                            "    catch(...) { --x; }\n"
                                            "}"));
-        ignore_errout();
     }
 
 
