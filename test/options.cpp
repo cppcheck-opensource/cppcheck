@@ -58,9 +58,8 @@ options::options(int argc, const char* const argv[])
 
 options::~options()
 {
-    // TODO: allow more than 5 results to be shown
     if (mTimerResults)
-        mTimerResults->showResults(ShowTime::TOP5_FILE, false);
+        mTimerResults->showResults(10, false);
 }
 
 bool options::quiet() const

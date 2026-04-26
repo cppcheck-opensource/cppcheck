@@ -19,7 +19,6 @@
 #include "timer.h"
 
 #include <algorithm>
-#include <cstddef>
 #include <iostream>
 #include <utility>
 #include <vector>
@@ -37,12 +36,9 @@ namespace {
 
 // TODO: this does not include any file context when SHOWTIME_FILE thus rendering it useless - should we include the logging with the progress logging?
 // that could also get rid of the broader locking
-void TimerResults::showResults(ShowTime mode, bool metrics) const
+void TimerResults::showResults(size_t max_results, bool metrics) const
 {
-    if (mode == ShowTime::NONE)
-        return;
     std::vector<dataElementType> data;
-
     {
         std::lock_guard<std::mutex> l(mResultsSync);
 
@@ -56,7 +52,7 @@ void TimerResults::showResults(ShowTime mode, bool metrics) const
 
     size_t ordinal = 1; // maybe it would be nice to have an ordinal in output later!
     for (auto iter=data.cbegin(); iter!=data.cend(); ++iter) {
-        if ((mode != ShowTime::TOP5_FILE && mode != ShowTime::TOP5_SUMMARY) || (ordinal<=5)) {
+        if (ordinal <= max_results) {
             const double sec = iter->second.getSeconds().count();
             std::cout << iter->first << ": " << sec << "s";
             if (metrics) {

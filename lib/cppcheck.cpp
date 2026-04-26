@@ -1294,8 +1294,12 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
     // TODO: clear earlier?
     mLogger->clear();
 
-    if (mTimerResults && (mSettings.showtime == ShowTime::FILE || mSettings.showtime == ShowTime::TOP5_FILE))
-        mTimerResults->showResults(mSettings.showtime);
+    if (mTimerResults) {
+        if (mSettings.showtime == ShowTime::FILE)
+            mTimerResults->showResults();
+        else if (mSettings.showtime == ShowTime::TOP5_FILE)
+            mTimerResults->showResults(5);
+    }
 
     return mLogger->exitcode();
 }

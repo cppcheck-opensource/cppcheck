@@ -56,6 +56,7 @@
 #include <iostream>
 #include <list>
 #include <map>
+#include <memory>
 #include <set>
 #include <sstream>
 #include <unordered_set>
@@ -464,8 +465,10 @@ int CppCheckExecutor::check_internal(const Settings& settings, Suppressions& sup
     }
 
     // TODO: show time *after* the whole program analysis
-    if (settings.showtime == ShowTime::SUMMARY || settings.showtime == ShowTime::TOP5_SUMMARY)
-        timerResults.showResults(settings.showtime);
+    if (settings.showtime == ShowTime::SUMMARY)
+        timerResults.showResults();
+    else if (settings.showtime == ShowTime::TOP5_SUMMARY)
+        timerResults.showResults(5);
 
     // TODO: is this run again instead of using previously cached results?
     returnValue |= cppcheck.analyseWholeProgram(settings.buildDir, mFiles, mFileSettings, stdLogger.getCtuInfo());

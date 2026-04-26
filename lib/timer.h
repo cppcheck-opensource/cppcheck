@@ -23,7 +23,9 @@
 #include "config.h"
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -66,7 +68,7 @@ class CPPCHECKLIB WARN_UNUSED TimerResults : public TimerResultsIntf {
 public:
     TimerResults() = default;
 
-    void showResults(ShowTime mode, bool metrics = true) const;
+    void showResults(size_t max_results = std::numeric_limits<size_t>::max(), bool metrics = true) const;
     void addResults(const std::string& name, std::chrono::milliseconds duration) override;
 
     void reset();
