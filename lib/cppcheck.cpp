@@ -925,7 +925,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
 
     std::unique_ptr<OneShotTimer> checkTimeTimer;
     if (mSettings.showtime == ShowTime::FILE || mSettings.showtime == ShowTime::FILE_TOTAL || mSettings.showtime == ShowTime::TOP5_FILE)
-        checkTimeTimer.reset(new OneShotTimer("Check time: " + file.spath(), mSettings.showtime));
+        checkTimeTimer.reset(new OneShotTimer("Check time: " + file.spath()));
 
     if (!mSettings.quiet) {
         std::string fixedpath = Path::toNativeSeparators(file.spath());

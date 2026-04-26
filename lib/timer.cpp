@@ -130,11 +130,8 @@ static std::string durationToString(std::chrono::milliseconds duration)
     return (ellapsedTime + secondsStr + "s");
 }
 
-OneShotTimer::OneShotTimer(std::string name, ShowTime showtime)
+OneShotTimer::OneShotTimer(std::string name)
 {
-    if (showtime == ShowTime::NONE)
-        return;
-
     class MyResults : public TimerResultsIntf
     {
     private:

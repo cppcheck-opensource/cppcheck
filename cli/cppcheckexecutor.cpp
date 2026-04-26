@@ -270,7 +270,7 @@ int CppCheckExecutor::check(int argc, const char* const argv[])
 
     std::unique_ptr<OneShotTimer> overallTimer;
     if (settings.showtime == ShowTime::SUMMARY || settings.showtime == ShowTime::TOP5_SUMMARY)
-        overallTimer.reset(new OneShotTimer("Overall time", settings.showtime));
+        overallTimer.reset(new OneShotTimer("Overall time"));
 
     settings.loadSummaries();
 

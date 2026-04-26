@@ -106,7 +106,7 @@ private:
 class CPPCHECKLIB OneShotTimer
 {
 public:
-    OneShotTimer(std::string name, ShowTime showtime);
+    OneShotTimer(std::string name);
 private:
     std::unique_ptr<TimerResultsIntf> mResults;
     std::unique_ptr<Timer> mTimer;
