@@ -4974,7 +4974,7 @@ static const Token* getConditionVariable(const Token* tok)
     if (const Token* parent = tok->astParent()) {
         if (Token::Match(parent, "%oror%|&&|?") ||
             Token::Match(parent->previous(), "if|while (") ||
-            (parent->str() == ";" && Token::simpleMatch(parent->astParent(), ";"))) {
+            (parent->str() == ";" && astIsLHS(tok) && Token::simpleMatch(parent->astParent(), ";"))) { // for loop condition
             if (Token::simpleMatch(tok, "="))
                 return tok->astOperand1();
             if (!Token::Match(tok, "%comp%|%assign%"))
