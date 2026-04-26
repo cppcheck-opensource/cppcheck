@@ -19,7 +19,6 @@
 #include "timer.h"
 
 #include <algorithm>
-#include <cassert>
 #include <cstddef>
 #include <iostream>
 #include <utility>
@@ -87,10 +86,14 @@ void TimerResults::reset()
 
 Timer::Timer(std::string str, ShowTime showtimeMode, TimerResultsIntf* timerResults)
     : mName(std::move(str))
-    , mMode(showtimeMode)
-    , mStart(Clock::now())
     , mResults(timerResults)
-{}
+{
+    if (showtimeMode == ShowTime::NONE)
+        return;
+    if (!mResults)
+        return;
+    mStart = Clock::now();
+}
 
 Timer::~Timer()
 {
@@ -99,18 +102,13 @@ Timer::~Timer()
 
 void Timer::stop()
 {
-    if (mMode == ShowTime::NONE)
+    if (mStart == TimePoint{})
         return;
-    if (mStart != TimePoint{}) {
-        if (!mResults) {
-            assert(false);
-        }
-        else {
-            auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - mStart);
-            mResults->addResults(mName, diff);
-        }
-    }
-    mMode = ShowTime::NONE; // prevent multiple stops
+
+    const auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - mStart);
+    mResults->addResults(mName, diff);
+
+    mStart = TimePoint{}; // prevent multiple stops
 }
 
 static std::string durationToString(std::chrono::milliseconds duration)

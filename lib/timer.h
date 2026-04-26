@@ -97,7 +97,6 @@ public:
 
 private:
     const std::string mName;
-    ShowTime mMode{};
     TimePoint mStart;
     TimerResultsIntf* mResults{};
 };
