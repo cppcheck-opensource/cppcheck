@@ -24,7 +24,6 @@
 
 #include <chrono>
 #include <cstddef>
-#include <cstdint>
 #include <limits>
 #include <map>
 #include <memory>
@@ -33,15 +32,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
-enum class ShowTime : std::uint8_t {
-    NONE,
-    FILE,
-    FILE_TOTAL,
-    SUMMARY,
-    TOP5_SUMMARY,
-    TOP5_FILE
-};
 
 class CPPCHECKLIB TimerResultsIntf {
 public:

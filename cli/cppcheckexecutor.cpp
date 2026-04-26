@@ -269,7 +269,7 @@ int CppCheckExecutor::check(int argc, const char* const argv[])
     }
 
     std::unique_ptr<OneShotTimer> overallTimer;
-    if (settings.showtime == ShowTime::SUMMARY || settings.showtime == ShowTime::TOP5_SUMMARY)
+    if (settings.showtime == Settings::ShowTime::SUMMARY || settings.showtime == Settings::ShowTime::TOP5_SUMMARY)
         overallTimer.reset(new OneShotTimer("Overall time"));
 
     settings.loadSummaries();
@@ -422,7 +422,7 @@ int CppCheckExecutor::check_internal(const Settings& settings, Suppressions& sup
 {
     StdLogger stdLogger(settings);
     std::unique_ptr<TimerResults> timerResults;
-    if (settings.showtime != ShowTime::NONE)
+    if (settings.showtime != Settings::ShowTime::NONE)
         timerResults.reset(new TimerResults);
 
     if (settings.reportProgress >= 0)
@@ -468,9 +468,9 @@ int CppCheckExecutor::check_internal(const Settings& settings, Suppressions& sup
 
     // TODO: show time *after* the whole program analysis
     if (timerResults) {
-        if (settings.showtime == ShowTime::SUMMARY)
+        if (settings.showtime == Settings::ShowTime::SUMMARY)
             timerResults->showResults();
-        else if (settings.showtime == ShowTime::TOP5_SUMMARY)
+        else if (settings.showtime == Settings::ShowTime::TOP5_SUMMARY)
             timerResults->showResults(5);
     }
 

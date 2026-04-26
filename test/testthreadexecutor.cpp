@@ -64,7 +64,7 @@ private:
     struct CheckOptions
     {
         bool quiet = true;
-        ShowTime showtime = ShowTime::NONE;
+        Settings::ShowTime showtime = Settings::ShowTime::NONE;
         const char* plistOutput = nullptr;
         std::vector<std::string> filesList;
     };
@@ -178,7 +178,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}", dinit(CheckOptions, $.showtime = ShowTime::SUMMARY));
+              "}", dinit(CheckOptions, $.showtime = Settings::ShowTime::SUMMARY));
         // we are not interested in the results - so just consume them
         ignore_errout();
     }
@@ -247,7 +247,7 @@ private:
         check(2, 2, 0,
               "int main() {}",
               dinit(CheckOptions,
-                    $.showtime = ShowTime::TOP5_FILE));
+                    $.showtime = Settings::ShowTime::TOP5_FILE));
         const std::string output_s = GET_REDIRECT_OUTPUT;
         // for each file: top5 results + check time
         ASSERT_EQUALS((5 + 1) * 2LL, cppcheck::count_all_of(output_s, '\n'));
@@ -258,7 +258,7 @@ private:
         check(2, 2, 0,
               "int main() {}",
               dinit(CheckOptions,
-                    $.showtime = ShowTime::FILE));
+                    $.showtime = Settings::ShowTime::FILE));
         const std::string output_s = GET_REDIRECT_OUTPUT;
         ASSERT_EQUALS(0, cppcheck::count_all_of(output_s, "Overall time:"));
     }
@@ -268,7 +268,7 @@ private:
         check(2, 2, 0,
               "int main() {}",
               dinit(CheckOptions,
-                    $.showtime = ShowTime::FILE_TOTAL));
+                    $.showtime = Settings::ShowTime::FILE_TOTAL));
         const std::string output_s = GET_REDIRECT_OUTPUT;
         ASSERT(output_s.find("Check time: " + fprefix() + "_1.c: ") != std::string::npos);
         ASSERT(output_s.find("Check time: " + fprefix() + "_2.c: ") != std::string::npos);

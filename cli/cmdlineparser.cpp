@@ -36,7 +36,6 @@
 #include "settings.h"
 #include "standards.h"
 #include "suppressions.h"
-#include "timer.h"
 #include "utils.h"
 
 #include "frontend.h"
@@ -1430,17 +1429,17 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         else if (std::strncmp(argv[i], "--showtime=", 11) == 0) {
             const std::string showtimeMode = argv[i] + 11;
             if (showtimeMode == "file")
-                mSettings.showtime = ShowTime::FILE;
+                mSettings.showtime = Settings::ShowTime::FILE;
             else if (showtimeMode == "file-total")
-                mSettings.showtime = ShowTime::FILE_TOTAL;
+                mSettings.showtime = Settings::ShowTime::FILE_TOTAL;
             else if (showtimeMode == "summary")
-                mSettings.showtime = ShowTime::SUMMARY;
+                mSettings.showtime = Settings::ShowTime::SUMMARY;
             else if (showtimeMode == "top5_file")
-                mSettings.showtime = ShowTime::TOP5_FILE;
+                mSettings.showtime = Settings::ShowTime::TOP5_FILE;
             else if (showtimeMode == "top5_summary")
-                mSettings.showtime = ShowTime::TOP5_SUMMARY;
+                mSettings.showtime = Settings::ShowTime::TOP5_SUMMARY;
             else if (showtimeMode == "none")
-                mSettings.showtime = ShowTime::NONE;
+                mSettings.showtime = Settings::ShowTime::NONE;
             else if (showtimeMode.empty()) {
                 mLogger.printError("no mode provided for --showtime");
                 return Result::Fail;

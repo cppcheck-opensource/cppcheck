@@ -31,7 +31,6 @@
 #include "settings.h"
 #include "standards.h"
 #include "suppressions.h"
-#include "timer.h"
 #include "utils.h"
 
 #include <cstdio>
@@ -2193,21 +2192,21 @@ private:
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--showtime=summary", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
-        ASSERT(settings->showtime == ShowTime::SUMMARY);
+        ASSERT_EQUALS_ENUM(Settings::ShowTime::SUMMARY, settings->showtime);
     }
 
     void showtimeFile() {
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--showtime=file", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
-        ASSERT(settings->showtime == ShowTime::FILE);
+        ASSERT_EQUALS_ENUM(Settings::ShowTime::FILE, settings->showtime);
     }
 
     void showtimeFileTotal() {
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--showtime=file-total", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
-        ASSERT(settings->showtime == ShowTime::FILE_TOTAL);
+        ASSERT_EQUALS_ENUM(Settings::ShowTime::FILE_TOTAL, settings->showtime);
     }
 
     void showtimeTop5() {
@@ -2221,21 +2220,21 @@ private:
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--showtime=top5_file", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
-        ASSERT(settings->showtime == ShowTime::TOP5_FILE);
+        ASSERT_EQUALS_ENUM(Settings::ShowTime::TOP5_FILE, settings->showtime);
     }
 
     void showtimeTop5Summary() {
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--showtime=top5_summary", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
-        ASSERT(settings->showtime == ShowTime::TOP5_SUMMARY);
+        ASSERT_EQUALS_ENUM(Settings::ShowTime::TOP5_SUMMARY, settings->showtime);
     }
 
     void showtimeNone() {
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--showtime=none", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
-        ASSERT(settings->showtime == ShowTime::NONE);
+        ASSERT_EQUALS_ENUM(Settings::ShowTime::NONE, settings->showtime);
     }
 
     void showtimeEmpty() {

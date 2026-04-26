@@ -53,7 +53,6 @@ class Regex;
 #endif
 
 struct Suppressions;
-enum class ShowTime : std::uint8_t;
 namespace ValueFlow {
     class Value;
 }
@@ -441,6 +440,15 @@ public:
     SimpleEnableGroup<Severity> severity;
     SimpleEnableGroup<Certainty> certainty;
     SimpleEnableGroup<Checks> checks;
+
+    enum class ShowTime : std::uint8_t {
+        NONE,
+        FILE,
+        FILE_TOTAL,
+        SUMMARY,
+        TOP5_SUMMARY,
+        TOP5_FILE
+    };
 
     /** @brief show timing information (--showtime=file|summary|top5) */
     ShowTime showtime{};

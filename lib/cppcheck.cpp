@@ -924,7 +924,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         return mLogger->exitcode();
 
     std::unique_ptr<OneShotTimer> checkTimeTimer;
-    if (mSettings.showtime == ShowTime::FILE || mSettings.showtime == ShowTime::FILE_TOTAL || mSettings.showtime == ShowTime::TOP5_FILE)
+    if (mSettings.showtime == Settings::ShowTime::FILE || mSettings.showtime == Settings::ShowTime::FILE_TOTAL || mSettings.showtime == Settings::ShowTime::TOP5_FILE)
         checkTimeTimer.reset(new OneShotTimer("Check time: " + file.spath()));
 
     if (!mSettings.quiet) {
@@ -1294,9 +1294,9 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
     mLogger->clear();
 
     if (mTimerResults) {
-        if (mSettings.showtime == ShowTime::FILE)
+        if (mSettings.showtime == Settings::ShowTime::FILE)
             mTimerResults->showResults();
-        else if (mSettings.showtime == ShowTime::TOP5_FILE)
+        else if (mSettings.showtime == Settings::ShowTime::TOP5_FILE)
             mTimerResults->showResults(5);
     }
 
