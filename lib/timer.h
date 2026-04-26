@@ -73,7 +73,7 @@ public:
     using Clock = std::chrono::high_resolution_clock;
     using TimePoint = std::chrono::time_point<Clock>;
 
-    Timer(std::string str, TimerResultsIntf* timerResults = nullptr);
+    explicit Timer(std::string str, TimerResultsIntf* timerResults = nullptr);
     ~Timer();
 
     Timer(const Timer&) = delete;
@@ -96,7 +96,7 @@ private:
 class CPPCHECKLIB OneShotTimer
 {
 public:
-    OneShotTimer(std::string name);
+    explicit OneShotTimer(std::string name);
 private:
     std::unique_ptr<TimerResultsIntf> mResults;
     std::unique_ptr<Timer> mTimer;
