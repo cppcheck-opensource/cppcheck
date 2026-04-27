@@ -247,17 +247,25 @@ void CheckIO::checkFileUsage()
                     operation = Filepointer::Operation::CLOSE;
 
                     // #1473 Check if fclose is in a while loop condition
-                    const Token* tmp = tok->astParent();
-                    const Token* loopTok = nullptr;
-                    while (tmp) {
-                        if (Token::simpleMatch(tmp->previous(), "while (")) {
-                            loopTok = tmp->previous();
-                            break;
+                    if (fileTok) {
+                        const Token* tmp = tok->astParent();
+                        const Token* loopTok = nullptr;
+                        while (tmp) {
+                            if (Token::simpleMatch(tmp->previous(), "while (")) {
+                                loopTok = tmp->previous();
+                                break;
+                            }
+                            tmp = tmp->astParent();
                         }
-                        tmp = tmp->astParent();
+                        if (loopTok) {
+                            const Token* bodyStart = loopTok->linkAt(1)->next();
+                            const Token* bodyEnd = bodyStart->link();
+
+                            // Do not trigger a warning if the loop always exits or if the file is opened again in the loop.
+                            if (!isReturnScope(bodyEnd, mSettings->library) && Token::findmatch(bodyStart, "%var% = fopen|freopen", bodyEnd, fileTok->varId()) == nullptr)
+                                useClosedFileError(tok);
+                        }
                     }
-                    if (loopTok)
-                        useClosedFileError(tok);
                 } else if (whitelist.find(tok->str()) != whitelist.end()) {
                     fileTok = tok->tokAt(2);
                     if ((tok->str() == "ungetc" || tok->str() == "ungetwc") && fileTok)
