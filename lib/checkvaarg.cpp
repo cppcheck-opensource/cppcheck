@@ -144,9 +144,24 @@ void CheckVaarg::va_list_usage()
                 }
                 open = nopen;
                 tok = tok->linkAt(1);
-            } else if (Token::Match(tok, "throw|return"))
+            } else if (Token::Match(tok, "throw|return") || (Token::Match(tok, "%name% (") && mSettings->library.isnoreturn(tok))) {
                 exitOnEndOfStatement = true;
-            else if (tok->str() == "break") {
+                if (var->scope() == tok->scope()) {
+                    if (const Token* tok3 = Token::findmatch(tok->next(), "%varid%|;", var->declarationId())) {
+                        bool bail = tok3->str() == ";";
+                        if (!bail) {
+                            int argn{};
+                            if (const Token* ftok = getTokenArgumentFunction(tok3, argn)) {
+                                bail = ftok->str() != "va_arg";
+                            }
+                        }
+                        if (bail) {
+                            open = false;
+                            break;
+                        }
+                    }
+                }
+            } else if (tok->str() == "break") {
                 tok = findNextTokenFromBreak(tok);
                 if (!tok)
                     return;
