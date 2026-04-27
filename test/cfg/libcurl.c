@@ -16,6 +16,11 @@ struct S_WriteHeader {
     int x;
 };
 
+size_t cb_WriteHeader(void *ptr, size_t size, size_t nmemb, void *p) {
+    struct S_WriteHeader *s = (struct S_WriteHeader *)p;
+    return s->x ? size * nmemb : 0;
+}
+
 void validCode()
 {
     CURL *curl = curl_easy_init();
@@ -23,6 +28,7 @@ void validCode()
         CURLcode res;
         // cppcheck-suppress valueFlowBailoutIncompleteVar
         curl_easy_setopt(curl, CURLOPT_URL, "http://example.com");
+        curl_easy_setopt(handle, CURLOPT_HEADERFUNCTION, cb_WriteHeader);
         struct S_WriteHeader s;
         curl_easy_setopt(handle, CURLOPT_WRITEHEADER, &s); // #14692
         res = curl_easy_perform(curl);
