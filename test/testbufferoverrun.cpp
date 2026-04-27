@@ -4625,7 +4625,22 @@ private:
               "    const std::string b = \"b\";\n"
               "    char a[1];\n"
               "    sprintf(a, \"%s\", b.c_str());\n"
-              "}", settings0);
+              "}\n"
+              "void i() {\n"
+              "    const char b[] = \"b\";\n"
+              "    char a[2];\n"
+              "    sprintf(a, \"%s\", b);\n"
+              "}\n"
+              "void j() {\n"
+              "    const char* b = \"b\";\n"
+              "    char a[2];\n"
+              "    sprintf(a, \"%s\", b);\n"
+              "}\n"
+              "void k() {\n"
+              "    const std::string b = \"b\";\n"
+              "    char a[2];\n"
+              "    sprintf(a, \"%s\", b.c_str());\n"
+              "}\n", settings0);
         ASSERT_EQUALS("[test.cpp:4:13]: (error) Buffer is accessed out of bounds: a [bufferAccessOutOfBounds]\n"
                       "[test.cpp:9:13]: (error) Buffer is accessed out of bounds: a [bufferAccessOutOfBounds]\n"
                       "[test.cpp:14:13]: (error) Buffer is accessed out of bounds: a [bufferAccessOutOfBounds]\n",
