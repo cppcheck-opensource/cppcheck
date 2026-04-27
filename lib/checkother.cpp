@@ -1947,6 +1947,10 @@ void CheckOther::checkConstPointer()
                         continue;
                     if (mSettings->library.isFunctionConst(parent->astOperand2()))
                         continue;
+                    if (parent->astOperand2()->varId()) {
+                        if (gparent->str() == "?" && astIsLHS(parent))
+                            continue;
+                    }
                 }
             }
             if (hasIncDecPlus) {
