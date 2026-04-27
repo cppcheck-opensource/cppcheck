@@ -5277,6 +5277,12 @@ private:
                "    continuous_src_time(std::complex<double> f, double st = 0.0, double et = infinity) {}\n"
                "};";
         (void)testValueOfX(code, 2U, 2); // Don't crash (#6494)
+
+        code = "struct S {\n" // #14693
+               "    int i;\n"
+               "    explicit S(std::string&& s = {}) : i(0) {}\n"
+               "};";
+        ASSERT_EQUALS(false, testKnownValueOfTok(code, "{ } )", 0));
     }
 
     bool isNotKnownValues(const char code[], const char str[]) {
