@@ -1203,7 +1203,7 @@ void SymbolDatabase::createSymbolDatabaseSetFunctionPointers(bool firstPass)
 
             tok->function(function);
 
-            if (tok->strAt(1) != "(")
+            if (!function->isConstructor() && tok->strAt(1) != "(")
                 const_cast<Function *>(function)->functionPointerUsage = tok;
         }
     }
