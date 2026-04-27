@@ -4807,6 +4807,12 @@ private:
               "  return bar = 0;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct S { int x; };\n" // #14700
+              "int f(S* s) {\n"
+              "    return s->x ? 1 : 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:10]: (style) Parameter 's' can be declared as pointer to const [constParameterPointer]\n", errout_str());
     }
 
     void constArray() {
