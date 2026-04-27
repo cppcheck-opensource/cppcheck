@@ -17,26 +17,63 @@
  */
 
 #include "fixture.h"
+#include "redirect.h"
 #include "timer.h"
 
 #include <chrono>
+#include <mutex>
 
 class TestTimer : public TestFixture {
 public:
     TestTimer() : TestFixture("TestTimer") {}
 
 private:
+    class TimerResultsTest : public TimerResults
+    {
+    public:
+        std::map<std::string, std::vector<std::chrono::milliseconds>> getResults() {
+            std::lock_guard<std::mutex> l(mResultsSync);
+            return mResults;
+        }
+    };
 
     void run() override {
         TEST_CASE(result);
     }
 
-    void result() const {
-        TimerResultsData t1;
-        t1.mResults.emplace_back(1234);
-        ASSERT(t1.getSeconds().count() > 1.233 && t1.getSeconds().count() < 1.235);
+    void result() {
+        REDIRECT;
 
-        // TODO : more tests
+        TimerResultsTest t1;
+        t1.addResults("call1", std::chrono::milliseconds{1230});
+        t1.addResults("call2", std::chrono::milliseconds{1234});
+        t1.addResults("call1", std::chrono::milliseconds{1235});
+        t1.addResults("call1", std::chrono::milliseconds{1239});
+
+        const auto results = t1.getResults();
+        ASSERT_EQUALS(2, results.size());
+
+        auto it = results.find("call1");
+        ASSERT(it != results.cend());
+        ASSERT_EQUALS(3, it->second.size());
+        ASSERT_EQUALS(1230, it->second[0].count());
+        ASSERT_EQUALS(1235, it->second[1].count());
+        ASSERT_EQUALS(1239, it->second[2].count());
+
+        it = results.find("call2");
+        ASSERT(it != results.cend());
+        ASSERT_EQUALS(1, it->second.size());
+        ASSERT_EQUALS(1234, it->second[0].count());
+
+        t1.showResults();
+        ASSERT_EQUALS("call1: 3.704s (avg. 1.23467s / min 1.23s / max 1.239s - 3 result(s))\n"
+                      "call2: 1.234s (avg. 1.234s / min 1.234s / max 1.234s - 1 result(s))\n", GET_REDIRECT_OUTPUT);
+
+        t1.showResults(1);
+        ASSERT_EQUALS("call1: 3.704s (avg. 1.23467s / min 1.23s / max 1.239s - 3 result(s))\n", GET_REDIRECT_OUTPUT);
+
+        t1.showResults(1, false);
+        ASSERT_EQUALS("call1: 3.704s\n", GET_REDIRECT_OUTPUT);
     }
 };
 

@@ -20,16 +20,11 @@
 
 #include <algorithm>
 #include <iostream>
+#include <numeric>
 #include <utility>
 #include <vector>
 
 namespace {
-    using dataElementType = std::pair<std::string, TimerResultsData>;
-    bool more_second_sec(const dataElementType& lhs, const dataElementType& rhs)
-    {
-        return lhs.second.getSeconds() > rhs.second.getSeconds();
-    }
-
     // TODO: remove and print through (synchronized) ErrorLogger instead
     std::mutex stdCoutLock;
 }
@@ -38,6 +33,8 @@ namespace {
 // that could also get rid of the broader locking
 void TimerResults::showResults(size_t max_results, bool metrics) const
 {
+    using dataElementType = std::pair<std::string, std::vector<std::chrono::milliseconds>>;
+
     std::vector<dataElementType> data;
     {
         std::lock_guard<std::mutex> l(mResultsSync);
@@ -45,7 +42,20 @@ void TimerResults::showResults(size_t max_results, bool metrics) const
         data.reserve(mResults.size());
         data.insert(data.begin(), mResults.cbegin(), mResults.cend());
     }
-    std::sort(data.begin(), data.end(), more_second_sec);
+
+    const auto asSeconds = [](std::chrono::milliseconds ms) -> std::chrono::duration<double> {
+        return std::chrono::duration_cast<std::chrono::duration<double>>(ms);
+    };
+
+    const auto getSeconds = [&asSeconds](const std::vector<std::chrono::milliseconds>& results) -> std::chrono::duration<double> {
+        return std::accumulate(results.cbegin(), results.cend(), std::chrono::duration<double>{}, [&asSeconds](std::chrono::duration<double> secs, std::chrono::milliseconds duration) {
+            return secs + asSeconds(duration);
+        });
+    };
+
+    std::sort(data.begin(), data.end(), [&getSeconds](const dataElementType& lhs, const dataElementType& rhs) -> bool {
+        return getSeconds(lhs.second) > getSeconds(rhs.second);
+    });
 
     // lock the whole logging operation to avoid multiple threads printing their results at the same time
     std::lock_guard<std::mutex> l(stdCoutLock);
@@ -53,13 +63,13 @@ void TimerResults::showResults(size_t max_results, bool metrics) const
     size_t ordinal = 1; // maybe it would be nice to have an ordinal in output later!
     for (auto iter=data.cbegin(); iter!=data.cend(); ++iter) {
         if (ordinal <= max_results) {
-            const double sec = iter->second.getSeconds().count();
+            const double sec = getSeconds(iter->second).count();
             std::cout << iter->first << ": " << sec << "s";
             if (metrics) {
-                const double secAverage = sec / static_cast<double>(iter->second.mResults.size());
-                const double secMin = asSeconds(*std::min_element(iter->second.mResults.cbegin(), iter->second.mResults.cend())).count();
-                const double secMax = asSeconds(*std::max_element(iter->second.mResults.cbegin(), iter->second.mResults.cend())).count();
-                std::cout << " (avg. " << secAverage << "s / min " << secMin << "s / max " << secMax << "s - " << iter->second.mResults.size() << " result(s))";
+                const double secAverage = sec / static_cast<double>(iter->second.size());
+                const double secMin = asSeconds(*std::min_element(iter->second.cbegin(), iter->second.cend())).count();
+                const double secMax = asSeconds(*std::max_element(iter->second.cbegin(), iter->second.cend())).count();
+                std::cout << " (avg. " << secAverage << "s / min " << secMin << "s / max " << secMax << "s - " << iter->second.size() << " result(s))";
             }
             std::cout << std::endl;
         }
@@ -71,7 +81,7 @@ void TimerResults::addResults(const std::string& name, std::chrono::milliseconds
 {
     std::lock_guard<std::mutex> l(mResultsSync);
 
-    mResults[name].mResults.push_back(duration);
+    mResults[name].push_back(duration);
 }
 
 void TimerResults::reset()

@@ -28,7 +28,6 @@
 #include <map>
 #include <memory>
 #include <mutex>
-#include <numeric>
 #include <string>
 #include <utility>
 #include <vector>
@@ -38,20 +37,6 @@ public:
     virtual ~TimerResultsIntf() = default;
 
     virtual void addResults(const std::string& name, std::chrono::milliseconds duration) = 0;
-
-    static std::chrono::duration<double> asSeconds(std::chrono::milliseconds ms) {
-        return std::chrono::duration_cast<std::chrono::duration<double>>(ms);
-    }
-};
-
-struct TimerResultsData {
-    std::vector<std::chrono::milliseconds> mResults;
-
-    std::chrono::duration<double> getSeconds() const {
-        return std::accumulate(mResults.cbegin(), mResults.cend(), std::chrono::duration<double>{}, [](std::chrono::duration<double> secs, std::chrono::milliseconds duration) {
-            return secs + TimerResultsIntf::asSeconds(duration);
-        });
-    }
 };
 
 class CPPCHECKLIB WARN_UNUSED TimerResults : public TimerResultsIntf {
@@ -63,8 +48,8 @@ public:
 
     void reset();
 
-private:
-    std::map<std::string, TimerResultsData> mResults;
+protected:
+    std::map<std::string, std::vector<std::chrono::milliseconds>> mResults;
     mutable std::mutex mResultsSync;
 };
 
