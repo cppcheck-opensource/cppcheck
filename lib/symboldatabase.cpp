@@ -2503,7 +2503,12 @@ bool Variable::isMember() const {
 
 bool Variable::isPointerArray() const
 {
-    return isArray() && nameToken() && nameToken()->previous() && (nameToken()->strAt(-1) == "*");
+    if (!isArray())
+        return false;
+    const Token* tok = nameToken() ? nameToken()->previous() : nullptr;
+    while (Token::Match(tok, "const|volatile"))
+        tok = tok->previous();
+    return Token::simpleMatch(tok, "*");
 }
 
 bool Variable::isUnsigned() const

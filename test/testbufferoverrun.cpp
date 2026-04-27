@@ -226,6 +226,7 @@ private:
         TEST_CASE(buffer_overrun_34); //#11035
         TEST_CASE(buffer_overrun_35); //#2304
         TEST_CASE(buffer_overrun_36);
+        TEST_CASE(buffer_overrun_37);
         TEST_CASE(buffer_overrun_errorpath);
         TEST_CASE(buffer_overrun_bailoutIfSwitch);  // ticket #2378 : bailoutIfSwitch
         TEST_CASE(buffer_overrun_function_array_argument);
@@ -3493,6 +3494,15 @@ private:
         check("void f(double d) {\n"
               "    char a[80];\n"
               "    sprintf(a, \"%2.1f\", d);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void buffer_overrun_37() { // #14703
+        check("void f() {\n"
+              "    const char *dst[256];\n"
+              "    static const char * const src[] = {\"a\", \"b\", \"c\"};\n"
+              "    memcpy(dst, src, sizeof(src));\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
     }
