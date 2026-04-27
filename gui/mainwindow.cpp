@@ -562,7 +562,7 @@ void MainWindow::saveSettings() const
     mUI->mResults->saveSettings(mSettings);
 }
 
-void MainWindow::doAnalyzeProject(ImportProject p, const bool doCheckLibrary, const bool doCheckConfiguration)
+void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLib, const bool checkConfig)
 {
     Settings checkSettings;
     auto supprs = std::make_shared<Suppressions>();
@@ -606,8 +606,8 @@ void MainWindow::doAnalyzeProject(ImportProject p, const bool doCheckLibrary, co
 
     mUI->mResults->setCheckDirectory(checkPath);
     checkSettings.force = false;
-    checkSettings.checkLibrary = doCheckLibrary;
-    checkSettings.checkConfiguration = doCheckConfiguration;
+    checkSettings.checkLibrary = checkLib;
+    checkSettings.checkConfiguration = checkConfig;
 
     if (mProjectFile)
         qDebug() << "Checking project file" << mProjectFile->getFilename();
@@ -634,7 +634,7 @@ void MainWindow::doAnalyzeProject(ImportProject p, const bool doCheckLibrary, co
     mUI->mResults->setCheckSettings(checkSettings);
 }
 
-void MainWindow::doAnalyzeFiles(const QStringList &files, const bool doCheckLibrary, const bool doCheckConfiguration)
+void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLib, const bool checkConfig)
 {
     if (files.isEmpty())
         return;
@@ -675,7 +675,7 @@ void MainWindow::doAnalyzeFiles(const QStringList &files, const bool doCheckLibr
     // TODO: lock UI here?
     mUI->mResults->checkingStarted(fdetails.size());
     mThread->setFiles(std::move(fdetails));
-    if (mProjectFile && !doCheckConfiguration)
+    if (mProjectFile && !checkConfig)
         mThread->setAddonsAndTools(mProjectFile->getAddonsAndTools());
     mThread->setSuppressions(mProjectFile ? mProjectFile->getCheckingSuppressions() : QList<SuppressionList::Suppression>());
     QDir inf(mCurrentDirectory);
@@ -685,8 +685,8 @@ void MainWindow::doAnalyzeFiles(const QStringList &files, const bool doCheckLibr
     checkLockDownUI(); // lock UI while checking
 
     mUI->mResults->setCheckDirectory(checkPath);
-    checkSettings.checkLibrary = doCheckLibrary;
-    checkSettings.checkConfiguration = doCheckConfiguration;
+    checkSettings.checkLibrary = checkLib;
+    checkSettings.checkConfiguration = checkConfig;
 
     if (mProjectFile)
         qDebug() << "Checking project file" << mProjectFile->getFilename();
@@ -1856,7 +1856,7 @@ bool MainWindow::loadLastResults()
     return true;
 }
 
-void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringList& recheckFiles, const bool doCheckLibrary, const bool doCheckConfiguration)
+void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringList& recheckFiles, const bool checkLib, const bool checkConfig)
 {
     Settings::terminate(false);
 
@@ -1985,7 +1985,7 @@ void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringLis
             msg.exec();
             return;
         }
-        doAnalyzeProject(p, doCheckLibrary, doCheckConfiguration);  // TODO: avoid copy
+        doAnalyzeProject(p, checkLib, checkConfig);  // TODO: avoid copy
         return;
     }
 
@@ -1998,7 +1998,7 @@ void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringLis
     if (paths.isEmpty()) {
         paths << mCurrentDirectory;
     }
-    doAnalyzeFiles(paths, doCheckLibrary, doCheckConfiguration);
+    doAnalyzeFiles(paths, checkLib, checkConfig);
 }
 
 void MainWindow::newProjectFile()

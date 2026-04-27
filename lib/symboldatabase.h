@@ -1424,7 +1424,7 @@ public:
     /** Set array dimensions when valueflow analysis is completed */
     void setArrayDimensionsUsingValueFlow();
 
-    void clangSetVariables(const std::vector<const Variable *> &list);
+    void clangSetVariables(const std::vector<const Variable *> &vars);
     void createSymbolDatabaseExprIds();
 
     /* returns the opening { if tok points to enum */

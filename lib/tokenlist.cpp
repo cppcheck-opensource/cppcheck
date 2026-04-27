@@ -2307,7 +2307,7 @@ bool TokenList::isCPP() const
     return mLang == Standards::Language::CPP;
 }
 
-const Token * TokenList::isFunctionHead(const Token *tok, const std::string &end)
+const Token * TokenList::isFunctionHead(const Token *tok, const std::string &suffix)
 {
     if (!tok)
         return nullptr;
@@ -2320,11 +2320,11 @@ const Token * TokenList::isFunctionHead(const Token *tok, const std::string &end
     if (Token::Match(tok, ") ;|{|[")) {
         tok = tok->next();
         while (tok && tok->str() == "[" && tok->link()) {
-            if (end.find(tok->str()) != std::string::npos)
+            if (suffix.find(tok->str()) != std::string::npos)
                 return tok;
             tok = tok->link()->next();
         }
-        return (tok && end.find(tok->str()) != std::string::npos) ? tok : nullptr;
+        return (tok && suffix.find(tok->str()) != std::string::npos) ? tok : nullptr;
     }
     if (tok->isCpp() && tok->str() == ")") {
         tok = tok->next();
@@ -2359,7 +2359,7 @@ const Token * TokenList::isFunctionHead(const Token *tok, const std::string &end
         }
         if (tok && tok->str() == ":" && !Token::Match(tok->next(), "%name%|::"))
             return nullptr;
-        return (tok && end.find(tok->str()) != std::string::npos) ? tok : nullptr;
+        return (tok && suffix.find(tok->str()) != std::string::npos) ? tok : nullptr;
     }
     return nullptr;
 }

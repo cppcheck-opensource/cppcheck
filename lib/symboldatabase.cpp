@@ -2370,9 +2370,9 @@ void SymbolDatabase::validate() const
     validateVariables();
 }
 
-void SymbolDatabase::clangSetVariables(const std::vector<const Variable *> &list)
+void SymbolDatabase::clangSetVariables(const std::vector<const Variable *> &vars)
 {
-    mVariableList = list;
+    mVariableList = vars;
 }
 
 void SymbolDatabase::debugSymbolDatabase() const
