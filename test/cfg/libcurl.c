@@ -28,9 +28,9 @@ void validCode()
         CURLcode res;
         // cppcheck-suppress valueFlowBailoutIncompleteVar
         curl_easy_setopt(curl, CURLOPT_URL, "http://example.com");
-        curl_easy_setopt(handle, CURLOPT_HEADERFUNCTION, cb_WriteHeader);
+        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, cb_WriteHeader);
         struct S_WriteHeader s;
-        curl_easy_setopt(handle, CURLOPT_WRITEHEADER, &s); // #14692
+        curl_easy_setopt(curl, CURLOPT_WRITEHEADER, &s); // #14692
         res = curl_easy_perform(curl);
         if (res != CURLE_OK) {
             printf("error");
