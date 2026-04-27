@@ -16,7 +16,7 @@ struct S_WriteHeader {
     int x;
 };
 
-size_t cb_WriteHeader(void *ptr, size_t size, size_t nmemb, void *p) {
+size_t cb_WriteHeader(void * /*ptr*/, size_t size, size_t nmemb, void *p) {
     struct S_WriteHeader *s = (struct S_WriteHeader *)p;
     return s->x ? size * nmemb : 0;
 }
