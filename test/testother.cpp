@@ -4150,6 +4150,16 @@ private:
               "    S s2{ cb };\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:6:11] -> [test.cpp:2:21]: (performance) Function parameter 's' should be passed by const reference. However it seems that 'cb' is a callback function. [passedByValueCallback]\n", errout_str());
+
+        check("struct S {\n" // #14696
+              "    explicit S(std::string s = {}) {}\n"
+              "};\n"
+              "struct T {\n"
+              "    explicit T(std::string* s = {}) {}\n"
+              "};\n");
+        ASSERT_EQUALS("[test.cpp:2:28]: (performance) Function parameter 's' should be passed by const reference. [passedByValue]\n"
+                      "[test.cpp:5:29]: (style) Parameter 's' can be declared as pointer to const [constParameterPointer]\n",
+                      errout_str());
     }
 
     void constPointer() {
