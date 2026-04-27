@@ -12,6 +12,10 @@
 #include <curl/curl.h>
 #include <stdio.h>
 
+struct S_WriteHeader {
+    int x;
+};
+
 void validCode()
 {
     CURL *curl = curl_easy_init();
@@ -19,6 +23,8 @@ void validCode()
         CURLcode res;
         // cppcheck-suppress valueFlowBailoutIncompleteVar
         curl_easy_setopt(curl, CURLOPT_URL, "http://example.com");
+        struct S_WriteHeader s;
+        curl_easy_setopt(handle, CURLOPT_WRITEHEADER, &s); // #14692
         res = curl_easy_perform(curl);
         if (res != CURLE_OK) {
             printf("error");
