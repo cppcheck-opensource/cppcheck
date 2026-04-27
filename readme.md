@@ -1,5 +1,7 @@
 # **Cppcheck**
 
+NOTE: This repository was recently moved from https://github.com/danmar/cppcheck to https://github.com/cppcheck-opensource/cppcheck. Please make sure to update all your references to it accordingly.
+
 |release-windows|OSS-Fuzz|Coverity Scan Build Status|include-what-you-use|License|
 |:--:|:--:|:--:|:--:|:--:|
 |[![release-windows](https://github.com/cppcheck-opensource/cppcheck/actions/workflows/release-windows.yml/badge.svg?branch=main)](https://github.com/cppcheck-opensource/cppcheck/actions/workflows/release-windows.yml)|[![OSS-Fuzz](https://oss-fuzz-build-logs.storage.googleapis.com/badges/cppcheck.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:cppcheck)|[![Coverity Scan Build Status](https://img.shields.io/coverity/scan/512.svg)](https://scan.coverity.com/projects/512)|[![include-what-you-use](https://github.com/cppcheck-opensource/cppcheck/actions/workflows/iwyu.yml/badge.svg?branch=main)](https://github.com/cppcheck-opensource/cppcheck/actions/workflows/iwyu.yml)|[![License](https://img.shields.io/badge/license-GPL3.0-blue.svg)](https://opensource.org/licenses/GPL-3.0)|
