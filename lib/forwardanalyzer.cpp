@@ -46,8 +46,8 @@
 namespace {
     struct ForwardTraversal {
         enum class Progress : std::uint8_t { Continue, Break, Skip };
-        ForwardTraversal(const ValuePtr<Analyzer>& analyzer, const TokenList& tokenList, ErrorLogger& errorLogger, const Settings& settings)
-            : analyzer(analyzer), tokenList(tokenList), errorLogger(errorLogger), settings(settings)
+        ForwardTraversal(ValuePtr<Analyzer> analyzer, const TokenList& tokenList, ErrorLogger& errorLogger, const Settings& settings)
+            : analyzer(std::move(analyzer)), tokenList(tokenList), errorLogger(errorLogger), settings(settings)
         {}
         ValuePtr<Analyzer> analyzer;
         const TokenList& tokenList;
@@ -316,7 +316,7 @@ namespace {
         }
 
         ForwardTraversal fork(bool analyze = false) const {
-            ForwardTraversal ft = *this;
+            ForwardTraversal ft = *this; // copy
             if (analyze) {
                 ft.analyzeOnly = true;
                 ft.analyzeTerminate = true;
@@ -937,24 +937,24 @@ namespace {
     };
 }
 
-Analyzer::Result valueFlowGenericForward(Token* start, const Token* end, const ValuePtr<Analyzer>& a, const TokenList& tokenList, ErrorLogger& errorLogger, const Settings& settings)
+Analyzer::Result valueFlowGenericForward(Token* start, const Token* end, ValuePtr<Analyzer> a, const TokenList& tokenList, ErrorLogger& errorLogger, const Settings& settings)
 {
     if (a->invalid())
         return Analyzer::Result{Analyzer::Action::None, Analyzer::Terminate::Bail};
-    ForwardTraversal ft{a, tokenList, errorLogger, settings};
+    ForwardTraversal ft{std::move(a), tokenList, errorLogger, settings};
     if (start)
         ft.analyzer->updateState(start);
     ft.updateRange(start, end);
     return Analyzer::Result{ ft.actions, ft.terminate };
 }
 
-Analyzer::Result valueFlowGenericForward(Token* start, const ValuePtr<Analyzer>& a, const TokenList& tokenList, ErrorLogger& errorLogger, const Settings& settings)
+Analyzer::Result valueFlowGenericForward(Token* start, ValuePtr<Analyzer> a, const TokenList& tokenList, ErrorLogger& errorLogger, const Settings& settings)
 {
     if (Settings::terminated())
         throw TerminateException();
     if (a->invalid())
         return Analyzer::Result{Analyzer::Action::None, Analyzer::Terminate::Bail};
-    ForwardTraversal ft{a, tokenList, errorLogger, settings};
+    ForwardTraversal ft{std::move(a), tokenList, errorLogger, settings};
     (void)ft.updateRecursive(start);
     return Analyzer::Result{ ft.actions, ft.terminate };
 }
