@@ -587,6 +587,7 @@ private:
         TEST_CASE(valueType3);
         TEST_CASE(valueTypeThis);
         TEST_CASE(valueTypeChar);
+        TEST_CASE(valueTypeRValueReference);
 
         TEST_CASE(variadic1); // #7453
         TEST_CASE(variadic2); // #7649
@@ -10173,6 +10174,10 @@ private:
         s.platform.defaultSign = 's';
         ASSERT_EQUALS("char", typeOf("char c; c = 'x';", "c =", true, &s));
         ASSERT_EQUALS("char", typeOf("char buf[10]; buf[0] = 'x';", "[ 0 ]", true, &s));
+    }
+
+    void valueTypeRValueReference() {
+        TODO_ASSERT_EQUALS("", "bool", typeOf("void f(std::string&& s = {})", "&&"));
     }
 
     void variadic1() { // #7453
