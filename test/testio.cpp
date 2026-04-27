@@ -562,6 +562,12 @@ private:
               "}");
         ASSERT_EQUALS("", errout_str());
 
+        check("void foo() {\n"
+              "    FILE *a = fopen(\"aa\", \"r\");\n"
+              "    do {} while (fclose(a));\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:3:18]: (error) Used file that is not opened. [useClosedFile]\n", errout_str());
+
         // #6823
         check("void foo() {\n"
               "    FILE f[2];\n"

@@ -258,8 +258,16 @@ void CheckIO::checkFileUsage()
                             tmp = tmp->astParent();
                         }
                         if (loopTok) {
-                            const Token* bodyStart = loopTok->linkAt(1)->next();
-                            const Token* bodyEnd = bodyStart->link();
+                            const Token* bodyEnd = nullptr;
+                            const Token* bodyStart = nullptr;
+
+                            if (Token::simpleMatch(loopTok->previous(), "}")) {  // Handle do-while loops
+                                bodyEnd = loopTok->previous();
+                                bodyStart = bodyEnd->link();
+                            } else {
+                                bodyStart = loopTok->linkAt(1)->next();
+                                bodyEnd = bodyStart->link();
+                            }
 
                             // Do not trigger a warning if the loop always exits or if the file is opened again in the loop.
                             if (!isReturnScope(bodyEnd, mSettings->library) && Token::findmatch(bodyStart, "%var% = fopen|freopen", bodyEnd, fileTok->varId()) == nullptr)
