@@ -7527,6 +7527,7 @@ private:
     void astfuncdecl() {
         ASSERT_EQUALS("", testAst("bool operator==(const S& a, const S& b);", AstStyle::Simple, ListSimplification::Full));
         ASSERT_EQUALS("", testAst("::int32_t f();"));
+        ASSERT_EQUALS("", testAst("void f(int&& var);"));
     }
 
     void astarrayinit() { // #11738
