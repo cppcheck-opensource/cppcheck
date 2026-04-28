@@ -291,7 +291,6 @@ void nullPointer_fseek(void) { // #10948
     FILE *p = fopen("foo", "r");
     // cppcheck-suppress nullPointerOutOfResources
     fseek(p, 1, SEEK_SET);
-    // cppcheck-suppress nullPointerOutOfResources
     fclose(p);
 }
 
