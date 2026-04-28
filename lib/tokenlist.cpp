@@ -1623,7 +1623,7 @@ static Token * createAstAtToken(Token *tok)
     if (Token::Match(tok, "%type%") && !Token::Match(tok, "return|throw|if|while|new|delete")) {
         bool isStandardTypeOrQualifier = false;
         Token* type = tok;
-        while (Token::Match(type, "%type%|*|&|<")) {
+        while (Token::Match(type, "%type%|*|&|&&|<")) {
             if (type->isName() && (type->isStandardType() || Token::Match(type, "const|mutable|static|volatile")))
                 isStandardTypeOrQualifier = true;
             if (type->str() == "<") {
