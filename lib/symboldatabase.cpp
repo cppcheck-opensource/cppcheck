@@ -6935,6 +6935,13 @@ void SymbolDatabase::setValueType(Token* tok, const ValueType& valuetype, const 
     if (!parent->astOperand1())
         return;
 
+    if (Token::Match(parent->astOperand1()->previous(), "auto %var% {")) {
+        ValueType vt(*valuetypePtr);
+        vt.reference = Reference::None;
+        parent->astOperand1()->setValueType(new ValueType(vt));
+    }
+
+
     const ValueType *vt1 = parent->astOperand1()->valueType();
     const ValueType *vt2 = parent->astOperand2() ? parent->astOperand2()->valueType() : nullptr;
 
