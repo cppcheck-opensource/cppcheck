@@ -4319,25 +4319,25 @@ def __test_active_checkers(tmp_path, active_cnt, total_cnt, use_misra=False, use
 
 
 def test_active_unusedfunction_only(tmp_path):
-    __test_active_checkers(tmp_path, 1, 186, use_unusedfunction_only=True)
+    __test_active_checkers(tmp_path, 1, 187, use_unusedfunction_only=True)
 
 
 def test_active_unusedfunction_only_builddir(tmp_path):
     checkers_exp = [
         'CheckUnusedFunctions::check'
     ]
-    __test_active_checkers(tmp_path, 1, 186, use_unusedfunction_only=True, checkers_exp=checkers_exp)
+    __test_active_checkers(tmp_path, 1, 187, use_unusedfunction_only=True, checkers_exp=checkers_exp)
 
 
 def test_active_unusedfunction_only_misra(tmp_path):
-    __test_active_checkers(tmp_path, 1, 386, use_unusedfunction_only=True, use_misra=True)
+    __test_active_checkers(tmp_path, 1, 387, use_unusedfunction_only=True, use_misra=True)
 
 
 def test_active_unusedfunction_only_misra_builddir(tmp_path):
     checkers_exp = [
         'CheckUnusedFunctions::check'
     ]
-    __test_active_checkers(tmp_path, 1, 386, use_unusedfunction_only=True, use_misra=True, checkers_exp=checkers_exp)
+    __test_active_checkers(tmp_path, 1, 387, use_unusedfunction_only=True, use_misra=True, checkers_exp=checkers_exp)
 
 
 def test_analyzerinfo(tmp_path):
