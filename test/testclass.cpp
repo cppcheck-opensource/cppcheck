@@ -6974,11 +6974,26 @@ private:
     }
 
     void const101() {
-        checkConst("struct error {\n"
+        checkConst("struct error {\n" // #14450
                    "    error() = default;\n"
                    "};\n"
                    "struct S : U {\n"
                    "    int f() { return this->error(); }\n"
+                   "};\n");
+        ASSERT_EQUALS("", errout_str());
+
+        checkConst("struct S {\n" // #14702
+                   "    int i;\n"
+                   "    void f() {\n"
+                   "        S& r = *this;\n"
+                   "        r.i = 0;\n"
+                   "    }\n"
+                   "};\n"
+                   "struct T : std::array<int, 5> {\n"
+                   "    void g() {\n"
+                   "        for (int& r : *this)\n"
+                   "            r = 0;\n"
+                   "    }\n"
                    "};\n");
         ASSERT_EQUALS("", errout_str());
     }
