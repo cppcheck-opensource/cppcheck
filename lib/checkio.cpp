@@ -247,7 +247,7 @@ void CheckIO::checkFileUsage()
                     operation = Filepointer::Operation::CLOSE;
 
                     // #1473 Check if fclose is in a while loop condition
-                    if (fileTok) {
+                    if (fileTok && fileTok->isVariable()) {
                         const Token* tmp = tok->astParent();
                         const Token* loopTok = nullptr;
                         while (tmp) {
@@ -261,7 +261,7 @@ void CheckIO::checkFileUsage()
                             const Token* bodyEnd = nullptr;
                             const Token* bodyStart = nullptr;
 
-                            if (Token::simpleMatch(loopTok->previous(), "}")) {  // Handle do-while loops
+                            if (Token::simpleMatch(loopTok->previous(), "}") && Token::simpleMatch(loopTok->previous()->link()->previous(), "do")) {  // Handle do-while loops
                                 bodyEnd = loopTok->previous();
                                 bodyStart = bodyEnd->link();
                             } else {
@@ -270,7 +270,7 @@ void CheckIO::checkFileUsage()
                             }
 
                             // Do not trigger a warning if the loop always exits or if the file is opened again in the loop.
-                            if (!isReturnScope(bodyEnd, mSettings->library) && Token::findmatch(bodyStart, "%var% = fopen|freopen", bodyEnd, fileTok->varId()) == nullptr)
+                            if (!isReturnScope(bodyEnd, mSettings->library) && Token::findmatch(bodyStart, "%var% =", bodyEnd, fileTok->varId()) == nullptr)
                                 useClosedFileError(tok);
                         }
                     }
