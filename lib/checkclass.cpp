@@ -2567,7 +2567,7 @@ bool CheckClass::checkConstFunc(const Scope *scope, const Function *func, Member
                     return false;
                 if (Token::Match(tok1->previous(), "( this . * %var% )")) // call using ptr to member function TODO: check constness
                     return false;
-                if (Token::simpleMatch(tok1->astParent(), "*") && tok1->astParent()->astParent() && tok1->astParent()->astParent()->isIncDecOp())
+                if (Token::simpleMatch(tok1->astParent(), "*"))
                     return false;
             }
 
