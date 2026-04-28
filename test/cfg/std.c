@@ -287,6 +287,14 @@ char* nullPointer_fgets(char *buffer, int n, FILE *stream)
     return fgets(buffer, n, stream);
 }
 
+void nullPointer_fseek(void) { // #10948
+    FILE *p = fopen("foo", "r");
+    // cppcheck-suppress nullPointerOutOfResources
+    fseek(p, 1, SEEK_SET);
+    // cppcheck-suppress nullPointerOutOfResources
+    fclose(p);
+}
+
 void memleak_aligned_alloc(void)
 {
     // cppcheck-suppress [unusedAllocatedMemory, unreadVariable, constVariablePointer]
