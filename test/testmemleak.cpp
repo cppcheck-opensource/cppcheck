@@ -1684,6 +1684,7 @@ private:
         TEST_CASE(function3);   // #3024: kernel list
         TEST_CASE(function4);   // #3038: Deallocating in function
         TEST_CASE(function5);   // #10381, #10382, #10158
+        TEST_CASE(function6);
 
         // Handle if-else
         TEST_CASE(ifelse);
@@ -2079,6 +2080,17 @@ private:
               "    }\n"
               "    return s;\n"
               "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void function6() {
+        check("struct S { int* p; };\n" // #14706
+              "void g(void*);\n"
+              "void f() {\n"
+              "    S* s = new S();\n"
+              "    s->p = new int();\n"
+              "    g((void*)s);\n"
+              "}");
         ASSERT_EQUALS("", errout_str());
     }
 

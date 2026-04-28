@@ -787,7 +787,7 @@ void CheckMemoryLeakStructMember::checkStructVariable(const Variable* const vari
         bool deallocated = false;
         const Token* const end = tok->linkAt(1);
         for (const Token* tok2 = tok; tok2 != end; tok2 = tok2->next()) {
-            if (Token::Match(tok2, "[(,] &| %varid% [,)]", structid)) {
+            if (Token::Match(tok2, "%varid%", structid)) {
                 /** @todo check if the function deallocates the memory */
                 deallocated = true;
                 break;
