@@ -104,7 +104,9 @@ private:
             s.plistOutput = opt.plistOutput;
         s.templateFormat = "{callstack}: ({severity}) {inconclusive:inconclusive: }{message}";
         Suppressions supprs;
-        TimerResults timerResults;
+        std::unique_ptr<TimerResults> timerResults;
+        if (s.showtime != Settings::ShowTime::NONE)
+            timerResults.reset(new TimerResults);
 
         // NOLINTNEXTLINE(performance-unnecessary-value-param)
         auto executeFn = [](std::string,std::vector<std::string>,std::string,std::string&){
@@ -120,7 +122,7 @@ private:
         if (useFS)
             filelist.clear();
 
-        ProcessExecutor executor(filelist, fileSettings, s, supprs, *this, &timerResults, executeFn);
+        ProcessExecutor executor(filelist, fileSettings, s, supprs, *this, timerResults.get(), executeFn);
         ASSERT_EQUALS(result, executor.check());
     }
 #endif // HAS_THREADING_MODEL_FORK
