@@ -737,6 +737,8 @@ static const std::set<std::string> misracpp2023Checkers{
 
 bool Settings::isPremiumEnabled(const char id[]) const
 {
+    if (premiumArgs.empty())
+        return false;
     if (premiumArgs.find("autosar") != std::string::npos && autosarCheckers.count(id))
         return true;
     if (premiumArgs.find("cert-c-") != std::string::npos && certCCheckers.count(id))
