@@ -2836,6 +2836,13 @@ private:
               "    }\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:2:12] -> [test.cpp:4:13]: (warning) Identical inner 'if' condition is always true. [identicalInnerCondition]\n", errout_str());
+
+        check("int f(const int *q, const int *s) {\n" // #14711
+              "    if (*q && *s)\n"
+	          "        return *q;\n"
+              "    return 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void identicalConditionAfterEarlyExit() {
