@@ -261,7 +261,7 @@ void CheckIO::checkFileUsage()
                             const Token* bodyEnd = nullptr;
                             const Token* bodyStart = nullptr;
 
-                            if (Token::simpleMatch(loopTok->previous(), "}") && Token::simpleMatch(loopTok->previous()->link()->previous(), "do")) {  // Handle do-while loops
+                            if (Token::simpleMatch(loopTok->previous(), "}") && Token::simpleMatch(loopTok->linkAt(-1)->previous(), "do")) {  // Handle do-while loops
                                 bodyEnd = loopTok->previous();
                                 bodyStart = bodyEnd->link();
                             } else {
