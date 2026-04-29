@@ -4044,8 +4044,8 @@ void CheckOther::checkFuncArgNamesDifferent()
                     decl = decl->nextArgument();
                     break;
                 }
-                // skip over template
-                if (decl->link() && decl->str() == "<")
+                // skip over templates and arrays
+                if (decl->link() && decl->str() != "(")
                     decl = decl->link();
                 else if (decl->varId())
                     declarations[j] = decl;
