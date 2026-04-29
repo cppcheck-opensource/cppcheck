@@ -17,6 +17,7 @@ struct S_WriteHeader {
 };
 
 size_t cb_WriteHeader(void * /*ptr*/, size_t size, size_t nmemb, void *p) {
+    // cppcheck-suppress constVariablePointer
     struct S_WriteHeader *s = (struct S_WriteHeader *)p;
     return s->x ? size * nmemb : 0;
 }
