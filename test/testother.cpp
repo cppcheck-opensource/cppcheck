@@ -12930,6 +12930,10 @@ private:
                       "[test.cpp:9:20] -> [test.cpp:14:22]: (warning) Function 'func2' argument order different: declaration 'a, b, c' definition 'c, b, a' [funcArgOrderDifferent]\n"
                       "[test.cpp:10:20] -> [test.cpp:15:22]: (warning) Function 'func3' argument order different: declaration 'a, b, c' definition 'c, b, a' [funcArgOrderDifferent]\n"
                       "[test.cpp:11:16] -> [test.cpp:16:22]: (warning) Function 'func4' argument order different: declaration ', b, c' definition 'c, b, a' [funcArgOrderDifferent]\n", errout_str());
+
+        check("void f(int N, const int a[N], const int b[N]);\n" // #14710
+              "void f(int N, const int a[N], const int b[N]) {}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     // #7846 - Syntax error when using C++11 braced-initializer in default argument
