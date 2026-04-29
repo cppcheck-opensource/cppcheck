@@ -506,7 +506,12 @@ void CheckIO::checkWrongfeofUsage()
 
     for (const Scope * scope : symbolDatabase->functionScopes) {
         for (const Token *tok = scope->bodyStart->next(); tok != scope->bodyEnd; tok = tok->next()) {
+            // TODO: Handle do-while and for loops
             if (!Token::simpleMatch(tok, "while ( ! feof ("))
+                continue;
+
+            // Bail out if we reach a do-while loop
+            if (Token::simpleMatch(tok->previous(), "}") && Token::simpleMatch(tok->linkAt(-1)->previous(), "do"))
                 continue;
 
             // Bail out if we cannot identify file pointer
