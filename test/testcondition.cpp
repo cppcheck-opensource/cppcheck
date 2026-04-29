@@ -2839,7 +2839,7 @@ private:
 
         check("int f(const int *q, const int *s) {\n" // #14711
               "    if (*q && *s)\n"
-	          "        return *q;\n"
+              "        return *q;\n"
               "    return 0;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
