@@ -31,7 +31,7 @@ private:
     class TimerResultsTest : public TimerResults
     {
     public:
-        std::map<std::string, std::vector<std::chrono::milliseconds>> getResults() {
+        std::map<std::string, std::vector<std::chrono::milliseconds>> getResults() const {
             std::lock_guard<std::mutex> l(mResultsSync);
             return mResults;
         }
