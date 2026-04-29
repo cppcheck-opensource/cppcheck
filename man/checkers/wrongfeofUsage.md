@@ -7,7 +7,7 @@
 
 ## Description
 
-`feof()` returns non-zero only after a read operation has failed because the end of file was reached. When used as the sole condition of a `while` loop, the loop body executes one extra time after the last successful read: the read fails silently (or returns partial data), and only then does `feof()` return true and terminate the loop.
+`feof()` returns non-zero only after a read operation has failed because the end of file was reached. When used as the sole condition of a loop, the loop body executes one extra time after the last successful read: the read fails silently (or returns partial data), and only then does `feof()` return true and terminate the loop.
 
 This checker warns when it finds feof in the loop condition and either:
 - no file-read call (e.g. `fgets`, `fread`, `fscanf`) precedes the loop and is also present inside the loop body
