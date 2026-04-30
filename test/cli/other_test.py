@@ -955,9 +955,8 @@ def test_unused_function_include(tmpdir):
 
 
 # TODO: test with clang-tidy
-# TODO: test with --addon
 # TODO: test with multiple files
-def __test_showtime(tmp_path, showtime, exp_res, exp_last, use_compdb, extra_args=None):
+def __test_showtime(tmp_path, showtime, exp_res, exp_last, use_compdb=False, use_addons=False, extra_args=None):
     test_file = tmp_path / 'test.cpp'  # the use of C++ is intentional
     with open(test_file, 'wt') as f:
         f.write(
@@ -973,6 +972,9 @@ void f()
         '--quiet',
         '--inline-suppr'
     ]
+
+    if use_addons:
+        args += ['--addon=misra', '--addon=misc']
 
     if use_compdb:
         compdb_file = tmp_path / 'compile_commands.json'
@@ -991,6 +993,8 @@ void f()
     exp_len = exp_res
     if 'cppcheck internal API usage' in stdout:
         exp_len += 1
+    if use_addons:
+        exp_len += 1  # TODO: should have individual entries for each addon and whole program analysis
     exp_len += 1  # last line
     assert len(lines) == exp_len
     for i in range(1, exp_res):
@@ -1000,118 +1004,134 @@ void f()
     assert stderr == ''
 
 
-def __test_showtime_top5_file(tmp_path, use_compdb):
-    __test_showtime(tmp_path, 'top5_file', 5, 'Check time: ', use_compdb)
+def __test_showtime_top5_file(tmp_path, use_compdb=False):
+    __test_showtime(tmp_path, 'top5_file', 5, 'Check time: ', use_compdb=use_compdb)
 
 
 def test_showtime_top5_file(tmp_path):
-    __test_showtime_top5_file(tmp_path, False)
+    __test_showtime_top5_file(tmp_path)
 
 
 def test_showtime_top5_file_compdb(tmp_path):
-    __test_showtime_top5_file(tmp_path, True)
+    __test_showtime_top5_file(tmp_path, use_compdb=True)
 
 
 # TODO: remove extra args when --executor=process works
-def __test_showtime_top5_summary(tmp_path, use_compdb):
-    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', use_compdb, ['-j1'])
+def __test_showtime_top5_summary(tmp_path, use_compdb=False):
+    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', use_compdb=use_compdb, extra_args=['-j1'])
 
 
 def test_showtime_top5_summary(tmp_path):
-    __test_showtime_top5_summary(tmp_path, False)
+    __test_showtime_top5_summary(tmp_path)
 
 
 def test_showtime_top5_summary_compdb(tmp_path):
-    __test_showtime_top5_summary(tmp_path, True)
+    __test_showtime_top5_summary(tmp_path, use_compdb=True)
 
 
 # TODO: remove when --executor=process works
 def test_showtime_top5_summary_j_thread(tmp_path):
-    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', False, ['-j2', '--executor=thread'])
+    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', extra_args=['-j2', '--executor=thread'])
 
 
 # TODO: remove when --executor=process works
 def test_showtime_top5_summary_compdb_j_thread(tmp_path):
-    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', True, ['-j2', '--executor=thread'])
+    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', use_compdb=True, extra_args=['-j2', '--executor=thread'])
 
 
 # TODO: remove override when fixed
 @pytest.mark.skipif(sys.platform == 'win32', reason="requires ProcessExecutor")
 @pytest.mark.xfail(strict=True)  # TODO: need to transfer the timer results to parent process - see #4452
 def test_showtime_top5_summary_j_process(tmp_path):
-    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', False, ['-j2', '--executor=process'])
+    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', extra_args=['-j2', '--executor=process'])
 
 
 # TODO: remove override when fixed
 @pytest.mark.skipif(sys.platform == 'win32', reason="requires ProcessExecutor")
 @pytest.mark.xfail(strict=True)  # TODO: need to transfer the timer results to parent process - see #4452
 def test_showtime_top5_summary_compdb_j_process(tmp_path):
-    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', True, ['-j2', '--executor=process'])
+    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', use_compdb=True, extra_args=['-j2', '--executor=process'])
 
 
-def __test_showtime_file(tmp_path, use_compdb):
+def __test_showtime_file(tmp_path, use_compdb=False, use_addons=False):
     exp_res = 79
     # project analysis does not call Preprocessor::getConfig()
     if use_compdb:
         exp_res -= 1
-    __test_showtime(tmp_path, 'file', exp_res, 'Check time: ', use_compdb)
+    __test_showtime(tmp_path, 'file', exp_res, 'Check time: ', use_compdb=use_compdb, use_addons=use_addons)
 
 
 def test_showtime_file(tmp_path):
-    __test_showtime_file(tmp_path, False)
+    __test_showtime_file(tmp_path)
 
 
 def test_showtime_file_compdb(tmp_path):
-    __test_showtime_file(tmp_path, True)
+    __test_showtime_file(tmp_path, use_compdb=True)
+
+
+def test_showtime_file_addon(tmp_path):
+    __test_showtime_file(tmp_path, use_addons=True)
+
+
+def test_showtime_file_addon_compdb(tmp_path):
+    __test_showtime_file(tmp_path, use_addons=True, use_compdb=True)
 
 
 # TODO: remove extra args when --executor=process works
-def __test_showtime_summary(tmp_path, use_compdb):
+def __test_showtime_summary(tmp_path, use_compdb=False, use_addons=False):
     exp_res = 79
     # project analysis does not call Preprocessor::getConfig()
     if use_compdb:
         exp_res -= 1
-    __test_showtime(tmp_path, 'summary', exp_res, 'Overall time: ', use_compdb, ['-j1'])
+    __test_showtime(tmp_path, 'summary', exp_res, 'Overall time: ', use_compdb=use_compdb, use_addons=use_addons, extra_args=['-j1'])
 
 
 def test_showtime_summary(tmp_path):
-    __test_showtime_summary(tmp_path, False,)
+    __test_showtime_summary(tmp_path)
 
 
 def test_showtime_summary_compdb(tmp_path):
-    __test_showtime_summary(tmp_path, True)
+    __test_showtime_summary(tmp_path, use_compdb=True)
+
+
+def test_showtime_summary_addon(tmp_path):
+    __test_showtime_summary(tmp_path, use_addons=True)
+
+
+def test_showtime_summary_addon_compdb(tmp_path):
+    __test_showtime_summary(tmp_path, use_addons=True, use_compdb=True)
 
 
 # TODO: remove when --executor=process works
 def test_showtime_summary_j_thread(tmp_path):
-    __test_showtime(tmp_path, 'summary', 79, 'Overall time: ', False, ['-j2', '--executor=thread'])
+    __test_showtime(tmp_path, 'summary', 79, 'Overall time: ', extra_args=['-j2', '--executor=thread'])
 
 
 # TODO: remove when --executor=process works
 def test_showtime_summary_compdb_j_thread(tmp_path):
-    __test_showtime(tmp_path, 'summary', 78, 'Overall time: ', True, ['-j2', '--executor=thread'])
+    __test_showtime(tmp_path, 'summary', 78, 'Overall time: ', use_compdb=True, extra_args=['-j2', '--executor=thread'])
 
 
 # TODO: remove override when fixed
 @pytest.mark.skipif(sys.platform == 'win32', reason="requires ProcessExecutor")
 @pytest.mark.xfail(strict=True)  # TODO: need to transfer the timer results to parent process - see #4452
 def test_showtime_summary_j_process(tmp_path):
-    __test_showtime(tmp_path, 'summary', 79, 'Overall time: ', False, ['-j2', '--executor=process'])
+    __test_showtime(tmp_path, 'summary', 79, 'Overall time: ', extra_args=['-j2', '--executor=process'])
 
 
 # TODO: remove override when fixed
 @pytest.mark.skipif(sys.platform == 'win32', reason="requires ProcessExecutor")
 @pytest.mark.xfail(strict=True)  # TODO: need to transfer the timer results to parent process - see #4452
 def test_showtime_summary_compdb_j_process(tmp_path):
-    __test_showtime(tmp_path, 'summary', 78, 'Overall time: ', True, ['-j2', '--executor=process'])
+    __test_showtime(tmp_path, 'summary', 78, 'Overall time: ', use_compdb=True, extra_args=['-j2', '--executor=process'])
 
 
-def __test_showtime_file_total(tmp_path, use_compdb):
-    __test_showtime(tmp_path, 'file-total', 0, 'Check time: ', use_compdb)
+def __test_showtime_file_total(tmp_path, use_compdb=False):
+    __test_showtime(tmp_path, 'file-total', 0, 'Check time: ', use_compdb=use_compdb)
 
 
 def test_showtime_file_total(tmp_path):
-    __test_showtime_file_total(tmp_path, False)
+    __test_showtime_file_total(tmp_path)
 
 
 def test_showtime_file_total_compdb(tmp_path):
