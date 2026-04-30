@@ -16,9 +16,9 @@ from xml.etree import ElementTree
 try:
     # TODO: handle exitcode?
     subprocess.call(['clang-tidy', '--version'])
-    has_clang_tidy = True
+    __has_clang_tidy = True
 except OSError:
-    has_clang_tidy = False
+    __has_clang_tidy = False
 
 
 def __remove_verbose_log(l : list):
@@ -1093,12 +1093,12 @@ def test_showtime_file_addon_compdb(tmp_path):
     __test_showtime_file(tmp_path, use_addons=True, use_compdb=True)
 
 
-@pytest.mark.skipif(not has_clang_tidy, reason='clang-tidy is not available')
+@pytest.mark.skipif(not __has_clang_tidy, reason='clang-tidy is not available')
 def test_showtime_file_clang_tidy(tmp_path):
     __test_showtime_file(tmp_path, use_clang_tidy=True)
 
 
-@pytest.mark.skipif(not has_clang_tidy, reason='clang-tidy is not available')
+@pytest.mark.skipif(not __has_clang_tidy, reason='clang-tidy is not available')
 def test_showtime_file_clang_tidy_compdb(tmp_path):
     __test_showtime_file(tmp_path, use_clang_tidy=True, use_compdb=True)
 
@@ -1128,12 +1128,12 @@ def test_showtime_summary_addon_compdb(tmp_path):
     __test_showtime_summary(tmp_path, use_addons=True, use_compdb=True)
 
 
-@pytest.mark.skipif(not has_clang_tidy, reason='clang-tidy is not available')
+@pytest.mark.skipif(not __has_clang_tidy, reason='clang-tidy is not available')
 def test_showtime_summary_clang_tidy(tmp_path):
     __test_showtime_summary(tmp_path, use_clang_tidy=True)
 
 
-@pytest.mark.skipif(not has_clang_tidy, reason='clang-tidy is not available')
+@pytest.mark.skipif(not __has_clang_tidy, reason='clang-tidy is not available')
 def test_showtime_summary_clang_tidy_compdb(tmp_path):
     __test_showtime_summary(tmp_path, use_clang_tidy=True, use_compdb=True)
 
@@ -3509,18 +3509,18 @@ def __test_clang_tidy(tmpdir, use_compdb):
     ]
 
 
-@pytest.mark.skipif(not has_clang_tidy, reason='clang-tidy is not available')
+@pytest.mark.skipif(not __has_clang_tidy, reason='clang-tidy is not available')
 @pytest.mark.xfail(strict=True)  # TODO: clang-tidy is only invoked with FileSettings - see #12053
 def test_clang_tidy(tmpdir):  # #12053
     __test_clang_tidy(tmpdir, False)
 
 
-@pytest.mark.skipif(not has_clang_tidy, reason='clang-tidy is not available')
+@pytest.mark.skipif(not __has_clang_tidy, reason='clang-tidy is not available')
 def test_clang_tidy_project(tmpdir):
     __test_clang_tidy(tmpdir, True)
 
 
-@pytest.mark.skipif(not has_clang_tidy, reason='clang-tidy is not available')
+@pytest.mark.skipif(not __has_clang_tidy, reason='clang-tidy is not available')
 def test_clang_tidy_error_exit(tmp_path):  # #13828 / #13829
     test_file = tmp_path / 'test.cpp'
     with open(test_file, 'wt') as f:
