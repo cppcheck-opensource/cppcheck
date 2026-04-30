@@ -761,6 +761,13 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
+        check("char* f() {\n" // #14715
+              "    char a[3] = { 'a', 'b', 'c' };\n"
+              "    *a = 0;\n"
+              "    return strdup(a);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
         check("size_t f() { wchar_t x = L'x'; return wcslen(&x); }");
         ASSERT_EQUALS("[test.cpp:1:46]: (error) Invalid wcslen() argument nr 1. A nul-terminated string is required. [invalidFunctionArgStr]\n", errout_str());
 
