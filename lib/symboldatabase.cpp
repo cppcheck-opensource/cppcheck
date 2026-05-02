@@ -1611,6 +1611,26 @@ static std::string getIncompleteNameID(const Token* tok)
 }
 
 namespace {
+    int getExprIdForOperand(const Token* tok) {
+        if (!tok)
+            return 0;
+
+        int otherExprId = 0;
+
+        // Look through all referenced tokens.
+        // If two exprIds are found and one matches tok->exprId(), return the other.
+        // Otherwise, default to returning tok->exprId().
+        for (const auto& ref: followAllReferences(tok)) {
+            const int refExprId = ref.token->exprId();
+            if (refExprId != 0 && refExprId != tok->exprId()) {
+                if (otherExprId != 0 && otherExprId != refExprId)
+                    return tok->exprId();
+                otherExprId = refExprId;
+            }
+        }
+        return otherExprId != 0 ? otherExprId : tok->exprId();
+    }
+
     struct ExprIdKey {
         std::string parentOp;
         nonneg int operand1;
@@ -1642,26 +1662,6 @@ namespace {
                 tok = tok->astParent();
                 continue;
             }
-
-            const auto getExprIdForOperand = [](const Token* tok) -> int {
-                if (!tok)
-                    return 0;
-
-                int otherExprId = 0;
-
-                // Look through all referenced tokens.
-                // If two exprIds are found and one matches tok->exprId(), return the other.
-                // Otherwise, default to returning tok->exprId().
-                for (const auto& ref: followAllReferences(tok)) {
-                    const int refExprId = ref.token->exprId();
-                    if (refExprId != 0 && refExprId != tok->exprId()) {
-                        if (otherExprId != 0 && otherExprId != refExprId)
-                            return tok->exprId();
-                        otherExprId = refExprId;
-                    }
-                }
-                return otherExprId != 0 ? otherExprId : tok->exprId();
-            };
 
             ExprIdKey key;
             key.parentOp = tok->astParent()->str();
