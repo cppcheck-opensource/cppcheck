@@ -10331,7 +10331,7 @@ Line 182
   0U always 0
   i {!<=-1,0}
   < always {!<=-1,!>=2}
-  ( {!<=-1,>=symbolic=(i+1),<=symbolic=(i)}
+  ( always !<=-1
   ++ always !<=0
   i always !<=-1
 Line 183
@@ -10657,6 +10657,7 @@ Line 415
   :: always 8
   FILE_NOT_FOUND always 8
   "File is missing: " always "File is missing: "
+  + always {size=0,+}
 Line 422
   = always 0
   nullptr always 0
@@ -12552,7 +12553,7 @@ Line 1460
   0 always 0
   i {!<=-1,0}
   < always {!<=-1,!>=2}
-  ( {!<=-1,>=symbolic=(i+1),<=symbolic=(i)}
+  ( always !<=-1
   ++ always !<=0
   i always !<=-1
 Line 1461
@@ -12627,7 +12628,7 @@ Line 1493
   valueDefinedInCode_ always {!<=-1,!>=2}
   false always 0
 Line 1494
-  name possible {"__STRICT_ANSI__"@10,"__FILE__"@11,"__LINE__"@12,"__COUNTER__"@13,"__DATE__"@15,"__TIME__"@17,"__STDC_VERSION__"@21,"__cplusplus"@25,size=15@10,size=8@11}
+  name possible {"__STRICT_ANSI__"@10,"__FILE__"@11,"__LINE__"@12,"__COUNTER__"@13,"__DATE__"@15,"__TIME__"@17,"__STDC_VERSION__"@21,"__cplusplus"@25}
   ' ' always 32
   value possible {"1"@10,"__FILE__"@11,"__LINE__"@12,"__COUNTER__"@13,size=1@10,size=8@11,size=11@13}
 Line 1495
@@ -12892,11 +12893,13 @@ Line 1666
 Line 1673
   "Unexpected token '" always "Unexpected token '"
   tokenA possible symbolic=(tok->next->next)@42
+  + always {size=0,+}
   "'" always "'"
 Line 1677
   "Combining '" always "Combining '"
   "' and '" always "' and '"
   tokenB possible symbolic=(tok->next->next)@44
+  + always {size=0,+}
   "' yields an invalid token." always "' yields an invalid token."
 Line 1681
   "Unexpected newline" always {size=18,"Unexpected newline"}
@@ -12907,6 +12910,7 @@ Line 1685
   ( always !<=-1
   "' yields universal character '\\" always "' yields universal character '\\"
   strAB possible {size=5@72,size=9@74}
+  + always {size=0,+}
   "'. This is undefined behavior according to C standard chapter 5.1.1.2, paragraph 4." always "'. This is undefined behavior according to C standard chapter 5.1.1.2, paragraph 4."
 Line 1690
   , always {!<=-1,!>=2}
@@ -12915,7 +12919,7 @@ Line 1690
   = always 0
   nullptr always 0
 Line 1691
-  str possible {"1"@178,"0"@178,"","##"@10,size=0,size=2@10}
+  str possible {"1"@178,"0"@178,"","##"@10}
 Line 1692
   replaced {!<=-1,!>=2,1@127}
 Line 1694
@@ -13051,6 +13055,7 @@ Line 1753
 Line 1754
   "In definition of '" always "In definition of '"
   nameTokDef always !0
+  + always {size=0,+}
   "': Missing opening parenthesis for __VA_OPT__" always "': Missing opening parenthesis for __VA_OPT__"
 Line 1756
   = always 1
@@ -13077,6 +13082,7 @@ Line 1763
   tok always {!symbolic=(endToken),!0}
   "In definition of '" always "In definition of '"
   nameTokDef always !0
+  + always {size=0,+}
   "': __VA_OPT__ cannot be nested" always "': __VA_OPT__ cannot be nested"
 Line 1764
   == always {!<=-1,!>=2}
@@ -13092,6 +13098,7 @@ Line 1771
   0 always 0
 Line 1773
   "In definition of '" always "In definition of '"
+  + always {size=0,+}
   "': Missing closing parenthesis for __VA_OPT__" always "': Missing closing parenthesis for __VA_OPT__"
 Line 1785
   return always {!<=-1,!>=2}
@@ -13141,7 +13148,7 @@ Line 1804
   = always 0
   0U always 0
 Line 1805
-  calledInDefine {!<=-1,!>=2,0,symbolic=(loc.fileIndex!=nameTokInst->location.fileIndex||loc.line<nameTokInst->location.line)@217}
+  calledInDefine {!<=-1,!>=2,symbolic=(loc.fileIndex!=nameTokInst->location.fileIndex||loc.line<nameTokInst->location.line)@217}
   ? always {!<=-1,!>=2}
   ( always {!<=-1,!>=2}
   : always {!<=-1,!>=2}
@@ -13420,8 +13427,8 @@ Line 1954
   = possible {symbolic=(optExpandValue->cfront()),symbolic=(optNoExpandValue->cfront()),symbolic=(valueToken)}
   valueToken2 possible {symbolic=(optExpandValue->cfront()),symbolic=(optNoExpandValue->cfront()),symbolic=(valueToken)}
   tok possible {symbolic=(optExpandValue->cfront()),symbolic=(optNoExpandValue->cfront()),symbolic=(valueToken)}
-  != {!<=-1,!>=2,0}
-  endToken2 possible {symbolic=(endToken),symbolic=(tok),0}
+  != always {!<=-1,!>=2}
+  endToken2 possible {symbolic=(endToken),0}
 Line 1955
   . possible 44
   != {!<=-1,!>=2,1}
@@ -13471,7 +13478,7 @@ Line 1970
 Line 1971
   ( always {!<=-1,!>=2}
 Line 1972
-  "" always {size=0,""}
+  "" always ""
   ( always {!<=-1,!>=2}
 Line 1975
   ( always {!<=-1,!>=2}
@@ -13497,7 +13504,7 @@ Line 1989
   . always !<=-1
   col always !<=-1
 Line 1991
-  "##" always {size=2,"##"}
+  "##" always "##"
   ( always {!<=-1,!>=2}
 Line 1996
   >= always {!<=-1,!>=2}
@@ -13914,6 +13921,8 @@ Line 2205
   macros2 always size=0
 Line 2207
   '\"' always 34
+Line 2208
+  next possible 0
 Line 2211
   && always {!<=-1,!>=2}
   . always {!<=-1,!>=2}
@@ -14396,8 +14405,7 @@ Line 2527
 Line 2528
   "invalid sizeof expression" always "invalid sizeof expression"
 Line 2534
-  != {!<=-1,!>=2,0}
-  tok2 possible symbolic=(typeToken)
+  != always {!<=-1,!>=2}
 Line 2535
   ( possible {size=6,size=1}
   == {!<=-1,!>=2,0}
@@ -14461,7 +14469,7 @@ Line 2567
 Line 2569
   lastSlash always !<=-1
   = always !<=-1
-  path possible {""@7118,size=0@7118}
+  path possible ""@7118
   ( always !<=-1
   "\\/" always "\\/"
 Line 2570
@@ -14540,8 +14548,7 @@ Line 2613
 Line 2614
   "invalid __has_include expression" always "invalid __has_include expression"
 Line 2618
-  != {!<=-1,!>=2,0}
-  tok3 possible symbolic=(headerToken)
+  != always {!<=-1,!>=2}
 Line 2621
   1U always 1
   ( always !<=-1
@@ -15332,7 +15339,7 @@ Line 3057
   ! {!<=-1,!>=2,1@27}
   systemheader {!<=-1,!>=2,0@27,symbolic=(htok->str()[0]=='<')@198}
 Line 3058
-  sourcefile possible {""@27,size=0@27}
+  sourcefile possible ""@27
   nullptr always 0
 Line 3062
   != always {!<=-1,!>=2}
@@ -15379,7 +15386,7 @@ Line 3124
 Line 3125
   it {lifetime[Iterator]=(dui.includes),lifetime[Object]=(dui),!symbolic=(dui.includes.end()),!end=0}
 Line 3127
-  "" always {size=0,""}
+  "" always ""
   filename always symbolic=(*it)
   false always 0
   outputList possible 0
@@ -15714,31 +15721,31 @@ Line 3294
   strictAnsiUndefined always {!<=-1,!>=2}
 Line 3295
   "__STRICT_ANSI__" always "__STRICT_ANSI__"
-  "__STRICT_ANSI__" always {size=15,"__STRICT_ANSI__"}
+  "__STRICT_ANSI__" always "__STRICT_ANSI__"
   "1" always {size=1,"1"}
 Line 3297
   "__FILE__" always "__FILE__"
-  "__FILE__" always {size=8,"__FILE__"}
+  "__FILE__" always "__FILE__"
   "__FILE__" always {size=8,"__FILE__"}
 Line 3298
   macros always !size=0
   "__LINE__" always "__LINE__"
-  "__LINE__" always {size=8,"__LINE__"}
+  "__LINE__" always "__LINE__"
   "__LINE__" always {size=8,"__LINE__"}
 Line 3299
   macros always {!size=1,!size=0}
   "__COUNTER__" always "__COUNTER__"
-  "__COUNTER__" always {size=11,"__COUNTER__"}
+  "__COUNTER__" always "__COUNTER__"
   "__COUNTER__" always {size=11,"__COUNTER__"}
 Line 3302
   macros always {!size=2,!size=1,!size=0}
   "__DATE__" always "__DATE__"
-  "__DATE__" always {size=8,"__DATE__"}
+  "__DATE__" always "__DATE__"
   & {lifetime[Address]=(ltime),!0}
 Line 3303
   macros always {!size=3,!size=2,!size=1,!size=0}
   "__TIME__" always "__TIME__"
-  "__TIME__" always {size=8,"__TIME__"}
+  "__TIME__" always "__TIME__"
   & {lifetime[Address]=(ltime),!0}
 Line 3305
   ! {!<=-1,!>=2,0}
@@ -15759,7 +15766,7 @@ Line 3309
 Line 3310
   macros always {!size=4,!size=3,!size=2,!size=1,!size=0}
   "__STDC_VERSION__" always "__STDC_VERSION__"
-  "__STDC_VERSION__" always {size=16,"__STDC_VERSION__"}
+  "__STDC_VERSION__" always "__STDC_VERSION__"
   std_def always !size=0
 Line 3312
   cpp_std possible -1
@@ -15786,7 +15793,7 @@ Line 3324
 Line 3325
   macros always {!size=4,!size=3,!size=2,!size=1,!size=0}
   "__cplusplus" always "__cplusplus"
-  "__cplusplus" always {size=11,"__cplusplus"}
+  "__cplusplus" always "__cplusplus"
   std_def always !size=0
 Line 3332
   True always 0
@@ -15805,7 +15812,7 @@ Line 3342
   ( {lifetime[Iterator]=(dui.includes),lifetime[Object]=(dui),end=0}
   it possible {lifetime[Iterator]=(dui.includes),lifetime[Object]=(dui)}
 Line 3343
-  "" always {size=0,""}
+  "" always ""
   it {lifetime[Iterator]=(dui.includes),lifetime[Object]=(dui),!symbolic=(dui.includes.end()),!end=0}
   false always 0
 Line 3344
@@ -16153,7 +16160,8 @@ Line 3536
   != always {!<=-1,!>=2}
   ( {lifetime[Iterator]=(macros),end=0}
 Line 3537
-  "1" always {size=1,"1"}
+  "1" always "1"
+  , always {size=0,,}
   tok always !0
 Line 3538
   hasInclude always {!<=-1,!>=2}
@@ -16161,10 +16169,12 @@ Line 3538
   tok always !0
   == always {!<=-1,!>=2}
 Line 3539
-  "1" always {size=1,"1"}
+  "1" always "1"
+  , always {size=0,,}
   tok always !0
 Line 3541
-  "0" always {size=1,"0"}
+  "0" always "0"
+  , always {size=0,,}
   tok always !0
 Line 3543
   par {!<=-1,!>=2,0}
@@ -16310,7 +16320,7 @@ Line 3602
   ! always {!<=-1,!>=2}
   ( always {!<=-1,!>=2}
   & {lifetime[Address]=(tmp),!0}
-  tmp {symbolic=(tok),0}
+  tmp always symbolic=(tok)
 Line 3603
   output always NonMovedVariable
 Line 3606
@@ -16481,8 +16491,8 @@ Line 3720
   = {lifetime[Iterator]=(macros),start=0}
   ( {lifetime[Iterator]=(macros),start=0}
   macroIt possible {lifetime[Iterator]=(macros),start=0}
-  != {!<=-1,!>=2,0}
-  ( {lifetime[Iterator]=(macros),symbolic=(macroIt),end=0}
+  != always {!<=-1,!>=2}
+  ( {lifetime[Iterator]=(macros),end=0}
   macroIt possible lifetime[Iterator]=(macros)
 Line 3721
   macroIt {lifetime[Iterator]=(macros),!symbolic=(macros.end()),!end=0}
@@ -16502,8 +16512,8 @@ Line 3725
   = {lifetime[Iterator]=(usage),start=0}
   ( {lifetime[Iterator]=(usage),start=0}
   usageIt possible {lifetime[Iterator]=(usage),start=0}
-  != {!<=-1,!>=2,0}
-  ( {lifetime[Iterator]=(usage),symbolic=(usageIt),end=0}
+  != always {!<=-1,!>=2}
+  ( {lifetime[Iterator]=(usage),end=0}
   usageIt possible lifetime[Iterator]=(usage)
 Line 3726
   usageIt {lifetime[Iterator]=(usage),!symbolic=(usage.end()),!end=0}
