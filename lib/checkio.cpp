@@ -415,7 +415,13 @@ void CheckIO::seekOnAppendedFileError(const Token *tok)
 void CheckIO::ftellFileError(const Token *tok)
 {
     reportError(tok, Severity::portability,
-                "ftellTextModeFile", "According to Microsoft, the value returned by ftell may not reflect the physical byte offset for streams opened in text mode, because text mode causes carriage return-line feed translation. See also 7.21.9.4 in C11 standard.", CWE474, Certainty::normal);
+                "ftellTextModeFile", "The ftell function obtains the current value of the file position indicator"
+                " for the stream pointed to by stream. For a binary stream, the value is the number of characters"
+                " from the beginning of the file. For a text stream, its file position indicator contains unspecified"
+                " information, usable by the fseek function for returning the file position indicator for the stream"
+                " to its position at the time of the ftell call; the difference between two such return values is"
+                " not necessarily a meaningful measure of the number of characters written or read. See 7.21.9.4"
+                " in C11 standard.", CWE474, Certainty::normal);
 }
 
 void CheckIO::incompatibleFileOpenError(const Token *tok, const std::string &filename)
