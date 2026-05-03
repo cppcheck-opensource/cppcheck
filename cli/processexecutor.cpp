@@ -78,7 +78,7 @@ ProcessExecutor::ProcessExecutor(const std::list<FileWithDetails> &files, const 
 namespace {
     class PipeWriter : public ErrorLogger {
     public:
-        enum PipeSignal : std::uint8_t {REPORT_OUT='1',REPORT_ERROR='2',REPORT_SUPPR_INLINE='3',REPORT_SUPPR='4',CHILD_END='5',REPORT_METRIC='6'};
+        enum PipeSignal : std::uint8_t {REPORT_OUT='1',REPORT_ERROR='2',REPORT_SUPPR_INLINE='3',REPORT_SUPPR='4',CHILD_END='5',REPORT_METRIC='6',REPORT_TIMER='7'};
 
         explicit PipeWriter(int pipe) : mWpipe(pipe) {}
 
@@ -102,6 +102,18 @@ namespace {
 
         void reportMetric(const std::string &metric) override {
             writeToPipe(REPORT_METRIC, metric);
+        }
+
+        void writerTimer(const TimerResults* timerResults) const {
+            if (!timerResults)
+                return;
+
+            for (const auto& entry : timerResults->getResults())
+            {
+                for (const auto& d : entry.second) {
+                    writeToPipe(REPORT_TIMER, entry.first + ";" + std::to_string(d.count()));
+                }
+            }
         }
 
         void writeEnd(const std::string& str) const {
@@ -188,7 +200,8 @@ bool ProcessExecutor::handleRead(int rpipe, unsigned int &result, const std::str
         type != PipeWriter::REPORT_SUPPR_INLINE &&
         type != PipeWriter::REPORT_SUPPR &&
         type != PipeWriter::CHILD_END &&
-        type != PipeWriter::REPORT_METRIC) {
+        type != PipeWriter::REPORT_METRIC &&
+        type != PipeWriter::REPORT_TIMER) {
         std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") invalid type " << int(type) << std::endl;
         std::exit(EXIT_FAILURE);
     }
@@ -272,6 +285,20 @@ bool ProcessExecutor::handleRead(int rpipe, unsigned int &result, const std::str
         res = false;
     } else if (type == PipeWriter::REPORT_METRIC) {
         mErrorLogger.reportMetric(buf);
+    } else if (type == PipeWriter::REPORT_TIMER) {
+        if (!mTimerResults) {
+            // TODO: make this non-fatal
+            std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") received timer results when no timer is enabled" << std::endl;
+            std::exit(EXIT_FAILURE);
+        }
+        const auto parts = splitString(buf, ';');
+        if (parts.size() < 2)
+        {
+            // TODO: make this non-fatal
+            std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") adding of timer result failed - insufficient data" << std::endl;
+            std::exit(EXIT_FAILURE);
+        }
+        mTimerResults->addResults(parts[0], std::chrono::milliseconds{strToInt<long>(parts[1])});
     }
 
     return res;
@@ -358,6 +385,8 @@ unsigned int ProcessExecutor::check()
                 }
 
                 pipewriter.writeSuppr(mSuppressions.nomsg);
+
+                pipewriter.writerTimer(mTimerResults);
 
                 pipewriter.writeEnd(std::to_string(resultOfCheck));
                 std::exit(EXIT_SUCCESS);
