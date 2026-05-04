@@ -788,8 +788,13 @@ bool CheckUninitVar::checkScopeForVariable(const Token *tok, const Variable& var
                         return true;
 
                     // array new
-                    if (Token::Match(tok->next(), "= new %type% [") && Token::simpleMatch(tok->linkAt(4), "] ("))
-                        return true;
+                    if (Token::Match(tok->next(), "= new ::|%type")) {
+                        const Token* initTok = tok->tokAt(4);
+                        while (Token::Match(initTok, "::|%type"))
+                            initTok = initTok->next();
+                        if (Token::Match(initTok->link(), "] [({]"))
+                            return true;
+                    }
                 }
 
                 continue;
