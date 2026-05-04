@@ -2363,3 +2363,9 @@ const Token * TokenList::isFunctionHead(const Token *tok, const std::string &end
     }
     return nullptr;
 }
+
+void TokenList::debugMsg(const Token* tok, const std::string& type, const std::string& msg) const
+{
+    if (mSettings.debugwarnings && mDebugMsgHandler)
+        mDebugMsgHandler(tok, type, msg);
+}

@@ -220,10 +220,7 @@ public:
         mDebugMsgHandler = std::move(debugMsgHandler);
     }
 
-    void debugMsg(const Token* tok, const std::string& type, const std::string& msg) const {
-        if (mSettings.debugwarnings && mDebugMsgHandler)
-            mDebugMsgHandler(tok, type, msg);
-    }
+    void debugMsg(const Token* tok, const std::string& type, const std::string& msg) const;
 
 private:
     bool createTokensFromBufferInternal(const char* data, std::size_t size, const std::string& file0);
