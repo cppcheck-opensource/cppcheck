@@ -3909,10 +3909,10 @@ class MisraChecker:
         # the size increases when there are inner #if directives.
         ifStack = []
         for directive in data.directives:
-            if directive.str.startswith('#if ') or directive.str.startswith('#ifdef ') or directive.str.startswith(
-                    '#ifndef '):
+            if directive.str.startswith('#if ') or directive.str.startswith('#if(') or directive.str.startswith('#ifdef ')
+                    or directive.str.startswith('#ifndef '):
                 ifStack.append(directive)
-            elif directive.str == '#else' or directive.str.startswith('#elif '):
+            elif directive.str == '#else' or directive.str.startswith('#elif ') or directive.str.startswith('#elif('):
                 if len(ifStack) == 0:
                     self.reportError(directive, 20, 14)
                     ifStack.append(directive)
