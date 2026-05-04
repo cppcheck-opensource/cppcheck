@@ -1514,7 +1514,7 @@ bool ImportProject::importCppcheckGuiProject(std::istream &istr, Settings &setti
                 s.fileName = empty_if_null(child->Attribute("fileName"));
                 if (!s.fileName.empty())
                     s.fileName = joinRelativePath(path, s.fileName);
-                s.lineNumber = child->IntAttribute("lineNumber", SuppressionList::Suppression::NO_LINE); // TODO: should not depend on Suppression
+                s.lineNumber = child->UnsignedAttribute("lineNumber", 0);
                 s.symbolName = empty_if_null(child->Attribute("symbolName"));
                 s.hash = strToInt<std::size_t>(default_if_null(child->Attribute("hash"), "0"));
                 suppressions.push_back(std::move(s));

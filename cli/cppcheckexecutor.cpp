@@ -312,7 +312,7 @@ static std::vector<ErrorMessage> getUnmatchedSuppressions(const std::list<Suppre
         for (const SuppressionList::Suppression &s2 : unmatched) {
             if (s2.errorId == "unmatchedSuppression") { // TODO: handle unmatchedPolyspaceSuppression?
                 if ((s2.fileName.empty() || s2.fileName == "*" || s2.fileName == s.fileName) &&
-                    (s2.lineNumber == SuppressionList::Suppression::NO_LINE || s2.lineNumber == s.lineNumber)) {
+                    (s2.lineNumber == 0 || s2.lineNumber == s.lineNumber)) {
                     suppressed = true;
                     break;
                 }
@@ -330,7 +330,7 @@ static std::vector<ErrorMessage> getUnmatchedSuppressions(const std::list<Suppre
 
         std::list<ErrorMessage::FileLocation> callStack;
         if (!s.fileName.empty()) {
-            callStack.emplace_back(s.fileName, s.lineNumber == -1 ? 0 : s.lineNumber, s.column); // TODO: get rid of s.lineNumber == -1 hack
+            callStack.emplace_back(s.fileName, s.lineNumber, s.column);
         }
         const std::string unmatchedSuppressionId = s.isPolyspace ? "unmatchedPolyspaceSuppression" : "unmatchedSuppression";
         errors.emplace_back(std::move(callStack), "", Severity::information, "Unmatched suppression: " + s.errorId, unmatchedSuppressionId, Certainty::normal);
@@ -347,7 +347,7 @@ bool CppCheckExecutor::reportUnmatchedSuppressions(const Settings &settings, con
     auto suppr = suppressions.getSuppressions();
     if (std::any_of(suppr.cbegin(), suppr.cend(), [](const SuppressionList::Suppression& s) {
         // TODO: handle unmatchedPolyspaceSuppression?
-        return s.errorId == "unmatchedSuppression" && (s.fileName.empty() || s.fileName == "*") && s.lineNumber == SuppressionList::Suppression::NO_LINE;
+        return s.errorId == "unmatchedSuppression" && (s.fileName.empty() || s.fileName == "*") && s.lineNumber == 0;
     }))
         return false;
 

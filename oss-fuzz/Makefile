@@ -266,7 +266,7 @@ $(libcppdir)/cppcheck.o: ../lib/cppcheck.cpp ../externals/picojson/picojson.h ..
 $(libcppdir)/ctu.o: ../lib/ctu.cpp ../externals/tinyxml2/tinyxml2.h ../lib/astutils.h ../lib/check.h ../lib/config.h ../lib/ctu.h ../lib/errorlogger.h ../lib/errortypes.h ../lib/library.h ../lib/mathlib.h ../lib/path.h ../lib/smallvector.h ../lib/sourcelocation.h ../lib/standards.h ../lib/symboldatabase.h ../lib/templatesimplifier.h ../lib/token.h ../lib/tokenize.h ../lib/tokenlist.h ../lib/utils.h ../lib/vfvalue.h ../lib/xml.h
 	$(CXX) ${LIB_FUZZING_ENGINE} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(libcppdir)/ctu.cpp
 
-$(libcppdir)/errorlogger.o: ../lib/errorlogger.cpp ../externals/tinyxml2/tinyxml2.h ../lib/addoninfo.h ../lib/check.h ../lib/checkers.h ../lib/color.h ../lib/config.h ../lib/cppcheck.h ../lib/errorlogger.h ../lib/errortypes.h ../lib/library.h ../lib/mathlib.h ../lib/path.h ../lib/platform.h ../lib/regex.h ../lib/settings.h ../lib/smallvector.h ../lib/standards.h ../lib/suppressions.h ../lib/templatesimplifier.h ../lib/token.h ../lib/tokenlist.h ../lib/utils.h ../lib/vfvalue.h ../lib/xml.h
+$(libcppdir)/errorlogger.o: ../lib/errorlogger.cpp ../externals/tinyxml2/tinyxml2.h ../lib/addoninfo.h ../lib/check.h ../lib/checkers.h ../lib/color.h ../lib/config.h ../lib/cppcheck.h ../lib/errorlogger.h ../lib/errortypes.h ../lib/library.h ../lib/mathlib.h ../lib/path.h ../lib/platform.h ../lib/regex.h ../lib/settings.h ../lib/smallvector.h ../lib/standards.h ../lib/templatesimplifier.h ../lib/token.h ../lib/tokenlist.h ../lib/utils.h ../lib/vfvalue.h ../lib/xml.h
 	$(CXX) ${LIB_FUZZING_ENGINE} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(libcppdir)/errorlogger.cpp
 
 $(libcppdir)/errortypes.o: ../lib/errortypes.cpp ../lib/config.h ../lib/errortypes.h ../lib/utils.h
