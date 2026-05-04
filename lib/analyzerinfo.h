@@ -69,8 +69,6 @@ public:
     void setFileInfo(const std::string &check, const std::string &fileInfo);
     static std::string getAnalyzerInfoFile(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId);
 
-    void reopen(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId);
-
     static const char sep = ':';
 
     class CPPCHECKLIB Info {
