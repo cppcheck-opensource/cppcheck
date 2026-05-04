@@ -736,6 +736,16 @@ unsigned int CppCheck::checkClang(const FileWithDetails &file)
 
     try {
         TokenList tokenlist{mSettings, file.lang()};
+        tokenlist.setDebugMsgHandler([&](const Token* tok, const std::string& type, const std::string& msg) {
+            ErrorMessage::FileLocation loc(tok, &tokenlist);
+            ErrorMessage errmsg({std::move(loc)},
+                                tokenlist.getSourceFilePath(),
+                                Severity::debug,
+                                msg,
+                                type,
+                                Certainty::normal);
+            mErrorLogger.reportErr(errmsg);
+        });
         tokenlist.appendFileIfNew(file.spath());
         Tokenizer tokenizer(std::move(tokenlist), mErrorLogger);
         std::istringstream ast(output2);
