@@ -1919,7 +1919,7 @@ void TokenList::validateAst(bool print) const
                 mTokensFrontBack->front->printOut(std::cout);
         }};
     // Check for some known issues in AST to avoid crash/hang later on
-    std::set<const Token*> safeAstTokens;    // list of "safe" AST tokens without endless recursion
+    std::unordered_set<const Token*> safeAstTokens;    // list of "safe" AST tokens without endless recursion
     for (const Token *tok = mTokensFrontBack->front; tok; tok = tok->next()) {
         // Syntax error if binary operator only has 1 operand
         if ((tok->isAssignmentOp() || tok->isComparisonOp() || Token::Match(tok,"[|^/%]")) && tok->astOperand1() && !tok->astOperand2())
