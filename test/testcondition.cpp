@@ -5646,7 +5646,7 @@ private:
         check("void f() {\n" // #8192
               "    for (int i = 0; i > 10; ++i) {}\n"
               "}\n");
-        TODO_ASSERT_EQUALS("[test.cpp:2]: (style) Condition 'i>10' is always false\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:23]: (style) Condition 'i>10' is always false [knownConditionTrueFalse]\n", errout_str());
 
         check("void f() {\n"
               "    for (int i = 1000; i < 20; ++i) {}\n"

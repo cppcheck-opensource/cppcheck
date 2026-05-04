@@ -5181,8 +5181,18 @@ static bool valueFlowForLoop2(const Token *tok,
     if (error)
         return false;
     execute(secondExpression, programMemory, &result, &error, settings);
-    if (result == 0) // 2nd expression is false => no looping
+    if (result == 0) {
+        if (!error) { // 2nd expression is false => no looping
+            ProgramMemory startMemory(programMemory);
+            ProgramMemory endMemory(programMemory);
+
+            memory1.swap(startMemory);
+            memory2.swap(endMemory);
+            memoryAfter.swap(programMemory);
+            return true;
+        }
         return false;
+    }
     if (error) {
         // If a variable is reassigned in second expression, return false
         bool reassign = false;
@@ -5388,23 +5398,32 @@ static void valueFlowForLoop(const TokenList &tokenlist, const SymbolDatabase& s
         } else {
             ProgramMemory mem1, mem2, memAfter;
             if (valueFlowForLoop2(tok, mem1, mem2, memAfter, settings)) {
-                for (const auto& p : mem1) {
-                    if (!p.second.isIntValue())
-                        continue;
-                    if (p.second.isImpossible())
-                        continue;
-                    if (p.first.tok->varId() == 0)
-                        continue;
-                    valueFlowForLoopSimplify(bodyStart, p.first.tok, false, p.second.intvalue, tokenlist, errorLogger, settings);
-                }
-                for (const auto& p : mem2) {
-                    if (!p.second.isIntValue())
-                        continue;
-                    if (p.second.isImpossible())
-                        continue;
-                    if (p.first.tok->varId() == 0)
-                        continue;
-                    valueFlowForLoopSimplify(bodyStart, p.first.tok, false, p.second.intvalue, tokenlist, errorLogger, settings);
+                if (mem1 == memAfter) { // #8192 check if loop never runs
+                    Token* condTok = getCondTok(tok);
+                    if (condTok && !condTok->hasKnownIntValue()) {
+                        ValueFlow::Value v(0);
+                        v.setKnown();
+                        ValueFlow::setTokenValue(condTok, std::move(v), settings);
+                    }
+                } else {
+                    for (const auto& p : mem1) {
+                        if (!p.second.isIntValue())
+                            continue;
+                        if (p.second.isImpossible())
+                            continue;
+                        if (p.first.tok->varId() == 0)
+                            continue;
+                        valueFlowForLoopSimplify(bodyStart, p.first.tok, false, p.second.intvalue, tokenlist, errorLogger, settings);
+                    }
+                    for (const auto& p : mem2) {
+                        if (!p.second.isIntValue())
+                            continue;
+                        if (p.second.isImpossible())
+                            continue;
+                        if (p.first.tok->varId() == 0)
+                            continue;
+                        valueFlowForLoopSimplify(bodyStart, p.first.tok, false, p.second.intvalue, tokenlist, errorLogger, settings);
+                    }
                 }
                 for (const auto& p : memAfter) {
                     if (!p.second.isIntValue())
