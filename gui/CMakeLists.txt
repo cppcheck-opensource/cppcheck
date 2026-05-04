@@ -25,12 +25,13 @@ CheckOptions:
     endif()
 
     add_executable(cppcheck-gui ${cppcheck-gui-deps} ${cppcheck-gui_SOURCES})
+    qt_add_ui(cppcheck-gui SOURCES ${uis})
     # the GUI include is needed so the includes are found from the generated headers - TODO: is it possible to get rid of this?
     target_include_directories(cppcheck-gui PRIVATE ${PROJECT_SOURCE_DIR}/gui/)
     target_link_libraries(cppcheck-gui cppcheck-core simplecpp tinyxml2 picojson frontend)
 
     set_target_properties(cppcheck-gui PROPERTIES AUTOMOC ON)
-    set_target_properties(cppcheck-gui PROPERTIES AUTOUIC ON)
+    #set_target_properties(cppcheck-gui PROPERTIES AUTOUIC ON)
     set_target_properties(cppcheck-gui PROPERTIES WIN32_EXECUTABLE ON)
     if (NOT CMAKE_DISABLE_PRECOMPILE_HEADERS)
         target_precompile_headers(cppcheck-gui PRIVATE precompiled.h)
