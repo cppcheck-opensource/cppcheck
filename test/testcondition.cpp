@@ -3029,6 +3029,15 @@ private:
               "  }\n"
               "}");
         ASSERT_EQUALS("", errout_str());
+
+        check("void g(int[]);\n" // #14724
+              "void f(int a[]) {\n"
+              "    if (a[0] == 1) {\n"
+              "        g(a);\n"
+              "        if (a[0] == 1) {}\n"
+              "    }\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void overlappingInnerCondition() {
