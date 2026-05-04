@@ -129,8 +129,6 @@
 #include <vector>
 
 static void bailoutInternal(const std::string& type,
-                            const TokenList& tokenlist,
-                            ErrorLogger& errorLogger,
                             const Token* tok,
                             const std::string& what,
                             const std::string& file,
@@ -139,25 +137,19 @@ static void bailoutInternal(const std::string& type,
 {
     if (function.find("operator") != std::string::npos)
         function = "(valueFlow)";
-    ErrorMessage::FileLocation loc(tok, &tokenlist);
     const std::string location = Path::stripDirectoryPart(file) + ":" + std::to_string(line) + ":";
-    ErrorMessage errmsg({std::move(loc)},
-                        tokenlist.getSourceFilePath(),
-                        Severity::debug,
-                        (file.empty() ? "" : location) + function + " bailout: " + what,
-                        type,
-                        Certainty::normal);
-    errorLogger.reportErr(errmsg);
+    const std::string msg = (file.empty() ? "" : location) + function + " bailout: " + what;
+    tok->debugMsg(type, msg);
 }
 
-#define bailout2(type, tokenlist, errorLogger, tok, what)                                                              \
-    bailoutInternal((type), (tokenlist), (errorLogger), (tok), (what), __FILE__, __LINE__, __func__)
+#define bailout2(type, tok, what)                                                              \
+    bailoutInternal((type), (tok), (what), __FILE__, __LINE__, __func__)
 
-#define bailout(tokenlist, errorLogger, tok, what)                                                                     \
-    bailout2("valueFlowBailout", (tokenlist), (errorLogger), (tok), (what))
+#define bailout(tok, what)                                                                     \
+    bailout2("valueFlowBailout", (tok), (what))
 
-#define bailoutIncompleteVar(tokenlist, errorLogger, tok, what)                                                        \
-    bailoutInternal("valueFlowBailoutIncompleteVar", (tokenlist), (errorLogger), (tok), (what), "", 0, __func__)
+#define bailoutIncompleteVar(tok, what)                                                        \
+    bailoutInternal("valueFlowBailoutIncompleteVar", (tok), (what), "", 0, __func__)
 
 static void changeKnownToPossible(std::list<ValueFlow::Value>& values, int indirect = -1)
 {
@@ -2083,7 +2075,7 @@ struct LifetimeStore {
         }
     }
 
-    static LifetimeStore fromFunctionArg(const Function * f, const Token *tok, const Variable *var, const TokenList &tokenlist, const Settings& settings, ErrorLogger &errorLogger) {
+    static LifetimeStore fromFunctionArg(const Function * f, const Token *tok, const Variable *var, const Settings& settings) {
         if (!var)
             return LifetimeStore{};
         if (!var->isArgument())
@@ -2094,9 +2086,7 @@ struct LifetimeStore {
         std::vector<const Token *> args = getArguments(tok);
         if (n >= args.size()) {
             if (settings.debugwarnings)
-                bailout(tokenlist,
-                        errorLogger,
-                        tok,
+                bailout(tok,
                         "Argument mismatch: Function '" + tok->str() + "' returning lifetime from argument index " +
                         std::to_string(n) + " but only " + std::to_string(args.size()) +
                         " arguments are available.");
@@ -2521,7 +2511,7 @@ static void valueFlowLifetimeFunction(Token *tok, const TokenList &tokenlist, Er
                 continue;
             const Variable *returnVar = ValueFlow::getLifetimeVariable(returnTok, settings);
             if (returnVar && returnVar->isArgument() && (returnVar->isConst() || !isVariableChanged(returnVar, settings))) {
-                LifetimeStore ls = LifetimeStore::fromFunctionArg(f, tok, returnVar, tokenlist, settings, errorLogger);
+                LifetimeStore ls = LifetimeStore::fromFunctionArg(f, tok, returnVar, settings);
                 ls.inconclusive = inconclusive;
                 ls.forward = false;
                 update |= ls.byVal(tok->next(), tokenlist, errorLogger, settings);
@@ -2554,7 +2544,7 @@ static void valueFlowLifetimeFunction(Token *tok, const TokenList &tokenlist, Er
                     continue;
                 }
                 const Variable *var = v.tokvalue->variable();
-                LifetimeStore ls = LifetimeStore::fromFunctionArg(f, tok, var, tokenlist, settings, errorLogger);
+                LifetimeStore ls = LifetimeStore::fromFunctionArg(f, tok, var, settings);
                 if (!ls.argtok)
                     continue;
                 ls.forward = false;
@@ -3406,9 +3396,7 @@ static void valueFlowConditionExpressions(const TokenList& tokenlist,
     for (const Scope* scope : symboldatabase.functionScopes) {
         if (const Token* incompleteTok = findIncompleteVar(scope->bodyStart, scope->bodyEnd)) {
             if (settings.debugwarnings)
-                bailoutIncompleteVar(tokenlist,
-                                     errorLogger,
-                                     incompleteTok,
+                bailoutIncompleteVar(incompleteTok,
                                      "Skipping function due to incomplete variable " + incompleteTok->str());
             continue;
         }
@@ -4492,9 +4480,7 @@ struct ConditionHandler {
 
             if (Token::simpleMatch(tok->astParent(), "?") && tok->astParent()->isExpandedMacro()) {
                 if (settings.debugwarnings)
-                    bailout(tokenlist,
-                            errorLogger,
-                            tok,
+                    bailout(tok,
                             "variable '" + cond.vartok->expressionString() + "', condition is defined in macro");
                 return;
             }
@@ -4502,9 +4488,7 @@ struct ConditionHandler {
             // if,macro => bailout
             if (Token::simpleMatch(top->previous(), "if (") && top->previous()->isExpandedMacro()) {
                 if (settings.debugwarnings)
-                    bailout(tokenlist,
-                            errorLogger,
-                            tok,
+                    bailout(tok,
                             "variable '" + cond.vartok->expressionString() + "', condition is defined in macro");
                 return;
             }
@@ -4539,9 +4523,7 @@ struct ConditionHandler {
                         findExpressionChanged(
                             cond.vartok, top->astOperand2()->astOperand2(), top->link(), settings)) {
                         if (settings.debugwarnings)
-                            bailout(tokenlist,
-                                    errorLogger,
-                                    tok,
+                            bailout(tok,
                                     "variable '" + cond.vartok->expressionString() + "' used in loop");
                         return;
                     }
@@ -4563,9 +4545,7 @@ struct ConditionHandler {
                         reverse(bodyTok->link(), bodyTok, cond.vartok, values, tokenlist, errorLogger, settings);
                     }
                     if (settings.debugwarnings)
-                        bailout(tokenlist,
-                                errorLogger,
-                                tok,
+                        bailout(tok,
                                 "variable '" + cond.vartok->expressionString() + "' used in loop");
                     return;
                 }
@@ -4827,18 +4807,14 @@ struct ConditionHandler {
             }
             if (changeBlock >= 0 && !Token::simpleMatch(top->previous(), "while (")) {
                 if (settings.debugwarnings)
-                    bailout(tokenlist,
-                            errorLogger,
-                            startTokens[changeBlock]->link(),
+                    bailout(startTokens[changeBlock]->link(),
                             "valueFlowAfterCondition: " + cond.vartok->expressionString() +
                             " is changed in conditional block");
                 return;
             }
             if (bailBlock >= 0) {
                 if (settings.debugwarnings)
-                    bailout(tokenlist,
-                            errorLogger,
-                            startTokens[bailBlock]->link(),
+                    bailout(startTokens[bailBlock]->link(),
                             "valueFlowAfterCondition: bailing in conditional block");
                 return;
             }
@@ -4856,7 +4832,7 @@ struct ConditionHandler {
 
                 if (!dead_if && unknownFunction) {
                     if (settings.debugwarnings)
-                        bailout(tokenlist, errorLogger, unknownFunction, "possible noreturn scope");
+                        bailout(unknownFunction, "possible noreturn scope");
                     return;
                 }
 
@@ -4867,7 +4843,7 @@ struct ConditionHandler {
                         dead_else = isReturnScope(after, settings.library, &unknownFunction);
                     if (!dead_else && unknownFunction) {
                         if (settings.debugwarnings)
-                            bailout(tokenlist, errorLogger, unknownFunction, "possible noreturn scope");
+                            bailout(unknownFunction, "possible noreturn scope");
                         return;
                     }
                 }
@@ -5222,8 +5198,6 @@ static void valueFlowForLoopSimplify(Token* const bodyStart,
                                      const Token* expr,
                                      bool globalvar,
                                      const MathLib::bigint value,
-                                     const TokenList& tokenlist,
-                                     ErrorLogger& errorLogger,
                                      const Settings& settings)
 {
     // TODO: Refactor this to use arbitrary expressions
@@ -5236,7 +5210,7 @@ static void valueFlowForLoopSimplify(Token* const bodyStart,
 
     if (const Token* escape = findEscapeStatement(bodyStart->scope(), settings.library)) {
         if (settings.debugwarnings)
-            bailout(tokenlist, errorLogger, escape, "For loop variable bailout on escape statement");
+            bailout(escape, "For loop variable bailout on escape statement");
         return;
     }
 
@@ -5256,7 +5230,7 @@ static void valueFlowForLoopSimplify(Token* const bodyStart,
             }
             if (parent) {
                 if (settings.debugwarnings)
-                    bailout(tokenlist, errorLogger, tok2, "For loop variable " + tok2->str() + " stopping on ?");
+                    bailout(tok2, "For loop variable " + tok2->str() + " stopping on ?");
                 continue;
             }
 
@@ -5302,7 +5276,7 @@ static void valueFlowForLoopSimplify(Token* const bodyStart,
         if (Token::simpleMatch(tok2, ") {")) {
             if (vartok->varId() && Token::findmatch(tok2->link(), "%varid%", tok2, vartok->varId())) {
                 if (settings.debugwarnings)
-                    bailout(tokenlist, errorLogger, tok2, "For loop variable skipping conditional scope");
+                    bailout(tok2, "For loop variable skipping conditional scope");
                 tok2 = tok2->linkAt(1);
                 if (Token::simpleMatch(tok2, "} else {")) {
                     tok2 = tok2->linkAt(2);
@@ -5310,7 +5284,7 @@ static void valueFlowForLoopSimplify(Token* const bodyStart,
             }
             else {
                 if (settings.debugwarnings)
-                    bailout(tokenlist, errorLogger, tok2, "For loop skipping {} code");
+                    bailout(tok2, "For loop skipping {} code");
                 tok2 = tok2->linkAt(1);
                 if (Token::simpleMatch(tok2, "} else {"))
                     tok2 = tok2->linkAt(2);
@@ -5395,7 +5369,7 @@ static void valueFlowForLoop(const TokenList &tokenlist, const SymbolDatabase& s
                         continue;
                     if (p.first.tok->varId() == 0)
                         continue;
-                    valueFlowForLoopSimplify(bodyStart, p.first.tok, false, p.second.intvalue, tokenlist, errorLogger, settings);
+                    valueFlowForLoopSimplify(bodyStart, p.first.tok, false, p.second.intvalue, settings);
                 }
                 for (const auto& p : mem2) {
                     if (!p.second.isIntValue())
@@ -5404,7 +5378,7 @@ static void valueFlowForLoop(const TokenList &tokenlist, const SymbolDatabase& s
                         continue;
                     if (p.first.tok->varId() == 0)
                         continue;
-                    valueFlowForLoopSimplify(bodyStart, p.first.tok, false, p.second.intvalue, tokenlist, errorLogger, settings);
+                    valueFlowForLoopSimplify(bodyStart, p.first.tok, false, p.second.intvalue, settings);
                 }
                 for (const auto& p : memAfter) {
                     if (!p.second.isIntValue())
@@ -5500,7 +5474,7 @@ static void valueFlowInjectParameter(const TokenList& tokenlist,
         if (const Function* f = functionScope->function)
             fname = f->name();
         if (settings.debugwarnings)
-            bailout(tokenlist, errorLogger, functionScope->bodyStart, "Too many argument passed to " + fname);
+            bailout(functionScope->bodyStart, "Too many argument passed to " + fname);
     }
 }
 
@@ -5547,7 +5521,7 @@ static void valueFlowSwitchVariable(const TokenList& tokenlist,
         // bailout: global non-const variables
         if (!(var->isLocal() || var->isArgument()) && !var->isConst()) {
             if (settings.debugwarnings)
-                bailout(tokenlist, errorLogger, vartok, "switch variable " + var->name() + " is global");
+                bailout(vartok, "switch variable " + var->name() + " is global");
             continue;
         }
 
@@ -5809,7 +5783,7 @@ static void setFunctionReturnValue(const Function* f,
     setTokenValue(tok, std::move(v), settings);
 }
 
-static void valueFlowFunctionReturn(TokenList& tokenlist, ErrorLogger& errorLogger, const Settings& settings)
+static void valueFlowFunctionReturn(TokenList& tokenlist, const Settings& settings)
 {
     for (Token* tok = tokenlist.back(); tok; tok = tok->previous()) {
         if (tok->str() != "(" || !tok->astOperand1() || tok->isCast())
@@ -5852,7 +5826,7 @@ static void valueFlowFunctionReturn(TokenList& tokenlist, ErrorLogger& errorLogg
             const Variable* const arg = function->getArgumentVar(i);
             if (!arg) {
                 if (settings.debugwarnings)
-                    bailout(tokenlist, errorLogger, tok, "function return; unhandled argument type");
+                    bailout(tok, "function return; unhandled argument type");
                 programMemory.clear();
                 break;
             }
@@ -7438,7 +7412,7 @@ void ValueFlow::setValues(TokenList& tokenlist,
         VFA(valueFlowSwitchVariable(tokenlist, symboldatabase, errorLogger, settings)),
         VFA(valueFlowForLoop(tokenlist, symboldatabase, errorLogger, settings)),
         VFA(valueFlowSubFunction(tokenlist, symboldatabase, errorLogger, settings)),
-        VFA(valueFlowFunctionReturn(tokenlist, errorLogger, settings)),
+        VFA(valueFlowFunctionReturn(tokenlist, settings)),
         VFA(valueFlowLifetime(tokenlist, errorLogger, settings)),
         VFA(valueFlowFunctionDefaultParameter(tokenlist, symboldatabase, errorLogger, settings)),
         VFA(valueFlowUninit(tokenlist, errorLogger, settings)),
