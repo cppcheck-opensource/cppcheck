@@ -684,7 +684,7 @@ void CheckCondition::multiCondition2()
                 if (!nonlocal && var) {
                     if (!(var->isLocal() || var->isArgument()))
                         nonlocal = true;
-                    else if ((var->isPointer() || var->isReference()) && !Token::Match(cond->astParent(), "%oror%|&&|!"))
+                    else if ((var->isPointer() || var->isReference() || var->isArray()) && !Token::Match(cond->astParent(), "%oror%|&&|!"))
                         // TODO: if var is pointer check what it points at
                         nonlocal = true;
                 }

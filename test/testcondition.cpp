@@ -2843,6 +2843,15 @@ private:
               "    return 0;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("void f(int x, int y) {\n"
+              "    int a[] = { x, y };\n"
+              "    if (a[0] == 1) {\n"
+              "        if (a[0] == 1) {}\n"
+              "    }\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:3:14] -> [test.cpp:4:18]: (warning) Identical inner 'if' condition is always true. [identicalInnerCondition]\n",
+                      errout_str());
     }
 
     void identicalConditionAfterEarlyExit() {
@@ -3027,6 +3036,15 @@ private:
               "    (*y)++;\n"
               "    if (x[*y] == 0) {}\n"
               "  }\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void g(int[]);\n" // #14724
+              "void f(int a[]) {\n"
+              "    if (a[0] == 1) {\n"
+              "        g(a);\n"
+              "        if (a[0] == 1) {}\n"
+              "    }\n"
               "}");
         ASSERT_EQUALS("", errout_str());
     }
