@@ -3465,6 +3465,70 @@ void f_t_2()
     (void)(*((int*)0));
 }
 
+class S {
+public:
+    template<typename T>
+    void f_t_3()
+    {
+        (void)(*((int*)0));
+    }
+}
+
+template<typename T>
+static inline void f_t_4()
+{
+    (void)(*((int*)0));
+}
+
+template<typename T>
+const void *f_t_5()
+{
+    (void)(*((int*)0));
+}
+
+template<typename T>
+void f_t_6() __attribute__((noreturn))
+{
+    (void)(*((int*)0));
+}
+
+template<typename T>
+__attribute__((noreturn)) void f_t_7()
+{
+    (void)(*((int*)0));
+}
+
+template<typename T>
+__declspec(noreturn) void f_t_8()
+{
+    (void)(*((int*)0));
+}
+
+template<typename T>
+[[noreturn]] void f_t_9()
+{
+    (void)(*((int*)0));
+}
+
+template<typename T>
+void f_t_10() noexcept(true)
+{
+    (void)(*((int*)0));
+}
+
+template<typename T>
+void f_t_11() throw(true)
+{
+    (void)(*((int*)0));
+}
+
+struct S {
+    template<typename T>
+    void f_t_12() const {
+        (void)(*((int*)0));
+    }
+};
+
 void f() {}
 """)
 
