@@ -2761,7 +2761,7 @@ bool Token::isMutableExpr() const
 void Token::debugMsg(const std::string& type, const std::string& msg) const
 {
     if (type == "depthBailout") {
-        throw InternalError(this, msg);
+        //throw InternalError(this, msg);
     }
     mList.debugMsg(this, type, msg);
 }
