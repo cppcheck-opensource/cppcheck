@@ -154,6 +154,7 @@ private:
         TEST_CASE(ifelse27);
         TEST_CASE(ifelse28); // #11038
         TEST_CASE(ifelse29);
+        TEST_CASE(ifelse30);
 
         // switch
         TEST_CASE(switch1);
@@ -2388,6 +2389,22 @@ private:
               "    if (pfn == (func_t)&S::g) {}\n"
               "}\n", dinit(CheckOptions, $.cpp = true));
         ASSERT_EQUALS("", errout_str()); // don't crash
+    }
+
+    void ifelse30() {
+        check("void f(void** pp) {\n" // #14709
+              "    void* p = malloc(8);\n"
+              "    if ((void*)p == 0)\n"
+              "        return;\n"
+              "    *pp = p;\n"
+              "}\n"
+              "void g(void** pp) {\n"
+              "    void* p = malloc(8);\n"
+              "    if (static_cast<void*>(p) == 0)\n"
+              "        return;\n"
+              "    *pp = p;\n"
+              "}\n", dinit(CheckOptions, $.cpp = true));
+        ASSERT_EQUALS("", errout_str());
     }
 
     void switch1() {
