@@ -2757,3 +2757,11 @@ bool Token::isMutableExpr() const
         mImpl->mMutableExpr = isMutableExpression(this);
     return !!mImpl->mMutableExpr;
 }
+
+void Token::debugMsg(const std::string& type, const std::string& msg) const
+{
+    if (type == "depthBailout") {
+        //throw InternalError(this, msg);
+    }
+    mList.debugMsg(this, type, msg);
+}
