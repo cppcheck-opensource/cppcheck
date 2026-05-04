@@ -2181,6 +2181,26 @@ private:
                        "    return s;\n"
                        "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        checkUninitVar("int f() {\n" // #14719
+                       "    int* p = new int[]{ 1, 2 };\n"
+                       "    int i = p[0] + p[1];\n"
+                       "    delete[] p;\n"
+                       "    return i;\n"
+                       "}\n"
+                       "int g() {\n"
+                       "    int* p = new std::int32_t[]{ 1, 2 };\n"
+                       "    int i = p[0] + p[1];\n"
+                       "    delete[] p;\n"
+                       "    return i;\n"
+                       "}\n"
+                       "int h() {\n"
+                       "    int* p = new ::std::int32_t[]{ 1, 2 };\n"
+                       "    int i = p[0] + p[1];\n"
+                       "    delete[] p;\n"
+                       "    return i;\n"
+                       "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     // class / struct..
