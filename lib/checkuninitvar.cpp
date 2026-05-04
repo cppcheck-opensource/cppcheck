@@ -785,7 +785,7 @@ bool CheckUninitVar::checkScopeForVariable(const Token *tok, const Variable& var
                 if (var.typeStartToken()->isStandardType() || var.typeStartToken()->isEnumType()) {
                     // scalar new with initialization
                     // array new
-                    if (Token::Match(tok->next(), "= new ::|%type")) {
+                    if (Token::Match(tok->next(), "= new ::|%type%")) {
                         const Token* initTok = tok->tokAt(4);
                         while (Token::Match(initTok, "::|%type%"))
                             initTok = initTok->next();
