@@ -44,6 +44,7 @@ private:
         TEST_CASE(fileIOwithoutPositioning);
         TEST_CASE(seekOnAppendedFile);
         TEST_CASE(fflushOnInputStream);
+        TEST_CASE(ftellCompatibility);
         TEST_CASE(incompatibleFileOpen);
 
         TEST_CASE(testScanf1); // Scanf without field limiters
@@ -703,6 +704,22 @@ private:
               "}");
         ASSERT_EQUALS("", errout_str()); // #6566
     }
+
+    void ftellCompatibility() {
+
+        check("void foo() {\n"
+              "     FILE *f = fopen(\"\", \"rt\");\n"
+              "     if (f)\n"
+              "     {\n"
+              "         extern long position;\n"
+              "         fseek(f, 0, SEEK_END);\n"
+              "         position = ftell(f);\n"
+              "         fclose(f);\n"
+              "     }\n"
+              "}\n", dinit(CheckOptions, $.portability = true));
+        ASSERT_EQUALS("[test.cpp:7:21]: (portability) The ftell function obtains the current value of the file position indicator for the stream pointed to by stream. For a binary stream, the value is the number of characters from the beginning of the file. For a text stream, its file position indicator contains unspecified information, usable by the fseek function for returning the file position indicator for the stream to its position at the time of the ftell call; the difference between two such return values is not necessarily a meaningful measure of the number of characters written or read. See 7.21.9.4 in C11 standard. [ftellTextModeFile]\n", errout_str());
+    }
+
 
     void fflushOnInputStream() {
         check("void foo()\n"

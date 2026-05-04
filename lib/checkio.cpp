@@ -53,6 +53,7 @@ namespace {
 // CVE ID used:
 static const CWE CWE119(119U);  // Improper Restriction of Operations within the Bounds of a Memory Buffer
 static const CWE CWE398(398U);  // Indicator of Poor Code Quality
+static const CWE CWE474(474U);  // Use of Function with Inconsistent Implementations
 static const CWE CWE664(664U);  // Improper Control of a Resource Through its Lifetime
 static const CWE CWE685(685U);  // Function Call With Incorrect Number of Arguments
 static const CWE CWE686(686U);  // Function Call With Incorrect Argument Type
@@ -116,6 +117,8 @@ namespace {
         nonneg int op_indent{};
         enum class AppendMode : std::uint8_t { UNKNOWN_AM, APPEND, APPEND_EX };
         AppendMode append_mode = AppendMode::UNKNOWN_AM;
+        enum class ReadMode : std::uint8_t { READ_TEXT, READ_BIN };
+        ReadMode read_mode = ReadMode::READ_BIN;
         std::string filename;
         explicit Filepointer(OpenMode mode_ = OpenMode::UNKNOWN_OM)
             : mode(mode_) {}
@@ -188,6 +191,7 @@ void CheckIO::checkFileUsage()
                 }
             } else if (Token::Match(tok, "%name% (") && tok->previous() && (!tok->previous()->isName() || Token::Match(tok->previous(), "return|throw"))) {
                 std::string mode;
+                bool isftell = false;
                 const Token* fileTok = nullptr;
                 const Token* fileNameTok = nullptr;
                 Filepointer::Operation operation = Filepointer::Operation::NONE;
@@ -249,6 +253,9 @@ void CheckIO::checkFileUsage()
                     fileTok = tok->tokAt(2);
                     if ((tok->str() == "ungetc" || tok->str() == "ungetwc") && fileTok)
                         fileTok = fileTok->nextArgument();
+                    else if (tok->str() == "ftell") {
+                        isftell = true;
+                    }
                     operation = Filepointer::Operation::UNIMPORTANT;
                 } else if (!Token::Match(tok, "if|for|while|catch|switch") && !mSettings->library.isFunctionConst(tok->str(), true)) {
                     const Token* const end2 = tok->linkAt(1);
@@ -304,10 +311,15 @@ void CheckIO::checkFileUsage()
                             f.append_mode = Filepointer::AppendMode::APPEND_EX;
                         else
                             f.append_mode = Filepointer::AppendMode::APPEND;
+                    }
+                    else if (mode.find('r') != std::string::npos &&
+                             mode.find('t') != std::string::npos) {
+                        f.read_mode = Filepointer::ReadMode::READ_TEXT;
                     } else
                         f.append_mode = Filepointer::AppendMode::UNKNOWN_AM;
                     f.mode_indent = indent;
                     break;
+
                 case Filepointer::Operation::POSITIONING:
                     if (f.mode == OpenMode::CLOSED)
                         useClosedFileError(tok);
@@ -340,6 +352,8 @@ void CheckIO::checkFileUsage()
                 case Filepointer::Operation::UNIMPORTANT:
                     if (f.mode == OpenMode::CLOSED)
                         useClosedFileError(tok);
+                    if (isftell && f.read_mode == Filepointer::ReadMode::READ_TEXT && printPortability)
+                        ftellFileError(tok);
                     break;
                 case Filepointer::Operation::UNKNOWN_OP:
                     f.mode = OpenMode::UNKNOWN_OM;
@@ -396,6 +410,18 @@ void CheckIO::seekOnAppendedFileError(const Token *tok)
 {
     reportError(tok, Severity::warning,
                 "seekOnAppendedFile", "Repositioning operation performed on a file opened in append mode has no effect.", CWE398, Certainty::normal);
+}
+
+void CheckIO::ftellFileError(const Token *tok)
+{
+    reportError(tok, Severity::portability,
+                "ftellTextModeFile", "The ftell function obtains the current value of the file position indicator"
+                " for the stream pointed to by stream. For a binary stream, the value is the number of characters"
+                " from the beginning of the file. For a text stream, its file position indicator contains unspecified"
+                " information, usable by the fseek function for returning the file position indicator for the stream"
+                " to its position at the time of the ftell call; the difference between two such return values is"
+                " not necessarily a meaningful measure of the number of characters written or read. See 7.21.9.4"
+                " in C11 standard.", CWE474, Certainty::normal);
 }
 
 void CheckIO::incompatibleFileOpenError(const Token *tok, const std::string &filename)

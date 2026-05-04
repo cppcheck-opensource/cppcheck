@@ -106,6 +106,7 @@ private:
     void writeReadOnlyFileError(const Token *tok);
     void useClosedFileError(const Token *tok);
     void seekOnAppendedFileError(const Token *tok);
+    void ftellFileError(const Token *tok);
     void incompatibleFileOpenError(const Token *tok, const std::string &filename);
     void invalidScanfError(const Token *tok);
     void wrongPrintfScanfArgumentsError(const Token* tok,
@@ -140,6 +141,7 @@ private:
                "- Missing or wrong width specifiers in 'scanf' format string\n"
                "- Use a file that has been closed\n"
                "- File input/output without positioning results in undefined behaviour\n"
+               "- Using 'ftell' on a file opened in text mode\n"
                "- Read to a file that has only been opened for writing (or vice versa)\n"
                "- Repositioning operation on a file opened in append mode\n"
                "- The same file can't be open for read and write at the same time on different streams\n"
