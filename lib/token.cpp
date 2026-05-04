@@ -2024,7 +2024,11 @@ static bool isAdjacent(const ValueFlow::Value& x, const ValueFlow::Value& y)
         return true;
     if (x.valueType == ValueFlow::Value::ValueType::FLOAT)
         return false;
-    return std::abs(x.intvalue - y.intvalue) == 1;
+
+    // original abs() is not safe against overflows:
+    // return std::abs(x.intvalue - y.intvalue) == 1;
+    return (y.intvalue != std::numeric_limits<MathLib::bigint>::max() && x.intvalue == y.intvalue + 1) ||
+           (y.intvalue != std::numeric_limits<MathLib::bigint>::min() && x.intvalue == y.intvalue - 1);
 }
 
 static bool removePointValue(std::list<ValueFlow::Value>& values, std::list<ValueFlow::Value>::iterator& x)
