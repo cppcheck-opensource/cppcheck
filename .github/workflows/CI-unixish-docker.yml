@@ -72,7 +72,7 @@ jobs:
 
       - name: Run CMake
         run: |
-          cmake -S . -B cmake.output -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=${{ matrix.with_gui }} -DWITH_QCHART=On -DBUILD_TRIAGE=${{ matrix.with_gui }} -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake -S . -B cmake.output -Werror=dev --warn-uninitialized -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=${{ matrix.with_gui }} -DWITH_QCHART=On -DBUILD_TRIAGE=${{ matrix.with_gui }} -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: CMake build
         if: matrix.full_build
