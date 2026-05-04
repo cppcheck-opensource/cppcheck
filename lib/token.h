@@ -204,7 +204,7 @@ public:
         eNone
     };
 
-    Token(const TokenList& tokenlist, std::shared_ptr<TokensFrontBack> tokensFrontBack);
+    Token(const TokenList& tokenlist LIFETIMEBOUND, std::shared_ptr<TokensFrontBack> tokensFrontBack);
     // for usage in CheckIO::ArgumentInfo only
     explicit Token(const Token *tok);
     ~Token();

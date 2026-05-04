@@ -102,7 +102,7 @@ public:
     /** character that is inserted in expanded macros */
     static char macroChar;
 
-    Preprocessor(simplecpp::TokenList& tokens, const Settings& settings, ErrorLogger &errorLogger, Standards::Language lang);
+    Preprocessor(simplecpp::TokenList& tokens LIFETIMEBOUND, const Settings& settings LIFETIMEBOUND, ErrorLogger &errorLogger LIFETIMEBOUND, Standards::Language lang);
 
     void inlineSuppressions(SuppressionList &suppressions);
 

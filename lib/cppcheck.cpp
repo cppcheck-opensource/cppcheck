@@ -86,7 +86,7 @@ static const CWE CWE398(398U);  // Indicator of Poor Code Quality
 class CppCheck::CppCheckLogger : public ErrorLogger
 {
 public:
-    CppCheckLogger(ErrorLogger& errorLogger, const Settings& settings, Suppressions& suppressions, bool useGlobalSuppressions)
+    CppCheckLogger(ErrorLogger& errorLogger LIFETIMEBOUND, const Settings& settings LIFETIMEBOUND, Suppressions& suppressions LIFETIMEBOUND, bool useGlobalSuppressions)
         : mErrorLogger(errorLogger)
         , mSettings(settings)
         , mSuppressions(suppressions)
