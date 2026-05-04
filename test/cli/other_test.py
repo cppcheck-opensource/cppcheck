@@ -1032,9 +1032,8 @@ def test_showtime_top5_file_compdb(tmp_path):
     __test_showtime_top5_file(tmp_path, use_compdb=True)
 
 
-# TODO: remove extra args when --executor=process works
 def __test_showtime_top5_summary(tmp_path, use_compdb=False):
-    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', use_compdb=use_compdb, extra_args=['-j1'])
+    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', use_compdb=use_compdb)
 
 
 def test_showtime_top5_summary(tmp_path):
@@ -1043,30 +1042,6 @@ def test_showtime_top5_summary(tmp_path):
 
 def test_showtime_top5_summary_compdb(tmp_path):
     __test_showtime_top5_summary(tmp_path, use_compdb=True)
-
-
-# TODO: remove when --executor=process works
-def test_showtime_top5_summary_j_thread(tmp_path):
-    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', extra_args=['-j2', '--executor=thread'])
-
-
-# TODO: remove when --executor=process works
-def test_showtime_top5_summary_compdb_j_thread(tmp_path):
-    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', use_compdb=True, extra_args=['-j2', '--executor=thread'])
-
-
-# TODO: remove override when fixed
-@pytest.mark.skipif(sys.platform == 'win32', reason="requires ProcessExecutor")
-@pytest.mark.xfail(strict=True)  # TODO: need to transfer the timer results to parent process - see #4452
-def test_showtime_top5_summary_j_process(tmp_path):
-    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', extra_args=['-j2', '--executor=process'])
-
-
-# TODO: remove override when fixed
-@pytest.mark.skipif(sys.platform == 'win32', reason="requires ProcessExecutor")
-@pytest.mark.xfail(strict=True)  # TODO: need to transfer the timer results to parent process - see #4452
-def test_showtime_top5_summary_compdb_j_process(tmp_path):
-    __test_showtime(tmp_path, 'top5_summary', 5, 'Overall time: ', use_compdb=True, extra_args=['-j2', '--executor=process'])
 
 
 def __test_showtime_file(tmp_path, use_compdb=False, use_addons=False, use_clang_tidy=False):
@@ -1103,13 +1078,12 @@ def test_showtime_file_clang_tidy_compdb(tmp_path):
     __test_showtime_file(tmp_path, use_clang_tidy=True, use_compdb=True)
 
 
-# TODO: remove extra args when --executor=process works
 def __test_showtime_summary(tmp_path, use_compdb=False, use_addons=False, use_clang_tidy=False):
     exp_res = 79
     # project analysis does not call Preprocessor::getConfig()
     if use_compdb:
         exp_res -= 1
-    __test_showtime(tmp_path, 'summary', exp_res, 'Overall time: ', use_compdb=use_compdb, use_addons=use_addons, use_clang_tidy=use_clang_tidy, extra_args=['-j1'])
+    __test_showtime(tmp_path, 'summary', exp_res, 'Overall time: ', use_compdb=use_compdb, use_addons=use_addons, use_clang_tidy=use_clang_tidy)
 
 
 def test_showtime_summary(tmp_path):
@@ -1136,30 +1110,6 @@ def test_showtime_summary_clang_tidy(tmp_path):
 @pytest.mark.skipif(not __has_clang_tidy, reason='clang-tidy is not available')
 def test_showtime_summary_clang_tidy_compdb(tmp_path):
     __test_showtime_summary(tmp_path, use_clang_tidy=True, use_compdb=True)
-
-
-# TODO: remove when --executor=process works
-def test_showtime_summary_j_thread(tmp_path):
-    __test_showtime(tmp_path, 'summary', 79, 'Overall time: ', extra_args=['-j2', '--executor=thread'])
-
-
-# TODO: remove when --executor=process works
-def test_showtime_summary_compdb_j_thread(tmp_path):
-    __test_showtime(tmp_path, 'summary', 78, 'Overall time: ', use_compdb=True, extra_args=['-j2', '--executor=thread'])
-
-
-# TODO: remove override when fixed
-@pytest.mark.skipif(sys.platform == 'win32', reason="requires ProcessExecutor")
-@pytest.mark.xfail(strict=True)  # TODO: need to transfer the timer results to parent process - see #4452
-def test_showtime_summary_j_process(tmp_path):
-    __test_showtime(tmp_path, 'summary', 79, 'Overall time: ', extra_args=['-j2', '--executor=process'])
-
-
-# TODO: remove override when fixed
-@pytest.mark.skipif(sys.platform == 'win32', reason="requires ProcessExecutor")
-@pytest.mark.xfail(strict=True)  # TODO: need to transfer the timer results to parent process - see #4452
-def test_showtime_summary_compdb_j_process(tmp_path):
-    __test_showtime(tmp_path, 'summary', 78, 'Overall time: ', use_compdb=True, extra_args=['-j2', '--executor=process'])
 
 
 def __test_showtime_file_total(tmp_path, use_compdb=False):
