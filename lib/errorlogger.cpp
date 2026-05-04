@@ -226,6 +226,10 @@ void ErrorMessage::setmsg(const std::string &msg)
     // Even this doesn't cause problems with messages that have multiple
     // lines, none of the error messages should end into it.
     assert(!endsWith(msg,'\n'));
+    // bailout on any unprintable characters
+    assert(std::all_of(msg.cbegin(), msg.cend(), [](char c){
+        return std::isprint(c) || c == '\n';
+    }));
 
     // The summary and verbose message are separated by a newline
     // If there is no newline then both the summary and verbose messages
