@@ -532,12 +532,8 @@ void CheckIOImpl::checkWrongfeofUsage()
 
     for (const Scope * scope : symbolDatabase->functionScopes) {
         for (const Token *tok = scope->bodyStart->next(); tok != scope->bodyEnd; tok = tok->next()) {
-            // TODO: Handle do-while and for loops
-            if (!Token::simpleMatch(tok, "while ( ! feof ("))
-                continue;
-
-            // Bail out if we reach a do-while loop
-            if (Token::simpleMatch(tok->previous(), "}") && Token::simpleMatch(tok->linkAt(-1)->previous(), "do"))
+            // TODO: Handle for loops
+            if (!Token::Match(tok, "while ( ! feof ( %var% )"))
                 continue;
 
             // Bail out if we cannot identify file pointer
@@ -545,21 +541,87 @@ void CheckIOImpl::checkWrongfeofUsage()
             if (fpVarId == 0)
                 continue;
 
-            // Usage of feof is correct if a read happens before and within the loop.
-            // However, if we find a control flow statement in between the fileReadCall
-            // token and the while loop condition, then we bail out.
             const Token *endCond = tok->linkAt(1);
-            const Token *endBody = endCond->linkAt(1);
+            const Token *bodyStart;
+            const Token *bodyEnd;
 
-            const Token *prevFileReadCallTok = findFileReadCall(scope->bodyStart, tok, fpVarId);
-            const Token *loopFileReadCallTok = findFileReadCall(tok, endBody, fpVarId);
-            const Token *prevControlFlowTok = Token::findmatch(prevFileReadCallTok, "return|break|goto|continue|throw", tok);
-            const Token *loopControlFlowTok = Token::findmatch(tok, "return|break|goto|continue|throw", loopFileReadCallTok);
+            if (Token::simpleMatch(tok->previous(), "}") && tok->previous()->scope()->type == ScopeType::eDo) {
+                bodyEnd = tok->previous();
+                bodyStart = bodyEnd->link();
+            } else {
+                bodyEnd = endCond->linkAt(1);
+                bodyStart = endCond->next();
+            }
 
-            if (prevFileReadCallTok && loopFileReadCallTok && !prevControlFlowTok && !loopControlFlowTok)
+            // Bail out if the loop contains control flow (too complex to analyze)
+            if (Token::findmatch(bodyStart, "return|break|goto|continue|throw", bodyEnd))
                 continue;
 
-            wrongfeofUsage(getCondTok(tok));
+            // Bail out if fp is used outside of known file I/O functions.
+            // If it is passed to an unknown function, reads may occur there.
+            bool fpUsedElsewhere = false;
+            for (const Token *t = bodyStart->next(); t && t != bodyEnd; t = t->next()) {
+                if (t->varId() != fpVarId)
+                    continue;
+                const Token *p = t->astParent();
+                while (p && p->str() == ",")
+                    p = p->astParent();
+                if (!p || !Token::Match(p->astOperand1(), "fgets|fgetc|getc|fread|fscanf|fprintf|fwrite|fputs|fputc|putc")) {
+                    fpUsedElsewhere = true;
+                    break;
+                }
+            }
+            if (fpUsedElsewhere)
+                continue;
+
+            // No file read call in the loop: feof can never become true inside it
+            const Token *loopFileReadCallTok = findFileReadCall(bodyStart, bodyEnd, fpVarId);
+            if (!loopFileReadCallTok) {
+                // TODO: Warn about infinite loop
+                continue;
+            }
+
+            // Find last file read
+            const Token *lastLoopFileReadCallTok = loopFileReadCallTok;
+            while (loopFileReadCallTok) {
+                lastLoopFileReadCallTok = loopFileReadCallTok;
+                loopFileReadCallTok = findFileReadCall(lastLoopFileReadCallTok->next(), bodyEnd, fpVarId);
+            }
+
+            // Warn if the destination of the last file read is used after the call before bodyEnd.
+            // If it is not, the stale buffer is never accessed on the extra iteration at EOF.
+
+            if (lastLoopFileReadCallTok->str() == "fgetc" || lastLoopFileReadCallTok->str() == "getc") {
+                // Warn if the return value feeds into an expression (astParent of the call node)
+                if (lastLoopFileReadCallTok->astParent() && lastLoopFileReadCallTok->astParent()->astParent())
+                    wrongfeofUsage(getCondTok(tok));
+            } else {
+                const std::vector<const Token*> args = getArguments(lastLoopFileReadCallTok);
+                // Collect destination varIds
+                std::vector<nonneg int> destVarIds;
+                if (lastLoopFileReadCallTok->str() == "fscanf") {
+                    // args[0]=fp, args[1]=format, args[2+]=destinations (typically &var)
+                    for (std::size_t i = 2; i < args.size(); ++i) {
+                        const Token *destTok = Token::Match(args[i], "& %var%") ? args[i]->next() : args[i];
+                        if (destTok->varId() != 0)
+                            destVarIds.push_back(destTok->varId());
+                    }
+                } else {
+                    // Handle fgets, fread
+                    // First argument is the destination buffer
+                    if (!args.empty() && args.front()->varId() != 0)
+                        destVarIds.push_back(args.front()->varId());
+                }
+
+                // Search for any destination use between this call's ';' and endBody
+                const Token *SemiColonTok = lastLoopFileReadCallTok->linkAt(1)->next();
+                for (const Token *t = SemiColonTok; t && t != bodyEnd; t = t->next()) {
+                    if (std::find(destVarIds.begin(), destVarIds.end(), t->varId()) != destVarIds.end()) {
+                        wrongfeofUsage(getCondTok(tok));
+                        break;
+                    }
+                }
+            }
         }
     }
 }

@@ -773,6 +773,7 @@ private:
               "  {\n"
               "     char line[100];\n"
               "     fgets(line, sizeof(line), fp);\n"
+              "     dostuff(line);\n"
               "  }\n"
               "}");
         ASSERT_EQUALS("[test.cpp:2:10]: (warning) Using feof() as a loop condition causes the last line to be processed twice. [wrongfeofUsage]\n", errout_str());
@@ -793,6 +794,24 @@ private:
               "    dostuff(line);\n"
               "    fgets(line, sizeof(line), fp);"
               "  }\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void foo(FILE *fp) {\n"
+              "  char line[100];\n"
+              "  do {\n"
+              "    fgets(line, sizeof(line), fp);\n"
+              "    dostuff(line);\n"
+              "  } while (!feof(fp));\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:6:12]: (warning) Using feof() as a loop condition causes the last line to be processed twice. [wrongfeofUsage]\n", errout_str());
+
+        check("void foo(FILE *fp) {\n"
+              "  char line[100];\n"
+              "  do {\n"
+              "    dostuff(line);\n"
+              "    fgets(line, sizeof(line), fp);\n"
+              "  } while (!feof(fp));\n"
               "}");
         ASSERT_EQUALS("", errout_str());
     }
