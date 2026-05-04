@@ -208,21 +208,21 @@ private:
     }
 
     void isDirectory() const {
-        ScopedFile file("testpath.txt", "", "testpath");
-        ScopedFile file2("testpath2.txt", "");
-        ASSERT_EQUALS(false, Path::isDirectory("testpath.txt"));
+        ScopedFile file("testpath_dir.txt", "", "testpath");
+        ScopedFile file2("testpath_dir_2.txt", "");
+        ASSERT_EQUALS(false, Path::isDirectory("testpath_dir.txt"));
         ASSERT_EQUALS(true, Path::isDirectory("testpath"));
-        ASSERT_EQUALS(false, Path::isDirectory("testpath/testpath.txt"));
-        ASSERT_EQUALS(false, Path::isDirectory("testpath2.txt"));
+        ASSERT_EQUALS(false, Path::isDirectory("testpath/testpath_dir.txt"));
+        ASSERT_EQUALS(false, Path::isDirectory("testpath_dir_2.txt"));
     }
 
     void isFile() const {
-        ScopedFile file("testpath.txt", "", "testpath");
-        ScopedFile file2("testpath2.txt", "");
+        ScopedFile file("testpath_file.txt", "", "testpath");
+        ScopedFile file2("testpath_file_2.txt", "");
         ASSERT_EQUALS(false, Path::isFile("testpath"));
-        ASSERT_EQUALS(false, Path::isFile("testpath.txt"));
-        ASSERT_EQUALS(true, Path::isFile("testpath/testpath.txt"));
-        ASSERT_EQUALS(true, Path::isFile("testpath2.txt"));
+        ASSERT_EQUALS(false, Path::isFile("testpath_file.txt"));
+        ASSERT_EQUALS(true, Path::isFile("testpath/testpath_file.txt"));
+        ASSERT_EQUALS(true, Path::isFile("testpath_file_2.txt"));
     }
 
     void sameFileName() const {
@@ -401,7 +401,7 @@ private:
             " /*-*-C++-*-*/",
         };
 
-        for (const auto& f : { "cppprobe.h", "cppprobe" }) {
+        for (const auto& f : { "cppprobe_cpp.h", "cppprobe_cpp" }) {
             for (const auto& m : markers_cpp) {
                 identifyWithCppProbeInternal(f, m, Standards::Language::CPP);
             }
@@ -435,10 +435,10 @@ private:
         };
 
         for (const auto& m : markers_c) {
-            identifyWithCppProbeInternal("cppprobe.h", m, Standards::Language::C);
+            identifyWithCppProbeInternal("cppprobe_c.h", m, Standards::Language::C);
         }
         for (const auto& m : markers_c) {
-            identifyWithCppProbeInternal("cppprobe", m, Standards::Language::None);
+            identifyWithCppProbeInternal("cppprobe_none", m, Standards::Language::None);
         }
     }
 
@@ -583,11 +583,11 @@ private:
     }
 
     void exists() const {
-        ScopedFile file("testpath.txt", "", "testpath");
-        ScopedFile file2("testpath2.txt", "");
+        ScopedFile file("testpath_exists.txt", "", "testpath");
+        ScopedFile file2("testpath_exists_2.txt", "");
 
         ASSERT_EQUALS(true, Path::exists("testpath"));
-        ASSERT_EQUALS(true, Path::exists("testpath2.txt"));
+        ASSERT_EQUALS(true, Path::exists("testpath_exists_2.txt"));
 
         ASSERT_EQUALS(false, Path::exists("testpath2"));
 
@@ -595,9 +595,9 @@ private:
 
         ASSERT_EQUALS(true, Path::exists("testpath", &b));
         ASSERT_EQUALS(true, b);
-        ASSERT_EQUALS(true, Path::exists("testpath/testpath.txt", &b));
+        ASSERT_EQUALS(true, Path::exists("testpath/testpath_exists.txt", &b));
         ASSERT_EQUALS(false, b);
-        ASSERT_EQUALS(true, Path::exists("testpath2.txt", &b));
+        ASSERT_EQUALS(true, Path::exists("testpath_exists_2.txt", &b));
         ASSERT_EQUALS(false, b);
 
         ASSERT_EQUALS(false, Path::exists("testpath2", &b));

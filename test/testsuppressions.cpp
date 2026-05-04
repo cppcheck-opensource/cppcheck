@@ -1718,16 +1718,16 @@ private:
 
         // empty file
         {
-            ScopedFile file("suppressparsexml.xml",
+            ScopedFile file("suppressparsexml_empty.xml",
                             "");
 
             SuppressionList supprList;
-            ASSERT_EQUALS("failed to load suppressions XML 'suppressparsexml.xml' (XML_ERROR_EMPTY_DOCUMENT).", supprList.parseXmlFile(file.path().c_str()));
+            ASSERT_EQUALS("failed to load suppressions XML 'suppressparsexml_empty.xml' (XML_ERROR_EMPTY_DOCUMENT).", supprList.parseXmlFile(file.path().c_str()));
         }
 
         // wrong root node
         {
-            ScopedFile file("suppressparsexml.xml",
+            ScopedFile file("suppressparsexml_wrong_root.xml",
                             "<suppress/>\n");
 
             SuppressionList supprList;
@@ -1736,16 +1736,16 @@ private:
 
         // no root node
         {
-            ScopedFile file("suppressparsexml.xml",
+            ScopedFile file("suppressparsexml_noroot.xml",
                             "<?xml version=\"1.0\"?>\n");
 
             SuppressionList supprList;
-            ASSERT_EQUALS("failed to load suppressions XML 'suppressparsexml.xml' (no root node found).", supprList.parseXmlFile(file.path().c_str()));
+            ASSERT_EQUALS("failed to load suppressions XML 'suppressparsexml_noroot.xml' (no root node found).", supprList.parseXmlFile(file.path().c_str()));
         }
 
         // unknown element
         {
-            ScopedFile file("suppressparsexml.xml",
+            ScopedFile file("suppressparsexml_unk_elem.xml",
                             "<suppressions>\n"
                             "<suppress>\n"
                             "<eid>uninitvar</eid>\n"
@@ -1753,7 +1753,7 @@ private:
                             "</suppressions>");
 
             SuppressionList supprList;
-            ASSERT_EQUALS("unknown element 'eid' in suppressions XML 'suppressparsexml.xml', expected id/fileName/lineNumber/symbolName/hash.", supprList.parseXmlFile(file.path().c_str()));
+            ASSERT_EQUALS("unknown element 'eid' in suppressions XML 'suppressparsexml_unk_elem.xml', expected id/fileName/lineNumber/symbolName/hash.", supprList.parseXmlFile(file.path().c_str()));
         }
     }
 

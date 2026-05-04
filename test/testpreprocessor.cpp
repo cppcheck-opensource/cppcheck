@@ -2788,10 +2788,10 @@ private:
                                     );
         setTemplateFormat("simple");
 
-        const char code[] = "#include \"header.h\"";
+        const char code[] = "#include \"header2.h\"";
         (void)getcodeforcfg(settings, *this, code, "", "test.c");
 
-        ASSERT_EQUALS("test.c:1:2: information: Include file: \"header.h\" not found. [missingInclude]\n", errout_str());
+        ASSERT_EQUALS("test.c:1:2: information: Include file: \"header2.h\" not found. [missingInclude]\n", errout_str());
     }
 
     // test for missing local include - no include path given
@@ -2803,12 +2803,12 @@ private:
                                     );
         setTemplateFormat("simple");
 
-        ScopedFile header("header.h", "", "inc");
+        ScopedFile header("header3.h", "", "inc");
 
-        const char code[] = "#include \"header.h\"";
+        const char code[] = "#include \"header3.h\"";
         (void)getcodeforcfg(settings, *this, code, "", "test.c");
 
-        ASSERT_EQUALS("test.c:1:2: information: Include file: \"header.h\" not found. [missingInclude]\n", errout_str());
+        ASSERT_EQUALS("test.c:1:2: information: Include file: \"header3.h\" not found. [missingInclude]\n", errout_str());
     }
 
     // test for existing local include - include path provided
@@ -2821,9 +2821,9 @@ private:
                                     );
         setTemplateFormat("simple");
 
-        ScopedFile header("header.h", "", "inc");
+        ScopedFile header("header4.h", "", "inc");
 
-        const char code[] = "#include \"inc/header.h\"";
+        const char code[] = "#include \"inc/header4.h\"";
         (void)getcodeforcfg(settings, *this, code, "", "test.c");
 
         ASSERT_EQUALS("", errout_str());
@@ -2839,7 +2839,7 @@ private:
                                     );
         setTemplateFormat("simple");
 
-        ScopedFile header("header.h", "", Path::getCurrentPath());
+        ScopedFile header("header5.h", "", Path::getCurrentPath());
 
         std::string code("#include \"" + header.path() + "\"");
         (void)getcodeforcfg(settings, *this, code.data(), code.size(), "", "test.c");
@@ -2873,12 +2873,12 @@ private:
                                     );
         setTemplateFormat("simple");
 
-        ScopedFile header("header.h", "");
+        ScopedFile header("sysheader.h", "");
 
-        const char code[] = "#include <header.h>";
+        const char code[] = "#include <sysheader.h>";
         (void)getcodeforcfg(settings, *this, code, "", "test.c");
 
-        ASSERT_EQUALS("test.c:1:2: information: Include file: <header.h> not found. Please note: Standard library headers do not need to be provided to get proper results. [missingIncludeSystem]\n", errout_str());
+        ASSERT_EQUALS("test.c:1:2: information: Include file: <sysheader.h> not found. Please note: Standard library headers do not need to be provided to get proper results. [missingIncludeSystem]\n", errout_str());
     }
 
     // test for missing system include
