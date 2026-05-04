@@ -262,6 +262,7 @@ private:
         TEST_CASE(exprid12);
         TEST_CASE(exprid13);
         TEST_CASE(exprid14);
+        TEST_CASE(exprid15);
 
         TEST_CASE(structuredBindings);
     }
@@ -4516,6 +4517,24 @@ private:
                           "2: return static_cast < int > ( std :: ceil ( std :: min ( a@1 , std :: min ( b@2 , c@3 ) ) ) ) ;\n"
                           "3: }\n";
         ASSERT_EQUALS(exp, tokenize(code, s)); // don't crash
+    }
+
+    void exprid15()
+    {
+        // #14717
+        const char code[] = "#define MAX(a, b) (((a) > (b)) ? (a) : (b))\n"
+                            "\n"
+                            "void f(char *d) {\n"
+                            "    const char *p = &d[0];\n"
+                            "    int a = 1 / MAX(1, p[0]);\n"
+                            "    a = 1 / MAX(1, p[1]);\n"
+                            "}\n";
+        const char exp[] = "3: void f ( char * d ) {\n"
+                           "4: const char * p@2 ; p@2 =@UNIQUE &@UNIQUE d@1 [@UNIQUE 0 ] ;\n"
+                           "5: int a@3 ; a@3 =@UNIQUE 1 /@UNIQUE $( $( 1 $>@UNIQUE $( p@2 [@9 0 ] $) $) $?@UNIQUE $( 1 $) $:@UNIQUE $( p@2 [@9 0 ] $) $) ;\n"
+                           "6: a@3 =@UNIQUE 1 /@UNIQUE $( $( 1 $>@UNIQUE $( p@2 [@15 1 ] $) $) $?@UNIQUE $( 1 $) $:@UNIQUE $( p@2 [@15 1 ] $) $) ;\n"
+                           "7: }\n";
+        ASSERT_EQUALS(exp, tokenizeExpr(code));
     }
 
     void structuredBindings() {
