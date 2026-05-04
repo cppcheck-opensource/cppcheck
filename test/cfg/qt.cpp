@@ -76,6 +76,11 @@ void ignoredReturnValue_QDir(const QString& dirname)
     dir.entryList();
 }
 
+void assertWithSideEffect_QDir_exists(const char *path) { // #14720
+    QDir dir(path);
+    assert(dir.exists());
+    (void)dir;
+}
 
 void unusedVariable_QTransform()
 {
