@@ -245,6 +245,28 @@ void CheckIO::checkFileUsage()
                 } else if (tok->str() == "fclose") {
                     fileTok = tok->tokAt(2);
                     operation = Filepointer::Operation::CLOSE;
+
+                    // #1473 Check if fclose is in a while loop condition
+                    if (fileTok && fileTok->isVariable()) {
+                        const Token* loopTok = tok->astTop()->previous();
+
+                        if (loopTok && loopTok->str() == "while") {
+                            const Token* bodyEnd = nullptr;
+                            const Token* bodyStart = nullptr;
+
+                            if (Token::simpleMatch(loopTok->previous(), "}") && loopTok->previous()->scope()->type == ScopeType::eDo) { // Handle do-while loops
+                                bodyEnd = loopTok->previous();
+                                bodyStart = bodyEnd->link();
+                            } else {
+                                bodyStart = loopTok->linkAt(1)->next();
+                                bodyEnd = bodyStart->link();
+                            }
+
+                            // Do not trigger a warning if the loop always exits or if the file is opened again in the loop.
+                            if (!isReturnScope(bodyEnd, mSettings->library) && Token::findmatch(bodyStart, "%var% =", bodyEnd, fileTok->varId()) == nullptr)
+                                fcloseInLoopConditionError(tok, fileTok->str());
+                        }
+                    }
                 } else if (whitelist.find(tok->str()) != whitelist.end()) {
                     fileTok = tok->tokAt(2);
                     if ((tok->str() == "ungetc" || tok->str() == "ungetwc") && fileTok)
@@ -390,6 +412,15 @@ void CheckIO::useClosedFileError(const Token *tok)
 {
     reportError(tok, Severity::error,
                 "useClosedFile", "Used file that is not opened.", CWE910, Certainty::normal);
+}
+
+void CheckIO::fcloseInLoopConditionError(const Token *tok, const std::string &varname)
+{
+    reportError(tok, Severity::warning,
+                "fcloseInLoopCondition",
+                "fclose() should not be used as a loop condition.\n"
+                "fclose() closes '" + varname + "' each time it is evaluated. On success the loop body might never execute, on failure fclose() might be called again on the already-closed file handle.",
+                CWE910, Certainty::normal);
 }
 
 void CheckIO::seekOnAppendedFileError(const Token *tok)
@@ -2042,6 +2073,7 @@ void CheckIO::getErrorMessages(ErrorLogger *errorLogger, const Settings *setting
     c.readWriteOnlyFileError(nullptr);
     c.writeReadOnlyFileError(nullptr);
     c.useClosedFileError(nullptr);
+    c.fcloseInLoopConditionError(nullptr, "fp");
     c.seekOnAppendedFileError(nullptr);
     c.incompatibleFileOpenError(nullptr, "tmp");
     c.invalidScanfError(nullptr);

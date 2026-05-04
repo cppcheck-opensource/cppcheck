@@ -105,6 +105,7 @@ private:
     void readWriteOnlyFileError(const Token *tok);
     void writeReadOnlyFileError(const Token *tok);
     void useClosedFileError(const Token *tok);
+    void fcloseInLoopConditionError(const Token *tok, const std::string &varname);
     void seekOnAppendedFileError(const Token *tok);
     void incompatibleFileOpenError(const Token *tok, const std::string &filename);
     void invalidScanfError(const Token *tok);
