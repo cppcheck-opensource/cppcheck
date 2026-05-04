@@ -6857,11 +6857,13 @@ bool Tokenizer::simplifyAddBraces()
     return true;
 }
 
-Token *Tokenizer::simplifyAddBracesToCommand(Token *tok)
+Token *Tokenizer::simplifyAddBracesToCommand(Token *tok, int depth)
 {
+    if (depth < 0)
+        return tok;
     Token * tokEnd=tok;
     if (Token::Match(tok,"for|switch|BOOST_FOREACH")) {
-        tokEnd=simplifyAddBracesPair(tok,true);
+        tokEnd=simplifyAddBracesPair(tok,true,depth-1);
     } else if (tok->str()=="while") {
         Token *tokPossibleDo=tok->previous();
         if (Token::simpleMatch(tok->previous(), "{"))
@@ -6869,9 +6871,9 @@ Token *Tokenizer::simplifyAddBracesToCommand(Token *tok)
         else if (Token::simpleMatch(tokPossibleDo,"}"))
             tokPossibleDo = tokPossibleDo->link();
         if (!tokPossibleDo || tokPossibleDo->strAt(-1) != "do")
-            tokEnd=simplifyAddBracesPair(tok,true);
+            tokEnd=simplifyAddBracesPair(tok,true,depth-1);
     } else if (tok->str()=="do") {
-        tokEnd=simplifyAddBracesPair(tok,false);
+        tokEnd=simplifyAddBracesPair(tok,false,depth-1);
         if (tokEnd!=tok) {
             // walk on to next token, i.e. "while"
             // such that simplifyAddBracesPair does not close other braces
@@ -6883,7 +6885,7 @@ Token *Tokenizer::simplifyAddBracesToCommand(Token *tok)
             }
         }
     } else if (tok->str()=="if" && !Token::simpleMatch(tok->tokAt(-2), "operator \"\"")) {
-        tokEnd=simplifyAddBracesPair(tok,true);
+        tokEnd=simplifyAddBracesPair(tok,true,depth-1);
         if (!tokEnd)
             return nullptr;
         if (tokEnd->strAt(1) == "else") {
@@ -6892,16 +6894,16 @@ Token *Tokenizer::simplifyAddBracesToCommand(Token *tok)
                 syntaxError(tokEndNextNext);
             if (tokEndNextNext->str() == "if")
                 // do not change "else if ..." to "else { if ... }"
-                tokEnd=simplifyAddBracesToCommand(tokEndNextNext);
+                tokEnd=simplifyAddBracesToCommand(tokEndNextNext,depth-1);
             else
-                tokEnd=simplifyAddBracesPair(tokEnd->next(),false);
+                tokEnd=simplifyAddBracesPair(tokEnd->next(),false,depth-1);
         }
     }
 
     return tokEnd;
 }
 
-Token *Tokenizer::simplifyAddBracesPair(Token *tok, bool commandWithCondition)
+Token *Tokenizer::simplifyAddBracesPair(Token *tok, bool commandWithCondition, int depth)
 {
     Token * tokCondition=tok->next();
     if (!tokCondition) // Missing condition
@@ -6963,7 +6965,7 @@ Token *Tokenizer::simplifyAddBracesPair(Token *tok, bool commandWithCondition)
         Token::createMutualLinks(tokOpenBrace, tokCloseBrace);
         tokBracesEnd = tokCloseBrace;
     } else {
-        Token * tokEnd = simplifyAddBracesToCommand(tokStatement);
+        Token * tokEnd = simplifyAddBracesToCommand(tokStatement, depth-1);
         if (!tokEnd) // Ticket #4887
             return tok;
         if (tokEnd->str()!="}") {

@@ -134,6 +134,7 @@ private:
         TEST_CASE(ifAddBraces18); // #3424 - if if { } else else
         TEST_CASE(ifAddBraces19); // #3928 - if for if else
         TEST_CASE(ifAddBraces20); // #5012 - syntax error 'else }'
+        TEST_CASE(ifAddBracesDepthLimit);
         TEST_CASE(ifAddBracesLabels); // #5332 - if (x) label: {} ..
 
         TEST_CASE(switchAddBracesLabels);
@@ -1408,6 +1409,30 @@ private:
     void ifAddBraces20() { // #5012 - syntax error 'else }'
         const char code[] = "void f() { if(x) {} else }";
         ASSERT_THROW_INTERNAL(tokenizeAndStringify(code), SYNTAX);
+    }
+
+    void ifAddBracesDepthLimit() {
+        // Ensure that a long else-if chain exceeding the recursion depth limit
+        // does not cause a stack overflow (CWE-674)
+        {
+            // Generate a chain of 1000 else-if clauses (exceeds depth limit of 500)
+            std::string code = "void f() { if(x) a();";
+            for (int i = 0; i < 1000; i++)
+                code += " else if(x) a();";
+            code += " else a(); }";
+            // Should not crash — just verify tokenization completes
+            tokenizeAndStringify(code);
+            ignore_errout();
+        }
+        {
+            // Generate deeply nested if statements (exceeds depth limit of 500)
+            std::string code = "void f() { ";
+            for (int i = 0; i < 1000; i++)
+                code += "if(x) ";
+            code += "a(); }";
+            tokenizeAndStringify(code);
+            ignore_errout();
+        }
     }
 
     void ifAddBracesLabels() {
