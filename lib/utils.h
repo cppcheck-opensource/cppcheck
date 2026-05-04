@@ -458,6 +458,73 @@ namespace utils {
             return result;
         };
     }
+
+    namespace string
+    {
+        template<size_t size>
+        void concat(std::string &str, const char (&data)[size])
+        {
+            str.append(data, size-1);
+        }
+
+        inline void concat(std::string &str, char c)
+        {
+            str += c;
+        }
+
+        template<typename T>
+        void concat(std::string &str, T&& t)
+        {
+            str.append(t);
+        }
+
+        template<typename T, typename... Args>
+        void concat(std::string& str, T&& t, Args&&... args)
+        {
+            concat(str, t);
+            concat(str, args...);
+        }
+
+        template<typename... Args>
+        std::string create(char c, const Args&... args)
+        {
+            std::string str(1, c);
+            concat(str, args...);
+            return str;
+        }
+
+        template<typename T, typename... Args>
+        std::string create(const T& t, const Args&... args)
+        {
+            std::string str(t);
+            concat(str, args...);
+            return str;
+        }
+
+        template<size_t size>
+        void prepend(std::string &str, const char (&data)[size])
+        {
+            str.insert(0, data, size-1);
+        }
+
+        inline void prepend(std::string &str, char c)
+        {
+            str.insert(0, 1, c);
+        }
+
+        template<typename T>
+        void prepend(std::string &str, T&& t)
+        {
+            str.insert(0, t);
+        }
+
+        template<typename T, typename... Args>
+        void prepend(std::string& str, T&& t, Args&&... args)
+        {
+            prepend(str, args...);
+            prepend(str, t);
+        }
+    }
 }
 
 #endif
