@@ -123,6 +123,15 @@ public:
     std::string getcode(const std::string &cfg, std::vector<std::string> &files, bool writeLocations);
 
     /**
+     * make sure empty configuration macros are not used in code. the given code must be a single configuration
+     * @param cfg configuration
+     * @param macroUsageList macro usage list
+     * @return true => configuration is valid
+     */
+    bool validateCfg(const std::string &cfg, const std::list<simplecpp::MacroUsage> &macroUsageList);
+    void validateCfgError(const std::string &file, const unsigned int line, const std::string &cfg, const std::string &macro);
+
+    /**
      * Calculate HASH. Using toolinfo, tokens1, filedata.
      *
      * @param toolinfo   Arbitrary extra toolinfo

@@ -912,6 +912,10 @@ simplecpp::TokenList Preprocessor::preprocess(const std::string &cfg, std::vecto
 
     tokens2.removeComments();
 
+    // ensure that guessed define macros without value are not used in the code
+    if (!validateCfg(cfg, macroUsage))
+        return simplecpp::TokenList(files);
+
     return tokens2;
 }
 
@@ -1060,6 +1064,44 @@ void Preprocessor::invalidSuppression(const simplecpp::Location& loc, const std:
     error(loc, msg, "invalidSuppression");
 }
 
+bool Preprocessor::validateCfg(const std::string &cfg, const std::list<simplecpp::MacroUsage> &macroUsageList)
+{
+    bool ret = true;
+    std::list<std::string> defines;
+    splitcfg(cfg, defines, emptyString);
+    for (const std::string &define : defines) {
+        if (define.find('=') != std::string::npos)
+            continue;
+        const std::string macroName(define.substr(0, define.find('(')));
+        for (const simplecpp::MacroUsage &mu : macroUsageList) {
+            if (mu.macroValueKnown)
+                continue;
+            if (mu.macroName != macroName)
+                continue;
+            const bool directiveLocation = std::any_of(mDirectives.cbegin(), mDirectives.cend(),
+                                                       [=](const Directive &dir) {
+                return mu.useLocation.file() == dir.file && mu.useLocation.line == dir.linenr;
+            });
+
+            if (!directiveLocation) {
+                if (mSettings.severity.isEnabled(Severity::information))
+                    validateCfgError(mu.useLocation.file(), mu.useLocation.line, cfg, macroName);
+                ret = false;
+            }
+        }
+    }
+
+    return ret;
+}
+
+void Preprocessor::validateCfgError(const std::string &file, const unsigned int line, const std::string &cfg, const std::string &macro)
+{
+    const std::string id = "ConfigurationNotChecked";
+    ErrorMessage::FileLocation loc(file, line, 0);
+    const ErrorMessage errmsg({std::move(loc)}, mFile0, Severity::information, "Skipping configuration '" + cfg + "' since the value of '" + macro + "' is unknown. Use -D if you want to check it. You can use -U to skip it explicitly.", id, Certainty::normal);
+    mErrorLogger->reportInfo(errmsg);
+}
+
 void Preprocessor::getErrorMessages(ErrorLogger &errorLogger, const Settings &settings)
 {
     std::vector<std::string> files;
@@ -1070,6 +1112,7 @@ void Preprocessor::getErrorMessages(ErrorLogger &errorLogger, const Settings &se
     loc.col = 2;
     preprocessor.missingInclude(loc, "", UserHeader);
     preprocessor.missingInclude(loc, "", SystemHeader);
+    preprocessor.validateCfgError("", 1, "X", "X");
     preprocessor.error(loc, "message", simplecpp::Output::ERROR);
     preprocessor.error(loc, "message", simplecpp::Output::SYNTAX_ERROR);
     preprocessor.error(loc, "message", simplecpp::Output::UNHANDLED_CHAR_ERROR);

@@ -340,6 +340,9 @@ private:
         TEST_CASE(getConfigsU6);
         TEST_CASE(getConfigsU7);
 
+        TEST_CASE(validateCfg1);
+        TEST_CASE(validateCfg2);
+
         TEST_CASE(getConfigsAndCodeIssue14317);
         TEST_CASE(getConfigsMostGeneralConfigIssue14317);
 
@@ -2666,6 +2669,36 @@ private:
                             "#else\n"
                             "#endif\n";
         ASSERT_EQUALS("\nY\n", getConfigsStr(code, "-DX"));
+    }
+
+    void validateCfg1() {
+        Preprocessor preprocessor(settings0, this);
+
+        std::vector<std::string> files(1, "test.c");
+        simplecpp::MacroUsage macroUsage(files, false);
+        macroUsage.useLocation.fileIndex = 0;
+        macroUsage.useLocation.line = 1;
+        macroUsage.macroName = "X";
+        std::list<simplecpp::MacroUsage> macroUsageList(1, macroUsage);
+
+        ASSERT_EQUALS(true, preprocessor.validateCfg("", macroUsageList));
+        ASSERT_EQUALS(false, preprocessor.validateCfg("X",macroUsageList));
+        ASSERT_EQUALS(false, preprocessor.validateCfg("A=42;X", macroUsageList));
+        ASSERT_EQUALS(true, preprocessor.validateCfg("X=1", macroUsageList));
+        ASSERT_EQUALS(true, preprocessor.validateCfg("Y", macroUsageList));
+
+        macroUsageList.front().macroValueKnown = true; // #8404
+        ASSERT_EQUALS(true, preprocessor.validateCfg("X", macroUsageList));
+    }
+
+    void validateCfg2() {
+        const char filedata[] = "#ifdef ABC\n"
+                                "#endif\n"
+                                "int i = ABC;";
+
+        std::map<std::string, std::string> actual;
+        preprocess(filedata, actual, "file.cpp");
+        ASSERT_EQUALS("[file.cpp:3]: (information) Skipping configuration 'ABC' since the value of 'ABC' is unknown. Use -D if you want to check it. You can use -U to skip it explicitly.\n", errout.str());
     }
 
     void getConfigsAndCodeIssue14317() {
