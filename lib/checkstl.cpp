@@ -1078,7 +1078,7 @@ static const ValueFlow::Value* getInnerLifetime(const Token* tok,
                                                 int depth = 4)
 {
     if (depth < 0)
-        return nullptr;
+        return nullptr;// TODO: add bailout message
     if (!tok)
         return nullptr;
     for (const ValueFlow::Value& val : tok->values()) {
