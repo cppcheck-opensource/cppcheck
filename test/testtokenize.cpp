@@ -516,6 +516,7 @@ private:
         TEST_CASE(genericInIf); // #13561
 
         TEST_CASE(preincrementInLambda); // #13312
+        TEST_CASE(stringviewLiteral); // #13234
 
         TEST_CASE(atomicCast); // #12605
         TEST_CASE(constFunctionPtrTypedef); // #12135
@@ -8956,6 +8957,12 @@ private:
             "    });\n"
             "}\n";
         ASSERT_NO_THROW(tokenizeAndStringify(code));
+    }
+
+    void stringviewLiteral() { // #13234
+        const char code[] = "auto sv2 = \"test\"sv;";
+        ASSERT_NO_THROW(tokenizeAndStringify(code));
+        ignore_errout();
     }
 
     void atomicCast() { // #12605
