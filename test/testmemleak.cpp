@@ -150,6 +150,7 @@ private:
         TEST_CASE(realloc22);
         TEST_CASE(realloc23);
         TEST_CASE(realloc24); // #9228
+        TEST_CASE(realloc25);
     }
 
     void realloc1() {
@@ -416,6 +417,60 @@ private:
               "a = b;\n"
               "a = realloc(a, 20);\n"
               "}");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void realloc25() {
+        check("struct T {\n"
+              "    char* ptr;\n"
+              "    size_t len;\n"
+              "};\n"
+              "struct S {\n"
+              "    struct T t;\n"
+              "};\n"
+              "void f(struct S* s, size_t len) {\n"
+              "    char* p = s->t.ptr;\n"
+              "    p = realloc(p, len);\n"
+              "    if (p) {\n"
+              "        s->t.ptr = p;\n"
+              "        s->t.len = len;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct T {\n"
+              "    char* ptr;\n"
+              "    size_t len;\n"
+              "};\n"
+              "struct S {\n"
+              "    struct T t[1];\n"
+              "};\n"
+              "void f(struct S* s, size_t len) {\n"
+              "    char* p = s->t[0].ptr;\n"
+              "    p = realloc(p, len);\n"
+              "    if (p) {\n"
+              "        s->t[0].ptr = p;\n"
+              "        s->t[0].len = len;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct T {\n" // #14718
+              "    char* ptr;\n"
+              "    size_t len;\n"
+              "};\n"
+              "struct S {\n"
+              "    struct T t;\n"
+              "};\n"
+              "char* get(struct T t) { return t.ptr; };\n"
+              "void f(struct S* s, size_t len) {\n"
+              "    char* p = get(s->t);\n"
+              "    p = realloc(p, len);\n"
+              "    if (p) {\n"
+              "        s->t.ptr = p;\n"
+              "        s->t.len = len;\n"
+              "    }\n"
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 };
