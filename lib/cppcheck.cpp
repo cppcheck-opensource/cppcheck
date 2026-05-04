@@ -1053,11 +1053,22 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         }
 
         if (mSettings.checkConfiguration) {
-            for (const std::string &config : configurations)
+            std::string fixedpath = Path::toNativeSeparators(file.spath());
+            int checkConfig = 0;
+            // TODO: this logic differs from the actual one during analysis
+            // TODO: print invalid configurations
+            for (const std::string &config : configurations) {
+                if (!mSettings.quiet && (!config.empty() && configurations.size() > 1)) {
+                    mErrorLogger.reportOut("Checking " + fixedpath + ": " + config + "...", Color::FgGreen);
+                }
                 (void)preprocessor.getcode(config, files, false);
+                if (++checkConfig > maxConfigs) {
+                    skippedConfigurationMessage(fixedpath, config);
+                }
+            }
 
             if (configurations.size() > maxConfigs)
-                tooManyConfigsError(Path::toNativeSeparators(file.spath()), configurations.size());
+                tooManyConfigsError(fixedpath, configurations.size());
 
             if (analyzerInformation)
                 mLogger->setAnalyzerInfo(nullptr);
@@ -1195,6 +1206,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
                 if (!tokenizer.tokens())
                     continue;
 
+                // TODO: unreachable
                 // skip rest of iteration if just checking configuration
                 if (mSettings.checkConfiguration)
                     continue;
@@ -1697,6 +1709,26 @@ void CppCheck::purgedConfigurationMessage(const std::string &file, const std::st
     mErrorLogger.reportErr(errmsg);
 }
 
+void CppCheck::skippedConfigurationMessage(const std::string &file, const std::string& configuration)
+{
+    if (mSettings.severity.isEnabled(Severity::information) && file.empty())
+        return;
+
+    std::list<ErrorMessage::FileLocation> loclist;
+    if (!file.empty()) {
+        loclist.emplace_back(file, 0, 0);
+    }
+
+    ErrorMessage errmsg(std::move(loclist),
+                        "",
+                        Severity::information,
+                        "The configuration '" + configuration + "' was not checked because it exceeded the threshold for maximum configuration to be checked.",
+                        "skippedConfiguration",
+                        Certainty::normal);
+
+    mErrorLogger.reportErr(errmsg);
+}
+
 //---------------------------------------------------------------------------
 
 void CppCheck::getErrorMessages(ErrorLogger &errorlogger)
@@ -1707,6 +1739,7 @@ void CppCheck::getErrorMessages(ErrorLogger &errorlogger)
 
     CppCheck cppcheck(settings, supprs, errorlogger, nullptr, true, nullptr);
     cppcheck.purgedConfigurationMessage("","");
+    cppcheck.skippedConfigurationMessage("","");
     cppcheck.tooManyConfigsError("",0U);
     // TODO: add functions to get remaining error messages
 
