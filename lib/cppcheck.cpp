@@ -403,7 +403,7 @@ static void createDumpFile(const Settings& settings,
           << "/>\n";
 }
 
-static std::string detectPython(const CppCheck::ExecuteCmdFn &executeCommand)
+std::string CppCheck::detectPython(const CppCheck::ExecuteCmdFn &executeCommand)
 {
 #ifdef _WIN32
     const char *py_exes[] = { "python3.exe", "python.exe" };
@@ -445,15 +445,8 @@ static std::vector<picojson::value> executeAddon(const AddonInfo &addonInfo,
         pythonExe = addonInfo.executable;
     else if (!addonInfo.python.empty())
         pythonExe = cmdFileName(addonInfo.python);
-    else if (!defaultPythonExe.empty())
+    else
         pythonExe = cmdFileName(defaultPythonExe);
-    else {
-        // store in static variable so we only look this up once - TODO: do not cache globally
-        static const std::string detectedPythonExe = detectPython(executeCommand);
-        if (detectedPythonExe.empty())
-            throw InternalError(nullptr, "Failed to auto detect python");
-        pythonExe = detectedPythonExe;
-    }
 
     std::string args;
     if (addonInfo.executable.empty())
