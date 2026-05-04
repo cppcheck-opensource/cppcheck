@@ -8276,11 +8276,15 @@ bool ValueType::fromLibraryType(const std::string &typestr, const Settings &sett
         else
             type = ValueType::Type::UNKNOWN_INT;
         sign = (podtype->sign == 'u') ? ValueType::UNSIGNED : ValueType::SIGNED;
+        if (originalTypeName.empty())
+            originalTypeName = typestr;
         return true;
     }
     if (podtype && podtype->stdtype == Library::PodType::Type::NO) {
         type = ValueType::Type::POD;
         sign = ValueType::UNKNOWN_SIGN;
+        if (originalTypeName.empty())
+            originalTypeName = typestr;
         return true;
     }
 
@@ -8306,6 +8310,8 @@ bool ValueType::fromLibraryType(const std::string &typestr, const Settings &sett
             pointer = 2;
         if (platformType->mConstPtr)
             constness = 1;
+        if (originalTypeName.empty())
+            originalTypeName = typestr;
         return true;
     }
     if (!podtype && (typestr == "size_t" || typestr == "std::size_t")) {

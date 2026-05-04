@@ -2915,14 +2915,16 @@ private:
                       "[test.cpp:3]: (warning) %Lf in format string (no. 5) requires 'long double' but the argument type is 'signed int'.\n"
                       "[test.cpp:3]: (warning) %p in format string (no. 6) requires an address but the argument type is 'signed int'.\n", errout_str());
 
+        // We should revisit the logic behind portability checks here.
         check("struct Fred { int32_t i; } f;\n"
               "struct Fred & bar() { };\n"
-              "void foo() { printf(\"%d %ld %u %lu %f %Lf\", bar().i, bar().i, bar().i, bar().i, bar().i, bar().i); }");
-        ASSERT_EQUALS("[test.cpp:3]: (warning) %ld in format string (no. 2) requires 'long' but the argument type is 'signed int'.\n"
-                      "[test.cpp:3]: (warning) %u in format string (no. 3) requires 'unsigned int' but the argument type is 'signed int'.\n"
-                      "[test.cpp:3]: (warning) %lu in format string (no. 4) requires 'unsigned long' but the argument type is 'signed int'.\n"
-                      "[test.cpp:3]: (warning) %f in format string (no. 5) requires 'double' but the argument type is 'signed int'.\n"
-                      "[test.cpp:3]: (warning) %Lf in format string (no. 6) requires 'long double' but the argument type is 'signed int'.\n",
+              "void foo() { printf(\"%d %ld %u %lu %f %Lf\", bar().i, bar().i, bar().i, bar().i, bar().i, bar().i); }",
+              dinit(CheckOptions, $.portability = true));
+        ASSERT_EQUALS("[test.cpp:3]: (portability) %ld in format string (no. 2) requires 'long' but the argument type is 'int32_t {aka signed int}'.\n"
+                      "[test.cpp:3]: (portability) %u in format string (no. 3) requires 'unsigned int' but the argument type is 'int32_t {aka signed int}'.\n"
+                      "[test.cpp:3]: (portability) %lu in format string (no. 4) requires 'unsigned long' but the argument type is 'int32_t {aka signed int}'.\n"
+                      "[test.cpp:3]: (portability) %f in format string (no. 5) requires 'double' but the argument type is 'int32_t {aka signed int}'.\n"
+                      "[test.cpp:3]: (portability) %Lf in format string (no. 6) requires 'long double' but the argument type is 'int32_t {aka signed int}'.\n",
                       errout_str());
 
         // #4984

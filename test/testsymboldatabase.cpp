@@ -11406,6 +11406,15 @@ private:
             ASSERT(tok->valueType()->pointer == 1);
             ASSERT(tok->valueType()->constness == 0);
         }
+
+        {
+            GET_SYMBOL_DB("int8_t value = 0;");
+            const Token* tok = Token::findsimplematch(tokenizer.tokens(), "value");
+            ASSERT(tok);
+            ASSERT(tok->valueType());
+            ASSERT(tok->valueType()->originalTypeName == "int8_t");
+            ASSERT(tok->valueType()->type == ValueType::Type::CHAR);
+        }
     }
 
     void dumpFriend() {
