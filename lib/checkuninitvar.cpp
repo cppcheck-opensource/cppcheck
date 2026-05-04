@@ -784,15 +784,14 @@ bool CheckUninitVar::checkScopeForVariable(const Token *tok, const Variable& var
                 // standard or enum type: check if new initializes the allocated memory
                 if (var.typeStartToken()->isStandardType() || var.typeStartToken()->isEnumType()) {
                     // scalar new with initialization
-                    if (Token::Match(tok->next(), "= new %type% ("))
-                        return true;
-
                     // array new
                     if (Token::Match(tok->next(), "= new ::|%type")) {
                         const Token* initTok = tok->tokAt(4);
-                        while (Token::Match(initTok, "::|%type"))
+                        while (Token::Match(initTok, "::|%type%"))
                             initTok = initTok->next();
-                        if (Token::Match(initTok->link(), "] [({]"))
+                        if (Token::simpleMatch(initTok, "["))
+                            initTok = initTok->link()->next();
+                        if (Token::Match(initTok, "[({]"))
                             return true;
                     }
                 }
