@@ -2320,11 +2320,11 @@ const Token * TokenList::isFunctionHead(const Token *tok, const std::string &end
     if (Token::Match(tok, ") ;|{|[")) {
         tok = tok->next();
         while (tok && tok->str() == "[" && tok->link()) {
-            if (endsWith.find(tok->str()) != std::string::npos)
+            if (endsWith.find('[') != std::string::npos)
                 return tok;
             tok = tok->link()->next();
         }
-        return (tok && endsWith.find(tok->str()) != std::string::npos) ? tok : nullptr;
+        return (tok && tok->str().length() == 1 && endsWith.find(tok->str()[0]) != std::string::npos) ? tok : nullptr;
     }
     if (tok->isCpp() && tok->str() == ")") {
         tok = tok->next();
@@ -2359,7 +2359,7 @@ const Token * TokenList::isFunctionHead(const Token *tok, const std::string &end
         }
         if (tok && tok->str() == ":" && !Token::Match(tok->next(), "%name%|::"))
             return nullptr;
-        return (tok && endsWith.find(tok->str()) != std::string::npos) ? tok : nullptr;
+        return (tok && tok->str().length() == 1 && endsWith.find(tok->str()[0]) != std::string::npos) ? tok : nullptr;
     }
     return nullptr;
 }
