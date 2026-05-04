@@ -220,6 +220,7 @@ Library::Error Library::load(const char exename[], const char path[], bool debug
             if (exename) {
                 std::string exepath(Path::fromNativeSeparators(Path::getPathFromFilename(Path::getCurrentExecutablePath(exename))));
                 cfgfolders.push_back(exepath + "cfg");
+                cfgfolders.push_back(exepath + "../share/Cppcheck/cfg");
                 cfgfolders.push_back(std::move(exepath));
             }
 
