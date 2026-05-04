@@ -114,6 +114,8 @@ private:
         TEST_CASE(checkUseStandardLibrary12);
         TEST_CASE(checkUseStandardLibrary13);
         TEST_CASE(checkUseStandardLibrary14);
+
+        TEST_CASE(checkFunctionCallOperatorOverrideWithAutoReference);
     }
 
     struct CheckOptions
@@ -2354,6 +2356,50 @@ private:
               "        reinterpret_cast<unsigned char*>(dest)[i] = '0';\n"
               "}}\n");
         ASSERT_EQUALS("[test.cpp:3:9]: (style) Consider using std::memset instead of loop. [useStandardLibrary]\n", errout_str());
+    }
+
+    void checkFunctionCallOperatorOverrideWithAutoReference() {
+        const auto settings_old = settings;
+        settings.checkLibrary = true;
+        check("template <typename T>\n"
+              "struct EPVector : public std::vector<T> {\n"
+              "  using size_type = typename std::vector<T>::size_type;\n"
+              "  [[nodiscard]] T& operator()(size_type n) { return (*this)[n - 1]; }\n"
+              "  [[nodiscard]] const T& operator()(size_type n) const { return (*this)[n - 1]; }\n"
+              "  void resize(size_type count) { std::vector<T>::resize(count); }\n"
+              "};\n"
+              "struct S { EPVector<double> vec; };\n"
+              "double f() {\n"
+              "  EPVector<S> sVec;\n"
+              "  sVec.resize(1);\n"
+              "  sVec(1).vec.resize(2);\n"
+              "  sVec(1).vec(1) = 1.0;\n"
+              "  S& thisS = sVec(1);\n"
+              "  thisS.vec(2) = 2.0;\n"
+              "  return sVec(1).vec(1) + thisS.vec(2);\n"
+              "}");
+        ASSERT_EQUALS("", errout.str());
+
+        check("template <typename T>\n"
+              "struct EPVector : public std::vector<T> {\n"
+              "  using size_type = typename std::vector<T>::size_type;\n"
+              "  [[nodiscard]] T& operator()(size_type n) { return (*this)[n - 1]; }\n"
+              "  [[nodiscard]] const T& operator()(size_type n) const { return (*this)[n - 1]; }\n"
+              "  void resize(size_type count) { std::vector<T>::resize(count); }\n"
+              "};\n"
+              "struct S { EPVector<double> vec; };\n"
+              "double f() {\n"
+              "  EPVector<S> sVec;\n"
+              "  sVec.resize(1);\n"
+              "  sVec(1).vec.resize(2);\n"
+              "  sVec(1).vec(1) = 1.0;\n"
+              "  auto& thisS = sVec(1);\n"               // NOTE: Using `auto&` instead of `S&`
+              "  thisS.vec(2) = 2.0;\n"                  // TODO: --check-library: There is no matching configuration for function auto::vec()
+              "  return sVec(1).vec(1) + thisS.vec(2);\n" // TODO: --check-library: There is no matching configuration for function auto::vec()
+              "}");
+        ASSERT_EQUALS("", errout.str());
+
+        settings = settings_old;
     }
 };
 
