@@ -400,6 +400,8 @@ const Token * astIsVariableComparison(const Token *tok, const std::string &comp,
     }
     while (ret && ret->str() == ".")
         ret = ret->astOperand2();
+    while (ret && ret->isCast())
+        ret = ret->astOperand2() ? ret->astOperand2() : ret->astOperand1();
     if (ret && ret->str() == "=" && ret->astOperand1() && ret->astOperand1()->varId())
         ret = ret->astOperand1();
     else if (ret && ret->varId() == 0U)
