@@ -2370,9 +2370,9 @@ void SymbolDatabase::validate() const
     validateVariables();
 }
 
-void SymbolDatabase::clangSetVariables(const std::vector<const Variable *> &variableList)
+void SymbolDatabase::clangSetVariables(const std::vector<const Variable *> &vars)
 {
-    mVariableList = variableList;
+    mVariableList = vars;
 }
 
 void SymbolDatabase::debugSymbolDatabase() const
@@ -2641,16 +2641,16 @@ void Variable::evaluate(const Settings& settings)
     }
 }
 
-void Variable::setValueType(const ValueType &valueType)
+void Variable::setValueType(const ValueType &vt)
 {
-    if (valueType.type == ValueType::Type::UNKNOWN_TYPE) {
+    if (vt.type == ValueType::Type::UNKNOWN_TYPE) {
         const Token *declType = Token::findsimplematch(mTypeStartToken, "decltype (", mTypeEndToken);
         if (declType && !declType->next()->valueType())
             return;
     }
-    const auto* vt = new ValueType(valueType);
+    const auto* tmp = new ValueType(vt);
     delete mValueType;
-    mValueType = vt;
+    mValueType = tmp;
     if ((mValueType->pointer > 0) && (!isArray() || Token::Match(mNameToken->previous(), "( * %name% )")))
         setFlag(fIsPointer, true);
     setFlag(fIsConst, mValueType->constness & (1U << mValueType->pointer));

@@ -150,11 +150,11 @@ bool ProgramMemory::getContainerEmptyValue(nonneg int exprid, MathLib::bigint& r
     return false;
 }
 
-void ProgramMemory::setContainerSizeValue(const Token* expr, MathLib::bigint value, bool isEqual)
+void ProgramMemory::setContainerSizeValue(const Token* expr, MathLib::bigint value, bool equal)
 {
     ValueFlow::Value v(value);
     v.valueType = ValueFlow::Value::ValueType::CONTAINER_SIZE;
-    if (!isEqual)
+    if (!equal)
         v.valueKind = ValueFlow::Value::ValueKind::Impossible;
     setValue(expr, v);
 }

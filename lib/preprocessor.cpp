@@ -512,14 +512,14 @@ static std::string readcondition(const simplecpp::Token *iftok, const std::set<s
     return cfgStr;
 }
 
-static bool hasDefine(const std::string &userDefines, const std::string &cfg)
+static bool hasDefine(const std::string &userDefines, const std::string &cfgStr)
 {
-    if (cfg.empty()) {
+    if (cfgStr.empty()) {
         return false;
     }
 
     std::string::size_type pos = 0;
-    const std::string cfgname = cfg.substr(0, cfg.find('='));
+    const std::string cfgname = cfgStr.substr(0, cfgStr.find('='));
     while (pos < userDefines.size()) {
         pos = userDefines.find(cfgname, pos);
         if (pos == std::string::npos)
@@ -550,11 +550,11 @@ static std::string cfg(const std::vector<std::string> &configs, const std::strin
     return ret;
 }
 
-static bool isUndefined(const std::string &cfg, const std::set<std::string> &undefined)
+static bool isUndefined(const std::string &cfgStr, const std::set<std::string> &undefined)
 {
-    for (std::string::size_type pos1 = 0U; pos1 < cfg.size();) {
-        const std::string::size_type pos2 = cfg.find(';',pos1);
-        const std::string def = (pos2 == std::string::npos) ? cfg.substr(pos1) : cfg.substr(pos1, pos2 - pos1);
+    for (std::string::size_type pos1 = 0U; pos1 < cfgStr.size();) {
+        const std::string::size_type pos2 = cfgStr.find(';',pos1);
+        const std::string def = (pos2 == std::string::npos) ? cfgStr.substr(pos1) : cfgStr.substr(pos1, pos2 - pos1);
 
         const std::string::size_type eq = def.find('=');
         if (eq == std::string::npos && undefined.find(def) != undefined.end())
@@ -797,11 +797,11 @@ std::set<std::string> Preprocessor::getConfigs() const
     return ret;
 }
 
-static void splitcfg(const std::string &cfg, std::list<std::string> &defines, const std::string &defaultValue)
+static void splitcfg(const std::string &cfgStr, std::list<std::string> &defines, const std::string &defaultValue)
 {
-    for (std::string::size_type defineStartPos = 0U; defineStartPos < cfg.size();) {
-        const std::string::size_type defineEndPos = cfg.find(';', defineStartPos);
-        std::string def = (defineEndPos == std::string::npos) ? cfg.substr(defineStartPos) : cfg.substr(defineStartPos, defineEndPos - defineStartPos);
+    for (std::string::size_type defineStartPos = 0U; defineStartPos < cfgStr.size();) {
+        const std::string::size_type defineEndPos = cfgStr.find(';', defineStartPos);
+        std::string def = (defineEndPos == std::string::npos) ? cfgStr.substr(defineStartPos) : cfgStr.substr(defineStartPos, defineEndPos - defineStartPos);
         if (!defaultValue.empty() && def.find('=') == std::string::npos)
             def += '=' + defaultValue;
         defines.push_back(std::move(def));
@@ -811,14 +811,14 @@ static void splitcfg(const std::string &cfg, std::list<std::string> &defines, co
     }
 }
 
-static simplecpp::DUI createDUI(const Settings &mSettings, const std::string &cfg, Standards::Language lang)
+static simplecpp::DUI createDUI(const Settings &mSettings, const std::string &cfgStr, Standards::Language lang)
 {
     // TODO: make it possible to specify platform-dependent sizes
     simplecpp::DUI dui;
 
     splitcfg(mSettings.userDefines, dui.defines, "1");
-    if (!cfg.empty())
-        splitcfg(cfg, dui.defines, "");
+    if (!cfgStr.empty())
+        splitcfg(cfgStr, dui.defines, "");
 
     for (const std::string &def : mSettings.library.defines()) {
         const std::string::size_type pos = def.find_first_of(" (");
@@ -899,9 +899,9 @@ void Preprocessor::setPlatformInfo()
     mTokens.sizeOfType["long double *"] = mSettings.platform.sizeof_pointer;
 }
 
-simplecpp::TokenList Preprocessor::preprocess(const std::string &cfg, std::vector<std::string> &files, simplecpp::OutputList& outputList)
+simplecpp::TokenList Preprocessor::preprocess(const std::string &cfgStr, std::vector<std::string> &files, simplecpp::OutputList& outputList)
 {
-    const simplecpp::DUI dui = createDUI(mSettings, cfg, mLang);
+    const simplecpp::DUI dui = createDUI(mSettings, cfgStr, mLang);
 
     std::list<simplecpp::MacroUsage> macroUsage;
     std::list<simplecpp::IfCond> ifCond;
@@ -915,10 +915,10 @@ simplecpp::TokenList Preprocessor::preprocess(const std::string &cfg, std::vecto
     return tokens2;
 }
 
-std::string Preprocessor::getcode(const std::string &cfg, std::vector<std::string> &files, const bool writeLocations)
+std::string Preprocessor::getcode(const std::string &cfgStr, std::vector<std::string> &files, const bool writeLocations)
 {
     simplecpp::OutputList outputList;
-    simplecpp::TokenList tokens2 = preprocess(cfg, files, outputList);
+    simplecpp::TokenList tokens2 = preprocess(cfgStr, files, outputList);
     handleErrors(outputList);
     unsigned int prevfile = 0;
     unsigned int line = 1;

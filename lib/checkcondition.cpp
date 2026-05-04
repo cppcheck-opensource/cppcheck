@@ -2085,10 +2085,10 @@ void CheckCondition::checkCompareValueOutOfTypeRange()
     }
 }
 
-void CheckCondition::compareValueOutOfTypeRangeError(const Token *comparison, const std::string &type, MathLib::bigint value, bool result)
+void CheckCondition::compareValueOutOfTypeRangeError(const Token *comparisonTok, const std::string &type, MathLib::bigint value, bool result)
 {
     reportError(
-        comparison,
+        comparisonTok,
         Severity::style,
         "compareValueOutOfTypeRangeError",
         "Comparing expression of type '" + type + "' against value " + MathLib::toString(value) + ". Condition is always " + bool_to_string(result) + ".",

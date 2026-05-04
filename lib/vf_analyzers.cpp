@@ -673,12 +673,12 @@ private:
     }
 
     template<class F>
-    std::vector<MathLib::bigint> evaluateInt(const Token* tok, F getProgramMemory) const
+    std::vector<MathLib::bigint> evaluateInt(const Token* tok, F getProgramMemoryFunc) const
     {
         if (const ValueFlow::Value* v = tok->getKnownValue(ValueFlow::Value::ValueType::INT))
             return {v->intvalue};
         std::vector<MathLib::bigint> result;
-        ProgramMemory pm = getProgramMemory();
+        ProgramMemory pm = getProgramMemoryFunc();
         if (Token::Match(tok, "&&|%oror%")) {
             if (conditionIsTrue(tok, pm, getSettings()))
                 result.push_back(1);

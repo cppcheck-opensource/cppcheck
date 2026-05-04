@@ -4164,18 +4164,21 @@ void CheckOther::checkShadowVariables()
         const Scope *functionScope = &scope;
         while (functionScope && functionScope->type != ScopeType::eFunction && functionScope->type != ScopeType::eLambda)
             functionScope = functionScope->nestedIn;
-        for (const Variable &var : scope.varlist) {
-            if (var.nameToken() && var.nameToken()->isExpandedMacro()) // #8903
-                continue;
+        const auto checkVar = [&](const Variable &var) {
+            if (!var.nameToken())
+                return;
 
-            if (functionScope && functionScope->type == ScopeType::eFunction && functionScope->function) {
+            if (var.nameToken()->isExpandedMacro()) // #8903
+                return;
+
+            if (!var.isArgument() && functionScope && functionScope->type == ScopeType::eFunction && functionScope->function) {
                 const auto & argList = functionScope->function->argumentList;
                 auto it = std::find_if(argList.cbegin(), argList.cend(), [&](const Variable& arg) {
                     return arg.nameToken() && var.name() == arg.name();
                 });
                 if (it != argList.end()) {
-                    shadowError(var.nameToken(), it->nameToken(), "argument");
-                    continue;
+                    shadowError(var.nameToken(), "local variable", it->nameToken(), "argument");
+                    return;
                 }
             }
 
@@ -4183,27 +4186,43 @@ void CheckOther::checkShadowVariables()
             if (!shadowed)
                 shadowed = findShadowed(scope.functionOf, var, var.nameToken()->linenr());
             if (!shadowed)
-                continue;
+                return;
             if (scope.type == ScopeType::eFunction && scope.className == var.name())
-                continue;
+                return;
             if (functionScope->functionOf && functionScope->functionOf->isClassOrStructOrUnion() && functionScope->function &&
                 (functionScope->function->isStatic() || functionScope->function->isFriend()) &&
                 shadowed->variable() && !shadowed->variable()->isLocal())
-                continue;
-            shadowError(var.nameToken(), shadowed, (shadowed->varId() != 0) ? "variable" : "function");
-        }
+                return;
+            if (var.scope() && var.scope()->function && var.scope()->function->isConstructor()) {
+                if (shadowed->variable() && shadowed->variable()->isMember())
+                    return;
+                if (shadowed->function() && shadowed->function()->nestedIn &&
+                    shadowed->function()->nestedIn->isClassOrStruct())
+                    return;
+            }
+            shadowError(var.nameToken(), var.isArgument() ? "argument" : "local variable",
+                        shadowed, (shadowed->varId() != 0) ?
+                        (shadowed->variable()->isMember() ? "member" : "variable") : "function");
+        };
+        for (const Variable &var : scope.varlist)
+            checkVar(var);
+        if (functionScope && functionScope->type == ScopeType::eFunction && functionScope->function)
+            for (const Variable &arg: functionScope->function->argumentList)
+                checkVar(arg);
     }
 }
 
-void CheckOther::shadowError(const Token *var, const Token *shadowed, const std::string& type)
+void CheckOther::shadowError(const Token *shadows, const std::string &shadowsType,
+                             const Token *shadowed, const std::string &shadowedType)
 {
     ErrorPath errorPath;
-    errorPath.emplace_back(shadowed, "Shadowed declaration");
-    errorPath.emplace_back(var, "Shadow variable");
-    const std::string &varname = var ? var->str() : type;
-    const std::string Type = char(std::toupper(type[0])) + type.substr(1);
-    const std::string id = "shadow" + Type;
-    const std::string message = "$symbol:" + varname + "\nLocal variable \'$symbol\' shadows outer " + type;
+    errorPath.emplace_back(shadowed, "Shadowed " + shadowedType);
+    errorPath.emplace_back(shadows, "Shadow " + shadowsType);
+    const std::string &varname = shadows ? shadows->str() : shadowsType;
+    const std::string ShadowsType = char(std::toupper(shadowsType[0])) + shadowsType.substr(1);
+    const std::string ShadowedType = char(std::toupper(shadowedType[0])) + shadowedType.substr(1);
+    const std::string id = "shadow" + ShadowedType;
+    const std::string message = "$symbol:" + varname + "\n" + ShadowsType + " \'$symbol\' shadows outer " + shadowedType;
     reportError(std::move(errorPath), Severity::style, id.c_str(), message, CWE398, Certainty::normal);
 }
 
@@ -4885,9 +4904,10 @@ void CheckOther::getErrorMessages(ErrorLogger *errorLogger, const Settings *sett
     c.accessMovedError(nullptr, "v", nullptr, false);
     c.funcArgNamesDifferent("function", 1, nullptr, nullptr);
     c.redundantBitwiseOperationInSwitchError(nullptr, "varname");
-    c.shadowError(nullptr, nullptr, "variable");
-    c.shadowError(nullptr, nullptr, "function");
-    c.shadowError(nullptr, nullptr, "argument");
+    c.shadowError(nullptr, "local variable", nullptr, "variable");
+    c.shadowError(nullptr, "local variable", nullptr, "argument");
+    c.shadowError(nullptr, "local variable", nullptr, "function");
+    c.shadowError(nullptr, "local variable", nullptr, "member");
     c.knownArgumentError(nullptr, nullptr, nullptr, "x", false);
     c.knownPointerToBoolError(nullptr, nullptr);
     c.comparePointersError(nullptr, nullptr, nullptr);

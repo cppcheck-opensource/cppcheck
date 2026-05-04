@@ -6553,9 +6553,9 @@ private:
 
         check("class Foo {\n"
               "    int var;\n"
-              "    void func(int var);\n"
+              "    Foo(int var);\n"
               "};\n"
-              "void Foo::func(int var) {\n"
+              "Foo::Foo(int var) {\n"
               "    this->var = var;\n"
               "}");
         ASSERT_EQUALS("", errout_str());
@@ -13014,14 +13014,14 @@ private:
               "    int i{};\n"
               "    void f() { int i; }\n"
               "};\n");
-        ASSERT_EQUALS("[test.cpp:2:9] -> [test.cpp:3:20]: (style) Local variable 'i' shadows outer variable [shadowVariable]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:9] -> [test.cpp:3:20]: (style) Local variable 'i' shadows outer member [shadowMember]\n", errout_str());
 
         check("struct S {\n"
               "    int i{};\n"
               "    std::vector<int> v;\n"
               "    void f() const { for (const int& i : v) {} }\n"
               "};\n");
-        ASSERT_EQUALS("[test.cpp:2:9] -> [test.cpp:4:38]: (style) Local variable 'i' shadows outer variable [shadowVariable]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:9] -> [test.cpp:4:38]: (style) Local variable 'i' shadows outer member [shadowMember]\n", errout_str());
 
         check("struct S {\n" // #10405
               "    F* f{};\n"
@@ -13031,7 +13031,7 @@ private:
               "void S::f() const {\n"
               "    for (const F& f : fl) {}\n"
               "};\n");
-        ASSERT_EQUALS("[test.cpp:2:8] -> [test.cpp:7:19]: (style) Local variable 'f' shadows outer variable [shadowVariable]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:8] -> [test.cpp:7:19]: (style) Local variable 'f' shadows outer member [shadowMember]\n", errout_str());
 
         check("extern int a;\n"
               "int a;\n"
@@ -13052,6 +13052,30 @@ private:
               "    int i;\n"
               "    friend int f() { int i = 5; return i; }\n"
               "};\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("int x;\n"
+              "void f(int x) {}\n");
+        ASSERT_EQUALS("[test.cpp:1:5] -> [test.cpp:2:12]: (style) Argument 'x' shadows outer variable [shadowVariable]\n", errout_str());
+
+        check("void x() {}\n"
+              "void f(int x) {}\n");
+        ASSERT_EQUALS("[test.cpp:1:6] -> [test.cpp:2:12]: (style) Argument 'x' shadows outer function [shadowFunction]\n", errout_str());
+
+        check("struct S { int v; void func(int v); };\n"
+              "void S::func(int v) { this->v = v; }\n");
+        ASSERT_EQUALS("[test.cpp:1:16] -> [test.cpp:2:18]: (style) Argument 'v' shadows outer member [shadowMember]\n", errout_str());
+
+        check("struct S { int v; void func(void); };\n"
+              "void S::func() { int v = 0; }\n");
+        ASSERT_EQUALS("[test.cpp:1:16] -> [test.cpp:2:22]: (style) Local variable 'v' shadows outer member [shadowMember]\n", errout_str());
+
+        check("struct S { int v; explicit S(int v); };\n"
+              "S::S(int v) : v(v) {}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S { int v(); explicit S(int v); };\n"
+              "S::S(int v) : v(v) {}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
