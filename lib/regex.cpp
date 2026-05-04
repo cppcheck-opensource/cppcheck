@@ -20,6 +20,7 @@
 
 #include "regex.h"
 
+#include <regex>
 #include <utility>
 
 #ifdef _WIN32
@@ -246,6 +247,51 @@ namespace {
     }
 }
 
+namespace {
+    class StdRegex : public Regex
+    {
+    public:
+        explicit StdRegex(std::string pattern)
+            : mPattern(std::move(pattern))
+        {}
+
+        std::string compile()
+        {
+            if (mCompiled)
+                return "regular expression has already been compiled";
+
+            try {
+                mRegex = std::regex(mPattern);
+            } catch (const std::exception& e) {
+                return e.what();
+            }
+            mCompiled = true;
+            return "";
+        }
+
+        std::string match(const std::string& str, const MatchFn& matchFn) const override
+        {
+            if (!mCompiled)
+                return "regular expression has not been compiled yet";
+
+            auto I = std::sregex_iterator(str.cbegin(), str.cend(), mRegex);
+            const auto E = std::sregex_iterator();
+            while (I != E)
+            {
+                const std::smatch& match = *I;
+                matchFn(match.position(), match.position() + match.length());
+                ++I;
+            }
+            return "";
+        }
+
+    private:
+        std::string mPattern;
+        std::regex mRegex;
+        bool mCompiled{};
+    };
+}
+
 template<typename T>
 static T* createAndCompileRegex(std::string pattern, std::string& err)
 {
@@ -259,6 +305,8 @@ std::shared_ptr<Regex> Regex::create(std::string pattern, Engine engine, std::st
     Regex* regex = nullptr;
     if (engine == Engine::Pcre)
         regex = createAndCompileRegex<PcreRegex>(std::move(pattern), err);
+    else if (engine == Engine::Std)
+        regex = createAndCompileRegex<StdRegex>(std::move(pattern), err);
     else {
         err = "unknown regular expression engine";
     }

@@ -1365,6 +1365,9 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                             if (std::strcmp(engine, "pcre") == 0) {
                                 rule.engine = Regex::Engine::Pcre;
                             }
+                            else if (std::strcmp(engine, "std") == 0) {
+                                rule.engine = Regex::Engine::Std;
+                            }
                             else {
                                 mLogger.printError(std::string("unknown regex engine '") + engine + "'.");
                                 return Result::Fail;

@@ -25,4 +25,6 @@ Other:
 - Make it possible to specify the regular expression engine using the `engine` element in a rule XML.
 - Added CLI option `--exitcode-suppress` to specify an error ID which should not result in a non-zero exitcode.
 - Moved source code from https://github.com/danmar/cppcheck to https://github.com/cppcheck-opensource/cppcheck
+- Added support for `std::regex` as the regular engine for rules. It can be specified using `std` in the engine` element in a rule XML.
+-
 -
