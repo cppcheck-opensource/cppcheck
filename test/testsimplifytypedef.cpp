@@ -243,6 +243,7 @@ private:
         TEST_CASE(simplifyTypedefFunction9);
         TEST_CASE(simplifyTypedefFunction10); // #5191
         TEST_CASE(simplifyTypedefFunction11);
+        TEST_CASE(simplifyTypedefFunction12);
 
         TEST_CASE(simplifyTypedefStruct); // #12081 - volatile struct
 
@@ -261,6 +262,7 @@ private:
         TEST_CASE(typedefInfo2);
         TEST_CASE(typedefInfo3);
         TEST_CASE(typedefInfo4);
+        TEST_CASE(typedefInfo5);
     }
 
     class TokenizerTest final : public Tokenizer
@@ -4451,6 +4453,15 @@ private:
         ignore_errout(); // we are not interested in the output
     }
 
+    void simplifyTypedefFunction12() {
+        const char code[] = "typedef (*pfi)(void);\n"
+                            "pfi f;\n";
+
+        const char expected[] = "int ( * f ) ( void ) ;";
+        ASSERT_EQUALS(expected, tok(code, dinit(TokOptions, $.debugwarnings = false)));
+        ASSERT_EQUALS("", errout_str());
+    }
+
     void simplifyTypedefStruct() {
         const char code1[] = "typedef struct S { int x; } xyz;\n"
                              "xyz var;";
@@ -4678,6 +4689,23 @@ private:
                                                 "coord c;");
         ASSERT_EQUALS("  <typedef-info>\n"
                       "    <info name=\"coord\" originalName=\"coord\" file=\"file.c\" line=\"4\" column=\"3\" tagline=\"1\" tagcolumn=\"16\" used=\"1\" isFunctionPointer=\"0\"/>\n"
+                      "  </typedef-info>\n", xml);
+    }
+
+    void typedefInfo5() {
+        const std::string xml = dumpTypedefInfo("typedef (*pfi)(void);\n");
+        ASSERT_EQUALS("  <typedef-info>\n"
+                      "    <info name=\"pfi\" file=\"file.c\" line=\"1\" column=\"1\" used=\"0\" isFunctionPointer=\"1\">\n"
+                      "      <token line=\"1\" column=\"1\" str=\"typedef\"/>\n"
+                      "      <token line=\"1\" column=\"0\" str=\"int\"/>\n"
+                      "      <token line=\"1\" column=\"9\" str=\"(\"/>\n"
+                      "      <token line=\"1\" column=\"10\" str=\"*\"/>\n"
+                      "      <token line=\"1\" column=\"11\" str=\"pfi\"/>\n"
+                      "      <token line=\"1\" column=\"14\" str=\")\"/>\n"
+                      "      <token line=\"1\" column=\"15\" str=\"(\"/>\n"
+                      "      <token line=\"1\" column=\"16\" str=\"void\"/>\n"
+                      "      <token line=\"1\" column=\"20\" str=\")\"/>\n"
+                      "    </info>\n"
                       "  </typedef-info>\n", xml);
     }
 };

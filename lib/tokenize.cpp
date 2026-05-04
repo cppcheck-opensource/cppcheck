@@ -1044,6 +1044,9 @@ void Tokenizer::simplifyTypedef()
     std::map<std::string, std::set<std::string>> numberOfTypedefs;
     for (Token* tok = list.front(); tok; tok = tok->next()) {
         if (tok->str() == "typedef") {
+            if (Token::simpleMatch(tok, "typedef ( *") && Token::simpleMatch(tok->linkAt(1), ") ("))
+                // Implicit return type
+                tok->insertToken("int");
             TypedefSimplifier ts(tok);
             if (ts.fail() || !ts.nameToken())
                 continue;
