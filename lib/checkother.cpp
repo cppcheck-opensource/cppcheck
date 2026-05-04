@@ -2106,7 +2106,7 @@ void CheckOther::checkCharVariable()
                 if (!tok->variable()->isArray() && !tok->variable()->isPointer())
                     continue;
                 const Token *index = tok->next()->astOperand2();
-                if (warning && tok->variable()->isArray() && astIsSignedChar(index) && index->getValueGE(0x80, *mSettings))
+                if (warning && astIsSignedChar(index) && index->getValueLE(-1, *mSettings))
                     signedCharArrayIndexError(tok);
                 if (portability && astIsUnknownSignChar(index) && index->getValueGE(0x80, *mSettings))
                     unknownSignCharArrayIndexError(tok);
