@@ -4290,6 +4290,43 @@ def test_no_valid_configuration(tmp_path):
     ]
 
 
+# The implementation for "A::a" is missing - so don't check if "A::b" is used or not
+def test_unused_private_function_incomplete_impl(tmpdir):
+    test_inc = os.path.join(tmpdir, 'test.h')
+    with open(test_inc, 'wt') as f:
+        f.write(
+            """
+            class A
+            {
+            public:
+                A();
+                void a();
+            private:
+                void b();
+            };
+            """)
+
+    test_file = os.path.join(tmpdir, 'test.cpp')
+    with open(test_file, 'wt') as f:
+        f.write(
+            """
+            #include "test.h"
+            
+            A::A() { }
+            void A::b() { }
+            """)
+
+    args = [
+        '-q',
+        '--template=simple',
+        test_file
+    ]
+
+    ret, stdout, stderr = cppcheck(args)
+    assert stdout == ''
+    assert stderr.splitlines() == []
+    assert ret == 0, stdout
+
 def test_no_valid_configuration_check_config(tmp_path):
     test_file = tmp_path / 'test.c'
     with open(test_file, "w") as f:

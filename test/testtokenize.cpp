@@ -8793,14 +8793,11 @@ private:
     }
 
     void testDirectiveIncludeLocations() {
+        ScopedFile inc1("inc1.h", "#define macro2 val\n#include \"inc2.h\"\n#define macro4 val\n");
+        ScopedFile inc2("inc2.h", "#define macro3 val\n");
+        // TODO: preprocess
         const char filedata[] = "#define macro1 val\n"
-                                "#file \"inc1.h\"\n"
-                                "#define macro2 val\n"
-                                "#file \"inc2.h\"\n"
-                                "#define macro3 val\n"
-                                "#endfile\n"
-                                "#define macro4 val\n"
-                                "#endfile\n"
+                                "#include \"inc1.h\"\n"
                                 "#define macro5 val\n";
         const char dumpdata[] = "  <directivelist>\n"
                                 "    <directive file=\"test.c\" linenr=\"1\" str=\"#define macro1 val\">\n"
@@ -8811,7 +8808,7 @@ private:
                                 "    </directive>\n"
                                 "    <directive file=\"test.c\" linenr=\"2\" str=\"#include &quot;inc1.h&quot;\">\n"
                                 "      <token column=\"1\" str=\"#\"/>\n"
-                                "      <token column=\"2\" str=\"file\"/>\n"
+                                "      <token column=\"2\" str=\"include\"/>\n"
                                 "      <token column=\"7\" str=\"&quot;inc1.h&quot;\"/>\n"
                                 "    </directive>\n"
                                 "    <directive file=\"inc1.h\" linenr=\"1\" str=\"#define macro2 val\">\n"
@@ -8822,7 +8819,7 @@ private:
                                 "    </directive>\n"
                                 "    <directive file=\"inc1.h\" linenr=\"2\" str=\"#include &quot;inc2.h&quot;\">\n"
                                 "      <token column=\"1\" str=\"#\"/>\n"
-                                "      <token column=\"2\" str=\"file\"/>\n"
+                                "      <token column=\"2\" str=\"include\"/>\n"
                                 "      <token column=\"7\" str=\"&quot;inc2.h&quot;\"/>\n"
                                 "    </directive>\n"
                                 "    <directive file=\"inc2.h\" linenr=\"1\" str=\"#define macro3 val\">\n"

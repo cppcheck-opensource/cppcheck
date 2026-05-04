@@ -140,7 +140,7 @@ private:
             cfgs = preprocessor.getConfigs();
         for (const std::string & config : cfgs) {
             try {
-                const bool writeLocations = (strstr(code, "#file") != nullptr) || (strstr(code, "#include") != nullptr);
+                const bool writeLocations = (strstr(code, "#include") != nullptr);
                 cfgcode[config] = preprocessor.getcode(config, files, writeLocations);
             } catch (const simplecpp::Output &) {
                 cfgcode[config] = "";
@@ -390,7 +390,7 @@ private:
         std::vector<std::string> files;
         simplecpp::OutputList outputList;
         simplecpp::TokenList tokens(code,files,"test.c",&outputList);
-        Preprocessor preprocessor(tokens, settings, *this, Standards::Language::C); // TODO: do we need to consider #file?
+        Preprocessor preprocessor(tokens, settings, *this, Standards::Language::C);
         ASSERT(preprocessor.loadFiles(files));
         ASSERT(!preprocessor.reportOutput(outputList, true));
         preprocessor.removeComments();
@@ -405,7 +405,7 @@ private:
     std::size_t getHash(const char (&code)[size]) {
         std::vector<std::string> files;
         simplecpp::TokenList tokens(code,files,"test.c");
-        Preprocessor preprocessor(tokens, settingsDefault, *this, Standards::Language::C); // TODO: do we need to consider #file?
+        Preprocessor preprocessor(tokens, settingsDefault, *this, Standards::Language::C);
         ASSERT(preprocessor.loadFiles(files));
         preprocessor.removeComments();
         return preprocessor.calculateHash("");
@@ -470,16 +470,19 @@ private:
     void error4() {
         // In included file
         {
+            ScopedFile header("ab.h", "#error hello world!\n");
             const auto settings = dinit(Settings, $.userDefines = "TEST");
-            const char code[] = "#file \"ab.h\"\n#error hello world!\n#endfile";
+            const char code[] = "#include \"ab.h\"";
             (void)getcodeforcfg(settings, *this, code, "TEST", "test.c");
             ASSERT_EQUALS("[ab.h:1:2]: (error) #error hello world! [preprocessorErrorDirective]\n", errout_str());
         }
 
         // After including a file
         {
+            ScopedFile header("ab.h", "");
             const auto settings = dinit(Settings, $.userDefines = "TEST");
-            const char code[] = "#file \"ab.h\"\n\n#endfile\n#error aaa";
+            const char code[] = "#include \"ab.h\"\n"
+                                "#error aaa";
             (void)getcodeforcfg(settings, *this, code, "TEST", "test.c");
             ASSERT_EQUALS("[test.c:2:2]: (error) #error aaa [preprocessorErrorDirective]\n", errout_str());
         }
@@ -582,35 +585,35 @@ private:
     }
 
     void includeguard1() {
+        ScopedFile header("abc.h",
+                          "#ifndef abcH\n"
+                          "#define abcH\n"
+                          "#endif\n");
         // Handling include guards..
-        const char filedata[] = "#file \"abc.h\"\n"
-                                "#ifndef abcH\n"
-                                "#define abcH\n"
-                                "#endif\n"
-                                "#endfile\n"
+        const char filedata[] = "#include \"abc.h\"\n"
                                 "#ifdef ABC\n"
                                 "#endif";
         ASSERT_EQUALS("\nABC=ABC\n", getConfigsStr(filedata));
     }
 
     void includeguard2() {
+        ScopedFile header("abc.h",
+                          "foo\n"
+                          "#ifdef ABC\n"
+                          "\n"
+                          "#endif\n");
         // Handling include guards..
-        const char filedata[] = "#file \"abc.h\"\n"
-                                "foo\n"
-                                "#ifdef ABC\n"
-                                "\n"
-                                "#endif\n"
-                                "#endfile\n";
+        const char filedata[] = "#include \"abc.h\"\n";
         ASSERT_EQUALS("\nABC=ABC\n", getConfigsStr(filedata));
     }
 
 
     void ifdefwithfile() {
+        ScopedFile header("abc.h", "class A{};/*\n\n\n\n\n\n\n*/\n");
+
         // Handling include guards..
         const char filedata[] = "#ifdef ABC\n"
-                                "#file \"abc.h\"\n"
-                                "class A{};/*\n\n\n\n\n\n\n*/\n"
-                                "#endfile\n"
+                                "#include \"abc.h\"\n"
                                 "#endif\n"
                                 "int main() {}\n";
 
@@ -1574,10 +1577,10 @@ private:
         }
 
         {
-            const char filedata[] = "#file \"abc.h\"\n"
-                                    "#define a\n"
-                                    "\"\n"
-                                    "#endfile\n";
+            ScopedFile header("abc.h",
+                              "#define a\n"
+                              "\"\n");
+            const char filedata[] = "#include \"abc.h\"";
 
             // expand macros..
             const std::string actual(expandMacros(filedata, *this));
@@ -1587,9 +1590,9 @@ private:
         }
 
         {
-            const char filedata[] = "#file \"abc.h\"\n"
-                                    "#define a\n"
-                                    "#endfile\n"
+            ScopedFile header("abc.h",
+                              "#define a\n");
+            const char filedata[] = "#include \"abc.h\"\n"
                                     "\"\n";
 
             // expand macros..
@@ -2284,14 +2287,14 @@ private:
     }
 
     void getConfigs7e() {
+        ScopedFile header("test.h",
+                          "#ifndef test_h\n"
+                          "#define test_h\n"
+                          "#ifdef ABC\n"
+                          "#endif\n"
+                          "#endif\n");
         const char filedata[] = "#ifdef ABC\n"
-                                "#file \"test.h\"\n"
-                                "#ifndef test_h\n"
-                                "#define test_h\n"
-                                "#ifdef ABC\n"
-                                "#endif\n"
-                                "#endif\n"
-                                "#endfile\n"
+                                "#include \"test.h\"\n"
                                 "#endif\n";
         ASSERT_EQUALS("\nABC=ABC\n", getConfigsStr(filedata));
     }
@@ -2313,12 +2316,12 @@ private:
     }
 
     void getConfigs11() { // #9832 - include guards
-        const char filedata[] = "#file \"test.h\"\n"
-                                "#if !defined(test_h)\n"
-                                "#define test_h\n"
-                                "123\n"
-                                "#endif\n"
-                                "#endfile\n";
+        ScopedFile header("test.h",
+                          "#if !defined(test_h)\n"
+                          "#define test_h\n"
+                          "123\n"
+                          "#endif\n");
+        const char filedata[] = "#include \"test.h\"\n";
         ASSERT_EQUALS("\n", getConfigsStr(filedata));
     }
 

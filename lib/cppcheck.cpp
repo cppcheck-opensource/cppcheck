@@ -1134,15 +1134,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
                     codeWithoutCfg = preprocessor.getcode(currentConfig, files, true);
                 });
 
-                if (startsWith(codeWithoutCfg,"#file"))
-                    codeWithoutCfg.insert(0U, "//");
                 std::string::size_type pos = 0;
-                while ((pos = codeWithoutCfg.find("\n#file",pos)) != std::string::npos)
-                    codeWithoutCfg.insert(pos+1U, "//");
-                pos = 0;
-                while ((pos = codeWithoutCfg.find("\n#endfile",pos)) != std::string::npos)
-                    codeWithoutCfg.insert(pos+1U, "//");
-                pos = 0;
                 while ((pos = codeWithoutCfg.find(Preprocessor::macroChar,pos)) != std::string::npos)
                     codeWithoutCfg[pos] = ' ';
                 mErrorLogger.reportOut(codeWithoutCfg, Color::Reset);
