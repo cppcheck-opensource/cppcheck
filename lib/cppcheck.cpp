@@ -326,10 +326,10 @@ namespace {
     };
 }
 
-static std::string cmdFileName(std::string f)
+std::string CppCheck::cmdFileName(std::string f)
 {
     f = Path::toNativeSeparators(std::move(f));
-    if (f.find(' ') != std::string::npos)
+    if (f.find_first_of(" \t;$<>|&`\n") != std::string::npos)
         return "\"" + f + "\"";
     return f;
 }
@@ -464,11 +464,11 @@ static std::vector<picojson::value> executeAddon(const AddonInfo &addonInfo,
     std::string pythonExe;
 
     if (!addonInfo.executable.empty())
-        pythonExe = addonInfo.executable;
+        pythonExe = CppCheck::cmdFileName(addonInfo.executable);
     else if (!addonInfo.python.empty())
-        pythonExe = cmdFileName(addonInfo.python);
+        pythonExe = CppCheck::cmdFileName(addonInfo.python);
     else if (!defaultPythonExe.empty())
-        pythonExe = cmdFileName(defaultPythonExe);
+        pythonExe = CppCheck::cmdFileName(defaultPythonExe);
     else {
         // store in static variable so we only look this up once - TODO: do not cache globally
         static const std::string detectedPythonExe = detectPython(executeCommand);
@@ -479,13 +479,13 @@ static std::vector<picojson::value> executeAddon(const AddonInfo &addonInfo,
 
     std::string args;
     if (addonInfo.executable.empty())
-        args = cmdFileName(addonInfo.runScript) + " " + cmdFileName(addonInfo.scriptFile);
+        args = CppCheck::cmdFileName(addonInfo.runScript) + " " + CppCheck::cmdFileName(addonInfo.scriptFile);
     args += std::string(args.empty() ? "" : " ") + "--cli" + addonInfo.args;
     if (!premiumArgs.empty() && !addonInfo.executable.empty())
         args += " " + premiumArgs;
 
     const bool is_file_list = (file.find(FILELIST) != std::string::npos);
-    const std::string fileArg = (is_file_list ? " --file-list " : " ") + cmdFileName(file);
+    const std::string fileArg = (is_file_list ? " --file-list " : " ") + CppCheck::cmdFileName(file);
     args += fileArg;
 
     std::string result;
@@ -680,7 +680,7 @@ static std::string getClangFlags(const Settings& setting, Standards::Language la
     flags += getDefinesFlags(setting.userDefines);
 
     for (const std::string &i: setting.userIncludes)
-        flags += "--include " + cmdFileName(i) + " ";
+        flags += "--include " + CppCheck::cmdFileName(i) + " ";
 
     return flags;
 }

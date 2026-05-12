@@ -102,6 +102,7 @@ private:
         TEST_CASE(premiumResultsCache);
         TEST_CASE(purgedConfiguration);
         TEST_CASE(recheckInclude);
+        TEST_CASE(cmdFileName);
     }
 
     void getErrorMessages() const {
@@ -755,6 +756,18 @@ private:
             ASSERT_EQUALS(1, includes.size());
             ASSERT_EQUALS("test1.h", *includes.begin());
         }
+    }
+
+    void cmdFileName() const {
+        ASSERT_EQUALS("x", CppCheck::cmdFileName("x"));
+        ASSERT_EQUALS("\" \"", CppCheck::cmdFileName(" "));
+        ASSERT_EQUALS("\"\t\"", CppCheck::cmdFileName("\t"));
+        ASSERT_EQUALS("\";\"", CppCheck::cmdFileName(";"));
+        ASSERT_EQUALS("\">\"", CppCheck::cmdFileName(">"));
+        ASSERT_EQUALS("\"<\"", CppCheck::cmdFileName("<"));
+        ASSERT_EQUALS("\"|\"", CppCheck::cmdFileName("|"));
+        ASSERT_EQUALS("\"`\"", CppCheck::cmdFileName("`"));
+        ASSERT_EQUALS("\"$\"", CppCheck::cmdFileName("$"));
     }
 
     // TODO: test suppressions
