@@ -328,8 +328,22 @@ namespace {
 
 std::string CppCheck::cmdFileName(std::string f)
 {
+    // do not allow characters that potentially has a special meaning for the shell
+    const auto badpos = f.find_first_of("\t\n\r;$<>|&`");
+    if (badpos != std::string::npos) {
+        std::string c;
+        if (f[badpos] == '\n')
+            c = "<new-line>";
+        else if (f[badpos] == '\r')
+            c = "<carriage-return>";
+        else if (f[badpos] == '\t')
+            c = "<tab>";
+        else
+            c += f[badpos];
+        throw std::runtime_error("Cppcheck does not allow character " + c + " in filename " + f);
+    }
     f = Path::toNativeSeparators(std::move(f));
-    if (f.find_first_of(" \t;$<>|&`\n") != std::string::npos)
+    if (f.find(' ') != std::string::npos)
         return "\"" + f + "\"";
     return f;
 }
