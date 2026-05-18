@@ -75,7 +75,7 @@ private:
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
 
     /** Report all possible errors (for the --errorlist) */
-    void getErrorMessages(ErrorLogger *e, const Settings *settings) const override;
+    void getErrorMessages(ErrorLogger *e, const Settings &settings) const override;
 
     /**
      * Get class information (--doc)
@@ -100,7 +100,7 @@ public:
 private:
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
 
-    void getErrorMessages(ErrorLogger *e, const Settings *settings) const override;
+    void getErrorMessages(ErrorLogger *e, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "If the constructor allocate memory then the destructor must deallocate it.\n";
@@ -120,7 +120,7 @@ public:
 private:
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
 
-    void getErrorMessages(ErrorLogger * errorLogger, const Settings * settings) const override;
+    void getErrorMessages(ErrorLogger * errorLogger, const Settings & settings) const override;
 
     std::string classInfo() const override {
         return "Don't forget to deallocate struct members\n";
@@ -140,7 +140,7 @@ public:
 private:
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
 
-    void getErrorMessages(ErrorLogger *e, const Settings *settings) const override;
+    void getErrorMessages(ErrorLogger *e, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "Not taking the address to allocated memory\n";

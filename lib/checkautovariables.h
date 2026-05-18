@@ -54,7 +54,7 @@ private:
     /** @brief Run checks against the normal token list */
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
 
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
+    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "A pointer to a variable is only valid as long as the variable is in scope.\n"

@@ -5171,7 +5171,7 @@ private:
         // Ticket #2292: segmentation fault when using --errorlist
         CheckBufferOverrun check;
         const Check& c = getCheck(check);
-        c.getErrorMessages(this, nullptr);
+        c.getErrorMessages(this, settingsDefault);
         // we are not interested in the output - just consume it
         ignore_errout();
     }

@@ -1284,9 +1284,9 @@ void CheckLeakAutoVar::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorL
     checkLeakAutoVar.check();
 }
 
-void CheckLeakAutoVar::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
+void CheckLeakAutoVar::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
 {
-    CheckLeakAutoVarImpl c(nullptr, *settings, errorLogger);
+    CheckLeakAutoVarImpl c(nullptr, settings, errorLogger);
     c.deallocReturnError(nullptr, nullptr, "p");
     c.configurationInfo(nullptr, { nullptr, VarInfo::USED });  // user configuration is needed to complete analysis
     c.doubleFreeError(nullptr, nullptr, "varname", 0);

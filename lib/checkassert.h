@@ -48,7 +48,7 @@ public:
 private:
     /** run checks, the token list is not simplified */
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
+    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "Warn if there are side effects in assert statements (since this cause different behaviour in debug/release builds).\n";

@@ -1714,7 +1714,7 @@ void CppCheck::getErrorMessages(ErrorLogger &errorlogger)
 
     // call all "getErrorMessages" in all registered Check classes
     for (const Check * const c : CheckInstances::get())
-        c->getErrorMessages(&errorlogger, &s);
+        c->getErrorMessages(&errorlogger, s);
 
     CheckUnusedFunctions::getErrorMessages(errorlogger);
     Preprocessor::getErrorMessages(errorlogger, s);

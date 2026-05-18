@@ -65,7 +65,7 @@ public:
     virtual void runChecks(const Tokenizer &, ErrorLogger *) = 0;
 
     /** get error messages */
-    virtual void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const = 0;
+    virtual void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const = 0;
 
     /** class name, used to generate documentation */
     const std::string& name() const {

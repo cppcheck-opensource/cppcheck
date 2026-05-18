@@ -4839,9 +4839,9 @@ void CheckOther::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
     checkOther.checkUnionZeroInit();
 }
 
-void CheckOther::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
+void CheckOther::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
 {
-    CheckOtherImpl c(nullptr, *settings, errorLogger);
+    CheckOtherImpl c(nullptr, settings, errorLogger);
 
     // error
     c.zerodivError(nullptr, nullptr);

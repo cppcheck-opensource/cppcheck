@@ -529,9 +529,9 @@ void CheckBool::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
     checkBool.checkBitwiseOnBoolean();
 }
 
-void CheckBool::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
+void CheckBool::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
 {
-    CheckBoolImpl c(nullptr, *settings, errorLogger);
+    CheckBoolImpl c(nullptr, settings, errorLogger);
     c.assignBoolToPointerError(nullptr);
     c.assignBoolToFloatError(nullptr);
     c.comparisonOfFuncReturningBoolError(nullptr, "func_name");

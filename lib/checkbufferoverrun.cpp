@@ -1227,9 +1227,9 @@ void CheckBufferOverrun::runChecks(const Tokenizer &tokenizer, ErrorLogger *erro
     checkBufferOverrun.negativeArraySize();
 }
 
-void CheckBufferOverrun::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
+void CheckBufferOverrun::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
 {
-    CheckBufferOverrunImpl c(nullptr, *settings, errorLogger);
+    CheckBufferOverrunImpl c(nullptr, settings, errorLogger);
     c.arrayIndexError(nullptr, std::vector<Dimension>(), std::vector<ValueFlow::Value>());
     c.pointerArithmeticError(nullptr, nullptr, nullptr);
     c.negativeIndexError(nullptr, std::vector<Dimension>(), std::vector<ValueFlow::Value>());

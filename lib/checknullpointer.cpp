@@ -700,9 +700,9 @@ void CheckNullPointer::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorL
     checkNullPointer.nullConstantDereference();
 }
 
-void CheckNullPointer::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
+void CheckNullPointer::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
 {
-    CheckNullPointerImpl c(nullptr, *settings, errorLogger);
+    CheckNullPointerImpl c(nullptr, settings, errorLogger);
     c.nullPointerError(nullptr, "pointer", nullptr, false);
     c.pointerArithmeticError(nullptr, nullptr, false);
     // TODO: nullPointerArithmeticOutOfMemory

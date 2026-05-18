@@ -68,7 +68,7 @@ public:
     /** @brief Analyse all file infos for all TU */
     bool analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger) override;
 
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
+    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "Check the code for each class.\n"

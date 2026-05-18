@@ -3913,9 +3913,9 @@ void CheckClass::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
     checkClass.checkUnsafeClassRefMember();
 }
 
-void CheckClass::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
+void CheckClass::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
 {
-    CheckClassImpl c(nullptr, *settings, errorLogger);
+    CheckClassImpl c(nullptr, settings, errorLogger);
     c.noConstructorError(nullptr, "classname", false);
     c.noExplicitConstructorError(nullptr, "classname", false);
     //c.copyConstructorMallocError(nullptr, 0, "var");

@@ -542,9 +542,9 @@ void CheckType::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
     checkType.checkFloatToIntegerOverflow();
 }
 
-void CheckType::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
+void CheckType::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
 {
-    CheckTypeImpl c(nullptr, *settings, errorLogger);
+    CheckTypeImpl c(nullptr, settings, errorLogger);
     c.tooBigBitwiseShiftError(nullptr, 32, ValueFlow::Value(64));
     c.tooBigSignedBitwiseShiftError(nullptr, 31, ValueFlow::Value(31));
     c.integerOverflowError(nullptr, ValueFlow::Value(1LL<<32));

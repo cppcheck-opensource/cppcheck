@@ -67,7 +67,7 @@ private:
     bool analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger) override;
 
     /** Get error messages. Used by --errorlist */
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
+    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
 
     /** class info in WIKI format. Used by --doc */
     std::string classInfo() const override {

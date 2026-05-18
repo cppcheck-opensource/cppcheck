@@ -393,9 +393,9 @@ void CheckInternal::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogg
     checkInternal.checkRedundantTokCheck();
 }
 
-void CheckInternal::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
+void CheckInternal::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
 {
-    CheckInternalImpl c(nullptr, *settings, errorLogger);
+    CheckInternalImpl c(nullptr, settings, errorLogger);
     c.simplePatternError(nullptr, "class {", "Match");
     c.complexPatternError(nullptr, "%type% ( )", "Match");
     c.missingPercentCharacterError(nullptr, "%num", "Match");
