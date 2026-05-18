@@ -1697,7 +1697,7 @@ void CheckUninitVarImpl::valueFlowUninit()
 static bool isVariableUsage(const Settings &settings, const Token *vartok, MathLib::bigint *value)
 {
     (void)value;
-    return CheckUninitVarImpl::isVariableUsage(vartok, settings.library, true, CheckUninitVarImpl::Alloc::ARRAY);
+    return !!CheckUninitVarImpl::isVariableUsage(vartok, settings.library, true, CheckUninitVarImpl::Alloc::ARRAY);
 }
 
 // a Clang-built executable will crash when using the anonymous MyFileInfo later on - so put it in a unique namespace for now
