@@ -59,7 +59,7 @@ private:
 class CPPCHECKLIB CheckPostfixOperatorImpl : public CheckImpl {
 public:
     /** This constructor is used when running checks. */
-    CheckPostfixOperatorImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+    CheckPostfixOperatorImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** Check postfix operators */

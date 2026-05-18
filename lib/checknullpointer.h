@@ -80,7 +80,7 @@ private:
 class CPPCHECKLIB CheckNullPointerImpl : public CheckImpl {
 public:
     /** @brief This constructor is used when running checks. */
-    CheckNullPointerImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+    CheckNullPointerImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /**

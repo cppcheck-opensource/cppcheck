@@ -43,7 +43,7 @@ void CheckVaargImpl::va_start_argument()
 {
     const SymbolDatabase* const symbolDatabase = mTokenizer->getSymbolDatabase();
     const std::size_t functions = symbolDatabase->functionScopes.size();
-    const bool printWarnings = mSettings->severity.isEnabled(Severity::warning);
+    const bool printWarnings = mSettings.severity.isEnabled(Severity::warning);
 
     logChecker("CheckVaarg::va_start_argument");
 
@@ -92,7 +92,7 @@ void CheckVaargImpl::referenceAs_va_start_error(const Token *tok, const std::str
 
 void CheckVaargImpl::va_list_usage()
 {
-    if (mSettings->clang)
+    if (mSettings.clang)
         return;
 
     logChecker("CheckVaarg::va_list_usage"); // notclang
@@ -175,14 +175,14 @@ void CheckVaargImpl::va_start_subsequentCallsError(const Token *tok, const std::
 
 void CheckVaarg::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckVaargImpl check(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckVaargImpl check(&tokenizer, tokenizer.getSettings(), errorLogger);
     check.va_start_argument();
     check.va_list_usage();
 }
 
 void CheckVaarg::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
 {
-    CheckVaargImpl c(nullptr, settings, errorLogger);
+    CheckVaargImpl c(nullptr, *settings, errorLogger);
     c.wrongParameterTo_va_start_error(nullptr, "arg1", "arg2");
     c.referenceAs_va_start_error(nullptr, "arg1");
     c.va_end_missingError(nullptr, "vl");

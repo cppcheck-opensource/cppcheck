@@ -127,7 +127,7 @@ private:
 class CPPCHECKLIB CheckOtherImpl : public CheckImpl {
 public:
     /** @brief This constructor is used when running checks. */
-    CheckOtherImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+    CheckOtherImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** Is expression a comparison that checks if a nonzero (unsigned/pointer) expression is less than zero? */

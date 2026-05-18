@@ -106,7 +106,7 @@ static bool isVclTypeInit(const Type *type)
 }
 //---------------------------------------------------------------------------
 
-CheckClassImpl::CheckClassImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+CheckClassImpl::CheckClassImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
     : CheckImpl(tokenizer, settings, errorLogger),
     mSymbolDatabase(tokenizer?tokenizer->getSymbolDatabase():nullptr)
 {}
@@ -140,7 +140,7 @@ bool CheckClassImpl::isInitialized(const Usage& usage, FunctionType funcType) co
                     const Token* ctt = var.valueType()->containerTypeToken;
                     if (!ctt->isStandardType() &&
                         (!ctt->type() || ctt->type()->needInitialization != Type::NeedInitialization::True) &&
-                        !mSettings->library.podtype(ctt->str())) // TODO: handle complex type expression
+                        !mSettings.library.podtype(ctt->str())) // TODO: handle complex type expression
                         return true;
                 }
                 else
@@ -201,16 +201,16 @@ void CheckClassImpl::handleUnionMembers(std::vector<Usage>& usageList)
 
 void CheckClassImpl::constructors()
 {
-    const bool printStyle = mSettings->severity.isEnabled(Severity::style);
-    const bool printWarnings = mSettings->severity.isEnabled(Severity::warning);
-    if (!printStyle && !printWarnings && !mSettings->isPremiumEnabled("uninitMemberVar"))
+    const bool printStyle = mSettings.severity.isEnabled(Severity::style);
+    const bool printWarnings = mSettings.severity.isEnabled(Severity::warning);
+    if (!printStyle && !printWarnings && !mSettings.isPremiumEnabled("uninitMemberVar"))
         return;
 
     logChecker("CheckClass::checkConstructors"); // style,warning
 
-    const bool printInconclusive = mSettings->certainty.isEnabled(Certainty::inconclusive);
+    const bool printInconclusive = mSettings.certainty.isEnabled(Certainty::inconclusive);
     for (const Scope * scope : mSymbolDatabase->classAndStructScopes) {
-        if (mSettings->hasLib("vcl") && isVclTypeInit(scope->definedType))
+        if (mSettings.hasLib("vcl") && isVclTypeInit(scope->definedType))
             continue;
 
         const bool unusedTemplate = Token::simpleMatch(scope->classDef->previous(), ">");
@@ -315,9 +315,9 @@ void CheckClassImpl::constructors()
                         }
                     }
 
-                    if (classNameUsed && mSettings->library.getTypeCheck("operatorEqVarError", var.getTypeName()) != Library::TypeCheck::suppress)
+                    if (classNameUsed && mSettings.library.getTypeCheck("operatorEqVarError", var.getTypeName()) != Library::TypeCheck::suppress)
                         operatorEqVarError(func.token, scope->className, var.name(), missingCopy);
-                } else if (func.access != AccessControl::Private || mSettings->standards.cpp >= Standards::CPP11) {
+                } else if (func.access != AccessControl::Private || mSettings.standards.cpp >= Standards::CPP11) {
                     // If constructor is not in scope then we maybe using a constructor from a different template specialization
                     if (!precedes(scope->bodyStart, func.tokenDef))
                         continue;
@@ -347,7 +347,7 @@ void CheckClassImpl::constructors()
             // Variables with default initializers
             bool hasAnyDefaultInit = false;
             bool hasAnySelfInit = false;
-            const bool cpp14OrLater = mSettings->standards.cpp >= Standards::CPP14;
+            const bool cpp14OrLater = mSettings.standards.cpp >= Standards::CPP14;
             for (Usage& usage : usageList) {
                 const Variable& var = *usage.var;
 
@@ -387,7 +387,7 @@ static bool isPermissibleConversion(const std::string& type)
 
 void CheckClassImpl::checkExplicitConstructors()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("noExplicitConstructor"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("noExplicitConstructor"))
         return;
 
     logChecker("CheckClass::checkExplicitConstructors"); // style
@@ -405,7 +405,7 @@ void CheckClassImpl::checkExplicitConstructors()
 
         // Abstract classes can't be instantiated. But if there is C++11
         // "misuse" by derived classes then these constructors must be explicit.
-        if (isAbstractClass && mSettings->standards.cpp >= Standards::CPP11)
+        if (isAbstractClass && mSettings.standards.cpp >= Standards::CPP11)
             continue;
 
         for (const Function &func : scope->functionList) {
@@ -456,7 +456,7 @@ static bool hasNonCopyableBase(const Scope *scope, bool *unknown)
 
 void CheckClassImpl::copyconstructors()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckClass::checkCopyConstructors"); // warning
@@ -471,7 +471,7 @@ void CheckClassImpl::copyconstructors()
                 const Token* tok = func.token->linkAt(1);
                 for (const Token* const end = func.functionScope->bodyStart; tok != end; tok = tok->next()) {
                     if (Token::Match(tok, "%var% ( new") ||
-                        (Token::Match(tok, "%var% ( %name% (") && mSettings->library.getAllocFuncInfo(tok->tokAt(2)))) {
+                        (Token::Match(tok, "%var% ( %name% (") && mSettings.library.getAllocFuncInfo(tok->tokAt(2)))) {
                         const Variable* var = tok->variable();
                         if (var && var->isPointer() && var->scope() == scope)
                             allocatedVars[tok->varId()] = tok;
@@ -479,7 +479,7 @@ void CheckClassImpl::copyconstructors()
                 }
                 for (const Token* const end = func.functionScope->bodyEnd; tok != end; tok = tok->next()) {
                     if (Token::Match(tok, "%var% = new") ||
-                        (Token::Match(tok, "%var% = %name% (") && mSettings->library.getAllocFuncInfo(tok->tokAt(2)))) {
+                        (Token::Match(tok, "%var% = %name% (") && mSettings.library.getAllocFuncInfo(tok->tokAt(2)))) {
                         const Variable* var = tok->variable();
                         if (var && var->isPointer() && var->scope() == scope && !var->isStatic())
                             allocatedVars[tok->varId()] = tok;
@@ -490,7 +490,7 @@ void CheckClassImpl::copyconstructors()
                 const Token* tok = func.functionScope->bodyStart;
                 for (const Token* const end = func.functionScope->bodyEnd; tok != end; tok = tok->next()) {
                     if (Token::Match(tok, "delete %var%") ||
-                        (Token::Match(tok, "%name% ( %var%") && mSettings->library.getDeallocFuncInfo(tok))) {
+                        (Token::Match(tok, "%name% ( %var%") && mSettings.library.getDeallocFuncInfo(tok))) {
                         const Token *vartok = tok->str() == "delete" ? tok->next() : tok->tokAt(2);
                         const Variable* var = vartok->variable();
                         if (var && var->isPointer() && var->scope() == scope && !var->isStatic())
@@ -580,7 +580,7 @@ void CheckClassImpl::copyconstructors()
             }
             for (tok = func.functionScope->bodyStart; tok != func.functionScope->bodyEnd; tok = tok->next()) {
                 if ((tok->isCpp() && Token::Match(tok, "%var% = new")) ||
-                    (Token::Match(tok, "%var% = %name% (") && (mSettings->library.getAllocFuncInfo(tok->tokAt(2)) || mSettings->library.getReallocFuncInfo(tok->tokAt(2))))) {
+                    (Token::Match(tok, "%var% = %name% (") && (mSettings.library.getAllocFuncInfo(tok->tokAt(2)) || mSettings.library.getReallocFuncInfo(tok->tokAt(2))))) {
                     allocatedVars.erase(tok->varId());
                 } else if (Token::Match(tok, "%var% = %name% . %name% ;") && allocatedVars.find(tok->varId()) != allocatedVars.end()) {
                     copiedVars.insert(tok);
@@ -1059,7 +1059,7 @@ void CheckClassImpl::initializeVarList(const Function &func, std::list<const Fun
                             tok2 = tok2->next();
                             if (tok2->str() == "&")
                                 tok2 = tok2->next();
-                            if (isVariableChangedByFunctionCall(tok2, tok2->strAt(-1) == "&", tok2->varId(), *mSettings, nullptr))
+                            if (isVariableChangedByFunctionCall(tok2, tok2->strAt(-1) == "&", tok2->varId(), mSettings, nullptr))
                                 assignVar(usage, tok2->varId());
                         }
                     }
@@ -1218,7 +1218,7 @@ void CheckClassImpl::operatorEqVarError(const Token *tok, const std::string &cla
 
 void CheckClassImpl::initializationListUsage()
 {
-    if (!mSettings->severity.isEnabled(Severity::performance))
+    if (!mSettings.severity.isEnabled(Severity::performance))
         return;
 
     logChecker("CheckClass::initializationListUsage"); // performance
@@ -1279,7 +1279,7 @@ void CheckClassImpl::initializationListUsage()
                         allowed = false;
                         return ChildrenToVisit::done;
                     }
-                    if (var2->isLocal() && isVariableChanged(var2->nameToken(), previousBeforeAstLeftmostLeaf(tok), var2->declarationId(), /*globalvar*/ false, *mSettings)) {
+                    if (var2->isLocal() && isVariableChanged(var2->nameToken(), previousBeforeAstLeftmostLeaf(tok), var2->declarationId(), /*globalvar*/ false, mSettings)) {
                         allowed = false;
                         return ChildrenToVisit::done;
                     }
@@ -1364,7 +1364,7 @@ static bool checkFunctionUsage(const Function *privfunc, const Scope* scope)
 
 void CheckClassImpl::privateFunctions()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("unusedPrivateFunction"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("unusedPrivateFunction"))
         return;
 
     logChecker("CheckClass::privateFunctions"); // style
@@ -1447,7 +1447,7 @@ static const Scope* findFunctionOf(const Scope* scope)
 void CheckClassImpl::checkMemset()
 {
     logChecker("CheckClass::checkMemset");
-    const bool printWarnings = mSettings->severity.isEnabled(Severity::warning);
+    const bool printWarnings = mSettings.severity.isEnabled(Severity::warning);
     for (const Scope *scope : mSymbolDatabase->functionScopes) {
         for (const Token *tok = scope->bodyStart; tok && tok != scope->bodyEnd; tok = tok->next()) {
             if (Token::Match(tok, "memset|memcpy|memmove (")) {
@@ -1505,7 +1505,7 @@ void CheckClassImpl::checkMemset()
                             type = var->typeScope();
 
                         if (!type && !var->isPointer() && !Token::simpleMatch(var->typeStartToken(), "std :: array") &&
-                            mSettings->library.detectContainerOrIterator(var->typeStartToken())) {
+                            mSettings.library.detectContainerOrIterator(var->typeStartToken())) {
                             memsetError(tok, tok->str(), var->getTypeName(), {}, /*isContainer*/ true);
                         }
                     }
@@ -1525,9 +1525,9 @@ void CheckClassImpl::checkMemset()
                     checkMemsetType(scope, tok, type, false, {});
                 }
             } else if (tok->variable() && tok->variable()->isPointer() && tok->variable()->typeScope() && Token::Match(tok, "%var% = %name% (")) {
-                const Library::AllocFunc* alloc = mSettings->library.getAllocFuncInfo(tok->tokAt(2));
+                const Library::AllocFunc* alloc = mSettings.library.getAllocFuncInfo(tok->tokAt(2));
                 if (!alloc)
-                    alloc = mSettings->library.getReallocFuncInfo(tok->tokAt(2));
+                    alloc = mSettings.library.getReallocFuncInfo(tok->tokAt(2));
                 if (!alloc || alloc->bufferSize == Library::AllocFunc::BufferSize::none)
                     continue;
                 std::set<const Scope *> parsedTypes;
@@ -1547,7 +1547,7 @@ void CheckClassImpl::checkMemsetType(const Scope *start, const Token *tok, const
         return;
     parsedTypes.insert(type);
 
-    const bool printPortability = mSettings->severity.isEnabled(Severity::portability);
+    const bool printPortability = mSettings.severity.isEnabled(Severity::portability);
 
     // recursively check all parent classes
     for (const Type::BaseInfo & i : type->definedType->derivedFrom) {
@@ -1588,7 +1588,7 @@ void CheckClassImpl::checkMemsetType(const Scope *start, const Token *tok, const
             }
 
             // check for std:: type
-            if (var.isStlType() && typeName != "std::array" && !mSettings->library.podtype(typeName)) {
+            if (var.isStlType() && typeName != "std::array" && !mSettings.library.podtype(typeName)) {
                 if (allocation)
                     mallocOnClassError(tok, tok->str(), type->classDef, "'" + typeName + "'");
                 else
@@ -1663,7 +1663,7 @@ void CheckClassImpl::memsetErrorFloat(const Token *tok, const std::string &type)
 
 void CheckClassImpl::operatorEqRetRefThis()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("operatorEqRetRefThis"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("operatorEqRetRefThis"))
         return;
 
     logChecker("CheckClass::operatorEqRetRefThis"); // style
@@ -1762,7 +1762,7 @@ void CheckClassImpl::checkReturnPtrThis(const Scope *scope, const Function *func
         }
         return;
     }
-    if (mSettings->library.isScopeNoReturn(last, nullptr)) {
+    if (mSettings.library.isScopeNoReturn(last, nullptr)) {
         // Typical wrong way to prohibit default assignment operator
         // by always throwing an exception or calling a noreturn function
         operatorEqShouldBeLeftUnimplementedError(func->token);
@@ -1807,7 +1807,7 @@ void CheckClassImpl::operatorEqMissingReturnStatementError(const Token *tok, boo
 
 void CheckClassImpl::operatorEqToSelf()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning) && !mSettings->isPremiumEnabled("operatorEqToSelf"))
+    if (!mSettings.severity.isEnabled(Severity::warning) && !mSettings.isPremiumEnabled("operatorEqToSelf"))
         return;
 
     logChecker("CheckClass::operatorEqToSelf"); // warning
@@ -1867,13 +1867,13 @@ bool CheckClassImpl::hasAllocation(const Function *func, const Scope* scope, con
         end = func->functionScope->bodyEnd;
     for (const Token *tok = start; tok && (tok != end); tok = tok->next()) {
         if (((tok->isCpp() && Token::Match(tok, "%var% = new")) ||
-             (Token::Match(tok, "%var% = %name% (") && mSettings->library.getAllocFuncInfo(tok->tokAt(2)))) &&
+             (Token::Match(tok, "%var% = %name% (") && mSettings.library.getAllocFuncInfo(tok->tokAt(2)))) &&
             isMemberVar(scope, tok))
             return true;
 
         // check for deallocating memory
         const Token *var;
-        if (Token::Match(tok, "%name% ( %var%") && mSettings->library.getDeallocFuncInfo(tok))
+        if (Token::Match(tok, "%name% ( %var%") && mSettings.library.getDeallocFuncInfo(tok))
             var = tok->tokAt(2);
         else if (tok->isCpp() && Token::Match(tok, "delete [ ] %var%"))
             var = tok->tokAt(3);
@@ -2006,7 +2006,7 @@ void CheckClassImpl::virtualDestructor()
     // * base class is deleted
     // unless inconclusive in which case:
     // * A class with any virtual functions should have a destructor that is either public and virtual or protected
-    const bool printInconclusive = mSettings->certainty.isEnabled(Certainty::inconclusive);
+    const bool printInconclusive = mSettings.certainty.isEnabled(Certainty::inconclusive);
 
     std::list<const Function *> inconclusiveErrors;
 
@@ -2029,7 +2029,7 @@ void CheckClassImpl::virtualDestructor()
         }
 
         // Check if destructor is empty and non-empty ..
-        if (mSettings->standards.cpp <= Standards::CPP03) {
+        if (mSettings.standards.cpp <= Standards::CPP03) {
             // Find the destructor
             const Function *destructor = scope->getDestructor();
 
@@ -2136,7 +2136,7 @@ void CheckClassImpl::virtualDestructor()
 void CheckClassImpl::virtualDestructorError(const Token *tok, const std::string &Base, const std::string &Derived, bool inconclusive)
 {
     if (inconclusive) {
-        if (mSettings->severity.isEnabled(Severity::warning))
+        if (mSettings.severity.isEnabled(Severity::warning))
             reportError(tok, Severity::warning, "virtualDestructor", "$symbol:" + Base + "\nClass '$symbol' which has virtual members does not have a virtual destructor.", CWE404, Certainty::inconclusive);
     } else {
         reportError(tok, Severity::error, "virtualDestructor",
@@ -2156,7 +2156,7 @@ void CheckClassImpl::virtualDestructorError(const Token *tok, const std::string 
 
 void CheckClassImpl::thisSubtraction()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckClass::thisSubtraction"); // warning
@@ -2185,9 +2185,9 @@ void CheckClassImpl::thisSubtractionError(const Token *tok)
 
 void CheckClassImpl::checkConst()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) &&
-        !mSettings->isPremiumEnabled("functionConst") &&
-        !mSettings->isPremiumEnabled("functionStatic"))
+    if (!mSettings.severity.isEnabled(Severity::style) &&
+        !mSettings.isPremiumEnabled("functionConst") &&
+        !mSettings.isPremiumEnabled("functionStatic"))
         return;
 
     logChecker("CheckClass::checkConst"); // style,inconclusive
@@ -2248,7 +2248,7 @@ void CheckClassImpl::checkConst()
                 const std::string& opName = func.tokenDef->str();
                 if (opName.compare(8, 5, "const") != 0 && (endsWith(opName,'&') || endsWith(opName,'*')))
                     continue;
-            } else if (mSettings->library.isSmartPointer(func.retDef)) {
+            } else if (mSettings.library.isSmartPointer(func.retDef)) {
                 // Don't warn if a std::shared_ptr etc is returned
                 continue;
             } else {
@@ -2271,7 +2271,7 @@ void CheckClassImpl::checkConst()
             const bool suggestStatic = memberAccessed != MemberAccess::MEMBER && !func.isOperator();
             if ((returnsPtrOrRef || func.isConst() || func.hasLvalRefQualifier()) && !suggestStatic)
                 continue;
-            if (!suggestStatic && !mSettings->certainty.isEnabled(Certainty::inconclusive))
+            if (!suggestStatic && !mSettings.certainty.isEnabled(Certainty::inconclusive))
                 // functionConst is inconclusive. False positives: #3322.
                 continue;
             if (suggestStatic && func.isConst()) {
@@ -2535,7 +2535,7 @@ bool CheckClassImpl::checkConstFunc(const Scope *scope, const Function *func, Me
             return true;
         }
 
-        if (const Library::Function* fLib = mSettings->library.getFunction(funcTok))
+        if (const Library::Function* fLib = mSettings.library.getFunction(funcTok))
             if (fLib->isconst || fLib->ispure)
                 return true;
 
@@ -2696,12 +2696,12 @@ bool CheckClassImpl::checkConstFunc(const Scope *scope, const Function *func, Me
                 }
                 else if (var->smartPointerType() && var->smartPointerType()->classScope && isConstMemberFunc(var->smartPointerType()->classScope, end)) {
                     // empty body
-                } else if (var->isSmartPointer() && Token::simpleMatch(tok1->next(), ".") && tok1->next()->originalName().empty() && mSettings->library.isFunctionConst(end)) {
+                } else if (var->isSmartPointer() && Token::simpleMatch(tok1->next(), ".") && tok1->next()->originalName().empty() && mSettings.library.isFunctionConst(end)) {
                     // empty body
                 } else if (hasOverloadedMemberAccess(end, var->typeScope())) {
                     // empty body
                 } else if (!var->typeScope() || (end->function() != func && !isConstMemberFunc(var->typeScope(), end))) {
-                    if (!mSettings->library.isFunctionConst(end))
+                    if (!mSettings.library.isFunctionConst(end))
                         return false;
                 }
             }
@@ -2806,15 +2806,15 @@ namespace { // avoid one-definition-rule violation
 
 void CheckClassImpl::initializerListOrder()
 {
-    if (!mSettings->isPremiumEnabled("initializerList")) {
-        if (!mSettings->severity.isEnabled(Severity::style))
+    if (!mSettings.isPremiumEnabled("initializerList")) {
+        if (!mSettings.severity.isEnabled(Severity::style))
             return;
 
         // This check is not inconclusive.  However it only determines if the initialization
         // order is incorrect.  It does not determine if being out of order causes
         // a real error.  Out of order is not necessarily an error but you can never
         // have an error if the list is in order so this enforces defensive programming.
-        if (!mSettings->certainty.isEnabled(Certainty::inconclusive))
+        if (!mSettings.certainty.isEnabled(Certainty::inconclusive))
             return;
     }
 
@@ -2945,7 +2945,7 @@ void CheckClassImpl::selfInitializationError(const Token* tok, const std::string
 
 void CheckClassImpl::checkVirtualFunctionCallInConstructor()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
     logChecker("CheckClass::checkVirtualFunctionCallInConstructor"); // warning
     std::map<const Function *, std::list<const Token *>> virtualFunctionCallsMap;
@@ -3012,8 +3012,8 @@ const std::list<const Token *> & CheckClassImpl::getVirtualFunctionCalls(const F
             tok->strAt(-1) == "(") {
             const Token * prev = tok->previous();
             if (prev->previous() &&
-                (mSettings->library.ignorefunction(tok->str())
-                 || mSettings->library.ignorefunction(prev->strAt(-1))))
+                (mSettings.library.ignorefunction(tok->str())
+                 || mSettings.library.ignorefunction(prev->strAt(-1))))
                 continue;
         }
 
@@ -3056,7 +3056,7 @@ void CheckClassImpl::virtualFunctionCallInConstructorError(
     const std::list<const Token *> & tokStack,
     const std::string &funcname)
 {
-    if (scopeFunction && !mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("virtualCallInConstructor"))
+    if (scopeFunction && !mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("virtualCallInConstructor"))
         return;
 
     const char * scopeFunctionTypeName = scopeFunction ? getFunctionTypeName(scopeFunction->type) : "constructor";
@@ -3116,7 +3116,7 @@ void CheckClassImpl::pureVirtualFunctionCallInConstructorError(
 
 void CheckClassImpl::checkDuplInheritedMembers()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning) && !mSettings->isPremiumEnabled("duplInheritedMember"))
+    if (!mSettings.severity.isEnabled(Severity::warning) && !mSettings.isPremiumEnabled("duplInheritedMember"))
         return;
 
     logChecker("CheckClass::checkDuplInheritedMembers"); // warning
@@ -3254,7 +3254,7 @@ void CheckClassImpl::checkCopyCtorAndEqOperator()
 {
     // TODO: This is disabled because of #8388
     // The message must be clarified. How is the behaviour different?
-    if ((true) || !mSettings->severity.isEnabled(Severity::warning)) // NOLINT(readability-simplify-boolean-expr,readability-redundant-parentheses)
+    if ((true) || !mSettings.severity.isEnabled(Severity::warning)) // NOLINT(readability-simplify-boolean-expr,readability-redundant-parentheses)
         return;
 
     // logChecker
@@ -3314,9 +3314,9 @@ void CheckClassImpl::copyCtorAndEqOperatorError(const Token *tok, const std::str
 
 void CheckClassImpl::checkOverride()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("missingOverride"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("missingOverride"))
         return;
-    if (mSettings->standards.cpp < Standards::CPP11)
+    if (mSettings.standards.cpp < Standards::CPP11)
         return;
     logChecker("CheckClass::checkMissingOverride"); // style,c++03
     for (const Scope * classScope : mSymbolDatabase->classAndStructScopes) {
@@ -3420,7 +3420,7 @@ static bool compareTokenRanges(const Token* start1, const Token* end1, const Tok
 
 void CheckClassImpl::checkUselessOverride()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("uselessOverride"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("uselessOverride"))
         return;
 
     logChecker("CheckClass::checkUselessOverride"); // style
@@ -3501,7 +3501,7 @@ static const Variable* getSingleReturnVar(const Scope* scope) {
 
 void CheckClassImpl::checkReturnByReference()
 {
-    if (!mSettings->severity.isEnabled(Severity::performance) && !mSettings->isPremiumEnabled("returnByReference"))
+    if (!mSettings.severity.isEnabled(Severity::performance) && !mSettings.isPremiumEnabled("returnByReference"))
         return;
 
     logChecker("CheckClass::checkReturnByReference"); // performance
@@ -3516,7 +3516,7 @@ void CheckClassImpl::checkReturnByReference()
                 continue;
             if (func.functionPointerUsage)
                 continue;
-            if (const Library::Container* container = mSettings->library.detectContainer(func.retDef))
+            if (const Library::Container* container = mSettings.library.detectContainer(func.retDef))
                 if (container->view)
                     continue;
             if (!func.isConst() && func.hasRvalRefQualifier())
@@ -3531,8 +3531,8 @@ void CheckClassImpl::checkReturnByReference()
                 const bool isView = isContainer && var->valueType()->container->view;
                 bool warn = isContainer && !isView;
                 if (!warn && !isView) {
-                    const std::size_t size = var->valueType()->getSizeOf(*mSettings, ValueType::Accuracy::LowerBound, ValueType::SizeOf::Pointer);
-                    if (size > 2 * mSettings->platform.sizeof_pointer)
+                    const std::size_t size = var->valueType()->getSizeOf(mSettings, ValueType::Accuracy::LowerBound, ValueType::SizeOf::Pointer);
+                    if (size > 2 * mSettings.platform.sizeof_pointer)
                         warn = true;
                 }
                 if (warn)
@@ -3551,7 +3551,7 @@ void CheckClassImpl::returnByReferenceError(const Function* func, const Variable
 
 void CheckClassImpl::checkThisUseAfterFree()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckClass::checkThisUseAfterFree"); // warning
@@ -3561,7 +3561,7 @@ void CheckClassImpl::checkThisUseAfterFree()
         for (const Variable &var : classScope->varlist) {
             // Find possible "self pointer".. pointer/smartpointer member variable of "self" type.
             if (var.valueType() && var.valueType()->smartPointerType != classScope->definedType && var.valueType()->typeScope != classScope) {
-                const ValueType valueType = ValueType::parseDecl(var.typeStartToken(), *mSettings);
+                const ValueType valueType = ValueType::parseDecl(var.typeStartToken(), mSettings);
                 if (valueType.smartPointerType != classScope->definedType)
                     continue;
             }
@@ -3651,7 +3651,7 @@ void CheckClassImpl::thisUseAfterFree(const Token *self, const Token *free, cons
 
 void CheckClassImpl::checkUnsafeClassRefMember()
 {
-    if (!mSettings->safeChecks.classes || !mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.safeChecks.classes || !mSettings.severity.isEnabled(Severity::warning))
         return;
     logChecker("CheckClass::checkUnsafeClassRefMember"); // warning,safeChecks
     for (const Scope * classScope : mSymbolDatabase->classAndStructScopes) {
@@ -3833,7 +3833,7 @@ bool CheckClass::analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<C
     (void)ctu;
     (void)settings;
 
-    CheckClassImpl dummy(nullptr, &settings, &errorLogger);
+    CheckClassImpl dummy(nullptr, settings, &errorLogger);
     dummy.
     logChecker("CheckClass::analyseWholeProgram");
 
@@ -3887,7 +3887,7 @@ void CheckClass::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
     if (tokenizer.isC())
         return;
 
-    CheckClassImpl checkClass(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckClassImpl checkClass(&tokenizer, tokenizer.getSettings(), errorLogger);
 
     // can't be a simplified check .. the 'sizeof' is used.
     checkClass.checkMemset();
@@ -3915,7 +3915,7 @@ void CheckClass::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 
 void CheckClass::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
 {
-    CheckClassImpl c(nullptr, settings, errorLogger);
+    CheckClassImpl c(nullptr, *settings, errorLogger);
     c.noConstructorError(nullptr, "classname", false);
     c.noExplicitConstructorError(nullptr, "classname", false);
     //c.copyConstructorMallocError(nullptr, 0, "var");

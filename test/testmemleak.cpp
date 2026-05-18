@@ -44,7 +44,7 @@ private:
         SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        const CheckMemoryLeakImpl c(&tokenizer, &settingsDefault, this);
+        const CheckMemoryLeakImpl c(&tokenizer, settingsDefault, this);
         return (c.functionReturnType)(&tokenizer.getSymbolDatabase()->scopeList.front().functionList.front());
     }
 
@@ -93,7 +93,7 @@ private:
 
         // there is no allocation
         const Token *tok = Token::findsimplematch(tokenizer.tokens(), "ret =");
-        const CheckMemoryLeakImpl check(&tokenizer, &settingsDefault, nullptr);
+        const CheckMemoryLeakImpl check(&tokenizer, settingsDefault, nullptr);
         ASSERT_EQUALS(CheckMemoryLeakImpl::No, check.getAllocationType(tok->tokAt(2), 1));
     }
 };
@@ -119,7 +119,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check for memory leaks..
-        CheckMemoryLeakInFunctionImpl checkMemoryLeak(&tokenizer, &settings, this);
+        CheckMemoryLeakInFunctionImpl checkMemoryLeak(&tokenizer, settings, this);
         checkMemoryLeak.checkReallocUsage();
     }
 
@@ -501,7 +501,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check for memory leaks..
-        CheckMemoryLeakInClassImpl checkMemoryLeak(&tokenizer, &settings, this);
+        CheckMemoryLeakInClassImpl checkMemoryLeak(&tokenizer, settings, this);
         (checkMemoryLeak.check)();
     }
 
@@ -1706,7 +1706,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check for memory leaks..
-        CheckMemoryLeakStructMemberImpl checkMemoryLeakStructMember(&tokenizer, &settings, this);
+        CheckMemoryLeakStructMemberImpl checkMemoryLeakStructMember(&tokenizer, settings, this);
         (checkMemoryLeakStructMember.check)();
     }
 
@@ -2388,7 +2388,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check for memory leaks..
-        CheckMemoryLeakNoVarImpl checkMemoryLeakNoVar(&tokenizer, &settings, this);
+        CheckMemoryLeakNoVarImpl checkMemoryLeakNoVar(&tokenizer, settings, this);
         (checkMemoryLeakNoVar.check)();
     }
 

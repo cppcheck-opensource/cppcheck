@@ -42,7 +42,7 @@ static const CWE CWE480(480U);   // Use of Incorrect Operator
 
 void CheckExceptionSafetyImpl::destructors()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckExceptionSafety::destructors"); // warning
@@ -90,12 +90,12 @@ void CheckExceptionSafetyImpl::destructorsError(const Token * const tok, const s
 
 void CheckExceptionSafetyImpl::deallocThrow()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning) && !mSettings->isPremiumEnabled("exceptDeallocThrow"))
+    if (!mSettings.severity.isEnabled(Severity::warning) && !mSettings.isPremiumEnabled("exceptDeallocThrow"))
         return;
 
     logChecker("CheckExceptionSafety::deallocThrow"); // warning
 
-    const bool printInconclusive = mSettings->certainty.isEnabled(Certainty::inconclusive);
+    const bool printInconclusive = mSettings.certainty.isEnabled(Certainty::inconclusive);
     const SymbolDatabase* const symbolDatabase = mTokenizer->getSymbolDatabase();
 
     // Deallocate a global/member pointer and then throw exception
@@ -165,7 +165,7 @@ void CheckExceptionSafetyImpl::deallocThrowError(const Token * const tok, const 
 //---------------------------------------------------------------------------
 void CheckExceptionSafetyImpl::checkRethrowCopy()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("exceptRethrowCopy"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("exceptRethrowCopy"))
         return;
 
     logChecker("CheckExceptionSafety::checkRethrowCopy"); // style
@@ -209,7 +209,7 @@ void CheckExceptionSafetyImpl::rethrowCopyError(const Token * const tok, const s
 //---------------------------------------------------------------------------
 void CheckExceptionSafetyImpl::checkCatchExceptionByValue()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("catchExceptionByValue"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("catchExceptionByValue"))
         return;
 
     logChecker("CheckExceptionSafety::checkCatchExceptionByValue"); // style
@@ -298,7 +298,7 @@ void CheckExceptionSafetyImpl::nothrowThrows()
             function->isAttributeNothrow()) { // __attribute__((nothrow)) or __declspec(nothrow) functions
             isNoExcept = true;
         }
-        else if (mSettings->library.isentrypoint(function->name())) {
+        else if (mSettings.library.isentrypoint(function->name())) {
             isEntryPoint = true;
         }
         if (!isNoExcept && !isEntryPoint)
@@ -328,8 +328,8 @@ void CheckExceptionSafetyImpl::entryPointThrowError(const Token * const tok)
 //--------------------------------------------------------------------------
 void CheckExceptionSafetyImpl::unhandledExceptionSpecification()
 {
-    if ((!mSettings->severity.isEnabled(Severity::style) || !mSettings->certainty.isEnabled(Certainty::inconclusive)) &&
-        !mSettings->isPremiumEnabled("unhandledExceptionSpecification"))
+    if ((!mSettings.severity.isEnabled(Severity::style) || !mSettings.certainty.isEnabled(Certainty::inconclusive)) &&
+        !mSettings.isPremiumEnabled("unhandledExceptionSpecification"))
         return;
 
     logChecker("CheckExceptionSafety::unhandledExceptionSpecification"); // style,inconclusive
@@ -338,7 +338,7 @@ void CheckExceptionSafetyImpl::unhandledExceptionSpecification()
 
     for (const Scope * scope : symbolDatabase->functionScopes) {
         // only check functions without exception specification
-        if (scope->function && !scope->function->isThrow() && !mSettings->library.isentrypoint(scope->className)) {
+        if (scope->function && !scope->function->isThrow() && !mSettings.library.isentrypoint(scope->className)) {
             for (const Token *tok = scope->function->functionScope->bodyStart->next();
                  tok != scope->function->functionScope->bodyEnd; tok = tok->next()) {
                 if (tok->str() == "try")
@@ -414,7 +414,7 @@ void CheckExceptionSafety::runChecks(const Tokenizer &tokenizer, ErrorLogger *er
     if (tokenizer.isC())
         return;
 
-    CheckExceptionSafetyImpl checkExceptionSafety(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckExceptionSafetyImpl checkExceptionSafety(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkExceptionSafety.destructors();
     checkExceptionSafety.deallocThrow();
     checkExceptionSafety.checkRethrowCopy();
@@ -426,7 +426,7 @@ void CheckExceptionSafety::runChecks(const Tokenizer &tokenizer, ErrorLogger *er
 
 void CheckExceptionSafety::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
 {
-    CheckExceptionSafetyImpl c(nullptr, settings, errorLogger);
+    CheckExceptionSafetyImpl c(nullptr, *settings, errorLogger);
     c.destructorsError(nullptr, "Class");
     c.deallocThrowError(nullptr, "p");
     c.rethrowCopyError(nullptr, "varname");

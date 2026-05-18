@@ -72,7 +72,7 @@ private:
 class CPPCHECKLIB CheckIOImpl : public CheckImpl {
 public:
     /** @brief This constructor is used when running checks. */
-    CheckIOImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+    CheckIOImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** @brief %Check for missusage of std::cout */

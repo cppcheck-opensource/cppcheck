@@ -41,7 +41,7 @@ static const CWE CWE398(398U);   // Indicator of Poor Code Quality
 
 void CheckAssertImpl::assertWithSideEffects()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckAssert::assertWithSideEffects"); // warning
@@ -58,7 +58,7 @@ void CheckAssertImpl::assertWithSideEffects()
             checkVariableAssignment(tmp, tok->scope());
 
             if (tmp->tokType() != Token::eFunction) {
-                if (const Library::Function* f = mSettings->library.getFunction(tmp)) {
+                if (const Library::Function* f = mSettings.library.getFunction(tmp)) {
                     if (f->isconst || f->ispure)
                         continue;
                     if (Library::getContainerYield(tmp->next()) != Library::Container::Yield::NO_YIELD) // bailout, assume read access
@@ -73,7 +73,7 @@ void CheckAssertImpl::assertWithSideEffects()
                         f->containerYield == Library::Container::Yield::END_ITERATOR ||
                         f->containerYield == Library::Container::Yield::ITERATOR)
                         continue;
-                    sideEffectInAssertError(tmp, mSettings->library.getFunctionName(tmp));
+                    sideEffectInAssertError(tmp, mSettings.library.getFunctionName(tmp));
                 }
                 continue;
             }
@@ -180,13 +180,13 @@ bool CheckAssertImpl::inSameScope(const Token* returnTok, const Token* assignTok
 
 void CheckAssert::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckAssertImpl checkAssert(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckAssertImpl checkAssert(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkAssert.assertWithSideEffects();
 }
 
 void CheckAssert::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
 {
-    CheckAssertImpl c(nullptr, settings, errorLogger);
+    CheckAssertImpl c(nullptr, *settings, errorLogger);
     c.sideEffectInAssertError(nullptr, "function");
     c.assignmentInAssertError(nullptr, "var");
 }

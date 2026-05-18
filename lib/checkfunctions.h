@@ -73,7 +73,7 @@ private:
 class CPPCHECKLIB CheckFunctionsImpl : public CheckImpl {
 public:
     /** This constructor is used when running checks. */
-    CheckFunctionsImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+    CheckFunctionsImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** Check for functions that should not be used */

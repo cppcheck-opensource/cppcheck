@@ -71,7 +71,7 @@ private:
 class CPPCHECKLIB CheckExceptionSafetyImpl : public CheckImpl {
 public:
     /** This constructor is used when running checks. */
-    CheckExceptionSafetyImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+    CheckExceptionSafetyImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** Don't throw exceptions in destructors */

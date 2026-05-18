@@ -55,7 +55,7 @@ void CheckStringImpl::stringLiteralWrite()
         for (const Token* tok = scope->bodyStart->next(); tok != scope->bodyEnd; tok = tok->next()) {
             if (!tok->variable() || !tok->variable()->isPointer())
                 continue;
-            const Token *str = tok->getValueTokenMinStrSize(*mSettings);
+            const Token *str = tok->getValueTokenMinStrSize(mSettings);
             if (!str)
                 continue;
             if (Token::Match(tok, "%var% [") && Token::simpleMatch(tok->linkAt(1), "] ="))
@@ -91,7 +91,7 @@ void CheckStringImpl::stringLiteralWriteError(const Token *tok, const Token *str
 //---------------------------------------------------------------------------
 void CheckStringImpl::checkAlwaysTrueOrFalseStringCompare()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckString::checkAlwaysTrueOrFalseStringCompare"); // warning
@@ -160,7 +160,7 @@ void CheckStringImpl::alwaysTrueStringVariableCompareError(const Token *tok, con
 //-----------------------------------------------------------------------------
 void CheckStringImpl::checkSuspiciousStringCompare()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckString::checkSuspiciousStringCompare"); // warning
@@ -274,7 +274,7 @@ static bool isMacroUsage(const Token* tok)
 //---------------------------------------------------------------------------
 void CheckStringImpl::checkIncorrectStringCompare()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckString::checkIncorrectStringCompare"); // warning
@@ -314,7 +314,7 @@ void CheckStringImpl::checkIncorrectStringCompare()
                 }
             } else if (Token::Match(tok, "%str%|%char%") &&
                        !Token::Match(tok->next(), "%name%") &&
-                       isUsedAsBool(tok, *mSettings) &&
+                       isUsedAsBool(tok, mSettings) &&
                        !isMacroUsage(tok))
                 incorrectStringBooleanError(tok, tok->str());
         }
@@ -343,7 +343,7 @@ void CheckStringImpl::incorrectStringBooleanError(const Token *tok, const std::s
 //---------------------------------------------------------------------------
 void CheckStringImpl::overlappingStrcmp()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckString::overlappingStrcmp"); // warning
@@ -395,7 +395,7 @@ void CheckStringImpl::overlappingStrcmp()
                     if (args1[1]->isLiteral() &&
                         args2[1]->isLiteral() &&
                         args1[1]->str() != args2[1]->str() &&
-                        isSameExpression(true, args1[0], args2[0], *mSettings, true, false))
+                        isSameExpression(true, args1[0], args2[0], mSettings, true, false))
                         overlappingStrcmpError(eq0, ne0);
                 }
             }
@@ -446,7 +446,7 @@ void CheckStringImpl::sprintfOverlappingData()
                 const bool same = isSameExpression(false,
                                                    dest,
                                                    arg,
-                                                   *mSettings,
+                                                   mSettings,
                                                    true,
                                                    false);
                 if (same) {
@@ -473,7 +473,7 @@ void CheckStringImpl::sprintfOverlappingDataError(const Token *funcTok, const To
 
 void CheckString::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckStringImpl checkString(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckStringImpl checkString(&tokenizer, tokenizer.getSettings(), errorLogger);
 
     // Checks
     checkString.strPlusChar();
@@ -487,7 +487,7 @@ void CheckString::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger
 
 void CheckString::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
 {
-    CheckStringImpl c(nullptr, settings, errorLogger);
+    CheckStringImpl c(nullptr, *settings, errorLogger);
     c.stringLiteralWriteError(nullptr, nullptr);
     c.sprintfOverlappingDataError(nullptr, nullptr, "varname");
     c.strPlusCharError(nullptr);

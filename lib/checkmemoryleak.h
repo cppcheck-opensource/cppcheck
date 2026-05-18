@@ -175,7 +175,7 @@ public:
     CheckMemoryLeakImpl(const CheckMemoryLeakImpl &) = delete;
     CheckMemoryLeakImpl& operator=(const CheckMemoryLeakImpl &) = delete;
 
-    CheckMemoryLeakImpl(const Tokenizer *t, const Settings *s, ErrorLogger *e)
+    CheckMemoryLeakImpl(const Tokenizer *t, const Settings &s, ErrorLogger *e)
         : CheckImpl(t, s, e) {}
 
     /** @brief What type of allocation are used.. the "Many" means that several types of allocation and deallocation are used */
@@ -254,7 +254,7 @@ public:
 class CPPCHECKLIB CheckMemoryLeakInFunctionImpl : public CheckMemoryLeakImpl {
 public:
     /** @brief This constructor is used when running checks */
-    CheckMemoryLeakInFunctionImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+    CheckMemoryLeakInFunctionImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
         : CheckMemoryLeakImpl(tokenizer, settings, errorLogger) {}
 
     /**
@@ -271,7 +271,7 @@ public:
 
 class CPPCHECKLIB CheckMemoryLeakInClassImpl : private CheckMemoryLeakImpl {
 public:
-    CheckMemoryLeakInClassImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+    CheckMemoryLeakInClassImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
         : CheckMemoryLeakImpl(tokenizer, settings, errorLogger) {}
 
     void check();
@@ -292,7 +292,7 @@ public:
 class CPPCHECKLIB CheckMemoryLeakStructMemberImpl : private CheckMemoryLeakImpl {
 public:
 
-    CheckMemoryLeakStructMemberImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+    CheckMemoryLeakStructMemberImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
         : CheckMemoryLeakImpl(tokenizer, settings, errorLogger) {}
 
     void check();
@@ -309,7 +309,7 @@ public:
 
 class CPPCHECKLIB CheckMemoryLeakNoVarImpl : private CheckMemoryLeakImpl {
 public:
-    CheckMemoryLeakNoVarImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+    CheckMemoryLeakNoVarImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
         : CheckMemoryLeakImpl(tokenizer, settings, errorLogger) {}
 
     void check();

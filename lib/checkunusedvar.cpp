@@ -726,8 +726,8 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage_iterateScopes(const Scope* c
                      i->typeEndToken()->isStandardType() ||
                      i->isStlType() ||
                      mTokenizer->getSymbolDatabase()->isRecordTypeWithoutSideEffects(i->type()) ||
-                     mSettings->library.detectContainer(i->typeStartToken()) ||
-                     mSettings->library.getTypeCheck("unusedvar", i->typeStartToken()->str()) == Library::TypeCheck::check)
+                     mSettings.library.detectContainer(i->typeStartToken()) ||
+                     mSettings.library.getTypeCheck("unusedvar", i->typeStartToken()->str()) == Library::TypeCheck::check)
                 type = Variables::standard;
 
             if (type == Variables::none || isPartOfClassStructUnion(i->typeStartToken()))
@@ -852,7 +852,7 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage_iterateScopes(const Scope* c
             }
         }
         // Freeing memory (not considered "using" the pointer if it was also allocated in this function)
-        if ((Token::Match(tok, "%name% ( %var% )") && mSettings->library.getDeallocFuncInfo(tok)) ||
+        if ((Token::Match(tok, "%name% ( %var% )") && mSettings.library.getDeallocFuncInfo(tok)) ||
             (tok->isCpp() && (Token::Match(tok, "delete %var% ;") || Token::Match(tok, "delete [ ] %var% ;")))) {
             nonneg int varid = 0;
             if (tok->str() != "delete") {
@@ -958,10 +958,10 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage_iterateScopes(const Scope* c
                 // Consider allocating memory separately because allocating/freeing alone does not constitute using the variable
                 else if (var && var->mType == Variables::pointer &&
                          Token::Match(start, "%name% =") &&
-                         findAllocFuncCallToken(start->next()->astOperand2(), mSettings->library)) {
+                         findAllocFuncCallToken(start->next()->astOperand2(), mSettings.library)) {
 
-                    const Token *allocFuncCallToken = findAllocFuncCallToken(start->next()->astOperand2(), mSettings->library);
-                    const Library::AllocFunc *allocFunc = mSettings->library.getAllocFuncInfo(allocFuncCallToken);
+                    const Token *allocFuncCallToken = findAllocFuncCallToken(start->next()->astOperand2(), mSettings.library);
+                    const Library::AllocFunc *allocFunc = mSettings.library.getAllocFuncInfo(allocFuncCallToken);
 
                     bool allocateMemory = !allocFunc || Library::ismemory(allocFunc->groupId);
 
@@ -1043,7 +1043,7 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage_iterateScopes(const Scope* c
                 // Consider allocating memory separately because allocating/freeing alone does not constitute using the variable
                 if (var->mType == Variables::pointer &&
                     ((tok->isCpp() && Token::simpleMatch(skipBrackets(tok->next()), "= new")) ||
-                     (Token::Match(skipBrackets(tok->next()), "= %name% (") && mSettings->library.getAllocFuncInfo(tok->tokAt(2))))) {
+                     (Token::Match(skipBrackets(tok->next()), "= %name% (") && mSettings.library.getAllocFuncInfo(tok->tokAt(2))))) {
                     variables.allocateMemory(varid, tok);
                 } else if (var->mType == Variables::pointer || var->mType == Variables::reference) {
                     variables.read(varid, tok);
@@ -1175,7 +1175,7 @@ static bool isReturnedByRef(const Variable* var, const Function* func)
 
 void CheckUnusedVarImpl::checkFunctionVariableUsage()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->checkLibrary && !mSettings->isPremiumEnabled("unusedVariable"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.checkLibrary && !mSettings.isPremiumEnabled("unusedVariable"))
         return;
 
     logChecker("CheckUnusedVar::checkFunctionVariableUsage"); // style
@@ -1184,7 +1184,7 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage()
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
 
     auto reportLibraryCfgError = [this](const Token* tok, const std::string& typeName) {
-        if (mSettings->checkLibrary) {
+        if (mSettings.checkLibrary) {
             reportError(tok,
                         Severity::information,
                         "checkLibraryCheckType",
@@ -1331,7 +1331,7 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage()
                     std::string typeName = op1Var->getTypeName();
                     if (startsWith(typeName, "::"))
                         typeName.erase(typeName.begin(), typeName.begin() + 2);
-                    switch (mSettings->library.getTypeCheck("unusedvar", typeName)) {
+                    switch (mSettings.library.getTypeCheck("unusedvar", typeName)) {
                     case Library::TypeCheck::def:
                         bailoutTypeName = std::move(typeName);
                         break;
@@ -1370,7 +1370,7 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage()
                     continue;
             }
 
-            FwdAnalysis fwdAnalysis(*mSettings);
+            FwdAnalysis fwdAnalysis(mSettings);
             const Token* scopeEnd = ValueFlow::getEndOfExprScope(expr, scope, /*smallest*/ false);
             if (fwdAnalysis.unusedValue(expr, start, scopeEnd)) {
                 if (!bailoutTypeName.empty()) {
@@ -1378,7 +1378,7 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage()
                         reportLibraryCfgError(tok, bailoutTypeName);
                     continue;
                 }
-                if (isTrivialInit && findExpressionChanged(expr, start, scopeEnd, *mSettings))
+                if (isTrivialInit && findExpressionChanged(expr, start, scopeEnd, mSettings))
                     continue;
 
                 // warn
@@ -1460,7 +1460,7 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage()
                     if (mTokenizer->isCPP() && var->isClass() &&
                         (!var->valueType() || var->valueType()->type == ValueType::Type::UNKNOWN_TYPE)) {
                         const std::string typeName = var->getTypeName();
-                        switch (mSettings->library.getTypeCheck("unusedvar", typeName)) {
+                        switch (mSettings.library.getTypeCheck("unusedvar", typeName)) {
                         case Library::TypeCheck::def:
                             reportLibraryCfgError(vnt, typeName);
                             break;
@@ -1481,7 +1481,7 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage()
 
 void CheckUnusedVarImpl::unusedVariableError(const Token *tok, const std::string &varname)
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("unusedVariable"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("unusedVariable"))
         return;
 
     reportError(tok, Severity::style, "unusedVariable", "$symbol:" + varname + "\nUnused variable: $symbol", CWE563, Certainty::normal);
@@ -1489,7 +1489,7 @@ void CheckUnusedVarImpl::unusedVariableError(const Token *tok, const std::string
 
 void CheckUnusedVarImpl::allocatedButUnusedVariableError(const Token *tok, const std::string &varname)
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("unusedVariable"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("unusedVariable"))
         return;
 
     reportError(tok, Severity::style, "unusedAllocatedMemory", "$symbol:" + varname + "\nVariable '$symbol' is allocated memory that is never used.", CWE563, Certainty::normal);
@@ -1497,7 +1497,7 @@ void CheckUnusedVarImpl::allocatedButUnusedVariableError(const Token *tok, const
 
 void CheckUnusedVarImpl::unreadVariableError(const Token *tok, const std::string &varname, bool modified)
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("unusedVariable"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("unusedVariable"))
         return;
 
     if (modified)
@@ -1508,7 +1508,7 @@ void CheckUnusedVarImpl::unreadVariableError(const Token *tok, const std::string
 
 void CheckUnusedVarImpl::unassignedVariableError(const Token *tok, const std::string &varname)
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("unusedVariable"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("unusedVariable"))
         return;
 
     reportError(tok, Severity::style, "unassignedVariable", "$symbol:" + varname + "\nVariable '$symbol' is not assigned a value.", CWE665, Certainty::normal);
@@ -1519,7 +1519,7 @@ void CheckUnusedVarImpl::unassignedVariableError(const Token *tok, const std::st
 //---------------------------------------------------------------------------
 void CheckUnusedVarImpl::checkStructMemberUsage()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("unusedStructMember") && !mSettings->isPremiumEnabled("unusedVariable"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("unusedStructMember") && !mSettings.isPremiumEnabled("unusedVariable"))
         return;
 
     logChecker("CheckUnusedVar::checkStructMemberUsage"); // style
@@ -1726,7 +1726,7 @@ bool CheckUnusedVarImpl::isEmptyType(const Type* type)
 
 void CheckUnusedVar::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckUnusedVarImpl checkUnusedVar(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckUnusedVarImpl checkUnusedVar(&tokenizer, tokenizer.getSettings(), errorLogger);
 
     // Coding style checks
     checkUnusedVar.checkStructMemberUsage();
@@ -1735,7 +1735,7 @@ void CheckUnusedVar::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLog
 
 void CheckUnusedVar::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
 {
-    CheckUnusedVarImpl c(nullptr, settings, errorLogger);
+    CheckUnusedVarImpl c(nullptr, *settings, errorLogger);
     c.unusedVariableError(nullptr, "varname");
     c.allocatedButUnusedVariableError(nullptr, "varname");
     c.unreadVariableError(nullptr, "varname", false);

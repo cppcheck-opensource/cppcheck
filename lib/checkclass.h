@@ -100,7 +100,7 @@ public:
 class CPPCHECKLIB CheckClassImpl : public CheckImpl {
 public:
     /** This constructor is used when running checks. */
-    CheckClassImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger);
+    CheckClassImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger);
 
     /** @brief Set of the STL types whose operator[] is not const */
     static const std::set<std::string> stl_containers_not_const;

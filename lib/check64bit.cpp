@@ -36,12 +36,12 @@
 // CWE ids used
 static const CWE CWE758(758U);   // Reliance on Undefined, Unspecified, or Implementation-Defined Behavior
 
-static bool is32BitIntegerReturn(const Function* func, const Settings* settings)
+static bool is32BitIntegerReturn(const Function* func, const Settings& settings)
 {
-    if (settings->platform.sizeof_pointer != 8)
+    if (settings.platform.sizeof_pointer != 8)
         return false;
     const ValueType* vt = func->arg->valueType();
-    return vt && vt->pointer == 0 && vt->isIntegral() && vt->getSizeOf(*settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer) == 4;
+    return vt && vt->pointer == 0 && vt->isIntegral() && vt->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer) == 4;
 }
 
 static bool isFunctionPointer(const Token* tok)
@@ -53,7 +53,7 @@ static bool isFunctionPointer(const Token* tok)
 
 void Check64BitPortabilityImpl::pointerassignment()
 {
-    if (!mSettings->severity.isEnabled(Severity::portability))
+    if (!mSettings.severity.isEnabled(Severity::portability))
         return;
 
     logChecker("Check64BitPortability::pointerassignment"); // portability
@@ -185,13 +185,13 @@ void Check64BitPortabilityImpl::returnIntegerError(const Token *tok)
 
 void Check64BitPortability::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    Check64BitPortabilityImpl check64BitPortability(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    Check64BitPortabilityImpl check64BitPortability(&tokenizer, tokenizer.getSettings(), errorLogger);
     check64BitPortability.pointerassignment();
 }
 
 void Check64BitPortability::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
 {
-    Check64BitPortabilityImpl c(nullptr, settings, errorLogger);
+    Check64BitPortabilityImpl c(nullptr, *settings, errorLogger);
     c.assignmentAddressToIntegerError(nullptr);
     c.assignmentIntegerToAddressError(nullptr);
     c.returnIntegerError(nullptr);

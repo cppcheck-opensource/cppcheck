@@ -96,7 +96,7 @@ class CPPCHECKLIB CheckBufferOverrunImpl : public CheckImpl
 {
 public:
     /** This constructor is used when running checks. */
-    CheckBufferOverrunImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+    CheckBufferOverrunImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     void arrayIndex();

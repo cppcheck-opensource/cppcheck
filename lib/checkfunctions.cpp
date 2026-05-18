@@ -54,7 +54,7 @@ static const CWE CWE688(688U);  // Function Call With Incorrect Variable or Refe
 
 void CheckFunctionsImpl::checkProhibitedFunctions()
 {
-    const bool checkAlloca = mSettings->severity.isEnabled(Severity::warning) && ((mTokenizer->isC() && mSettings->standards.c >= Standards::C99) || mSettings->standards.cpp >= Standards::CPP11);
+    const bool checkAlloca = mSettings.severity.isEnabled(Severity::warning) && ((mTokenizer->isC() && mSettings.standards.c >= Standards::C99) || mSettings.standards.cpp >= Standards::CPP11);
 
     logChecker("CheckFunctions::checkProhibitedFunctions");
 
@@ -66,7 +66,7 @@ void CheckFunctionsImpl::checkProhibitedFunctions()
             // alloca() is special as it depends on the code being C or C++, so it is not in Library
             if (checkAlloca && Token::simpleMatch(tok, "alloca (") && (!tok->function() || tok->function()->nestedIn->type == ScopeType::eGlobal)) {
                 if (tok->isC()) {
-                    if (mSettings->standards.c > Standards::C89)
+                    if (mSettings.standards.c > Standards::C89)
                         reportError(tok, Severity::warning, "allocaCalled",
                                     "$symbol:alloca\n"
                                     "Obsolete function 'alloca' called. In C99 and later it is recommended to use a variable length array instead.\n"
@@ -84,10 +84,10 @@ void CheckFunctionsImpl::checkProhibitedFunctions()
                 if (tok->function() && tok->function()->hasBody())
                     continue;
 
-                const Library::WarnInfo* wi = mSettings->library.getWarnInfo(tok);
+                const Library::WarnInfo* wi = mSettings.library.getWarnInfo(tok);
                 if (wi) {
-                    if (mSettings->severity.isEnabled(wi->severity) && ((tok->isC() && mSettings->standards.c >= wi->standards.c) || (tok->isCpp() && mSettings->standards.cpp >= wi->standards.cpp))) {
-                        const std::string daca = mSettings->daca ? "prohibited" : "";
+                    if (mSettings.severity.isEnabled(wi->severity) && ((tok->isC() && mSettings.standards.c >= wi->standards.c) || (tok->isCpp() && mSettings.standards.cpp >= wi->standards.cpp))) {
+                        const std::string daca = mSettings.daca ? "prohibited" : "";
                         const std::string prefix = daca + tok->str();
                         functionCalledError(tok, wi->severity, prefix, wi->message);
                     }
@@ -120,24 +120,24 @@ void CheckFunctionsImpl::invalidFunctionUsage()
                 const Token * const argtok = arguments[argnr-1];
 
                 // check <valid>...</valid>
-                const ValueFlow::Value *invalidValue = argtok->getInvalidValue(functionToken,argnr,*mSettings);
+                const ValueFlow::Value *invalidValue = argtok->getInvalidValue(functionToken,argnr,mSettings);
                 if (invalidValue) {
-                    invalidFunctionArgError(argtok, functionToken->next()->astOperand1()->expressionString(), argnr, invalidValue, mSettings->library.validarg(functionToken, argnr));
+                    invalidFunctionArgError(argtok, functionToken->next()->astOperand1()->expressionString(), argnr, invalidValue, mSettings.library.validarg(functionToken, argnr));
                 }
 
                 if (astIsBool(argtok)) {
                     // check <not-bool>
-                    if (mSettings->library.isboolargbad(functionToken, argnr))
+                    if (mSettings.library.isboolargbad(functionToken, argnr))
                         invalidFunctionArgBoolError(argtok, functionToken->str(), argnr);
 
                     // Are the values 0 and 1 valid?
-                    else if (!mSettings->library.isIntArgValid(functionToken, argnr, 0, *mSettings))
-                        invalidFunctionArgError(argtok, functionToken->str(), argnr, nullptr, mSettings->library.validarg(functionToken, argnr));
-                    else if (!mSettings->library.isIntArgValid(functionToken, argnr, 1, *mSettings))
-                        invalidFunctionArgError(argtok, functionToken->str(), argnr, nullptr, mSettings->library.validarg(functionToken, argnr));
+                    else if (!mSettings.library.isIntArgValid(functionToken, argnr, 0, mSettings))
+                        invalidFunctionArgError(argtok, functionToken->str(), argnr, nullptr, mSettings.library.validarg(functionToken, argnr));
+                    else if (!mSettings.library.isIntArgValid(functionToken, argnr, 1, mSettings))
+                        invalidFunctionArgError(argtok, functionToken->str(), argnr, nullptr, mSettings.library.validarg(functionToken, argnr));
                 }
                 // check <strz>
-                if (mSettings->library.isargstrz(functionToken, argnr)) {
+                if (mSettings.library.isargstrz(functionToken, argnr)) {
                     if (Token::Match(argtok, "& %var% !![") && argtok->next() && argtok->next()->valueType()) {
                         const ValueType * valueType = argtok->next()->valueType();
                         const Variable * variable = argtok->next()->variable();
@@ -153,7 +153,7 @@ void CheckFunctionsImpl::invalidFunctionUsage()
                     // Is non-null terminated local variable of type char (e.g. char buf[] = {'x'};) ?
                     if (variable && variable->isLocal()
                         && valueType && (valueType->type == ValueType::Type::CHAR || valueType->type == ValueType::Type::WCHAR_T)
-                        && !isVariablesChanged(variable->declEndToken(), functionToken, valueType->pointer, { variable }, *mSettings)) {
+                        && !isVariablesChanged(variable->declEndToken(), functionToken, valueType->pointer, { variable }, mSettings)) {
                         const Token* varTok = variable->declEndToken();
                         MathLib::bigint count = -1; // Find out explicitly set count, e.g.: char buf[3] = {...}. Variable 'count' is set to 3 then.
                         if (varTok && Token::simpleMatch(varTok->astOperand1(), "["))
@@ -183,7 +183,7 @@ void CheckFunctionsImpl::invalidFunctionUsage()
                                 invalidFunctionArgStrError(argtok, functionToken->str(), argnr);
                             }
                         } else if (count > -1 && Token::Match(varTok, "= %str%")) {
-                            const Token* strTok = varTok->getValueTokenMinStrSize(*mSettings);
+                            const Token* strTok = varTok->getValueTokenMinStrSize(mSettings);
                             if (strTok) {
                                 const int strSize = Token::getStrArraySize(strTok);
                                 if (strSize > count && strTok->str().find('\0') == std::string::npos)
@@ -247,9 +247,9 @@ void CheckFunctionsImpl::invalidFunctionArgStrError(const Token *tok, const std:
 //---------------------------------------------------------------------------
 void CheckFunctionsImpl::checkIgnoredReturnValue()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning) &&
-        !mSettings->severity.isEnabled(Severity::style) &&
-        !mSettings->isPremiumEnabled("ignoredReturnValue"))
+    if (!mSettings.severity.isEnabled(Severity::warning) &&
+        !mSettings.severity.isEnabled(Severity::style) &&
+        !mSettings.isPremiumEnabled("ignoredReturnValue"))
         return;
 
     logChecker("CheckFunctions::checkIgnoredReturnValue"); // style,warning
@@ -282,13 +282,13 @@ void CheckFunctionsImpl::checkIgnoredReturnValue()
 
             if ((!tok->function() || !Token::Match(tok->function()->retDef, "void %name%")) &&
                 tok->next()->astOperand1()) {
-                const Library::UseRetValType retvalTy = mSettings->library.getUseRetValType(tok);
+                const Library::UseRetValType retvalTy = mSettings.library.getUseRetValType(tok);
                 const bool warn = (tok->function() && (tok->function()->isAttributeNodiscard() || tok->function()->isAttributePure() || tok->function()->isAttributeConst())) ||
                                   // avoid duplicate warnings for resource-allocating functions
-                                  (retvalTy == Library::UseRetValType::DEFAULT && mSettings->library.getAllocFuncInfo(tok) == nullptr);
-                if (mSettings->severity.isEnabled(Severity::warning) && warn)
+                                  (retvalTy == Library::UseRetValType::DEFAULT && mSettings.library.getAllocFuncInfo(tok) == nullptr);
+                if (mSettings.severity.isEnabled(Severity::warning) && warn)
                     ignoredReturnValueError(tok, tok->next()->astOperand1()->expressionString());
-                else if (mSettings->severity.isEnabled(Severity::style) &&
+                else if (mSettings.severity.isEnabled(Severity::style) &&
                          retvalTy == Library::UseRetValType::ERROR_CODE)
                     ignoredReturnErrorCode(tok, tok->next()->astOperand1()->expressionString());
             }
@@ -321,7 +321,7 @@ void CheckFunctionsImpl::checkMissingReturn()
         const Function *function = scope->function;
         if (!function || !function->hasBody())
             continue;
-        if (function->name() == "main" && !(mTokenizer->isC() && mSettings->standards.c < Standards::C99))
+        if (function->name() == "main" && !(mTokenizer->isC() && mSettings.standards.c < Standards::C99))
             continue;
         if (function->type != FunctionType::eFunction && function->type != FunctionType::eOperatorEqual)
             continue;
@@ -329,7 +329,7 @@ void CheckFunctionsImpl::checkMissingReturn()
             continue;
         if (Function::returnsVoid(function, true))
             continue;
-        const Token *errorToken = checkMissingReturnScope(scope->bodyEnd, mSettings->library);
+        const Token *errorToken = checkMissingReturnScope(scope->bodyEnd, mSettings.library);
         if (errorToken)
             missingReturnError(errorToken);
     }
@@ -441,10 +441,10 @@ void CheckFunctionsImpl::missingReturnError(const Token* tok)
 //---------------------------------------------------------------------------
 void CheckFunctionsImpl::checkMathFunctions()
 {
-    const bool styleC99 = mSettings->severity.isEnabled(Severity::style) && ((mTokenizer->isC() && mSettings->standards.c != Standards::C89) || (mTokenizer->isCPP() && mSettings->standards.cpp != Standards::CPP03));
-    const bool printWarnings = mSettings->severity.isEnabled(Severity::warning);
+    const bool styleC99 = mSettings.severity.isEnabled(Severity::style) && ((mTokenizer->isC() && mSettings.standards.c != Standards::C89) || (mTokenizer->isCPP() && mSettings.standards.cpp != Standards::CPP03));
+    const bool printWarnings = mSettings.severity.isEnabled(Severity::warning);
 
-    if (!styleC99 && !printWarnings && !mSettings->isPremiumEnabled("wrongmathcall"))
+    if (!styleC99 && !printWarnings && !mSettings.isPremiumEnabled("wrongmathcall"))
         return;
 
     logChecker("CheckFunctions::checkMathFunctions"); // style,warning,c99,c++11
@@ -528,7 +528,7 @@ void CheckFunctionsImpl::memsetZeroBytes()
 //       <warn knownIntValue="0" severity="warning" msg="..."/>
 //     </arg>
 
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckFunctions::memsetZeroBytes"); // warning
@@ -567,8 +567,8 @@ void CheckFunctionsImpl::memsetInvalid2ndParam()
 //       <warn possibleIntValue=":-129,256:" severity="warning" msg="..."/>
 //     </arg>
 
-    const bool printPortability = mSettings->severity.isEnabled(Severity::portability);
-    const bool printWarning = mSettings->severity.isEnabled(Severity::warning);
+    const bool printPortability = mSettings.severity.isEnabled(Severity::portability);
+    const bool printWarning = mSettings.severity.isEnabled(Severity::warning);
     if (!printWarning && !printPortability)
         return;
 
@@ -596,8 +596,8 @@ void CheckFunctionsImpl::memsetInvalid2ndParam()
 
             if (printWarning && secondParamTok->isNumber()) { // Check if the second parameter is a literal and is out of range
                 const MathLib::bigint value = MathLib::toBigNumber(secondParamTok);
-                const long long sCharMin = mSettings->platform.signedCharMin();
-                const long long uCharMax = mSettings->platform.unsignedCharMax();
+                const long long sCharMin = mSettings.platform.signedCharMin();
+                const long long uCharMax = mSettings.platform.unsignedCharMax();
                 if (value < sCharMin || value > uCharMax)
                     memsetValueOutOfRangeError(secondParamTok, secondParamTok->str());
             }
@@ -627,7 +627,7 @@ void CheckFunctionsImpl::memsetValueOutOfRangeError(const Token *tok, const std:
 
 void CheckFunctionsImpl::checkLibraryMatchFunctions()
 {
-    if (!mSettings->checkLibrary)
+    if (!mSettings.checkLibrary)
         return;
 
     bool insideNew = false;
@@ -665,32 +665,32 @@ void CheckFunctionsImpl::checkLibraryMatchFunctions()
 
         if (Token::simpleMatch(tok->astParent(), ".")) {
             const Token* contTok = tok->astParent()->astOperand1();
-            if (astContainerAction(contTok, mSettings->library) != Library::Container::Action::NO_ACTION)
+            if (astContainerAction(contTok, mSettings.library) != Library::Container::Action::NO_ACTION)
                 continue;
-            if (astContainerYield(contTok, mSettings->library) != Library::Container::Yield::NO_YIELD)
+            if (astContainerYield(contTok, mSettings.library) != Library::Container::Yield::NO_YIELD)
                 continue;
         }
 
-        if (!mSettings->library.isNotLibraryFunction(tok))
+        if (!mSettings.library.isNotLibraryFunction(tok))
             continue;
 
-        const std::string &functionName = mSettings->library.getFunctionName(tok);
+        const std::string &functionName = mSettings.library.getFunctionName(tok);
         if (functionName.empty())
             continue;
 
-        if (mSettings->library.functions().find(functionName) != mSettings->library.functions().end())
+        if (mSettings.library.functions().find(functionName) != mSettings.library.functions().end())
             continue;
 
-        if (mSettings->library.podtype(tok->expressionString()))
+        if (mSettings.library.podtype(tok->expressionString()))
             continue;
 
-        if (mSettings->library.getTypeCheck("unusedvar", functionName) != Library::TypeCheck::def)
+        if (mSettings.library.getTypeCheck("unusedvar", functionName) != Library::TypeCheck::def)
             continue;
 
         const Token* start = tok;
         while (Token::Match(start->tokAt(-2), "%name% ::") && !start->tokAt(-2)->isKeyword())
             start = start->tokAt(-2);
-        if (mSettings->library.detectContainerOrIterator(start))
+        if (mSettings.library.detectContainerOrIterator(start))
             continue;
 
         reportError(tok,
@@ -705,10 +705,10 @@ void CheckFunctionsImpl::checkLibraryMatchFunctions()
 // details: https://en.cppreference.com/w/cpp/language/copy_elision
 void CheckFunctionsImpl::returnLocalStdMove()
 {
-    if (!mTokenizer->isCPP() || mSettings->standards.cpp < Standards::CPP11)
+    if (!mTokenizer->isCPP() || mSettings.standards.cpp < Standards::CPP11)
         return;
 
-    if (!mSettings->severity.isEnabled(Severity::performance))
+    if (!mSettings.severity.isEnabled(Severity::performance))
         return;
 
     logChecker("CheckFunctions::returnLocalStdMove"); // performance,c++11
@@ -744,7 +744,7 @@ void CheckFunctionsImpl::copyElisionError(const Token *tok)
 
 void CheckFunctionsImpl::useStandardLibrary()
 {
-    if (!mSettings->severity.isEnabled(Severity::style))
+    if (!mSettings.severity.isEnabled(Severity::style))
         return;
 
     logChecker("CheckFunctions::useStandardLibrary"); // style
@@ -780,10 +780,10 @@ void CheckFunctionsImpl::useStandardLibrary()
 
         const auto& secondOp = condToken->str();
         const bool isLess = "<" == secondOp &&
-                            isConstExpression(condToken->astOperand2(), mSettings->library) &&
+                            isConstExpression(condToken->astOperand2(), mSettings.library) &&
                             condToken->astOperand1()->varId() == idxVarId;
         const bool isMore = ">" == secondOp &&
-                            isConstExpression(condToken->astOperand1(), mSettings->library) &&
+                            isConstExpression(condToken->astOperand1(), mSettings.library) &&
                             condToken->astOperand2()->varId() == idxVarId;
 
         if (!(isLess || isMore))
@@ -855,7 +855,7 @@ void CheckFunctionsImpl::useStandardLibraryError(const Token *tok, const std::st
 
 void CheckFunctions::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckFunctionsImpl checkFunctions(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckFunctionsImpl checkFunctions(&tokenizer, tokenizer.getSettings(), errorLogger);
 
     checkFunctions.checkIgnoredReturnValue();
     checkFunctions.checkMissingReturn();  // Missing "return" in exit path
@@ -874,7 +874,7 @@ void CheckFunctions::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLog
 
 void CheckFunctions::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
 {
-    CheckFunctionsImpl c(nullptr, settings, errorLogger);
+    CheckFunctionsImpl c(nullptr, *settings, errorLogger);
 
     for (auto i = settings->library.functionwarn().cbegin(); i != settings->library.functionwarn().cend(); ++i) {
         c.functionCalledError(nullptr, Severity::style, i->first, i->second.message);

@@ -57,7 +57,7 @@ private:
 
 class CPPCHECKLIB CheckAssertImpl : public CheckImpl {
 public:
-    CheckAssertImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+    CheckAssertImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     void assertWithSideEffects();

@@ -38,7 +38,7 @@ private:
         SimpleTokenizer tokenizer(settings, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        CheckPostfixOperatorImpl checkPostfixOperator(&tokenizer, &settings, this);
+        CheckPostfixOperatorImpl checkPostfixOperator(&tokenizer, settings, this);
         checkPostfixOperator.postfixOperator();
     }
 

@@ -41,7 +41,7 @@ static const CWE CWE682(682U);   // Incorrect Calculation
 //---------------------------------------------------------------------------
 void CheckSizeofImpl::checkSizeofForNumericParameter()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckSizeof::checkSizeofForNumericParameter"); // warning
@@ -71,7 +71,7 @@ void CheckSizeofImpl::sizeofForNumericParameterError(const Token *tok)
 //---------------------------------------------------------------------------
 void CheckSizeofImpl::checkSizeofForArrayParameter()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckSizeof::checkSizeofForArrayParameter"); // warning
@@ -112,7 +112,7 @@ void CheckSizeofImpl::sizeofForArrayParameterError(const Token *tok)
 
 void CheckSizeofImpl::checkSizeofForPointerSize()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckSizeof::checkSizeofForPointerSize"); // warning
@@ -129,7 +129,7 @@ void CheckSizeofImpl::checkSizeofForPointerSize()
             // Once leaving those tests, it is mandatory to have:
             // - variable matching the used pointer
             // - tokVar pointing on the argument where sizeof may be used
-            if (Token::Match(tok->tokAt(2), "%name% (") && mSettings->library.getAllocFuncInfo(tok->tokAt(2))) {
+            if (Token::Match(tok->tokAt(2), "%name% (") && mSettings.library.getAllocFuncInfo(tok->tokAt(2))) {
                 if (Token::Match(tok, "%var% ="))
                     variable = tok;
                 else if (tok->strAt(1) == ")" && Token::Match(tok->linkAt(1)->tokAt(-2), "%var% ="))
@@ -282,7 +282,7 @@ void CheckSizeofImpl::divideBySizeofError(const Token *tok, const std::string &m
 //-----------------------------------------------------------------------------
 void CheckSizeofImpl::sizeofsizeof()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckSizeof::sizeofsizeof"); // warning
@@ -308,12 +308,12 @@ void CheckSizeofImpl::sizeofsizeofError(const Token *tok)
 
 void CheckSizeofImpl::sizeofCalculation()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckSizeof::sizeofCalculation"); // warning
 
-    const bool printInconclusive = mSettings->certainty.isEnabled(Certainty::inconclusive);
+    const bool printInconclusive = mSettings.certainty.isEnabled(Certainty::inconclusive);
 
     for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
         if (!Token::simpleMatch(tok, "sizeof ("))
@@ -354,7 +354,7 @@ void CheckSizeofImpl::sizeofCalculationError(const Token *tok, bool inconclusive
 
 void CheckSizeofImpl::sizeofFunction()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning) && !mSettings->isPremiumEnabled("sizeofFunctionCall"))
+    if (!mSettings.severity.isEnabled(Severity::warning) && !mSettings.isPremiumEnabled("sizeofFunctionCall"))
         return;
 
     logChecker("CheckSizeof::sizeofFunction"); // warning
@@ -397,7 +397,7 @@ void CheckSizeofImpl::sizeofFunctionError(const Token *tok)
 //-----------------------------------------------------------------------------
 void CheckSizeofImpl::suspiciousSizeofCalculation()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning) || !mSettings->certainty.isEnabled(Certainty::inconclusive))
+    if (!mSettings.severity.isEnabled(Severity::warning) || !mSettings.certainty.isEnabled(Certainty::inconclusive))
         return;
 
     logChecker("CheckSizeof::suspiciousSizeofCalculation"); // warning,inconclusive
@@ -441,7 +441,7 @@ void CheckSizeofImpl::divideSizeofError(const Token *tok)
 
 void CheckSizeofImpl::sizeofVoid()
 {
-    if (!mSettings->severity.isEnabled(Severity::portability))
+    if (!mSettings.severity.isEnabled(Severity::portability))
         return;
 
     logChecker("CheckSizeof::sizeofVoid"); // portability
@@ -500,7 +500,7 @@ void CheckSizeofImpl::arithOperationsOnVoidPointerError(const Token* tok, const 
 
 void CheckSizeof::runChecks(const Tokenizer& tokenizer, ErrorLogger* errorLogger)
 {
-    CheckSizeofImpl checkSizeof(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckSizeofImpl checkSizeof(&tokenizer, tokenizer.getSettings(), errorLogger);
 
     // Checks
     checkSizeof.sizeofsizeof();
@@ -515,7 +515,7 @@ void CheckSizeof::runChecks(const Tokenizer& tokenizer, ErrorLogger* errorLogger
 
 void CheckSizeof::getErrorMessages(ErrorLogger* errorLogger, const Settings* settings) const
 {
-    CheckSizeofImpl c(nullptr, settings, errorLogger);
+    CheckSizeofImpl c(nullptr, *settings, errorLogger);
     c.sizeofForArrayParameterError(nullptr);
     c.sizeofForPointerError(nullptr, "varname");
     c.divideBySizeofError(nullptr, "memset");

@@ -47,7 +47,7 @@ void CheckImpl::reportError(ErrorPath errorPath, Severity severity, const char i
 
 bool CheckImpl::wrongData(const Token *tok, const char *str)
 {
-    if (mSettings->daca)
+    if (mSettings.daca)
         reportError(tok, Severity::debug, "DacaWrongData", "Wrong data detected by condition " + std::string(str));
     return true;
 }
@@ -57,7 +57,7 @@ ErrorPath CheckImpl::getErrorPath(const Token* errtok, const ValueFlow::Value* v
     ErrorPath errorPath;
     if (!value) {
         errorPath.emplace_back(errtok, std::move(bug));
-    } else if (mSettings->verbose || mSettings->outputFormat == Settings::OutputFormat::xml || !mSettings->templateLocation.empty()) {
+    } else if (mSettings.verbose || mSettings.outputFormat == Settings::OutputFormat::xml || !mSettings.templateLocation.empty()) {
         errorPath = value->errorPath;
         errorPath.emplace_back(errtok, std::move(bug));
     } else {
@@ -72,6 +72,6 @@ ErrorPath CheckImpl::getErrorPath(const Token* errtok, const ValueFlow::Value* v
 
 void CheckImpl::logChecker(const char id[])
 {
-    if (!mSettings->buildDir.empty() || mSettings->collectLogCheckers())
+    if (!mSettings.buildDir.empty() || mSettings.collectLogCheckers())
         reportError(nullptr, Severity::internal, "logChecker", id);
 }

@@ -60,7 +60,7 @@ private:
 class CPPCHECKLIB CheckInternalImpl : public CheckImpl {
 public:
     /** This constructor is used when running checks. */
-    CheckInternalImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+    CheckInternalImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** @brief %Check if a simple pattern is used inside Token::Match or Token::findmatch */

@@ -47,7 +47,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check char variable usage..
-        CheckOtherImpl checkOther(&tokenizer, &settings, this);
+        CheckOtherImpl checkOther(&tokenizer, settings, this);
         checkOther.checkCharVariable();
     }
 

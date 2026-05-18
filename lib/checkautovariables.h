@@ -72,7 +72,7 @@ class CPPCHECKLIB CheckAutoVariablesImpl : public CheckImpl
 {
 public:
     /** This constructor is used when running checks. */
-    CheckAutoVariablesImpl(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
+    CheckAutoVariablesImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** assign function argument */

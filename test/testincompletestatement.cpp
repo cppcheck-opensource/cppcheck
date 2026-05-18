@@ -50,7 +50,7 @@ private:
         ASSERT_LOC(tokenizer.simplifyTokens1(""), file, line);
 
         // Check for incomplete statements..
-        CheckOtherImpl checkOther(&tokenizer, &settings1, this);
+        CheckOtherImpl checkOther(&tokenizer, settings1, this);
         checkOther.checkIncompleteStatement();
     }
 

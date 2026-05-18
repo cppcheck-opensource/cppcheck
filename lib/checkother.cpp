@@ -82,7 +82,7 @@ static const CWE CWE783(783U);   // Operator Precedence Logic Error
 //----------------------------------------------------------------------------------
 void CheckOtherImpl::checkCastIntToCharAndBack()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckOther::checkCastIntToCharAndBack"); // warning
@@ -152,7 +152,7 @@ void CheckOtherImpl::checkCastIntToCharAndBackError(const Token *tok, const std:
 //---------------------------------------------------------------------------
 void CheckOtherImpl::clarifyCalculation()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("clarifyCalculation"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("clarifyCalculation"))
         return;
 
     logChecker("CheckOther::clarifyCalculation"); // style
@@ -223,7 +223,7 @@ void CheckOtherImpl::clarifyCalculationError(const Token *tok, const std::string
 //---------------------------------------------------------------------------
 void CheckOtherImpl::clarifyStatement()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckOther::clarifyStatement"); // warning
@@ -259,7 +259,7 @@ void CheckOtherImpl::clarifyStatementError(const Token *tok)
 //---------------------------------------------------------------------------
 void CheckOtherImpl::checkSuspiciousSemicolon()
 {
-    if (!mSettings->certainty.isEnabled(Certainty::inconclusive) || !mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.certainty.isEnabled(Certainty::inconclusive) || !mSettings.severity.isEnabled(Severity::warning))
         return;
 
     const SymbolDatabase* const symbolDatabase = mTokenizer->getSymbolDatabase();
@@ -335,7 +335,7 @@ void CheckOtherImpl::warningOldStylePointerCast()
     if (!mTokenizer->isCPP())
         return;
 
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("cstyleCast"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("cstyleCast"))
         return;
 
     logChecker("CheckOther::warningOldStylePointerCast"); // style,c++
@@ -410,7 +410,7 @@ void CheckOtherImpl::warningDangerousTypeCast()
     // Only valid on C++ code
     if (!mTokenizer->isCPP())
         return;
-    if (!mSettings->severity.isEnabled(Severity::warning) && !mSettings->isPremiumEnabled("dangerousTypeCast"))
+    if (!mSettings.severity.isEnabled(Severity::warning) && !mSettings.isPremiumEnabled("dangerousTypeCast"))
         return;
 
     logChecker("CheckOther::warningDangerousTypeCast"); // warning,c++
@@ -444,7 +444,7 @@ void CheckOtherImpl::dangerousTypeCastError(const Token *tok, bool isPtr)
 
 void CheckOtherImpl::warningIntToPointerCast()
 {
-    if (!mSettings->severity.isEnabled(Severity::portability) && !mSettings->isPremiumEnabled("cstyleCast"))
+    if (!mSettings.severity.isEnabled(Severity::portability) && !mSettings.isPremiumEnabled("cstyleCast"))
         return;
 
     logChecker("CheckOther::warningIntToPointerCast"); // portability
@@ -480,7 +480,7 @@ void CheckOtherImpl::intToPointerCastError(const Token *tok, const std::string& 
 
 void CheckOtherImpl::suspiciousFloatingPointCast()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("suspiciousFloatingPointCast"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("suspiciousFloatingPointCast"))
         return;
 
     logChecker("CheckOther::suspiciousFloatingPointCast"); // style
@@ -541,12 +541,12 @@ void CheckOtherImpl::suspiciousFloatingPointCastError(const Token* tok)
 
 void CheckOtherImpl::invalidPointerCast()
 {
-    if (!mSettings->severity.isEnabled(Severity::portability))
+    if (!mSettings.severity.isEnabled(Severity::portability))
         return;
 
     logChecker("CheckOther::invalidPointerCast"); // portability
 
-    const bool printInconclusive = mSettings->certainty.isEnabled(Certainty::inconclusive);
+    const bool printInconclusive = mSettings.certainty.isEnabled(Certainty::inconclusive);
     const SymbolDatabase* const symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * scope : symbolDatabase->functionScopes) {
         for (const Token* tok = scope->bodyStart->next(); tok != scope->bodyEnd; tok = tok->next()) {
@@ -594,9 +594,9 @@ void CheckOtherImpl::invalidPointerCastError(const Token* tok, const std::string
 
 void CheckOtherImpl::checkRedundantAssignment()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) &&
-        !mSettings->isPremiumEnabled("redundantAssignment") &&
-        !mSettings->isPremiumEnabled("redundantAssignInSwitch"))
+    if (!mSettings.severity.isEnabled(Severity::style) &&
+        !mSettings.isPremiumEnabled("redundantAssignment") &&
+        !mSettings.isPremiumEnabled("redundantAssignInSwitch"))
         return;
 
     logChecker("CheckOther::checkRedundantAssignment"); // style
@@ -666,10 +666,10 @@ void CheckOtherImpl::checkRedundantAssignment()
                     if (tok->astOperand1()->valueType()->type == ValueType::SMART_POINTER)
                         break;
                 }
-                if (inconclusive && !mSettings->certainty.isEnabled(Certainty::inconclusive))
+                if (inconclusive && !mSettings.certainty.isEnabled(Certainty::inconclusive))
                     continue;
 
-                FwdAnalysis fwdAnalysis(*mSettings);
+                FwdAnalysis fwdAnalysis(mSettings);
                 if (fwdAnalysis.hasOperand(tok->astOperand2(), tok->astOperand1()))
                     continue;
 
@@ -794,7 +794,7 @@ static inline bool isFunctionOrBreakPattern(const Token *tok)
 
 void CheckOtherImpl::redundantBitwiseOperationInSwitchError()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckOther::redundantBitwiseOperationInSwitch"); // warning
@@ -923,7 +923,7 @@ void CheckOtherImpl::redundantBitwiseOperationInSwitchError(const Token *tok, co
 //---------------------------------------------------------------------------
 void CheckOtherImpl::checkSuspiciousCaseInSwitch()
 {
-    if (!mSettings->certainty.isEnabled(Certainty::inconclusive) || !mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.certainty.isEnabled(Certainty::inconclusive) || !mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckOther::checkSuspiciousCaseInSwitch"); // warning,inconclusive
@@ -1011,12 +1011,12 @@ void CheckOtherImpl::checkUnreachableCode()
     // misra-c-2023-2.1
     // misra-cpp-2008-0-1-1
     // autosar
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("duplicateBreak") && !mSettings->isPremiumEnabled("unreachableCode"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("duplicateBreak") && !mSettings.isPremiumEnabled("unreachableCode"))
         return;
 
     logChecker("CheckOther::checkUnreachableCode"); // style
 
-    const bool printInconclusive = mSettings->certainty.isEnabled(Certainty::inconclusive);
+    const bool printInconclusive = mSettings.certainty.isEnabled(Certainty::inconclusive);
     const SymbolDatabase* symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * scope : symbolDatabase->functionScopes) {
         if (scope->hasInlineOrLambdaFunction(nullptr, /*onlyInline*/ true))
@@ -1043,7 +1043,7 @@ void CheckOtherImpl::checkUnreachableCode()
             } else if (Token::Match(tok, "goto %any% ;")) {
                 secondBreak = tok->tokAt(3);
                 labelName = tok->next();
-            } else if (Token::Match(tok, "%name% (") && mSettings->library.isnoreturn(tok) && !Token::Match(tok->next()->astParent(), "?|:")) {
+            } else if (Token::Match(tok, "%name% (") && mSettings.library.isnoreturn(tok) && !Token::Match(tok->next()->astParent(), "?|:")) {
                 if ((!tok->function() || (tok->function()->token != tok && tok->function()->tokenDef != tok)) && tok->linkAt(1)->strAt(1) != "{")
                     secondBreak = tok->linkAt(1)->tokAt(2);
                 if (Token::simpleMatch(secondBreak, "return")) {
@@ -1136,7 +1136,7 @@ void CheckOtherImpl::duplicateBreakError(const Token *tok, bool inconclusive)
 void CheckOtherImpl::unreachableCodeError(const Token *tok, const Token* noreturn, bool inconclusive)
 {
     std::string msg = "Statements following ";
-    if (noreturn && (noreturn->function() || mSettings->library.isnoreturn(noreturn)))
+    if (noreturn && (noreturn->function() || mSettings.library.isnoreturn(noreturn)))
         msg += "noreturn function '" + noreturn->str() + "()'";
     else if (noreturn && noreturn->isKeyword())
         msg += "'" + noreturn->str() + "'";
@@ -1185,17 +1185,17 @@ static bool isSimpleExpr(const Token* tok, const Variable* var, const Settings& 
 //---------------------------------------------------------------------------
 void CheckOtherImpl::checkVariableScope()
 {
-    if (mSettings->clang)
+    if (mSettings.clang)
         return;
 
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("variableScope"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("variableScope"))
         return;
 
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
 
     // In C it is common practice to declare local variables at the
     // start of functions.
-    if (mSettings->daca && mTokenizer->isC())
+    if (mSettings.daca && mTokenizer->isC())
         return;
 
     logChecker("CheckOther::checkVariableScope"); // style,notclang
@@ -1244,7 +1244,7 @@ void CheckOtherImpl::checkVariableScope()
         bool isConstructor = false;
         if (Token::Match(tok, "; %varid% =", var->declarationId())) { // bailout for assignment
             tok = tok->tokAt(2)->astOperand2();
-            if (!isSimpleExpr(tok, var, *mSettings))
+            if (!isSimpleExpr(tok, var, mSettings))
                 continue;
         }
         else if (Token::Match(tok, "{|(")) { // bailout for constructor
@@ -1253,11 +1253,11 @@ void CheckOtherImpl::checkVariableScope()
             bool bail = false;
             while (argTok) {
                 if (Token::simpleMatch(argTok, ",")) {
-                    if (!isSimpleExpr(argTok->astOperand2(), var, *mSettings)) {
+                    if (!isSimpleExpr(argTok->astOperand2(), var, mSettings)) {
                         bail = true;
                         break;
                     }
-                } else if (argTok->str() != "." && !isSimpleExpr(argTok, var, *mSettings)) {
+                } else if (argTok->str() != "." && !isSimpleExpr(argTok, var, mSettings)) {
                     bail = true;
                     break;
                 }
@@ -1422,7 +1422,7 @@ bool CheckOtherImpl::checkInnerScope(const Token *tok, const Variable* var, bool
                     if (ftok->next()->astParent()) { // return value used?
                         if (ftok->function() && Function::returnsPointer(ftok->function()))
                             return false;
-                        const std::string ret = mSettings->library.returnValueType(ftok); // assume that var is returned
+                        const std::string ret = mSettings.library.returnValueType(ftok); // assume that var is returned
                         if (!ret.empty() && ret.back() == '*')
                             return false;
                     }
@@ -1437,7 +1437,7 @@ bool CheckOtherImpl::checkInnerScope(const Token *tok, const Variable* var, bool
                     }
                 }
             }
-            const auto yield = astContainerYield(tok, mSettings->library);
+            const auto yield = astContainerYield(tok, mSettings.library);
             if (yield == Library::Container::Yield::BUFFER || yield == Library::Container::Yield::BUFFER_NT)
                 return false;
         }
@@ -1476,7 +1476,7 @@ void CheckOtherImpl::variableScopeError(const Token *tok, const std::string &var
 void CheckOtherImpl::checkCommaSeparatedReturn()
 {
     // TODO: This is experimental for now. See #5076
-    if ((true) || !mSettings->severity.isEnabled(Severity::style)) // NOLINT(readability-simplify-boolean-expr,readability-redundant-parentheses)
+    if ((true) || !mSettings.severity.isEnabled(Severity::style)) // NOLINT(readability-simplify-boolean-expr,readability-redundant-parentheses)
         return;
 
     // logChecker
@@ -1540,7 +1540,7 @@ static bool isLargeContainer(const Variable* var, const Settings& settings)
 
 void CheckOtherImpl::checkPassByReference()
 {
-    if (!mSettings->severity.isEnabled(Severity::performance) || mTokenizer->isC())
+    if (!mSettings.severity.isEnabled(Severity::performance) || mTokenizer->isC())
         return;
 
     logChecker("CheckOther::checkPassByReference"); // performance,c++
@@ -1566,21 +1566,21 @@ void CheckOtherImpl::checkPassByReference()
         bool inconclusive = false;
 
         const bool isContainer = var->valueType() && var->valueType()->type == ValueType::Type::CONTAINER && var->valueType()->container && !var->valueType()->container->view;
-        if (isContainer && !isLargeContainer(var, *mSettings))
+        if (isContainer && !isLargeContainer(var, mSettings))
             continue;
         if (!isContainer) {
             if (var->type() && !var->type()->isEnumType()) { // Check if type is a struct or class.
                 // Ensure that it is a large object.
                 if (!var->type()->classScope)
                     inconclusive = true;
-                else if (!var->valueType() || var->valueType()->getSizeOf(*mSettings, ValueType::Accuracy::LowerBound, ValueType::SizeOf::Pointer) <= 2 * mSettings->platform.sizeof_pointer)
+                else if (!var->valueType() || var->valueType()->getSizeOf(mSettings, ValueType::Accuracy::LowerBound, ValueType::SizeOf::Pointer) <= 2 * mSettings.platform.sizeof_pointer)
                     continue;
             }
             else
                 continue;
         }
 
-        if (inconclusive && !mSettings->certainty.isEnabled(Certainty::inconclusive))
+        if (inconclusive && !mSettings.certainty.isEnabled(Certainty::inconclusive))
             continue;
 
         if (var->isArray() && (!var->isStlType() || Token::simpleMatch(var->nameToken()->next(), "[")))
@@ -1611,7 +1611,7 @@ void CheckOtherImpl::checkPassByReference()
         if (!isRangeBasedFor && (!var->scope() || var->scope()->function->isImplicitlyVirtual()))
             continue;
 
-        if (!isVariableChanged(var, *mSettings)) {
+        if (!isVariableChanged(var, mSettings)) {
             passedByValueError(var, inconclusive, isRangeBasedFor);
         }
     }
@@ -1684,7 +1684,7 @@ static bool isCastToVoid(const Variable* var)
 
 void CheckOtherImpl::checkConstVariable()
 {
-    if ((!mSettings->severity.isEnabled(Severity::style) || mTokenizer->isC()) && !mSettings->isPremiumEnabled("constVariable"))
+    if ((!mSettings.severity.isEnabled(Severity::style) || mTokenizer->isC()) && !mSettings.isPremiumEnabled("constVariable"))
         return;
 
     logChecker("CheckOther::checkConstVariable"); // style,c++
@@ -1732,7 +1732,7 @@ void CheckOtherImpl::checkConstVariable()
             continue;
         if (isCastToVoid(var))
             continue;
-        if (isVariableChanged(var, *mSettings))
+        if (isVariableChanged(var, mSettings))
             continue;
         const bool hasFunction = function != nullptr;
         if (!hasFunction) {
@@ -1755,7 +1755,7 @@ void CheckOtherImpl::checkConstVariable()
                 ValueFlow::Value ltVal = ValueFlow::getLifetimeObjValue(retTok);
                 if (ltVal.isLifetimeValue() && ltVal.tokvalue->varId() == var->declarationId())
                     return true;
-                return ValueFlow::hasLifetimeToken(getParentLifetime(retTok), var->nameToken(), *mSettings);
+                return ValueFlow::hasLifetimeToken(getParentLifetime(retTok), var->nameToken(), mSettings);
             }))
                 continue;
         }
@@ -1791,7 +1791,7 @@ void CheckOtherImpl::checkConstVariable()
                             continue;
                     } else if (const Token* ftok = getTokenArgumentFunction(tok, argn)) {
                         bool inconclusive{};
-                        if (var->valueType() && !isVariableChangedByFunctionCall(ftok, var->valueType()->pointer, var->declarationId(), *mSettings, &inconclusive) && !inconclusive)
+                        if (var->valueType() && !isVariableChangedByFunctionCall(ftok, var->valueType()->pointer, var->declarationId(), mSettings, &inconclusive) && !inconclusive)
                             continue;
                     }
                     usedInAssignment = true;
@@ -1877,11 +1877,11 @@ static const Function* getEnclosingFunction(const Variable* var)
 
 void CheckOtherImpl::checkConstPointer()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) &&
-        !mSettings->isPremiumEnabled("constParameter") &&
-        !mSettings->isPremiumEnabled("constParameterPointer") &&
-        !mSettings->isPremiumEnabled("constParameterReference") &&
-        !mSettings->isPremiumEnabled("constVariablePointer"))
+    if (!mSettings.severity.isEnabled(Severity::style) &&
+        !mSettings.isPremiumEnabled("constParameter") &&
+        !mSettings.isPremiumEnabled("constParameterPointer") &&
+        !mSettings.isPremiumEnabled("constParameterReference") &&
+        !mSettings.isPremiumEnabled("constVariablePointer"))
         return;
 
     logChecker("CheckOther::checkConstPointer"); // style
@@ -1946,7 +1946,7 @@ void CheckOtherImpl::checkConstPointer()
                 if (parent->astOperand2()) {
                     if (parent->astOperand2()->function() && parent->astOperand2()->function()->isConst())
                         continue;
-                    if (mSettings->library.isFunctionConst(parent->astOperand2()))
+                    if (mSettings.library.isFunctionConst(parent->astOperand2()))
                         continue;
                     if (parent->astOperand2()->varId()) {
                         if (gparent->str() == "?" && astIsLHS(parent))
@@ -1984,7 +1984,7 @@ void CheckOtherImpl::checkConstPointer()
                 continue;
             else if (const Token* ftok = getTokenArgumentFunction(parent, argn)) {
                 bool inconclusive{};
-                if (!isVariableChangedByFunctionCall(ftok->next(), vt->pointer, var->declarationId(), *mSettings, &inconclusive) && !inconclusive)
+                if (!isVariableChangedByFunctionCall(ftok->next(), vt->pointer, var->declarationId(), mSettings, &inconclusive) && !inconclusive)
                     continue;
             }
         } else {
@@ -2009,12 +2009,12 @@ void CheckOtherImpl::checkConstPointer()
                         const Variable* argVar = ftok->function()->getArgumentVar(argn);
                         if (argVar && argVar->valueType() && argVar->valueType()->isConst(vt->pointer)) {
                             bool inconclusive{};
-                            if (!isVariableChangedByFunctionCall(ftok, vt->pointer, var->declarationId(), *mSettings, &inconclusive) && !inconclusive)
+                            if (!isVariableChangedByFunctionCall(ftok, vt->pointer, var->declarationId(), mSettings, &inconclusive) && !inconclusive)
                                 continue;
                         }
                     }
                 } else {
-                    const auto dir = mSettings->library.getArgDirection(ftok, argn + 1);
+                    const auto dir = mSettings.library.getArgDirection(ftok, argn + 1);
                     if (dir == Library::ArgumentChecks::Direction::DIR_IN)
                         continue;
                 }
@@ -2042,7 +2042,7 @@ void CheckOtherImpl::checkConstPointer()
             // const int indirect = p->isArray() ? p->dimensions().size() : 1;
             // if (isVariableChanged(start, p->scope()->bodyEnd, indirect, p->declarationId(), false, *mSettings))
             //     continue;
-            if (!isConstPointerVariable(p, *mSettings))
+            if (!isConstPointerVariable(p, mSettings))
                 continue;
             if (p->typeStartToken() && p->typeStartToken()->isSimplifiedTypedef() && !(Token::simpleMatch(p->typeEndToken(), "*") && !p->typeEndToken()->isSimplifiedTypedef()))
                 continue;
@@ -2091,8 +2091,8 @@ void CheckOtherImpl::constVariableError(const Variable *var, const Function *fun
 
 void CheckOtherImpl::checkCharVariable()
 {
-    const bool warning = mSettings->severity.isEnabled(Severity::warning);
-    const bool portability = mSettings->severity.isEnabled(Severity::portability);
+    const bool warning = mSettings.severity.isEnabled(Severity::warning);
+    const bool portability = mSettings.severity.isEnabled(Severity::portability);
     if (!warning && !portability)
         return;
 
@@ -2107,24 +2107,24 @@ void CheckOtherImpl::checkCharVariable()
                 if (!tok->variable()->isArray() && !tok->variable()->isPointer())
                     continue;
                 const Token *index = tok->next()->astOperand2();
-                if (warning && tok->variable()->isArray() && astIsSignedChar(index) && index->getValueGE(0x80, *mSettings))
+                if (warning && tok->variable()->isArray() && astIsSignedChar(index) && index->getValueGE(0x80, mSettings))
                     signedCharArrayIndexError(tok);
-                if (portability && astIsUnknownSignChar(index) && index->getValueGE(0x80, *mSettings))
+                if (portability && astIsUnknownSignChar(index) && index->getValueGE(0x80, mSettings))
                     unknownSignCharArrayIndexError(tok);
             } else if (warning && Token::Match(tok, "[&|^]") && tok->isBinaryOp()) {
                 bool warn = false;
                 if (astIsSignedChar(tok->astOperand1())) {
-                    const ValueFlow::Value *v1 = tok->astOperand1()->getValueLE(-1, *mSettings);
+                    const ValueFlow::Value *v1 = tok->astOperand1()->getValueLE(-1, mSettings);
                     const ValueFlow::Value *v2 = tok->astOperand2()->getMaxValue(false);
                     if (!v1)
-                        v1 = tok->astOperand1()->getValueGE(0x80, *mSettings);
+                        v1 = tok->astOperand1()->getValueGE(0x80, mSettings);
                     if (v1 && !(tok->str() == "&" && v2 && v2->isKnown() && v2->intvalue >= 0 && v2->intvalue < 0x100))
                         warn = true;
                 } else if (astIsSignedChar(tok->astOperand2())) {
-                    const ValueFlow::Value *v1 = tok->astOperand2()->getValueLE(-1, *mSettings);
+                    const ValueFlow::Value *v1 = tok->astOperand2()->getValueLE(-1, mSettings);
                     const ValueFlow::Value *v2 = tok->astOperand1()->getMaxValue(false);
                     if (!v1)
-                        v1 = tok->astOperand2()->getValueGE(0x80, *mSettings);
+                        v1 = tok->astOperand2()->getValueGE(0x80, mSettings);
                     if (v1 && !(tok->str() == "&" && v2 && v2->isKnown() && v2->intvalue >= 0 && v2->intvalue < 0x100))
                         warn = true;
                 }
@@ -2350,8 +2350,8 @@ static bool isConstTop(const Token *tok)
 
 void CheckOtherImpl::checkIncompleteStatement()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning) &&
-        !mSettings->isPremiumEnabled("constStatement"))
+    if (!mSettings.severity.isEnabled(Severity::warning) &&
+        !mSettings.isPremiumEnabled("constStatement"))
         return;
 
     logChecker("CheckOther::checkIncompleteStatement"); // warning
@@ -2397,15 +2397,15 @@ void CheckOtherImpl::checkIncompleteStatement()
         // Skip statement expressions
         if (Token::simpleMatch(rtok, "; } )"))
             continue;
-        if (!isConstStatement(tok, mSettings->library, false))
+        if (!isConstStatement(tok, mSettings.library, false))
             continue;
         if (isVoidStmt(tok))
             continue;
         if (tok->isCpp() && tok->str() == "&" && !(tok->astOperand1() && tok->astOperand1()->valueType() && tok->astOperand1()->valueType()->isIntegral()))
             // Possible archive
             continue;
-        const bool inconclusive = tok->isConstOp() && !mSettings->isPremiumEnabled("constStatement");
-        if (mSettings->certainty.isEnabled(Certainty::inconclusive) || !inconclusive)
+        const bool inconclusive = tok->isConstOp() && !mSettings.isPremiumEnabled("constStatement");
+        if (mSettings.certainty.isEnabled(Certainty::inconclusive) || !inconclusive)
             constStatementError(tok, tok->isNumber() ? "numeric" : "string", inconclusive);
     }
 }
@@ -2455,7 +2455,7 @@ void CheckOtherImpl::constStatementError(const Token *tok, const std::string &ty
         msg = "Redundant code: Found unused function.";
     else if (Token::Match(tok->previous(), "%name% ("))
         msg = "Redundant code: Found unused '" + tok->strAt(-1) + "' expression.";
-    else if (mSettings->debugwarnings) {
+    else if (mSettings.debugwarnings) {
         reportError(tok, Severity::debug, "debug", "constStatementError not handled.");
         return;
     }
@@ -2481,7 +2481,7 @@ void CheckOtherImpl::checkZeroDivision()
 
         // Value flow..
         const ValueFlow::Value *value = tok->astOperand2()->getValue(0LL);
-        if (value && mSettings->isEnabled(value, false))
+        if (value && mSettings.isEnabled(value, false))
             zerodivError(tok, value);
     }
 }
@@ -2517,7 +2517,7 @@ void CheckOtherImpl::zerodivError(const Token *tok, const ValueFlow::Value *valu
 
 void CheckOtherImpl::checkNanInArithmeticExpression()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("nanInArithmeticExpression"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("nanInArithmeticExpression"))
         return;
     logChecker("CheckOther::checkNanInArithmeticExpression"); // style
     for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
@@ -2547,7 +2547,7 @@ void CheckOtherImpl::checkMisusedScopedObject()
     if (mTokenizer->isC())
         return;
 
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("unusedScopedObject"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("unusedScopedObject"))
         return;
 
     logChecker("CheckOther::checkMisusedScopedObject"); // style,c++
@@ -2574,10 +2574,10 @@ void CheckOtherImpl::checkMisusedScopedObject()
     };
 
     auto isLibraryConstructor = [&](const Token* tok, const std::string& typeStr) -> bool {
-        const Library::TypeCheck typeCheck = mSettings->library.getTypeCheck("unusedvar", typeStr);
+        const Library::TypeCheck typeCheck = mSettings.library.getTypeCheck("unusedvar", typeStr);
         if (typeCheck == Library::TypeCheck::check || typeCheck == Library::TypeCheck::checkFiniteLifetime)
             return true;
-        return mSettings->library.detectContainerOrIterator(tok);
+        return mSettings.library.detectContainerOrIterator(tok);
     };
 
     const SymbolDatabase* const symbolDatabase = mTokenizer->getSymbolDatabase();
@@ -2592,7 +2592,7 @@ void CheckOtherImpl::checkMisusedScopedObject()
                 if (Token::simpleMatch(parTok, "<") && parTok->link())
                     parTok = parTok->link()->next();
                 if (const Token* arg = parTok->astOperand2()) {
-                    if (!isConstStatement(arg, mSettings->library, false))
+                    if (!isConstStatement(arg, mSettings.library, false))
                         continue;
                     if (parTok->str() == "(") {
                         if (arg->varId() && !(arg->variable() && arg->variable()->nameToken() != arg))
@@ -2651,7 +2651,7 @@ void CheckOtherImpl::checkDuplicateBranch()
     //   and their conditional code is a duplicate of the condition that
     //   is always true just in case it would be false. See for instance
     //   abiword.
-    if (!mSettings->severity.isEnabled(Severity::style) || !mSettings->certainty.isEnabled(Certainty::inconclusive))
+    if (!mSettings.severity.isEnabled(Severity::style) || !mSettings.certainty.isEnabled(Certainty::inconclusive))
         return;
 
     logChecker("CheckOther::checkDuplicateBranch"); // style,inconclusive
@@ -2713,8 +2713,8 @@ void CheckOtherImpl::checkDuplicateBranch()
             if (branchTop1->str() != branchTop2->str())
                 continue;
             ErrorPath errorPath;
-            if (isSameExpression(false, branchTop1->astOperand1(), branchTop2->astOperand1(), *mSettings, true, true, &errorPath) &&
-                isSameExpression(false, branchTop1->astOperand2(), branchTop2->astOperand2(), *mSettings, true, true, &errorPath))
+            if (isSameExpression(false, branchTop1->astOperand1(), branchTop2->astOperand1(), mSettings, true, true, &errorPath) &&
+                isSameExpression(false, branchTop1->astOperand2(), branchTop2->astOperand2(), mSettings, true, true, &errorPath))
                 duplicateBranchError(scope.classDef, scope.bodyEnd->next(), std::move(errorPath));
         }
     }
@@ -2744,14 +2744,14 @@ void CheckOtherImpl::checkInvalidFree()
 
     logChecker("CheckOther::checkInvalidFree");
 
-    const bool printInconclusive = mSettings->certainty.isEnabled(Certainty::inconclusive);
+    const bool printInconclusive = mSettings.certainty.isEnabled(Certainty::inconclusive);
     const SymbolDatabase* symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * scope : symbolDatabase->functionScopes) {
         for (const Token* tok = scope->bodyStart->next(); tok && tok != scope->bodyEnd; tok = tok->next()) {
 
             // Keep track of which variables were assigned addresses to newly-allocated memory
             if ((tok->isCpp() && Token::Match(tok, "%var% = new")) ||
-                (Token::Match(tok, "%var% = %name% (") && mSettings->library.getAllocFuncInfo(tok->tokAt(2)))) {
+                (Token::Match(tok, "%var% = %name% (") && mSettings.library.getAllocFuncInfo(tok->tokAt(2)))) {
                 allocation.emplace(tok->varId(), tok->strAt(2));
                 inconclusive.emplace(tok->varId(), false);
             }
@@ -2779,7 +2779,7 @@ void CheckOtherImpl::checkInvalidFree()
 
             // If a variable that was previously assigned a newly-allocated memory location is
             // added or subtracted from when used to free the memory, report an error.
-            else if ((Token::Match(tok, "%name% ( %any% +|-") && mSettings->library.getDeallocFuncInfo(tok)) ||
+            else if ((Token::Match(tok, "%name% ( %any% +|-") && mSettings.library.getDeallocFuncInfo(tok)) ||
                      Token::Match(tok, "delete [ ] ( %any% +|-") ||
                      Token::Match(tok, "delete %any% +|- %any%")) {
 
@@ -2799,7 +2799,7 @@ void CheckOtherImpl::checkInvalidFree()
             // If the previously-allocated variable is passed in to another function
             // as a parameter, it might be modified, so we shouldn't report an error
             // if it is later used to free memory
-            else if (Token::Match(tok, "%name% (") && !mSettings->library.isFunctionConst(tok->str(), true)) {
+            else if (Token::Match(tok, "%name% (") && !mSettings.library.isFunctionConst(tok->str(), true)) {
                 const Token* tok2 = Token::findmatch(tok->next(), "%var%", tok->linkAt(1));
                 while (tok2 != nullptr) {
                     allocation.erase(tok->varId());
@@ -2873,14 +2873,14 @@ isStaticAssert(const Settings &settings, const Token *tok)
 void CheckOtherImpl::checkDuplicateExpression()
 {
     {
-        const bool styleEnabled = mSettings->severity.isEnabled(Severity::style);
-        const bool premiumEnabled = mSettings->isPremiumEnabled("oppositeExpression") ||
-                                    mSettings->isPremiumEnabled("duplicateExpression") ||
-                                    mSettings->isPremiumEnabled("duplicateAssignExpression") ||
-                                    mSettings->isPremiumEnabled("duplicateExpressionTernary") ||
-                                    mSettings->isPremiumEnabled("duplicateValueTernary") ||
-                                    mSettings->isPremiumEnabled("selfAssignment") ||
-                                    mSettings->isPremiumEnabled("knownConditionTrueFalse");
+        const bool styleEnabled = mSettings.severity.isEnabled(Severity::style);
+        const bool premiumEnabled = mSettings.isPremiumEnabled("oppositeExpression") ||
+                                    mSettings.isPremiumEnabled("duplicateExpression") ||
+                                    mSettings.isPremiumEnabled("duplicateAssignExpression") ||
+                                    mSettings.isPremiumEnabled("duplicateExpressionTernary") ||
+                                    mSettings.isPremiumEnabled("duplicateValueTernary") ||
+                                    mSettings.isPremiumEnabled("selfAssignment") ||
+                                    mSettings.isPremiumEnabled("knownConditionTrueFalse");
 
         if (!styleEnabled && !premiumEnabled)
             return;
@@ -2918,8 +2918,8 @@ void CheckOtherImpl::checkDuplicateExpression()
                             Token::Match(tok->astOperand2()->previous(), "%name% (")
                             ) &&
                         tok->next()->tokType() != Token::eType &&
-                        isSameExpression(true, tok->next(), nextAssign->next(), *mSettings, true, false) &&
-                        isSameExpression(true, tok->astOperand2(), nextAssign->astOperand2(), *mSettings, true, false) &&
+                        isSameExpression(true, tok->next(), nextAssign->next(), mSettings, true, false) &&
+                        isSameExpression(true, tok->astOperand2(), nextAssign->astOperand2(), mSettings, true, false) &&
                         tok->astOperand2()->expressionString() == nextAssign->astOperand2()->expressionString()) {
                         bool differentDomain = false;
                         const Scope * varScope = var1->scope() ? var1->scope() : scope;
@@ -2937,7 +2937,7 @@ void CheckOtherImpl::checkDuplicateExpression()
                                 !isSameExpression(true,
                                                   tok->astOperand2(),
                                                   assignTok->astOperand1(),
-                                                  *mSettings,
+                                                  mSettings,
                                                   true,
                                                   true))
                                 continue;
@@ -2946,7 +2946,7 @@ void CheckOtherImpl::checkDuplicateExpression()
                                 !isSameExpression(true,
                                                   tok->astOperand2(),
                                                   assignTok->astOperand2(),
-                                                  *mSettings,
+                                                  mSettings,
                                                   true,
                                                   true))
                                 continue;
@@ -2955,7 +2955,7 @@ void CheckOtherImpl::checkDuplicateExpression()
                         }
                         if (!differentDomain && !isUniqueExpression(tok->astOperand2()))
                             duplicateAssignExpressionError(var1, var2, false);
-                        else if (mSettings->certainty.isEnabled(Certainty::inconclusive)) {
+                        else if (mSettings.certainty.isEnabled(Certainty::inconclusive)) {
                             diag(assignTok);
                             duplicateAssignExpressionError(var1, var2, true);
                         }
@@ -2981,14 +2981,14 @@ void CheckOtherImpl::checkDuplicateExpression()
                 if (isSameExpression(true,
                                      tok->astOperand1(),
                                      tok->astOperand2(),
-                                     *mSettings,
+                                     mSettings,
                                      true,
                                      followVar,
                                      &errorPath)) {
                     if (isWithoutSideEffects(tok->astOperand1())) {
                         const Token* loopTok = isInLoopCondition(tok);
                         if (!loopTok ||
-                            !findExpressionChanged(tok, tok, loopTok->link()->linkAt(1), *mSettings)) {
+                            !findExpressionChanged(tok, tok, loopTok->link()->linkAt(1), mSettings)) {
                             const bool isEnum = tok->scope()->type == ScopeType::eEnum;
                             const bool assignment = !isEnum && tok->str() == "=";
                             if (assignment)
@@ -3000,7 +3000,7 @@ void CheckOtherImpl::checkDuplicateExpression()
                                         parent = parent->astParent();
                                     }
                                     if (parent && parent->previous() &&
-                                        (isStaticAssert(*mSettings, parent->previous()) ||
+                                        (isStaticAssert(mSettings, parent->previous()) ||
                                          Token::simpleMatch(parent->previous(), "assert"))) {
                                         continue;
                                     }
@@ -3013,7 +3013,7 @@ void CheckOtherImpl::checkDuplicateExpression()
                            isSameExpression(false,
                                             tok->astOperand1(),
                                             tok->astOperand2()->astOperand1(),
-                                            *mSettings,
+                                            mSettings,
                                             true,
                                             false)) {
                     if (isWithoutSideEffects(tok->astOperand1())) {
@@ -3021,7 +3021,7 @@ void CheckOtherImpl::checkDuplicateExpression()
                     }
                 } else if (isOppositeExpression(tok->astOperand1(),
                                                 tok->astOperand2(),
-                                                *mSettings,
+                                                mSettings,
                                                 false,
                                                 true,
                                                 &errorPath) &&
@@ -3033,15 +3033,15 @@ void CheckOtherImpl::checkDuplicateExpression()
                         isSameExpression(true,
                                          tok->astOperand2(),
                                          tok->astOperand1()->astOperand2(),
-                                         *mSettings,
+                                         mSettings,
                                          true,
                                          followVar,
                                          &errorPath) &&
                         isWithoutSideEffects(tok->astOperand2()))
                         duplicateExpressionError(tok->astOperand2(), tok->astOperand1()->astOperand2(), tok, std::move(errorPath));
-                    else if (tok->astOperand2() && isConstExpression(tok->astOperand1(), mSettings->library)) {
+                    else if (tok->astOperand2() && isConstExpression(tok->astOperand1(), mSettings.library)) {
                         auto checkDuplicate = [&](const Token* exp1, const Token* exp2, const Token* ast1) {
-                            if (isSameExpression(true, exp1, exp2, *mSettings, true, true, &errorPath) &&
+                            if (isSameExpression(true, exp1, exp2, mSettings, true, true, &errorPath) &&
                                 isWithoutSideEffects(exp1) &&
                                 isWithoutSideEffects(ast1->astOperand2()))
                                 duplicateExpressionError(exp1, exp2, tok, errorPath, /*hasMultipleExpr*/ true);
@@ -3056,12 +3056,12 @@ void CheckOtherImpl::checkDuplicateExpression()
                     }
                 }
             } else if (tok->astOperand1() && tok->astOperand2() && tok->str() == ":" && tok->astParent() && tok->astParent()->str() == "?") {
-                if (isSameExpression(true, tok->astOperand1(), tok->astOperand2(), *mSettings, false, true, &errorPath))
+                if (isSameExpression(true, tok->astOperand1(), tok->astOperand2(), mSettings, false, true, &errorPath))
                     duplicateExpressionTernaryError(tok, std::move(errorPath));
 
                 else if (!tok->astOperand1()->values().empty() && !tok->astOperand2()->values().empty() && isEqualKnownValue(tok->astOperand1(), tok->astOperand2()) &&
-                         !isVariableChanged(tok->astParent(), /*indirect*/ 0, *mSettings) &&
-                         isConstStatement(tok->astOperand1(), mSettings->library, true) && isConstStatement(tok->astOperand2(), mSettings->library, true))
+                         !isVariableChanged(tok->astParent(), /*indirect*/ 0, mSettings) &&
+                         isConstStatement(tok->astOperand1(), mSettings.library, true) && isConstStatement(tok->astOperand2(), mSettings.library, true))
                     duplicateValueTernaryError(tok);
             }
         }
@@ -3156,7 +3156,7 @@ void CheckOtherImpl::selfAssignmentError(const Token *tok, const std::string &va
 //-----------------------------------------------------------------------------
 void CheckOtherImpl::checkComparisonFunctionIsAlwaysTrueOrFalse()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckOther::checkComparisonFunctionIsAlwaysTrueOrFalse"); // warning
@@ -3201,7 +3201,7 @@ void CheckOtherImpl::checkComparisonFunctionIsAlwaysTrueOrFalseError(const Token
 //---------------------------------------------------------------------------
 void CheckOtherImpl::checkSignOfUnsignedVariable()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("unsignedLessThanZero"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("unsignedLessThanZero"))
         return;
 
     logChecker("CheckOther::checkSignOfUnsignedVariable"); // style
@@ -3385,7 +3385,7 @@ static bool checkVariableAssignment(const Token* tok, const ValueType* vtLhs, co
 
 void CheckOtherImpl::checkRedundantCopy()
 {
-    if (!mSettings->severity.isEnabled(Severity::performance) || mTokenizer->isC() || !mSettings->certainty.isEnabled(Certainty::inconclusive))
+    if (!mSettings.severity.isEnabled(Severity::performance) || mTokenizer->isC() || !mSettings.certainty.isEnabled(Certainty::inconclusive))
         return;
 
     logChecker("CheckOther::checkRedundantCopy"); // c++,performance,inconclusive
@@ -3395,7 +3395,7 @@ void CheckOtherImpl::checkRedundantCopy()
     for (const Variable* var : symbolDatabase->variableList()) {
         if (!var || var->isReference() || var->isPointer() ||
             (!var->type() && !var->isStlType() && !(var->valueType() && var->valueType()->container)) || // bailout if var is of standard type, if it is a pointer or non-const
-            (!var->isConst() && isVariableChanged(var, *mSettings)))
+            (!var->isConst() && isVariableChanged(var, mSettings)))
             continue;
 
         const Token* startTok = var->nameToken();
@@ -3415,7 +3415,7 @@ void CheckOtherImpl::checkRedundantCopy()
         const Token* tok = startTok->next()->astOperand2();
         if (!tok)
             continue;
-        if (!checkFunctionReturnsRef(tok, *mSettings) && !checkVariableAssignment(tok, var->valueType(), *mSettings))
+        if (!checkFunctionReturnsRef(tok, mSettings) && !checkVariableAssignment(tok, var->valueType(), mSettings))
             continue;
         redundantCopyError(startTok, startTok->str());
     }
@@ -3443,7 +3443,7 @@ static bool isNegative(const Token *tok, const Settings &settings)
 
 void CheckOtherImpl::checkNegativeBitwiseShift()
 {
-    const bool portability = mSettings->severity.isEnabled(Severity::portability);
+    const bool portability = mSettings.severity.isEnabled(Severity::portability);
 
     logChecker("CheckOther::checkNegativeBitwiseShift");
 
@@ -3475,9 +3475,9 @@ void CheckOtherImpl::checkNegativeBitwiseShift()
             continue;
 
         // Get negative rhs value. preferably a value which doesn't have 'condition'.
-        if (portability && isNegative(tok->astOperand1(), *mSettings))
+        if (portability && isNegative(tok->astOperand1(), mSettings))
             negativeBitwiseShiftError(tok, 1);
-        else if (isNegative(tok->astOperand2(), *mSettings))
+        else if (isNegative(tok->astOperand2(), mSettings))
             negativeBitwiseShiftError(tok, 2);
     }
 }
@@ -3499,10 +3499,10 @@ void CheckOtherImpl::negativeBitwiseShiftError(const Token *tok, int op)
 //---------------------------------------------------------------------------
 void CheckOtherImpl::checkIncompleteArrayFill()
 {
-    if (!mSettings->certainty.isEnabled(Certainty::inconclusive))
+    if (!mSettings.certainty.isEnabled(Certainty::inconclusive))
         return;
-    const bool printWarning = mSettings->severity.isEnabled(Severity::warning);
-    const bool printPortability = mSettings->severity.isEnabled(Severity::portability);
+    const bool printWarning = mSettings.severity.isEnabled(Severity::warning);
+    const bool printPortability = mSettings.severity.isEnabled(Severity::portability);
     if (!printPortability && !printWarning)
         return;
 
@@ -3532,9 +3532,9 @@ void CheckOtherImpl::checkIncompleteArrayFill()
                     continue;
                 int size = mTokenizer->sizeOfType(var->typeStartToken());
                 if (size == 0 && var->valueType()->pointer)
-                    size = mSettings->platform.sizeof_pointer;
+                    size = mSettings.platform.sizeof_pointer;
                 else if (size == 0 && var->valueType())
-                    size = var->valueType()->getSizeOf(*mSettings, ValueType::Accuracy::LowerBound, ValueType::SizeOf::Pointer);
+                    size = var->valueType()->getSizeOf(mSettings, ValueType::Accuracy::LowerBound, ValueType::SizeOf::Pointer);
                 const Token* tok3 = tok->next()->astOperand2()->astOperand1()->astOperand1();
                 if ((size != 1 && size != 100 && size != 0) || var->isPointer()) {
                     if (printWarning)
@@ -3568,7 +3568,7 @@ void CheckOtherImpl::incompleteArrayFillError(const Token* tok, const std::strin
 
 void CheckOtherImpl::checkVarFuncNullUB()
 {
-    if (!mSettings->severity.isEnabled(Severity::portability))
+    if (!mSettings.severity.isEnabled(Severity::portability))
         return;
 
     logChecker("CheckOther::checkVarFuncNullUB"); // portability
@@ -3653,7 +3653,7 @@ void CheckOtherImpl::varFuncNullUBError(const Token *tok)
 
 void CheckOtherImpl::checkRedundantPointerOp()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("redundantPointerOp"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("redundantPointerOp"))
         return;
 
     logChecker("CheckOther::checkRedundantPointerOp"); // style
@@ -3699,7 +3699,7 @@ void CheckOtherImpl::redundantPointerOpError(const Token* tok, const std::string
 
 void CheckOtherImpl::checkInterlockedDecrement()
 {
-    if (!mSettings->platform.isWindows()) {
+    if (!mSettings.platform.isWindows()) {
         return;
     }
 
@@ -3745,7 +3745,7 @@ void CheckOtherImpl::raceAfterInterlockedDecrementError(const Token* tok)
 
 void CheckOtherImpl::checkUnusedLabel()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->severity.isEnabled(Severity::warning) && !mSettings->isPremiumEnabled("unusedLabel"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.severity.isEnabled(Severity::warning) && !mSettings.isPremiumEnabled("unusedLabel"))
         return;
 
     logChecker("CheckOther::checkUnusedLabel"); // style,warning
@@ -3768,7 +3768,7 @@ void CheckOtherImpl::checkUnusedLabel()
 
 void CheckOtherImpl::unusedLabelError(const Token* tok, bool inSwitch, bool hasIfdef)
 {
-    if (tok && !mSettings->severity.isEnabled(inSwitch ? Severity::warning : Severity::style) && !mSettings->isPremiumEnabled("unusedLabel"))
+    if (tok && !mSettings.severity.isEnabled(inSwitch ? Severity::warning : Severity::style) && !mSettings.isPremiumEnabled("unusedLabel"))
         return;
 
     std::string id = "unusedLabel";
@@ -3900,14 +3900,14 @@ void CheckOtherImpl::checkEvaluationOrder()
                     break;
 
                 bool foundError{false}, foundUnspecified{false}, bSelfAssignmentError{false};
-                if (mTokenizer->isCPP() && mSettings->standards.cpp >= Standards::CPP11) {
-                    if (mSettings->standards.cpp >= Standards::CPP17)
-                        foundError = checkEvaluationOrderCpp17(tok, tok2, parent, *mSettings, foundUnspecified);
+                if (mTokenizer->isCPP() && mSettings.standards.cpp >= Standards::CPP11) {
+                    if (mSettings.standards.cpp >= Standards::CPP17)
+                        foundError = checkEvaluationOrderCpp17(tok, tok2, parent, mSettings, foundUnspecified);
                     else
-                        foundError = checkEvaluationOrderCpp11(tok, tok2, parent, *mSettings);
+                        foundError = checkEvaluationOrderCpp11(tok, tok2, parent, mSettings);
                 }
                 else
-                    foundError = checkEvaluationOrderC(tok, tok2, parent, *mSettings, bSelfAssignmentError);
+                    foundError = checkEvaluationOrderC(tok, tok2, parent, mSettings, bSelfAssignmentError);
 
                 if (foundError) {
                     unknownEvaluationOrder(parent, foundUnspecified);
@@ -3933,12 +3933,12 @@ void CheckOtherImpl::unknownEvaluationOrder(const Token* tok, bool isUnspecified
 
 void CheckOtherImpl::checkAccessOfMovedVariable()
 {
-    if (!mTokenizer->isCPP() || mSettings->standards.cpp < Standards::CPP11)
+    if (!mTokenizer->isCPP() || mSettings.standards.cpp < Standards::CPP11)
         return;
-    if (!mSettings->isPremiumEnabled("accessMoved") && !mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.isPremiumEnabled("accessMoved") && !mSettings.severity.isEnabled(Severity::warning))
         return;
     logChecker("CheckOther::checkAccessOfMovedVariable"); // c++11,warning
-    const bool reportInconclusive = mSettings->certainty.isEnabled(Certainty::inconclusive);
+    const bool reportInconclusive = mSettings.certainty.isEnabled(Certainty::inconclusive);
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * scope : symbolDatabase->functionScopes) {
         const Token * scopeStart = scope->bodyStart;
@@ -3964,11 +3964,11 @@ void CheckOtherImpl::checkAccessOfMovedVariable()
                 else
                     inconclusive = true;
             } else {
-                const ExprUsage usage = getExprUsage(tok, 0, *mSettings);
+                const ExprUsage usage = getExprUsage(tok, 0, mSettings);
                 if (usage == ExprUsage::Used)
                     accessOfMoved = true;
                 if (usage == ExprUsage::PassedByReference)
-                    accessOfMoved = !isVariableChangedByFunctionCall(tok, 0, *mSettings, &inconclusive);
+                    accessOfMoved = !isVariableChangedByFunctionCall(tok, 0, mSettings, &inconclusive);
                 else if (usage == ExprUsage::Inconclusive)
                     inconclusive = true;
             }
@@ -4009,11 +4009,11 @@ void CheckOtherImpl::accessMovedError(const Token *tok, const std::string &varna
 
 void CheckOtherImpl::checkFuncArgNamesDifferent()
 {
-    const bool style = mSettings->severity.isEnabled(Severity::style);
-    const bool inconclusive = mSettings->certainty.isEnabled(Certainty::inconclusive);
-    const bool warning = mSettings->severity.isEnabled(Severity::warning);
+    const bool style = mSettings.severity.isEnabled(Severity::style);
+    const bool inconclusive = mSettings.certainty.isEnabled(Certainty::inconclusive);
+    const bool warning = mSettings.severity.isEnabled(Severity::warning);
 
-    if (!(warning || (style && inconclusive)) && !mSettings->isPremiumEnabled("funcArgNamesDifferent"))
+    if (!(warning || (style && inconclusive)) && !mSettings.isPremiumEnabled("funcArgNamesDifferent"))
         return;
 
     logChecker("CheckOther::checkFuncArgNamesDifferent"); // style,warning,inconclusive
@@ -4155,7 +4155,7 @@ static const Token *findShadowed(const Scope *scope, const Variable& var, int li
 
 void CheckOtherImpl::checkShadowVariables()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("shadowVariable"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("shadowVariable"))
         return;
     logChecker("CheckOther::checkShadowVariables"); // style
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
@@ -4256,7 +4256,7 @@ static bool isVariableExprHidden(const Token* tok)
 
 void CheckOtherImpl::checkKnownArgument()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("knownArgument"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("knownArgument"))
         return;
     logChecker("CheckOther::checkKnownArgument"); // style
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
@@ -4291,7 +4291,7 @@ void CheckOtherImpl::checkKnownArgument()
                 continue;
             if (tok->isComparisonOp() &&
                 isSameExpression(
-                    true, tok->astOperand1(), tok->astOperand2(), *mSettings, true, true))
+                    true, tok->astOperand1(), tok->astOperand2(), mSettings, true, true))
                 continue;
             // ensure that there is a integer variable in expression with unknown value
             const Token* vartok = nullptr;
@@ -4357,7 +4357,7 @@ void CheckOtherImpl::knownArgumentError(const Token *tok, const Token *ftok, con
 
 void CheckOtherImpl::checkKnownPointerToBool()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("knownPointerToBool"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("knownPointerToBool"))
         return;
     logChecker("CheckOther::checkKnownPointerToBool"); // style
     const SymbolDatabase* symbolDatabase = mTokenizer->getSymbolDatabase();
@@ -4377,7 +4377,7 @@ void CheckOtherImpl::checkKnownPointerToBool()
                 return parent->isExpandedMacro();
             }))
                 continue;
-            if (!isUsedAsBool(tok, *mSettings))
+            if (!isUsedAsBool(tok, mSettings))
                 continue;
             const ValueFlow::Value& value = tok->values().front();
             knownPointerToBoolError(tok, &value);
@@ -4428,10 +4428,10 @@ void CheckOtherImpl::checkComparePointers()
                 continue;
             if (var1->isRValueReference() || var2->isRValueReference())
                 continue;
-            if (const Token* parent2 = getParentLifetime(v2.tokvalue, mSettings->library))
+            if (const Token* parent2 = getParentLifetime(v2.tokvalue, mSettings.library))
                 if (var1 == parent2->variable())
                     continue;
-            if (const Token* parent1 = getParentLifetime(v1.tokvalue, mSettings->library))
+            if (const Token* parent1 = getParentLifetime(v1.tokvalue, mSettings.library))
                 if (var2 == parent1->variable())
                     continue;
             comparePointersError(tok, &v1, &v2);
@@ -4461,7 +4461,7 @@ void CheckOtherImpl::comparePointersError(const Token *tok, const ValueFlow::Val
 
 void CheckOtherImpl::checkModuloOfOne()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("moduloofone"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("moduloofone"))
         return;
 
     logChecker("CheckOther::checkModuloOfOne"); // style
@@ -4571,7 +4571,7 @@ static bool isZeroInitializer(const Token *tok)
 
 void CheckOtherImpl::checkUnionZeroInit()
 {
-    if (!mSettings->severity.isEnabled(Severity::portability))
+    if (!mSettings.severity.isEnabled(Severity::portability))
         return;
 
     logChecker("CheckOther::checkUnionZeroInit"); // portability
@@ -4579,7 +4579,7 @@ void CheckOtherImpl::checkUnionZeroInit()
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
 
     std::unordered_map<const Scope *, Union> unionsByScopeId;
-    const std::vector<Union> unions = parseUnions(*symbolDatabase, *mSettings);
+    const std::vector<Union> unions = parseUnions(*symbolDatabase, mSettings);
     for (const Union &u : unions) {
         unionsByScopeId.emplace(u.scope, u);
     }
@@ -4718,7 +4718,7 @@ void CheckOtherImpl::checkOverlappingWrite()
                 if (errorToken)
                     overlappingWriteUnion(tok);
             } else if (Token::Match(tok, "%name% (")) {
-                const Library::NonOverlappingData *nonOverlappingData = mSettings->library.getNonOverlappingData(tok);
+                const Library::NonOverlappingData *nonOverlappingData = mSettings.library.getNonOverlappingData(tok);
                 if (!nonOverlappingData)
                     continue;
                 const std::vector<const Token *> args = getArguments(tok);
@@ -4743,7 +4743,7 @@ void CheckOtherImpl::checkOverlappingWrite()
                         constexpr bool macro = true;
                         constexpr bool pure = true;
                         constexpr bool follow = true;
-                        if (!isSameExpression(macro, ptr1, ptr2, *mSettings, pure, follow, &errorPath))
+                        if (!isSameExpression(macro, ptr1, ptr2, mSettings, pure, follow, &errorPath))
                             continue;
                         overlappingWriteFunction(tok, tok->str());
                     }
@@ -4755,9 +4755,9 @@ void CheckOtherImpl::checkOverlappingWrite()
                 MathLib::bigint sizeValue = args[sizeArg-1]->getKnownIntValue();
                 const Token *buf1, *buf2;
                 MathLib::bigint offset1, offset2;
-                if (!getBufAndOffset(ptr1, buf1, &offset1, *mSettings, isCountArg ? &sizeValue : nullptr))
+                if (!getBufAndOffset(ptr1, buf1, &offset1, mSettings, isCountArg ? &sizeValue : nullptr))
                     continue;
-                if (!getBufAndOffset(ptr2, buf2, &offset2, *mSettings))
+                if (!getBufAndOffset(ptr2, buf2, &offset2, mSettings))
                     continue;
 
                 if (offset1 < offset2 && offset1 + sizeValue <= offset2)
@@ -4769,7 +4769,7 @@ void CheckOtherImpl::checkOverlappingWrite()
                 constexpr bool macro = true;
                 constexpr bool pure = true;
                 constexpr bool follow = true;
-                if (!isSameExpression(macro, buf1, buf2, *mSettings, pure, follow, &errorPath))
+                if (!isSameExpression(macro, buf1, buf2, mSettings, pure, follow, &errorPath))
                     continue;
                 overlappingWriteFunction(tok, tok->str());
             }
@@ -4789,7 +4789,7 @@ void CheckOtherImpl::overlappingWriteFunction(const Token *tok, const std::strin
 
 void CheckOther::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckOtherImpl checkOther(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckOtherImpl checkOther(&tokenizer, tokenizer.getSettings(), errorLogger);
 
     // Checks
     checkOther.warningOldStylePointerCast();
@@ -4841,7 +4841,7 @@ void CheckOther::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 
 void CheckOther::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
 {
-    CheckOtherImpl c(nullptr, settings, errorLogger);
+    CheckOtherImpl c(nullptr, *settings, errorLogger);
 
     // error
     c.zerodivError(nullptr, nullptr);

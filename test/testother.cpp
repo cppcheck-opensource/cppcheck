@@ -2055,7 +2055,7 @@ private:
         SimpleTokenizer tokenizerCpp(settings, *this);
         ASSERT_LOC(tokenizerCpp.tokenize(code), file, line);
 
-        CheckOtherImpl checkOtherCpp(&tokenizerCpp, &settings, this);
+        CheckOtherImpl checkOtherCpp(&tokenizerCpp, settings, this);
         checkOtherCpp.warningOldStylePointerCast();
         checkOtherCpp.warningDangerousTypeCast();
     }
@@ -2341,7 +2341,7 @@ private:
         SimpleTokenizer tokenizerCpp(settings, *this);
         ASSERT_LOC(tokenizerCpp.tokenize(code), file, line);
 
-        CheckOtherImpl checkOtherCpp(&tokenizerCpp, &settings, this);
+        CheckOtherImpl checkOtherCpp(&tokenizerCpp, settings, this);
         checkOtherCpp.warningIntToPointerCast();
     }
 
@@ -2380,7 +2380,7 @@ private:
         SimpleTokenizer tokenizer(settings, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        CheckOtherImpl checkOtherCpp(&tokenizer, &settings, this);
+        CheckOtherImpl checkOtherCpp(&tokenizer, settings, this);
         checkOtherCpp.invalidPointerCast();
     }
 

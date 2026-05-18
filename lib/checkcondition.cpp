@@ -91,7 +91,7 @@ bool CheckConditionImpl::isAliased(const std::set<int> &vars) const
 
 void CheckConditionImpl::assignIf()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("assignIfError"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("assignIfError"))
         return;
 
     logChecker("CheckCondition::assignIf"); // style
@@ -204,7 +204,7 @@ bool CheckConditionImpl::assignIfParseScope(const Token * const assignTok,
                 // is variable changed in loop?
                 const Token *bodyStart = tok2->linkAt(1)->next();
                 const Token *bodyEnd   = bodyStart ? bodyStart->link() : nullptr;
-                if (!bodyEnd || bodyEnd->str() != "}" || isVariableChanged(bodyStart, bodyEnd, varid, !islocal, *mSettings))
+                if (!bodyEnd || bodyEnd->str() != "}" || isVariableChanged(bodyStart, bodyEnd, varid, !islocal, mSettings))
                     continue;
             }
 
@@ -310,7 +310,7 @@ static bool isOperandExpanded(const Token *tok)
 
 void CheckConditionImpl::checkBadBitmaskCheck()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("badBitmaskCheck"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("badBitmaskCheck"))
         return;
 
     logChecker("CheckCondition::checkBadBitmaskCheck"); // style
@@ -358,7 +358,7 @@ void CheckConditionImpl::badBitmaskCheckError(const Token *tok, bool isNoOp)
 
 void CheckConditionImpl::comparison()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("comparisonError"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("comparisonError"))
         return;
 
     logChecker("CheckCondition::comparison"); // style
@@ -441,7 +441,7 @@ bool CheckConditionImpl::isOverlappingCond(const Token * const cond1, const Toke
         return false;
 
     // same expressions
-    if (isSameExpression(true, cond1, cond2, *mSettings, pure, false))
+    if (isSameExpression(true, cond1, cond2, mSettings, pure, false))
         return true;
 
     // bitwise overlap for example 'x&7' and 'x==1'
@@ -464,7 +464,7 @@ bool CheckConditionImpl::isOverlappingCond(const Token * const cond1, const Toke
         if (!num2->isNumber() || MathLib::isNegative(num2->str()))
             return false;
 
-        if (!isSameExpression(true, expr1, expr2, *mSettings, pure, false))
+        if (!isSameExpression(true, expr1, expr2, mSettings, pure, false))
             return false;
 
         const MathLib::bigint value1 = MathLib::toBigNumber(num1);
@@ -478,7 +478,7 @@ bool CheckConditionImpl::isOverlappingCond(const Token * const cond1, const Toke
 
 void CheckConditionImpl::duplicateCondition()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("duplicateCondition"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("duplicateCondition"))
         return;
 
     logChecker("CheckCondition::duplicateCondition"); // style
@@ -509,8 +509,8 @@ void CheckConditionImpl::duplicateCondition()
             continue;
 
         ErrorPath errorPath;
-        if (!findExpressionChanged(cond1, scope.classDef->next(), cond2, *mSettings) &&
-            isSameExpression(true, cond1, cond2, *mSettings, true, true, &errorPath))
+        if (!findExpressionChanged(cond1, scope.classDef->next(), cond2, mSettings) &&
+            isSameExpression(true, cond1, cond2, mSettings, true, true, &errorPath))
             duplicateConditionError(cond1, cond2, std::move(errorPath));
     }
 }
@@ -529,7 +529,7 @@ void CheckConditionImpl::duplicateConditionError(const Token *tok1, const Token 
 
 void CheckConditionImpl::multiCondition()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("multiCondition"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("multiCondition"))
         return;
 
     logChecker("CheckCondition::multiCondition"); // style
@@ -559,11 +559,11 @@ void CheckConditionImpl::multiCondition()
             if (tok2->astOperand2()) {
                 ErrorPath errorPath;
                 if (isOverlappingCond(cond1, tok2->astOperand2(), true) &&
-                    !findExpressionChanged(cond1, cond1, tok2->astOperand2(), *mSettings))
+                    !findExpressionChanged(cond1, cond1, tok2->astOperand2(), mSettings))
                     overlappingElseIfConditionError(tok2->astOperand2(), cond1->linenr());
                 else if (isOppositeCond(
-                             true, cond1, tok2->astOperand2(), *mSettings, true, true, &errorPath) &&
-                         !findExpressionChanged(cond1, cond1, tok2->astOperand2(), *mSettings))
+                             true, cond1, tok2->astOperand2(), mSettings, true, true, &errorPath) &&
+                         !findExpressionChanged(cond1, cond1, tok2->astOperand2(), mSettings))
                     oppositeElseIfConditionError(cond1, tok2->astOperand2(), std::move(errorPath));
             }
         }
@@ -631,9 +631,9 @@ static bool isNestedInLambda(const Scope* inner, const Scope* outer)
 
 void CheckConditionImpl::multiCondition2()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning) &&
-        !mSettings->isPremiumEnabled("identicalConditionAfterEarlyExit") &&
-        !mSettings->isPremiumEnabled("identicalInnerCondition"))
+    if (!mSettings.severity.isEnabled(Severity::warning) &&
+        !mSettings.isPremiumEnabled("identicalConditionAfterEarlyExit") &&
+        !mSettings.isPremiumEnabled("identicalInnerCondition"))
         return;
 
     logChecker("CheckCondition::multiCondition2"); // warning
@@ -668,7 +668,7 @@ void CheckConditionImpl::multiCondition2()
                       [&](const Token *cond) {
             if (Token::Match(cond, "%name% (")) {
                 functionCall = true;
-                nonConstFunctionCall = isNonConstFunctionCall(cond, mSettings->library);
+                nonConstFunctionCall = isNonConstFunctionCall(cond, mSettings.library);
                 if (nonConstFunctionCall)
                     return ChildrenToVisit::done;
             }
@@ -725,13 +725,13 @@ void CheckConditionImpl::multiCondition2()
             for (; tok && tok != endToken; tok = tok->next()) {
                 if (isNestedInLambda(tok->scope(), cond1->scope()))
                     continue;
-                if (isExpressionChangedAt(cond1, tok, 0, false, *mSettings))
+                if (isExpressionChangedAt(cond1, tok, 0, false, mSettings))
                     break;
                 if (Token::Match(tok, "if|return")) {
                     const Token * condStartToken = tok->str() == "if" ? tok->next() : tok;
                     const Token * condEndToken = tok->str() == "if" ? condStartToken->link() : Token::findsimplematch(condStartToken, ";");
                     // Does condition modify tracked variables?
-                    if (findExpressionChanged(cond1, condStartToken, condEndToken, *mSettings))
+                    if (findExpressionChanged(cond1, condStartToken, condEndToken, mSettings))
                         break;
 
                     // Condition..
@@ -745,14 +745,14 @@ void CheckConditionImpl::multiCondition2()
                             if (!firstCondition)
                                 return ChildrenToVisit::none;
                             if (firstCondition->str() == "&&") {
-                                if (!isOppositeCond(false, firstCondition, cond2, *mSettings, true, true))
+                                if (!isOppositeCond(false, firstCondition, cond2, mSettings, true, true))
                                     return ChildrenToVisit::op1_and_op2;
                             }
                             if (!firstCondition->hasKnownIntValue()) {
-                                if (!isReturnVar && isOppositeCond(false, firstCondition, cond2, *mSettings, true, true, &errorPath)) {
+                                if (!isReturnVar && isOppositeCond(false, firstCondition, cond2, mSettings, true, true, &errorPath)) {
                                     if (!isAliased(vars))
                                         oppositeInnerConditionError(firstCondition, cond2, errorPath);
-                                } else if (!isReturnVar && isSameExpression(true, firstCondition, cond2, *mSettings, true, true, &errorPath)) {
+                                } else if (!isReturnVar && isSameExpression(true, firstCondition, cond2, mSettings, true, true, &errorPath)) {
                                     identicalInnerConditionError(firstCondition, cond2, errorPath);
                                 } else if (!isReturnVar && isOverlappingCond(cond2, firstCondition, true)) {
                                     overlappingInnerConditionError(firstCondition, cond2, errorPath);
@@ -766,7 +766,7 @@ void CheckConditionImpl::multiCondition2()
                                 return ChildrenToVisit::op1_and_op2;
 
                             if ((!cond1->hasKnownIntValue() || !secondCondition->hasKnownIntValue()) &&
-                                isSameExpression(true, cond1, secondCondition, *mSettings, true, true, &errorPath)) {
+                                isSameExpression(true, cond1, secondCondition, mSettings, true, true, &errorPath)) {
                                 if (!isAliased(vars) && !mTokenizer->hasIfdef(cond1, secondCondition)) {
                                     identicalConditionAfterEarlyExitError(cond1, secondCondition, errorPath);
                                     return ChildrenToVisit::done;
@@ -777,10 +777,10 @@ void CheckConditionImpl::multiCondition2()
                     }
                 }
                 if (Token::Match(tok, "%name% (") &&
-                    isVariablesChanged(tok, tok->linkAt(1), 0, varsInCond, *mSettings)) {
+                    isVariablesChanged(tok, tok->linkAt(1), 0, varsInCond, mSettings)) {
                     break;
                 }
-                if (Token::Match(tok, "%type% (") && nonlocal && isNonConstFunctionCall(tok, mSettings->library)) // non const function call -> bailout if there are nonlocal variables
+                if (Token::Match(tok, "%type% (") && nonlocal && isNonConstFunctionCall(tok, mSettings.library)) // non const function call -> bailout if there are nonlocal variables
                     break;
                 if (Token::Match(tok, "case|break|continue|return|throw") && tok->scope() == endToken->scope())
                     break;
@@ -806,7 +806,7 @@ void CheckConditionImpl::multiCondition2()
                         break;
                     }
                     const bool changed = std::any_of(vars.cbegin(), vars.cend(), [&](int varid) {
-                        return isVariableChanged(tok1, tok2, varid, nonlocal, *mSettings);
+                        return isVariableChanged(tok1, tok2, varid, nonlocal, mSettings);
                     });
                     if (changed)
                         break;
@@ -1158,11 +1158,11 @@ static bool isIfConstexpr(const Token* tok) {
 
 void CheckConditionImpl::checkIncorrectLogicOperator()
 {
-    const bool printStyle = mSettings->severity.isEnabled(Severity::style);
-    const bool printWarning = mSettings->severity.isEnabled(Severity::warning);
-    if (!printWarning && !printStyle && !mSettings->isPremiumEnabled("incorrectLogicOperator"))
+    const bool printStyle = mSettings.severity.isEnabled(Severity::style);
+    const bool printWarning = mSettings.severity.isEnabled(Severity::warning);
+    if (!printWarning && !printStyle && !mSettings.isPremiumEnabled("incorrectLogicOperator"))
         return;
-    const bool printInconclusive = mSettings->certainty.isEnabled(Certainty::inconclusive);
+    const bool printInconclusive = mSettings.certainty.isEnabled(Certainty::inconclusive);
 
     logChecker("CheckCondition::checkIncorrectLogicOperator"); // style,warning
 
@@ -1182,7 +1182,7 @@ void CheckConditionImpl::checkIncorrectLogicOperator()
                 ((tok->str() == "||" && tok->astOperand2()->str() == "&&") ||
                  (tok->str() == "&&" && tok->astOperand2()->str() == "||"))) {
                 const Token* tok2 = tok->astOperand2()->astOperand1();
-                if (isOppositeCond(true, tok->astOperand1(), tok2, *mSettings, true, false)) {
+                if (isOppositeCond(true, tok->astOperand1(), tok2, mSettings, true, false)) {
                     std::string expr1(tok->astOperand1()->expressionString());
                     std::string expr2(tok->astOperand2()->astOperand1()->expressionString());
                     std::string expr3(tok->astOperand2()->astOperand2()->expressionString());
@@ -1214,7 +1214,7 @@ void CheckConditionImpl::checkIncorrectLogicOperator()
                     redundantConditionError(tok, msg, false);
                     continue;
                 }
-                if (isSameExpression(false, tok->astOperand1(), tok2, *mSettings, true, true)) {
+                if (isSameExpression(false, tok->astOperand1(), tok2, mSettings, true, true)) {
                     std::string expr1(tok->astOperand1()->expressionString());
                     std::string expr2(tok->astOperand2()->astOperand1()->expressionString());
                     std::string expr3(tok->astOperand2()->astOperand2()->expressionString());
@@ -1279,7 +1279,7 @@ void CheckConditionImpl::checkIncorrectLogicOperator()
 
             // Opposite comparisons around || or && => always true or always false
             const bool isLogicalOr(tok->str() == "||");
-            if (!isfloat && isOppositeCond(isLogicalOr, tok->astOperand1(), tok->astOperand2(), *mSettings, true, true, &errorPath)) {
+            if (!isfloat && isOppositeCond(isLogicalOr, tok->astOperand1(), tok->astOperand2(), mSettings, true, true, &errorPath)) {
                 if (!isIfConstexpr(tok)) {
                     const bool alwaysTrue(isLogicalOr);
                     incorrectLogicOperatorError(tok, conditionString(tok), alwaysTrue, inconclusive, std::move(errorPath));
@@ -1290,9 +1290,9 @@ void CheckConditionImpl::checkIncorrectLogicOperator()
             if (!parseable)
                 continue;
 
-            if (isSameExpression(true, comp1, comp2, *mSettings, true, true))
+            if (isSameExpression(true, comp1, comp2, mSettings, true, true))
                 continue; // same expressions => only report that there are same expressions
-            if (!isSameExpression(true, expr1, expr2, *mSettings, true, true))
+            if (!isSameExpression(true, expr1, expr2, mSettings, true, true))
                 continue;
 
 
@@ -1396,7 +1396,7 @@ void CheckConditionImpl::redundantConditionError(const Token *tok, const std::st
 //-----------------------------------------------------------------------------
 void CheckConditionImpl::checkModuloAlwaysTrueFalse()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckCondition::checkModuloAlwaysTrueFalse"); // warning
@@ -1452,7 +1452,7 @@ static int countPar(const Token *tok1, const Token *tok2)
 //---------------------------------------------------------------------------
 void CheckConditionImpl::clarifyCondition()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("clarifyCondition"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("clarifyCondition"))
         return;
 
     logChecker("CheckCondition::clarifyCondition"); // style
@@ -1516,11 +1516,11 @@ void CheckConditionImpl::clarifyConditionError(const Token *tok, bool assign, bo
 
 void CheckConditionImpl::alwaysTrueFalse()
 {
-    const bool pedantic = mSettings->isPremiumEnabled("alwaysTrue") ||
-                          mSettings->isPremiumEnabled("alwaysFalse") ||
-                          mSettings->isPremiumEnabled("knownConditionTrueFalse");
+    const bool pedantic = mSettings.isPremiumEnabled("alwaysTrue") ||
+                          mSettings.isPremiumEnabled("alwaysFalse") ||
+                          mSettings.isPremiumEnabled("knownConditionTrueFalse");
 
-    if (!pedantic && !mSettings->severity.isEnabled(Severity::style))
+    if (!pedantic && !mSettings.severity.isEnabled(Severity::style))
         return;
 
     logChecker("CheckCondition::alwaysTrueFalse"); // style
@@ -1569,7 +1569,7 @@ void CheckConditionImpl::alwaysTrueFalse()
                 continue;
             if (condition->isConstexpr())
                 continue;
-            if (!isUsedAsBool(tok, *mSettings))
+            if (!isUsedAsBool(tok, mSettings))
                 continue;
             if (Token::simpleMatch(condition, "return") && Token::Match(tok, "%assign%"))
                 continue;
@@ -1598,7 +1598,7 @@ void CheckConditionImpl::alwaysTrueFalse()
                 isSameExpression(true,
                                  tok->astOperand1(),
                                  tok->astOperand2(),
-                                 *mSettings,
+                                 mSettings,
                                  true,
                                  true))
                 continue;
@@ -1702,7 +1702,7 @@ void CheckConditionImpl::checkInvalidTestForOverflow()
     // x + y < x       ->   y < 0
 
 
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckCondition::checkInvalidTestForOverflow"); // warning
@@ -1736,7 +1736,7 @@ void CheckConditionImpl::checkInvalidTestForOverflow()
                 if (!isSameExpression(true,
                                       expr,
                                       lhs->astSibling(),
-                                      *mSettings,
+                                      mSettings,
                                       true,
                                       false))
                     continue;
@@ -1792,7 +1792,7 @@ void CheckConditionImpl::invalidTestForOverflow(const Token* tok, const ValueTyp
 
 void CheckConditionImpl::checkPointerAdditionResultNotNull()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckCondition::checkPointerAdditionResultNotNull"); // warning
@@ -1839,7 +1839,7 @@ void CheckConditionImpl::pointerAdditionResultNotNullError(const Token *tok, con
 
 void CheckConditionImpl::checkDuplicateConditionalAssign()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("duplicateConditionalAssign"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("duplicateConditionalAssign"))
         return;
 
     logChecker("CheckCondition::checkDuplicateConditionalAssign"); // style
@@ -1883,10 +1883,10 @@ void CheckConditionImpl::checkDuplicateConditionalAssign()
                 isRedundant = (isNegation && val == 0) || (!isNegation && val == 1);
             } else { // comparison
                 if (!isSameExpression(
-                        true, condTok->astOperand1(), assignTok->astOperand1(), *mSettings, true, true))
+                        true, condTok->astOperand1(), assignTok->astOperand1(), mSettings, true, true))
                     continue;
                 if (!isSameExpression(
-                        true, condTok->astOperand2(), assignTok->astOperand2(), *mSettings, true, true))
+                        true, condTok->astOperand2(), assignTok->astOperand2(), mSettings, true, true))
                     continue;
             }
             duplicateConditionalAssignError(condTok, assignTok, isRedundant);
@@ -1918,7 +1918,7 @@ void CheckConditionImpl::duplicateConditionalAssignError(const Token *condTok, c
 
 void CheckConditionImpl::checkAssignmentInCondition()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("assignmentInCondition"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("assignmentInCondition"))
         return;
 
     logChecker("CheckCondition::checkAssignmentInCondition"); // style
@@ -1965,10 +1965,10 @@ void CheckConditionImpl::assignmentInCondition(const Token *eq)
 
 void CheckConditionImpl::checkCompareValueOutOfTypeRange()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("compareValueOutOfTypeRangeError"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("compareValueOutOfTypeRangeError"))
         return;
 
-    if (mSettings->platform.type == Platform::Type::Unspecified)
+    if (mSettings.platform.type == Platform::Type::Unspecified)
         return;
 
     logChecker("CheckCondition::checkCompareValueOutOfTypeRange"); // style,platform
@@ -1994,19 +1994,19 @@ void CheckConditionImpl::checkCompareValueOutOfTypeRange()
                     bits = 1;
                     break;
                 case ValueType::Type::CHAR:
-                    bits = mSettings->platform.char_bit;
+                    bits = mSettings.platform.char_bit;
                     break;
                 case ValueType::Type::SHORT:
-                    bits = mSettings->platform.short_bit;
+                    bits = mSettings.platform.short_bit;
                     break;
                 case ValueType::Type::INT:
-                    bits = mSettings->platform.int_bit;
+                    bits = mSettings.platform.int_bit;
                     break;
                 case ValueType::Type::LONG:
-                    bits = mSettings->platform.long_bit;
+                    bits = mSettings.platform.long_bit;
                     break;
                 case ValueType::Type::LONGLONG:
-                    bits = mSettings->platform.long_long_bit;
+                    bits = mSettings.platform.long_long_bit;
                     break;
                 default:
                     break;
@@ -2019,7 +2019,7 @@ void CheckConditionImpl::checkCompareValueOutOfTypeRange()
                 long long typeMaxValue;
                 if (typeTok->valueType()->sign != ValueType::Sign::SIGNED)
                     typeMaxValue = unsignedTypeMaxValue;
-                else if (bits >= mSettings->platform.int_bit && (!valueTok->valueType() || valueTok->valueType()->sign != ValueType::Sign::SIGNED))
+                else if (bits >= mSettings.platform.int_bit && (!valueTok->valueType() || valueTok->valueType()->sign != ValueType::Sign::SIGNED))
                     typeMaxValue = unsignedTypeMaxValue;
                 else
                     typeMaxValue = unsignedTypeMaxValue / 2;
@@ -2097,7 +2097,7 @@ void CheckConditionImpl::compareValueOutOfTypeRangeError(const Token *comparison
 
 void CheckCondition::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckConditionImpl checkCondition(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckConditionImpl checkCondition(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkCondition.multiCondition();
     checkCondition.clarifyCondition();   // not simplified because ifAssign
     checkCondition.multiCondition2();
@@ -2117,7 +2117,7 @@ void CheckCondition::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLog
 
 void CheckCondition::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
 {
-    CheckConditionImpl c(nullptr, settings, errorLogger);
+    CheckConditionImpl c(nullptr, *settings, errorLogger);
 
     c.assignIfError(nullptr, nullptr, "", false);
     c.badBitmaskCheckError(nullptr);

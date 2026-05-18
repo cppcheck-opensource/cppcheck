@@ -45,7 +45,7 @@ static bool isBool(const Variable* var)
 //---------------------------------------------------------------------------
 void CheckBoolImpl::checkIncrementBoolean()
 {
-    if (!mSettings->severity.isEnabled(Severity::style) && !mSettings->isPremiumEnabled("incrementboolean"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("incrementboolean"))
         return;
 
     logChecker("CheckBool::checkIncrementBoolean"); // style
@@ -85,11 +85,11 @@ static bool isConvertedToBool(const Token* tok)
 //---------------------------------------------------------------------------
 void CheckBoolImpl::checkBitwiseOnBoolean()
 {
-    if (!mSettings->isPremiumEnabled("bitwiseOnBoolean") &&
-        !mSettings->severity.isEnabled(Severity::style) &&
+    if (!mSettings.isPremiumEnabled("bitwiseOnBoolean") &&
+        !mSettings.severity.isEnabled(Severity::style) &&
         // danmar: this is inconclusive because I don't like that there are
         //         warnings for calculations. Example: set_flag(a & b);
-        !mSettings->certainty.isEnabled(Certainty::inconclusive))
+        !mSettings.certainty.isEnabled(Certainty::inconclusive))
         return;
 
     logChecker("CheckBool::checkBitwiseOnBoolean"); // style,inconclusive
@@ -116,7 +116,7 @@ void CheckBoolImpl::checkBitwiseOnBoolean()
                 if (tok->str() == "|" && !isConvertedToBool(tok) && !(isBoolOp1 && isBoolOp2))
                     continue;
                 // first operand will always be evaluated
-                if (!isConstExpression(tok->astOperand2(), mSettings->library))
+                if (!isConstExpression(tok->astOperand2(), mSettings.library))
                     continue;
                 if (tok->astOperand2()->variable() && tok->astOperand2()->variable()->nameToken() == tok->astOperand2())
                     continue;
@@ -146,7 +146,7 @@ void CheckBoolImpl::bitwiseOnBooleanError(const Token* tok, const std::string& e
 
 void CheckBoolImpl::checkComparisonOfBoolWithInt()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning) || !mTokenizer->isCPP())
+    if (!mSettings.severity.isEnabled(Severity::warning) || !mTokenizer->isCPP())
         return;
 
     logChecker("CheckBool::checkComparisonOfBoolWithInt"); // warning,c++
@@ -197,7 +197,7 @@ static bool tokenIsFunctionReturningBool(const Token* tok)
 
 void CheckBoolImpl::checkComparisonOfFuncReturningBool()
 {
-    if (!mSettings->severity.isEnabled(Severity::style))
+    if (!mSettings.severity.isEnabled(Severity::style))
         return;
 
     if (!mTokenizer->isCPP())
@@ -263,7 +263,7 @@ void CheckBoolImpl::comparisonOfTwoFuncsReturningBoolError(const Token *tok, con
 
 void CheckBoolImpl::checkComparisonOfBoolWithBool()
 {
-    if (!mSettings->severity.isEnabled(Severity::style))
+    if (!mSettings.severity.isEnabled(Severity::style))
         return;
 
     if (!mTokenizer->isCPP())
@@ -335,7 +335,7 @@ void CheckBoolImpl::assignBoolToPointerError(const Token *tok)
 //-----------------------------------------------------------------------------
 void CheckBoolImpl::checkComparisonOfBoolExpressionWithInt()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning) && !mSettings->isPremiumEnabled("compareBoolExpressionWithInt"))
+    if (!mSettings.severity.isEnabled(Severity::warning) && !mSettings.isPremiumEnabled("compareBoolExpressionWithInt"))
         return;
 
     logChecker("CheckBool::checkComparisonOfBoolExpressionWithInt"); // warning
@@ -373,13 +373,13 @@ void CheckBoolImpl::checkComparisonOfBoolExpressionWithInt()
             if (astIsBool(numTok))
                 continue;
 
-            const ValueFlow::Value *minval = numTok->getValueLE(0, *mSettings);
+            const ValueFlow::Value *minval = numTok->getValueLE(0, mSettings);
             if (minval && minval->intvalue == 0 &&
                 (numInRhs ? Token::Match(tok, ">|==|!=")
                  : Token::Match(tok, "<|==|!=")))
                 minval = nullptr;
 
-            const ValueFlow::Value *maxval = numTok->getValueGE(1, *mSettings);
+            const ValueFlow::Value *maxval = numTok->getValueGE(1, mSettings);
             if (maxval && maxval->intvalue == 1 &&
                 (numInRhs ? Token::Match(tok, "<|==|!=")
                  : Token::Match(tok, ">|==|!=")))
@@ -460,7 +460,7 @@ void CheckBoolImpl::checkAssignBoolToFloat()
 {
     if (!mTokenizer->isCPP())
         return;
-    if (!mSettings->severity.isEnabled(Severity::style))
+    if (!mSettings.severity.isEnabled(Severity::style))
         return;
     logChecker("CheckBool::checkAssignBoolToFloat"); // style,c++
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
@@ -481,7 +481,7 @@ void CheckBoolImpl::assignBoolToFloatError(const Token *tok)
 
 void CheckBoolImpl::returnValueOfFunctionReturningBool()
 {
-    if (!mSettings->severity.isEnabled(Severity::style))
+    if (!mSettings.severity.isEnabled(Severity::style))
         return;
 
     logChecker("CheckBool::returnValueOfFunctionReturningBool"); // style
@@ -500,7 +500,7 @@ void CheckBoolImpl::returnValueOfFunctionReturningBool()
             else if (tok->scope() && tok->scope()->isClassOrStruct())
                 tok = tok->scope()->bodyEnd;
             else if (Token::simpleMatch(tok, "return") && tok->astOperand1() &&
-                     (tok->astOperand1()->getValueGE(2, *mSettings) || tok->astOperand1()->getValueLE(-1, *mSettings)) &&
+                     (tok->astOperand1()->getValueGE(2, mSettings) || tok->astOperand1()->getValueLE(-1, mSettings)) &&
                      !(tok->astOperand1()->astOperand1() && Token::Match(tok->astOperand1(), "&|%or%")))
                 returnValueBoolError(tok);
         }
@@ -514,7 +514,7 @@ void CheckBoolImpl::returnValueBoolError(const Token *tok)
 
 void CheckBool::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckBoolImpl checkBool(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckBoolImpl checkBool(&tokenizer, tokenizer.getSettings(), errorLogger);
 
     // Checks
     checkBool.checkComparisonOfBoolExpressionWithInt();
@@ -531,7 +531,7 @@ void CheckBool::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 
 void CheckBool::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
 {
-    CheckBoolImpl c(nullptr, settings, errorLogger);
+    CheckBoolImpl c(nullptr, *settings, errorLogger);
     c.assignBoolToPointerError(nullptr);
     c.assignBoolToFloatError(nullptr);
     c.comparisonOfFuncReturningBoolError(nullptr, "func_name");
