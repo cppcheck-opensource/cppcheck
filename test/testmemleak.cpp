@@ -2604,7 +2604,7 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
-         check("int f() {\n" // #11184
+        check("int f() {\n" // #11184
               "    return strlen(new char[4]{});\n"
               "}\n"
               "int g() {\n"
