@@ -3675,7 +3675,7 @@ private:
               "    f ? result = 42 : ret = -1;\n"
               "    return ret;\n"
               "}");
-        ASSERT_EQUALS("", errout_str());
+        ASSERT_EQUALS("[test.cpp:4:9]: (style) Condition 'f' is always false [knownConditionTrueFalse]\n", errout_str());
 
         check("int f(void *handle) {\n"
               "    if (!handle) return 0;\n"
@@ -6227,6 +6227,20 @@ private:
         check("enum E { E1 = 1, E2 = 2 };\n"
               "void f(int i) { if (i == E1 || E2) {} }\n");
         ASSERT_EQUALS("[test.cpp:2:29]: (style) Condition 'i==E1||E2' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("void f(bool a, bool b) {\n" // #11614
+              "    if (b) {\n"
+              "        bool x = !b || a;\n"
+              "    }\n"
+              "}\n"
+              "void g(bool a, bool b) {\n"
+              "    if (!b) {\n"
+              "        bool x = a || b;\n"
+              "    }\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:2:9] -> [test.cpp:3:18]: (style) Condition '!b' is always false [knownConditionTrueFalse]\n"
+                      "[test.cpp:7:9] -> [test.cpp:8:23]: (style) Condition 'b' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
     }
 
     void pointerAdditionResultNotNull() {
