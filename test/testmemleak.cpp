@@ -2603,6 +2603,17 @@ private:
               "    a.g(new int);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+         check("int f() {\n" // #11184
+              "    return strlen(new char[4]{});\n"
+              "}\n"
+              "int g() {\n"
+              "    int i = strlen(new char[4]{});\n"
+              "    return i;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:19]: (error) Allocation with new, strlen doesn't release it. [leakNoVarFunctionCall]\n"
+                      "[test.cpp:5:20]: (error) Allocation with new, strlen doesn't release it. [leakNoVarFunctionCall]\n",
+                      errout_str());
     }
 
     void missingAssignment() {
