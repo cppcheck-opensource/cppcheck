@@ -1540,8 +1540,11 @@ void CheckCondition::alwaysTrueFalse()
             {
                 // is this a condition..
                 const Token *parent = tok->astParent();
-                while (Token::Match(parent, "%oror%|&&"))
+                bool hasComp = false;
+                while (Token::Match(parent, "%oror%|&&")) {
+                    hasComp = true;
                     parent = parent->astParent();
+                }
                 if (!parent)
                     continue;
                 if (parent->str() == "?" && precedes(tok, parent))
@@ -1555,10 +1558,11 @@ void CheckCondition::alwaysTrueFalse()
                     condition = parent->astParent()->astParent()->previous();
                 else if (Token::Match(tok, "%comp%"))
                     condition = tok;
-                else if (tok->str() == "(" && astIsBool(parent) && Token::Match(parent, "%assign%"))
+                else if ((tok->str() == "(" || (hasComp && Token::Match(tok, "!|%var%"))) && astIsBool(parent) && Token::Match(parent, "%assign%"))
                     condition = tok;
                 else
                     continue;
+
             }
             // Skip already diagnosed values
             if (diag(tok, false))
