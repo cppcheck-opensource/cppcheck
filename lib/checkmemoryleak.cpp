@@ -1022,10 +1022,8 @@ void CheckMemoryLeakNoVar::checkForUnreleasedInputArgument(const Scope *scope)
         const Token* tok2 = tok->next()->astParent();
         while (tok2 && (tok2->isCast() || Token::Match(tok2, "?|:")))
             tok2 = tok2->astParent();
-        if (Token::Match(tok2, "%assign%")) // TODO: check if function returns allocated resource
-            continue;
-        if (Token::simpleMatch(tok->astTop(), "return"))
-            continue;
+        const bool hasAssign = Token::Match(tok2, "%assign%");
+        const bool hasReturn = Token::simpleMatch(tok->astTop(), "return");
 
         const std::string& functionName = tok->str();
         if ((tok->isCpp() && functionName == "delete") ||
@@ -1036,6 +1034,12 @@ void CheckMemoryLeakNoVar::checkForUnreleasedInputArgument(const Scope *scope)
             continue;
         if (!tok->isKeyword() && !tok->function() && !mSettings->library.isLeakIgnore(functionName))
             continue;
+
+        if ((hasAssign || hasReturn) && !tok->function()) {
+            const std::string& ret = mSettings->library.returnValueType(tok);
+            if (ret.empty() || endsWith(ret, "*"))
+                continue;
+        }
 
         const std::vector<const Token *> args = getArguments(tok);
         int argnr = -1;
