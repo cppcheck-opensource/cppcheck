@@ -1396,6 +1396,30 @@ private:
         ASSERT_EQUALS(1U, values.size());
         ASSERT_EQUALS(4, values.back().intvalue);
 
+        code = "char& r = i;\n"
+               "sizeof(r);";
+        values = tokenValues(code, "( r");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(1, values.back().intvalue);
+
+        code = "char* p;\n"
+               "sizeof(p);";
+        values = tokenValues(code, "( p");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(settings.platform.sizeof_pointer, values.back().intvalue);
+        
+        code = "char*& pr = p;\n"
+               "sizeof(pr);";
+        values = tokenValues(code, "( pr");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(settings.platform.sizeof_pointer, values.back().intvalue);
+
+        code = "struct { char& r; char* p; } s{ x, y};\n"
+               "sizeof(s);\n";
+        values = tokenValues(code, "( s");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(2 * settings.platform.sizeof_pointer, values.back().intvalue);
+
 #define CHECK3(A, B, C)                          \
     do {                                     \
         code = "void f() {\n"                    \
