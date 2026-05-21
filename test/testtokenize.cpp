@@ -478,6 +478,7 @@ private:
         TEST_CASE(cppKeywordInCSource);
 
         TEST_CASE(cppcast);
+        TEST_CASE(ccast);
 
         TEST_CASE(checkHeader1);
 
@@ -8409,6 +8410,19 @@ private:
         for (const Token *tok = tokenizer.tokens(); tok; tok = tok->next()) {
             ASSERT_EQUALS(tok->str() == "(", tok->isCast());
         }
+    }
+
+    void ccast() {
+        const char code[] = "a = (int)x;\n" // #13579
+                            "int (*p)[10];\n";
+
+        SimpleTokenizer tokenizer(settingsDefault, *this);
+        ASSERT(tokenizer.tokenize(code));
+
+        const Token* par = Token::findsimplematch(tokenizer.tokens(), "(");
+        ASSERT(par->isCast());
+        par = Token::findsimplematch(par->next(), "(");
+        ASSERT(!par->isCast());
     }
 
 #define checkHdrs(...) checkHdrs_(__FILE__, __LINE__, __VA_ARGS__)
