@@ -1407,14 +1407,14 @@ private:
         values = tokenValues(code, "( p");
         ASSERT_EQUALS(1U, values.size());
         ASSERT_EQUALS(settings.platform.sizeof_pointer, values.back().intvalue);
-        
+
         code = "char*& pr = p;\n"
                "sizeof(pr);";
         values = tokenValues(code, "( pr");
         ASSERT_EQUALS(1U, values.size());
         ASSERT_EQUALS(settings.platform.sizeof_pointer, values.back().intvalue);
 
-        code = "struct { char& r; char* p; } s{ x, y};\n"
+        code = "struct { char& r; char* p; } s{ x, y };\n"
                "sizeof(s);\n";
         values = tokenValues(code, "( s");
         ASSERT_EQUALS(1U, values.size());
