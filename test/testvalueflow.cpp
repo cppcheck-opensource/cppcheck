@@ -6291,7 +6291,7 @@ private:
         values = tokenValues(code, "x > 5", ValueFlow::Value::ValueType::UNINIT);
         ASSERT_EQUALS(0, values.size());
 
-         code = "void f() {\n" // #11152
+        code = "void f() {\n" // #11152
                "  char b[10];\n"
                "  sprintf(b, \"abc\");\n"
                "  printf(\"%s\", b);\n"
