@@ -2235,19 +2235,9 @@ bool Token::addValue(const ValueFlow::Value &value)
         std::any_of(mImpl->mValues->begin(), mImpl->mValues->end(), [&](const ValueFlow::Value& x) {
         return x.isKnown() && sameValueType(x, value) && !x.equalValue(value);
     }))
-        return false;
-
-    // assert(value.isKnown() || !mImpl->mValues || std::none_of(mImpl->mValues->begin(), mImpl->mValues->end(),
-    // [&](const ValueFlow::Value& x) {
-    //     return x.isKnown() && sameValueType(x, value);
-    // }));
+        return false; // TODO: add bailout message
 
     if (mImpl->mValues) {
-        // Don't handle more than 10 values for performance reasons
-        // TODO: add setting?
-        if (mImpl->mValues->size() >= 10U)
-            return false;
-
         // if value already exists, don't add it again
         auto it = mImpl->mValues->begin();
         for (; it != mImpl->mValues->end(); ++it) {
@@ -2273,12 +2263,19 @@ bool Token::addValue(const ValueFlow::Value &value)
                 break;
             }
 
-            // Same value already exists, don't  add new value
+            // Same value already exists, don't add new value
             return false;
         }
 
         // Add value
         if (it == mImpl->mValues->end()) {
+            // Don't handle more than 10 values for performance reasons
+            // TODO: add setting?
+            if (mImpl->mValues->size() >= 10U) {
+                debugMsg("maxTokenValueBailout", "exceeded maximum amount of values per token");
+                return false;
+            }
+
             ValueFlow::Value v(value);
             if (v.varId == 0)
                 v.varId = mImpl->mVarId;
@@ -2756,4 +2753,9 @@ bool Token::isMutableExpr() const
     if (mImpl->mMutableExpr == -1)
         mImpl->mMutableExpr = isMutableExpression(this);
     return !!mImpl->mMutableExpr;
+}
+
+void Token::debugMsg(const std::string& type, const std::string& msg) const
+{
+    mList.debugMsg(this, type, msg);
 }

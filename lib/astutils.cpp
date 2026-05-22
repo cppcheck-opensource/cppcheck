@@ -65,11 +65,15 @@ const Token* findExpression(const nonneg int exprid,
     return nullptr;
 }
 
-static int findArgumentPosRecursive(const Token* tok, const Token* tokToFind,  bool &found, nonneg int depth=0)
+static int findArgumentPosRecursive(const Token* tok, const Token* tokToFind, bool &found, nonneg int depth=0)
 {
     ++depth;
-    if (!tok || depth >= 100)
+    if (!tok)
         return -1;
+    if (depth >= 100) {
+        tok->debugMsg("depthBailout", "maximum depth of findArgumentPosRecursive() exceeded");
+        return -1;
+    }
     if (tok->str() == ",") {
         int res = findArgumentPosRecursive(tok->astOperand1(), tokToFind, found, depth);
         if (res == -1)
@@ -111,8 +115,12 @@ template<class T, class OuputIterator, REQUIRES("T must be a Token class", std::
 static void astFlattenCopy(T* tok, const char* op, OuputIterator out, int depth = 100)
 {
     --depth;
-    if (!tok || depth < 0)
+    if (!tok)
         return;
+    if (depth < 0) {
+        tok->debugMsg("depthBailout", "maximum depth of astFlattenCopy() exceeded");
+        return;
+    }
     if (strcmp(tok->str().c_str(), op) == 0) {
         astFlattenCopy(tok->astOperand1(), op, out, depth);
         astFlattenCopy(tok->astOperand2(), op, out, depth);
@@ -139,8 +147,12 @@ std::vector<Token*> astFlatten(Token* tok, const char* op)
 nonneg int astCount(const Token* tok, const char* op, int depth)
 {
     --depth;
-    if (!tok || depth < 0)
+    if (!tok)
         return 0;
+    if (depth < 0) {
+        tok->debugMsg("depthBailout", "maixmum depth of astCount() excedded");
+        return 0;
+    }
     if (strcmp(tok->str().c_str(), op) == 0)
         return astCount(tok->astOperand1(), op, depth) + astCount(tok->astOperand2(), op, depth);
     return 1;
@@ -1127,9 +1139,11 @@ bool exprDependsOnThis(const Token* expr, bool onVar, nonneg int depth)
         return false;
     if (expr->str() == "this")
         return true;
-    if (depth >= 1000)
+    if (depth >= 1000) {
         // Abort recursion to avoid stack overflow
+        expr->debugMsg("depthBailout", "maximum depth of exprDependsOnThis() exceeded");
         return true;
+    }
     ++depth;
 
     // calling nonstatic method?
@@ -1273,6 +1287,7 @@ static SmallVector<ReferenceToken> followAllReferencesInternal(const Token* tok,
     if (!tok)
         return {};
     if (depth < 0) {
+        tok->debugMsg("depthBailout", "maximum depth of followAllReferencesInternal() exceeded");
         SmallVector<ReferenceToken> refs_result;
         refs_result.emplace_back(tok, std::move(errors));
         return refs_result;
@@ -2930,8 +2945,10 @@ static bool isExpressionChangedAt(const F& getExprTok,
                                   const Settings& settings,
                                   int depth)
 {
-    if (depth < 0)
+    if (depth < 0) {
+        tok->debugMsg("depthBailout", "maximum depth of isExpressionChangedAt() exceeded");
         return true;
+    }
     if (!tok)
         return false;
     if (!tok->isMutableExpr())
@@ -2989,8 +3006,10 @@ Token* findVariableChanged(Token *start, const Token *end, int indirect, const n
 {
     if (!precedes(start, end))
         return nullptr;
-    if (depth < 0)
+    if (depth < 0) {
+        start->debugMsg("depthBailout", "maximum depth of findVariableChanged() exceeded");
         return start;
+    }
     auto getExprTok = utils::memoize([&] {
         return findExpression(start, exprid);
     });
@@ -3088,8 +3107,10 @@ static const Token* findExpressionChangedImpl(const Token* expr,
                                               int depth,
                                               Find find)
 {
-    if (depth < 0)
+    if (depth < 0) {
+        expr->debugMsg("depthBailout", "maxmimum depth of findExpressionChangedImpl() exceeded");
         return start;
+    }
     if (!precedes(start, end))
         return nullptr;
     const Token* result = nullptr;

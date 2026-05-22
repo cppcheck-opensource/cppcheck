@@ -26,6 +26,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -215,6 +216,12 @@ public:
         return mSettings;
     }
 
+    void setDebugMsgHandler(std::function<void(const Token*, const std::string&, const std::string&)> debugMsgHandler) {
+        mDebugMsgHandler = std::move(debugMsgHandler);
+    }
+
+    void debugMsg(const Token* tok, const std::string& type, const std::string& msg) const;
+
 private:
     bool createTokensFromBufferInternal(const char* data, std::size_t size, const std::string& file0);
 
@@ -232,6 +239,9 @@ private:
 
     /** File is known to be C/C++ code */
     Standards::Language mLang{Standards::Language::None};
+
+    /** The handler for debug messages */
+    std::function<void(const Token*, const std::string&, const std::string&)> mDebugMsgHandler;
 };
 
 /// @}

@@ -1689,6 +1689,8 @@ public:
     {
         return mIsC;
     }
+
+    void debugMsg(const std::string& type, const std::string& msg) const;
 };
 
 Token* findTypeEnd(Token* tok);
