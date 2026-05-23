@@ -37,7 +37,7 @@ const char Settings::SafeChecks::XmlClasses[] = "class-public";
 const char Settings::SafeChecks::XmlExternalFunctions[] = "external-functions";
 const char Settings::SafeChecks::XmlInternalFunctions[] = "internal-functions";
 const char Settings::SafeChecks::XmlExternalVariables[] = "external-variables";
-Settings::Settings() : maxCtuDepth(10) {}
+Settings::Settings() : executor(ExecutorType::Thread), pid(0) {}
 Platform::Platform() = default;
 Library::Library() = default;
 Library::~Library() = default;
@@ -199,6 +199,7 @@ void TestProjectFile::getCheckingSuppressionsStar() const
     QCOMPARE(projectFile.getCheckingSuppressions()[0].fileName, "*.cpp");
 }
 
+// cppcheck-suppress functionStatic
 void TestProjectFile::emptyUserInclude() const
 {
     ProjectFile projectFile;

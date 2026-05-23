@@ -108,29 +108,29 @@ public:
         return value <= longLongMax;
     }
 
-    std::uint8_t char_bit;       /// bits in char
-    std::uint8_t short_bit;      /// bits in short
-    std::uint8_t int_bit;        /// bits in int
-    std::uint8_t long_bit;       /// bits in long
-    std::uint8_t long_long_bit;  /// bits in long long
-    std::uint8_t float_bit;  /// bits in float
-    std::uint8_t double_bit;  /// bits in double
-    std::uint8_t long_double_bit;  /// bits in long double
+    std::uint8_t char_bit{};        /// bits in char
+    std::uint8_t short_bit{};       /// bits in short
+    std::uint8_t int_bit{};         /// bits in int
+    std::uint8_t long_bit{};        /// bits in long
+    std::uint8_t long_long_bit{};   /// bits in long long
+    std::uint8_t float_bit{};       /// bits in float
+    std::uint8_t double_bit{};      /// bits in double
+    std::uint8_t long_double_bit{}; /// bits in long double
 
     /** size of standard types */
-    std::size_t sizeof_bool;
-    std::size_t sizeof_short;
-    std::size_t sizeof_int;
-    std::size_t sizeof_long;
-    std::size_t sizeof_long_long;
-    std::size_t sizeof_float;
-    std::size_t sizeof_double;
-    std::size_t sizeof_long_double;
-    std::size_t sizeof_wchar_t;
-    std::size_t sizeof_size_t;
-    std::size_t sizeof_pointer;
+    std::size_t sizeof_bool{};
+    std::size_t sizeof_short{};
+    std::size_t sizeof_int{};
+    std::size_t sizeof_long{};
+    std::size_t sizeof_long_long{};
+    std::size_t sizeof_float{};
+    std::size_t sizeof_double{};
+    std::size_t sizeof_long_double{};
+    std::size_t sizeof_wchar_t{};
+    std::size_t sizeof_size_t{};
+    std::size_t sizeof_pointer{};
 
-    char defaultSign;  // unsigned:'u', signed:'s', unknown:'\0'
+    char defaultSign{};  // unsigned:'u', signed:'s', unknown:'\0'
 
     bool windows{false}; // indicates if the platform is Windows
 
@@ -146,7 +146,7 @@ public:
     };
 
     /** platform type */
-    Type type;
+    Type type{};
 
     /** set the platform type for predefined platforms - deprecated use set(const std::string&, std::string&) instead */
     bool set(Type t);

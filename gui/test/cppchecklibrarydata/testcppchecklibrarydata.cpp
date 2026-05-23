@@ -623,7 +623,7 @@ void TestCppcheckLibraryData::loadCfgFile(const QString &filename, CppcheckLibra
     }
 }
 
-void TestCppcheckLibraryData::saveCfgFile(const QString &filename, CppcheckLibraryData &data)
+void TestCppcheckLibraryData::saveCfgFile(const QString &filename, const CppcheckLibraryData &data)
 {
     QFile file(filename);
     QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
