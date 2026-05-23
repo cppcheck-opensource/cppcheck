@@ -46,6 +46,7 @@
 namespace {
     struct ForwardTraversal {
         enum class Progress : std::uint8_t { Continue, Break, Skip };
+        // TODO: analyzer is copied
         ForwardTraversal(const ValuePtr<Analyzer>& analyzer, const TokenList& tokenList, ErrorLogger& errorLogger, const Settings& settings)
             : analyzer(analyzer), tokenList(tokenList), errorLogger(errorLogger), settings(settings)
         {}
@@ -580,7 +581,7 @@ namespace {
          */
         Progress updateRange(Token* start, const Token* end, int depth = 20) {
             if (depth < 0)
-                return Break(Analyzer::Terminate::Bail);
+                return Break(Analyzer::Terminate::Bail); // TODO: add bailout message
             std::size_t i = 0;
             for (Token* tok = start; precedes(tok, end); tok = tok->next()) {
                 Token* next = nullptr;

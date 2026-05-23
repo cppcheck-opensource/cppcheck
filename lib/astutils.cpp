@@ -69,7 +69,7 @@ static int findArgumentPosRecursive(const Token* tok, const Token* tokToFind,  b
 {
     ++depth;
     if (!tok || depth >= 100)
-        return -1;
+        return -1; // TODO: add bailout message
     if (tok->str() == ",") {
         int res = findArgumentPosRecursive(tok->astOperand1(), tokToFind, found, depth);
         if (res == -1)
@@ -112,7 +112,7 @@ static void astFlattenCopy(T* tok, const char* op, OuputIterator out, int depth 
 {
     --depth;
     if (!tok || depth < 0)
-        return;
+        return; // TODO: add bailout message
     if (strcmp(tok->str().c_str(), op) == 0) {
         astFlattenCopy(tok->astOperand1(), op, out, depth);
         astFlattenCopy(tok->astOperand2(), op, out, depth);
@@ -140,7 +140,7 @@ nonneg int astCount(const Token* tok, const char* op, int depth)
 {
     --depth;
     if (!tok || depth < 0)
-        return 0;
+        return 0; // TODO: add bailout message
     if (strcmp(tok->str().c_str(), op) == 0)
         return astCount(tok->astOperand1(), op, depth) + astCount(tok->astOperand2(), op, depth);
     return 1;
@@ -1129,6 +1129,7 @@ bool exprDependsOnThis(const Token* expr, bool onVar, nonneg int depth)
         return true;
     if (depth >= 1000)
         // Abort recursion to avoid stack overflow
+        // TODO: add bailout message
         return true;
     ++depth;
 
@@ -1273,6 +1274,7 @@ static SmallVector<ReferenceToken> followAllReferencesInternal(const Token* tok,
     if (!tok)
         return {};
     if (depth < 0) {
+        // TODO: add bailout message
         SmallVector<ReferenceToken> refs_result;
         refs_result.emplace_back(tok, std::move(errors));
         return refs_result;
@@ -2931,7 +2933,7 @@ static bool isExpressionChangedAt(const F& getExprTok,
                                   int depth)
 {
     if (depth < 0)
-        return true;
+        return true; // TODO: add bailout message
     if (!tok)
         return false;
     if (!tok->isMutableExpr())
@@ -2990,7 +2992,7 @@ Token* findVariableChanged(Token *start, const Token *end, int indirect, const n
     if (!precedes(start, end))
         return nullptr;
     if (depth < 0)
-        return start;
+        return start; // TODO: add bailout message
     auto getExprTok = utils::memoize([&] {
         return findExpression(start, exprid);
     });
@@ -3089,7 +3091,7 @@ static const Token* findExpressionChangedImpl(const Token* expr,
                                               Find find)
 {
     if (depth < 0)
-        return start;
+        return start; // TODO: add bailout message
     if (!precedes(start, end))
         return nullptr;
     const Token* result = nullptr;
