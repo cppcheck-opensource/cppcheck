@@ -2923,12 +2923,13 @@ static void valueFlowLifetime(TokenList &tokenlist, ErrorLogger &errorLogger, co
                         tok2, "Lambda captures variable by reference here.", ValueFlow::Value::LifetimeKind::Lambda};
                     ls.forward = false;
                     update |= ls.byRef(tok, tokenlist, errorLogger, settings, pred);
+                    // TODO: call pred(tok2)?
                 } else if (c == LifetimeCapture::ByValue) {
                     LifetimeStore ls{
                         tok2, "Lambda captures variable by value here.", ValueFlow::Value::LifetimeKind::Lambda};
                     ls.forward = false;
                     update |= ls.byVal(tok, tokenlist, errorLogger, settings, pred);
-                    pred(tok2);
+                    (void)pred(tok2);
                 }
             };
 
