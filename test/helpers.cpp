@@ -77,7 +77,7 @@ ScopedFile::ScopedFile(std::string name, const std::string &content, std::string
 ScopedFile::~ScopedFile() {
     const int remove_res = std::remove(mFullPath.c_str());
     if (remove_res != 0) {
-        std::cout << "ScopedFile(" << mFullPath + ") - could not delete file (" << remove_res << ")" << std::endl;
+        std::cout << "ScopedFile(" << mFullPath + ") - could not delete file (" << remove_res << ")" << '\n';
     }
     if (!mPath.empty() && mPath != Path::getCurrentPath()) {
         // TODO: remove all files
@@ -86,26 +86,26 @@ ScopedFile::~ScopedFile() {
         std::list<FileWithDetails> files;
         const std::string res = FileLister::addFiles(files, mPath, {".plist"}, false, PathMatch());
         if (!res.empty()) {
-            std::cout << "ScopedFile(" << mPath + ") - generating file list failed (" << res << ")" << std::endl;
+            std::cout << "ScopedFile(" << mPath + ") - generating file list failed (" << res << ")" << '\n';
         }
         for (const auto &f : files)
         {
             const std::string &file = f.path();
             const int rm_f_res = std::remove(file.c_str());
             if (rm_f_res != 0) {
-                std::cout << "ScopedFile(" << mPath + ") - could not delete '" << file << "' (" << rm_f_res << ")" << std::endl;
+                std::cout << "ScopedFile(" << mPath + ") - could not delete '" << file << "' (" << rm_f_res << ")" << '\n';
             }
         }
 
 #ifdef _WIN32
         if (!RemoveDirectoryA(mPath.c_str())) {
-            std::cout << "ScopedFile(" << mFullPath + ") - could not delete folder (" << GetLastError() << ")" << std::endl;
+            std::cout << "ScopedFile(" << mFullPath + ") - could not delete folder (" << GetLastError() << ")" << '\n';
         }
 #else
         const int rmdir_res = rmdir(mPath.c_str());
         if (rmdir_res == -1) {
             const int err = errno;
-            std::cout << "ScopedFile(" << mFullPath + ") - could not delete folder (" << err << ")" << std::endl;
+            std::cout << "ScopedFile(" << mFullPath + ") - could not delete folder (" << err << ")" << '\n';
         }
 #endif
     }

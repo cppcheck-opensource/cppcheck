@@ -38,7 +38,7 @@ Check::Check(std::string aname)
 
 void Check::writeToErrorList(const ErrorMessage &errmsg)
 {
-    std::cout << errmsg.toXML() << std::endl;
+    std::cout << errmsg.toXML() << '\n';
 }
 
 

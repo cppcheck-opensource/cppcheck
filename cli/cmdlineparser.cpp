@@ -121,7 +121,7 @@ namespace {
     {
         void reportOut(const std::string & outmsg, Color /*c*/ = Color::Reset) override
         {
-            std::cout << outmsg << std::endl;
+            std::cout << outmsg << '\n';
         }
 
         void reportErr(const ErrorMessage &msg) override
@@ -180,7 +180,7 @@ bool CmdLineParser::fillSettingsFromArgs(int argc, const char* const argv[])
                 // TODO: this bypasses the template format and other settings
                 // If the include path is not found, warn user and remove the non-existing path from the list.
                 if (mSettings.severity.isEnabled(Severity::information))
-                    std::cout << "(information) Couldn't find path given by -I '" << path << '\'' << std::endl;
+                    std::cout << "(information) Couldn't find path given by -I '" << path << '\'' << '\n';
                 iter = mSettings.includePaths.erase(iter);
             }
         }
@@ -378,7 +378,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                 XMLErrorMessagesLogger xmlLogger;
                 std::cout << ErrorMessage::getXMLHeader(mSettings.cppcheckCfgProductName, 2);
                 CppCheck::getErrorMessages(xmlLogger);
-                std::cout << ErrorMessage::getXMLFooter(2) << std::endl;
+                std::cout << ErrorMessage::getXMLFooter(2) << '\n';
             }
             return Result::Exit;
         }

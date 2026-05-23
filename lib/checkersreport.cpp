@@ -160,23 +160,23 @@ std::string CheckersReport::getReport(const std::string& criticalErrors) const
 {
     std::ostringstream fout;
 
-    fout << "Critical errors" << std::endl;
-    fout << "---------------" << std::endl;
+    fout << "Critical errors" << '\n';
+    fout << "---------------" << '\n';
     if (!criticalErrors.empty()) {
-        fout << "There were critical errors (" << criticalErrors << ")." << std::endl;
-        fout << "These cause the analysis of the file to end prematurely." << std::endl;
+        fout << "There were critical errors (" << criticalErrors << ")." << '\n';
+        fout << "These cause the analysis of the file to end prematurely." << '\n';
     } else {
-        fout << "No critical errors encountered." << std::endl;
+        fout << "No critical errors encountered." << '\n';
         // TODO: mention "information" and "debug" as source for indications of bailouts
         // TODO: still rephrase this - this message does not provides confidence in the results
         // TODO: document what a bailout is and why it is done - mention it in the upcoming security/tuning guide
         // TODO: make bailouts a separate group - need to differentiate between user bailouts (missing data like configuration/includes) and internal bailouts (e.g. limitations of ValueFlow)
-        fout << "Note: There might still have been non-critical bailouts which might lead to false negatives." << std::endl;
+        fout << "Note: There might still have been non-critical bailouts which might lead to false negatives." << '\n';
     }
 
-    fout << std::endl << std::endl;
-    fout << "Open source checkers" << std::endl;
-    fout << "--------------------" << std::endl;
+    fout << '\n' << '\n';
+    fout << "Open source checkers" << '\n';
+    fout << "--------------------" << '\n';
 
     std::size_t maxCheckerSize = 0;
     for (const auto& checkReq: checkers::allCheckers) {
@@ -190,13 +190,13 @@ std::string CheckersReport::getReport(const std::string& criticalErrors) const
         fout << (active ? "Yes  " : "No   ") << checker;
         if (!active && !req.empty())
             fout << std::string(maxCheckerSize + 4 - checker.size(), ' ') << "require:" + req;
-        fout << std::endl;
+        fout << '\n';
     }
 
     for (const auto& addonInfo: mSettings.addonInfos) {
         if (addonInfo.checkers.empty())
             continue;
-        fout << std::endl << std::endl;
+        fout << '\n'<< '\n';
         std::string title;
         if (mSettings.premium && addonInfo.name == "premiumaddon.json")
             title = "Cppcheck Premium";
@@ -206,8 +206,8 @@ std::string CheckersReport::getReport(const std::string& criticalErrors) const
                 title.erase(title.rfind('.'));
         }
         title += " checkers";
-        fout << title << std::endl;
-        fout << std::string(title.size(), '-') << std::endl;
+        fout << title << '\n';
+        fout << std::string(title.size(), '-') << '\n';
 
         maxCheckerSize = 0;
         for (const auto& checkReq: addonInfo.checkers) {
@@ -222,7 +222,7 @@ std::string CheckersReport::getReport(const std::string& criticalErrors) const
             fout << (active ? "Yes  " : "No   ") << checker;
             if (!active && !req.empty())
                 fout << std::string(maxCheckerSize + 4 - checker.size(), ' ') << "require:" << req;
-            fout << std::endl;
+            fout << '\n';
         }
     }
 

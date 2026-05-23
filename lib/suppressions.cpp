@@ -516,7 +516,7 @@ void SuppressionList::dump(std::ostream & out, const std::string& filePath) cons
 {
     std::lock_guard<std::mutex> lg(mSuppressionsSync);
 
-    out << "  <suppressions>" << std::endl;
+    out << "  <suppressions>" << '\n';
     for (const Suppression &suppression : mSuppressions) {
         if (suppression.isInline && !suppression.fileName.empty() && !filePath.empty() && filePath != suppression.fileName)
             continue;
@@ -550,9 +550,9 @@ void SuppressionList::dump(std::ostream & out, const std::string& filePath) cons
             out << " inline=\"false\"";
         if (!suppression.extraComment.empty())
             out << " comment=\"" << ErrorLogger::toxml(suppression.extraComment) << "\"";
-        out << " />" << std::endl;
+        out << " />" << '\n';
     }
-    out << "  </suppressions>" << std::endl;
+    out << "  </suppressions>" << '\n';
 }
 
 std::list<SuppressionList::Suppression> SuppressionList::getUnmatchedLocalSuppressions(const FileWithDetails &file) const

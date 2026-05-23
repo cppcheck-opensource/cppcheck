@@ -201,7 +201,7 @@ static int write_vcxproj(const std::string &proj_name, const std::function<void(
         // treat as binary to prevent implicit line ending conversions
         std::ifstream in(proj_name, std::ios::binary);
         if (!in.is_open()) {
-            std::cerr << "Could not open " << proj_name << std::endl;
+            std::cerr << "Could not open " << proj_name << '\n';
             return EXIT_FAILURE;
         }
 
@@ -441,7 +441,7 @@ int main(int argc, char **argv)
     std::vector<std::string> libfiles;
     std::string err = getCppFiles(libfiles, "lib/", false);
     if (!err.empty()) {
-        std::cerr << err << std::endl;
+        std::cerr << err << '\n';
         return EXIT_FAILURE;
     }
     const std::vector<std::string> libfiles_prio = prioritizelib(libfiles);
@@ -449,7 +449,7 @@ int main(int argc, char **argv)
     std::vector<std::string> extfiles;
     err = getCppFiles(extfiles, "externals/", true);
     if (!err.empty()) {
-        std::cerr << err << std::endl;
+        std::cerr << err << '\n';
         return EXIT_FAILURE;
     }
 
@@ -463,26 +463,26 @@ int main(int argc, char **argv)
     std::vector<std::string> clifiles;
     err = getCppFiles(clifiles, "cli/", false);
     if (!err.empty()) {
-        std::cerr << err << std::endl;
+        std::cerr << err << '\n';
         return EXIT_FAILURE;
     }
 
     std::vector<std::string> testfiles;
     err = getCppFiles(testfiles, "test/", false);
     if (!err.empty()) {
-        std::cerr << err << std::endl;
+        std::cerr << err << '\n';
         return EXIT_FAILURE;
     }
 
     std::vector<std::string> toolsfiles;
     err = getCppFiles(toolsfiles, "tools/dmake/", false);
     if (!err.empty()) {
-        std::cerr << err << std::endl;
+        std::cerr << err << '\n';
         return EXIT_FAILURE;
     }
 
     if (libfiles.empty() && frontendfiles.empty() && clifiles.empty() && testfiles.empty()) {
-        std::cerr << "No files found. Are you in the correct directory?" << std::endl;
+        std::cerr << "No files found. Are you in the correct directory?" << '\n';
         return EXIT_FAILURE;
     }
 

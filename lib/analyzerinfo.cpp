@@ -71,7 +71,7 @@ std::string AnalyzerInformation::getFilesTxt(const std::list<std::string> &sourc
     for (const FileSettings &fs : fileSettings) {
         const std::string afile = getFilename(fs.filename());
         const std::string id = fs.file.fsFileId() > 0 ? std::to_string(fs.file.fsFileId()) : "";
-        ret << afile << ".a" << (++fileCount[afile]) << sep << fs.cfg << sep << id << sep << Path::simplifyPath(fs.filename()) << std::endl;
+        ret << afile << ".a" << (++fileCount[afile]) << sep << fs.cfg << sep << id << sep << Path::simplifyPath(fs.filename()) << '\n';
     }
 
     return ret.str();

@@ -118,7 +118,7 @@ static void ShowUsage()
                        );
     (void)msgBox.exec();
 #else
-    std::cout << helpMessage.toStdString() << std::endl;
+    std::cout << helpMessage.toStdString() << '\n';
 #endif
 }
 
@@ -136,6 +136,6 @@ static void ShowVersion()
     if (*extraVersion != 0)
         versionMessage += std::string(" (") + extraVersion + ")";
 
-    std::cout << versionMessage << std::endl;
+    std::cout << versionMessage << '\n';
 #endif
 }

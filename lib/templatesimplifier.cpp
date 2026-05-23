@@ -3619,22 +3619,22 @@ void TemplateSimplifier::printOut(const TokenAndName &tokenAndName, const std::s
         std::cout << "\"" << tokenAndName.token()->str() << "\" " << mTokenList.fileLine(tokenAndName.token());
     else
         std::cout << "nullptr";
-    std::cout << std::endl;
-    std::cout << indent << "scope: \"" << tokenAndName.scope() << "\"" << std::endl;
-    std::cout << indent << "name: \"" << tokenAndName.name() << "\"" << std::endl;
-    std::cout << indent << "fullName: \"" << tokenAndName.fullName() << "\"" << std::endl;
+    std::cout << '\n';
+    std::cout << indent << "scope: \"" << tokenAndName.scope() << "\"" << '\n';
+    std::cout << indent << "name: \"" << tokenAndName.name() << "\"" << '\n';
+    std::cout << indent << "fullName: \"" << tokenAndName.fullName() << "\"" << '\n';
     std::cout << indent << "nameToken: ";
     if (tokenAndName.nameToken())
         std::cout << "\"" << tokenAndName.nameToken()->str() << "\" " << mTokenList.fileLine(tokenAndName.nameToken());
     else
         std::cout << "nullptr";
-    std::cout << std::endl;
+    std::cout << '\n';
     std::cout << indent << "paramEnd: ";
     if (tokenAndName.paramEnd())
         std::cout << "\"" << tokenAndName.paramEnd()->str() << "\" " << mTokenList.fileLine(tokenAndName.paramEnd());
     else
         std::cout << "nullptr";
-    std::cout << std::endl;
+    std::cout << '\n';
     std::cout << indent << "flags: ";
     if (tokenAndName.isClass())
         std::cout << " isClass";
@@ -3654,7 +3654,7 @@ void TemplateSimplifier::printOut(const TokenAndName &tokenAndName, const std::s
         std::cout << " isVariadic";
     if (tokenAndName.isFriend())
         std::cout << " isFriend";
-    std::cout << std::endl;
+    std::cout << '\n';
     if (tokenAndName.token() && !tokenAndName.paramEnd() && tokenAndName.token()->strAt(1) == "<") {
         const Token *end = tokenAndName.token()->next()->findClosingBracket();
         if (end) {
@@ -3670,38 +3670,38 @@ void TemplateSimplifier::printOut(const TokenAndName &tokenAndName, const std::s
                 std::cout << start->str();
                 start = start->next();
             }
-            std::cout << end->str() << std::endl;
+            std::cout << end->str() << '\n';
         }
     } else if (tokenAndName.isAlias() && tokenAndName.paramEnd()) {
         if (tokenAndName.aliasStartToken()) {
             std::cout << indent << "aliasStartToken: \"" << tokenAndName.aliasStartToken()->str() << "\" "
-                      << mTokenList.fileLine(tokenAndName.aliasStartToken()) << std::endl;
+                      << mTokenList.fileLine(tokenAndName.aliasStartToken()) << '\n';
         }
         if (tokenAndName.aliasEndToken()) {
             std::cout << indent << "aliasEndToken: \"" << tokenAndName.aliasEndToken()->str() << "\" "
-                      << mTokenList.fileLine(tokenAndName.aliasEndToken()) << std::endl;
+                      << mTokenList.fileLine(tokenAndName.aliasEndToken()) << '\n';
         }
     }
 }
 
 void TemplateSimplifier::printOut(const std::string & text) const
 {
-    std::cout << std::endl;
-    std::cout << text << std::endl;
-    std::cout << std::endl;
-    std::cout << "mTemplateDeclarations: " << mTemplateDeclarations.size() << std::endl;
+    std::cout << '\n';
+    std::cout << text << '\n';
+    std::cout << '\n';
+    std::cout << "mTemplateDeclarations: " << mTemplateDeclarations.size() << '\n';
     int count = 0;
     for (const auto & decl : mTemplateDeclarations) {
-        std::cout << "mTemplateDeclarations[" << count++ << "]:" << std::endl;
+        std::cout << "mTemplateDeclarations[" << count++ << "]:" << '\n';
         printOut(decl);
     }
-    std::cout << "mTemplateForwardDeclarations: " << mTemplateForwardDeclarations.size() << std::endl;
+    std::cout << "mTemplateForwardDeclarations: " << mTemplateForwardDeclarations.size() << '\n';
     count = 0;
     for (const auto & decl : mTemplateForwardDeclarations) {
-        std::cout << "mTemplateForwardDeclarations[" << count++ << "]:" << std::endl;
+        std::cout << "mTemplateForwardDeclarations[" << count++ << "]:" << '\n';
         printOut(decl);
     }
-    std::cout << "mTemplateForwardDeclarationsMap: " << mTemplateForwardDeclarationsMap.size() << std::endl;
+    std::cout << "mTemplateForwardDeclarationsMap: " << mTemplateForwardDeclarationsMap.size() << '\n';
     unsigned int mapIndex = 0;
     for (const auto & mapItem : mTemplateForwardDeclarationsMap) {
         unsigned int declIndex = 0;
@@ -3710,9 +3710,9 @@ void TemplateSimplifier::printOut(const std::string & text) const
                 unsigned int forwardIndex = 0;
                 for (const auto & forwardDecl : mTemplateForwardDeclarations) {
                     if (mapItem.second == forwardDecl.token()) {
-                        std::cout << "mTemplateForwardDeclarationsMap[" << mapIndex << "]:" << std::endl;
+                        std::cout << "mTemplateForwardDeclarationsMap[" << mapIndex << "]:" << '\n';
                         std::cout << "    mTemplateDeclarations[" << declIndex
-                                  << "] => mTemplateForwardDeclarations[" << forwardIndex << "]" << std::endl;
+                                  << "] => mTemplateForwardDeclarations[" << forwardIndex << "]" << '\n';
                         break;
                     }
                     forwardIndex++;
@@ -3723,7 +3723,7 @@ void TemplateSimplifier::printOut(const std::string & text) const
         }
         mapIndex++;
     }
-    std::cout << "mTemplateSpecializationMap: " << mTemplateSpecializationMap.size() << std::endl;
+    std::cout << "mTemplateSpecializationMap: " << mTemplateSpecializationMap.size() << '\n';
     for (const auto & mapItem : mTemplateSpecializationMap) {
         unsigned int decl1Index = 0;
         for (const auto & decl1 : mTemplateDeclarations) {
@@ -3732,9 +3732,9 @@ void TemplateSimplifier::printOut(const std::string & text) const
                 unsigned int decl2Index = 0;
                 for (const auto & decl2 : mTemplateDeclarations) {
                     if (mapItem.second == decl2.token()) {
-                        std::cout << "mTemplateSpecializationMap[" << mapIndex << "]:" << std::endl;
+                        std::cout << "mTemplateSpecializationMap[" << mapIndex << "]:" << '\n';
                         std::cout << "    mTemplateDeclarations[" << decl1Index
-                                  << "] => mTemplateDeclarations[" << decl2Index << "]" << std::endl;
+                                  << "] => mTemplateDeclarations[" << decl2Index << "]" << '\n';
                         found = true;
                         break;
                     }
@@ -3744,9 +3744,9 @@ void TemplateSimplifier::printOut(const std::string & text) const
                     decl2Index = 0;
                     for (const auto & decl2 : mTemplateForwardDeclarations) {
                         if (mapItem.second == decl2.token()) {
-                            std::cout << "mTemplateSpecializationMap[" << mapIndex << "]:" << std::endl;
+                            std::cout << "mTemplateSpecializationMap[" << mapIndex << "]:" << '\n';
                             std::cout << "    mTemplateDeclarations[" << decl1Index
-                                      << "] => mTemplateForwardDeclarations[" << decl2Index << "]" << std::endl;
+                                      << "] => mTemplateForwardDeclarations[" << decl2Index << "]" << '\n';
                             break;
                         }
                         decl2Index++;
@@ -3758,7 +3758,7 @@ void TemplateSimplifier::printOut(const std::string & text) const
         }
         mapIndex++;
     }
-    std::cout << "mTemplatePartialSpecializationMap: " << mTemplatePartialSpecializationMap.size() << std::endl;
+    std::cout << "mTemplatePartialSpecializationMap: " << mTemplatePartialSpecializationMap.size() << '\n';
     for (const auto & mapItem : mTemplatePartialSpecializationMap) {
         unsigned int decl1Index = 0;
         for (const auto & decl1 : mTemplateDeclarations) {
@@ -3767,9 +3767,9 @@ void TemplateSimplifier::printOut(const std::string & text) const
                 unsigned int decl2Index = 0;
                 for (const auto & decl2 : mTemplateDeclarations) {
                     if (mapItem.second == decl2.token()) {
-                        std::cout << "mTemplatePartialSpecializationMap[" << mapIndex << "]:" << std::endl;
+                        std::cout << "mTemplatePartialSpecializationMap[" << mapIndex << "]:" << '\n';
                         std::cout << "    mTemplateDeclarations[" << decl1Index
-                                  << "] => mTemplateDeclarations[" << decl2Index << "]" << std::endl;
+                                  << "] => mTemplateDeclarations[" << decl2Index << "]" << '\n';
                         found = true;
                         break;
                     }
@@ -3779,9 +3779,9 @@ void TemplateSimplifier::printOut(const std::string & text) const
                     decl2Index = 0;
                     for (const auto & decl2 : mTemplateForwardDeclarations) {
                         if (mapItem.second == decl2.token()) {
-                            std::cout << "mTemplatePartialSpecializationMap[" << mapIndex << "]:" << std::endl;
+                            std::cout << "mTemplatePartialSpecializationMap[" << mapIndex << "]:" << '\n';
                             std::cout << "    mTemplateDeclarations[" << decl1Index
-                                      << "] => mTemplateForwardDeclarations[" << decl2Index << "]" << std::endl;
+                                      << "] => mTemplateForwardDeclarations[" << decl2Index << "]" << '\n';
                             break;
                         }
                         decl2Index++;
@@ -3793,10 +3793,10 @@ void TemplateSimplifier::printOut(const std::string & text) const
         }
         mapIndex++;
     }
-    std::cout << "mTemplateInstantiations: " << mTemplateInstantiations.size() << std::endl;
+    std::cout << "mTemplateInstantiations: " << mTemplateInstantiations.size() << '\n';
     count = 0;
     for (const auto & decl : mTemplateInstantiations) {
-        std::cout << "mTemplateInstantiations[" << count++ << "]:" << std::endl;
+        std::cout << "mTemplateInstantiations[" << count++ << "]:" << '\n';
         printOut(decl);
     }
 }

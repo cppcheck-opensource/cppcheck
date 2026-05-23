@@ -141,12 +141,12 @@ namespace {
             const ssize_t bytes_written = write(mWpipe, data, to_write);
             if (bytes_written <= 0) {
                 const int err = errno;
-                std::cerr << "#### ThreadExecutor::writeToPipeInternal() error for type " << static_cast<unsigned char>(type) << ": " << std::strerror(err) << std::endl;
+                std::cerr << "#### ThreadExecutor::writeToPipeInternal() error for type " << static_cast<unsigned char>(type) << ": " << std::strerror(err) << '\n';
                 std::exit(EXIT_FAILURE);
             }
             // TODO: write until everything is written
             if (bytes_written != to_write) {
-                std::cerr << "#### ThreadExecutor::writeToPipeInternal() error for type " << static_cast<unsigned char>(type) << ": insufficient data written (expected: " << to_write << " / got: " << bytes_written << ")" << std::endl;
+                std::cerr << "#### ThreadExecutor::writeToPipeInternal() error for type " << static_cast<unsigned char>(type) << ": insufficient data written (expected: " << to_write << " / got: " << bytes_written << ")" << '\n';
                 std::exit(EXIT_FAILURE);
             }
         }
@@ -195,7 +195,7 @@ bool ProcessExecutor::handleRead(int rpipe, unsigned int &result, const std::str
         return false;
     }
     if (bytes_read != bytes_to_read) {
-        std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") error (type): insufficient data read (expected: " << bytes_to_read << " / got: " << bytes_read << ")" << std::endl;
+        std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") error (type): insufficient data read (expected: " << bytes_to_read << " / got: " << bytes_read << ")" << '\n';
         std::exit(EXIT_FAILURE);
     }
 
@@ -206,7 +206,7 @@ bool ProcessExecutor::handleRead(int rpipe, unsigned int &result, const std::str
         type != PipeWriter::CHILD_END &&
         type != PipeWriter::REPORT_METRIC &&
         type != PipeWriter::REPORT_TIMER) {
-        std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") invalid type " << int(type) << std::endl;
+        std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") invalid type " << int(type) << '\n';
         std::exit(EXIT_FAILURE);
     }
 
@@ -215,11 +215,11 @@ bool ProcessExecutor::handleRead(int rpipe, unsigned int &result, const std::str
     bytes_read = read(rpipe, &len, bytes_to_read);
     if (bytes_read <= 0) {
         const int err = errno;
-        std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") error (len) for type " << int(type) << ": " << std::strerror(err) << std::endl;
+        std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") error (len) for type " << int(type) << ": " << std::strerror(err) << '\n';
         std::exit(EXIT_FAILURE);
     }
     if (bytes_read != bytes_to_read) {
-        std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") error (len) for type" << int(type) << ": insufficient data read (expected: " << bytes_to_read << " / got: " << bytes_read << ")"  << std::endl;
+        std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") error (len) for type" << int(type) << ": insufficient data read (expected: " << bytes_to_read << " / got: " << bytes_read << ")"  << '\n';
         std::exit(EXIT_FAILURE);
     }
 
@@ -231,7 +231,7 @@ bool ProcessExecutor::handleRead(int rpipe, unsigned int &result, const std::str
             bytes_read = read(rpipe, data_start, bytes_to_read);
             if (bytes_read <= 0) {
                 const int err = errno;
-                std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") error (buf) for type" << int(type) << ": " << std::strerror(err) << std::endl;
+                std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") error (buf) for type" << int(type) << ": " << std::strerror(err) << '\n';
                 std::exit(EXIT_FAILURE);
             }
             bytes_to_read -= bytes_read;
@@ -253,7 +253,7 @@ bool ProcessExecutor::handleRead(int rpipe, unsigned int &result, const std::str
         try {
             msg.deserialize(buf);
         } catch (const InternalError& e) {
-            std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") internal error: " << e.errorMessage << std::endl;
+            std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") internal error: " << e.errorMessage << '\n';
             std::exit(EXIT_FAILURE);
         }
 
@@ -360,25 +360,25 @@ unsigned int ProcessExecutor::check()
         if ((iFile != mFiles.cend() || iFileSettings != mFileSettings.cend()) && nchildren < mSettings.jobs && checkLoadAverage(nchildren)) {
             int pipes[2];
             if (pipe(pipes) == -1) {
-                std::cerr << "#### ThreadExecutor::check, pipe() failed: "<< std::strerror(errno) << std::endl;
+                std::cerr << "#### ThreadExecutor::check, pipe() failed: "<< std::strerror(errno) << '\n';
                 std::exit(EXIT_FAILURE);
             }
 
             const int flags = fcntl(pipes[0], F_GETFL, 0);
             if (flags < 0) {
-                std::cerr << "#### ThreadExecutor::check, fcntl(F_GETFL) failed: "<< std::strerror(errno) << std::endl;
+                std::cerr << "#### ThreadExecutor::check, fcntl(F_GETFL) failed: "<< std::strerror(errno) << '\n';
                 std::exit(EXIT_FAILURE);
             }
 
             if (fcntl(pipes[0], F_SETFL, flags) < 0) {
-                std::cerr << "#### ThreadExecutor::check, fcntl(F_SETFL) failed: "<< std::strerror(errno) << std::endl;
+                std::cerr << "#### ThreadExecutor::check, fcntl(F_SETFL) failed: "<< std::strerror(errno) << '\n';
                 std::exit(EXIT_FAILURE);
             }
 
             const pid_t pid = fork();
             if (pid < 0) {
                 // Error
-                std::cerr << "#### ThreadExecutor::check, Failed to create child process: "<< std::strerror(errno) << std::endl;
+                std::cerr << "#### ThreadExecutor::check, Failed to create child process: "<< std::strerror(errno) << '\n';
                 std::exit(EXIT_FAILURE);
             } else if (pid == 0) {
 #if defined(__linux__)

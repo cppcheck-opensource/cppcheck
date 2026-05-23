@@ -97,7 +97,7 @@ namespace {
 
         void printRaw(const std::string &message) override
         {
-            std::cout << message << std::endl; // TODO: should not append newline
+            std::cout << message << '\n'; // TODO: should not append newline
         }
     };
 
@@ -592,18 +592,18 @@ static inline std::string ansiToOEM(const std::string &msg, bool doConvert)
 void StdLogger::reportErr(const std::string &errmsg)
 {
     if (mErrorOutput)
-        *mErrorOutput << errmsg << std::endl;
+        *mErrorOutput << errmsg << '\n';
     else {
-        std::cerr << ansiToOEM(errmsg, mSettings.outputFormat != Settings::OutputFormat::xml) << std::endl;
+        std::cerr << ansiToOEM(errmsg, mSettings.outputFormat != Settings::OutputFormat::xml) << '\n';
     }
 }
 
 void StdLogger::reportOut(const std::string &outmsg, Color c)
 {
     if (c == Color::Reset)
-        std::cout << ansiToOEM(outmsg, true) << std::endl;
+        std::cout << ansiToOEM(outmsg, true) << '\n';
     else
-        std::cout << c << ansiToOEM(outmsg, true) << Color::Reset << std::endl;
+        std::cout << c << ansiToOEM(outmsg, true) << Color::Reset << '\n';
 }
 
 // TODO: remove filename parameter?
@@ -710,11 +710,11 @@ int CppCheckExecutor::executeCommand(std::string exe, std::vector<std::string> a
 #else
     FILE *p = popen(cmd.c_str(), "r");
 #endif
-    //std::cout << "invoking command '" << cmd << "'" << std::endl;
+    //std::cout << "invoking command '" << cmd << "'" << '\n';
     if (!p) {
         // TODO: how to provide to caller?
         //const int err = errno;
-        //std::cout << "popen() errno " << std::to_string(err) << std::endl;
+        //std::cout << "popen() errno " << std::to_string(err) << '\n';
         return -1;
     }
     char buffer[1024];
@@ -732,7 +732,7 @@ int CppCheckExecutor::executeCommand(std::string exe, std::vector<std::string> a
     if (res == -1) { // error occurred
         // TODO: how to provide to caller?
         //const int err = errno;
-        //std::cout << "pclose() errno " << std::to_string(err) << std::endl;
+        //std::cout << "pclose() errno " << std::to_string(err) << '\n';
         return res;
     }
 #if !defined(_WIN32) && !defined(__MINGW32__)

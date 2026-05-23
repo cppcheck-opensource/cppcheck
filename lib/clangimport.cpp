@@ -508,12 +508,12 @@ void clangimport::AstNode::dumpAst(int num, int indent) const
     std::cout << std::string(indent, ' ') << nodeType;
     for (const auto& tok: mExtTokens)
         std::cout << " " << tok;
-    std::cout << std::endl;
+    std::cout << '\n';
     for (int c = 0; c < children.size(); ++c) {
         if (children[c])
             children[c]->dumpAst(c, indent + 2);
         else
-            std::cout << std::string(indent + 2, ' ') << "<<<<NULL>>>>>" << std::endl;
+            std::cout << std::string(indent + 2, ' ') << "<<<<NULL>>>>>" << '\n';
     }
 }
 

@@ -697,7 +697,7 @@ unsigned int CppCheck::checkClang(const FileWithDetails &file)
     }
 
     if (!mExecuteCommand) {
-        std::cerr << "Failed to execute '" << exe << " " << args2 << " " << redirect2 << "' - (no command callback provided)" << std::endl;
+        std::cerr << "Failed to execute '" << exe << " " << args2 << " " << redirect2 << "' - (no command callback provided)" << '\n';
         return 0; // TODO: report as failure?
     }
 
@@ -709,13 +709,13 @@ unsigned int CppCheck::checkClang(const FileWithDetails &file)
     // TODO: this might also fail if compiler errors are encountered - we should report them properly
     if (exitcode != EXIT_SUCCESS) {
         // TODO: report as proper error
-        std::cerr << "Failed to execute '" << exe << " " << args2 << " " << redirect2 << "' - (exitcode: " << exitcode << " / output: " << output2 << ")" << std::endl;
+        std::cerr << "Failed to execute '" << exe << " " << args2 << " " << redirect2 << "' - (exitcode: " << exitcode << " / output: " << output2 << ")" << '\n';
         return 0; // TODO: report as failure?
     }
 
     if (output2.find("TranslationUnitDecl") == std::string::npos) {
         // TODO: report as proper error
-        std::cerr << "Failed to execute '" << exe << " " << args2 << " " << redirect2 << "' - (no TranslationUnitDecl in output)" << std::endl;
+        std::cerr << "Failed to execute '" << exe << " " << args2 << " " << redirect2 << "' - (no TranslationUnitDecl in output)" << '\n';
         return 0; // TODO: report as failure?
     }
 
@@ -1211,15 +1211,15 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
 
                 // dump xml if --dump
                 if ((mSettings.dump || !mSettings.addons.empty()) && fdump.is_open()) {
-                    fdump << "<dump cfg=\"" << ErrorLogger::toxml(currentConfig) << "\">" << std::endl;
-                    fdump << "  <standards>" << std::endl;
-                    fdump << "    <c version=\"" << mSettings.standards.getC() << "\"/>" << std::endl;
-                    fdump << "    <cpp version=\"" << mSettings.standards.getCPP() << "\"/>" << std::endl;
+                    fdump << "<dump cfg=\"" << ErrorLogger::toxml(currentConfig) << "\">" << '\n';
+                    fdump << "  <standards>" << '\n';
+                    fdump << "    <c version=\"" << mSettings.standards.getC() << "\"/>" << '\n';
+                    fdump << "    <cpp version=\"" << mSettings.standards.getCPP() << "\"/>" << '\n';
                     fdump << "  </standards>" << std::endl;
                     fdump << getLibraryDumpData();
                     preprocessor.dump(fdump);
                     tokenizer.dump(fdump);
-                    fdump << "</dump>" << std::endl;
+                    fdump << "</dump>" << '\n';
                 }
 
                 if (mSettings.inlineSuppressions) {
@@ -1267,7 +1267,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         // TODO: will not be closed if we encountered an exception
         // dumped all configs, close root </dumps> element now
         if (fdump.is_open()) {
-            fdump << "</dumps>" << std::endl;
+            fdump << "</dumps>" << '\n';
             fdump.close();
         }
 
@@ -1513,7 +1513,7 @@ void CppCheck::executeAddons(const std::vector<std::string>& files, const std::s
         filesDeleter.addFile(fileList);
         // TODO: check if file could be created
         for (const std::string& f: files)
-            fout << f << std::endl;
+            fout << f << '\n';
     }
 
     // ensure all addons have already been resolved - TODO: remove when settings are const after creation
@@ -1751,7 +1751,7 @@ void CppCheck::analyseClangTidy(const FileSettings &fileSettings)
     std::string output;
     if (const int exitcode = mExecuteCommand(exe, split(args), "2>&1", output)) {
         // TODO: needs to be a proper error
-        std::cerr << "Failed to execute '" << exe << "' (exitcode: " << std::to_string(exitcode) << ")" << std::endl;
+        std::cerr << "Failed to execute '" << exe << "' (exitcode: " << std::to_string(exitcode) << ")" << '\n';
         return;
     }
 

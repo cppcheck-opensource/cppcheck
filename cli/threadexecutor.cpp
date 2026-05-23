@@ -207,7 +207,7 @@ unsigned int ThreadExecutor::check()
             threadFutures.emplace_back(std::async(std::launch::async, &threadProc, &data));
         }
         catch (const std::system_error &e) {
-            std::cerr << "#### ThreadExecutor::check exception :" << e.what() << std::endl;
+            std::cerr << "#### ThreadExecutor::check exception :" << e.what() << '\n';
             exit(EXIT_FAILURE);
         }
     }

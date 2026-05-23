@@ -224,11 +224,11 @@ bool Platform::loadFromFile(const std::vector<std::string>& paths, const std::st
         err = doc.LoadFile(f.c_str());
         if (err == tinyxml2::XML_SUCCESS) {
             if (debug)
-                std::cout << "Success" << std::endl;
+                std::cout << "Success" << '\n';
             break;
         }
         if (debug)
-            std::cout << doc.ErrorStr() << std::endl;
+            std::cout << doc.ErrorStr() << '\n';
         if (err != tinyxml2::XML_ERROR_FILE_NOT_FOUND)
             break;
     }

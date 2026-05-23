@@ -71,7 +71,7 @@ void TimerResults::showResults(size_t max_results, bool metrics) const
                 const double secMax = asSeconds(*std::max_element(iter->second.cbegin(), iter->second.cend())).count();
                 std::cout << " (avg. " << secAverage << "s / min " << secMin << "s / max " << secMax << "s - " << iter->second.size() << " result(s))";
             }
-            std::cout << std::endl;
+            std::cout << '\n';
         }
         ++ordinal;
     }
@@ -150,7 +150,7 @@ OneShotTimer::OneShotTimer(std::string name)
             std::lock_guard<std::mutex> l(stdCoutLock);
 
             // TODO: do not use std::cout directly
-            std::cout << name << ": " << durationToString(duration) << std::endl;
+            std::cout << name << ": " << durationToString(duration) << '\n';
         }
     };
 

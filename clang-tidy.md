@@ -123,7 +123,6 @@ Does not improve the readability.
 `bugprone-signed-char-misuse`<br/>
 `concurrency-mt-unsafe`<br/>
 `misc-use-anonymous-namespace`<br/>
-`performance-avoid-endl`<br/>
 `bugprone-switch-missing-default-case`<br/>
 `bugprone-empty-catch`<br/>
 `readability-avoid-nested-conditional-operator`<br/>

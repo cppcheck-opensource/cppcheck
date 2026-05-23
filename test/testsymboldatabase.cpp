@@ -7153,9 +7153,9 @@ private:
                 ASSERT(function != nullptr);
                 if (function) {
                     std::stringstream expected;
-                    expected << "Function call on line " << tok->linenr() << " calls function on line " << linenrs[index] << std::endl;
+                    expected << "Function call on line " << tok->linenr() << " calls function on line " << linenrs[index] << '\n';
                     std::stringstream actual;
-                    actual << "Function call on line " << tok->linenr() << " calls function on line " << function->tokenDef->linenr() << std::endl;
+                    actual << "Function call on line " << tok->linenr() << " calls function on line " << function->tokenDef->linenr() << '\n';
                     ASSERT_EQUALS(expected.str(), actual.str());
                 }
                 index++;

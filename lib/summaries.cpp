@@ -79,7 +79,7 @@ std::string Summaries::create(const Tokenizer &tokenizer, const std::string &cfg
             ostr << " call:[" << join(calledFunctions) << "]";
         if (!noreturn.empty())
             ostr << " noreturn:[" << join(noreturn) << "]";
-        ostr << std::endl;
+        ostr << '\n';
     }
 
     if (!settings.buildDir.empty()) {

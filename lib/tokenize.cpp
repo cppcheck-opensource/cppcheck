@@ -6079,7 +6079,7 @@ void Tokenizer::printDebugOutput(std::ostream &out) const
     const bool xml = (mSettings.outputFormat == Settings::OutputFormat::xml);
 
     if (xml)
-        out << "<debug>" << std::endl;
+        out << "<debug>" << '\n';
 
     if (mSettings.debugSimplified || mSettings.debugnormal)
         list.front()->printOut(out, xml, nullptr, list.getFiles());

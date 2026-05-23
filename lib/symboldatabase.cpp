@@ -4135,12 +4135,12 @@ static std::string tokenType(const Token * tok)
 
 void SymbolDatabase::printVariable(const Variable *var, const char *indent) const
 {
-    std::cout << indent << "mNameToken: " << tokenToString(var->nameToken(), mTokenizer) << std::endl;
+    std::cout << indent << "mNameToken: " << tokenToString(var->nameToken(), mTokenizer) << '\n';
     if (var->nameToken()) {
-        std::cout << indent << "    declarationId: " << var->declarationId() << std::endl;
+        std::cout << indent << "    declarationId: " << var->declarationId() << '\n';
     }
-    std::cout << indent << "mTypeStartToken: " << tokenToString(var->typeStartToken(), mTokenizer) << std::endl;
-    std::cout << indent << "mTypeEndToken: " << tokenToString(var->typeEndToken(), mTokenizer) << std::endl;
+    std::cout << indent << "mTypeStartToken: " << tokenToString(var->typeStartToken(), mTokenizer) << '\n';
+    std::cout << indent << "mTypeEndToken: " << tokenToString(var->typeEndToken(), mTokenizer) << '\n';
 
     if (var->typeStartToken()) {
         const Token * autoTok = nullptr;
@@ -4150,49 +4150,49 @@ void SymbolDatabase::printVariable(const Variable *var, const char *indent) cons
             if (tok->str() == "auto")
                 autoTok = tok;
         }
-        std::cout << std::endl;
+        std::cout << '\n';
         if (autoTok) {
             const ValueType * valueType = autoTok->valueType();
-            std::cout << indent << "    auto valueType: " << valueType << std::endl;
+            std::cout << indent << "    auto valueType: " << valueType << '\n';
             if (var->typeStartToken()->valueType()) {
-                std::cout << indent << "        " << valueType->str() << std::endl;
+                std::cout << indent << "        " << valueType->str() << '\n';
             }
         }
     } else if (var->valueType()) {
-        std::cout << indent << "   " << var->valueType()->str() << std::endl;
+        std::cout << indent << "   " << var->valueType()->str() << '\n';
     }
-    std::cout << indent << "mIndex: " << var->index() << std::endl;
-    std::cout << indent << "mAccess: " << accessControlToString(var->accessControl()) << std::endl;
-    std::cout << indent << "mFlags: " << std::endl;
-    std::cout << indent << "    isMutable: " << var->isMutable() << std::endl;
-    std::cout << indent << "    isStatic: " << var->isStatic() << std::endl;
-    std::cout << indent << "    isExtern: " << var->isExtern() << std::endl;
-    std::cout << indent << "    isLocal: " << var->isLocal() << std::endl;
-    std::cout << indent << "    isConst: " << var->isConst() << std::endl;
-    std::cout << indent << "    isClass: " << var->isClass() << std::endl;
-    std::cout << indent << "    isArray: " << var->isArray() << std::endl;
-    std::cout << indent << "    isPointer: " << var->isPointer() << std::endl;
-    std::cout << indent << "    isReference: " << var->isReference() << std::endl;
-    std::cout << indent << "    isRValueRef: " << var->isRValueReference() << std::endl;
-    std::cout << indent << "    hasDefault: " << var->hasDefault() << std::endl;
-    std::cout << indent << "    isStlType: " << var->isStlType() << std::endl;
+    std::cout << indent << "mIndex: " << var->index() << '\n';
+    std::cout << indent << "mAccess: " << accessControlToString(var->accessControl()) << '\n';
+    std::cout << indent << "mFlags: " << '\n';
+    std::cout << indent << "    isMutable: " << var->isMutable() << '\n';
+    std::cout << indent << "    isStatic: " << var->isStatic() << '\n';
+    std::cout << indent << "    isExtern: " << var->isExtern() << '\n';
+    std::cout << indent << "    isLocal: " << var->isLocal() << '\n';
+    std::cout << indent << "    isConst: " << var->isConst() << '\n';
+    std::cout << indent << "    isClass: " << var->isClass() << '\n';
+    std::cout << indent << "    isArray: " << var->isArray() << '\n';
+    std::cout << indent << "    isPointer: " << var->isPointer() << '\n';
+    std::cout << indent << "    isReference: " << var->isReference() << '\n';
+    std::cout << indent << "    isRValueRef: " << var->isRValueReference() << '\n';
+    std::cout << indent << "    hasDefault: " << var->hasDefault() << '\n';
+    std::cout << indent << "    isStlType: " << var->isStlType() << '\n';
     std::cout << indent << "mType: ";
     if (var->type()) {
         std::cout << var->type()->type() << " " << var->type()->name();
         std::cout << " " << mTokenizer.list.fileLine(var->type()->classDef);
-        std::cout << " " << var->type() << std::endl;
+        std::cout << " " << var->type() << '\n';
     } else
-        std::cout << "none" << std::endl;
+        std::cout << "none" << '\n';
 
     if (var->nameToken()) {
         const ValueType * valueType = var->nameToken()->valueType();
-        std::cout << indent << "valueType: " << valueType << std::endl;
+        std::cout << indent << "valueType: " << valueType << '\n';
         if (valueType) {
-            std::cout << indent << "    " << valueType->str() << std::endl;
+            std::cout << indent << "    " << valueType->str() << '\n';
         }
     }
 
-    std::cout << indent << "mScope: " << scopeToString(var->scope(), mTokenizer) << std::endl;
+    std::cout << indent << "mScope: " << scopeToString(var->scope(), mTokenizer) << '\n';
 
     std::cout << indent << "mDimensions:";
     for (std::size_t i = 0; i < var->dimensions().size(); i++) {
@@ -4200,7 +4200,7 @@ void SymbolDatabase::printVariable(const Variable *var, const char *indent) cons
         if (!var->dimensions()[i].known)
             std::cout << "?";
     }
-    std::cout << std::endl;
+    std::cout << '\n';
 }
 
 void SymbolDatabase::printOut(const char *title) const
@@ -4210,40 +4210,40 @@ void SymbolDatabase::printOut(const char *title) const
         std::cout << "\n### " << title << " ###\n";
 
     for (auto scope = scopeList.cbegin(); scope != scopeList.cend(); ++scope) {
-        std::cout << "Scope: " << &*scope << " " << scope->type << std::endl;
-        std::cout << "    className: " << scope->className << std::endl;
-        std::cout << "    classDef: " << tokenToString(scope->classDef, mTokenizer) << std::endl;
-        std::cout << "    bodyStart: " << tokenToString(scope->bodyStart, mTokenizer) << std::endl;
-        std::cout << "    bodyEnd: " << tokenToString(scope->bodyEnd, mTokenizer) << std::endl;
+        std::cout << "Scope: " << &*scope << " " << scope->type << '\n';
+        std::cout << "    className: " << scope->className << '\n';
+        std::cout << "    classDef: " << tokenToString(scope->classDef, mTokenizer) << '\n';
+        std::cout << "    bodyStart: " << tokenToString(scope->bodyStart, mTokenizer) << '\n';
+        std::cout << "    bodyEnd: " << tokenToString(scope->bodyEnd, mTokenizer) << '\n';
 
         // find the function body if not implemented inline
         for (auto func = scope->functionList.cbegin(); func != scope->functionList.cend(); ++func) {
-            std::cout << "    Function: " << &*func << std::endl;
-            std::cout << "        name: " << tokenToString(func->tokenDef, mTokenizer) << std::endl;
-            std::cout << "        type: " << functionTypeToString(func->type) << std::endl;
-            std::cout << "        access: " << accessControlToString(func->access) << std::endl;
-            std::cout << "        hasBody: " << func->hasBody() << std::endl;
-            std::cout << "        isInline: " << func->isInline() << std::endl;
-            std::cout << "        isConst: " << func->isConst() << std::endl;
-            std::cout << "        hasVirtualSpecifier: " << func->hasVirtualSpecifier() << std::endl;
-            std::cout << "        isPure: " << func->isPure() << std::endl;
-            std::cout << "        isStatic: " << func->isStatic() << std::endl;
-            std::cout << "        isStaticLocal: " << func->isStaticLocal() << std::endl;
-            std::cout << "        isExtern: " << func->isExtern() << std::endl;
-            std::cout << "        isFriend: " << func->isFriend() << std::endl;
-            std::cout << "        isExplicit: " << func->isExplicit() << std::endl;
-            std::cout << "        isDefault: " << func->isDefault() << std::endl;
-            std::cout << "        isDelete: " << func->isDelete() << std::endl;
-            std::cout << "        hasOverrideSpecifier: " << func->hasOverrideSpecifier() << std::endl;
-            std::cout << "        hasFinalSpecifier: " << func->hasFinalSpecifier() << std::endl;
-            std::cout << "        isNoExcept: " << func->isNoExcept() << std::endl;
-            std::cout << "        isThrow: " << func->isThrow() << std::endl;
-            std::cout << "        isOperator: " << func->isOperator() << std::endl;
-            std::cout << "        hasLvalRefQual: " << func->hasLvalRefQualifier() << std::endl;
-            std::cout << "        hasRvalRefQual: " << func->hasRvalRefQualifier() << std::endl;
-            std::cout << "        isVariadic: " << func->isVariadic() << std::endl;
-            std::cout << "        isVolatile: " << func->isVolatile() << std::endl;
-            std::cout << "        hasTrailingReturnType: " << func->hasTrailingReturnType() << std::endl;
+            std::cout << "    Function: " << &*func << '\n';
+            std::cout << "        name: " << tokenToString(func->tokenDef, mTokenizer) << '\n';
+            std::cout << "        type: " << functionTypeToString(func->type) << '\n';
+            std::cout << "        access: " << accessControlToString(func->access) << '\n';
+            std::cout << "        hasBody: " << func->hasBody() << '\n';
+            std::cout << "        isInline: " << func->isInline() << '\n';
+            std::cout << "        isConst: " << func->isConst() << '\n';
+            std::cout << "        hasVirtualSpecifier: " << func->hasVirtualSpecifier() << '\n';
+            std::cout << "        isPure: " << func->isPure() << '\n';
+            std::cout << "        isStatic: " << func->isStatic() << '\n';
+            std::cout << "        isStaticLocal: " << func->isStaticLocal() << '\n';
+            std::cout << "        isExtern: " << func->isExtern() << '\n';
+            std::cout << "        isFriend: " << func->isFriend() << '\n';
+            std::cout << "        isExplicit: " << func->isExplicit() << '\n';
+            std::cout << "        isDefault: " << func->isDefault() << '\n';
+            std::cout << "        isDelete: " << func->isDelete() << '\n';
+            std::cout << "        hasOverrideSpecifier: " << func->hasOverrideSpecifier() << '\n';
+            std::cout << "        hasFinalSpecifier: " << func->hasFinalSpecifier() << '\n';
+            std::cout << "        isNoExcept: " << func->isNoExcept() << '\n';
+            std::cout << "        isThrow: " << func->isThrow() << '\n';
+            std::cout << "        isOperator: " << func->isOperator() << '\n';
+            std::cout << "        hasLvalRefQual: " << func->hasLvalRefQualifier() << '\n';
+            std::cout << "        hasRvalRefQual: " << func->hasRvalRefQualifier() << '\n';
+            std::cout << "        isVariadic: " << func->isVariadic() << '\n';
+            std::cout << "        isVolatile: " << func->isVolatile() << '\n';
+            std::cout << "        hasTrailingReturnType: " << func->hasTrailingReturnType() << '\n';
             std::cout << "        attributes:";
             if (func->isAttributeConst())
                 std::cout << " const ";
@@ -4259,41 +4259,41 @@ void SymbolDatabase::printOut(const char *title) const
                 std::cout << " destructor ";
             if (func->isAttributeNodiscard())
                 std::cout << " nodiscard ";
-            std::cout << std::endl;
-            std::cout << "        noexceptArg: " << (func->noexceptArg ? func->noexceptArg->str() : "none") << std::endl;
-            std::cout << "        throwArg: " << (func->throwArg ? func->throwArg->str() : "none") << std::endl;
-            std::cout << "        tokenDef: " << tokenToString(func->tokenDef, mTokenizer) << std::endl;
-            std::cout << "        argDef: " << tokenToString(func->argDef, mTokenizer) << std::endl;
+            std::cout << '\n';
+            std::cout << "        noexceptArg: " << (func->noexceptArg ? func->noexceptArg->str() : "none") << '\n';
+            std::cout << "        throwArg: " << (func->throwArg ? func->throwArg->str() : "none") << '\n';
+            std::cout << "        tokenDef: " << tokenToString(func->tokenDef, mTokenizer) << '\n';
+            std::cout << "        argDef: " << tokenToString(func->argDef, mTokenizer) << '\n';
             if (!func->isConstructor() && !func->isDestructor())
-                std::cout << "        retDef: " << tokenToString(func->retDef, mTokenizer) << std::endl;
+                std::cout << "        retDef: " << tokenToString(func->retDef, mTokenizer) << '\n';
             if (func->retDef) {
                 std::cout << "           ";
                 for (const Token * tok = func->retDef; tok && tok != func->tokenDef && !Token::Match(tok, "{|;|override|final"); tok = tok->next())
                     std::cout << " " << tokenType(tok);
-                std::cout << std::endl;
+                std::cout << '\n';
             }
-            std::cout << "        retType: " << func->retType << std::endl;
+            std::cout << "        retType: " << func->retType << '\n';
 
             if (const ValueType* valueType = func->tokenDef->next()->valueType()) {
-                std::cout << "        valueType: " << valueType << std::endl;
-                std::cout << "            " << valueType->str() << std::endl;
+                std::cout << "        valueType: " << valueType << '\n';
+                std::cout << "            " << valueType->str() << '\n';
             }
 
             if (func->hasBody()) {
-                std::cout << "        token: " << tokenToString(func->token, mTokenizer) << std::endl;
-                std::cout << "        arg: " << tokenToString(func->arg, mTokenizer) << std::endl;
+                std::cout << "        token: " << tokenToString(func->token, mTokenizer) << '\n';
+                std::cout << "        arg: " << tokenToString(func->arg, mTokenizer) << '\n';
             }
-            std::cout << "        nestedIn: " << scopeToString(func->nestedIn, mTokenizer) << std::endl;
-            std::cout << "        functionScope: " << scopeToString(func->functionScope, mTokenizer) << std::endl;
+            std::cout << "        nestedIn: " << scopeToString(func->nestedIn, mTokenizer) << '\n';
+            std::cout << "        functionScope: " << scopeToString(func->functionScope, mTokenizer) << '\n';
 
             for (auto var = func->argumentList.cbegin(); var != func->argumentList.cend(); ++var) {
-                std::cout << "        Variable: " << &*var << std::endl;
+                std::cout << "        Variable: " << &*var << '\n';
                 printVariable(&*var, "            ");
             }
         }
 
         for (auto var = scope->varlist.cbegin(); var != scope->varlist.cend(); ++var) {
-            std::cout << "    Variable: " << &*var << std::endl;
+            std::cout << "    Variable: " << &*var << '\n';
             printVariable(&*var, "        ");
         }
 
@@ -4303,8 +4303,8 @@ void SymbolDatabase::printOut(const char *title) const
                 std::cout << scope->enumType->stringify(false, true, false);
             } else
                 std::cout << "int";
-            std::cout << std::endl;
-            std::cout << "    enumClass: " << scope->enumClass << std::endl;
+            std::cout << '\n';
+            std::cout << "    enumClass: " << scope->enumClass << '\n';
             for (const Enumerator &enumerator : scope->enumeratorList) {
                 std::cout << "        Enumerator: " << enumerator.name->str() << " = ";
                 if (enumerator.value_known)
@@ -4322,7 +4322,7 @@ void SymbolDatabase::printOut(const char *title) const
                     std::cout << "]";
                 }
 
-                std::cout << std::endl;
+                std::cout << '\n';
             }
         }
 
@@ -4331,9 +4331,9 @@ void SymbolDatabase::printOut(const char *title) const
             std::cout << " " << scope->nestedIn->type << " "
                       << scope->nestedIn->className;
         }
-        std::cout << std::endl;
+        std::cout << '\n';
 
-        std::cout << "    definedType: " << scope->definedType << std::endl;
+        std::cout << "    definedType: " << scope->definedType << '\n';
 
         std::cout << "    nestedList[" << scope->nestedList.size() << "] = (";
 
@@ -4344,7 +4344,7 @@ void SymbolDatabase::printOut(const char *title) const
                 std::cout << ",";
         }
 
-        std::cout << " )" << std::endl;
+        std::cout << " )" << '\n';
 
         for (auto use = scope->usingList.cbegin(); use != scope->usingList.cend(); ++use) {
             std::cout << "    using: " << use->scope << " " << use->start->strAt(2);
@@ -4353,32 +4353,32 @@ void SymbolDatabase::printOut(const char *title) const
                 std::cout << "::" << tok1->strAt(1);
                 tok1 = tok1->tokAt(2);
             }
-            std::cout << " " << mTokenizer.list.fileLine(use->start) << std::endl;
+            std::cout << " " << mTokenizer.list.fileLine(use->start) << '\n';
         }
 
-        std::cout << "    functionOf: " << scopeToString(scope->functionOf, mTokenizer) << std::endl;
+        std::cout << "    functionOf: " << scopeToString(scope->functionOf, mTokenizer) << '\n';
 
         std::cout << "    function: " << scope->function;
         if (scope->function)
             std::cout << " " << scope->function->name();
-        std::cout << std::endl;
+        std::cout << '\n';
     }
 
     for (auto type = typeList.cbegin(); type != typeList.cend(); ++type) {
-        std::cout << "Type: " << &(*type) << std::endl;
-        std::cout << "    name: " << type->name() << std::endl;
-        std::cout << "    classDef: " << tokenToString(type->classDef, mTokenizer) << std::endl;
-        std::cout << "    classScope: " << type->classScope << std::endl;
+        std::cout << "Type: " << &(*type) << '\n';
+        std::cout << "    name: " << type->name() << '\n';
+        std::cout << "    classDef: " << tokenToString(type->classDef, mTokenizer) << '\n';
+        std::cout << "    classScope: " << type->classScope << '\n';
         std::cout << "    enclosingScope: " << type->enclosingScope;
         if (type->enclosingScope) {
             std::cout << " " << type->enclosingScope->type << " "
                       << type->enclosingScope->className;
         }
-        std::cout << std::endl;
+        std::cout << '\n';
         std::cout << "    needInitialization: " << (type->needInitialization == Type::NeedInitialization::Unknown ? "Unknown" :
                                                     type->needInitialization == Type::NeedInitialization::True ? "True" :
                                                     type->needInitialization == Type::NeedInitialization::False ? "False" :
-                                                    "Invalid") << std::endl;
+                                                    "Invalid") << '\n';
 
         std::cout << "    derivedFrom[" << type->derivedFrom.size() << "] = (";
         std::size_t count = type->derivedFrom.size();
@@ -4401,7 +4401,7 @@ void SymbolDatabase::printOut(const char *title) const
                 std::cout << ",";
         }
 
-        std::cout << " )" << std::endl;
+        std::cout << " )" << '\n';
 
         std::cout << "    friendList[" << type->friendList.size() << "] = (";
         for (size_t i = 0; i < type->friendList.size(); i++) {
@@ -4417,7 +4417,7 @@ void SymbolDatabase::printOut(const char *title) const
                 std::cout << ',';
         }
 
-        std::cout << " )" << std::endl;
+        std::cout << " )" << '\n';
     }
 
     for (std::size_t i = 1; i < mVariableList.size(); i++) {
@@ -4426,7 +4426,7 @@ void SymbolDatabase::printOut(const char *title) const
             std::cout << " " << mVariableList[i]->name() << " "
                       << mTokenizer.list.fileLine(mVariableList[i]->nameToken());
         }
-        std::cout << std::endl;
+        std::cout << '\n';
     }
     std::cout << std::resetiosflags(std::ios::boolalpha);
 }

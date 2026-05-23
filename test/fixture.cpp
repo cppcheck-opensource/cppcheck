@@ -113,7 +113,7 @@ bool TestFixture::prepareTest(const char testname[])
         std::putchar('.'); // Use putchar to write through redirection of std::cout/cerr
         std::fflush(stdout);
     } else {
-        std::cout << fullTestName << std::endl;
+        std::cout << fullTestName << '\n';
     }
     if (timer_results)
         mTimer.reset(new Timer(fullTestName, timer_results));
@@ -153,7 +153,7 @@ static std::string writestr(const std::string &str, bool gccStyle = false)
         if (*i == '\n') {
             ostr << "\\n";
             if ((i+1) != str.end() && !gccStyle)
-                ostr << std::endl;
+                ostr << '\n';
         } else if (*i == '\t')
             ostr << "\\t";
         else if (*i == '\"')
@@ -164,7 +164,7 @@ static std::string writestr(const std::string &str, bool gccStyle = false)
             ostr << "\\x" << std::hex << short{*i};
     }
     if (!str.empty() && !gccStyle)
-        ostr << std::endl;
+        ostr << '\n';
     else if (gccStyle)
         ostr << '\"';
     return ostr.str();
@@ -174,9 +174,9 @@ void TestFixture::assert_(const char * const filename, const unsigned int linenr
 {
     if (!condition) {
         ++fails_counter;
-        errmsg << getLocationStr(filename, linenr) << ": Assertion failed." << std::endl << "_____" << std::endl;
+        errmsg << getLocationStr(filename, linenr) << ": Assertion failed." << '\n' << "_____" << '\n';
         if (!msg.empty())
-            errmsg << "Hint:" << std::endl << msg << std::endl;
+            errmsg << "Hint:" << '\n' << msg << '\n';
         throw AssertFailedError();
     }
 }
@@ -184,14 +184,14 @@ void TestFixture::assert_(const char * const filename, const unsigned int linenr
 void TestFixture::assertFailure(const char* const filename, const unsigned int linenr, const std::string& expected, const std::string& actual, const std::string& msg) const
 {
     ++fails_counter;
-    errmsg << getLocationStr(filename, linenr) << ": Assertion failed. " << std::endl
-           << "Expected: " << std::endl
-           << writestr(expected) << std::endl
-           << "Actual: " << std::endl
-           << writestr(actual) << std::endl;
+    errmsg << getLocationStr(filename, linenr) << ": Assertion failed. " << '\n'
+           << "Expected: " << '\n'
+           << writestr(expected) << '\n'
+           << "Actual: " << '\n'
+           << writestr(actual) << '\n';
     if (!msg.empty())
-        errmsg << "Hint:" << std::endl << msg << std::endl;
-    errmsg << "_____" << std::endl;
+        errmsg << "Hint:" << '\n' << msg << '\n';
+    errmsg << "_____" << '\n';
     throw AssertFailedError();
 }
 
@@ -271,7 +271,7 @@ void TestFixture::todoAssertEquals(const char * const filename, const unsigned i
 {
     if (wanted == actual) {
         errmsg << getLocationStr(filename, linenr) << ": Assertion succeeded unexpectedly. "
-               << "Result: " << writestr(wanted, true)  << std::endl << "_____" << std::endl;
+               << "Result: " << writestr(wanted, true)  << '\n' << "_____" << '\n';
 
         ++succeeded_todos_counter;
     } else {
@@ -298,7 +298,7 @@ void TestFixture::assertThrow(const char * const filename, const unsigned int li
 {
     ++fails_counter;
     errmsg << getLocationStr(filename, linenr) << ": Assertion succeeded. "
-           << "The expected exception was thrown" << std::endl << "_____" << std::endl;
+           << "The expected exception was thrown" << '\n' << "_____" << '\n';
     throw AssertFailedError();
 }
 
@@ -306,7 +306,7 @@ void TestFixture::assertThrowFail(const char * const filename, const unsigned in
 {
     ++fails_counter;
     errmsg << getLocationStr(filename, linenr) << ": Assertion failed. "
-           << "The expected exception was not thrown"  << std::endl << "_____" << std::endl;
+           << "The expected exception was not thrown"  << '\n' << "_____" << '\n';
     throw AssertFailedError();
 }
 
@@ -333,7 +333,7 @@ void TestFixture::assertNoThrowFail(const char * const filename, const unsigned 
 
     ++fails_counter;
     errmsg << getLocationStr(filename, linenr) << ": Assertion failed. "
-           << "Unexpected exception was thrown: " << ex_msg << std::endl << "_____" << std::endl;
+           << "Unexpected exception was thrown: " << ex_msg << '\n' << "_____" << '\n';
     if (bailout)
         throw AssertFailedError();
 }
@@ -375,15 +375,15 @@ void TestFixture::run(const std::set<std::string> &tests)
     }
     catch (const InternalError& e) {
         ++fails_counter;
-        errmsg << classname << "::" << mTestname << " - InternalError: " << e.errorMessage << std::endl;
+        errmsg << classname << "::" << mTestname << " - InternalError: " << e.errorMessage << '\n';
     }
     catch (const std::exception& error) {
         ++fails_counter;
-        errmsg << classname << "::" << mTestname << " - Exception: " << error.what() << std::endl;
+        errmsg << classname << "::" << mTestname << " - Exception: " << error.what() << '\n';
     }
     catch (...) {
         ++fails_counter;
-        errmsg << classname << "::" << mTestname << " - Unknown exception" << std::endl;
+        errmsg << classname << "::" << mTestname << " - Unknown exception" << '\n';
     }
 }
 
@@ -429,17 +429,17 @@ std::size_t TestFixture::runTests(const options& args)
     }
 
     if (args.summary() && !args.dry_run()) {
-        std::cout << "\n\nTesting Complete\nNumber of tests: " << countTests << std::endl;
+        std::cout << "\n\nTesting Complete\nNumber of tests: " << countTests << '\n';
         std::cout << "Number of todos: " << todos_counter;
         if (succeeded_todos_counter > 0)
             std::cout << " (" << succeeded_todos_counter << " succeeded)";
-        std::cout << std::endl;
+        std::cout << '\n';
     }
     // calling flush here, to do all output before the error messages (in case the output is buffered)
     std::cout.flush();
 
     if (args.summary() && !args.dry_run()) {
-        std::cerr << "Tests failed: " << fails_counter << std::endl << std::endl;
+        std::cerr << "Tests failed: " << fails_counter << '\n' << '\n';
     }
     std::cerr << errmsg.str();
 
@@ -449,7 +449,7 @@ std::size_t TestFixture::runTests(const options& args)
 
 void TestFixture::reportOut(const std::string & outmsg, Color /*c*/)
 {
-    mOutput << outmsg << std::endl;
+    mOutput << outmsg << '\n';
 }
 
 void TestFixture::reportErr(const ErrorMessage &msg)
@@ -481,7 +481,7 @@ void TestFixture::reportErr(const ErrorMessage &msg)
             errormessage += "]";
         }
     }
-    mErrout << errormessage << std::endl;
+    mErrout << errormessage << '\n';
 }
 
 void TestFixture::setTemplateFormat(const std::string &templateFormat)
