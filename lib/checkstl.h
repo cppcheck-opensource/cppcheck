@@ -162,8 +162,8 @@ private:
 
     void missingComparisonError(const Token* incrementToken1, const Token* incrementToken2);
     void string_c_strThrowError(const Token* tok);
-    void string_c_strError(const Token* tok);
-    void string_c_strReturn(const Token* tok);
+    void string_c_strError(const Token* tok, bool inconclusive = false);
+    void string_c_strReturn(const Token* tok, bool inconclusive = false);
     void string_c_strParam(const Token* tok, nonneg int number, const std::string& argtype = "std::string");
     void string_c_strConstructor(const Token* tok, const std::string& argtype = "std::string");
     void string_c_strAssignment(const Token* tok, const std::string& argtype = "std::string");
