@@ -7071,7 +7071,7 @@ private:
                               "}\n");
         ASSERT_EQUALS("[test.cpp:6:10]: (style) Unused variable: s [unusedVariable]\n", errout_str());
 
-        functionVariableUsage("template <typename T>\n"
+        functionVariableUsage("template <typename T>\n" // #14783
                               "struct A {\n"
                               "    A() = default;\n"
                               "};\n"
