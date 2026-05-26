@@ -2377,15 +2377,54 @@ namespace simplecpp {
                     TokenList tokens(files);
                     tokens.push_back(new Token(strAB, tok->location));
                     // for function like macros, push the (...)
-                    if (tokensB.empty() && sameline(B,B->next) && B->next->op=='(') {
-                        const MacroMap::const_iterator it = macros.find(strAB);
-                        if (it != macros.end() && expandedmacros.find(strAB) == expandedmacros.end() && it->second.functionLike()) {
-                            const Token * const tok2 = appendTokens(tokens, loc, B->next, macros, expandedmacros, parametertokens);
+                    bool forwardScan = false;
+                    const MacroMap::const_iterator it = macros.find(strAB);
+                    const bool isFunctionLikeMacro = (it != macros.end() && expandedmacros.find(strAB) == expandedmacros.end() && it->second.functionLike());
+                    if (tokensB.empty() && isFunctionLikeMacro) {
+                        // Determine where '(' for the concatenated function-like macro begins.
+                        const Token *lpar = (sameline(B, B->next) && B->next->op == '(') ? B->next : nullptr;
+                        if (!lpar && !expandResult) {
+                            // Forward scan: handles patterns like PAR(PREFIX_ ## kind, (__VA_ARGS__))
+                            // where '(' is not immediately adjacent to B in the replacement text
+                            // but follows comma separators or parameter tokens on the same line.
+                            // Restricted to appendTokens context (expandResult==false) to avoid
+                            // unintended side-effects in the main expansion loop.
+                            const Token *scan = nextTok;
+                            while (scan && sameline(B, scan)) {
+                                if (scan->op == '(') {
+                                    // Literal '(' found after skipping separators
+                                    lpar = scan;
+                                    forwardScan = true;
+                                    break;
+                                }
+                                if (scan->op == ',') {
+                                    // Skip argument separator and keep scanning
+                                    scan = scan->next;
+                                    continue;
+                                }
+                                if (scan->name) {
+                                    // Named token — check if it's a parameter that expands to '(...)'
+                                    TokenList expanded(files);
+                                    if (expandArg(expanded, scan, loc, macros, expandedmacros, parametertokens) &&
+                                        expanded.cfront() && expanded.cfront()->op == '(') {
+                                        for (Token *t = expanded.front(); t; t = t->next)
+                                            t->location = loc;
+                                        tokens.takeTokens(expanded);
+                                        nextTok = scan->next;
+                                        forwardScan = true;
+                                    }
+                                    break; // stop scan at any name token (consumed or not)
+                                }
+                                break; // other operator — stop scan
+                            }
+                        }
+                        if (lpar) {
+                            const Token * const tok2 = appendTokens(tokens, loc, lpar, macros, expandedmacros, parametertokens);
                             if (tok2)
                                 nextTok = tok2->next;
                         }
                     }
-                    if (expandResult)
+                    if (expandResult || forwardScan)
                         expandToken(output, loc, tokens.cfront(), macros, expandedmacros, parametertokens);
                     else
                         output.takeTokens(tokens);

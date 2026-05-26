@@ -232,6 +232,7 @@ private:
         TEST_CASE(preprocessor_undef);
         TEST_CASE(defdef);  // Defined multiple times
         TEST_CASE(preprocessor_doublesharp);
+        TEST_CASE(preprocessor_doublesharp_funclike_forward_scan); // simplecpp: ## result used as function-like macro via PAR-style indirection
         TEST_CASE(preprocessor_include_in_str);
         TEST_CASE(va_args_1);
         //TEST_CASE(va_args_2); invalid code
@@ -1355,6 +1356,26 @@ private:
         ASSERT_EQUALS("\n\n\n\nx_y", expandMacros(filedata6, *this));
     }
 
+    // Test for simplecpp forward-scan fix: when ## concatenation produces a function-like macro
+    // name and '(' is not immediately adjacent in the replacement text (e.g. PAR pattern), the
+    // forward scan must find '(' across comma separators or parameter tokens on the same line.
+    void preprocessor_doublesharp_funclike_forward_scan() {
+        // PAR pattern: PREFIX_ ## kind, (__VA_ARGS__) where '(' is separated by ','
+        // Previously caused [unknownMacro] and aborted TU analysis in cppcheck.
+        const char filedata1[] = "#define PAR(a, ...) a __VA_ARGS__\n"
+                                  "#define PREFIX_SCALAR(T, N) T N\n"
+                                  "#define DISPATCH(kind, ...) PAR(PREFIX_ ## kind, (__VA_ARGS__))\n"
+                                  "DISPATCH(SCALAR, int, x)\n";
+        ASSERT_EQUALS("\n\n\nint x", expandMacros(filedata1, *this));
+
+        // Chained: two DISPATCH calls in a struct context
+        const char filedata2[] = "#define PAR(a, ...) a __VA_ARGS__\n"
+                                  "#define PREFIX_SCALAR(T, N) T N\n"
+                                  "#define PREFIX_ARRAY(T, N, S) T N[S]\n"
+                                  "#define DISPATCH(kind, ...) PAR(PREFIX_ ## kind, (__VA_ARGS__))\n"
+                                  "DISPATCH(SCALAR, int, x) DISPATCH(ARRAY, float, arr, 10)\n";
+        ASSERT_EQUALS("\n\n\n\nint x float arr [ 10 ]", expandMacros(filedata2, *this));
+    }
 
 
     void preprocessor_include_in_str() {
