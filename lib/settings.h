@@ -23,7 +23,6 @@
 
 #include "addoninfo.h"
 #include "config.h"
-#include "errortypes.h"
 #include "library.h"
 #include "platform.h"
 #include "standards.h"
@@ -40,22 +39,27 @@
 #include <unordered_set>
 #include <utility>
 
-#include "regex.h"
-
 #if defined(USE_WINDOWS_SEH) || defined(USE_UNIX_SIGNAL_HANDLING)
 #include <cstdio>
 #endif
 
 #ifdef HAVE_RULES
+#include "errortypes.h"
+#include "regex.h"
+
 #include <memory>
 
 class Regex;
+#else
+enum class Severity : std::uint8_t;
 #endif
 
 struct Suppressions;
 namespace ValueFlow {
     class Value;
 }
+enum class Certainty : std::uint8_t;
+enum class Checks : std::uint8_t;
 
 /// @addtogroup Core
 /// @{

@@ -50,7 +50,6 @@
 #include <iostream>
 #include <iterator>
 #include <list>
-#include <memory>
 #include <set>
 #include <sstream>
 #include <unordered_set>
@@ -61,6 +60,8 @@
 
 // xml is used for rules
 #include "xml.h"
+
+#include <memory>
 #endif
 
 static bool addFilesToList(const std::string& fileList, std::vector<std::string>& pathNames)

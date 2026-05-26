@@ -31,7 +31,9 @@
 #include <string>
 #include <vector>
 
+#ifdef HAVE_RULES
 class TokenList;
+#endif
 struct FileSettings;
 class CheckUnusedFunctions;
 class Tokenizer;

@@ -42,6 +42,8 @@
 #include "checkunusedvar.h"
 #include "checkvaarg.h"
 
+#include <memory>
+
 class CheckInstancesImpl
 {
 private:

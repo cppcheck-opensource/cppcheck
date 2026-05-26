@@ -21,7 +21,6 @@
 #include "cppcheck.h"
 #include "filesettings.h"
 #include "settings.h"
-#include "timer.h"
 
 #include <cassert>
 #include <cstddef>

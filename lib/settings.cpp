@@ -17,6 +17,7 @@
  */
 
 #include "config.h"
+#include "errortypes.h"
 #include "settings.h"
 #include "path.h"
 #include "summaries.h"

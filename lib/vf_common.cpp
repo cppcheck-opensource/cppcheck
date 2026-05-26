@@ -19,6 +19,7 @@
 #include "vf_common.h"
 
 #include "astutils.h"
+#include "library.h"
 #include "mathlib.h"
 #include "path.h"
 #include "platform.h"

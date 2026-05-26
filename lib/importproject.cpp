@@ -35,6 +35,7 @@
 #include <iostream>
 #include <iterator>
 #include <stack>
+#include <stdexcept>
 #include <unordered_set>
 #include <utility>
 #include <vector>

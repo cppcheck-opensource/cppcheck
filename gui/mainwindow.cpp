@@ -23,7 +23,6 @@
 #include "aboutdialog.h"
 #include "analyzerinfo.h"
 #include "checkers.h"
-#include "checkstatistics.h"
 #include "checkthread.h"
 #include "common.h"
 #include "cppcheck.h"
@@ -60,7 +59,6 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <fstream>
 #include <iterator>
 #include <list>
 #include <memory>
@@ -101,7 +99,6 @@
 #include <QSettings>
 #include <QSize>
 #include <QTimer>
-#include <QTemporaryFile>
 #include <QToolBar>
 #include <QUrl>
 #include <QVariant>

@@ -22,7 +22,6 @@
 
 // headers that declare mocked functions/variables
 #include "applicationlist.h"
-#include "common.h"
 #include "filesettings.h"
 #include "projectfile.h"
 #include "threadhandler.h"
