@@ -1641,7 +1641,7 @@ void CheckUnusedVar::checkStructMemberUsage()
 
         for (const Variable &var : scope.varlist) {
             // only warn for variables without side effects
-            if (!var.typeStartToken()->isStandardType() && !var.isPointer() && !astIsContainer(var.nameToken()) && !mTokenizer->getSymbolDatabase()->isRecordTypeWithoutSideEffects(var.type()))
+            if (!(var.valueType() && var.valueType()->type >= ValueType::VOID) && !var.isPointer() && !astIsContainer(var.nameToken()) && !mTokenizer->getSymbolDatabase()->isRecordTypeWithoutSideEffects(var.type()))
                 continue;
             if (isInherited && !var.isPrivate())
                 continue;
