@@ -549,6 +549,8 @@ void CheckIOImpl::checkWrongfeofUsage()
                 bodyEnd = tok->previous();
                 bodyStart = bodyEnd->link();
             } else {
+                if (!Token::simpleMatch(endCond, ") {"))
+                    continue;
                 bodyEnd = endCond->linkAt(1);
                 bodyStart = endCond->next();
             }
@@ -614,8 +616,8 @@ void CheckIOImpl::checkWrongfeofUsage()
                 }
 
                 // Search for any destination use between this call's ';' and endBody
-                const Token *SemiColonTok = lastLoopFileReadCallTok->linkAt(1)->next();
-                for (const Token *t = SemiColonTok; t && t != bodyEnd; t = t->next()) {
+                const Token *semiColonTok = lastLoopFileReadCallTok->linkAt(1)->next();
+                for (const Token *t = semiColonTok; t && t != bodyEnd; t = t->next()) {
                     if (std::find(destVarIds.begin(), destVarIds.end(), t->varId()) != destVarIds.end()) {
                         wrongfeofUsage(getCondTok(tok));
                         break;
