@@ -2094,6 +2094,11 @@ private:
                                "  std::int32_t i;\n"
                                "};\n");
         ASSERT_EQUALS("[test.cpp:2:16]: (style) struct member 'S::i' is never used. [unusedStructMember]\n", errout_str());
+
+        checkStructMemberUsage("struct S {\n" // #14786
+                               "  std::unique_ptr<int> p;\n"
+                               "};\n");
+        ASSERT_EQUALS("[test.cpp:2:24]: (style) struct member 'S::p' is never used. [unusedStructMember]\n", errout_str());
     }
 
     void structmember_macro() {
