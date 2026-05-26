@@ -47,6 +47,7 @@
 
 #ifdef HAVE_RULES
 #include "regex.h"
+#include "rule.h"
 #endif
 
 #include <algorithm>
@@ -1415,7 +1416,7 @@ void CppCheck::checkNormalTokens(const Tokenizer &tokenizer, AnalyzerInformation
 #ifdef HAVE_RULES
 bool CppCheck::hasRule(const std::string &tokenlist) const
 {
-    return std::any_of(mSettings.rules.cbegin(), mSettings.rules.cend(), [&](const Settings::Rule& rule) {
+    return std::any_of(mSettings.rules.cbegin(), mSettings.rules.cend(), [&](const Rule& rule) {
         return rule.tokenlist == tokenlist;
     });
 }
@@ -1433,7 +1434,7 @@ void CppCheck::executeRules(const std::string &tokenlist, const TokenList &list)
         str += tok->str();
     }
 
-    for (const Settings::Rule &rule : mSettings.rules) {
+    for (const Rule &rule : mSettings.rules) {
         if (rule.tokenlist != tokenlist)
             continue;
 

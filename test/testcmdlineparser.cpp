@@ -33,6 +33,11 @@
 #include "suppressions.h"
 #include "utils.h"
 
+#ifdef HAVE_RULES
+#include "regex.h"
+#include "rule.h"
+#endif
+
 #include <cstdio>
 #include <list>
 #include <memory>

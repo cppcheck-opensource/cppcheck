@@ -24,6 +24,10 @@
 #include "suppressions.h"
 #include "vfvalue.h"
 
+#ifdef HAVE_RULES
+#include "rule.h"
+#endif
+
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
@@ -68,6 +72,14 @@ Settings::Settings()
     executor = defaultExecutor();
     pid = getPid();
 }
+
+Settings::~Settings() = default;
+
+Settings::Settings(const Settings&) = default;
+Settings & Settings::operator=(const Settings &) = default;
+
+Settings::Settings(Settings&&) noexcept = default;
+Settings & Settings::operator=(Settings &&) noexcept = default;
 
 std::string Settings::loadCppcheckCfg(Settings& settings, Suppressions& suppressions, bool debug)
 {

@@ -57,6 +57,7 @@
 
 #ifdef HAVE_RULES
 #include "regex.h"
+#include "rule.h"
 
 // xml is used for rules
 #include "xml.h"
@@ -1304,7 +1305,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         // Rule given at command line
         else if (std::strncmp(argv[i], "--rule=", 7) == 0) {
 #ifdef HAVE_RULES
-            Settings::Rule rule;
+            Rule rule;
             rule.pattern = 7 + argv[i];
 
             if (rule.pattern.empty()) {
@@ -1340,7 +1341,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                 if (node && strcmp(node->Value(), "rules") == 0)
                     node = node->FirstChildElement("rule");
                 for (; node && strcmp(node->Value(), "rule") == 0; node = node->NextSiblingElement()) {
-                    Settings::Rule rule;
+                    Rule rule;
 
                     for (const tinyxml2::XMLElement *subnode = node->FirstChildElement(); subnode; subnode = subnode->NextSiblingElement()) {
                         const char * const subname = subnode->Name();

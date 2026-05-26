@@ -44,20 +44,13 @@
 #endif
 
 #ifdef HAVE_RULES
-#include "errortypes.h"
-#include "regex.h"
-
-#include <memory>
-
-class Regex;
-#else
-enum class Severity : std::uint8_t;
+struct Rule;
 #endif
-
 struct Suppressions;
 namespace ValueFlow {
     class Value;
 }
+enum class Severity : std::uint8_t;
 enum class Certainty : std::uint8_t;
 enum class Checks : std::uint8_t;
 
@@ -115,6 +108,13 @@ private:
 
 public:
     Settings();
+    ~Settings();
+
+    Settings(const Settings&);
+    Settings& operator=(const Settings&);
+
+    Settings(Settings&&) noexcept;
+    Settings& operator=(Settings&&) noexcept;
 
     static std::string loadCppcheckCfg(Settings& settings, Suppressions& suppressions, bool debug = false);
 
@@ -372,17 +372,6 @@ public:
     int reportProgress{-1};
 
 #ifdef HAVE_RULES
-    /** Rule */
-    struct CPPCHECKLIB Rule {
-        std::string tokenlist = "normal"; // use normal tokenlist
-        std::string pattern;
-        std::string id = "rule"; // default id
-        std::string summary;
-        Severity severity = Severity::style; // default severity
-        Regex::Engine engine = Regex::Engine::Pcre;
-        std::shared_ptr<Regex> regex;
-    };
-
     /**
      * @brief Extra rules
      */

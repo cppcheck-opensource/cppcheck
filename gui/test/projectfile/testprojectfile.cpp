@@ -24,6 +24,10 @@
 #include "settings.h"
 #include "suppressions.h"
 
+#ifdef HAVE_RULES
+#include "rule.h"
+#endif
+
 #include <QFile>
 #include <QIODevice>
 #include <QList>
@@ -38,6 +42,7 @@ const char Settings::SafeChecks::XmlExternalFunctions[] = "external-functions";
 const char Settings::SafeChecks::XmlInternalFunctions[] = "internal-functions";
 const char Settings::SafeChecks::XmlExternalVariables[] = "external-variables";
 Settings::Settings() : maxCtuDepth(10) {}
+Settings::~Settings() = default;
 Platform::Platform() = default;
 Library::Library() = default;
 Library::~Library() = default;

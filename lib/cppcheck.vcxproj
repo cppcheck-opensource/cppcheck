@@ -168,6 +168,7 @@
     <ClInclude Include="programmemory.h" />
     <ClInclude Include="regex.h" />
     <ClInclude Include="reverseanalyzer.h" />
+    <ClInclude Include="rule.h" />
     <ClInclude Include="sarifreport.h" />
     <ClInclude Include="settings.h" />
     <ClInclude Include="smallvector.h" />
