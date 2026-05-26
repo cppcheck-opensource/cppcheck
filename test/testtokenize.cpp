@@ -8421,7 +8421,8 @@ private:
 
     void ccast() {
         const char code[] = "a = (int)x;\n" // #13579
-                            "int (*p)[10];\n";
+                            "int (*p)[10];\n"
+                            "b = (void (S::*)(int) const)&y;";
 
         SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT(tokenizer.tokenize(code));
@@ -8430,6 +8431,8 @@ private:
         ASSERT(par->isCast());
         par = Token::findsimplematch(par->next(), "(");
         ASSERT(!par->isCast());
+        par = Token::findsimplematch(par->next(), "(");
+        ASSERT(par->isCast());
     }
 
 #define checkHdrs(...) checkHdrs_(__FILE__, __LINE__, __VA_ARGS__)
