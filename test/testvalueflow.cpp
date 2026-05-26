@@ -9225,6 +9225,19 @@ private:
                "}\n";
         ASSERT_EQUALS(false, testValueOfX(code, 5U, 1));
         ASSERT_EQUALS(false, testValueOfX(code, 5U, 0));
+
+        code = "bool f() {\n"
+               "    std::string s1, s2;\n"
+               "    bool x = (s1 == s2);\n"
+               "    return x;\n"
+               "}\n"
+               "bool g() {\n"
+               "    std::string s1, s2;\n"
+               "    bool x = (s1 != s2);\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXKnown(code, 4U, 1));
+        ASSERT_EQUALS(true, testValueOfXKnown(code, 9U, 0));
     }
 
     void valueFlowBailoutIncompleteVar() {
