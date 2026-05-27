@@ -179,6 +179,10 @@ namespace {
         std::string compile();
         std::string match(const std::string& str, const MatchFn& matchFn) const override;
 
+        Engine engine() const override {
+            return Engine::Pcre;
+        }
+
     private:
         std::string mPattern;
         pcre* mRe{};

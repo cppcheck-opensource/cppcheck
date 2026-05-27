@@ -1342,6 +1342,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                     node = node->FirstChildElement("rule");
                 for (; node && strcmp(node->Value(), "rule") == 0; node = node->NextSiblingElement()) {
                     Rule rule;
+                    Regex::Engine regexEngine = Regex::Engine::Pcre;
 
                     for (const tinyxml2::XMLElement *subnode = node->FirstChildElement(); subnode; subnode = subnode->NextSiblingElement()) {
                         const char * const subname = subnode->Name();
@@ -1374,7 +1375,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                         else if (std::strcmp(subname, "engine") == 0) {
                             const char * const engine = empty_if_null(subtext);
                             if (std::strcmp(engine, "pcre") == 0) {
-                                rule.engine = Regex::Engine::Pcre;
+                                regexEngine = Regex::Engine::Pcre;
                             }
                             else {
                                 mLogger.printError(std::string("unknown regex engine '") + engine + "'.");
@@ -1408,7 +1409,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                     }
 
                     std::string regex_err;
-                    auto regex = Regex::create(rule.pattern, rule.engine, regex_err);
+                    auto regex = Regex::create(rule.pattern, regexEngine, regex_err);
                     if (!regex) {
                         mLogger.printError("unable to load rule-file '" + ruleFile + "' - pattern '" + rule.pattern + "' failed to compile (" + regex_err + ").");
                         return Result::Fail;

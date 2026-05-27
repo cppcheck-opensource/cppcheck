@@ -47,8 +47,10 @@ private:
     std::shared_ptr<Regex> assertRegex_(const char* file, int line, std::string pattern, const std::string& exp_err = "") const {
         std::string regex_err;
         auto r = Regex::create(std::move(pattern), mEngine, regex_err);
-        if (exp_err.empty())
+        if (exp_err.empty()) {
             ASSERT_LOC(!!r.get(), file, line);
+            ASSERT_EQUALS_ENUM_LOC(mEngine, r->engine(), file, line);
+        }
         else
             ASSERT_LOC(!r.get(), file, line); // only not set if we encountered an error
         ASSERT_EQUALS_LOC(exp_err, regex_err, file, line);

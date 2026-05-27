@@ -22,10 +22,11 @@
 #ifdef HAVE_RULES
 
 #include "errortypes.h"
-#include "regex.h"
 
 #include <memory>
 #include <string>
+
+class Regex;
 
 /** Rule */
 struct Rule
@@ -35,7 +36,6 @@ struct Rule
     std::string id = "rule"; // default id
     std::string summary;
     Severity severity = Severity::style; // default severity
-    Regex::Engine engine = Regex::Engine::Pcre;
     std::shared_ptr<Regex> regex;
 };
 #endif // HAVE_RULES
