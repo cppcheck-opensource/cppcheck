@@ -8709,6 +8709,10 @@ private:
                         "{ 1",
                         Token::Cpp11init::CPP11INIT);
 
+        testIsCpp11init("void f() { g([] { if (int x = 1; x) {} }); }", // #14790
+                        "{ int",
+                        Token::Cpp11init::NOINIT); // don't hang
+
         ASSERT_NO_THROW(tokenizeAndStringify("template<typename U> struct X {};\n" // don't crash
                                              "template<typename T> auto f(T t) -> X<decltype(t + 1)> {}\n"));
         ASSERT_EQUALS("[test.cpp:2:22]: (debug) auto token with no type. [autoNoType]\n", errout_str());
