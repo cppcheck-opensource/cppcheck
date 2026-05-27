@@ -174,9 +174,9 @@ namespace simplecpp {
         bool isOneOf(const char ops[]) const;
         bool startsWithOneOf(const char c[]) const;
         bool endsWithOneOf(const char c[]) const;
-        static bool isNumberLike(const std::string& str) {
-            return std::isdigit(static_cast<unsigned char>(str[0])) ||
-                   (str.size() > 1U && (str[0] == '-' || str[0] == '+') && std::isdigit(static_cast<unsigned char>(str[1])));
+        static bool isNumberLike(const std::string& s) {
+            return std::isdigit(static_cast<unsigned char>(s[0])) ||
+                   (s.size() > 1U && (s[0] == '-' || s[0] == '+') && std::isdigit(static_cast<unsigned char>(s[1])));
         }
 
         TokenString macro;
@@ -212,6 +212,9 @@ namespace simplecpp {
         }
         bool isExpandedFrom(const Macro* m) const {
             return mExpandedFrom.find(m) != mExpandedFrom.end();
+        }
+        void markExpandedFrom(const Macro* m) {
+            mExpandedFrom.insert(m);
         }
 
         void printAll() const;
@@ -376,7 +379,7 @@ namespace simplecpp {
         const std::string& file(const Location& loc) const;
 
     private:
-        TokenList(const unsigned char* data, std::size_t size, std::vector<std::string> &filenames, const std::string &filename, OutputList *outputList, int unused);
+        TokenList(const unsigned char* data, std::size_t size, std::vector<std::string> &filenames, const std::string &filename, OutputList *outputList, int /*unused*/);
 
         void combineOperators();
 
@@ -396,7 +399,7 @@ namespace simplecpp {
         void constFoldQuestionOp(Token *&tok1);
 
         std::string readUntil(Stream &stream, const Location &location, char start, char end, OutputList *outputList);
-        void lineDirective(unsigned int fileIndex, unsigned int line, Location &location);
+        void lineDirective(unsigned int fileIndex_, unsigned int line, Location &location);
 
         const Token* lastLineTok(int maxsize=1000) const;
         const Token* isLastLinePreprocessor(int maxsize=1000) const;

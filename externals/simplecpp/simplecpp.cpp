@@ -275,8 +275,10 @@ public:
         return ch;
     }
 
-    unsigned char peekChar() {
-        auto ch = static_cast<unsigned char>(peek());
+    int peekChar() {
+        int ch = peek();
+        if (ch == EOF)
+            return ch;
 
         // For UTF-16 encoded files the BOM is 0xfeff/0xfffe. If the
         // character is non-ASCII character then replace it with 0xff
@@ -285,7 +287,7 @@ public:
             const auto ch2 = static_cast<unsigned char>(peek());
             unget();
             const int ch16 = makeUtf16Char(ch, ch2);
-            ch = static_cast<unsigned char>(((ch16 >= 0x80) ? 0xff : ch16));
+            ch = (ch16 >= 0x80) ? 0xff : ch16;
         }
 
         // Handling of newlines..
@@ -598,7 +600,7 @@ std::string simplecpp::TokenList::stringify(bool linenrs) const
     return ret.str();
 }
 
-static bool isNameChar(unsigned char ch)
+static bool isNameChar(int ch)
 {
     return std::isalnum(ch) || ch == '_' || ch == '$';
 }
@@ -635,10 +637,10 @@ static bool isStringLiteralPrefix(const std::string &str)
            str == "R" || str == "uR" || str == "UR" || str == "LR" || str == "u8R";
 }
 
-void simplecpp::TokenList::lineDirective(unsigned int fileIndex, unsigned int line, Location &location)
+void simplecpp::TokenList::lineDirective(unsigned int fileIndex_, unsigned int line, Location &location)
 {
-    if (fileIndex != location.fileIndex || line >= location.line) {
-        location.fileIndex = fileIndex;
+    if (fileIndex_ != location.fileIndex || line >= location.line) {
+        location.fileIndex = fileIndex_;
         location.line = line;
         return;
     }
@@ -771,8 +773,21 @@ void simplecpp::TokenList::readfile(Stream &stream, const std::string &filename,
                     ch = stream.readChar();
                 }
                 stream.ungetChar();
-                push_back(new Token(currentToken, location));
-                location.adjust(currentToken);
+                std::string::size_type pos = 0;
+                unsigned int spliced = 0;
+                while ((pos = currentToken.find('\\', pos)) != std::string::npos) {
+                    if (pos + 1 < currentToken.size() && currentToken[pos + 1] == '\n') {
+                        currentToken.erase(pos, 2);
+                        ++spliced;
+                    } else {
+                        ++pos;
+                    }
+                }
+                if (!currentToken.empty()) {
+                    push_back(new Token(currentToken, location));
+                    location.adjust(currentToken);
+                }
+                location.line += spliced;
                 continue;
             }
         }
@@ -1739,6 +1754,9 @@ namespace simplecpp {
             return tok;
         }
 
+        /**
+         * @throws Error thrown in case of __VA_OPT__ issues
+         */
         bool parseDefine(const Token *nametoken) {
             nameTokDef = nametoken;
             variadic = false;
@@ -2201,6 +2219,8 @@ namespace simplecpp {
             }
 
             output.push_back(newMacroToken(tok->str(), loc, true, tok));
+            if (it != macros.end())
+                output.back()->markExpandedFrom(&it->second);
             return tok->next;
         }
 
@@ -3379,6 +3399,17 @@ void simplecpp::preprocess(simplecpp::TokenList &output, const simplecpp::TokenL
             }
             output.clear();
             return;
+        } catch (const simplecpp::Macro::Error& e) {
+            if (outputList) {
+                simplecpp::Output err{
+                    Output::DUI_ERROR,
+                    {},
+                    e.what
+                };
+                outputList->emplace_back(std::move(err));
+            }
+            output.clear();
+            return;
         }
     }
 
@@ -3507,14 +3538,14 @@ void simplecpp::preprocess(simplecpp::TokenList &output, const simplecpp::TokenL
                         else
                             it->second = macro;
                     }
-                } catch (const std::runtime_error &) {
+                } catch (const std::runtime_error &err) {
                     if (outputList) {
-                        simplecpp::Output err{
+                        simplecpp::Output out{
                             Output::SYNTAX_ERROR,
                             rawtok->location,
-                            "Failed to parse #define"
+                            std::string("Failed to parse #define, ") + err.what()
                         };
-                        outputList->emplace_back(std::move(err));
+                        outputList->emplace_back(std::move(out));
                     }
                     output.clear();
                     return;
@@ -3671,7 +3702,7 @@ void simplecpp::preprocess(simplecpp::TokenList &output, const simplecpp::TokenL
                             bool closingAngularBracket = false;
                             if (tok) {
                                 const std::string &sourcefile = rawtokens.file(rawtok->location);
-                                const bool systemheader = (tok && tok->op == '<');
+                                const bool systemheader = tok->op == '<';
                                 std::string header;
 
                                 if (systemheader) {
