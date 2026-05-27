@@ -231,6 +231,7 @@ private:
         TEST_CASE(simplifyTypedef158);
         TEST_CASE(simplifyTypedef159);
         TEST_CASE(simplifyTypedef160);
+        TEST_CASE(simplifyTypedef161);
 
         TEST_CASE(simplifyTypedefFunction1);
         TEST_CASE(simplifyTypedefFunction2); // ticket #1685
@@ -3840,6 +3841,22 @@ private:
                              "};\n";
         const char exp2[] = "struct T { stuct T * p ; } ;";
         ASSERT_EQUALS(exp2, simplifyTypedefC(code2));
+    }
+
+    void simplifyTypedef161() {
+        const char code[] = "namespace N {\n" // #11775
+                            "    typedef int A[3];\n"
+                            "    p = new A*[n];\n"
+                            "}\n";
+        const char cur[] = "namespace N { p = new int ( * [ n ] ) [ 3 ] ; }";
+        const char exp[] = "namespace N { p = new ( int ( * [ n ] ) [ 3 ] ) ; }";
+        TODO_ASSERT_EQUALS(exp, cur, tok(code));
+
+        const char code2[] = "typedef int A[3];\n"
+                             "p = new A*[n];\n";
+        const char cur2[] = "p = new int ( * ) [ n ] [ 3 ] ;";
+        const char exp2[] = "p = new ( int ( * [ n ] ) [ 3 ] ) ;";
+        TODO_ASSERT_EQUALS(exp2, cur2, tok(code2));
     }
 
     void simplifyTypedefFunction1() {
