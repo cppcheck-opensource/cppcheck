@@ -2295,6 +2295,13 @@ void Tokenizer::simplifyTypedefCpp()
                                     tok2 = tok2->tokAt(2);
                                 else
                                     tok2 = tok2->tokAt(3);
+                                while (tok2->link()) {
+                                    tok2 = tok2->link()->next();
+                                    if (Token::simpleMatch(tok2, ";")) {
+                                        tok2 = tok2->previous();
+                                        break;
+                                    }
+                                }
                                 if (!tok2)
                                     syntaxError(nullptr);
 
