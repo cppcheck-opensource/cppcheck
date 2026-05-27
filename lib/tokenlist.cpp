@@ -609,7 +609,7 @@ static bool iscpp11init_impl(const Token * const tok)
     if (Token::Match(nameToken, "]|*")) {
         const Token* tok2 = nameToken;
         if (tok2->link()) {
-            while (tok2 && tok2->link())
+            while (tok2 && precedes(tok2->link(), nameToken))
                 tok2 = tok2->link()->previous();
         }
         else
