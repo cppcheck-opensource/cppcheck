@@ -1996,12 +1996,12 @@ private:
 
     void invalid_define_1() {
         (void)getcode(settings0, *this, "#define =\n");
-        ASSERT_EQUALS("[file.c:1:2]: (error) Failed to parse #define [syntaxError]\n", errout_str());
+        ASSERT_EQUALS("[file.c:1:2]: (error) Failed to parse #define, bad macro syntax [syntaxError]\n", errout_str());
     }
 
     void invalid_define_2() {  // #4036
         (void)getcode(settings0, *this, "#define () {(int f(x) }\n");
-        ASSERT_EQUALS("[file.c:1:2]: (error) Failed to parse #define [syntaxError]\n", errout_str());
+        ASSERT_EQUALS("[file.c:1:2]: (error) Failed to parse #define, bad macro syntax [syntaxError]\n", errout_str());
     }
 
     void inline_suppressions() {
