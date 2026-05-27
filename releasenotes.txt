@@ -27,4 +27,5 @@ Other:
 - Added CLI option `--exitcode-suppress` to specify an error ID which should not result in a non-zero exitcode.
 - Moved source code from https://github.com/danmar/cppcheck to https://github.com/cppcheck-opensource/cppcheck
 - The official Windows binary is now built with Visual Studio 2026.
+- Updated simplecpp to 1.7.0.
 -
