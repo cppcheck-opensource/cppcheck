@@ -210,6 +210,7 @@ namespace bdata = boost::unit_test::data;
 class fibonacci_dataset {
 public:
     // the type of the samples is deduced
+    // cppcheck-suppress unusedStructMember // used in template is_dataset
     static const int arity = 1;
 
     struct iterator {
@@ -233,7 +234,7 @@ public:
     bdata::size_t   size() const    { return bdata::BOOST_TEST_DS_INFINITE_SIZE; }
 
     // iterator
-    iterator        begin() const   { return iterator(); }
+    static iterator begin()         { return iterator(); }
 };
 
 namespace boost { namespace unit_test { namespace data { namespace monomorphic {
@@ -248,5 +249,6 @@ BOOST_DATA_TEST_CASE(
     fibonacci_dataset() ^ bdata::make( { 1, 2, 3, 5, 8, 13, 21, 35, 56 } ),
     fib_sample, exp)
 {
+      // cppcheck-suppress valueFlowBailoutIncompleteVar // TODO - fib_sample declared in test case
       BOOST_TEST(fib_sample == exp);
 }
