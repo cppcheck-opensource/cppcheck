@@ -42,6 +42,7 @@ public:
     using ImportProject::collectArgs;
     using ImportProject::fsSetDefines;
     using ImportProject::fsSetIncludePaths;
+    using ImportProject::setRelativePaths;
 };
 
 
@@ -56,6 +57,7 @@ private:
         TEST_CASE(setIncludePaths1);
         TEST_CASE(setIncludePaths2);
         TEST_CASE(setIncludePaths3); // macro names are case insensitive
+        TEST_CASE(setRelativePathsInclude); // #14746
         TEST_CASE(importCompileCommands1);
         TEST_CASE(importCompileCommands2); // #8563, #9567
         TEST_CASE(importCompileCommands3); // check with existing trailing / in directory
@@ -132,6 +134,17 @@ private:
         TestImporter::fsSetIncludePaths(fs, "/home/fred", in, variables);
         ASSERT_EQUALS(1U, fs.includePaths.size());
         ASSERT_EQUALS("c:/abc/other/", fs.includePaths.front());
+    }
+
+    void setRelativePathsInclude() const {
+        const std::string cwd = Path::fromNativeSeparators(Path::getCurrentPath());
+        TestImporter importer;
+        FileSettings fs{cwd + "/sub/a.c", Standards::Language::None, 0};
+        fs.includePaths.push_back(cwd + "/");
+        importer.fileSettings.push_back(std::move(fs));
+        importer.setRelativePaths("project.json");
+        ASSERT_EQUALS(".", importer.fileSettings.cbegin()->includePaths.front());
+        ASSERT_EQUALS("sub/a.c", importer.fileSettings.cbegin()->filename());
     }
 
     void importCompileCommands1() const {

@@ -110,6 +110,7 @@ protected:
     bool importCompileCommands(std::istream &istr);
     bool importCppcheckGuiProject(std::istream &istr, Settings &settings, Suppressions &supprs);
     static std::string collectArgs(const std::string &cmd, std::vector<std::string> &args);
+    void setRelativePaths(const std::string &filename);
 
     struct SharedItemsProject {
         bool successful = false;
@@ -123,7 +124,6 @@ protected:
 
 private:
     static void parseArgs(FileSettings &fs, const std::vector<std::string> &args);
-    void setRelativePaths(const std::string &filename);
 
     bool importSln(std::istream &istr, const std::string &path, const std::vector<std::string> &fileFilters);
     bool importSlnx(const std::string& filename, const std::vector<std::string>& fileFilters);
