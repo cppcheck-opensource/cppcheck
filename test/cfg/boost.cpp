@@ -224,7 +224,7 @@ struct fibonacci_dataset {
     };
 
     // size is infinite
-    bdata::size_tsize() const { return bdata::BOOST_TEST_DS_INFINITE_SIZE; }
+    bdata::size_t size() const { return bdata::BOOST_TEST_DS_INFINITE_SIZE; }
 
     // iterator
     static iterator begin() { return iterator(); }
