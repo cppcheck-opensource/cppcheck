@@ -141,9 +141,9 @@ private:
         TestImporter importer;
         FileSettings fs{cwd + "/sub/a.c", Standards::Language::C, 0};
         fs.includePaths.push_back(cwd + "/");
-        importer.fileSettings.push_back(std::move(fs));
+        importer.fileSettings.push_back(fs);
         importer.setRelativePaths("compile_commands.json");
-        const FileSettings &fs = importer.fileSettings.front();
+        fs = importer.fileSettings.front();
         ASSERT_EQUALS(".", fs.includePaths.front());
         ASSERT_EQUALS("sub/a.c", fs.filename());
     }
