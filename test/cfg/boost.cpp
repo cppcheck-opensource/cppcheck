@@ -207,34 +207,27 @@ BOOST_AUTO_TEST_SUITE_END()
 namespace bdata = boost::unit_test::data;
 
 // Dataset generating a Fibonacci sequence
-class fibonacci_dataset {
-public:
+struct fibonacci_dataset {
     // the type of the samples is deduced
-    // cppcheck-suppress unusedStructMember // used in template is_dataset
+    // cppcheck-suppress unusedStructMember // FP #14795, used in template is_dataset
     static const int arity = 1;
 
     struct iterator {
-
-        iterator() : a(1), b(1) {}
-
-        int operator*() const   { return b; }
-        void operator++()
-        {
+        int operator*() const { return b; }
+        void operator++() {
             a = a + b;
             std::swap(a, b);
         }
     private:
-        int a;
-        int b; // b is the output
+        int a = 1;
+        int b = 1; // b is the output
     };
 
-    fibonacci_dataset()             {}
-
     // size is infinite
-    bdata::size_t   size() const    { return bdata::BOOST_TEST_DS_INFINITE_SIZE; }
+    bdata::size_tsize() const { return bdata::BOOST_TEST_DS_INFINITE_SIZE; }
 
     // iterator
-    static iterator begin()         { return iterator(); }
+    static iterator begin() { return iterator(); }
 };
 
 namespace boost { namespace unit_test { namespace data { namespace monomorphic {
@@ -249,6 +242,6 @@ BOOST_DATA_TEST_CASE(
     fibonacci_dataset() ^ bdata::make( { 1, 2, 3, 5, 8, 13, 21, 35, 56 } ),
     fib_sample, exp)
 {
-      // cppcheck-suppress valueFlowBailoutIncompleteVar // TODO - fib_sample declared in test case
+      // cppcheck-suppress valueFlowBailoutIncompleteVar // TODO: fib_sample declared in test case
       BOOST_TEST(fib_sample == exp);
 }
