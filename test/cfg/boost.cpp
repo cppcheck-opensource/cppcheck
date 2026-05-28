@@ -29,7 +29,6 @@
 
 #include <cstdlib>
 #include <set>
-#include <sstream>
 #include <vector>
 
 BOOST_FORCEINLINE void boost_forceinline_test()
