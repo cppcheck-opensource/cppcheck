@@ -1931,6 +1931,7 @@ const ValueFlow::Value * Token::getValueLE(const MathLib::bigint val, const Sett
 {
     if (!mImpl->mValues)
         return nullptr;
+    // TODO: assert the given value is actually possible - i.e. 0x80 for a signed char is not possible
     return ValueFlow::findValue(*mImpl->mValues, settings, [&](const ValueFlow::Value& v) {
         return !v.isImpossible() && v.isIntValue() && v.intvalue <= val;
     });
@@ -1940,6 +1941,7 @@ const ValueFlow::Value * Token::getValueGE(const MathLib::bigint val, const Sett
 {
     if (!mImpl->mValues)
         return nullptr;
+    // TODO: assert the given value is actually possible - i.e. 0x80 for a signed char is not possible
     return ValueFlow::findValue(*mImpl->mValues, settings, [&](const ValueFlow::Value& v) {
         return !v.isImpossible() && v.isIntValue() && v.intvalue >= val;
     });
@@ -1949,6 +1951,7 @@ const ValueFlow::Value * Token::getValueNE(MathLib::bigint val) const
 {
     if (!mImpl->mValues)
         return nullptr;
+    // TODO: assert the given value is actually possible - i.e. 0x80 for a signed char is not possible
     const auto it = std::find_if(mImpl->mValues->cbegin(), mImpl->mValues->cend(), [=](const ValueFlow::Value& value) {
         return value.isIntValue() && !value.isImpossible() && value.intvalue != val;
     });
