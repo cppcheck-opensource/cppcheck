@@ -1847,6 +1847,10 @@ void CheckConditionImpl::checkPointerAdditionResultNotNull()
             if (tok->isExpandedMacro())
                 continue;
 
+            const bool usedAsBool = astIsPointer(tok) && isUsedAsBool(tok, *mSettings);
+            if (!tok->isComparisonOp() && !usedAsBool)
+                continue;
+
             const Token *calcToken = getPointerAdditionCalcToken(tok);
             if (!calcToken)
                 continue;
@@ -1861,8 +1865,8 @@ void CheckConditionImpl::checkPointerAdditionResultNotNull()
                     continue;
 
                 pointerAdditionResultNotNullError(tok, calcToken);
-            } else if (astIsPointer(tok) && isUsedAsBool(tok, *mSettings) && !tok->astParent()->isComparisonOp()) {
-                pointerAdditionResultNotNullError(tok, calcToken);
+            } else if (usedAsBool && (!tok->astParent() || !tok->astParent()->isComparisonOp())) {
+                pointerArithmeticAlwaysTrueError(tok, calcToken);
             }
         }
     }
@@ -1872,6 +1876,12 @@ void CheckConditionImpl::pointerAdditionResultNotNullError(const Token *tok, con
 {
     const std::string s = calc ? calc->expressionString() : "ptr+1";
     reportError(tok, Severity::warning, "pointerAdditionResultNotNull", "Comparison is wrong. Result of '" + s + "' can't be 0 unless there is pointer overflow, and pointer overflow is undefined behaviour.");
+}
+
+void CheckConditionImpl::pointerArithmeticAlwaysTrueError(const Token *tok, const Token *calc)
+{
+    const std::string s = calc ? calc->expressionString() : "ptr+1";
+    reportError(tok, Severity::warning, "pointerAdditionResultNotNull", "Pointer expression '" + s + "' is always true unless there is pointer overflow, and pointer overflow is undefined behaviour.");
 }
 
 void CheckConditionImpl::checkDuplicateConditionalAssign()
@@ -2173,6 +2183,7 @@ void CheckCondition::getErrorMessages(ErrorLogger& errorLogger, const Settings &
     c.alwaysTrueFalseError(nullptr, nullptr, nullptr);
     c.invalidTestForOverflow(nullptr, nullptr, "false");
     c.pointerAdditionResultNotNullError(nullptr, nullptr);
+    c.pointerArithmeticAlwaysTrueError(nullptr, nullptr);
     c.duplicateConditionalAssignError(nullptr, nullptr);
     c.assignmentInCondition(nullptr);
     c.compareValueOutOfTypeRangeError(nullptr, "unsigned char", 256, true);

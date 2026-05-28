@@ -175,6 +175,7 @@ public:
 
     void invalidTestForOverflow(const Token* tok, const ValueType *valueType, const std::string &replace);
     void pointerAdditionResultNotNullError(const Token *tok, const Token *calc);
+    void pointerArithmeticAlwaysTrueError(const Token *tok, const Token *calc);
 
     void duplicateConditionalAssignError(const Token *condTok, const Token* assignTok, bool isRedundant = false);
 
