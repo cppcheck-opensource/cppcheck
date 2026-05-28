@@ -6259,13 +6259,13 @@ private:
               "  int *q = ptr + 1;\n"
               "  if (q);\n"
               "}");
-        ASSERT_EQUALS("[test.cpp:3:7]: (warning) Pointer expression 'q' is always true unless there is pointer overflow, and pointer overflow is undefined behaviour. [pointerAdditionResultNotNull]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:7]: (warning) Pointer expression 'q' is always true unless there is pointer overflow, and pointer overflow is undefined behaviour. [pointerArithmeticAlwaysTrue]\n", errout_str());
 
         check("void f(char *ptr) {\n"
               "  int *q = ptr + 1;\n"
               "  if (!q);\n"
               "}");
-        ASSERT_EQUALS("[test.cpp:3:8]: (warning) Pointer expression 'q' is always true unless there is pointer overflow, and pointer overflow is undefined behaviour. [pointerAdditionResultNotNull]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:8]: (warning) Pointer expression 'q' is always true unless there is pointer overflow, and pointer overflow is undefined behaviour. [pointerArithmeticAlwaysTrue]\n", errout_str());
 
         check("void f(char *ptr) {\n"
               "  int *q = ptr + 0;\n"

@@ -1881,7 +1881,7 @@ void CheckConditionImpl::pointerAdditionResultNotNullError(const Token *tok, con
 void CheckConditionImpl::pointerArithmeticAlwaysTrueError(const Token *tok, const Token *calc)
 {
     const std::string s = calc ? calc->expressionString() : "ptr+1";
-    reportError(tok, Severity::warning, "pointerAdditionResultNotNull", "Pointer expression '" + s + "' is always true unless there is pointer overflow, and pointer overflow is undefined behaviour.");
+    reportError(tok, Severity::warning, "pointerArithmeticAlwaysTrue", "Pointer expression '" + s + "' is always true unless there is pointer overflow, and pointer overflow is undefined behaviour.");
 }
 
 void CheckConditionImpl::checkDuplicateConditionalAssign()
