@@ -139,12 +139,13 @@ private:
     void setRelativePathsInclude() const {
         const std::string cwd = Path::fromNativeSeparators(Path::getCurrentPath());
         TestImporter importer;
-        FileSettings fs{cwd + "/sub/a.c", Standards::Language::None, 0};
+        FileSettings fs{cwd + "/sub/a.c", Standards::Language::C, 0};
         fs.includePaths.push_back(cwd + "/");
         importer.fileSettings.push_back(std::move(fs));
-        importer.setRelativePaths("project.json");
-        ASSERT_EQUALS(".", importer.fileSettings.cbegin()->includePaths.front());
-        ASSERT_EQUALS("sub/a.c", importer.fileSettings.cbegin()->filename());
+        importer.setRelativePaths("compile_commands.json");
+        const FileSettings &fs = importer.fileSettings.front();
+        ASSERT_EQUALS(".", fs.includePaths.front());
+        ASSERT_EQUALS("sub/a.c", fs.filename());
     }
 
     void importCompileCommands1() const {
