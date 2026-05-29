@@ -1030,7 +1030,7 @@ void CheckMemoryLeakNoVarImpl::checkForUnreleasedInputArgument(const Scope *scop
             continue;
 
         if ((hasAssign || hasReturn) && !tok->function()) {
-            const std::string& ret = mSettings->library.returnValueType(tok);
+            const std::string& ret = mSettings.library.returnValueType(tok);
             if (ret.empty() || endsWith(ret, "*"))
                 continue;
         }
