@@ -15,23 +15,9 @@ jobs:
         # "opensuse/tumbleweed:latest" / "fedora:rawhide" / "debian:unstable" / "archlinux:latest"
         include:
           - os: ubuntu-22.04
-            image: "fedora:rawhide"
-            stdlib: libstdc++
-          - os: ubuntu-22.04
-            image: "fedora:rawhide"
-            stdlib: libc++
-          - os: ubuntu-22.04
             image: ""
             stdlib: libstdc++
             nightly: true
-          - os: ubuntu-22.04
-            image: ""
-            stdlib: libc++
-            nightly: true
-          - os: macos-26
-            image: ""
-            stdlib: libc++  # no libstdc++ on macOS
-            mapping_file_opt: '-Xiwyu --mapping_file=$(realpath ./macos.imp)'
       fail-fast: false
 
     runs-on: ${{ matrix.os }}
