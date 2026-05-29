@@ -20,6 +20,14 @@ jobs:
           - os: ubuntu-22.04
             image: "fedora:rawhide"
             stdlib: libc++
+          - os: ubuntu-22.04
+            image: ""
+            stdlib: libstdc++
+            nightly: true
+          - os: ubuntu-22.04
+            image: ""
+            stdlib: libc++
+            nightly: true
           - os: macos-26
             image: ""
             stdlib: libc++  # no libstdc++ on macOS
@@ -97,6 +105,12 @@ jobs:
           # on Apple Silicon files are symlinked under /opt/homebrew/bin
           ln -s /opt/homebrew/bin/iwyu_tool.py /usr/local/bin/iwyu_tool
 
+      - name: Install missing software on ubuntu
+        if: contains(matrix.os, 'ubuntu') && matrix.nightly
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl-dev  # fixes missing dependency for Qt in CMake
+
       # Fails on OpenSUSE:
       # Warning: Failed to restore: Tar failed with error: Unable to locate executable file: tar. Please verify either the file path exists or the file can be found within a directory specified by the PATH environment variable. Also check the file mode to verify the file is executable.
       # Also the shell is broken afterwards:
@@ -143,8 +157,41 @@ jobs:
           make -C cmake.output gui-build-deps
           make -C cmake.output triage-build-ui-deps
 
+      - name: Install clang
+        if: contains(matrix.os, 'ubuntu') && matrix.nightly
+        run: |
+          sudo apt-get purge --auto-remove llvm-15 clang-15 python3-lldb-14 llvm-14 clang-14 llvm-13 clang-13
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 23
+          sudo apt-get install -y libclang-23-dev
+
+      - name: check out include-what-you-use
+        if: contains(matrix.os, 'ubuntu') && matrix.nightly
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          repository: 'include-what-you-use/include-what-you-use'
+          ref: ''
+          path: 'include-what-you-use'
+
+      - name: run include-what-you-use CMake
+        if: contains(matrix.os, 'ubuntu') && matrix.nightly
+        run: |
+          cmake -S include-what-you-use -B include-what-you-use-build -DCMAKE_BUILD_TYPE=Release
+        env:
+          CC: clang-23
+          CXX: clang++-23
+
+      - name: install include-what-you-use
+        if: contains(matrix.os, 'ubuntu') && matrix.nightly
+        run: |
+          sudo cmake --build include-what-you-use-build --target install -- -j$(nproc)
+          ln -s iwyu_tool.py /usr/local/bin/iwyu_tool
+
       - name: iwyu_tool
         run: |
+          # TODO: exclude auto-generated source files
           iwyu_tool -p cmake.output -j $(nproc) -- -w -Xiwyu --max_line_length=1024 -Xiwyu --comment_style=long -Xiwyu --quoted_includes_first -Xiwyu --update_comments ${{ matrix.mapping_file_opt }} ${{ matrix.clang_inc }} > iwyu.log
 
       # TODO: run with all configurations
@@ -160,7 +207,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: success() || failure()
         with:
-          name: Compilation Database (include-what-you-use - ${{ matrix.os }} ${{ matrix.stdlib }})
+          name: Compilation Database (include-what-you-use - ${{ matrix.os }} ${{ matrix.image }} ${{ matrix.stdlib }})
           path: ./cmake.output/compile_commands.json
 
       - uses: actions/upload-artifact@v4
@@ -174,5 +221,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: success() || failure()
         with:
-          name: Logs (include-what-you-use - ${{ matrix.os }} ${{ matrix.stdlib }})
+          name: Logs (include-what-you-use - ${{ matrix.os }} ${{ matrix.image }} ${{ matrix.stdlib }})
           path: ./*.log
