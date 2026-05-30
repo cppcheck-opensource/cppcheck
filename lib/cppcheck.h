@@ -67,10 +67,10 @@ public:
     /**
      * @brief Constructor.
      */
-    CppCheck(const Settings& settings,
-             Suppressions& supprs,
-             ErrorLogger &errorLogger,
-             TimerResults* timerResults,
+    CppCheck(const Settings& settings LIFETIMEBOUND,
+             Suppressions& supprs LIFETIMEBOUND,
+             ErrorLogger &errorLogger LIFETIMEBOUND,
+             TimerResults* timerResults LIFETIMEBOUND,
              bool useGlobalSuppressions,
              ExecuteCmdFn executeCommand);
 

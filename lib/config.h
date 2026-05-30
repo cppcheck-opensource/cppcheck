@@ -117,6 +117,13 @@
 #  define RET_NONNULL
 #endif
 
+// lifetimebound
+#if __has_cpp_attribute (clang::lifetimebound)
+#  define LIFETIMEBOUND [[clang::lifetimebound]]
+#else
+#  define LIFETIMEBOUND
+#endif
+
 #define REQUIRES(msg, ...) class=typename std::enable_if<__VA_ARGS__::value>::type
 
 // Use the nonneg macro when you want to assert that a variable/argument is not negative
