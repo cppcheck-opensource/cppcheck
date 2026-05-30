@@ -37,6 +37,7 @@
 #include <limits>
 #include <utility>
 #include <vector>
+#include <algorithm>
 
 namespace ValueFlow
 {
@@ -99,6 +100,9 @@ namespace ValueFlow
     {
         if (value_size == 0)
             return value;
+
+        // sizeof(long long) = 8
+        value_size = std::min(sizeof(MathLib::bigint), value_size);
 
         const MathLib::biguint unsignedMaxValue = std::numeric_limits<MathLib::biguint>::max() >> ((sizeof(unsignedMaxValue) - value_size) * 8);
         const MathLib::biguint signBit = 1ULL << ((value_size * 8) - 1);
