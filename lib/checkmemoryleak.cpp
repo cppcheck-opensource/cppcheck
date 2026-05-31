@@ -487,9 +487,9 @@ void CheckMemoryLeakInFunctionImpl::checkReallocUsage()
     }
 }
 
-void CheckMemoryLeakInFunction::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckMemoryLeakInFunction::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
-    CheckMemoryLeakInFunctionImpl checkMemoryLeak(&tokenizer, tokenizer.getSettings(), *errorLogger);
+    CheckMemoryLeakInFunctionImpl checkMemoryLeak(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkMemoryLeak.checkReallocUsage();
 }
 
@@ -688,12 +688,12 @@ void CheckMemoryLeakInClassImpl::publicAllocationError(const Token *tok, const s
     reportError(tok, Severity::warning, "publicAllocationError", "$symbol:" + varname + "\nPossible leak in public function. The pointer '$symbol' is not deallocated before it is allocated.", CWE398, Certainty::normal);
 }
 
-void CheckMemoryLeakInClass::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckMemoryLeakInClass::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     if (!tokenizer.isCPP())
         return;
 
-    CheckMemoryLeakInClassImpl checkMemoryLeak(&tokenizer, tokenizer.getSettings(), *errorLogger);
+    CheckMemoryLeakInClassImpl checkMemoryLeak(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkMemoryLeak.check();
 }
 
@@ -963,9 +963,9 @@ void CheckMemoryLeakStructMemberImpl::checkStructVariable(const Variable* const 
     }
 }
 
-void CheckMemoryLeakStructMember::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckMemoryLeakStructMember::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
-    CheckMemoryLeakStructMemberImpl checkMemoryLeak(&tokenizer, tokenizer.getSettings(), *errorLogger);
+    CheckMemoryLeakStructMemberImpl checkMemoryLeak(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkMemoryLeak.check();
 }
 
@@ -1215,9 +1215,9 @@ void CheckMemoryLeakNoVarImpl::unsafeArgAllocError(const Token *tok, const std::
                 Certainty::inconclusive); // Inconclusive because funcName may never throw
 }
 
-void CheckMemoryLeakNoVar::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckMemoryLeakNoVar::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
-    CheckMemoryLeakNoVarImpl checkMemoryLeak(&tokenizer, tokenizer.getSettings(), *errorLogger);
+    CheckMemoryLeakNoVarImpl checkMemoryLeak(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkMemoryLeak.check();
 }
 

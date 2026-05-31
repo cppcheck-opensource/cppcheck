@@ -1214,9 +1214,9 @@ void CheckBufferOverrunImpl::negativeMemoryAllocationSizeError(const Token* tok,
                 msg, CWE131, inconclusive ? Certainty::inconclusive : Certainty::normal);
 }
 
-void CheckBufferOverrun::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckBufferOverrun::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
-    CheckBufferOverrunImpl checkBufferOverrun(&tokenizer, tokenizer.getSettings(), *errorLogger);
+    CheckBufferOverrunImpl checkBufferOverrun(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkBufferOverrun.arrayIndex();
     checkBufferOverrun.pointerArithmetic();
     checkBufferOverrun.bufferOverflow();

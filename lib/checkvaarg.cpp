@@ -173,9 +173,9 @@ void CheckVaargImpl::va_start_subsequentCallsError(const Token *tok, const std::
                 "va_start_subsequentCalls", "va_start() or va_copy() called subsequently on '" + varname + "' without va_end() in between.", CWE664, Certainty::normal);
 }
 
-void CheckVaarg::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckVaarg::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
-    CheckVaargImpl check(&tokenizer, tokenizer.getSettings(), *errorLogger);
+    CheckVaargImpl check(&tokenizer, tokenizer.getSettings(), errorLogger);
     check.va_start_argument();
     check.va_list_usage();
 }

@@ -853,9 +853,9 @@ void CheckFunctionsImpl::useStandardLibraryError(const Token *tok, const std::st
                 "Consider using " + expected + " instead of loop.");
 }
 
-void CheckFunctions::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckFunctions::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
-    CheckFunctionsImpl checkFunctions(&tokenizer, tokenizer.getSettings(), *errorLogger);
+    CheckFunctionsImpl checkFunctions(&tokenizer, tokenizer.getSettings(), errorLogger);
 
     checkFunctions.checkIgnoredReturnValue();
     checkFunctions.checkMissingReturn();  // Missing "return" in exit path

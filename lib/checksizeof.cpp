@@ -498,9 +498,9 @@ void CheckSizeofImpl::arithOperationsOnVoidPointerError(const Token* tok, const 
     reportError(tok, Severity::portability, "arithOperationsOnVoidPointer", "$symbol:" + varname + '\n' + message + '\n' + verbose, CWE467, Certainty::normal);
 }
 
-void CheckSizeof::runChecks(const Tokenizer& tokenizer, ErrorLogger* errorLogger)
+void CheckSizeof::runChecks(const Tokenizer& tokenizer, ErrorLogger& errorLogger)
 {
-    CheckSizeofImpl checkSizeof(&tokenizer, tokenizer.getSettings(), *errorLogger);
+    CheckSizeofImpl checkSizeof(&tokenizer, tokenizer.getSettings(), errorLogger);
 
     // Checks
     checkSizeof.sizeofsizeof();

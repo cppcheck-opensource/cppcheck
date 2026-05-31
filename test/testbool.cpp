@@ -89,7 +89,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         CheckBool check;
-        runChecks(check, tokenizer, this);
+        runChecks(check, tokenizer, *this);
     }
 
 

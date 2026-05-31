@@ -133,7 +133,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         CheckFunctions check;
-        runChecks(check, tokenizer, this);
+        runChecks(check, tokenizer, *this);
     }
 
     void prohibitedFunctions_posix() {

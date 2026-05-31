@@ -287,7 +287,7 @@ private:
 
         // call all "runChecks" in all registered Check classes
         for (Check * const c : CheckInstances::get()) {
-            c->runChecks(tokenizer, this);
+            c->runChecks(tokenizer, *this);
         }
 
         return tokenizer.tokens()->stringifyList(false, false, false, true, false, nullptr, nullptr);

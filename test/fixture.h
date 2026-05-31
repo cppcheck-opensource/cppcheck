@@ -139,7 +139,7 @@ protected:
         return check;
     }
 
-    static void runChecks(Check& check, const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+    static void runChecks(Check& check, const Tokenizer &tokenizer, ErrorLogger& errorLogger)
     {
         check.runChecks(tokenizer, errorLogger);
     }

@@ -48,7 +48,7 @@ public:
     CheckPostfixOperator() : Check("Using postfix operators") {}
 
 private:
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
     void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
     std::string classInfo() const override {

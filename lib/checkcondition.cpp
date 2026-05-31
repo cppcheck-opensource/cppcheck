@@ -2095,9 +2095,9 @@ void CheckConditionImpl::compareValueOutOfTypeRangeError(const Token *comparison
         Certainty::normal);
 }
 
-void CheckCondition::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckCondition::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
-    CheckConditionImpl checkCondition(&tokenizer, tokenizer.getSettings(), *errorLogger);
+    CheckConditionImpl checkCondition(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkCondition.multiCondition();
     checkCondition.clarifyCondition();   // not simplified because ifAssign
     checkCondition.multiCondition2();

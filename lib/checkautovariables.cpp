@@ -817,9 +817,9 @@ void CheckAutoVariablesImpl::errorInvalidDeallocation(const Token *tok, const Va
                 "that has been allocated dynamically.", CWE590, Certainty::normal);
 }
 
-void CheckAutoVariables::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckAutoVariables::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
-    CheckAutoVariablesImpl checkAutoVariables(&tokenizer, tokenizer.getSettings(), *errorLogger);
+    CheckAutoVariablesImpl checkAutoVariables(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkAutoVariables.assignFunctionArg();
     checkAutoVariables.autoVariables();
     checkAutoVariables.checkVarLifetime();

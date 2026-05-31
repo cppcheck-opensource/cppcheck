@@ -72,7 +72,7 @@ public:
     CheckMemoryLeakInFunction() : Check("Memory leaks (function variables)") {}
 
 private:
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
     /** Report all possible errors (for the --errorlist) */
     void getErrorMessages(ErrorLogger& e, const Settings &settings) const override;
@@ -98,7 +98,7 @@ public:
     CheckMemoryLeakInClass() : Check("Memory leaks (class variables)") {}
 
 private:
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
     void getErrorMessages(ErrorLogger& e, const Settings &settings) const override;
 
@@ -118,7 +118,7 @@ public:
     CheckMemoryLeakStructMember() : Check("Memory leaks (struct members)") {}
 
 private:
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
     void getErrorMessages(ErrorLogger& errorLogger, const Settings & settings) const override;
 
@@ -138,7 +138,7 @@ public:
     CheckMemoryLeakNoVar() : Check("Memory leaks (address not taken)") {}
 
 private:
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
     void getErrorMessages(ErrorLogger& e, const Settings &settings) const override;
 

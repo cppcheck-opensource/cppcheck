@@ -377,12 +377,12 @@ void CheckInternalImpl::extraWhitespaceError(const Token* tok, const std::string
                 );
 }
 
-void CheckInternal::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckInternal::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     if (!tokenizer.getSettings().checks.isEnabled(Checks::internalCheck))
         return;
 
-    CheckInternalImpl checkInternal(&tokenizer, tokenizer.getSettings(), *errorLogger);
+    CheckInternalImpl checkInternal(&tokenizer, tokenizer.getSettings(), errorLogger);
 
     checkInternal.checkTokenMatchPatterns();
     checkInternal.checkTokenSimpleMatchPatterns();

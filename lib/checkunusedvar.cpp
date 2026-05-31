@@ -1725,9 +1725,9 @@ bool CheckUnusedVarImpl::isEmptyType(const Type* type)
     return (emptyType = false);
 }
 
-void CheckUnusedVar::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckUnusedVar::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
-    CheckUnusedVarImpl checkUnusedVar(&tokenizer, tokenizer.getSettings(), *errorLogger);
+    CheckUnusedVarImpl checkUnusedVar(&tokenizer, tokenizer.getSettings(), errorLogger);
 
     // Coding style checks
     checkUnusedVar.checkStructMemberUsage();

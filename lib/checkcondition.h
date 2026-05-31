@@ -54,7 +54,7 @@ public:
     CheckCondition() : Check("Condition") {}
 
 private:
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
     void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 

@@ -2050,9 +2050,9 @@ void CheckIOImpl::invalidScanfFormatWidthError(const Token* tok, nonneg int numF
     }
 }
 
-void CheckIO::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckIO::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
-    CheckIOImpl checkIO(&tokenizer, tokenizer.getSettings(), *errorLogger);
+    CheckIOImpl checkIO(&tokenizer, tokenizer.getSettings(), errorLogger);
 
     checkIO.checkWrongPrintfScanfArguments();
     checkIO.checkCoutCerrMisusage();

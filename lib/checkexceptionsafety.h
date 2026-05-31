@@ -50,7 +50,7 @@ public:
     CheckExceptionSafety() : Check("Exception Safety") {}
 
 private:
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
     /** Generate all possible errors (for --errorlist) */
     void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;

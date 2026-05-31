@@ -178,9 +178,9 @@ bool CheckAssertImpl::inSameScope(const Token* returnTok, const Token* assignTok
     return returnTok->scope() == assignTok->scope();
 }
 
-void CheckAssert::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckAssert::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
-    CheckAssertImpl checkAssert(&tokenizer, tokenizer.getSettings(), *errorLogger);
+    CheckAssertImpl checkAssert(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkAssert.assertWithSideEffects();
 }
 

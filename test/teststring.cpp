@@ -75,7 +75,7 @@ private:
         ASSERT_LOC(tokenizer.simplifyTokens1(""), file, line);
 
         CheckString check;
-        runChecks(check, tokenizer, this);
+        runChecks(check, tokenizer, *this);
     }
 
     void stringLiteralWrite() {

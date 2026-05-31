@@ -3882,12 +3882,12 @@ bool CheckClass::analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<C
     return foundErrors;
 }
 
-void CheckClass::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckClass::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     if (tokenizer.isC())
         return;
 
-    CheckClassImpl checkClass(&tokenizer, tokenizer.getSettings(), *errorLogger);
+    CheckClassImpl checkClass(&tokenizer, tokenizer.getSettings(), errorLogger);
 
     // can't be a simplified check .. the 'sizeof' is used.
     checkClass.checkMemset();

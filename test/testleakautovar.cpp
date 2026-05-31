@@ -236,7 +236,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         CheckLeakAutoVar check;
-        runChecks(check, tokenizer, this);
+        runChecks(check, tokenizer, *this);
     }
 
     void assign1() {
@@ -3267,7 +3267,7 @@ private:
         ASSERT_LOC(tokenizer.simplifyTokens1(""), file, line);
 
         CheckLeakAutoVar check;
-        runChecks(check, tokenizer, this);
+        runChecks(check, tokenizer, *this);
     }
 
     void run() override {
@@ -3314,7 +3314,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         CheckLeakAutoVar check;
-        runChecks(check, tokenizer, this);
+        runChecks(check, tokenizer, *this);
     }
 
     void run() override {
@@ -3419,7 +3419,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         CheckLeakAutoVar check;
-        runChecks(check, tokenizer, this);
+        runChecks(check, tokenizer, *this);
     }
 
     void run() override {
@@ -3492,7 +3492,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         CheckLeakAutoVar check;
-        runChecks(check, tokenizer, this);
+        runChecks(check, tokenizer, *this);
     }
 
     void run() override {

@@ -44,7 +44,7 @@ class CPPCHECKLIB CheckVaarg : public Check {
 public:
     CheckVaarg() : Check("Vaarg") {}
 
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
 private:
     void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;

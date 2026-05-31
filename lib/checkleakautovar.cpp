@@ -1278,9 +1278,9 @@ void CheckLeakAutoVarImpl::ret(const Token *tok, VarInfo &varInfo, const bool is
         varInfo.erase(varId);
 }
 
-void CheckLeakAutoVar::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckLeakAutoVar::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
-    CheckLeakAutoVarImpl checkLeakAutoVar(&tokenizer, tokenizer.getSettings(), *errorLogger);
+    CheckLeakAutoVarImpl checkLeakAutoVar(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkLeakAutoVar.check();
 }
 

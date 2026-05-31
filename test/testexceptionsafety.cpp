@@ -76,7 +76,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         CheckExceptionSafety check;
-        runChecks(check, tokenizer, this);
+        runChecks(check, tokenizer, *this);
     }
 
     void destructors() {

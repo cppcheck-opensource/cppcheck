@@ -48,7 +48,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         CheckAutoVariables check;
-        runChecks(check, tokenizer, this);
+        runChecks(check, tokenizer, *this);
     }
 
     void run() override {

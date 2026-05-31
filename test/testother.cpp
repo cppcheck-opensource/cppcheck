@@ -368,7 +368,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         CheckOther check;
-        runChecks(check, tokenizer, this);
+        runChecks(check, tokenizer, *this);
     }
 
     struct CheckPOptions
@@ -385,7 +385,7 @@ private:
         ASSERT_LOC(tokenizer.simplifyTokens1(""), file, line);
 
         CheckOther check;
-        runChecks(check, tokenizer, this);
+        runChecks(check, tokenizer, *this);
     }
 
     template<size_t size>
@@ -12315,7 +12315,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         CheckOther check;
-        runChecks(check, tokenizer, this);
+        runChecks(check, tokenizer, *this);
     }
 
     void testEvaluationOrder() {

@@ -409,12 +409,12 @@ void CheckExceptionSafetyImpl::rethrowNoCurrentExceptionError(const Token *tok)
                 CWE480, Certainty::normal);
 }
 
-void CheckExceptionSafety::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckExceptionSafety::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     if (tokenizer.isC())
         return;
 
-    CheckExceptionSafetyImpl checkExceptionSafety(&tokenizer, tokenizer.getSettings(), *errorLogger);
+    CheckExceptionSafetyImpl checkExceptionSafety(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkExceptionSafety.destructors();
     checkExceptionSafety.deallocThrow();
     checkExceptionSafety.checkRethrowCopy();

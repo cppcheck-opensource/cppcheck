@@ -692,9 +692,9 @@ bool CheckNullPointer::analyseWholeProgram(const CTU::FileInfo &ctu, const std::
     return foundErrors;
 }
 
-void CheckNullPointer::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckNullPointer::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
-    CheckNullPointerImpl checkNullPointer(&tokenizer, tokenizer.getSettings(), *errorLogger);
+    CheckNullPointerImpl checkNullPointer(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkNullPointer.nullPointer();
     checkNullPointer.arithmetic();
     checkNullPointer.nullConstantDereference();

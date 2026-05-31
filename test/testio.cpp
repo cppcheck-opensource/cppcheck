@@ -114,7 +114,7 @@ private:
             return;
         }
         CheckIO check;
-        runChecks(check, tokenizer, this);
+        runChecks(check, tokenizer, *this);
     }
 
     void coutCerrMisusage() {
