@@ -28,4 +28,6 @@ Other:
 - Moved source code from https://github.com/danmar/cppcheck to https://github.com/cppcheck-opensource/cppcheck
 - The official Windows binary is now built with Visual Studio 2026.
 - Updated simplecpp to 1.7.0.
+- Added support for `std::regex` as the regular engine for rules. It can be specified using `std` in the engine` element in a rule XML.
+-
 -
