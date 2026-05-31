@@ -825,9 +825,9 @@ void CheckAutoVariables::runChecks(const Tokenizer &tokenizer, ErrorLogger *erro
     checkAutoVariables.checkVarLifetime();
 }
 
-void CheckAutoVariables::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void CheckAutoVariables::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckAutoVariablesImpl c(nullptr,settings,errorLogger);
+    CheckAutoVariablesImpl c(nullptr,settings,&errorLogger);
     c.errorAutoVariableAssignment(nullptr, false);
     c.errorReturnReference(nullptr, ErrorPath{}, false);
     c.errorDanglingReference(nullptr, nullptr, ErrorPath{});

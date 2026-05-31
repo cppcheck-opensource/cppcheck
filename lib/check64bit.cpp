@@ -189,9 +189,9 @@ void Check64BitPortability::runChecks(const Tokenizer &tokenizer, ErrorLogger *e
     check64BitPortability.pointerassignment();
 }
 
-void Check64BitPortability::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void Check64BitPortability::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    Check64BitPortabilityImpl c(nullptr, settings, errorLogger);
+    Check64BitPortabilityImpl c(nullptr, settings, &errorLogger);
     c.assignmentAddressToIntegerError(nullptr);
     c.assignmentIntegerToAddressError(nullptr);
     c.returnIntegerError(nullptr);

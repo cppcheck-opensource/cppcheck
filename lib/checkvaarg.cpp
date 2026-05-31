@@ -180,9 +180,9 @@ void CheckVaarg::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
     check.va_list_usage();
 }
 
-void CheckVaarg::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void CheckVaarg::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckVaargImpl c(nullptr, settings, errorLogger);
+    CheckVaargImpl c(nullptr, settings, &errorLogger);
     c.wrongParameterTo_va_start_error(nullptr, "arg1", "arg2");
     c.referenceAs_va_start_error(nullptr, "arg1");
     c.va_end_missingError(nullptr, "vl");

@@ -424,9 +424,9 @@ void CheckExceptionSafety::runChecks(const Tokenizer &tokenizer, ErrorLogger *er
     checkExceptionSafety.rethrowNoCurrentException();
 }
 
-void CheckExceptionSafety::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void CheckExceptionSafety::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckExceptionSafetyImpl c(nullptr, settings, errorLogger);
+    CheckExceptionSafetyImpl c(nullptr, settings, &errorLogger);
     c.destructorsError(nullptr, "Class");
     c.deallocThrowError(nullptr, "p");
     c.rethrowCopyError(nullptr, "varname");

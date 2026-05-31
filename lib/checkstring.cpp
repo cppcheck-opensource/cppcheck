@@ -485,9 +485,9 @@ void CheckString::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger
     checkString.checkAlwaysTrueOrFalseStringCompare();
 }
 
-void CheckString::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void CheckString::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckStringImpl c(nullptr, settings, errorLogger);
+    CheckStringImpl c(nullptr, settings, &errorLogger);
     c.stringLiteralWriteError(nullptr, nullptr);
     c.sprintfOverlappingDataError(nullptr, nullptr, "varname");
     c.strPlusCharError(nullptr);

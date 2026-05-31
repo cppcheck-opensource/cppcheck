@@ -103,8 +103,8 @@ void CheckPostfixOperator::runChecks(const Tokenizer &tokenizer, ErrorLogger *er
     checkPostfixOperator.postfixOperator();
 }
 
-void CheckPostfixOperator::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void CheckPostfixOperator::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckPostfixOperatorImpl c(nullptr, settings, errorLogger);
+    CheckPostfixOperatorImpl c(nullptr, settings, &errorLogger);
     c.postfixOperatorError(nullptr);
 }

@@ -2060,9 +2060,9 @@ void CheckIO::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
     checkIO.invalidScanf();
 }
 
-void CheckIO::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void CheckIO::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckIOImpl c(nullptr, settings, errorLogger);
+    CheckIOImpl c(nullptr, settings, &errorLogger);
     c.coutCerrMisusageError(nullptr,  "cout");
     c.fflushOnInputStreamError(nullptr,  "stdin");
     c.ioWithoutPositioningError(nullptr);

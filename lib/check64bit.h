@@ -51,7 +51,7 @@ private:
     /** @brief Run checks against the normal token list */
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
 
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "Check if there is 64-bit portability issues:\n"

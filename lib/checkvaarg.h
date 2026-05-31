@@ -47,7 +47,7 @@ public:
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
 
 private:
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "Check for misusage of variable argument lists:\n"

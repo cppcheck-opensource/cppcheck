@@ -513,9 +513,9 @@ void CheckSizeof::runChecks(const Tokenizer& tokenizer, ErrorLogger* errorLogger
     checkSizeof.sizeofVoid();
 }
 
-void CheckSizeof::getErrorMessages(ErrorLogger* errorLogger, const Settings& settings) const
+void CheckSizeof::getErrorMessages(ErrorLogger& errorLogger, const Settings& settings) const
 {
-    CheckSizeofImpl c(nullptr, settings, errorLogger);
+    CheckSizeofImpl c(nullptr, settings, &errorLogger);
     c.sizeofForArrayParameterError(nullptr);
     c.sizeofForPointerError(nullptr, "varname");
     c.divideBySizeofError(nullptr, "memset");

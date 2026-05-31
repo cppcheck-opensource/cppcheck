@@ -2115,9 +2115,9 @@ void CheckCondition::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLog
     checkCondition.alwaysTrueFalse();
 }
 
-void CheckCondition::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void CheckCondition::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckConditionImpl c(nullptr, settings, errorLogger);
+    CheckConditionImpl c(nullptr, settings, &errorLogger);
 
     c.assignIfError(nullptr, nullptr, "", false);
     c.badBitmaskCheckError(nullptr);

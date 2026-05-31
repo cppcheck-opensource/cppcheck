@@ -184,9 +184,9 @@ void CheckAssert::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger
     checkAssert.assertWithSideEffects();
 }
 
-void CheckAssert::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void CheckAssert::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckAssertImpl c(nullptr, settings, errorLogger);
+    CheckAssertImpl c(nullptr, settings, &errorLogger);
     c.sideEffectInAssertError(nullptr, "function");
     c.assignmentInAssertError(nullptr, "var");
 }

@@ -113,7 +113,7 @@ public:
 private:
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
 
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "Detect when a auto variable is allocated but not deallocated or deallocated twice.\n";

@@ -48,7 +48,7 @@ public:
 private:
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
 
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
     std::string classInfo() const override {
         // Don't include these checks on the WIKI where people can read what

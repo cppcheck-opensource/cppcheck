@@ -872,9 +872,9 @@ void CheckFunctions::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLog
     checkFunctions.useStandardLibrary();
 }
 
-void CheckFunctions::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void CheckFunctions::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckFunctionsImpl c(nullptr, settings, errorLogger);
+    CheckFunctionsImpl c(nullptr, settings, &errorLogger);
 
     for (auto i = settings.library.functionwarn().cbegin(); i != settings.library.functionwarn().cend(); ++i) {
         c.functionCalledError(nullptr, Severity::style, i->first, i->second.message);

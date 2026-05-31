@@ -53,7 +53,7 @@ private:
     void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
 
     /** Generate all possible errors (for --errorlist) */
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
     /** wiki formatted description of the class (for --doc) */
     std::string classInfo() const override {
