@@ -21,7 +21,6 @@
 #define settingsH
 //---------------------------------------------------------------------------
 
-#include "addoninfo.h"
 #include "config.h"
 #include "library.h"
 #include "platform.h"
@@ -47,6 +46,7 @@
 struct Rule;
 #endif
 struct Suppressions;
+struct AddonInfo;
 namespace ValueFlow {
     class Value;
 }
