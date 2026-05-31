@@ -1727,7 +1727,7 @@ bool CheckUnusedVarImpl::isEmptyType(const Type* type)
 
 void CheckUnusedVar::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckUnusedVarImpl checkUnusedVar(&tokenizer, tokenizer.getSettings(), errorLogger);
+    CheckUnusedVarImpl checkUnusedVar(&tokenizer, tokenizer.getSettings(), *errorLogger);
 
     // Coding style checks
     checkUnusedVar.checkStructMemberUsage();
@@ -1736,7 +1736,7 @@ void CheckUnusedVar::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLog
 
 void CheckUnusedVar::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckUnusedVarImpl c(nullptr, settings, &errorLogger);
+    CheckUnusedVarImpl c(nullptr, settings, errorLogger);
     c.unusedVariableError(nullptr, "varname");
     c.allocatedButUnusedVariableError(nullptr, "varname");
     c.unreadVariableError(nullptr, "varname", false);

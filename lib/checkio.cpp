@@ -2052,7 +2052,7 @@ void CheckIOImpl::invalidScanfFormatWidthError(const Token* tok, nonneg int numF
 
 void CheckIO::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckIOImpl checkIO(&tokenizer, tokenizer.getSettings(), errorLogger);
+    CheckIOImpl checkIO(&tokenizer, tokenizer.getSettings(), *errorLogger);
 
     checkIO.checkWrongPrintfScanfArguments();
     checkIO.checkCoutCerrMisusage();
@@ -2062,7 +2062,7 @@ void CheckIO::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 
 void CheckIO::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckIOImpl c(nullptr, settings, &errorLogger);
+    CheckIOImpl c(nullptr, settings, errorLogger);
     c.coutCerrMisusageError(nullptr,  "cout");
     c.fflushOnInputStreamError(nullptr,  "stdin");
     c.ioWithoutPositioningError(nullptr);

@@ -855,7 +855,7 @@ void CheckFunctionsImpl::useStandardLibraryError(const Token *tok, const std::st
 
 void CheckFunctions::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckFunctionsImpl checkFunctions(&tokenizer, tokenizer.getSettings(), errorLogger);
+    CheckFunctionsImpl checkFunctions(&tokenizer, tokenizer.getSettings(), *errorLogger);
 
     checkFunctions.checkIgnoredReturnValue();
     checkFunctions.checkMissingReturn();  // Missing "return" in exit path
@@ -874,7 +874,7 @@ void CheckFunctions::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLog
 
 void CheckFunctions::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckFunctionsImpl c(nullptr, settings, &errorLogger);
+    CheckFunctionsImpl c(nullptr, settings, errorLogger);
 
     for (auto i = settings.library.functionwarn().cbegin(); i != settings.library.functionwarn().cend(); ++i) {
         c.functionCalledError(nullptr, Severity::style, i->first, i->second.message);

@@ -70,7 +70,7 @@ private:
 class CPPCHECKLIB CheckUnusedVarImpl : public CheckImpl {
 public:
     /** @brief This constructor is used when running checks. */
-    CheckUnusedVarImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckUnusedVarImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** @brief %Check for unused function variables */

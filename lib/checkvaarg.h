@@ -62,7 +62,7 @@ private:
 class CPPCHECKLIB CheckVaargImpl : public CheckImpl
 {
 public:
-    CheckVaargImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckVaargImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     void va_start_argument();

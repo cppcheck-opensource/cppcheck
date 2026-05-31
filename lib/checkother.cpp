@@ -4789,7 +4789,7 @@ void CheckOtherImpl::overlappingWriteFunction(const Token *tok, const std::strin
 
 void CheckOther::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckOtherImpl checkOther(&tokenizer, tokenizer.getSettings(), errorLogger);
+    CheckOtherImpl checkOther(&tokenizer, tokenizer.getSettings(), *errorLogger);
 
     // Checks
     checkOther.warningOldStylePointerCast();
@@ -4841,7 +4841,7 @@ void CheckOther::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 
 void CheckOther::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckOtherImpl c(nullptr, settings, &errorLogger);
+    CheckOtherImpl c(nullptr, settings, errorLogger);
 
     // error
     c.zerodivError(nullptr, nullptr);

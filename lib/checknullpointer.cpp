@@ -632,7 +632,7 @@ bool CheckNullPointer::analyseWholeProgram(const CTU::FileInfo &ctu, const std::
 {
     (void)settings;
 
-    CheckNullPointerImpl dummy(nullptr, settings, &errorLogger);
+    CheckNullPointerImpl dummy(nullptr, settings, errorLogger);
     dummy.
     logChecker("CheckNullPointer::analyseWholeProgram");
 
@@ -694,7 +694,7 @@ bool CheckNullPointer::analyseWholeProgram(const CTU::FileInfo &ctu, const std::
 
 void CheckNullPointer::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckNullPointerImpl checkNullPointer(&tokenizer, tokenizer.getSettings(), errorLogger);
+    CheckNullPointerImpl checkNullPointer(&tokenizer, tokenizer.getSettings(), *errorLogger);
     checkNullPointer.nullPointer();
     checkNullPointer.arithmetic();
     checkNullPointer.nullConstantDereference();
@@ -702,7 +702,7 @@ void CheckNullPointer::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorL
 
 void CheckNullPointer::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckNullPointerImpl c(nullptr, settings, &errorLogger);
+    CheckNullPointerImpl c(nullptr, settings, errorLogger);
     c.nullPointerError(nullptr, "pointer", nullptr, false);
     c.pointerArithmeticError(nullptr, nullptr, false);
     // TODO: nullPointerArithmeticOutOfMemory

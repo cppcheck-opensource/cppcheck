@@ -291,7 +291,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check for unused variables..
-        CheckUnusedVarImpl checkUnusedVar(&tokenizer, settings, this);
+        CheckUnusedVarImpl checkUnusedVar(&tokenizer, settings, *this);
         checkUnusedVar.checkFunctionVariableUsage();
     }
 
@@ -311,7 +311,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check for unused variables..
-        CheckUnusedVarImpl checkUnusedVar(&tokenizer, settings, this);
+        CheckUnusedVarImpl checkUnusedVar(&tokenizer, settings, *this);
         (checkUnusedVar.checkStructMemberUsage)();
     }
 
@@ -324,7 +324,7 @@ private:
         ASSERT_LOC(tokenizer.simplifyTokens1(""), file, line);
 
         // Check for unused variables..
-        CheckUnusedVarImpl checkUnusedVar(&tokenizer, settings, this);
+        CheckUnusedVarImpl checkUnusedVar(&tokenizer, settings, *this);
         (checkUnusedVar.checkStructMemberUsage)();
     }
 
@@ -337,7 +337,7 @@ private:
         ASSERT_LOC(tokenizer.simplifyTokens1(""), file, line);
 
         // Check for unused variables..
-        CheckUnusedVarImpl checkUnusedVar(&tokenizer, settings, this);
+        CheckUnusedVarImpl checkUnusedVar(&tokenizer, settings, *this);
         (checkUnusedVar.checkFunctionVariableUsage)();
     }
 

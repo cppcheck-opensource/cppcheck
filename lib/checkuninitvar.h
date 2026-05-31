@@ -88,7 +88,7 @@ private:
 class CPPCHECKLIB CheckUninitVarImpl : public CheckImpl {
 public:
     /** @brief This constructor is used when running checks. */
-    CheckUninitVarImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckUninitVarImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     enum Alloc : std::uint8_t { NO_ALLOC, NO_CTOR_CALL, CTOR_CALL, ARRAY };

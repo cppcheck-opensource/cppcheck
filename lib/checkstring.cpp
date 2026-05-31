@@ -473,7 +473,7 @@ void CheckStringImpl::sprintfOverlappingDataError(const Token *funcTok, const To
 
 void CheckString::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckStringImpl checkString(&tokenizer, tokenizer.getSettings(), errorLogger);
+    CheckStringImpl checkString(&tokenizer, tokenizer.getSettings(), *errorLogger);
 
     // Checks
     checkString.strPlusChar();
@@ -487,7 +487,7 @@ void CheckString::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger
 
 void CheckString::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckStringImpl c(nullptr, settings, &errorLogger);
+    CheckStringImpl c(nullptr, settings, errorLogger);
     c.stringLiteralWriteError(nullptr, nullptr);
     c.sprintfOverlappingDataError(nullptr, nullptr, "varname");
     c.strPlusCharError(nullptr);

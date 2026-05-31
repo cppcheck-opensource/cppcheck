@@ -500,7 +500,7 @@ void CheckSizeofImpl::arithOperationsOnVoidPointerError(const Token* tok, const 
 
 void CheckSizeof::runChecks(const Tokenizer& tokenizer, ErrorLogger* errorLogger)
 {
-    CheckSizeofImpl checkSizeof(&tokenizer, tokenizer.getSettings(), errorLogger);
+    CheckSizeofImpl checkSizeof(&tokenizer, tokenizer.getSettings(), *errorLogger);
 
     // Checks
     checkSizeof.sizeofsizeof();
@@ -515,7 +515,7 @@ void CheckSizeof::runChecks(const Tokenizer& tokenizer, ErrorLogger* errorLogger
 
 void CheckSizeof::getErrorMessages(ErrorLogger& errorLogger, const Settings& settings) const
 {
-    CheckSizeofImpl c(nullptr, settings, &errorLogger);
+    CheckSizeofImpl c(nullptr, settings, errorLogger);
     c.sizeofForArrayParameterError(nullptr);
     c.sizeofForPointerError(nullptr, "varname");
     c.divideBySizeofError(nullptr, "memset");

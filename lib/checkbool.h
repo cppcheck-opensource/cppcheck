@@ -67,7 +67,7 @@ class CPPCHECKLIB CheckBoolImpl : public CheckImpl
 {
 public:
     /** @brief This constructor is used when running checks. */
-    CheckBoolImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckBoolImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** @brief %Check for comparison of function returning bool*/

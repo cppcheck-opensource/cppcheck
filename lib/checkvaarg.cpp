@@ -175,14 +175,14 @@ void CheckVaargImpl::va_start_subsequentCallsError(const Token *tok, const std::
 
 void CheckVaarg::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckVaargImpl check(&tokenizer, tokenizer.getSettings(), errorLogger);
+    CheckVaargImpl check(&tokenizer, tokenizer.getSettings(), *errorLogger);
     check.va_start_argument();
     check.va_list_usage();
 }
 
 void CheckVaarg::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckVaargImpl c(nullptr, settings, &errorLogger);
+    CheckVaargImpl c(nullptr, settings, errorLogger);
     c.wrongParameterTo_va_start_error(nullptr, "arg1", "arg2");
     c.referenceAs_va_start_error(nullptr, "arg1");
     c.va_end_missingError(nullptr, "vl");

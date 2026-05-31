@@ -514,7 +514,7 @@ void CheckBoolImpl::returnValueBoolError(const Token *tok)
 
 void CheckBool::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckBoolImpl checkBool(&tokenizer, tokenizer.getSettings(), errorLogger);
+    CheckBoolImpl checkBool(&tokenizer, tokenizer.getSettings(), *errorLogger);
 
     // Checks
     checkBool.checkComparisonOfBoolExpressionWithInt();
@@ -531,7 +531,7 @@ void CheckBool::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 
 void CheckBool::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckBoolImpl c(nullptr, settings, &errorLogger);
+    CheckBoolImpl c(nullptr, settings, errorLogger);
     c.assignBoolToPointerError(nullptr);
     c.assignBoolToFloatError(nullptr);
     c.comparisonOfFuncReturningBoolError(nullptr, "func_name");

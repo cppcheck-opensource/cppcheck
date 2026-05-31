@@ -31,7 +31,6 @@
 #include "utils.h"
 
 #include <algorithm>
-#include <cassert>
 #include <cstddef>
 #include <utility>
 #include <vector>
@@ -286,10 +285,8 @@ void CheckMemoryLeakImpl::reportErr(const Token *tok, Severity severity, const s
 
 void CheckMemoryLeakImpl::reportErr(const std::list<const Token *> &callstack, Severity severity, const std::string &id, const std::string &msg, const CWE &cwe) const
 {
-    assert(mErrorLogger);
-
     const ErrorMessage errmsg(callstack, mTokenizer ? &mTokenizer->list : nullptr, severity, id, msg, cwe, Certainty::normal);
-    mErrorLogger->reportErr(errmsg);
+    mErrorLogger.reportErr(errmsg);
 }
 
 void CheckMemoryLeakImpl::memleakError(const Token *tok, const std::string &varname) const
@@ -492,13 +489,13 @@ void CheckMemoryLeakInFunctionImpl::checkReallocUsage()
 
 void CheckMemoryLeakInFunction::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckMemoryLeakInFunctionImpl checkMemoryLeak(&tokenizer, tokenizer.getSettings(), errorLogger);
+    CheckMemoryLeakInFunctionImpl checkMemoryLeak(&tokenizer, tokenizer.getSettings(), *errorLogger);
     checkMemoryLeak.checkReallocUsage();
 }
 
 void CheckMemoryLeakInFunction::getErrorMessages(ErrorLogger& e, const Settings &settings) const
 {
-    CheckMemoryLeakInFunctionImpl c(nullptr, settings, &e);
+    CheckMemoryLeakInFunctionImpl c(nullptr, settings, e);
     c.memleakError(nullptr, "varname");
     c.resourceLeakError(nullptr, "varname");
     c.deallocuseError(nullptr, "varname");
@@ -696,13 +693,13 @@ void CheckMemoryLeakInClass::runChecks(const Tokenizer &tokenizer, ErrorLogger *
     if (!tokenizer.isCPP())
         return;
 
-    CheckMemoryLeakInClassImpl checkMemoryLeak(&tokenizer, tokenizer.getSettings(), errorLogger);
+    CheckMemoryLeakInClassImpl checkMemoryLeak(&tokenizer, tokenizer.getSettings(), *errorLogger);
     checkMemoryLeak.check();
 }
 
 void CheckMemoryLeakInClass::getErrorMessages(ErrorLogger& e, const Settings &settings) const
 {
-    CheckMemoryLeakInClassImpl c(nullptr, settings, &e);
+    CheckMemoryLeakInClassImpl c(nullptr, settings, e);
     c.publicAllocationError(nullptr, "varname");
     c.unsafeClassError(nullptr, "class", "class::varname");
 }
@@ -968,7 +965,7 @@ void CheckMemoryLeakStructMemberImpl::checkStructVariable(const Variable* const 
 
 void CheckMemoryLeakStructMember::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckMemoryLeakStructMemberImpl checkMemoryLeak(&tokenizer, tokenizer.getSettings(), errorLogger);
+    CheckMemoryLeakStructMemberImpl checkMemoryLeak(&tokenizer, tokenizer.getSettings(), *errorLogger);
     checkMemoryLeak.check();
 }
 
@@ -1220,13 +1217,13 @@ void CheckMemoryLeakNoVarImpl::unsafeArgAllocError(const Token *tok, const std::
 
 void CheckMemoryLeakNoVar::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckMemoryLeakNoVarImpl checkMemoryLeak(&tokenizer, tokenizer.getSettings(), errorLogger);
+    CheckMemoryLeakNoVarImpl checkMemoryLeak(&tokenizer, tokenizer.getSettings(), *errorLogger);
     checkMemoryLeak.check();
 }
 
 void CheckMemoryLeakNoVar::getErrorMessages(ErrorLogger& e, const Settings &settings) const
 {
-    CheckMemoryLeakNoVarImpl c(nullptr, settings, &e);
+    CheckMemoryLeakNoVarImpl c(nullptr, settings, e);
     c.functionCallLeak(nullptr, "funcName", "funcName");
     c.returnValueNotUsedError(nullptr, "funcName");
     c.unsafeArgAllocError(nullptr, "funcName", "shared_ptr", "int");

@@ -99,12 +99,12 @@ void CheckPostfixOperator::runChecks(const Tokenizer &tokenizer, ErrorLogger *er
     if (tokenizer.isC())
         return;
 
-    CheckPostfixOperatorImpl checkPostfixOperator(&tokenizer, tokenizer.getSettings(), errorLogger);
+    CheckPostfixOperatorImpl checkPostfixOperator(&tokenizer, tokenizer.getSettings(), *errorLogger);
     checkPostfixOperator.postfixOperator();
 }
 
 void CheckPostfixOperator::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckPostfixOperatorImpl c(nullptr, settings, &errorLogger);
+    CheckPostfixOperatorImpl c(nullptr, settings, errorLogger);
     c.postfixOperatorError(nullptr);
 }

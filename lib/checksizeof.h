@@ -66,7 +66,7 @@ private:
 class CPPCHECKLIB CheckSizeofImpl : public CheckImpl {
 public:
     /** @brief This constructor is used when running checks. */
-    CheckSizeofImpl(const Tokenizer* tokenizer, const Settings& settings, ErrorLogger* errorLogger)
+    CheckSizeofImpl(const Tokenizer* tokenizer, const Settings& settings, ErrorLogger& errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** @brief %Check for 'sizeof sizeof ..' */

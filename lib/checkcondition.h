@@ -81,7 +81,7 @@ private:
 class CPPCHECKLIB CheckConditionImpl : public CheckImpl {
 public:
     /** This constructor is used when running checks. */
-    CheckConditionImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckConditionImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** mismatching assignment / comparison */

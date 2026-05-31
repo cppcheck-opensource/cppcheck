@@ -63,7 +63,7 @@ private:
 class CPPCHECKLIB Check64BitPortabilityImpl : public CheckImpl {
 public:
     /** This constructor is used when running checks. */
-    Check64BitPortabilityImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    Check64BitPortabilityImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** Check for pointer assignment */

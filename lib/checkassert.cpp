@@ -180,13 +180,13 @@ bool CheckAssertImpl::inSameScope(const Token* returnTok, const Token* assignTok
 
 void CheckAssert::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckAssertImpl checkAssert(&tokenizer, tokenizer.getSettings(), errorLogger);
+    CheckAssertImpl checkAssert(&tokenizer, tokenizer.getSettings(), *errorLogger);
     checkAssert.assertWithSideEffects();
 }
 
 void CheckAssert::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckAssertImpl c(nullptr, settings, &errorLogger);
+    CheckAssertImpl c(nullptr, settings, errorLogger);
     c.sideEffectInAssertError(nullptr, "function");
     c.assignmentInAssertError(nullptr, "var");
 }

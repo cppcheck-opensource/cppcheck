@@ -3459,7 +3459,7 @@ void CheckStl::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
         return;
     }
 
-    CheckStlImpl checkStl(&tokenizer, tokenizer.getSettings(), errorLogger);
+    CheckStlImpl checkStl(&tokenizer, tokenizer.getSettings(), *errorLogger);
     checkStl.erase();
     checkStl.if_find();
     checkStl.checkFindInsert();
@@ -3492,7 +3492,7 @@ void CheckStl::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 
 void CheckStl::getErrorMessages(ErrorLogger& errorLogger, const Settings& settings) const
 {
-    CheckStlImpl c(nullptr, settings, &errorLogger);
+    CheckStlImpl c(nullptr, settings, errorLogger);
     c.outOfBoundsError(nullptr, "container", nullptr, "x", nullptr);
     c.invalidIteratorError(nullptr, "iterator");
     c.iteratorsError(nullptr, "container1", "container2");

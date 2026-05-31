@@ -819,7 +819,7 @@ void CheckAutoVariablesImpl::errorInvalidDeallocation(const Token *tok, const Va
 
 void CheckAutoVariables::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckAutoVariablesImpl checkAutoVariables(&tokenizer, tokenizer.getSettings(), errorLogger);
+    CheckAutoVariablesImpl checkAutoVariables(&tokenizer, tokenizer.getSettings(), *errorLogger);
     checkAutoVariables.assignFunctionArg();
     checkAutoVariables.autoVariables();
     checkAutoVariables.checkVarLifetime();
@@ -827,7 +827,7 @@ void CheckAutoVariables::runChecks(const Tokenizer &tokenizer, ErrorLogger *erro
 
 void CheckAutoVariables::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckAutoVariablesImpl c(nullptr,settings,&errorLogger);
+    CheckAutoVariablesImpl c(nullptr,settings,errorLogger);
     c.errorAutoVariableAssignment(nullptr, false);
     c.errorReturnReference(nullptr, ErrorPath{}, false);
     c.errorDanglingReference(nullptr, nullptr, ErrorPath{});

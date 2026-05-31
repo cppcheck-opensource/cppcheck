@@ -270,7 +270,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check..
-        CheckClassImpl checkClass(&tokenizer, settings, this);
+        CheckClassImpl checkClass(&tokenizer, settings, *this);
         (checkClass.checkCopyCtorAndEqOperator)();
     }
 
@@ -371,7 +371,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check..
-        CheckClassImpl checkClass(&tokenizer, settings0, this);
+        CheckClassImpl checkClass(&tokenizer, settings0, *this);
         (checkClass.checkExplicitConstructors)();
     }
 
@@ -528,7 +528,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check..
-        CheckClassImpl checkClass(&tokenizer, settings1, this);
+        CheckClassImpl checkClass(&tokenizer, settings1, *this);
         (checkClass.checkDuplInheritedMembers)();
     }
 
@@ -752,7 +752,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check..
-        CheckClassImpl checkClass(&tokenizer, settings3, this);
+        CheckClassImpl checkClass(&tokenizer, settings3, *this);
         checkClass.copyconstructors();
     }
 
@@ -1223,7 +1223,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check..
-        CheckClassImpl checkClass(&tokenizer, settings0, this);
+        CheckClassImpl checkClass(&tokenizer, settings0, *this);
         checkClass.operatorEqRetRefThis();
     }
 
@@ -1694,7 +1694,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check..
-        CheckClassImpl checkClass(&tokenizer, settings1, this);
+        CheckClassImpl checkClass(&tokenizer, settings1, *this);
         checkClass.operatorEqToSelf();
     }
 
@@ -2657,7 +2657,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check..
-        CheckClassImpl checkClass(&tokenizer, s, this);
+        CheckClassImpl checkClass(&tokenizer, s, *this);
         checkClass.virtualDestructor();
     }
 
@@ -2994,7 +2994,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check..
-        CheckClassImpl checkClass(&tokenizer, settings, this);
+        CheckClassImpl checkClass(&tokenizer, settings, *this);
         checkClass.checkMemset();
     }
 
@@ -3640,7 +3640,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check..
-        CheckClassImpl checkClass(&tokenizer, settings1, this);
+        CheckClassImpl checkClass(&tokenizer, settings1, *this);
         checkClass.thisSubtraction();
     }
 
@@ -3680,7 +3680,7 @@ private:
         SimpleTokenizer tokenizer(settings, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        CheckClassImpl checkClass(&tokenizer, settings, this);
+        CheckClassImpl checkClass(&tokenizer, settings, *this);
         (checkClass.checkConst)();
     }
 
@@ -7863,7 +7863,7 @@ private:
         SimpleTokenizer tokenizer(settings2, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        CheckClassImpl checkClass(&tokenizer, settings2, this);
+        CheckClassImpl checkClass(&tokenizer, settings2, *this);
         checkClass.initializerListOrder();
     }
 
@@ -8017,7 +8017,7 @@ private:
         SimpleTokenizer tokenizer(settings, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        CheckClassImpl checkClass(&tokenizer, settings, this);
+        CheckClassImpl checkClass(&tokenizer, settings, *this);
         checkClass.initializationListUsage();
     }
 
@@ -8241,7 +8241,7 @@ private:
         SimpleTokenizer tokenizer(settings0, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        CheckClassImpl checkClass(&tokenizer, settings0, this);
+        CheckClassImpl checkClass(&tokenizer, settings0, *this);
         (checkClass.checkSelfInitialization)();
     }
 
@@ -8351,7 +8351,7 @@ private:
         SimpleTokenizer tokenizer(settings, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        CheckClassImpl checkClass(&tokenizer, settings, this);
+        CheckClassImpl checkClass(&tokenizer, settings, *this);
         checkClass.checkVirtualFunctionCallInConstructor();
     }
 
@@ -8696,7 +8696,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check..
-        CheckClassImpl checkClass(&tokenizer, settings, this);
+        CheckClassImpl checkClass(&tokenizer, settings, *this);
         (checkClass.checkOverride)();
     }
 
@@ -8908,7 +8908,7 @@ private:
         ASSERT_LOC(tokenizer.simplifyTokens1(""), file, line);
 
         // Check..
-        CheckClassImpl checkClass(&tokenizer, settings, this);
+        CheckClassImpl checkClass(&tokenizer, settings, *this);
         (checkClass.checkUselessOverride)();
     }
 
@@ -9098,7 +9098,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check..
-        CheckClassImpl checkClass(&tokenizer, settings, this);
+        CheckClassImpl checkClass(&tokenizer, settings, *this);
         (checkClass.checkUnsafeClassRefMember)();
     }
 
@@ -9116,7 +9116,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check..
-        CheckClassImpl checkClass(&tokenizer, settings1, this);
+        CheckClassImpl checkClass(&tokenizer, settings1, *this);
         (checkClass.checkThisUseAfterFree)();
     }
 
@@ -9353,7 +9353,7 @@ private:
         ASSERT_LOC(tokenizer.simplifyTokens1(""), file, line);
 
         // Check..
-        CheckClassImpl checkClass(&tokenizer, settings, this);
+        CheckClassImpl checkClass(&tokenizer, settings, *this);
         (checkClass.checkReturnByReference)();
     }
 

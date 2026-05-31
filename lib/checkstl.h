@@ -83,7 +83,7 @@ private:
 class CPPCHECKLIB CheckStlImpl : public CheckImpl {
 public:
     /** This constructor is used when running checks. */
-    CheckStlImpl(const Tokenizer* tokenizer, const Settings& settings, ErrorLogger* errorLogger)
+    CheckStlImpl(const Tokenizer* tokenizer, const Settings& settings, ErrorLogger& errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** Accessing container out of bounds using ValueFlow */

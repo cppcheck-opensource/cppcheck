@@ -2097,7 +2097,7 @@ void CheckConditionImpl::compareValueOutOfTypeRangeError(const Token *comparison
 
 void CheckCondition::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
 {
-    CheckConditionImpl checkCondition(&tokenizer, tokenizer.getSettings(), errorLogger);
+    CheckConditionImpl checkCondition(&tokenizer, tokenizer.getSettings(), *errorLogger);
     checkCondition.multiCondition();
     checkCondition.clarifyCondition();   // not simplified because ifAssign
     checkCondition.multiCondition2();
@@ -2117,7 +2117,7 @@ void CheckCondition::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLog
 
 void CheckCondition::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckConditionImpl c(nullptr, settings, &errorLogger);
+    CheckConditionImpl c(nullptr, settings, errorLogger);
 
     c.assignIfError(nullptr, nullptr, "", false);
     c.badBitmaskCheckError(nullptr);

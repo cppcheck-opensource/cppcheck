@@ -123,7 +123,7 @@ private:
 class CPPCHECKLIB CheckLeakAutoVarImpl : public CheckImpl {
 public:
     /** This constructor is used when running checks. */
-    CheckLeakAutoVarImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckLeakAutoVarImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** check for leaks in all scopes */

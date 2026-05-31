@@ -70,7 +70,7 @@ private:
 class CPPCHECKLIB CheckTypeImpl : public CheckImpl {
 public:
     /** @brief This constructor is used when running checks. */
-    CheckTypeImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckTypeImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** @brief %Check for bitwise shift with too big right operand */
