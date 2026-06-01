@@ -220,7 +220,8 @@ namespace ValueFlow
     void setTokenValue(Token* tok,
                        Value value,
                        const Settings& settings,
-                       SourceLocation loc)
+                       SourceLocation loc,
+                       bool recurseNamespaces)
     {
         // Skip setting values that are too big since its ambiguous
         if (!value.isImpossible() && value.isIntValue() && value.intvalue < 0 && astIsUnsigned(tok)
@@ -236,6 +237,14 @@ namespace ValueFlow
 
         if (!tok->addValue(value))
             return;
+
+        if (Token::simpleMatch(tok, "::") && recurseNamespaces) {
+            Token *inner = tok;
+            while (Token::simpleMatch(inner, "::"))
+                inner = inner->astOperand2();
+            if (inner)
+                setTokenValue(inner, value, settings, SourceLocation::current(), false);
+        }
 
         if (value.path < 0)
             return;
@@ -701,8 +710,8 @@ namespace ValueFlow
             }
         }
 
-        else if (Token::Match(parent, ":: %name%") && parent->astOperand2() == tok) {
-            setTokenValue(parent, std::move(value), settings);
+        else if (Token::Match(parent, ":: %name%") && parent->astOperand2() == tok && recurseNamespaces) {
+            setTokenValue(parent, std::move(value), settings, SourceLocation::current(), false);
         }
 
         // Calling std::size or std::empty on an array
