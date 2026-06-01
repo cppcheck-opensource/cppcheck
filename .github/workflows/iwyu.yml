@@ -100,6 +100,7 @@ jobs:
       - name: Install missing software on ubuntu (cfg)
         if: contains(matrix.os, 'ubuntu') && matrix.latest
         run: |
+          gcc --version
           sudo apt-get install libcairo2-dev libcurl4-openssl-dev liblua5.3-dev libssl-dev libsqlite3-dev libcppunit-dev libsigc++-2.0-dev libgtk-3-dev libboost-all-dev libselinux-dev libwxgtk3.0-gtk3-dev xmlstarlet qtbase5-dev
 
       # Fails on OpenSUSE:
