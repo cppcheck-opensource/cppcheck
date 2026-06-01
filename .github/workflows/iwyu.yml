@@ -100,8 +100,7 @@ jobs:
       - name: Install missing software on ubuntu (cfg)
         if: contains(matrix.os, 'ubuntu') && matrix.latest
         run: |
-          gcc --version
-          sudo apt-get install libcairo2-dev libcurl4-openssl-dev liblua5.3-dev libssl-dev libsqlite3-dev libcppunit-dev libsigc++-2.0-dev libgtk-3-dev libboost-all-dev libselinux-dev libwxgtk3.0-gtk3-dev xmlstarlet qtbase5-dev
+          sudo apt-get install libcairo2-dev libcurl4-openssl-dev liblua5.3-dev libssl-dev libsqlite3-dev libcppunit-dev libsigc++-2.0-dev libgtk-3-dev libboost-all-dev libselinux-dev libwxgtk3.0-gtk3-dev xmlstarlet qtbase5-dev libgcc-11-dev
 
       # Fails on OpenSUSE:
       # Warning: Failed to restore: Tar failed with error: Unable to locate executable file: tar. Please verify either the file path exists or the file can be found within a directory specified by the PATH environment variable. Also check the file mode to verify the file is executable.
