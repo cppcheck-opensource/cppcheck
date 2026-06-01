@@ -4194,6 +4194,9 @@ void CheckOtherImpl::checkShadowVariables()
                 (functionScope->function->isStatic() || functionScope->function->isFriend()) &&
                 shadowed->variable() && !shadowed->variable()->isLocal())
                 return;
+            if (functionScope->functionOf && functionScope->functionOf->isClassOrStructOrUnion() && functionScope->function &&
+                functionScope->function->isStatic() && shadowed->function() && !shadowed->function()->isStatic())
+                return;
             if (var.scope() && var.scope()->function && var.scope()->function->isConstructor()) {
                 if (shadowed->variable() && shadowed->variable()->isMember())
                     return;
