@@ -78,25 +78,24 @@ public:
     /** Base class used for whole-program analysis */
     class CPPCHECKLIB FileInfo {
     public:
-        explicit FileInfo(std::string f0 = {}) : file0(std::move(f0)) {}
+        explicit FileInfo(std::string f0) : file0(std::move(f0)) {}
         virtual ~FileInfo() = default;
-        virtual std::string toString() const {
-            return std::string();
-        }
+        virtual std::string toString() const = 0;
         std::string file0;
     };
 
-    virtual FileInfo * getFileInfo(const Tokenizer& /*tokenizer*/, const Settings& /*settings*/, const std::string& /*currentConfig*/) const {
+    virtual const FileInfo * getFileInfo(const Tokenizer& /*tokenizer*/, const Settings& /*settings*/, const std::string& /*currentConfig*/) const {
         return nullptr;
     }
 
-    virtual FileInfo * loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement) const {
+    virtual const FileInfo * loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement, const std::string& file0) const {
         (void)xmlElement;
+        (void)file0;
         return nullptr;
     }
 
     // Return true if an error is reported.
-    virtual bool analyseWholeProgram(const CTU::FileInfo& /*ctu*/, const std::list<FileInfo*>& /*fileInfo*/, const Settings& /*settings*/, ErrorLogger & /*errorLogger*/) {
+    virtual bool analyseWholeProgram(const CTU::FileInfo& /*ctu*/, const std::list<const FileInfo*>& /*fileInfo*/, const Settings& /*settings*/, ErrorLogger & /*errorLogger*/) {
         return false;
     }
 

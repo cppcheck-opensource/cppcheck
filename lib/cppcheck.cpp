@@ -1389,7 +1389,7 @@ void CppCheck::checkNormalTokens(const Tokenizer &tokenizer, AnalyzerInformation
 
         if (!doUnusedFunctionOnly) {
             for (const Check * const c : CheckInstances::get()) {
-                if (Check::FileInfo * const fi = c->getFileInfo(tokenizer, mSettings, currentConfig)) {
+                if (const Check::FileInfo * const fi = c->getFileInfo(tokenizer, mSettings, currentConfig)) {
                     if (analyzerInformation)
                         analyzerInformation->setFileInfo(c->name(), fi->toString());
                     if (mSettings.useSingleJob())
@@ -1854,7 +1854,7 @@ unsigned int CppCheck::analyseWholeProgram(const std::string &buildDir, const st
 
     executeAddonsWholeProgram(files, fileSettings, ctuInfo);
 
-    std::list<Check::FileInfo*> fileInfoList;
+    std::list<const Check::FileInfo*> fileInfoList;
     CTU::FileInfo ctuFileInfo;
 
     const auto handler = [&fileInfoList, &ctuFileInfo](const char* checkattr, const tinyxml2::XMLElement* e, const AnalyzerInformation::Info& filesTxtInfo) {
@@ -1864,8 +1864,7 @@ unsigned int CppCheck::analyseWholeProgram(const std::string &buildDir, const st
         }
         for (const Check *check : CheckInstances::get()) {
             if (checkattr == check->name()) {
-                if (Check::FileInfo* fi = check->loadFileInfoFromXml(e)) {
-                    fi->file0 = filesTxtInfo.sourceFile;
+                if (const Check::FileInfo* fi = check->loadFileInfoFromXml(e, filesTxtInfo.sourceFile)) {
                     fileInfoList.push_back(fi);
                 }
             }
@@ -1883,7 +1882,7 @@ unsigned int CppCheck::analyseWholeProgram(const std::string &buildDir, const st
             c->analyseWholeProgram(ctuFileInfo, fileInfoList, mSettings, mErrorLogger);
     }
 
-    for (Check::FileInfo *fi : fileInfoList)
+    for (const Check::FileInfo *fi : fileInfoList)
         delete fi;
 
     return mLogger->exitcode();

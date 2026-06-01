@@ -900,6 +900,8 @@ namespace
     /** data for multifile checking */
     class MyFileInfo : public Check::FileInfo {
     public:
+        explicit MyFileInfo(std::string f0) : Check::FileInfo(std::move(f0)) {}
+
         using Check::FileInfo::FileInfo;
         /** unsafe array index usage */
         std::list<CTU::FileInfo::UnsafeUsage> unsafeArrayIndex;
@@ -952,7 +954,7 @@ bool CheckBufferOverrunImpl::isCtuUnsafePointerArith(const Settings &settings, c
 }
 
 /** @brief Parse current TU and extract file info */
-Check::FileInfo *CheckBufferOverrun::getFileInfo(const Tokenizer &tokenizer, const Settings &settings, const std::string& /*currentConfig*/) const
+const Check::FileInfo *CheckBufferOverrun::getFileInfo(const Tokenizer &tokenizer, const Settings &settings, const std::string& /*currentConfig*/) const
 {
     const std::list<CTU::FileInfo::UnsafeUsage> &unsafeArrayIndex = CTU::getUnsafeUsage(tokenizer, settings, CheckBufferOverrunImpl::isCtuUnsafeArrayIndex);
     const std::list<CTU::FileInfo::UnsafeUsage> &unsafePointerArith = CTU::getUnsafeUsage(tokenizer, settings, CheckBufferOverrunImpl::isCtuUnsafePointerArith);
@@ -965,12 +967,12 @@ Check::FileInfo *CheckBufferOverrun::getFileInfo(const Tokenizer &tokenizer, con
     return fileInfo;
 }
 
-Check::FileInfo * CheckBufferOverrun::loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement) const
+const Check::FileInfo * CheckBufferOverrun::loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement, const std::string& file0) const
 {
     const std::string arrayIndex("array-index");
     const std::string pointerArith("pointer-arith");
 
-    auto *fileInfo = new MyFileInfo;
+    auto *fileInfo = new MyFileInfo(file0);
     for (const tinyxml2::XMLElement *e = xmlElement->FirstChildElement(); e; e = e->NextSiblingElement()) {
         const char* name = e->Name();
         if (name == arrayIndex)
@@ -988,7 +990,7 @@ Check::FileInfo * CheckBufferOverrun::loadFileInfoFromXml(const tinyxml2::XMLEle
 }
 
 /** @brief Analyse all file infos for all TU */
-bool CheckBufferOverrun::analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger)
+bool CheckBufferOverrun::analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<const Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger)
 {
     CheckBufferOverrunImpl dummy(nullptr, settings, &errorLogger);
     dummy.

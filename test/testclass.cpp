@@ -9282,7 +9282,7 @@ private:
         Check &check = getCheck(checkClass);
 
         // getFileInfo
-        std::list<Check::FileInfo*> fileInfo;
+        std::list<const Check::FileInfo*> fileInfo;
         for (const std::string& c: code) {
             const std::string filename = std::to_string(fileInfo.size()) + ".cpp";
             SimpleTokenizer tokenizer{settingsDefault, *this, filename};
@@ -9333,7 +9333,7 @@ private:
 
         CheckClass check;
         const Check& c = getCheck(check);
-        Check::FileInfo * fileInfo = (c.getFileInfo)(tokenizer, settings1, "");
+        const Check::FileInfo * fileInfo = (c.getFileInfo)(tokenizer, settings1, "");
 
         delete fileInfo;
     }

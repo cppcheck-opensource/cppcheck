@@ -52,6 +52,8 @@ namespace tinyxml2 {
 namespace CTU {
     class CPPCHECKLIB FileInfo : public Check::FileInfo {
     public:
+        FileInfo() : Check::FileInfo("") {}
+
         enum class InvalidValueType : std::uint8_t { null, uninit, bufferOverflow };
 
         std::string toString() const override;

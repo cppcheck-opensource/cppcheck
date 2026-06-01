@@ -4694,7 +4694,7 @@ private:
 
         CheckNullPointer check;
         Check& c = getCheck(check);
-        std::list<Check::FileInfo*> fileInfo;
+        std::list<const Check::FileInfo*> fileInfo;
         fileInfo.push_back(c.getFileInfo(tokenizer, settings, ""));
         c.analyseWholeProgram(*ctu, fileInfo, settings, *this); // TODO: check result
         while (!fileInfo.empty()) {

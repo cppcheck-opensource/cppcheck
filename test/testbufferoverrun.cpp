@@ -5363,7 +5363,7 @@ private:
 
         CTU::FileInfo *ctu = CTU::getFileInfo(tokenizer);
 
-        std::list<Check::FileInfo*> fileInfo;
+        std::list<const Check::FileInfo*> fileInfo;
         CheckBufferOverrun check;
         Check& c = getCheck(check);
         fileInfo.push_back(c.getFileInfo(tokenizer, settings0, ""));
