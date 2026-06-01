@@ -1052,6 +1052,9 @@ void CheckMemoryLeakNoVarImpl::checkForUnreleasedInputArgument(const Scope *scop
             if (alloc == New || alloc == NewArray) {
                 const Token* typeTok = arg->next();
                 bool bail = !typeTok->isStandardType() &&
+                            (!typeTok->valueType() ||
+                             (typeTok->valueType()->type < ValueType::Type::SMART_POINTER &&
+                             typeTok->valueType()->type != ValueType::Type::POD)) &&
                             !mSettings.library.detectContainerOrIterator(typeTok) &&
                             !mSettings.library.podtype(typeTok->expressionString());
                 if (bail && typeTok->type() && typeTok->type()->classScope &&
