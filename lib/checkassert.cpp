@@ -80,12 +80,8 @@ void CheckAssertImpl::assertWithSideEffects()
 
             const Function* f = tmp->function();
             const Scope* scope = f->functionScope;
-            if (!scope) {
-                // guess that const method doesn't have side effects
-                if (f->nestedIn->isClassOrStruct() && !f->isConst() && !f->isStatic())
-                    sideEffectInAssertError(tmp, f->name()); // Non-const member function called, assume it has side effects
+            if (!scope)
                 continue;
-            }
 
             for (const Token *tok2 = scope->bodyStart; tok2 != scope->bodyEnd; tok2 = tok2->next()) {
                 if (!tok2->isAssignmentOp() && tok2->tokType() != Token::eIncDecOp)
