@@ -614,7 +614,6 @@ bool Token::simpleMatch(const Token *tok, const char pattern[], size_t pattern_l
         return false; // shortcut
     const char *current = pattern;
     const char *end = pattern + pattern_len;
-    // cppcheck-suppress shadowFunction - TODO: fix this
     const char *next = static_cast<const char*>(std::memchr(pattern, ' ', pattern_len));
     if (!next)
         next = end;
@@ -769,7 +768,6 @@ nonneg int Token::getStrArraySize(const Token *tok)
 {
     assert(tok != nullptr);
     assert(tok->tokType() == eString);
-    // cppcheck-suppress shadowFunction - TODO: fix this
     const std::string str(getStringLiteral(tok->str()));
     int sizeofstring = 1;
     for (int i = 0; i < static_cast<int>(str.size()); i++) {
@@ -2359,11 +2357,9 @@ const ::Type* Token::typeOf(const Token* tok, const Token** typeTok)
     if (tok->valueType() && tok->valueType()->typeScope && tok->valueType()->typeScope->definedType)
         return tok->valueType()->typeScope->definedType;
     if (Token::simpleMatch(tok, "return")) {
-        // cppcheck-suppress shadowFunction - TODO: fix this
         const Scope *scope = tok->scope();
         if (!scope)
             return nullptr;
-        // cppcheck-suppress shadowFunction - TODO: fix this
         const Function *function = scope->function;
         if (!function)
             return nullptr;
@@ -2473,18 +2469,15 @@ std::pair<const Token*, const Token*> Token::typeDecl(const Token* tok, bool poi
         return {var->typeStartToken(), var->typeEndToken()->next()};
     }
     if (Token::simpleMatch(tok, "return")) {
-        // cppcheck-suppress shadowFunction - TODO: fix this
         const Scope* scope = tok->scope();
         if (!scope)
             return {};
-        // cppcheck-suppress shadowFunction - TODO: fix this
         const Function* function = scope->function;
         if (!function)
             return {};
         return { function->retDef, function->returnDefEnd() };
     }
     if (tok->previous() && tok->previous()->function()) {
-        // cppcheck-suppress shadowFunction - TODO: fix this
         const Function *function = tok->previous()->function();
         return {function->retDef, function->returnDefEnd()};
     }
