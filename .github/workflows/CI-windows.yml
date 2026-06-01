@@ -47,7 +47,6 @@ jobs:
           modules: 'qtcharts'
           setup-python: 'false'
           cache: true
-          aqtversion: '==3.1.*'  # TODO: remove when aqtinstall 3.2.2 is available
 
       - name: Run CMake
         run: |
@@ -128,7 +127,6 @@ jobs:
           modules: 'qtcharts'
           setup-python: 'false'
           cache: true
-          aqtversion: '==3.1.*'  # TODO: remove when aqtinstall 3.2.2 is available
 
       - name: Run CMake (without GUI)
         run: |
