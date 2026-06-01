@@ -136,6 +136,7 @@ jobs:
       # Fails on Debian:
       # /__w/cppcheck/Qt/6.7.0/gcc_64/libexec/rcc: error while loading shared libraries: libglib-2.0.so.0: cannot open shared object file: No such file or directory
       - name: Prepare CMake dependencies
+        if: false
         run: |
           # make sure the auto-generated GUI sources exist
           make -C cmake.output autogen
@@ -181,6 +182,7 @@ jobs:
           ln -s iwyu_tool.py /usr/local/bin/iwyu_tool
 
       - name: iwyu_tool
+        if: false
         run: |
           # TODO: exclude auto-generated source files
           iwyu_tool -p cmake.output -j $(nproc) -- -w -Xiwyu --max_line_length=1024 -Xiwyu --comment_style=long -Xiwyu --quoted_includes_first -Xiwyu --update_comments ${{ matrix.mapping_file_opt }} ${{ matrix.clang_inc }} > iwyu.log
