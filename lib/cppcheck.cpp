@@ -1378,7 +1378,7 @@ void CppCheck::checkNormalTokens(const Tokenizer &tokenizer, AnalyzerInformation
     if (mSettings.useSingleJob() || analyzerInformation) {
         // Analyse the tokens..
         {
-            CTU::FileInfo * const fi1 = CTU::getFileInfo(tokenizer);
+            const CTU::FileInfo * const fi1 = CTU::getFileInfo(tokenizer);
             if (analyzerInformation)
                 analyzerInformation->setFileInfo("ctu", fi1->toString());
             if (mSettings.useSingleJob())

@@ -4690,7 +4690,7 @@ private:
         SimpleTokenizer tokenizer(settings, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        CTU::FileInfo *ctu = CTU::getFileInfo(tokenizer);
+        const CTU::FileInfo *ctu = CTU::getFileInfo(tokenizer);
 
         CheckNullPointer check;
         Check& c = getCheck(check);

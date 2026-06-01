@@ -162,7 +162,7 @@ namespace CTU {
     CPPCHECKLIB std::string getFunctionId(const Tokenizer &tokenizer, const Function *function);
 
     /** @brief Parse current TU and extract file info */
-    CPPCHECKLIB RET_NONNULL FileInfo *getFileInfo(const Tokenizer &tokenizer);
+    CPPCHECKLIB RET_NONNULL const FileInfo *getFileInfo(const Tokenizer &tokenizer);
 
     CPPCHECKLIB std::list<FileInfo::UnsafeUsage> getUnsafeUsage(const Tokenizer &tokenizer, const Settings &settings, bool (*isUnsafeUsage)(const Settings &settings, const Token *argtok, FileInfo::Value *value));
 
