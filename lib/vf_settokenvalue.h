@@ -30,7 +30,8 @@ namespace ValueFlow
     void setTokenValue(Token* tok,
                        Value value,
                        const Settings& settings,
-                       SourceLocation loc = SourceLocation::current());
+                       SourceLocation loc = SourceLocation::current(),
+                       bool recurseNamespaces = true);
 }
 
 #endif // vfSetTokenValueH
