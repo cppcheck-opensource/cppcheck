@@ -2613,6 +2613,21 @@ private:
         ASSERT_EQUALS("[test.cpp:2:19]: (error) Allocation with new, strlen doesn't release it. [leakNoVarFunctionCall]\n"
                       "[test.cpp:5:20]: (error) Allocation with new, strlen doesn't release it. [leakNoVarFunctionCall]\n",
                       errout_str());
+
+        check("int* f1() { return new int; }\n" // #14808
+              "std::string* f2() { return new std::string(\"abc\"); }\n"
+              "std::clock_t* f3() { return new std::clock_t; }\n"
+              "QWidget* f4(QObject* parent) { return new QWidget(parent); }\n"
+              "void g(QObject* parent) {\n"
+              "    assert(f1());\n"
+              "    assert(f2());\n"
+              "    assert(f3());\n"
+              "    assert(f4(parent));\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:6:12]: (error) Allocation with f1, assert doesn't release it. [leakNoVarFunctionCall]\n"
+                      "[test.cpp:7:12]: (error) Allocation with f2, assert doesn't release it. [leakNoVarFunctionCall]\n"
+                      "[test.cpp:8:12]: (error) Allocation with f3, assert doesn't release it. [leakNoVarFunctionCall]\n",
+                      errout_str());
     }
 
     void missingAssignment() {
