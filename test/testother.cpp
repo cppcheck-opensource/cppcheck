@@ -13118,6 +13118,12 @@ private:
         check("struct S { int v(); explicit S(int v); };\n"
               "S::S(int v) : v(v) {}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct S { int i(); static void f(int i) {} };\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S { static int i(); static void f(int i) {} };\n");
+        ASSERT_EQUALS("[test.cpp:1:23] -> [test.cpp:1:46]: (style) Argument 'i' shadows outer function [shadowFunction]\n", errout_str());
     }
 
     void knownArgument() {
