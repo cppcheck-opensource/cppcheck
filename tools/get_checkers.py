@@ -947,7 +947,7 @@ def printCertCInfo(content_subdir:str):
     """Fetches CERT C rules information."""
     paths = listCertFiles(content_subdir)
     rules = {}
-    for path in tqdm(paths, desc=f'Fetching {content_subdir}', file=sys.stderr):
+    for path in tqdm(paths, total=len(paths), desc=f'Fetching {content_subdir}', file=sys.stderr):
         raw = 'https://raw.githubusercontent.com/%s/%s/%s' % (CERT_REPO, CERT_BRANCH, path)
         text = requests.get(raw, timeout=30).text
         res = re.search(r'^#\s+([A-Z]{3}\d{2}-C(?:PP)?)\b', text, re.MULTILINE)
