@@ -140,8 +140,8 @@ private:
             cfgs = preprocessor.getConfigs();
         for (const std::string & config : cfgs) {
             try {
-                const bool writeLocations = (strstr(code, "#file") != nullptr) || (strstr(code, "#include") != nullptr);
-                cfgcode[config] = preprocessor.getcode(config, files, writeLocations);
+                const bool writeLocs = (strstr(code, "#file") != nullptr) || (strstr(code, "#include") != nullptr);
+                cfgcode[config] = preprocessor.getcode(config, files, writeLocs);
             } catch (const simplecpp::Output &) {
                 cfgcode[config] = "";
             }
