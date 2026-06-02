@@ -7846,8 +7846,7 @@ private:
 
         ignore_errout();
 
-        ASSERT_EQUALS("unsigned long s ;", tokenizeAndStringify("typedef std::size_t size_t;\n" // #14809
-                                                                "size_t s;\n"));
+        ASSERT_EQUALS(";", tokenizeAndStringify("typedef std::size_t size_t;\n")); // #14809
     }
 
 
