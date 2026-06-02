@@ -5865,7 +5865,7 @@ private:
         ASSERT(f && f->function() && f->function()->isExplicit());
     }
 
-    void symboldatabase113() {
+    void symboldatabase113() { // #11841
         GET_SYMBOL_DB("template <typename T>\n"
                       "struct S {\n"
                       "  S();\n"
