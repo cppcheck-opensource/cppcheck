@@ -82,6 +82,10 @@ void validCode(int argInt, GHashTableIter * hash_table_iter, GHashTable * hash_t
         // cppcheck-suppress valueFlowBailout // TODO: caused by <pure/>?
         printf("%s", str);
     g_free(str);
+
+    // transfer none functions: return value should not be unreffed
+    const GApplication *app = g_application_get_default();
+    printf("%p\n", app);
 }
 
 void g_malloc_test()
@@ -580,4 +584,15 @@ void g_tree_test() {
     const GTree *tree2 = g_tree_new((GCompareFunc)g_strcmp0);
     printf("%p\n", tree2);
     // cppcheck-suppress memleak
+}
+
+void gtk_widget_destroy_test() {
+    GtkWidget *widget = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_widget_show(widget);
+    // cppcheck-suppress memleak
+
+    widget = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_widget_show(widget);
+    // cppcheck-suppress mismatchAllocDealloc
+    g_object_unref(widget);
 }

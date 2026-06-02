@@ -1058,7 +1058,7 @@ void returnValue_std_isgreater(void)
 {
     // cppcheck-suppress knownConditionTrueFalse
     if (std::isgreater(4,2) == 0) {}
-    // @todo support floats
+    // cppcheck-suppress knownConditionTrueFalse
     if (std::isgreater(4.0f,2.0f) == 0) {}
 }
 
@@ -1066,7 +1066,7 @@ void returnValue_std_isgreaterequal(void)
 {
     // cppcheck-suppress knownConditionTrueFalse
     if (std::isgreaterequal(4,2) == 0) {}
-    // @todo support floats
+    // cppcheck-suppress knownConditionTrueFalse
     if (std::isgreaterequal(4.0f,2.0f) == 0) {}
 }
 
@@ -1074,7 +1074,7 @@ void returnValue_std_isless(void)
 {
     // cppcheck-suppress knownConditionTrueFalse
     if (std::isless(4,2) == 0) {}
-    // @todo support floats
+    // cppcheck-suppress knownConditionTrueFalse
     if (std::isless(4.0f,2.0f) == 0) {}
 }
 
@@ -1082,7 +1082,7 @@ void returnValue_std_islessequal(void)
 {
     // cppcheck-suppress knownConditionTrueFalse
     if (std::islessequal(4,2) == 0) {}
-    // @todo support floats
+    // cppcheck-suppress knownConditionTrueFalse
     if (std::islessequal(4.0f,2.0f) == 0) {}
 }
 
@@ -1093,8 +1093,10 @@ void returnValue_std_islessgreater(void)
     // cppcheck-suppress knownConditionTrueFalse
     if (std::islessgreater(2,4) == 0) {}
 
-    if (std::islessgreater(4.0f,2.0f) == 0) {} // @todo support floats
-    if (std::islessgreater(2.0f,4.0f) == 0) {} // @todo support floats
+    // cppcheck-suppress knownConditionTrueFalse
+    if (std::islessgreater(4.0f,2.0f) == 0) {}
+    // cppcheck-suppress knownConditionTrueFalse
+    if (std::islessgreater(2.0f,4.0f) == 0) {}
 }
 
 void bufferAccessOutOfBounds(void)

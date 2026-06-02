@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 
 #include <cstdint>
@@ -45,15 +46,34 @@ class CPPCHECKLIB CheckIO : public Check {
 
 public:
     /** @brief This constructor is used when registering CheckIO */
-    CheckIO() : Check(myName()) {}
+    CheckIO() : Check("IO using format string") {}
 
 private:
-    /** @brief This constructor is used when running checks. */
-    CheckIO(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
     /** @brief Run checks on the normal token list */
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
+
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
+
+    std::string classInfo() const override {
+        return "Check format string input/output operations.\n"
+               "- Bad usage of the function 'sprintf' (overlapping data)\n"
+               "- Missing or wrong width specifiers in 'scanf' format string\n"
+               "- Use a file that has been closed\n"
+               "- File input/output without positioning results in undefined behaviour\n"
+               "- Read to a file that has only been opened for writing (or vice versa)\n"
+               "- Repositioning operation on a file opened in append mode\n"
+               "- The same file can't be open for read and write at the same time on different streams\n"
+               "- Using fflush() on an input stream\n"
+               "- Invalid usage of output stream. For example: 'std::cout << std::cout;'\n"
+               "- Wrong number of arguments given to 'printf' or 'scanf;'\n";
+    }
+};
+
+class CPPCHECKLIB CheckIOImpl : public CheckImpl {
+public:
+    /** @brief This constructor is used when running checks. */
+    CheckIOImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** @brief %Check for missusage of std::cout */
     void checkCoutCerrMisusage();
@@ -105,6 +125,7 @@ private:
     void readWriteOnlyFileError(const Token *tok);
     void writeReadOnlyFileError(const Token *tok);
     void useClosedFileError(const Token *tok);
+    void fcloseInLoopConditionError(const Token *tok, const std::string &varname);
     void seekOnAppendedFileError(const Token *tok);
     void incompatibleFileOpenError(const Token *tok, const std::string &filename);
     void invalidScanfError(const Token *tok);
@@ -127,26 +148,6 @@ private:
     void invalidScanfFormatWidthError(const Token* tok, nonneg int numFormat, int width, const Variable *var, const std::string& specifier);
     static void argumentType(std::ostream & os, const ArgumentInfo * argInfo);
     static Severity getSeverity(const ArgumentInfo *argInfo);
-
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
-
-    static std::string myName() {
-        return "IO using format string";
-    }
-
-    std::string classInfo() const override {
-        return "Check format string input/output operations.\n"
-               "- Bad usage of the function 'sprintf' (overlapping data)\n"
-               "- Missing or wrong width specifiers in 'scanf' format string\n"
-               "- Use a file that has been closed\n"
-               "- File input/output without positioning results in undefined behaviour\n"
-               "- Read to a file that has only been opened for writing (or vice versa)\n"
-               "- Repositioning operation on a file opened in append mode\n"
-               "- The same file can't be open for read and write at the same time on different streams\n"
-               "- Using fflush() on an input stream\n"
-               "- Invalid usage of output stream. For example: 'std::cout << std::cout;'\n"
-               "- Wrong number of arguments given to 'printf' or 'scanf;'\n";
-    }
 };
 /// @}
 //---------------------------------------------------------------------------

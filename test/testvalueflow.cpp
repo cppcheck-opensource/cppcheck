@@ -1396,6 +1396,30 @@ private:
         ASSERT_EQUALS(1U, values.size());
         ASSERT_EQUALS(4, values.back().intvalue);
 
+        code = "char& r = i;\n"
+               "sizeof(r);";
+        values = tokenValues(code, "( r");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(1, values.back().intvalue);
+
+        code = "char* p;\n"
+               "sizeof(p);";
+        values = tokenValues(code, "( p");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(settings.platform.sizeof_pointer, values.back().intvalue);
+
+        code = "char*& pr = p;\n"
+               "sizeof(pr);";
+        values = tokenValues(code, "( pr");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(settings.platform.sizeof_pointer, values.back().intvalue);
+
+        code = "struct { char& r; char* p; } s{ x, y };\n"
+               "sizeof(s);\n";
+        values = tokenValues(code, "( s");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(2 * settings.platform.sizeof_pointer, values.back().intvalue);
+
 #define CHECK3(A, B, C)                          \
     do {                                     \
         code = "void f() {\n"                    \
@@ -4119,6 +4143,15 @@ private:
                "}\n";
         ASSERT_EQUALS(true, testValueOfX(code, 4U, 0));
         ASSERT_EQUALS(false, testValueOfXImpossible(code, 4U, 0));
+
+        code = "double f(double d, bool b) {\n" // #14734
+               "    double s = 0.0;\n"
+               "    if (b)\n"
+               "        s += d;\n"
+               "    return s > 0.0 ? s : 0.0;\n"
+               "}\n";
+        auto values = tokenValues(code, "s :", ValueFlow::Value::ValueType::FLOAT);
+        ASSERT_EQUALS(0, values.size());
     }
 
     void valueFlowForwardLambda() {
@@ -6281,6 +6314,14 @@ private:
                "}\n";
         values = tokenValues(code, "x > 5", ValueFlow::Value::ValueType::UNINIT);
         ASSERT_EQUALS(0, values.size());
+
+        code = "void f() {\n" // #11152
+               "  char b[10];\n"
+               "  sprintf(b, \"abc\");\n"
+               "  printf(\"%s\", b);\n"
+               "}\n";
+        values = tokenValues(code, "b )", ValueFlow::Value::ValueType::UNINIT);
+        ASSERT_EQUALS(0, values.size());
     }
 
     void valueFlowConditionExpressions() {
@@ -7486,6 +7527,16 @@ private:
                "    if (s.empty()) {}\n"
                "}";
         ASSERT(!isKnownContainerSizeValue(tokenValues(code, "s ."), 0).empty());
+
+        code = "void g(std::map<int, int>* p) {\n" // #14721
+               "    (*p)[1] = 2;\n"
+               "}\n"
+               "void f() {\n"
+               "    std::map<int, int> m;\n"
+               "    g(&m);\n"
+               "    if (m.empty()) {}\n"
+               "}\n";
+        ASSERT(!isKnownContainerSizeValue(tokenValues(code, "m ."), 0).empty());
     }
 
     void valueFlowContainerElement()
@@ -9198,6 +9249,19 @@ private:
                "}\n";
         ASSERT_EQUALS(false, testValueOfX(code, 5U, 1));
         ASSERT_EQUALS(false, testValueOfX(code, 5U, 0));
+
+        code = "bool f() {\n"
+               "    std::string s1, s2;\n"
+               "    bool x = (s1 == s2);\n"
+               "    return x;\n"
+               "}\n"
+               "bool g() {\n"
+               "    std::string s1, s2;\n"
+               "    bool x = (s1 != s2);\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXKnown(code, 4U, 1));
+        ASSERT_EQUALS(true, testValueOfXKnown(code, 9U, 0));
     }
 
     void valueFlowBailoutIncompleteVar() {

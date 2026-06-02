@@ -505,9 +505,9 @@ void CheckUnusedFunctions::analyseWholeProgram(const Settings &settings, ErrorLo
     }
 }
 
-void CheckUnusedFunctions::updateFunctionData(const CheckUnusedFunctions& check)
+void CheckUnusedFunctions::updateFunctionData(const CheckUnusedFunctions& checkUnusedFunctions)
 {
-    for (const auto& entry : check.mFunctions)
+    for (const auto& entry : checkUnusedFunctions.mFunctions)
     {
         FunctionUsage &usage = mFunctions[entry.first];
         if (!usage.lineNumber) {
@@ -521,6 +521,6 @@ void CheckUnusedFunctions::updateFunctionData(const CheckUnusedFunctions& check)
         usage.usedOtherFile |= entry.second.usedOtherFile;
         usage.usedSameFile |= entry.second.usedSameFile;
     }
-    mFunctionDecl.insert(mFunctionDecl.cend(), check.mFunctionDecl.cbegin(), check.mFunctionDecl.cend());
-    mFunctionCalls.insert(check.mFunctionCalls.cbegin(), check.mFunctionCalls.cend());
+    mFunctionDecl.insert(mFunctionDecl.cend(), checkUnusedFunctions.mFunctionDecl.cbegin(), checkUnusedFunctions.mFunctionDecl.cend());
+    mFunctionCalls.insert(checkUnusedFunctions.mFunctionCalls.cbegin(), checkUnusedFunctions.mFunctionCalls.cend());
 }

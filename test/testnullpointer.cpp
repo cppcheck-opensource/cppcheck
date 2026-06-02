@@ -37,6 +37,7 @@ public:
 
 private:
     const Settings settings = settingsBuilder().library("std.cfg").severity(Severity::warning).build();
+    const Settings settings_i = settingsBuilder(settings).certainty(Certainty::inconclusive).build();
 
     void run() override {
         mNewTemplate = true;
@@ -183,20 +184,23 @@ private:
     {
         bool inconclusive = false;
         bool cpp = true;
-        Standards::cstd_t cstd = Standards::CLatest;
     };
 
 #define check(...) check_(__FILE__, __LINE__, __VA_ARGS__)
     template<size_t size>
     void check_(const char* file, int line, const char (&code)[size], const CheckOptions& options = make_default_obj()) {
-        const Settings settings1 = settingsBuilder(settings).certainty(Certainty::inconclusive, options.inconclusive).c(options.cstd).build();
+        const Settings& settings1 = options.inconclusive ? settings_i : settings;
+        check_(file, line, code, settings1, options.cpp);
+    }
 
+    template<size_t size>
+    void check_(const char* file, int line, const char (&code)[size], const Settings& s, bool cpp = true) {
         // Tokenize..
-        SimpleTokenizer tokenizer(settings1, *this, options.cpp);
+        SimpleTokenizer tokenizer(s, *this, cpp);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        // Check for null pointer dereferences..
-        runChecks<CheckNullPointer>(tokenizer, this);
+        CheckNullPointer check;
+        runChecks(check, tokenizer, *this);
     }
 
 #define checkP(...) checkP_(__FILE__, __LINE__, __VA_ARGS__)
@@ -207,8 +211,8 @@ private:
         // Tokenizer..
         ASSERT_LOC(tokenizer.simplifyTokens1(""), file, line);
 
-        // Check for null pointer dereferences..
-        runChecks<CheckNullPointer>(tokenizer, this);
+        CheckNullPointer check;
+        runChecks(check, tokenizer, *this);
     }
 
 
@@ -1338,7 +1342,8 @@ private:
         check(code); // C++ file => nullptr means NULL
         ASSERT_EQUALS("[test.cpp:4:11]: (error) Null pointer dereference: i [nullPointer]\n", errout_str());
 
-        check(code, dinit(CheckOptions, $.cpp = false, $.cstd = Standards::C17)); // C17 file => nullptr does not mean NULL
+        const Settings s = settingsBuilder(settings).c(Standards::C17).build();
+        check(code, s, false); // C17 file => nullptr does not mean NULL
         ASSERT_EQUALS("", errout_str());
 
         check(code, dinit(CheckOptions, $.cpp = false));
@@ -4346,7 +4351,7 @@ private:
             Library library;
             ASSERT(LibraryHelper::loadxmldata(library, xmldata, sizeof(xmldata)));
 
-            const std::list<const Token *> null = CheckNullPointer::parseFunctionCall(*xtok, library);
+            const std::list<const Token *> null = CheckNullPointerImpl::parseFunctionCall(*xtok, library);
             ASSERT_EQUALS(0U, null.size());
         }
 
@@ -4364,7 +4369,7 @@ private:
             Library library;
             ASSERT(LibraryHelper::loadxmldata(library, xmldata, sizeof(xmldata)));
 
-            const std::list<const Token *> null = CheckNullPointer::parseFunctionCall(*xtok, library);
+            const std::list<const Token *> null = CheckNullPointerImpl::parseFunctionCall(*xtok, library);
             ASSERT_EQUALS(1U, null.size());
             ASSERT_EQUALS("a", null.front()->str());
         }
@@ -4685,11 +4690,11 @@ private:
         SimpleTokenizer tokenizer(settings, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        CTU::FileInfo *ctu = CTU::getFileInfo(tokenizer);
+        const CTU::FileInfo *ctu = CTU::getFileInfo(tokenizer);
 
-        // Check code..
-        std::list<Check::FileInfo*> fileInfo;
-        Check& c = getCheck<CheckNullPointer>();
+        CheckNullPointer check;
+        Check& c = getCheck(check);
+        std::list<const Check::FileInfo*> fileInfo;
         fileInfo.push_back(c.getFileInfo(tokenizer, settings, ""));
         c.analyseWholeProgram(*ctu, fileInfo, settings, *this); // TODO: check result
         while (!fileInfo.empty()) {
@@ -4819,6 +4824,15 @@ private:
                       "[test.cpp:5:20]: note: Assignment 'f=fopen(notexist,t)', assigned value is 0\n"
                       "[test.cpp:6:8]: note: Calling function foo, 1st argument is null\n"
                       "[test.cpp:2:13]: note: Dereferencing argument f that is null\n", errout_str());
+
+        ctu("void g(std::optional<int>& o) {\n" // #14728
+            "    *o = 1;\n"
+            "}\n"
+            "void f() {\n"
+            "    std::optional<int> x = 0;\n"
+            "    g(x);\n"
+            "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 };
 

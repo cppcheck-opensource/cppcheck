@@ -21,22 +21,12 @@
 #include "timer.h"
 
 #include <chrono>
-#include <mutex>
 
 class TestTimer : public TestFixture {
 public:
     TestTimer() : TestFixture("TestTimer") {}
 
 private:
-    class TimerResultsTest : public TimerResults
-    {
-    public:
-        std::map<std::string, std::vector<std::chrono::milliseconds>> getResults() const {
-            std::lock_guard<std::mutex> l(mResultsSync);
-            return mResults;
-        }
-    };
-
     void run() override {
         TEST_CASE(result);
     }
@@ -44,7 +34,7 @@ private:
     void result() {
         REDIRECT;
 
-        TimerResultsTest t1;
+        TimerResults t1;
         t1.addResults("call1", std::chrono::milliseconds{1230});
         t1.addResults("call2", std::chrono::milliseconds{1234});
         t1.addResults("call1", std::chrono::milliseconds{1235});

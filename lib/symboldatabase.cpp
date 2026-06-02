@@ -1611,6 +1611,26 @@ static std::string getIncompleteNameID(const Token* tok)
 }
 
 namespace {
+    int getExprIdForOperand(const Token* tok) {
+        if (!tok)
+            return 0;
+
+        int otherExprId = 0;
+
+        // Look through all referenced tokens.
+        // If two exprIds are found and one matches tok->exprId(), return the other.
+        // Otherwise, default to returning tok->exprId().
+        for (const auto& ref: followAllReferences(tok)) {
+            const int refExprId = ref.token->exprId();
+            if (refExprId != 0 && refExprId != tok->exprId()) {
+                if (otherExprId != 0 && otherExprId != refExprId)
+                    return tok->exprId();
+                otherExprId = refExprId;
+            }
+        }
+        return otherExprId != 0 ? otherExprId : tok->exprId();
+    }
+
     struct ExprIdKey {
         std::string parentOp;
         nonneg int operand1;
@@ -1645,8 +1665,8 @@ namespace {
 
             ExprIdKey key;
             key.parentOp = tok->astParent()->str();
-            key.operand1 = op1 ? op1->exprId() : 0;
-            key.operand2 = op2 ? op2->exprId() : 0;
+            key.operand1 = getExprIdForOperand(op1);
+            key.operand2 = getExprIdForOperand(op2);
 
             if (tok->astParent()->isCast() && tok->astParent()->str() == "(") {
                 const Token* typeStartToken;
@@ -1663,19 +1683,6 @@ namespace {
                     type += " " + t->str();
                 }
                 key.parentOp += type;
-            }
-
-            for (const auto& ref: followAllReferences(op1)) {
-                if (ref.token->exprId() != 0) { // cppcheck-suppress useStlAlgorithm
-                    key.operand1 = ref.token->exprId();
-                    break;
-                }
-            }
-            for (const auto& ref: followAllReferences(op2)) {
-                if (ref.token->exprId() != 0) { // cppcheck-suppress useStlAlgorithm
-                    key.operand2 = ref.token->exprId();
-                    break;
-                }
             }
 
             if (key.operand1 > key.operand2 && key.operand2 &&
@@ -2370,9 +2377,9 @@ void SymbolDatabase::validate() const
     validateVariables();
 }
 
-void SymbolDatabase::clangSetVariables(const std::vector<const Variable *> &variableList)
+void SymbolDatabase::clangSetVariables(const std::vector<const Variable *> &vars)
 {
-    mVariableList = variableList;
+    mVariableList = vars;
 }
 
 void SymbolDatabase::debugSymbolDatabase() const
@@ -2641,16 +2648,16 @@ void Variable::evaluate(const Settings& settings)
     }
 }
 
-void Variable::setValueType(const ValueType &valueType)
+void Variable::setValueType(const ValueType &vt)
 {
-    if (valueType.type == ValueType::Type::UNKNOWN_TYPE) {
+    if (vt.type == ValueType::Type::UNKNOWN_TYPE) {
         const Token *declType = Token::findsimplematch(mTypeStartToken, "decltype (", mTypeEndToken);
         if (declType && !declType->next()->valueType())
             return;
     }
-    const auto* vt = new ValueType(valueType);
+    const auto* tmp = new ValueType(vt);
     delete mValueType;
-    mValueType = vt;
+    mValueType = tmp;
     if ((mValueType->pointer > 0) && (!isArray() || Token::Match(mNameToken->previous(), "( * %name% )")))
         setFlag(fIsPointer, true);
     setFlag(fIsConst, mValueType->constness & (1U << mValueType->pointer));

@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -54,8 +54,8 @@ private:
         SimpleTokenizer tokenizer(settings, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        // Check...
-        runChecks<CheckSizeof>(tokenizer, this);
+        CheckSizeof check;
+        runChecks(check, tokenizer, *this);
     }
 
 #define checkP(...) checkP_(__FILE__, __LINE__, __VA_ARGS__)
@@ -66,8 +66,8 @@ private:
         // Tokenize..
         ASSERT_LOC(tokenizer.simplifyTokens1(""), file, line);
 
-        // Check...
-        runChecks<CheckSizeof>(tokenizer, this);
+        CheckSizeof check;
+        runChecks(check, tokenizer, *this);
     }
 
     void sizeofsizeof() {
@@ -720,6 +720,12 @@ private:
         check("void* foo() {\n"
               "  void* AtomName = malloc(sizeof(char *) * 34);\n"
               "  return AtomName;\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void* f(size_t n) {\n" // #11754
+              "    char* p = malloc(n * sizeof(void*));\n"
+              "    return p;\n"
               "}");
         ASSERT_EQUALS("", errout_str());
     }

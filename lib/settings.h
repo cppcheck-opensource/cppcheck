@@ -23,7 +23,6 @@
 
 #include "addoninfo.h"
 #include "config.h"
-#include "errortypes.h"
 #include "library.h"
 #include "platform.h"
 #include "standards.h"
@@ -40,22 +39,20 @@
 #include <unordered_set>
 #include <utility>
 
-#include "regex.h"
-
 #if defined(USE_WINDOWS_SEH) || defined(USE_UNIX_SIGNAL_HANDLING)
 #include <cstdio>
 #endif
 
 #ifdef HAVE_RULES
-#include <memory>
-
-class Regex;
+struct Rule;
 #endif
-
 struct Suppressions;
 namespace ValueFlow {
     class Value;
 }
+enum class Severity : std::uint8_t;
+enum class Certainty : std::uint8_t;
+enum class Checks : std::uint8_t;
 
 /// @addtogroup Core
 /// @{
@@ -111,6 +108,13 @@ private:
 
 public:
     Settings();
+    ~Settings();
+
+    Settings(const Settings&);
+    Settings& operator=(const Settings&);
+
+    Settings(Settings&&) noexcept;
+    Settings& operator=(Settings&&) noexcept;
 
     static std::string loadCppcheckCfg(Settings& settings, Suppressions& suppressions, bool debug = false);
 
@@ -201,6 +205,9 @@ public:
 
     /** @brief Is --debug-ignore given? */
     bool debugignore{};
+
+    /** @brief Is --debug-ipc given? */
+    bool debugipc{};
 
     /** @brief Internal: Is --debug-lookup or --debug-lookup=all given? */
     bool debuglookup{};
@@ -365,17 +372,6 @@ public:
     int reportProgress{-1};
 
 #ifdef HAVE_RULES
-    /** Rule */
-    struct CPPCHECKLIB Rule {
-        std::string tokenlist = "normal"; // use normal tokenlist
-        std::string pattern;
-        std::string id = "rule"; // default id
-        std::string summary;
-        Severity severity = Severity::style; // default severity
-        Regex::Engine engine = Regex::Engine::Pcre;
-        std::shared_ptr<Regex> regex;
-    };
-
     /**
      * @brief Extra rules
      */
@@ -592,6 +588,8 @@ public:
     static ExecutorType defaultExecutor();
 
     static bool unusedFunctionOnly();
+
+    bool collectLogCheckers(bool* summary = nullptr, bool* xmlReport = nullptr, bool* textReport = nullptr) const;
 
 private:
     static std::string parseEnabled(const std::string &str, std::tuple<SimpleEnableGroup<Severity>, SimpleEnableGroup<Checks>> &groups);

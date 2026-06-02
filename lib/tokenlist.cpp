@@ -333,8 +333,26 @@ bool TokenList::createTokensFromBuffer(const char* data, size_t size)
 
 //---------------------------------------------------------------------------
 
+#ifdef STORE_INPUT_DIR
+#include <atomic>
+#include <fstream>
+
+static void storeInput(const char* data, size_t size)
+{
+    static std::atomic_uint64_t num(0);
+    {
+        std::ofstream out(STORE_INPUT_DIR "/" + std::to_string(num++));
+        out.write(data, size);
+    }
+}
+#endif
+
 bool TokenList::createTokensFromBufferInternal(const char* data, size_t size, const std::string& file0)
 {
+#ifdef STORE_INPUT_DIR
+    storeInput(data, size);
+#endif
+
     simplecpp::OutputList outputList;
     simplecpp::TokenList tokens({data, size}, mFiles, file0, &outputList);
 
@@ -529,7 +547,7 @@ static bool iscast(const Token *tok, bool cpp)
         if (!Token::Match(tok2, "%name%|*|::"))
             return false;
 
-        if (tok2->isStandardType() && (tok2->strAt(1) != "(" || Token::Match(tok2->next(), "( * *| )")))
+        if (tok2->isStandardType() && (tok2->strAt(1) != "(" || Token::simpleMatch(tok2->linkAt(1)->tokAt(-1), "* )")))
             type = true;
     }
 
@@ -591,7 +609,7 @@ static bool iscpp11init_impl(const Token * const tok)
     if (Token::Match(nameToken, "]|*")) {
         const Token* tok2 = nameToken;
         if (tok2->link()) {
-            while (tok2 && tok2->link())
+            while (tok2 && precedes(tok2->link(), nameToken))
                 tok2 = tok2->link()->previous();
         }
         else
@@ -740,6 +758,8 @@ static void compileBinOp(Token *&tok, AST_state& state, void (*f)(Token *&tok, A
         binop->astOperand1(state.op.top());
         state.op.pop();
     }
+    if (!state.op.empty() && state.op.top() == binop)
+        throw InternalError(tok, "Syntax Error: Infinite loop when creating AST.", InternalError::AST);
     state.op.push(binop);
 }
 
@@ -1817,7 +1837,7 @@ static Token * createAstAtToken(Token *tok)
             }
             typetok = typetok->next();
         }
-        if (Token::Match(typetok, "%var% =") && typetok->varId())
+        if (Token::Match(typetok, "%var% [={]"))
             tok = typetok;
 
         // Do not create AST for function declaration
@@ -2307,7 +2327,7 @@ bool TokenList::isCPP() const
     return mLang == Standards::Language::CPP;
 }
 
-const Token * TokenList::isFunctionHead(const Token *tok, const std::string &endsWith)
+const Token * TokenList::isFunctionHead(const Token *tok, const std::string &suffix)
 {
     if (!tok)
         return nullptr;
@@ -2320,11 +2340,11 @@ const Token * TokenList::isFunctionHead(const Token *tok, const std::string &end
     if (Token::Match(tok, ") ;|{|[")) {
         tok = tok->next();
         while (tok && tok->str() == "[" && tok->link()) {
-            if (endsWith.find(tok->str()) != std::string::npos)
+            if (suffix.find(tok->str()) != std::string::npos)
                 return tok;
             tok = tok->link()->next();
         }
-        return (tok && endsWith.find(tok->str()) != std::string::npos) ? tok : nullptr;
+        return (tok && suffix.find(tok->str()) != std::string::npos) ? tok : nullptr;
     }
     if (tok->isCpp() && tok->str() == ")") {
         tok = tok->next();
@@ -2359,7 +2379,7 @@ const Token * TokenList::isFunctionHead(const Token *tok, const std::string &end
         }
         if (tok && tok->str() == ":" && !Token::Match(tok->next(), "%name%|::"))
             return nullptr;
-        return (tok && endsWith.find(tok->str()) != std::string::npos) ? tok : nullptr;
+        return (tok && suffix.find(tok->str()) != std::string::npos) ? tok : nullptr;
     }
     return nullptr;
 }

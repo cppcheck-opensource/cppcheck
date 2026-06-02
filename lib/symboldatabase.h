@@ -651,7 +651,7 @@ public:
         return mValueType;
     }
 
-    void setValueType(const ValueType &valueType);
+    void setValueType(const ValueType &vt);
 
     AccessControl accessControl() const {
         return mAccess;
@@ -1424,7 +1424,7 @@ public:
     /** Set array dimensions when valueflow analysis is completed */
     void setArrayDimensionsUsingValueFlow();
 
-    void clangSetVariables(const std::vector<const Variable *> &variableList);
+    void clangSetVariables(const std::vector<const Variable *> &vars);
     void createSymbolDatabaseExprIds();
 
     /* returns the opening { if tok points to enum */

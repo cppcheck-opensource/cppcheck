@@ -310,7 +310,7 @@ static int isCallFunction(const Scope *scope, int argnr, const Token *&tok)
 }
 
 
-CTU::FileInfo *CTU::getFileInfo(const Tokenizer &tokenizer)
+const CTU::FileInfo *CTU::getFileInfo(const Tokenizer &tokenizer)
 {
     const SymbolDatabase * const symbolDatabase = tokenizer.getSymbolDatabase();
 

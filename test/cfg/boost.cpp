@@ -22,6 +22,8 @@
 #include <boost/thread/mutex.hpp> // IWYU pragma: keep
 #include <boost/thread/lock_guard.hpp>
 #include <boost/test/unit_test.hpp> // IWYU pragma: keep
+#include <boost/test/data/test_case.hpp>
+#include <boost/test/data/monomorphic.hpp>
 #include <boost/core/scoped_enum.hpp>
 #include <boost/foreach.hpp>
 
@@ -199,3 +201,46 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(my_tuple_test, T, test_types_w_tuples)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+// https://www.boost.org/doc/libs/latest/libs/test/doc/html/boost_test/tests_organization/test_cases/test_case_generation/datasets.html
+namespace bdata = boost::unit_test::data;
+
+// Dataset generating a Fibonacci sequence
+struct fibonacci_dataset {
+    // the type of the samples is deduced
+    // cppcheck-suppress unusedStructMember // FP #14795, used in template is_dataset
+    static const int arity = 1;
+
+    struct iterator {
+        int operator*() const { return b; }
+        void operator++() {
+            a = a + b;
+            std::swap(a, b);
+        }
+    private:
+        int a = 1;
+        int b = 1; // b is the output
+    };
+
+    // size is infinite
+    bdata::size_t size() const { return bdata::BOOST_TEST_DS_INFINITE_SIZE; }
+
+    // iterator
+    static iterator begin() { return iterator(); }
+};
+
+namespace boost { namespace unit_test { namespace data { namespace monomorphic {
+  // registering fibonacci_dataset as a proper dataset
+  template <>
+  struct is_dataset<fibonacci_dataset> : boost::mpl::true_ {};
+}}}}
+
+// Creating a test-driven dataset, the zip is for checking
+BOOST_DATA_TEST_CASE(
+    test1,
+    fibonacci_dataset() ^ bdata::make( { 1, 2, 3, 5, 8, 13, 21, 35, 56 } ),
+    fib_sample, exp)
+{
+      // cppcheck-suppress valueFlowBailoutIncompleteVar // TODO: fib_sample declared in test case
+      BOOST_TEST(fib_sample == exp);
+}

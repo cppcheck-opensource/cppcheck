@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -102,7 +102,7 @@ private:
 };
 
 struct CPPCHECKLIB ProgramMemory {
-    using Map = std::unordered_map<ExprIdToken, ValueFlow::Value, ExprIdToken::Hash>;
+    using Map = std::map<ExprIdToken, ValueFlow::Value>;
 
     ProgramMemory() : mValues(new Map()) {}
 
@@ -116,7 +116,7 @@ struct CPPCHECKLIB ProgramMemory {
 
     bool getContainerSizeValue(nonneg int exprid, MathLib::bigint& result) const;
     bool getContainerEmptyValue(nonneg int exprid, MathLib::bigint& result) const;
-    void setContainerSizeValue(const Token* expr, MathLib::bigint value, bool isEqual = true);
+    void setContainerSizeValue(const Token* expr, MathLib::bigint value, bool equal = true);
 
     void setUnknown(const Token* expr);
 

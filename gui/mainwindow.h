@@ -267,10 +267,10 @@ private:
      * @brief Analyze the project.
      * @param projectFile Pointer to the project to analyze.
      * @param recheckFiles files to recheck, empty => check all files
-     * @param checkLibrary Flag to indicate if the library should be checked.
-     * @param checkConfiguration Flag to indicate if the configuration should be checked.
+     * @param checkLib Flag to indicate if the library should be checked.
+     * @param checkConfig Flag to indicate if the configuration should be checked.
      */
-    void analyzeProject(const ProjectFile *projectFile, const QStringList& recheckFiles, bool checkLibrary = false, bool checkConfiguration = false);
+    void analyzeProject(const ProjectFile *projectFile, const QStringList& recheckFiles, bool checkLib = false, bool checkConfig = false);
 
     /**
      * @brief Set current language
@@ -306,19 +306,19 @@ private:
     /**
      * @brief Analyze project
      * @param p imported project
-     * @param checkLibrary Flag to indicate if library should be checked
-     * @param checkConfiguration Flag to indicate if the configuration should be checked.
+     * @param checkLib Flag to indicate if library should be checked
+     * @param checkConfig Flag to indicate if the configuration should be checked.
      */
-    void doAnalyzeProject(ImportProject p, bool checkLibrary = false, bool checkConfiguration = false);
+    void doAnalyzeProject(ImportProject p, bool checkLib = false, bool checkConfig = false);
 
     /**
      * @brief Analyze all files specified in parameter files
      *
      * @param files List of files and/or directories to analyze
-     * @param checkLibrary Flag to indicate if library should be checked
-     * @param checkConfiguration Flag to indicate if the configuration should be checked.
+     * @param checkLib Flag to indicate if library should be checked
+     * @param checkConfig Flag to indicate if the configuration should be checked.
      */
-    void doAnalyzeFiles(const QStringList &files, bool checkLibrary = false, bool checkConfiguration = false);
+    void doAnalyzeFiles(const QStringList &files, bool checkLib = false, bool checkConfig = false);
 
     /**
      * @brief Get our default cppcheck settings and read project file.

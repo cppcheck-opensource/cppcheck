@@ -211,9 +211,9 @@ static const std::unordered_set<std::string> stdTypes = { "bool"
                                                           , "unsigned"
 };
 
-bool Token::isStandardType(const std::string& str)
+bool Token::isStandardType(const std::string& s)
 {
-    return stdTypes.find(str) != stdTypes.end();
+    return stdTypes.find(s) != stdTypes.end();
 }
 
 void Token::update_property_isStandardType()
@@ -614,7 +614,6 @@ bool Token::simpleMatch(const Token *tok, const char pattern[], size_t pattern_l
         return false; // shortcut
     const char *current = pattern;
     const char *end = pattern + pattern_len;
-    // cppcheck-suppress shadowFunction - TODO: fix this
     const char *next = static_cast<const char*>(std::memchr(pattern, ' ', pattern_len));
     if (!next)
         next = end;
@@ -637,31 +636,31 @@ bool Token::simpleMatch(const Token *tok, const char pattern[], size_t pattern_l
     return true;
 }
 
-bool Token::firstWordEquals(const char *str, const char *word)
+bool Token::firstWordEquals(const char *s, const char *word)
 {
     for (;;) {
-        if (*str != *word)
-            return (*str == ' ' && *word == 0);
-        if (*str == 0)
+        if (*s != *word)
+            return (*s == ' ' && *word == 0);
+        if (*s == 0)
             break;
 
-        ++str;
+        ++s;
         ++word;
     }
 
     return true;
 }
 
-const char *Token::chrInFirstWord(const char *str, char c)
+const char *Token::chrInFirstWord(const char *s, char c)
 {
     for (;;) {
-        if (*str == ' ' || *str == 0)
+        if (*s == ' ' || *s == 0)
             return nullptr;
 
-        if (*str == c)
-            return str;
+        if (*s == c)
+            return s;
 
-        ++str;
+        ++s;
     }
 }
 
@@ -769,7 +768,6 @@ nonneg int Token::getStrArraySize(const Token *tok)
 {
     assert(tok != nullptr);
     assert(tok->tokType() == eString);
-    // cppcheck-suppress shadowFunction - TODO: fix this
     const std::string str(getStringLiteral(tok->str()));
     int sizeofstring = 1;
     for (int i = 0; i < static_cast<int>(str.size()); i++) {
@@ -1014,41 +1012,41 @@ Token *Token::findsimplematch(Token * const startTok, const char pattern[], size
 }
 
 template<class T, REQUIRES("T must be a Token class", std::is_convertible<T*, const Token*> )>
-static T *findmatchImpl(T * const startTok, const char pattern[], const nonneg int varId)
+static T *findmatchImpl(T * const startTok, const char pattern[], const nonneg int varid)
 {
     for (T* tok = startTok; tok; tok = tok->next()) {
-        if (Token::Match(tok, pattern, varId))
+        if (Token::Match(tok, pattern, varid))
             return tok;
     }
     return nullptr;
 }
 
-const Token *Token::findmatch(const Token * const startTok, const char pattern[], const nonneg int varId)
+const Token *Token::findmatch(const Token * const startTok, const char pattern[], const nonneg int varid)
 {
-    return findmatchImpl(startTok, pattern, varId);
+    return findmatchImpl(startTok, pattern, varid);
 }
 
-Token *Token::findmatch(Token * const startTok, const char pattern[], const nonneg int varId) {
-    return findmatchImpl(startTok, pattern, varId);
+Token *Token::findmatch(Token * const startTok, const char pattern[], const nonneg int varid) {
+    return findmatchImpl(startTok, pattern, varid);
 }
 
 template<class T, REQUIRES("T must be a Token class", std::is_convertible<T*, const Token*> )>
-static T *findmatchImpl(T * const startTok, const char pattern[], const Token * const end, const nonneg int varId)
+static T *findmatchImpl(T * const startTok, const char pattern[], const Token * const end, const nonneg int varid)
 {
     for (T* tok = startTok; tok && tok != end; tok = tok->next()) {
-        if (Token::Match(tok, pattern, varId))
+        if (Token::Match(tok, pattern, varid))
             return tok;
     }
     return nullptr;
 }
 
-const Token *Token::findmatch(const Token * const startTok, const char pattern[], const Token * const end, const nonneg int varId)
+const Token *Token::findmatch(const Token * const startTok, const char pattern[], const Token * const end, const nonneg int varid)
 {
-    return findmatchImpl(startTok, pattern, end, varId);
+    return findmatchImpl(startTok, pattern, end, varid);
 }
 
-Token *Token::findmatch(Token * const startTok, const char pattern[], const Token * const end, const nonneg int varId) {
-    return findmatchImpl(startTok, pattern, end, varId);
+Token *Token::findmatch(Token * const startTok, const char pattern[], const Token * const end, const nonneg int varid) {
+    return findmatchImpl(startTok, pattern, end, varid);
 }
 
 void Token::function(const Function *f)
@@ -1816,7 +1814,7 @@ void Token::printValueFlow(const std::vector<std::string>& files, bool xml, std:
                 outs += "      <value ";
                 switch (value.valueType) {
                 case ValueFlow::Value::ValueType::INT:
-                    if (tok->valueType() && tok->valueType()->sign == ValueType::UNSIGNED) {
+                    if (tok->valueType() && tok->valueType()->sign == ValueType::UNSIGNED && value.toString() != "!<=-1") {
                         outs += "intvalue=\"";
                         outs += MathLib::toString(static_cast<MathLib::biguint>(value.intvalue));
                         outs += '\"';
@@ -2359,11 +2357,9 @@ const ::Type* Token::typeOf(const Token* tok, const Token** typeTok)
     if (tok->valueType() && tok->valueType()->typeScope && tok->valueType()->typeScope->definedType)
         return tok->valueType()->typeScope->definedType;
     if (Token::simpleMatch(tok, "return")) {
-        // cppcheck-suppress shadowFunction - TODO: fix this
         const Scope *scope = tok->scope();
         if (!scope)
             return nullptr;
-        // cppcheck-suppress shadowFunction - TODO: fix this
         const Function *function = scope->function;
         if (!function)
             return nullptr;
@@ -2473,18 +2469,15 @@ std::pair<const Token*, const Token*> Token::typeDecl(const Token* tok, bool poi
         return {var->typeStartToken(), var->typeEndToken()->next()};
     }
     if (Token::simpleMatch(tok, "return")) {
-        // cppcheck-suppress shadowFunction - TODO: fix this
         const Scope* scope = tok->scope();
         if (!scope)
             return {};
-        // cppcheck-suppress shadowFunction - TODO: fix this
         const Function* function = scope->function;
         if (!function)
             return {};
         return { function->retDef, function->returnDefEnd() };
     }
     if (tok->previous() && tok->previous()->function()) {
-        // cppcheck-suppress shadowFunction - TODO: fix this
         const Function *function = tok->previous()->function();
         return {function->retDef, function->returnDefEnd()};
     }
@@ -2661,26 +2654,26 @@ Token::Impl::~Impl()
     }
 }
 
-void Token::Impl::setCppcheckAttribute(CppcheckAttributesType type, MathLib::bigint value)
+void Token::Impl::setCppcheckAttribute(CppcheckAttributesType attrType, MathLib::bigint value)
 {
     CppcheckAttributes *attr = mCppcheckAttributes;
-    while (attr && attr->type != type)
+    while (attr && attr->type != attrType)
         attr = attr->next;
     if (attr)
         attr->value = value;
     else {
         attr = new CppcheckAttributes;
-        attr->type = type;
+        attr->type = attrType;
         attr->value = value;
         attr->next = mCppcheckAttributes;
         mCppcheckAttributes = attr;
     }
 }
 
-bool Token::Impl::getCppcheckAttribute(CppcheckAttributesType type, MathLib::bigint &value) const
+bool Token::Impl::getCppcheckAttribute(CppcheckAttributesType attrType, MathLib::bigint &value) const
 {
     const CppcheckAttributes *attr = mCppcheckAttributes;
-    while (attr && attr->type != type)
+    while (attr && attr->type != attrType)
         attr = attr->next;
     if (attr)
         value = attr->value;

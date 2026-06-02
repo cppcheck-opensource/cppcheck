@@ -9,6 +9,6 @@
   <?define AddonsDir = "files\addons" ?>
   <?define QtDllDir = "files" ?>
 
-  <?define CrtMergeModule = "$(env.VCINSTALLDIR)Redist\MSVC\v143\MergeModules\Microsoft_VC143_CRT_x64.msm" ?>
+  <?define CrtMergeModule = "$(env.VCINSTALLDIR)Redist\MSVC\v145\MergeModules\Microsoft_VC145_CRT_x64.msm" ?>
   <?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
 </Include>

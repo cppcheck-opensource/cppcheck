@@ -23,7 +23,6 @@
 #include "aboutdialog.h"
 #include "analyzerinfo.h"
 #include "checkers.h"
-#include "checkstatistics.h"
 #include "checkthread.h"
 #include "common.h"
 #include "cppcheck.h"
@@ -60,7 +59,6 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <fstream>
 #include <iterator>
 #include <list>
 #include <memory>
@@ -101,7 +99,6 @@
 #include <QSettings>
 #include <QSize>
 #include <QTimer>
-#include <QTemporaryFile>
 #include <QToolBar>
 #include <QUrl>
 #include <QVariant>
@@ -562,7 +559,7 @@ void MainWindow::saveSettings() const
     mUI->mResults->saveSettings(mSettings);
 }
 
-void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLibrary, const bool checkConfiguration)
+void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLib, const bool checkConfig)
 {
     Settings checkSettings;
     auto supprs = std::make_shared<Suppressions>();
@@ -606,8 +603,8 @@ void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLibrary, cons
 
     mUI->mResults->setCheckDirectory(checkPath);
     checkSettings.force = false;
-    checkSettings.checkLibrary = checkLibrary;
-    checkSettings.checkConfiguration = checkConfiguration;
+    checkSettings.checkLibrary = checkLib;
+    checkSettings.checkConfiguration = checkConfig;
 
     if (mProjectFile)
         qDebug() << "Checking project file" << mProjectFile->getFilename();
@@ -634,7 +631,7 @@ void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLibrary, cons
     mUI->mResults->setCheckSettings(checkSettings);
 }
 
-void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLibrary, const bool checkConfiguration)
+void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLib, const bool checkConfig)
 {
     if (files.isEmpty())
         return;
@@ -675,7 +672,7 @@ void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLibrar
     // TODO: lock UI here?
     mUI->mResults->checkingStarted(fdetails.size());
     mThread->setFiles(std::move(fdetails));
-    if (mProjectFile && !checkConfiguration)
+    if (mProjectFile && !checkConfig)
         mThread->setAddonsAndTools(mProjectFile->getAddonsAndTools());
     mThread->setSuppressions(mProjectFile ? mProjectFile->getCheckingSuppressions() : QList<SuppressionList::Suppression>());
     QDir inf(mCurrentDirectory);
@@ -685,8 +682,8 @@ void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLibrar
     checkLockDownUI(); // lock UI while checking
 
     mUI->mResults->setCheckDirectory(checkPath);
-    checkSettings.checkLibrary = checkLibrary;
-    checkSettings.checkConfiguration = checkConfiguration;
+    checkSettings.checkLibrary = checkLib;
+    checkSettings.checkConfiguration = checkConfig;
 
     if (mProjectFile)
         qDebug() << "Checking project file" << mProjectFile->getFilename();
@@ -1856,36 +1853,12 @@ bool MainWindow::loadLastResults()
     return true;
 }
 
-void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringList& recheckFiles, const bool checkLibrary, const bool checkConfiguration)
+void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringList& recheckFiles, const bool checkLib, const bool checkConfig)
 {
     Settings::terminate(false);
 
     QFileInfo inf(projectFile->getFilename());
     const QString& rootpath = projectFile->getRootPath();
-
-    if (isCppcheckPremium() && !projectFile->getLicenseFile().isEmpty()) {
-        if (rootpath.isEmpty() || rootpath == ".")
-            QDir::setCurrent(inf.absolutePath());
-        else if (QDir(rootpath).isAbsolute())
-            QDir::setCurrent(rootpath);
-        else
-            QDir::setCurrent(inf.absolutePath() + "/" + rootpath);
-
-        QString licenseFile = projectFile->getLicenseFile();
-        if (!QFileInfo(licenseFile).isAbsolute() && !rootpath.isEmpty())
-            licenseFile = inf.absolutePath() + "/" + licenseFile;
-
-#ifdef Q_OS_WIN
-        const QString premiumaddon = QCoreApplication::applicationDirPath() + "/premiumaddon.exe";
-#else
-        const QString premiumaddon = QCoreApplication::applicationDirPath() + "/premiumaddon";
-#endif
-        const std::vector<std::string> args{"--check-loc-license", licenseFile.toStdString()};
-        std::string output;
-        CheckThread::executeCommand(premiumaddon.toStdString(), args, "", output);
-        std::ofstream fout(inf.absolutePath().toStdString() + "/cppcheck-premium-loc");
-        fout << output;
-    }
 
     QDir::setCurrent(inf.absolutePath());
 
@@ -1985,7 +1958,7 @@ void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringLis
             msg.exec();
             return;
         }
-        doAnalyzeProject(p, checkLibrary, checkConfiguration);  // TODO: avoid copy
+        doAnalyzeProject(p, checkLib, checkConfig);  // TODO: avoid copy
         return;
     }
 
@@ -1998,7 +1971,7 @@ void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringLis
     if (paths.isEmpty()) {
         paths << mCurrentDirectory;
     }
-    doAnalyzeFiles(paths, checkLibrary, checkConfiguration);
+    doAnalyzeFiles(paths, checkLib, checkConfig);
 }
 
 void MainWindow::newProjectFile()

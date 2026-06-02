@@ -632,6 +632,8 @@ private:
         TEST_CASE(stdintFunction);
 
         TEST_CASE(userDefinedLiteral);
+
+        TEST_CASE(dumpValueNegative);  // #14735 - dumping negative impossible value for unsigned expression
     }
 
     void array() {
@@ -11443,6 +11445,18 @@ private:
         ASSERT(x);
         ASSERT(!x->varId());
         ASSERT(!x->variable());
+    }
+
+    void dumpValueNegative() { // #14735
+        GET_SYMBOL_DB("void f(unsigned int x) { a = x; }");
+        const Token* x = Token::findsimplematch(tokenizer.tokens(), "x ;");
+        ASSERT(x != nullptr);
+        std::ostringstream out;
+        x->printValueFlow({"test.cpp"}, true, out);
+        const std::string dump = out.str();
+        const std::string expected = "<value intvalue=\"-1\" bound=\"Upper\" impossible=\"true\" path=\"0\"/>";
+        // dump should contain expected string, otherwise print the dump string
+        ASSERT_EQUALS(expected, dump.find(expected) == std::string::npos ? dump : expected);
     }
 };
 

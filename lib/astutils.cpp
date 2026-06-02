@@ -400,6 +400,8 @@ const Token * astIsVariableComparison(const Token *tok, const std::string &comp,
     }
     while (ret && ret->str() == ".")
         ret = ret->astOperand2();
+    while (ret && ret->isCast())
+        ret = ret->astOperand2() ? ret->astOperand2() : ret->astOperand1();
     if (ret && ret->str() == "=" && ret->astOperand1() && ret->astOperand1()->varId())
         ret = ret->astOperand1();
     else if (ret && ret->varId() == 0U)
@@ -1814,7 +1816,7 @@ static bool isZeroBoundCond(const Token * const cond, bool reverse)
 
     const Token* op = reverse ? cond->astOperand1() : cond->astOperand2();
     if (!op->hasKnownIntValue())
-        return false;
+        return true;
 
     // Assume unsigned
     const bool isZero = op->getKnownIntValue() == 0;
@@ -2155,7 +2157,7 @@ bool isWithoutSideEffects(const Token* tok, bool checkArrayAccess, bool checkRef
     if (tok && tok->varId()) {
         const Variable* var = tok->variable();
         return var && ((!var->isClass() && (checkReference || !var->isReference())) || var->isPointer() ||
-                       (checkArrayAccess ? var->isArray() || (var->isStlType() && !var->isStlType(CheckClass::stl_containers_not_const)) : var->isStlType()));
+                       (checkArrayAccess ? var->isArray() || (var->isStlType() && !var->isStlType(CheckClassImpl::stl_containers_not_const)) : var->isStlType()));
     }
     return true;
 }
@@ -3112,6 +3114,8 @@ static const Token* findExpressionChangedImpl(const Token* expr,
                     if (vt->type == ValueType::ITERATOR)
                         ++indirect;
                 }
+                if (indirect == 0 && tok2->astParent() && tok2->astParent()->isUnaryOp("*"))
+                    ++indirect;
                 for (int i = 0; i <= indirect; ++i) {
                     if (isExpressionChangedAt(tok, tok2, i, global, settings, depth))
                         return true;

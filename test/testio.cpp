@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -109,11 +109,12 @@ private:
 
         // Check..
         if (options.onlyFormatStr) {
-            CheckIO checkIO(&tokenizer, &settings1, this);
+            CheckIOImpl checkIO(&tokenizer, settings1, *this);
             checkIO.checkWrongPrintfScanfArguments();
             return;
         }
-        runChecks<CheckIO>(tokenizer, this);
+        CheckIO check;
+        runChecks(check, tokenizer, *this);
     }
 
     void coutCerrMisusage() {
@@ -544,7 +545,29 @@ private:
               "    FILE *a = fopen(\"aa\", \"r\");\n"
               "    while (fclose(a)) {}\n"
               "}");
-        TODO_ASSERT_EQUALS("[test.cpp:3:5]: (error) Used file that is not opened. [useClosedFile]\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:12]: (warning) fclose() used as loop condition may skip loop body or double-close file handle. [fcloseInLoopCondition]\n", errout_str());
+
+        check("void foo() {\n"
+              "    FILE *a = fopen(\"aa\", \"r\");\n"
+              "    while (fclose(a)) {\n"
+              "         break;\n"
+              "    }\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void foo() {\n"
+              "    FILE *a = fopen(\"aa\", \"r\");\n"
+              "    while (fclose(a)) {\n"
+              "        a = fopen(\"aa\", \"r\");\n"
+              "    }\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void foo() {\n"
+              "    FILE *a = fopen(\"aa\", \"r\");\n"
+              "    do {} while (fclose(a));\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:3:18]: (warning) fclose() used as loop condition may skip loop body or double-close file handle. [fcloseInLoopCondition]\n", errout_str());
 
         // #6823
         check("void foo() {\n"
@@ -3370,6 +3393,20 @@ private:
               "  printf(\"%f\", x.f(4.0));\n"
               "}");
         ASSERT_EQUALS("", errout_str());
+
+        check("enum E : uint8_t { E0 }; \n" // #7959
+              "void f(E e) {\n"
+              "    printf(\"%hhu\", e);\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
+
+        check("enum E : uint8_t { E0 }; \n"
+              "void f(E e) {\n"
+              "    printf(\"%lu\", e);\n"
+              "}");
+        TODO_ASSERT_EQUALS("[test.cpp:3]: (warning) %lu in format string (no. 1) requires 'unsigned long' but the argument type is 'uint8_t'.\n",
+                           "",
+                           errout_str());
 
         check("void f() {\n"
               "    printf(\"%lu\", sizeof(char));\n"

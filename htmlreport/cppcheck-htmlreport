@@ -278,7 +278,7 @@ HTML_HEAD = """
 
         updateFileRows();
       }
-      
+
       function toggleClassification(cb) {
         cb.parentElement.classList.toggle("unchecked", !cb.checked);
         var elements = document.querySelectorAll(".class_" + cb.id);
@@ -289,7 +289,7 @@ HTML_HEAD = """
 
         updateFileRows();
       }
-    
+
       function toggleTool(cb) {
         cb.parentElement.classList.toggle("unchecked", !cb.checked);
 
@@ -469,9 +469,9 @@ def filter_button(enabled_filters, id, function):
 def filter_bar(enabled):
     severity_bar = ''.join([filter_button(enabled, severity, 'toggleSeverity') for severity in ['error', 'warning', 'portability', 'performance', 'style', 'information']]) + '\n        | '
     classification_bar = ''.join([filter_button(enabled, _class, 'toggleClassification') for _class in ['Mandatory', 'Required', 'Advisory', 'Document', 'Disapplied', 'L1','L2','L3','']]) + '\n        | '
-    if "checked/>" not in severity_bar:
+    if "checked>" not in severity_bar:
         severity_bar = ''
-    if "checked/>" not in classification_bar:
+    if "checked>" not in classification_bar:
         classification_bar = ''
     return ''.join([
      '      <div id="filters">\n'

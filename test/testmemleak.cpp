@@ -39,13 +39,12 @@ private:
 
 #define functionReturnType(...) functionReturnType_(__FILE__, __LINE__, __VA_ARGS__)
     template<size_t size>
-    CheckMemoryLeak::AllocType functionReturnType_(const char* file, int line, const char (&code)[size]) {
+    CheckMemoryLeakImpl::AllocType functionReturnType_(const char* file, int line, const char (&code)[size]) {
         // Tokenize..
         SimpleTokenizer tokenizer(settingsDefault, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        const CheckMemoryLeak c(&tokenizer, this, &settingsDefault);
-
+        const CheckMemoryLeakImpl c(&tokenizer, settingsDefault, *this);
         return (c.functionReturnType)(&tokenizer.getSymbolDatabase()->scopeList.front().functionList.front());
     }
 
@@ -53,19 +52,19 @@ private:
         {
             const char code[] = "const char *foo()\n"
                                 "{ return 0; }";
-            ASSERT_EQUALS(CheckMemoryLeak::No, functionReturnType(code));
+            ASSERT_EQUALS(CheckMemoryLeakImpl::No, functionReturnType(code));
         }
 
         {
             const char code[] = "Fred *newFred()\n"
                                 "{ return new Fred; }";
-            ASSERT_EQUALS(CheckMemoryLeak::New, functionReturnType(code));
+            ASSERT_EQUALS(CheckMemoryLeakImpl::New, functionReturnType(code));
         }
 
         {
             const char code[] = "char *foo()\n"
                                 "{ return new char[100]; }";
-            ASSERT_EQUALS(CheckMemoryLeak::NewArray, functionReturnType(code));
+            ASSERT_EQUALS(CheckMemoryLeakImpl::NewArray, functionReturnType(code));
         }
 
         {
@@ -74,7 +73,7 @@ private:
                                 "    char *p = new char[100];\n"
                                 "    return p;\n"
                                 "}";
-            ASSERT_EQUALS(CheckMemoryLeak::NewArray, functionReturnType(code));
+            ASSERT_EQUALS(CheckMemoryLeakImpl::NewArray, functionReturnType(code));
         }
     }
 
@@ -94,8 +93,8 @@ private:
 
         // there is no allocation
         const Token *tok = Token::findsimplematch(tokenizer.tokens(), "ret =");
-        const CheckMemoryLeak check(&tokenizer, nullptr, &settingsDefault);
-        ASSERT_EQUALS(CheckMemoryLeak::No, check.getAllocationType(tok->tokAt(2), 1));
+        const CheckMemoryLeakImpl check(&tokenizer, settingsDefault, *this);
+        ASSERT_EQUALS(CheckMemoryLeakImpl::No, check.getAllocationType(tok->tokAt(2), 1));
     }
 };
 
@@ -120,7 +119,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check for memory leaks..
-        CheckMemoryLeakInFunction checkMemoryLeak(&tokenizer, &settings, this);
+        CheckMemoryLeakInFunctionImpl checkMemoryLeak(&tokenizer, settings, *this);
         checkMemoryLeak.checkReallocUsage();
     }
 
@@ -150,6 +149,7 @@ private:
         TEST_CASE(realloc22);
         TEST_CASE(realloc23);
         TEST_CASE(realloc24); // #9228
+        TEST_CASE(realloc25);
     }
 
     void realloc1() {
@@ -418,6 +418,60 @@ private:
               "}");
         ASSERT_EQUALS("", errout_str());
     }
+
+    void realloc25() {
+        check("struct T {\n"
+              "    char* ptr;\n"
+              "    size_t len;\n"
+              "};\n"
+              "struct S {\n"
+              "    struct T t;\n"
+              "};\n"
+              "void f(struct S* s, size_t len) {\n"
+              "    char* p = s->t.ptr;\n"
+              "    p = realloc(p, len);\n"
+              "    if (p) {\n"
+              "        s->t.ptr = p;\n"
+              "        s->t.len = len;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct T {\n"
+              "    char* ptr;\n"
+              "    size_t len;\n"
+              "};\n"
+              "struct S {\n"
+              "    struct T t[1];\n"
+              "};\n"
+              "void f(struct S* s, size_t len) {\n"
+              "    char* p = s->t[0].ptr;\n"
+              "    p = realloc(p, len);\n"
+              "    if (p) {\n"
+              "        s->t[0].ptr = p;\n"
+              "        s->t[0].len = len;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct T {\n" // #14718
+              "    char* ptr;\n"
+              "    size_t len;\n"
+              "};\n"
+              "struct S {\n"
+              "    struct T t;\n"
+              "};\n"
+              "char* get(struct T t) { return t.ptr; };\n"
+              "void f(struct S* s, size_t len) {\n"
+              "    char* p = get(s->t);\n"
+              "    p = realloc(p, len);\n"
+              "    if (p) {\n"
+              "        s->t.ptr = p;\n"
+              "        s->t.len = len;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
 };
 
 REGISTER_TEST(TestMemleakInFunction)
@@ -447,7 +501,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check for memory leaks..
-        CheckMemoryLeakInClass checkMemoryLeak(&tokenizer, &settings, this);
+        CheckMemoryLeakInClassImpl checkMemoryLeak(&tokenizer, settings, *this);
         (checkMemoryLeak.check)();
     }
 
@@ -1652,7 +1706,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check for memory leaks..
-        CheckMemoryLeakStructMember checkMemoryLeakStructMember(&tokenizer, &settings, this);
+        CheckMemoryLeakStructMemberImpl checkMemoryLeakStructMember(&tokenizer, settings, *this);
         (checkMemoryLeakStructMember.check)();
     }
 
@@ -2334,7 +2388,7 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         // Check for memory leaks..
-        CheckMemoryLeakNoVar checkMemoryLeakNoVar(&tokenizer, &settings, this);
+        CheckMemoryLeakNoVarImpl checkMemoryLeakNoVar(&tokenizer, settings, *this);
         (checkMemoryLeakNoVar.check)();
     }
 
@@ -2548,6 +2602,32 @@ private:
               "    a.g(new int);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("int f() {\n" // #11184
+              "    return strlen(new char[4]{});\n"
+              "}\n"
+              "int g() {\n"
+              "    int i = strlen(new char[4]{});\n"
+              "    return i;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:19]: (error) Allocation with new, strlen doesn't release it. [leakNoVarFunctionCall]\n"
+                      "[test.cpp:5:20]: (error) Allocation with new, strlen doesn't release it. [leakNoVarFunctionCall]\n",
+                      errout_str());
+
+        check("int* f1() { return new int; }\n" // #14808
+              "std::string* f2() { return new std::string(\"abc\"); }\n"
+              "std::clock_t* f3() { return new std::clock_t; }\n"
+              "QWidget* f4(QObject* parent) { return new QWidget(parent); }\n"
+              "void g(QObject* parent) {\n"
+              "    assert(f1());\n"
+              "    assert(f2());\n"
+              "    assert(f3());\n"
+              "    assert(f4(parent));\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:6:12]: (error) Allocation with f1, assert doesn't release it. [leakNoVarFunctionCall]\n"
+                      "[test.cpp:7:12]: (error) Allocation with f2, assert doesn't release it. [leakNoVarFunctionCall]\n"
+                      "[test.cpp:8:12]: (error) Allocation with f3, assert doesn't release it. [leakNoVarFunctionCall]\n",
+                      errout_str());
     }
 
     void missingAssignment() {

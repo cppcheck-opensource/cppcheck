@@ -132,7 +132,8 @@ private:
         SimpleTokenizer tokenizer(s, *this, cpp);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        runChecks<CheckFunctions>(tokenizer, this);
+        CheckFunctions check;
+        runChecks(check, tokenizer, *this);
     }
 
     void prohibitedFunctions_posix() {
@@ -758,6 +759,13 @@ private:
               "    n = (n + 1) % 100;\n"
               "    sprintf(s, \"lwip%02d\", n);\n"
               "    s[strlen(s)] = ' ';\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("char* f() {\n" // #14715
+              "    char a[3] = { 'a', 'b', 'c' };\n"
+              "    *a = 0;\n"
+              "    return strdup(a);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
 

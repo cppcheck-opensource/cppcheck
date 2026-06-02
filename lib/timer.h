@@ -48,6 +48,11 @@ public:
 
     void reset();
 
+    std::map<std::string, std::vector<std::chrono::milliseconds>> getResults() const {
+        std::lock_guard<std::mutex> l(mResultsSync);
+        return mResults;
+    }
+
 protected:
     std::map<std::string, std::vector<std::chrono::milliseconds>> mResults;
     mutable std::mutex mResultsSync;

@@ -199,7 +199,8 @@ private:
 
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        runChecks<CheckStl>(tokenizer, this);
+        CheckStl check;
+        runChecks(check, tokenizer, *this);
     }
 
     // TODO: get rid of this
@@ -209,7 +210,8 @@ private:
 
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        runChecks<CheckStl>(tokenizer, this);
+        CheckStl check;
+        runChecks(check, tokenizer, *this);
     }
 
 #define checkNormal(...) checkNormal_(__FILE__, __LINE__, __VA_ARGS__)
@@ -219,8 +221,8 @@ private:
         SimpleTokenizer tokenizer(settings, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        // Check..
-        runChecks<CheckStl>(tokenizer, this);
+        CheckStl check;
+        runChecks(check, tokenizer, *this);
     }
 
     void outOfBounds() {
@@ -4832,6 +4834,12 @@ private:
         ASSERT_EQUALS("[test.cpp:2:5]: (warning) Return value of std::remove() ignored. Elements remain in container. [uselessCallsRemove]\n"
                       "[test.cpp:3:5]: (warning) Return value of std::remove_if() ignored. Elements remain in container. [uselessCallsRemove]\n"
                       "[test.cpp:4:5]: (warning) Return value of std::unique() ignored. Elements remain in container. [uselessCallsRemove]\n", errout_str());
+
+        check("void f(std::string& s) {\n" // #14764
+              "    auto it{ std::remove(s.begin(), s.end(), 'a') };\n"
+              "    s.erase(it, s.end());\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
 
         // #4431 - fp
         check("bool f() {\n"

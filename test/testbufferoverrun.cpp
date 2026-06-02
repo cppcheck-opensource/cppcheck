@@ -56,8 +56,8 @@ private:
         SimpleTokenizer tokenizer(settings, *this, cpp);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        // Check for buffer overruns..
-        runChecks<CheckBufferOverrun>(tokenizer, this);
+        CheckBufferOverrun check;
+        runChecks(check, tokenizer, *this);
     }
 
     // TODO: get rid of this
@@ -66,8 +66,8 @@ private:
         SimpleTokenizer tokenizer(settings0_i, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        // Check for buffer overruns..
-        runChecks<CheckBufferOverrun>(tokenizer, this);
+        CheckBufferOverrun check;
+        runChecks(check, tokenizer, *this);
     }
 
 #define checkP(...) checkP_(__FILE__, __LINE__, __VA_ARGS__)
@@ -79,8 +79,8 @@ private:
         // Tokenizer..
         ASSERT_LOC(tokenizer.simplifyTokens1(""), file, line);
 
-        // Check for buffer overruns..
-        runChecks<CheckBufferOverrun>(tokenizer, this);
+        CheckBufferOverrun check;
+        runChecks(check, tokenizer, *this);
     }
 
     void run() override {
@@ -4620,6 +4620,41 @@ private:
               "  mysprintf(a, \"abcd\");\n"
               "}", settings);
         ASSERT_EQUALS("", errout_str());
+
+        check("void f() {\n" // #901
+              "    const char b[] = \"b\";\n"
+              "    char a[1];\n"
+              "    sprintf(a, \"%s\", b);\n"
+              "}\n"
+              "void g() {\n"
+              "    const char* b = \"b\";\n"
+              "    char a[1];\n"
+              "    sprintf(a, \"%s\", b);\n"
+              "}\n"
+              "void h() {\n"
+              "    const std::string b = \"b\";\n"
+              "    char a[1];\n"
+              "    sprintf(a, \"%s\", b.c_str());\n"
+              "}\n"
+              "void i() {\n"
+              "    const char b[] = \"b\";\n"
+              "    char a[2];\n"
+              "    sprintf(a, \"%s\", b);\n"
+              "}\n"
+              "void j() {\n"
+              "    const char* b = \"b\";\n"
+              "    char a[2];\n"
+              "    sprintf(a, \"%s\", b);\n"
+              "}\n"
+              "void k() {\n"
+              "    const std::string b = \"b\";\n"
+              "    char a[2];\n"
+              "    sprintf(a, \"%s\", b.c_str());\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("[test.cpp:4:13]: (error) Buffer is accessed out of bounds: a [bufferAccessOutOfBounds]\n"
+                      "[test.cpp:9:13]: (error) Buffer is accessed out of bounds: a [bufferAccessOutOfBounds]\n"
+                      "[test.cpp:14:13]: (error) Buffer is accessed out of bounds: a [bufferAccessOutOfBounds]\n",
+                      errout_str());
     }
 
     void minsize_mul() {
@@ -5134,8 +5169,9 @@ private:
 
     void getErrorMessages() {
         // Ticket #2292: segmentation fault when using --errorlist
-        const Check& c = getCheck<CheckBufferOverrun>();
-        c.getErrorMessages(this, nullptr);
+        CheckBufferOverrun check;
+        const Check& c = getCheck(check);
+        c.getErrorMessages(*this, settingsDefault);
         // we are not interested in the output - just consume it
         ignore_errout();
     }
@@ -5325,11 +5361,11 @@ private:
         SimpleTokenizer tokenizer(settings0, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        CTU::FileInfo *ctu = CTU::getFileInfo(tokenizer);
+        const CTU::FileInfo *ctu = CTU::getFileInfo(tokenizer);
 
-        // Check code..
-        std::list<Check::FileInfo*> fileInfo;
-        Check& c = getCheck<CheckBufferOverrun>();
+        std::list<const Check::FileInfo*> fileInfo;
+        CheckBufferOverrun check;
+        Check& c = getCheck(check);
         fileInfo.push_back(c.getFileInfo(tokenizer, settings0, ""));
         c.analyseWholeProgram(*ctu, fileInfo, settings0, *this); // TODO: check result
         while (!fileInfo.empty()) {

@@ -629,25 +629,6 @@
          </layout>
         </widget>
        </item>
-       <item>
-        <widget class="QGroupBox" name="premiumLicense">
-         <property name="title">
-          <string>Premium License</string>
-         </property>
-         <layout class="QHBoxLayout" name="horizontalLayout_12">
-          <item>
-           <widget class="QLineEdit" name="mEditLicenseFile"/>
-          </item>
-          <item>
-           <widget class="QPushButton" name="mBtnBrowseLicense">
-            <property name="text">
-             <string>Browse...</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
       </layout>
      </widget>
      <widget class="QWidget" name="mTabWarningOptions">

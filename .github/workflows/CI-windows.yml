@@ -47,7 +47,6 @@ jobs:
           modules: 'qtcharts'
           setup-python: 'false'
           cache: true
-          aqtversion: '==3.1.*'  # TODO: remove when aqtinstall 3.2.2 is available
 
       - name: Run CMake
         run: |
@@ -92,7 +91,7 @@ jobs:
 
       - name: Run CMake
         run: |
-          cmake -S . -B build.cxxstd -Werror=dev -G "Visual Studio 17 2022" -A x64 -DCMAKE_CXX_STANDARD=${{ matrix.cxxstd }} -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On || exit /b !errorlevel!
+          cmake -S . -B build.cxxstd -Werror=dev -A x64 -DCMAKE_CXX_STANDARD=${{ matrix.cxxstd }} -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=On -DCMAKE_COMPILE_WARNING_AS_ERROR=On || exit /b !errorlevel!
 
       - name: Build
         run: |
@@ -128,17 +127,16 @@ jobs:
           modules: 'qtcharts'
           setup-python: 'false'
           cache: true
-          aqtversion: '==3.1.*'  # TODO: remove when aqtinstall 3.2.2 is available
 
       - name: Run CMake (without GUI)
         run: |
           :: TODO: enable DHAVE_RULES?
-          cmake-${{ env.CMAKE_VERSION_FULL }}-windows-x86_64\bin\cmake.exe -S . -B cmake.output -G "Visual Studio 17 2022" -A x64 -DHAVE_RULES=Off -DBUILD_TESTING=On
+          cmake-${{ env.CMAKE_VERSION_FULL }}-windows-x86_64\bin\cmake.exe -S . -B cmake.output -A x64 -DHAVE_RULES=Off -DBUILD_TESTING=On
 
       - name: Run CMake (with GUI)
         run: |
           :: TODO: enable DHAVE_RULES?
-          cmake-${{ env.CMAKE_VERSION_FULL }}-windows-x86_64\bin\cmake.exe -S . -B cmake.output.gui -G "Visual Studio 17 2022" -A x64 -DHAVE_RULES=Off -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On
+          cmake-${{ env.CMAKE_VERSION_FULL }}-windows-x86_64\bin\cmake.exe -S . -B cmake.output.gui -A x64 -DHAVE_RULES=Off -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On
 
   build:
     strategy:

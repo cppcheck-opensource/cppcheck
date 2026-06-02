@@ -5181,8 +5181,18 @@ static bool valueFlowForLoop2(const Token *tok,
     if (error)
         return false;
     execute(secondExpression, programMemory, &result, &error, settings);
-    if (result == 0) // 2nd expression is false => no looping
+    if (result == 0) {
+        if (!error) { // 2nd expression is false => no looping
+            ProgramMemory startMemory(programMemory);
+            ProgramMemory endMemory(programMemory);
+
+            memory1.swap(startMemory);
+            memory2.swap(endMemory);
+            memoryAfter.swap(programMemory);
+            return true;
+        }
         return false;
+    }
     if (error) {
         // If a variable is reassigned in second expression, return false
         bool reassign = false;
@@ -5388,23 +5398,32 @@ static void valueFlowForLoop(const TokenList &tokenlist, const SymbolDatabase& s
         } else {
             ProgramMemory mem1, mem2, memAfter;
             if (valueFlowForLoop2(tok, mem1, mem2, memAfter, settings)) {
-                for (const auto& p : mem1) {
-                    if (!p.second.isIntValue())
-                        continue;
-                    if (p.second.isImpossible())
-                        continue;
-                    if (p.first.tok->varId() == 0)
-                        continue;
-                    valueFlowForLoopSimplify(bodyStart, p.first.tok, false, p.second.intvalue, tokenlist, errorLogger, settings);
-                }
-                for (const auto& p : mem2) {
-                    if (!p.second.isIntValue())
-                        continue;
-                    if (p.second.isImpossible())
-                        continue;
-                    if (p.first.tok->varId() == 0)
-                        continue;
-                    valueFlowForLoopSimplify(bodyStart, p.first.tok, false, p.second.intvalue, tokenlist, errorLogger, settings);
+                if (mem1 == memAfter) { // #8192 check if loop never runs
+                    Token* condTok = getCondTok(tok);
+                    if (condTok && !condTok->hasKnownIntValue()) {
+                        ValueFlow::Value v(0);
+                        v.setKnown();
+                        ValueFlow::setTokenValue(condTok, std::move(v), settings);
+                    }
+                } else {
+                    for (const auto& p : mem1) {
+                        if (!p.second.isIntValue())
+                            continue;
+                        if (p.second.isImpossible())
+                            continue;
+                        if (p.first.tok->varId() == 0)
+                            continue;
+                        valueFlowForLoopSimplify(bodyStart, p.first.tok, false, p.second.intvalue, tokenlist, errorLogger, settings);
+                    }
+                    for (const auto& p : mem2) {
+                        if (!p.second.isIntValue())
+                            continue;
+                        if (p.second.isImpossible())
+                            continue;
+                        if (p.first.tok->varId() == 0)
+                            continue;
+                        valueFlowForLoopSimplify(bodyStart, p.first.tok, false, p.second.intvalue, tokenlist, errorLogger, settings);
+                    }
                 }
                 for (const auto& p : memAfter) {
                     if (!p.second.isIntValue())
@@ -5697,7 +5716,7 @@ static void valueFlowSubFunction(const TokenList& tokenlist,
                 // Remove uninit values if argument is passed by value
                 if (argtok->variable() && !argtok->variable()->isPointer() && argvalues.size() == 1 &&
                     argvalues.front().isUninitValue()) {
-                    if (CheckUninitVar::isVariableUsage(argtok, settings.library, false, CheckUninitVar::Alloc::NO_ALLOC, 0))
+                    if (CheckUninitVarImpl::isVariableUsage(argtok, settings.library, false, CheckUninitVarImpl::Alloc::NO_ALLOC, 0))
                         continue;
                 }
 
@@ -6221,6 +6240,8 @@ bool ValueFlow::isContainerSizeChanged(const Token* tok, int indirect, const Set
         return true;
     if (astIsLHS(tok) && Token::simpleMatch(tok->astParent(), "["))
         return tok->valueType()->container->stdAssociativeLike;
+    if (Token::simpleMatch(tok->astParent(), "*") && indirect > 0)
+        return isContainerSizeChanged(tok->astParent(), indirect - 1, settings, depth + 1);
     const Library::Container::Action action = astContainerAction(tok, settings.library);
     switch (action) {
     case Library::Container::Action::RESIZE:
@@ -6801,17 +6822,17 @@ static void valueFlowContainerSize(const TokenList& tokenlist,
             } else if (tok->str() == "+=" && astIsContainer(tok->astOperand1())) {
                 const Token* containerTok = tok->astOperand1();
                 const Token* valueTok = tok->astOperand2();
-                const MathLib::bigint size = ValueFlow::valueFlowGetStrLength(valueTok);
+                const MathLib::bigint size = ValueFlow::valueFlowGetStrLength(valueTok, settings);
                 forwardMinimumContainerSize(size, tok, containerTok);
 
             } else if (tok->str() == "=" && Token::simpleMatch(tok->astOperand2(), "+") && astIsContainerString(tok)) {
                 const Token* tok2 = tok->astOperand2();
                 MathLib::bigint size = 0;
                 while (Token::simpleMatch(tok2, "+") && tok2->astOperand2()) {
-                    size += ValueFlow::valueFlowGetStrLength(tok2->astOperand2());
+                    size += ValueFlow::valueFlowGetStrLength(tok2->astOperand2(), settings);
                     tok2 = tok2->astOperand1();
                 }
-                size += ValueFlow::valueFlowGetStrLength(tok2);
+                size += ValueFlow::valueFlowGetStrLength(tok2, settings);
                 forwardMinimumContainerSize(size, tok, tok->astOperand1());
             }
         }

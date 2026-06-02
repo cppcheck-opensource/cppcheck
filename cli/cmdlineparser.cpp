@@ -20,6 +20,7 @@
 
 #include "addoninfo.h"
 #include "check.h"
+#include "checks.h"
 #include "checkers.h"
 #include "color.h"
 #include "config.h"
@@ -49,7 +50,6 @@
 #include <iostream>
 #include <iterator>
 #include <list>
-#include <memory>
 #include <set>
 #include <sstream>
 #include <unordered_set>
@@ -57,9 +57,12 @@
 
 #ifdef HAVE_RULES
 #include "regex.h"
+#include "rule.h"
 
 // xml is used for rules
 #include "xml.h"
+
+#include <memory>
 #endif
 
 static bool addFilesToList(const std::string& fileList, std::vector<std::string>& pathNames)
@@ -359,9 +362,9 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         if (std::strcmp(argv[i], "--doc") == 0) {
             std::ostringstream doc;
             // Get documentation..
-            for (const Check * it : Check::instances()) {
-                const std::string& name(it->name());
-                const std::string info(it->classInfo());
+            for (const Check * const c : CheckInstances::get()) {
+                const std::string& name(c->name());
+                const std::string info(c->classInfo());
                 if (!name.empty() && !info.empty())
                     doc << "## " << name << " ##\n"
                         << info << "\n";
@@ -630,6 +633,9 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         // Show debug messages for ignored files
         else if (std::strcmp(argv[i], "--debug-ignore") == 0)
             mSettings.debugignore = true;
+
+        else if (std::strcmp(argv[i], "--debug-ipc") == 0)
+            mSettings.debugipc = true;
 
         // Show --debug output after the first simplifications
         else if (std::strcmp(argv[i], "--debug") == 0 ||
@@ -1148,6 +1154,11 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                 mLogger.printError("invalid --premium option '" + (p2.empty() ? p : p2) + "'.");
                 return Result::Fail;
             }
+            if (p2 == "cert-c-int-precision") {
+                int tmp;
+                if (!parseNumberArg(argv[i], 31, tmp, true))
+                    return Result::Fail;
+            }
             mSettings.premiumArgs += "--" + p;
             if (isCodingStandard) {
                 // All checkers related to the coding standard should be enabled. The coding standards
@@ -1294,7 +1305,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         // Rule given at command line
         else if (std::strncmp(argv[i], "--rule=", 7) == 0) {
 #ifdef HAVE_RULES
-            Settings::Rule rule;
+            Rule rule;
             rule.pattern = 7 + argv[i];
 
             if (rule.pattern.empty()) {
@@ -1330,7 +1341,8 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                 if (node && strcmp(node->Value(), "rules") == 0)
                     node = node->FirstChildElement("rule");
                 for (; node && strcmp(node->Value(), "rule") == 0; node = node->NextSiblingElement()) {
-                    Settings::Rule rule;
+                    Rule rule;
+                    Regex::Engine regexEngine = Regex::Engine::Pcre;
 
                     for (const tinyxml2::XMLElement *subnode = node->FirstChildElement(); subnode; subnode = subnode->NextSiblingElement()) {
                         const char * const subname = subnode->Name();
@@ -1363,7 +1375,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                         else if (std::strcmp(subname, "engine") == 0) {
                             const char * const engine = empty_if_null(subtext);
                             if (std::strcmp(engine, "pcre") == 0) {
-                                rule.engine = Regex::Engine::Pcre;
+                                regexEngine = Regex::Engine::Pcre;
                             }
                             else {
                                 mLogger.printError(std::string("unknown regex engine '") + engine + "'.");
@@ -1397,7 +1409,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                     }
 
                     std::string regex_err;
-                    auto regex = Regex::create(rule.pattern, rule.engine, regex_err);
+                    auto regex = Regex::create(rule.pattern, regexEngine, regex_err);
                     if (!regex) {
                         mLogger.printError("unable to load rule-file '" + ruleFile + "' - pattern '" + rule.pattern + "' failed to compile (" + regex_err + ").");
                         return Result::Fail;

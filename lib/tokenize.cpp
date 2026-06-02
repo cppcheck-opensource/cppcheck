@@ -1025,7 +1025,12 @@ namespace {
 }
 
 bool Tokenizer::isFunctionPointer(const Token* tok) {
-    return Token::Match(tok, "%name% ) (");
+    if (!Token::Match(tok, "%name%"))
+        return false;
+    tok = tok->next();
+    while (Token::Match(tok, "["))
+        tok = tok->link()->next();
+    return Token::simpleMatch(tok, ") (");
 }
 
 static bool matchCurrentType(const Token* tok, std::map<int, std::string>& types)
@@ -2290,6 +2295,13 @@ void Tokenizer::simplifyTypedefCpp()
                                     tok2 = tok2->tokAt(2);
                                 else
                                     tok2 = tok2->tokAt(3);
+                                while (tok2->link()) {
+                                    tok2 = tok2->link()->next();
+                                    if (Token::simpleMatch(tok2, ";")) {
+                                        tok2 = tok2->previous();
+                                        break;
+                                    }
+                                }
                                 if (!tok2)
                                     syntaxError(nullptr);
 
@@ -4970,7 +4982,7 @@ void Tokenizer::setVarIdPass1()
                         decl = false;
                 } else if (cpp && Token::Match(prev2, "%type% {") && Token::simpleMatch(tok2->link(), "} ;")) { // C++11 initialization style
                     if (tok2->link() != tok2->next() && // add value-initialized variable T x{};
-                        (Token::Match(prev2, "do|try|else") || Token::Match(prev2->tokAt(-2), "struct|class|:")))
+                        (Token::Match(prev2, "do|try|else") || Token::simpleMatch(prev2->tokAt(-2), ":")))
                         continue;
                 } else
                     decl = false;

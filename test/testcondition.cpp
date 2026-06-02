@@ -149,8 +149,8 @@ private:
         // Tokenizer..
         ASSERT_LOC(tokenizer.simplifyTokens1(""), file, line);
 
-        // Run checks..
-        runChecks<CheckCondition>(tokenizer, this);
+        CheckCondition check;
+        runChecks(check, tokenizer, *this);
     }
 
 #define checkP(...) checkP_(__FILE__, __LINE__, __VA_ARGS__)
@@ -162,8 +162,8 @@ private:
         // Tokenizer..
         ASSERT_LOC(tokenizer.simplifyTokens1(""), file, line);
 
-        // Run checks..
-        runChecks<CheckCondition>(tokenizer, this);
+        CheckCondition check;
+        runChecks(check, tokenizer, *this);
     }
 
     void assignAndCompare() {
@@ -527,7 +527,8 @@ private:
         SimpleTokenizer tokenizer(settings1, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        runChecks<CheckCondition>(tokenizer, this);
+        CheckCondition check;
+        runChecks(check, tokenizer, *this);
     }
 
     void multicompare() {
@@ -2682,6 +2683,12 @@ private:
         check("void f1(const std::string &s) { if(s.empty()) if(42 < s.size()) {}}");
         ASSERT_EQUALS("[test.cpp:1:43] -> [test.cpp:1:53]: (warning) Opposite inner 'if' condition leads to a dead code block. [oppositeInnerCondition]\n", errout_str());
 
+        check("void f(const std::string& s, int n) {\n" // #14716
+              "    if (s.size() < n)\n"
+              "        if (s.empty()) {}\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
+
         // TODO: These are identical condition since size cannot be negative
         check("void f1(const std::string &s) { if(s.size() <= 0) if(s.empty()) {}}");
         ASSERT_EQUALS("", errout_str());
@@ -2843,6 +2850,15 @@ private:
               "    return 0;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("void f(int x, int y) {\n"
+              "    int a[] = { x, y };\n"
+              "    if (a[0] == 1) {\n"
+              "        if (a[0] == 1) {}\n"
+              "    }\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:3:14] -> [test.cpp:4:18]: (warning) Identical inner 'if' condition is always true. [identicalInnerCondition]\n",
+                      errout_str());
     }
 
     void identicalConditionAfterEarlyExit() {
@@ -3027,6 +3043,15 @@ private:
               "    (*y)++;\n"
               "    if (x[*y] == 0) {}\n"
               "  }\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void g(int[]);\n" // #14724
+              "void f(int a[]) {\n"
+              "    if (a[0] == 1) {\n"
+              "        g(a);\n"
+              "        if (a[0] == 1) {}\n"
+              "    }\n"
               "}");
         ASSERT_EQUALS("", errout_str());
     }
@@ -3650,7 +3675,7 @@ private:
               "    f ? result = 42 : ret = -1;\n"
               "    return ret;\n"
               "}");
-        ASSERT_EQUALS("", errout_str());
+        ASSERT_EQUALS("[test.cpp:4:9]: (style) Condition 'f' is always false [knownConditionTrueFalse]\n", errout_str());
 
         check("int f(void *handle) {\n"
               "    if (!handle) return 0;\n"
@@ -5150,6 +5175,15 @@ private:
         TODO_ASSERT_EQUALS("",
                            "[test.cpp:11:14]: (style) Condition 'p->i==o' is always true [knownConditionTrueFalse]\n",
                            errout_str());
+
+        check("void f(int x) {\n" // #12320
+              "    int a = 0, b = 0, c = 0;\n"
+              "    a = x;\n"
+              "    if (a) b = x;\n"
+              "    if (b) c = x;\n"
+              "    if (c) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void alwaysTrueInfer() {
@@ -5646,7 +5680,7 @@ private:
         check("void f() {\n" // #8192
               "    for (int i = 0; i > 10; ++i) {}\n"
               "}\n");
-        TODO_ASSERT_EQUALS("[test.cpp:2]: (style) Condition 'i>10' is always false\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:23]: (style) Condition 'i>10' is always false [knownConditionTrueFalse]\n", errout_str());
 
         check("void f() {\n"
               "    for (int i = 1000; i < 20; ++i) {}\n"
@@ -6193,6 +6227,20 @@ private:
         check("enum E { E1 = 1, E2 = 2 };\n"
               "void f(int i) { if (i == E1 || E2) {} }\n");
         ASSERT_EQUALS("[test.cpp:2:29]: (style) Condition 'i==E1||E2' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("void f(bool a, bool b) {\n" // #11614
+              "    if (b) {\n"
+              "        bool x = !b || a;\n"
+              "    }\n"
+              "}\n"
+              "void g(bool a, bool b) {\n"
+              "    if (!b) {\n"
+              "        bool x = a || b;\n"
+              "    }\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:2:9] -> [test.cpp:3:18]: (style) Condition '!b' is always false [knownConditionTrueFalse]\n"
+                      "[test.cpp:7:9] -> [test.cpp:8:23]: (style) Condition 'b' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
     }
 
     void pointerAdditionResultNotNull() {
@@ -6438,6 +6486,19 @@ private:
               "    if (INT_MAX > ll * 8) {}\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("bool f(int a, int b) {\n" // #12896
+              "    if (a < INT_MIN && b > INT_MAX)\n"
+              "        return true;\n"
+              "    return false;\n"
+              "}\n"
+              "bool g(int x) {\n" // #6796
+              "    return (x > INT_MAX) ? true : false;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:13]: (style) Comparing expression of type 'signed int' against value -2147483648. Condition is always false. [compareValueOutOfTypeRangeError]\n"
+                      "[test.cpp:2:28]: (style) Comparing expression of type 'signed int' against value 2147483647. Condition is always false. [compareValueOutOfTypeRangeError]\n"
+                      "[test.cpp:7:17]: (style) Comparing expression of type 'signed int' against value 2147483647. Condition is always false. [compareValueOutOfTypeRangeError]\n",
+                      errout_str());
     }
 
     void knownConditionCast() {

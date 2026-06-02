@@ -3519,6 +3519,13 @@ void invalidFunctionArg_strchr(const char *cs, int c)
     (void)strchr(cs, 256);
 }
 
+void constParameterPointer_strchr(char *str) // #14453
+{
+	char *sep = strchr(str, ':');
+	if (sep)
+		*sep = '\0';
+}
+
 void invalidFunctionArg_log10(float f, double d, const long double ld)
 {
     // cppcheck-suppress invalidFunctionArg

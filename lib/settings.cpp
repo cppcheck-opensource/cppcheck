@@ -17,11 +17,16 @@
  */
 
 #include "config.h"
+#include "errortypes.h"
 #include "settings.h"
 #include "path.h"
 #include "summaries.h"
 #include "suppressions.h"
 #include "vfvalue.h"
+
+#ifdef HAVE_RULES
+#include "rule.h"
+#endif
 
 #include <cctype>
 #include <cstdlib>
@@ -67,6 +72,14 @@ Settings::Settings()
     executor = defaultExecutor();
     pid = getPid();
 }
+
+Settings::~Settings() = default;
+
+Settings::Settings(const Settings&) = default;
+Settings & Settings::operator=(const Settings &) = default;
+
+Settings::Settings(Settings&&) noexcept = default;
+Settings & Settings::operator=(Settings &&) noexcept = default;
 
 std::string Settings::loadCppcheckCfg(Settings& settings, Suppressions& suppressions, bool debug)
 {
@@ -737,6 +750,8 @@ static const std::set<std::string> misracpp2023Checkers{
 
 bool Settings::isPremiumEnabled(const char id[]) const
 {
+    if (premiumArgs.empty())
+        return false;
     if (premiumArgs.find("autosar") != std::string::npos && autosarCheckers.count(id))
         return true;
     if (premiumArgs.find("cert-c-") != std::string::npos && certCCheckers.count(id))
@@ -767,4 +782,19 @@ bool Settings::unusedFunctionOnly()
 {
     const char* unusedFunctionOnly = std::getenv("UNUSEDFUNCTION_ONLY");
     return unusedFunctionOnly && (std::strcmp(unusedFunctionOnly, "1") == 0);
+}
+
+bool Settings::collectLogCheckers(bool* summary, bool* xmlReport, bool* textReport) const
+{
+    const bool s = safety || severity.isEnabled(Severity::information);
+    if (summary)
+        *summary = s;
+    const bool x = outputFormat == Settings::OutputFormat::xml && xml_version == 3;
+    if (xmlReport)
+        *xmlReport = x;
+    const bool t = !checkersReportFilename.empty();
+    if (textReport)
+        *textReport = t;
+
+    return s || x || t;
 }

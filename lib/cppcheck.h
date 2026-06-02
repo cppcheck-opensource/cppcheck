@@ -31,7 +31,9 @@
 #include <string>
 #include <vector>
 
+#ifdef HAVE_RULES
 class TokenList;
+#endif
 struct FileSettings;
 class CheckUnusedFunctions;
 class Tokenizer;
@@ -248,7 +250,7 @@ private:
     bool mUseGlobalSuppressions;
 
     /** File info used for whole program analysis */
-    std::list<Check::FileInfo*> mFileInfo;
+    std::list<const Check::FileInfo*> mFileInfo;
 
     /** Callback for executing a shell command (exe, args, output) */
     ExecuteCmdFn mExecuteCommand;

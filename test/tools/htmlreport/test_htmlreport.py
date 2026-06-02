@@ -107,6 +107,13 @@ class TestHTMLReport(unittest.TestCase):
 
             output_directory.cleanup()
 
+    def testSeverityFilterBar(self):
+        with runCheck(
+            xml_filename=os.path.join(TEST_TOOLS_DIR, 'example.xml'),
+        ) as (report, output_directory):
+            self.assertIn('onclick="toggleSeverity(this)"', report)
+            output_directory.cleanup()
+
 
 @contextlib.contextmanager
 def runCheck(source_filename=None, xml_version='1', xml_filename=None, checkers_filename=None):

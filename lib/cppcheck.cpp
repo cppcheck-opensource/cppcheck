@@ -21,6 +21,7 @@
 #include "addoninfo.h"
 #include "analyzerinfo.h"
 #include "check.h"
+#include "checks.h"
 #include "checkunusedfunctions.h"
 #include "clangimport.h"
 #include "color.h"
@@ -46,6 +47,7 @@
 
 #ifdef HAVE_RULES
 #include "regex.h"
+#include "rule.h"
 #endif
 
 #include <algorithm>
@@ -1338,8 +1340,7 @@ void CppCheck::checkNormalTokens(const Tokenizer &tokenizer, AnalyzerInformation
         const std::time_t maxTime = mSettings.checksMaxTime > 0 ? std::time(nullptr) + mSettings.checksMaxTime : 0;
 
         // call all "runChecks" in all registered Check classes
-        // cppcheck-suppress shadowFunction - TODO: fix this
-        for (Check *check : Check::instances()) {
+        for (Check * const c : CheckInstances::get()) {
             if (Settings::terminated())
                 return;
 
@@ -1357,8 +1358,8 @@ void CppCheck::checkNormalTokens(const Tokenizer &tokenizer, AnalyzerInformation
                 return;
             }
 
-            Timer::run(check->name() + "::runChecks", mTimerResults, [&]() {
-                check->runChecks(tokenizer, &mErrorLogger);
+            Timer::run(c->name() + "::runChecks", mTimerResults, [&]() {
+                c->runChecks(tokenizer, mErrorLogger);
             });
         }
     }
@@ -1378,7 +1379,7 @@ void CppCheck::checkNormalTokens(const Tokenizer &tokenizer, AnalyzerInformation
     if (mSettings.useSingleJob() || analyzerInformation) {
         // Analyse the tokens..
         {
-            CTU::FileInfo * const fi1 = CTU::getFileInfo(tokenizer);
+            const CTU::FileInfo * const fi1 = CTU::getFileInfo(tokenizer);
             if (analyzerInformation)
                 analyzerInformation->setFileInfo("ctu", fi1->toString());
             if (mSettings.useSingleJob())
@@ -1388,11 +1389,10 @@ void CppCheck::checkNormalTokens(const Tokenizer &tokenizer, AnalyzerInformation
         }
 
         if (!doUnusedFunctionOnly) {
-            // cppcheck-suppress shadowFunction - TODO: fix this
-            for (const Check *check : Check::instances()) {
-                if (Check::FileInfo * const fi = check->getFileInfo(tokenizer, mSettings, currentConfig)) {
+            for (const Check * const c : CheckInstances::get()) {
+                if (const Check::FileInfo * const fi = c->getFileInfo(tokenizer, mSettings, currentConfig)) {
                     if (analyzerInformation)
-                        analyzerInformation->setFileInfo(check->name(), fi->toString());
+                        analyzerInformation->setFileInfo(c->name(), fi->toString());
                     if (mSettings.useSingleJob())
                         mFileInfo.push_back(fi);
                     else
@@ -1416,7 +1416,7 @@ void CppCheck::checkNormalTokens(const Tokenizer &tokenizer, AnalyzerInformation
 #ifdef HAVE_RULES
 bool CppCheck::hasRule(const std::string &tokenlist) const
 {
-    return std::any_of(mSettings.rules.cbegin(), mSettings.rules.cend(), [&](const Settings::Rule& rule) {
+    return std::any_of(mSettings.rules.cbegin(), mSettings.rules.cend(), [&](const Rule& rule) {
         return rule.tokenlist == tokenlist;
     });
 }
@@ -1434,7 +1434,7 @@ void CppCheck::executeRules(const std::string &tokenlist, const TokenList &list)
         str += tok->str();
     }
 
-    for (const Settings::Rule &rule : mSettings.rules) {
+    for (const Rule &rule : mSettings.rules) {
         if (rule.tokenlist != tokenlist)
             continue;
 
@@ -1714,8 +1714,8 @@ void CppCheck::getErrorMessages(ErrorLogger &errorlogger)
     s.addEnabled("all");
 
     // call all "getErrorMessages" in all registered Check classes
-    for (auto it = Check::instances().cbegin(); it != Check::instances().cend(); ++it)
-        (*it)->getErrorMessages(&errorlogger, &s);
+    for (const Check * const c : CheckInstances::get())
+        c->getErrorMessages(errorlogger, s);
 
     CheckUnusedFunctions::getErrorMessages(errorlogger);
     Preprocessor::getErrorMessages(errorlogger, s);
@@ -1832,9 +1832,8 @@ bool CppCheck::analyseWholeProgram()
             }
         }
 
-        // cppcheck-suppress shadowFunction - TODO: fix this
-        for (Check *check : Check::instances())
-            errors |= check->analyseWholeProgram(ctu, mFileInfo, mSettings, mErrorLogger);  // TODO: ctu
+        for (Check * const c : CheckInstances::get())
+            errors |= c->analyseWholeProgram(ctu, mFileInfo, mSettings, mErrorLogger);  // TODO: ctu
     }
 
     if (mUnusedFunctionsCheck)
@@ -1856,7 +1855,7 @@ unsigned int CppCheck::analyseWholeProgram(const std::string &buildDir, const st
 
     executeAddonsWholeProgram(files, fileSettings, ctuInfo);
 
-    std::list<Check::FileInfo*> fileInfoList;
+    std::list<const Check::FileInfo*> fileInfoList;
     CTU::FileInfo ctuFileInfo;
 
     const auto handler = [&fileInfoList, &ctuFileInfo](const char* checkattr, const tinyxml2::XMLElement* e, const AnalyzerInformation::Info& filesTxtInfo) {
@@ -1864,10 +1863,9 @@ unsigned int CppCheck::analyseWholeProgram(const std::string &buildDir, const st
             ctuFileInfo.loadFromXml(e);
             return;
         }
-        for (const Check *check : Check::instances()) {
+        for (const Check *check : CheckInstances::get()) {
             if (checkattr == check->name()) {
-                if (Check::FileInfo* fi = check->loadFileInfoFromXml(e)) {
-                    fi->file0 = filesTxtInfo.sourceFile;
+                if (const Check::FileInfo* fi = check->loadFileInfoFromXml(e, filesTxtInfo.sourceFile)) {
                     fileInfoList.push_back(fi);
                 }
             }
@@ -1881,12 +1879,11 @@ unsigned int CppCheck::analyseWholeProgram(const std::string &buildDir, const st
     }
     else {
         // Analyse the tokens
-        // cppcheck-suppress shadowFunction - TODO: fix this
-        for (Check *check : Check::instances())
-            check->analyseWholeProgram(ctuFileInfo, fileInfoList, mSettings, mErrorLogger);
+        for (Check * const c : CheckInstances::get())
+            c->analyseWholeProgram(ctuFileInfo, fileInfoList, mSettings, mErrorLogger);
     }
 
-    for (Check::FileInfo *fi : fileInfoList)
+    for (const Check::FileInfo *fi : fileInfoList)
         delete fi;
 
     return mLogger->exitcode();

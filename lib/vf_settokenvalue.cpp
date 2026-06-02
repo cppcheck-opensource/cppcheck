@@ -291,9 +291,9 @@ namespace ValueFlow
 
                         combineValueProperties(value1, value2, result);
 
-                        if (Token::simpleMatch(parent, "==") && result.intvalue)
+                        if (Token::simpleMatch(parent, "==") && result.intvalue && !(value1.intvalue == 0 && value2.intvalue == 0))
                             continue;
-                        if (Token::simpleMatch(parent, "!=") && !result.intvalue)
+                        if (Token::simpleMatch(parent, "!=") && !result.intvalue && !(value1.intvalue == 0 && value2.intvalue == 0))
                             continue;
 
                         setTokenValue(parent, std::move(result), settings);

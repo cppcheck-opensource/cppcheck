@@ -19,6 +19,7 @@
 #include "vf_common.h"
 
 #include "astutils.h"
+#include "library.h"
 #include "mathlib.h"
 #include "path.h"
 #include "platform.h"
@@ -160,11 +161,13 @@ namespace ValueFlow
                 value.setKnown();
             setTokenValue(tok, std::move(value), settings);
         } else if (Token::simpleMatch(tok, "sizeof (")) {
-            if (tok->next()->astOperand2() && !tok->next()->astOperand2()->isLiteral() && tok->next()->astOperand2()->valueType() &&
-                (tok->next()->astOperand2()->valueType()->pointer == 0 || // <- TODO this is a bailout, abort when there are array->pointer conversions
-                 (tok->next()->astOperand2()->variable() && !tok->next()->astOperand2()->variable()->isArray())) &&
-                !tok->next()->astOperand2()->valueType()->isEnum()) { // <- TODO this is a bailout, handle enum with non-int types
-                const size_t sz = tok->next()->astOperand2()->valueType()->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
+            const Token* const obj = tok->next()->astOperand2();
+            if (obj && !obj->isLiteral() && obj->valueType() &&
+                (obj->valueType()->pointer == 0 || // <- TODO this is a bailout, abort when there are array->pointer conversions
+                 (obj->variable() && !obj->variable()->isArray())) &&
+                !obj->valueType()->isEnum()) { // <- TODO this is a bailout, handle enum with non-int types
+                const auto ptrPointee = obj->valueType()->pointer > 0 ? ValueType::SizeOf::Pointer : ValueType::SizeOf::Pointee;
+                const size_t sz = obj->valueType()->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ptrPointee);
                 if (sz) {
                     Value value(sz);
                     value.setKnown();
@@ -389,7 +392,7 @@ namespace ValueFlow
         v.debugPath.emplace_back(tok, std::move(s));
     }
 
-    MathLib::bigint valueFlowGetStrLength(const Token* tok)
+    MathLib::bigint valueFlowGetStrLength(const Token* tok, const Settings& settings)
     {
         if (tok->tokType() == Token::eString)
             return Token::getStrLength(tok);
@@ -399,8 +402,10 @@ namespace ValueFlow
             return v->intvalue;
         if (const Value* v = tok->getKnownValue(Value::ValueType::TOK)) {
             if (v->tokvalue != tok)
-                return valueFlowGetStrLength(v->tokvalue);
+                return valueFlowGetStrLength(v->tokvalue, settings);
         }
+        if (const Token* cont = settings.library.getContainerFromYield(tok, Library::Container::Yield::BUFFER_NT))
+            return valueFlowGetStrLength(cont, settings);
         return 0;
     }
 }

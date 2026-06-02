@@ -61,8 +61,8 @@ private:
         SimpleTokenizer tokenizer(settings1, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        // Check..
-        runChecks<CheckType>(tokenizer, this);
+        CheckType check;
+        runChecks(check, tokenizer, *this);
     }
 
     // TODO: get rid of this
@@ -73,8 +73,8 @@ private:
         SimpleTokenizer tokenizer(settings1, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        // Check..
-        runChecks<CheckType>(tokenizer, this);
+        CheckType check;
+        runChecks(check, tokenizer, *this);
     }
 
     struct CheckPOptions
@@ -93,8 +93,8 @@ private:
         // Tokenizer..
         ASSERT_LOC(tokenizer.simplifyTokens1(""), file, line);
 
-        // Check..
-        runChecks<CheckType>(tokenizer, this);
+        CheckType check;
+        runChecks(check, tokenizer, *this);
     }
 
     void checkTooBigShift_Unix32() {

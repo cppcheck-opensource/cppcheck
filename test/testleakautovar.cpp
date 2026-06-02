@@ -154,6 +154,7 @@ private:
         TEST_CASE(ifelse27);
         TEST_CASE(ifelse28); // #11038
         TEST_CASE(ifelse29);
+        TEST_CASE(ifelse30);
 
         // switch
         TEST_CASE(switch1);
@@ -225,23 +226,17 @@ private:
     template<size_t size>
     void check_(const char* file, int line, const char (&code)[size], const CheckOptions& options = make_default_obj()) {
         const Settings& settings1 = options.s ? *options.s : settings;
-
-        // Tokenize..
-        SimpleTokenizer tokenizer(settings1, *this, options.cpp);
-        ASSERT_LOC(tokenizer.tokenize(code), file, line);
-
-        // Check for leaks..
-        runChecks<CheckLeakAutoVar>(tokenizer, this);
+        check_(file, line, code, settings1, options.cpp);
     }
 
     template<size_t size>
-    void check_(const char* file, int line, const char (&code)[size], const Settings & s) {
+    void check_(const char* file, int line, const char (&code)[size], const Settings & s, bool cpp = true) {
         // Tokenize..
-        SimpleTokenizer tokenizer(s, *this);
+        SimpleTokenizer tokenizer(s, *this, cpp);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        // Check for leaks..
-        runChecks<CheckLeakAutoVar>(tokenizer, this);
+        CheckLeakAutoVar check;
+        runChecks(check, tokenizer, *this);
     }
 
     void assign1() {
@@ -2390,6 +2385,22 @@ private:
         ASSERT_EQUALS("", errout_str()); // don't crash
     }
 
+    void ifelse30() {
+        check("void f(void** pp) {\n" // #14709
+              "    void* p = malloc(8);\n"
+              "    if ((void*)p == 0)\n"
+              "        return;\n"
+              "    *pp = p;\n"
+              "}\n"
+              "void g(void** pp) {\n"
+              "    void* p = malloc(8);\n"
+              "    if (static_cast<void*>(p) == 0)\n"
+              "        return;\n"
+              "    *pp = p;\n"
+              "}\n", dinit(CheckOptions, $.cpp = true));
+        ASSERT_EQUALS("", errout_str());
+    }
+
     void switch1() {
         check("void f() {\n"
               "    char *p = 0;\n"
@@ -3255,8 +3266,8 @@ private:
         // Tokenizer..
         ASSERT_LOC(tokenizer.simplifyTokens1(""), file, line);
 
-        // Check for leaks..
-        runChecks<CheckLeakAutoVar>(tokenizer, this);
+        CheckLeakAutoVar check;
+        runChecks(check, tokenizer, *this);
     }
 
     void run() override {
@@ -3302,8 +3313,8 @@ private:
         SimpleTokenizer tokenizer(settings, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        // Check for leaks..
-        runChecks<CheckLeakAutoVar>(tokenizer, this);
+        CheckLeakAutoVar check;
+        runChecks(check, tokenizer, *this);
     }
 
     void run() override {
@@ -3407,8 +3418,8 @@ private:
         SimpleTokenizer tokenizer(settings, *this, false);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        // Check for leaks..
-        runChecks<CheckLeakAutoVar>(tokenizer, this);
+        CheckLeakAutoVar check;
+        runChecks(check, tokenizer, *this);
     }
 
     void run() override {
@@ -3480,8 +3491,8 @@ private:
         SimpleTokenizer tokenizer(settings, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        // Check for leaks..
-        runChecks<CheckLeakAutoVar>(tokenizer, this);
+        CheckLeakAutoVar check;
+        runChecks(check, tokenizer, *this);
     }
 
     void run() override {

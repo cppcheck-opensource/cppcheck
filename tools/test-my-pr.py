@@ -124,8 +124,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Run this script from your branch with proposed Cppcheck patch to verify your patch against current main. It will compare output of testing bunch of opensource packages')
     parser.add_argument('-j', default=1, type=int, help='Concurency execution threads')
+    parser.add_argument('-n', '--max-packages', default=256, type=int, help='Maximum number of packages to test')
     package_group = parser.add_mutually_exclusive_group()
-    package_group.add_argument('-p', default=256, type=int, help='Count of packages to check')
     package_group.add_argument('--packages', nargs='+', help='Check specific packages and then stop.')
     package_group.add_argument('--packages-path', default=None, type=str, help='Check packages in path.')
     parser.add_argument('-o', default='my_check_diff.log', help='Filename of result inside a working path dir')
@@ -145,6 +145,8 @@ if __name__ == "__main__":
     elif args.packages is None:
         args.packages = getpackages()
         random.shuffle(args.packages)
+
+    packages_to_process = min(args.max_packages, len(args.packages))
 
     print('\n'.join(args.packages[:20]))
 
@@ -212,8 +214,11 @@ if __name__ == "__main__":
     crashes = []
     timeouts = []
 
-    while packages_processed < args.p and args.packages:
+    while packages_processed < packages_to_process and args.packages:
         package = args.packages.pop()
+        packages_processed += 1
+        print('Processing package {} of {}'.format(packages_processed, packages_to_process))
+
 
         if package.startswith('ftp://') or package.startswith('https://'):
             tgz = lib.download_package(work_path, package, None)
@@ -297,9 +302,6 @@ if __name__ == "__main__":
                     package, format_float(time_main),
                     format_float(time_your), format_float(time_your, time_main),
                     package_width=package_width, timing_width=timing_width))
-
-        packages_processed += 1
-        print(str(packages_processed) + ' of ' + str(args.p) + ' packages processed\n')
 
     with open(result_file, 'a') as myfile:
         myfile.write('\n\ncrashes\n')

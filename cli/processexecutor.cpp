@@ -37,6 +37,7 @@
 #include <numeric>
 #include <cassert>
 #include <cerrno>
+#include <chrono>
 #include <csignal>
 #include <cstdint>
 #include <cstdlib>
@@ -44,9 +45,9 @@
 #include <iostream>
 #include <list>
 #include <map>
+#include <memory>
 #include <sstream>
 #include <sys/select.h>
-#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -78,9 +79,9 @@ ProcessExecutor::ProcessExecutor(const std::list<FileWithDetails> &files, const 
 namespace {
     class PipeWriter : public ErrorLogger {
     public:
-        enum PipeSignal : std::uint8_t {REPORT_OUT='1',REPORT_ERROR='2',REPORT_SUPPR_INLINE='3',REPORT_SUPPR='4',CHILD_END='5',REPORT_METRIC='6'};
+        enum PipeSignal : std::uint8_t {REPORT_OUT='1',REPORT_ERROR='2',REPORT_SUPPR_INLINE='3',REPORT_SUPPR='4',CHILD_END='5',REPORT_METRIC='6',REPORT_TIMER='7'};
 
-        explicit PipeWriter(int pipe) : mWpipe(pipe) {}
+        explicit PipeWriter(int pipe, bool debug) : mWpipe(pipe), mDebug(debug) {}
 
         void reportOut(const std::string &outmsg, Color c) override {
             writeToPipe(REPORT_OUT, static_cast<char>(c) + outmsg);
@@ -102,6 +103,18 @@ namespace {
 
         void reportMetric(const std::string &metric) override {
             writeToPipe(REPORT_METRIC, metric);
+        }
+
+        void writeTimer(const TimerResults* timerResults) const {
+            if (!timerResults)
+                return;
+
+            for (const auto& entry : timerResults->getResults())
+            {
+                for (const auto& d : entry.second) {
+                    writeToPipe(REPORT_TIMER, entry.first + ";" + std::to_string(d.count()));
+                }
+            }
         }
 
         void writeEnd(const std::string& str) const {
@@ -141,6 +154,9 @@ namespace {
 
         void writeToPipe(PipeSignal type, const std::string &data) const
         {
+            if (mDebug)
+                std::cout << "writeToPipe - " << static_cast<char>(type) << " - " << data << std::endl;
+
             {
                 const auto t = static_cast<char>(type);
                 writeToPipeInternal(type, &t, 1);
@@ -157,6 +173,7 @@ namespace {
         }
 
         const int mWpipe;
+        const bool mDebug;
     };
 }
 
@@ -188,7 +205,8 @@ bool ProcessExecutor::handleRead(int rpipe, unsigned int &result, const std::str
         type != PipeWriter::REPORT_SUPPR_INLINE &&
         type != PipeWriter::REPORT_SUPPR &&
         type != PipeWriter::CHILD_END &&
-        type != PipeWriter::REPORT_METRIC) {
+        type != PipeWriter::REPORT_METRIC &&
+        type != PipeWriter::REPORT_TIMER) {
         std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") invalid type " << int(type) << std::endl;
         std::exit(EXIT_FAILURE);
     }
@@ -221,6 +239,9 @@ bool ProcessExecutor::handleRead(int rpipe, unsigned int &result, const std::str
             data_start += bytes_read;
         } while (bytes_to_read != 0);
     }
+
+    if (mSettings.debugipc)
+        std::cout << "handleRead - " << type << " - " << buf << std::endl;
 
     bool res = true;
     if (type == PipeWriter::REPORT_OUT) {
@@ -272,6 +293,20 @@ bool ProcessExecutor::handleRead(int rpipe, unsigned int &result, const std::str
         res = false;
     } else if (type == PipeWriter::REPORT_METRIC) {
         mErrorLogger.reportMetric(buf);
+    } else if (type == PipeWriter::REPORT_TIMER) {
+        if (!mTimerResults) {
+            // TODO: make this non-fatal
+            std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") received timer results when no timer is enabled" << std::endl;
+            std::exit(EXIT_FAILURE);
+        }
+        const auto parts = splitString(buf, ';');
+        if (parts.size() < 2)
+        {
+            // TODO: make this non-fatal
+            std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") adding of timer result failed - insufficient data" << std::endl;
+            std::exit(EXIT_FAILURE);
+        }
+        mTimerResults->addResults(parts[0], std::chrono::milliseconds{strToInt<long>(parts[1])});
     }
 
     return res;
@@ -307,6 +342,12 @@ unsigned int ProcessExecutor::check()
     const std::size_t totalfilesize = std::accumulate(mFiles.cbegin(), mFiles.cend(), std::size_t(0), [](std::size_t v, const FileWithDetails& p) {
         return v + p.size();
     });
+
+    // pass unmodified suppressions to forked process so we only transfer back the actual changes done by the fork
+    // and do not see the changes which have already been transferred back
+    Suppressions supprs;
+    supprs.nomsg.addSuppressions(mSuppressions.nomsg.getSuppressions());
+    supprs.nofail.addSuppressions(mSuppressions.nofail.getSuppressions());
 
     std::list<int> rpipes;
     std::map<pid_t, std::string> childFile;
@@ -346,8 +387,13 @@ unsigned int ProcessExecutor::check()
 #endif
                 close(pipes[0]);
 
-                PipeWriter pipewriter(pipes[1]);
-                CppCheck fileChecker(mSettings, mSuppressions, pipewriter, mTimerResults, false, mExecuteCommand);
+                // create a separate result object so we do not get the results which have already been transferred back
+                std::unique_ptr<TimerResults> timerResults;
+                if (mTimerResults)
+                    timerResults.reset(new TimerResults);
+
+                PipeWriter pipewriter(pipes[1], mSettings.debugipc);
+                CppCheck fileChecker(mSettings, supprs, pipewriter, timerResults.get(), false, mExecuteCommand);
                 unsigned int resultOfCheck = 0;
 
                 if (iFileSettings != mFileSettings.end()) {
@@ -357,7 +403,9 @@ unsigned int ProcessExecutor::check()
                     resultOfCheck = fileChecker.check(*iFile);
                 }
 
-                pipewriter.writeSuppr(mSuppressions.nomsg);
+                pipewriter.writeSuppr(supprs.nomsg);
+
+                pipewriter.writeTimer(timerResults.get());
 
                 pipewriter.writeEnd(std::to_string(resultOfCheck));
                 std::exit(EXIT_SUCCESS);
@@ -468,7 +516,7 @@ void ProcessExecutor::reportInternalChildErr(const std::string &childname, const
                               "cppcheckError",
                               Certainty::normal);
 
-    if (!mSuppressions.nomsg.isSuppressed(errmsg, {}))
+    if (hasToLog(errmsg))
         mErrorLogger.reportErr(errmsg);
 }
 

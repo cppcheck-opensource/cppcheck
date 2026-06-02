@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -118,9 +118,9 @@ public:
 
     void setPlatformInfo();
 
-    simplecpp::TokenList preprocess(const std::string &cfg, std::vector<std::string> &files, simplecpp::OutputList& outputList);
+    simplecpp::TokenList preprocess(const std::string &cfgStr, std::vector<std::string> &files, simplecpp::OutputList& outputList);
 
-    std::string getcode(const std::string &cfg, std::vector<std::string> &files, bool writeLocations);
+    std::string getcode(const std::string &cfgStr, std::vector<std::string> &files, bool writeLocations);
 
     /**
      * Calculate HASH. Using toolinfo, tokens1, filedata.

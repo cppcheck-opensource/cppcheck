@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -150,11 +150,11 @@ bool ProgramMemory::getContainerEmptyValue(nonneg int exprid, MathLib::bigint& r
     return false;
 }
 
-void ProgramMemory::setContainerSizeValue(const Token* expr, MathLib::bigint value, bool isEqual)
+void ProgramMemory::setContainerSizeValue(const Token* expr, MathLib::bigint value, bool equal)
 {
     ValueFlow::Value v(value);
     v.valueType = ValueFlow::Value::ValueType::CONTAINER_SIZE;
-    if (!isEqual)
+    if (!equal)
         v.valueKind = ValueFlow::Value::ValueKind::Impossible;
     setValue(expr, v);
 }
@@ -632,10 +632,6 @@ static MathLib::bigint asInt(const ValueFlow::Value& value)
     return value.isFloatValue() ? static_cast<MathLib::bigint>(value.floatValue) : value.intvalue;
 }
 
-static std::string removeAssign(const std::string& assign) {
-    return std::string{assign.cbegin(), assign.cend() - 1};
-}
-
 namespace {
     struct assign {
         template<class T, class U>
@@ -651,22 +647,23 @@ static bool isIntegralValue(const ValueFlow::Value& value)
     return value.isIntValue() || value.isIteratorValue() || value.isSymbolicValue();
 }
 
-static ValueFlow::Value evaluate(const std::string& op, const ValueFlow::Value& lhs, const ValueFlow::Value& rhs)
+static ValueFlow::Value evaluate(const Token* op, const ValueFlow::Value& lhs, const ValueFlow::Value& rhs, bool removeAssign = false)
 {
+    const std::string opStr = removeAssign ? op->str().substr(0, op->str().size() - 1) : op->str();
     ValueFlow::Value result;
     if (lhs.isImpossible() && rhs.isImpossible())
         return ValueFlow::Value::unknown();
     if (lhs.isImpossible() || rhs.isImpossible()) {
         // noninvertible
-        if (contains({"%", "/", "&", "|"}, op))
+        if (contains({"%", "/", "&", "|"}, opStr))
             return ValueFlow::Value::unknown();
         result.setImpossible();
     }
     if (isNumericValue(lhs) && isNumericValue(rhs)) {
         if (lhs.isFloatValue() || rhs.isFloatValue()) {
-            result.valueType = ValueFlow::Value::ValueType::FLOAT;
+            result.valueType = op->isArithmeticalOp() ? ValueFlow::Value::ValueType::FLOAT : ValueFlow::Value::ValueType::INT;
             bool error = false;
-            result.floatValue = calculate(op, asFloat(lhs), asFloat(rhs), &error);
+            result.floatValue = calculate(opStr, asFloat(lhs), asFloat(rhs), &error);
             if (error)
                 return ValueFlow::Value::unknown();
             return result;
@@ -678,12 +675,12 @@ static ValueFlow::Value evaluate(const std::string& op, const ValueFlow::Value& 
     // If not the same type then one must be int
     if (lhs.valueType != rhs.valueType && !lhs.isIntValue() && !rhs.isIntValue())
         return ValueFlow::Value::unknown();
-    const bool compareOp = contains({"==", "!=", "<", ">", ">=", "<="}, op);
+    const bool compareOp = op->isComparisonOp();
     // Comparison must be the same type
     if (compareOp && lhs.valueType != rhs.valueType)
         return ValueFlow::Value::unknown();
     // Only add, subtract, and compare for non-integers
-    if (!compareOp && !contains({"+", "-"}, op) && !lhs.isIntValue() && !rhs.isIntValue())
+    if (!compareOp && !contains({"+", "-"}, opStr) && !lhs.isIntValue() && !rhs.isIntValue())
         return ValueFlow::Value::unknown();
     // Both can't be iterators for non-compare
     if (!compareOp && lhs.isIteratorValue() && rhs.isIteratorValue())
@@ -701,10 +698,10 @@ static ValueFlow::Value evaluate(const std::string& op, const ValueFlow::Value& 
         result.valueType = ValueFlow::Value::ValueType::INT;
     }
     bool error = false;
-    result.intvalue = calculate(op, lhs.intvalue, rhs.intvalue, &error);
+    result.intvalue = calculate(opStr, lhs.intvalue, rhs.intvalue, &error);
     if (error)
         return ValueFlow::Value::unknown();
-    if (result.isImpossible() && op == "!=") {
+    if (result.isImpossible() && opStr == "!=") {
         if (isTrue(result)) {
             result.intvalue = 1;
         } else if (isFalse(result)) {
@@ -1501,7 +1498,7 @@ namespace {
                     if (!pm->hasValue(expr->astOperand1()->exprId()))
                         return unknown();
                     ValueFlow::Value& lhs = pm->at(expr->astOperand1()->exprId());
-                    rhs = evaluate(removeAssign(expr->str()), lhs, rhs);
+                    rhs = evaluate(expr, lhs, rhs, /*removeAssign*/ true);
                     if (lhs.isIntValue())
                         ValueFlow::Value::visitValue(rhs, std::bind(assign{}, std::ref(lhs.intvalue), std::placeholders::_1));
                     else if (lhs.isFloatValue())
@@ -1565,7 +1562,7 @@ namespace {
                 ValueFlow::Value rhs = execute(expr->astOperand2());
                 if (rhs.isUninitValue())
                     return unknown();
-                ValueFlow::Value r = evaluate(expr->str(), lhs, rhs);
+                ValueFlow::Value r = evaluate(expr, lhs, rhs);
                 if (expr->isComparisonOp() && (r.isUninitValue() || r.isImpossible())) {
                     if (rhs.isIntValue() && !expr->astOperand1()->values().empty()) {
                         std::vector<ValueFlow::Value> result = infer(makeIntegralInferModel(),

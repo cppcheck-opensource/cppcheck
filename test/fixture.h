@@ -32,7 +32,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <exception>
-#include <list>
 #include <memory>
 #include <set>
 #include <sstream>
@@ -135,21 +134,13 @@ protected:
 
     void processOptions(const options& args);
 
-    template<typename T>
-    static T& getCheck()
+    static Check& getCheck(Check& check)
     {
-        for (Check *check : Check::instances()) {
-            //cppcheck-suppress useStlAlgorithm
-            if (T* c = dynamic_cast<T*>(check))
-                return *c;
-        }
-        throw std::runtime_error("instance not found");
+        return check;
     }
 
-    template<typename T>
-    static void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+    static void runChecks(Check& check, const Tokenizer &tokenizer, ErrorLogger& errorLogger)
     {
-        Check& check = getCheck<T>();
         check.runChecks(tokenizer, errorLogger);
     }
 

@@ -343,6 +343,8 @@ private:
         TEST_CASE(getConfigsAndCodeIssue14317);
         TEST_CASE(getConfigsMostGeneralConfigIssue14317);
 
+        TEST_CASE(getConfigsInvalid); // #14732
+
         TEST_CASE(if_sizeof);
 
         TEST_CASE(invalid_ifs); // #5909
@@ -1994,12 +1996,12 @@ private:
 
     void invalid_define_1() {
         (void)getcode(settings0, *this, "#define =\n");
-        ASSERT_EQUALS("[file.c:1:2]: (error) Failed to parse #define [syntaxError]\n", errout_str());
+        ASSERT_EQUALS("[file.c:1:2]: (error) Failed to parse #define, bad macro syntax [syntaxError]\n", errout_str());
     }
 
     void invalid_define_2() {  // #4036
         (void)getcode(settings0, *this, "#define () {(int f(x) }\n");
-        ASSERT_EQUALS("[file.c:1:2]: (error) Failed to parse #define [syntaxError]\n", errout_str());
+        ASSERT_EQUALS("[file.c:1:2]: (error) Failed to parse #define, bad macro syntax [syntaxError]\n", errout_str());
     }
 
     void inline_suppressions() {
@@ -2713,6 +2715,33 @@ private:
                                 "#endif\n";
         // Test getConfigsStr()
         ASSERT_EQUALS("\nX\nY=Y\nZ\n", getConfigsStr(filedata));
+    }
+
+    void getConfigsInvalid() { // #14732
+        {
+            const char filedata[] = "#if<";
+            ASSERT_EQUALS("\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if>";
+            ASSERT_EQUALS("\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if==";
+            ASSERT_EQUALS("\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if<=";
+            ASSERT_EQUALS("\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if>=";
+            ASSERT_EQUALS("\n", getConfigsStr(filedata));
+        }
+        {
+            const char filedata[] = "#if!";
+            ASSERT_EQUALS("\n", getConfigsStr(filedata));
+        }
     }
 
     void if_sizeof() { // #4071

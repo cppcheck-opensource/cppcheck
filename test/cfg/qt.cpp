@@ -76,6 +76,11 @@ void ignoredReturnValue_QDir(const QString& dirname)
     dir.entryList();
 }
 
+void assertWithSideEffect_QDir_exists(const char *path) { // #14720
+    QDir dir(path);
+    assert(dir.exists());
+    (void)dir;
+}
 
 void unusedVariable_QTransform()
 {
@@ -723,6 +728,7 @@ namespace {
     private:
         int m_value;
     };
+    // cppcheck-suppress shadowFunction
     void Counter1::setValue(int value) {
         if (value != m_value) {
             m_value = value;
@@ -746,6 +752,7 @@ namespace {
     private:
         int m_value;
     };
+    // cppcheck-suppress shadowFunction
     void Counter2::setValue(int value) {
         if (value != m_value) {
             m_value = value;

@@ -2,7 +2,17 @@ import datetime
 import glob
 import os
 import re
+import sys
 import requests
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    # Fallback: passthrough iterator if tqdm is not installed
+    def tqdm(iterable, total=None, desc=None, **kwargs):
+        if desc:
+            print(desc, file=sys.stderr)
+        return iterable
 
 def print_checkers(glob_pattern:str):
     checkers = {}
@@ -908,44 +918,65 @@ std::vector<checkers::Info> checkers::autosarInfo{
 };
 """)
 
+# SEI CERT is available as markdown files at
+# https://github.com/cmu-sei/secure-coding-standards
+CERT_REPO = 'cmu-sei/secure-coding-standards'
+CERT_BRANCH = 'main'
 
-def getCertCInfo(main_url:str):
+# Cache git tree
+_cert_tree = None
+
+def listCertFiles(content_subdir:str):
+    """Lists the rules and recommendation files for one part of the standard."""
+    global _cert_tree
+    if _cert_tree is None:
+        url = 'https://api.github.com/repos/%s/git/trees/%s?recursive=1' % (CERT_REPO, CERT_BRANCH)
+        _cert_tree = requests.get(url, timeout=50).json()['tree']
+    prefix = 'content/' + content_subdir
+    files = []
+    for entry in _cert_tree:
+        path = entry['path']
+        if entry['type'] != 'blob' or not path.startswith(prefix) or not path.endswith('.md'):
+            continue
+        if 'index' in path.rsplit('/', 1)[-1].lower():
+            continue
+        files.append(path)
+    return sorted(files)
+
+def printCertCInfo(content_subdir:str):
     """Fetches CERT C rules information."""
-    # Fetching the CERT C rules page
-    r = requests.get(main_url, timeout=30)
-    mainpage = r.text
-    for line in mainpage.split('\n'):
-        res = re.search(r'<a href="(/confluence/[^"]+)">(Rule|Rec.) \d\d[.] [A-Za-z ]+ [(][A-Z][A-Z][A-Z][)]', line)
+    paths = listCertFiles(content_subdir)
+    rules = {}
+    for path in tqdm(paths, total=len(paths), desc=f'Fetching {content_subdir}', file=sys.stderr):
+        raw = 'https://raw.githubusercontent.com/%s/%s/%s' % (CERT_REPO, CERT_BRANCH, path)
+        text = requests.get(raw, timeout=30).text
+        res = re.search(r'^#\s+([A-Z]{3}\d{2}-C(?:PP)?)\b', text, re.MULTILINE)
         if res is None:
             continue
-        r = requests.get('https://wiki.sei.cmu.edu' + res.group(1), timeout=30)
-        text = r.text.replace('\n', '').replace('<tr>', '\n').replace('</tr>', '\n')
-        rules = []
-        for line in text.split('\n'):
-            if not line.startswith('<td'):
-                continue
-            #print(line)
-            res = re.match(r'[^>]+>([A-Z][A-Z][A-Z][0-9][0-9]-CP*)<.*>(L[1-3])<.+', line)
-            if res:
-                if res.group(1) == 'EXP40-C' and 'EXP39-C' not in rules:
-                    print('    {"EXP39-C", "L2"},')
-                print('    {"%s", "%s"},' % (res.group(1), res.group(2)))
-                rules.append(res.group(1))
-        if 'EXP45-C' in rules:
-            if 'EXP46-C' not in rules:
-                print('    {"EXP46-C", "L2"},')
-            if 'EXP47-C' not in rules:
-                print('    {"EXP47-C", "L2"},')
+        head = re.search(r'^#{0,4}\s*Risk Assessments?\s*$', text, re.MULTILINE)
+        if head is None:
+            continue
+        section = text[head.end():]
+        nexthead = re.search(r'^#{1,4}\s+\S', section, re.MULTILINE)
+        if nexthead:
+            section = section[:nexthead.start()]
+        level = re.search(r'\bL[1-3]\b', section)
+        if level is None:
+            continue
+        rules[res.group(1)] = level.group(0)
+    for rule_id, level in dict(sorted(rules.items())).items():
+        print('    {"%s", "%s"},' % (rule_id, level))
+
 
 
 print('std::vector<checkers::Info> checkers::certCInfo{')
-getCertCInfo('https://wiki.sei.cmu.edu/confluence/display/c/2+Rules')
+printCertCInfo('4.sei-cert-c-coding-standard/03.rules/')
 print('    // Recommendations')
-getCertCInfo('https://wiki.sei.cmu.edu/confluence/display/c/3+Recommendations')
+printCertCInfo('4.sei-cert-c-coding-standard/08.recommendations/')
 print('};')
 print('')
 print('std::vector<checkers::Info> checkers::certCppInfo{')
-getCertCInfo('https://wiki.sei.cmu.edu/confluence/pages/viewpage.action?pageId=88046682')
+printCertCInfo('5.sei-cert-cpp-coding-standard/3.rules/')
 print('};')
 print('')
 

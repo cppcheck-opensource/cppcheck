@@ -33,6 +33,11 @@
 #include "suppressions.h"
 #include "utils.h"
 
+#ifdef HAVE_RULES
+#include "regex.h"
+#include "rule.h"
+#endif
+
 #include <cstdio>
 #include <list>
 #include <memory>
@@ -498,6 +503,7 @@ private:
         TEST_CASE(noSafety);
         TEST_CASE(noSafetyOverride);
         TEST_CASE(debugAnalyzerinfo);
+        TEST_CASE(debugIpc);
 
         TEST_CASE(ignorepaths1);
         TEST_CASE(ignorepaths2);
@@ -1620,6 +1626,14 @@ private:
         ASSERT_EQUALS("--cert-c-int-precision=12", settings->premiumArgs);
     }
 
+    void premiumOptionsCertCIntPrecisionInvalid() {
+        REDIRECT;
+        asPremium();
+        const char * const argv[] = {"cppcheck", "--premium-cert-c-int-precision=abc", "file.c"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, parseFromArgs(argv));
+        ASSERT_EQUALS("cppcheck: error: argument to '--premium-cert-c-int-precision=' is not valid - not an integer (invalid_argument).\n", logger->str());
+    }
+
     void premiumOptionsLicenseFile() {
         REDIRECT;
         asPremium();
@@ -2719,14 +2733,14 @@ private:
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(2, settings->rules.size());
         auto it = settings->rules.cbegin();
-        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->engine);
+        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->regex->engine());
         ASSERT_EQUALS("raw", it->tokenlist);
         ASSERT_EQUALS(".+", it->pattern);
         ASSERT_EQUALS_ENUM(Severity::error, it->severity);
         ASSERT_EQUALS("ruleId1", it->id);
         ASSERT_EQUALS("ruleSummary1", it->summary);
         ++it;
-        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->engine);
+        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->regex->engine());
         ASSERT_EQUALS("define", it->tokenlist);
         ASSERT_EQUALS(".*", it->pattern);
         ASSERT_EQUALS_ENUM(Severity::warning, it->severity);
@@ -2750,7 +2764,7 @@ private:
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(1, settings->rules.size());
         auto it = settings->rules.cbegin();
-        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->engine);
+        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->regex->engine());
         ASSERT_EQUALS("define", it->tokenlist);
         ASSERT_EQUALS(".+", it->pattern);
         ASSERT_EQUALS_ENUM(Severity::error, it->severity);
@@ -3477,6 +3491,13 @@ private:
         const char * const argv[] = {"cppcheck", "--debug-analyzerinfo", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(true, settings->debugainfo);
+    }
+
+    void debugIpc() {
+        REDIRECT;
+        const char * const argv[] = {"cppcheck", "--debug-ipc", "file.cpp"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
+        ASSERT_EQUALS(true, settings->debugipc);
     }
 
     void ignorepaths1() {

@@ -55,8 +55,8 @@ jobs:
           7z x pcre-%PCRE_VERSION%.zip || exit /b !errorlevel!
           cd pcre-%PCRE_VERSION% || exit /b !errorlevel!
           git apply --ignore-space-change ..\externals\pcre.patch || exit /b !errorlevel!
-          cmake . -G "Visual Studio 17 2022" -A x64 -DPCRE_BUILD_PCRECPP=OFF -DPCRE_BUILD_PCREGREP=OFF -DPCRE_BUILD_TESTS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_COMPILE_WARNING_AS_ERROR=On || exit /b !errorlevel!
-          msbuild -m PCRE.sln -p:Configuration=Release -p:Platform=x64 || exit /b !errorlevel!
+          cmake . -A x64 -DPCRE_BUILD_PCRECPP=OFF -DPCRE_BUILD_PCREGREP=OFF -DPCRE_BUILD_TESTS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_COMPILE_WARNING_AS_ERROR=On || exit /b !errorlevel!
+          msbuild -m PCRE.slnx -p:Configuration=Release -p:Platform=x64 || exit /b !errorlevel!
           copy pcre.h ..\externals || exit /b !errorlevel!
           copy Release\pcre.lib ..\externals\pcre64.lib || exit /b !errorlevel!
 

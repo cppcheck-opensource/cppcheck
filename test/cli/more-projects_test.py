@@ -258,7 +258,7 @@ def test_project_std(tmpdir):
 
 
 
-@pytest.mark.skip() # clang-tidy is not available in all cases
+@pytest.mark.skip() # clang-tidy is not available in all cases - TODO: enable conditionally
 def test_clang_tidy(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
     with open(test_file, 'wt') as f:

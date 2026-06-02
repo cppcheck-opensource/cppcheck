@@ -75,8 +75,8 @@ private:
         SimpleTokenizer tokenizer(settings1, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        // Check char variable usage..
-        runChecks<CheckExceptionSafety>(tokenizer, this);
+        CheckExceptionSafety check;
+        runChecks(check, tokenizer, *this);
     }
 
     void destructors() {

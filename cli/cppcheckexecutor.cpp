@@ -501,6 +501,7 @@ int CppCheckExecutor::check_internal(const Settings& settings, Suppressions& sup
 
 void StdLogger::writeCheckersReport(const Suppressions& supprs)
 {
+    // TODO: only necessary when we actually issue a checkers report?
     if (!mCheckersFile.empty())
     {
         std::ofstream fout(mCheckersFile);
@@ -510,15 +511,14 @@ void StdLogger::writeCheckersReport(const Suppressions& supprs)
         }
     }
 
-    const bool summary = mSettings.safety || mSettings.severity.isEnabled(Severity::information);
-    const bool xmlReport = mSettings.outputFormat == Settings::OutputFormat::xml && mSettings.xml_version == 3;
-    const bool textReport = !mSettings.checkersReportFilename.empty();
+    bool summary, xmlReport, textReport;
 
-    if (!summary && !xmlReport && !textReport)
+    if (!mSettings.collectLogCheckers(&summary, &xmlReport, &textReport))
         return;
 
     CheckersReport checkersReport(mSettings, mActiveCheckers);
 
+    // TODO: include in summary boolean
     const auto& suppressions = supprs.nomsg.getSuppressions();
     const bool summarySuppressed = std::any_of(suppressions.cbegin(), suppressions.cend(), [](const SuppressionList::Suppression& s) {
         return s.errorId == "checkersReport";

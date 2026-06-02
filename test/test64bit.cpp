@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,8 +49,7 @@ private:
         SimpleTokenizer tokenizer(settings, *this, cpp);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
-        // Check char variable usage..
-        Check64BitPortability check64BitPortability(&tokenizer, &settings, this);
+        Check64BitPortabilityImpl check64BitPortability(&tokenizer, settings, *this);
         check64BitPortability.pointerassignment();
     }
 

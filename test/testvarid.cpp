@@ -262,6 +262,7 @@ private:
         TEST_CASE(exprid12);
         TEST_CASE(exprid13);
         TEST_CASE(exprid14);
+        TEST_CASE(exprid15);
 
         TEST_CASE(structuredBindings);
     }
@@ -1328,7 +1329,7 @@ private:
         ASSERT_EQUALS(expected2, tokenize(code2));
 
         const char code3[] = "extern void (*arr[10])(uint32_t some);\n";
-        const char expected3[] = "1: extern void ( * arr@1 [ 10 ] ) ( uint32_t some@2 ) ;\n";
+        const char expected3[] = "1: extern void ( * arr@1 [ 10 ] ) ( uint32_t ) ;\n";
         ASSERT_EQUALS(expected3, tokenize(code3));
 
         const char code4[] = "_Static_assert(sizeof((struct S){0}.i) == 4);\n"; // #12729
@@ -3066,6 +3067,11 @@ private:
                                "        int j{i};\n"
                                "    }\n"
                                "};"));
+
+        ASSERT_EQUALS("1: struct Sx { int i@1 ; } ;\n" // #14733
+                      "2: struct Sx sx@2 { 0 } ;\n",
+                      tokenize("struct Sx { int i; };\n"
+                               "struct Sx sx{ 0 }; \n"));
     }
 
     void varid_inheritedMembers() {
@@ -3540,9 +3546,15 @@ private:
                              "}\n";
         ASSERT_EQUALS("1: void f ( ) {\n"
                       "2: int * p@1 ;\n"
-                      "3: void ( * a@2 [ 1 ] ) ( int * p ) = { 0 } ;\n"
+                      "3: void ( * a@2 [ 1 ] ) ( int * ) = { 0 } ;\n"
                       "4: }\n",
                       tokenize(code4));
+
+        const char code5[] = "int *p;\n"
+                             "void (*a[1])(int* p) = { 0 } ;\n";
+        ASSERT_EQUALS("1: int * p@1 ;\n"
+                      "2: void ( * a@2 [ 1 ] ) ( int * ) = { 0 } ;\n"
+                      , tokenize(code5));
     }
 
     void varid_alignas() {
@@ -4516,6 +4528,24 @@ private:
                           "2: return static_cast < int > ( std :: ceil ( std :: min ( a@1 , std :: min ( b@2 , c@3 ) ) ) ) ;\n"
                           "3: }\n";
         ASSERT_EQUALS(exp, tokenize(code, s)); // don't crash
+    }
+
+    void exprid15()
+    {
+        // #14717
+        const char code[] = "#define MAX(a, b) (((a) > (b)) ? (a) : (b))\n"
+                            "\n"
+                            "void f(char *d) {\n"
+                            "    const char *p = &d[0];\n"
+                            "    int a = 1 / MAX(1, p[0]);\n"
+                            "    a = 1 / MAX(1, p[1]);\n"
+                            "}\n";
+        const char exp[] = "3: void f ( char * d ) {\n"
+                           "4: const char * p@2 ; p@2 =@UNIQUE &@UNIQUE d@1 [@UNIQUE 0 ] ;\n"
+                           "5: int a@3 ; a@3 =@UNIQUE 1 /@UNIQUE $( $( 1 $>@UNIQUE $( p@2 [@9 0 ] $) $) $?@UNIQUE $( 1 $) $:@UNIQUE $( p@2 [@9 0 ] $) $) ;\n"
+                           "6: a@3 =@UNIQUE 1 /@UNIQUE $( $( 1 $>@UNIQUE $( p@2 [@15 1 ] $) $) $?@UNIQUE $( 1 $) $:@UNIQUE $( p@2 [@15 1 ] $) $) ;\n"
+                           "7: }\n";
+        ASSERT_EQUALS(exp, tokenizeExpr(code));
     }
 
     void structuredBindings() {

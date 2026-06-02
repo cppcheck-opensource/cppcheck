@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,14 +39,9 @@
 // CWE ids used
 static const CWE CWE398(398U);   // Indicator of Poor Code Quality
 
-// Register this check class (by creating a static instance of it)
-namespace {
-    CheckAssert instance;
-}
-
-void CheckAssert::assertWithSideEffects()
+void CheckAssertImpl::assertWithSideEffects()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckAssert::assertWithSideEffects"); // warning
@@ -63,7 +58,7 @@ void CheckAssert::assertWithSideEffects()
             checkVariableAssignment(tmp, tok->scope());
 
             if (tmp->tokType() != Token::eFunction) {
-                if (const Library::Function* f = mSettings->library.getFunction(tmp)) {
+                if (const Library::Function* f = mSettings.library.getFunction(tmp)) {
                     if (f->isconst || f->ispure)
                         continue;
                     if (Library::getContainerYield(tmp->next()) != Library::Container::Yield::NO_YIELD) // bailout, assume read access
@@ -78,7 +73,7 @@ void CheckAssert::assertWithSideEffects()
                         f->containerYield == Library::Container::Yield::END_ITERATOR ||
                         f->containerYield == Library::Container::Yield::ITERATOR)
                         continue;
-                    sideEffectInAssertError(tmp, mSettings->library.getFunctionName(tmp));
+                    sideEffectInAssertError(tmp, mSettings.library.getFunctionName(tmp));
                 }
                 continue;
             }
@@ -122,7 +117,7 @@ void CheckAssert::assertWithSideEffects()
 //---------------------------------------------------------------------------
 
 
-void CheckAssert::sideEffectInAssertError(const Token *tok, const std::string& functionName)
+void CheckAssertImpl::sideEffectInAssertError(const Token *tok, const std::string& functionName)
 {
     reportError(tok, Severity::warning,
                 "assertWithSideEffect",
@@ -134,7 +129,7 @@ void CheckAssert::sideEffectInAssertError(const Token *tok, const std::string& f
                 "builds, this is a bug.", CWE398, Certainty::normal);
 }
 
-void CheckAssert::assignmentInAssertError(const Token *tok, const std::string& varname)
+void CheckAssertImpl::assignmentInAssertError(const Token *tok, const std::string& varname)
 {
     reportError(tok, Severity::warning,
                 "assignmentInAssert",
@@ -147,7 +142,7 @@ void CheckAssert::assignmentInAssertError(const Token *tok, const std::string& v
 }
 
 // checks if side effects happen on the variable prior to tmp
-void CheckAssert::checkVariableAssignment(const Token* assignTok, const Scope *assertionScope)
+void CheckAssertImpl::checkVariableAssignment(const Token* assignTok, const Scope *assertionScope)
 {
     if (!assignTok->isAssignmentOp() && assignTok->tokType() != Token::eIncDecOp)
         return;
@@ -177,21 +172,21 @@ void CheckAssert::checkVariableAssignment(const Token* assignTok, const Scope *a
     // TODO: function calls on var
 }
 
-bool CheckAssert::inSameScope(const Token* returnTok, const Token* assignTok)
+bool CheckAssertImpl::inSameScope(const Token* returnTok, const Token* assignTok)
 {
     // TODO: even if a return is in the same scope, the assignment might not affect it.
     return returnTok->scope() == assignTok->scope();
 }
 
-void CheckAssert::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckAssert::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
-    CheckAssert checkAssert(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckAssertImpl checkAssert(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkAssert.assertWithSideEffects();
 }
 
-void CheckAssert::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
+void CheckAssert::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckAssert c(nullptr, settings, errorLogger);
+    CheckAssertImpl c(nullptr, settings, errorLogger);
     c.sideEffectInAssertError(nullptr, "function");
     c.assignmentInAssertError(nullptr, "var");
 }

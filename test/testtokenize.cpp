@@ -439,6 +439,7 @@ private:
         TEST_CASE(astcompound);
         TEST_CASE(astfuncdecl);
         TEST_CASE(astarrayinit);
+        TEST_CASE(astbracedinit);
 
         TEST_CASE(startOfExecutableScope);
 
@@ -478,6 +479,7 @@ private:
         TEST_CASE(cppKeywordInCSource);
 
         TEST_CASE(cppcast);
+        TEST_CASE(ccast);
 
         TEST_CASE(checkHeader1);
 
@@ -6522,21 +6524,21 @@ private:
             tokenizer.createLinks2();
             tokenizer.simplifyCAlternativeTokens();
             tokenizer.list.front()->assignIndexes();
+
+            // set varid..
+            for (Token *tok = tokenizer.list.front(); tok; tok = tok->next()) {
+                if (tok->str() == "var")
+                    tok->varId(1);
+            }
+
+            // Create AST..
+            tokenizer.prepareTernaryOpForAST();
+            tokenizer.list.createAst();
+
+            tokenizer.list.validateAst(false);
         } else { // Full
             tokenizer.simplifyTokens1("");
         }
-
-        // set varid..
-        for (Token *tok = tokenizer.list.front(); tok; tok = tok->next()) {
-            if (tok->str() == "var")
-                tok->varId(1);
-        }
-
-        // Create AST..
-        tokenizer.prepareTernaryOpForAST();
-        tokenizer.list.createAst();
-
-        tokenizer.list.validateAst(false);
 
         // Basic AST validation
         for (const Token *tok = tokenizer.list.front(); tok; tok = tok->next()) {
@@ -7535,6 +7537,12 @@ private:
         ASSERT_EQUALS("a2[2[ 12, 34,{", testAst("int a[2][2]{ { 1, 2 }, { 3, 4 } };"));
     }
 
+    void astbracedinit() {
+        ASSERT_EQUALS("ab{", testAst("int &a { b };", AstStyle::Simple, ListSimplification::Full));
+        ASSERT_EQUALS("a0{", testAst("int &&a { 0 };", AstStyle::Simple, ListSimplification::Full));
+        ASSERT_EQUALS("anullptr{", testAst("int *a { nullptr };", AstStyle::Simple, ListSimplification::Full));
+    }
+
 #define isStartOfExecutableScope(offset, code) isStartOfExecutableScope_(offset, code, __FILE__, __LINE__)
     template<size_t size>
     bool isStartOfExecutableScope_(int offset, const char (&code)[size], const char* file, int line) {
@@ -8411,6 +8419,22 @@ private:
         }
     }
 
+    void ccast() {
+        const char code[] = "a = (int)x;\n" // #13579
+                            "int (*p)[10];\n"
+                            "b = (void (S::*)(int) const)&y;";
+
+        SimpleTokenizer tokenizer(settingsDefault, *this);
+        ASSERT(tokenizer.tokenize(code));
+
+        const Token* par = Token::findsimplematch(tokenizer.tokens(), "(");
+        ASSERT(par->isCast());
+        par = Token::findsimplematch(par->next(), "(");
+        ASSERT(!par->isCast());
+        par = Token::findsimplematch(par->next(), "(");
+        ASSERT(par->isCast());
+    }
+
 #define checkHdrs(...) checkHdrs_(__FILE__, __LINE__, __VA_ARGS__)
     template<size_t size>
     std::string checkHdrs_(const char* file, int line, const char (&code)[size], bool checkHeadersFlag) {
@@ -8687,6 +8711,10 @@ private:
         testIsCpp11init("int a[2]{ 1, 2 }; \n",
                         "{ 1",
                         Token::Cpp11init::CPP11INIT);
+
+        testIsCpp11init("void f() { g([] { if (int x = 1; x) {} }); }", // #14790
+                        "{ int",
+                        Token::Cpp11init::NOINIT); // don't hang
 
         ASSERT_NO_THROW(tokenizeAndStringify("template<typename U> struct X {};\n" // don't crash
                                              "template<typename T> auto f(T t) -> X<decltype(t + 1)> {}\n"));
