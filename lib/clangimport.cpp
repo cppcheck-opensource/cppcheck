@@ -303,7 +303,7 @@ namespace clangimport {
         }
 
         // "}" tokens that are not end-of-scope
-        std::set<Token *> mNotScope;
+        std::set<const Token *> mNotScope;
 
         std::map<const Scope *, AccessControl> scopeAccessControl;
     private:

@@ -549,9 +549,9 @@ namespace {
     private:
         Token* mTypedefToken;  // The "typedef" token
         Token* mEndToken{nullptr};  // Semicolon
-        std::pair<Token*, Token*> mRangeType;
-        std::pair<Token*, Token*> mRangeTypeQualifiers;
-        std::pair<Token*, Token*> mRangeAfterVar;
+        std::pair<const Token*, Token*> mRangeType;
+        std::pair<const Token*, Token*> mRangeTypeQualifiers;
+        std::pair<const Token*, Token*> mRangeAfterVar;
         Token* mNameToken{nullptr};
         bool mFail = false;
         bool mReplaceFailed = false;
@@ -565,13 +565,13 @@ namespace {
 
             // TODO handle unnamed structs etc
             if (Token::Match(start, "const| enum|struct|union|class %name%| {")) {
-                const std::pair<Token*, Token*> rangeBefore(start, Token::findsimplematch(start, "{"));
+                const std::pair<const Token*, Token*> rangeBefore(start, Token::findsimplematch(start, "{"));
 
                 // find typedef name token
                 Token* nameToken = rangeBefore.second->link()->next();
                 while (Token::Match(nameToken, "%name%|* %name%|*"))
                     nameToken = nameToken->next();
-                const std::pair<Token*, Token*> rangeQualifiers(rangeBefore.second->link()->next(), nameToken);
+                const std::pair<const Token*, Token*> rangeQualifiers(rangeBefore.second->link()->next(), nameToken);
 
                 if (Token::Match(nameToken, "%name% ;")) {
                     if (Token::Match(rangeBefore.second->previous(), "enum|struct|union|class {"))
@@ -723,7 +723,7 @@ namespace {
             // Special handling of function pointer cast
             if (isFunctionPointer && isCast(tok->previous())) {
                 tok->insertToken("*");
-                Token* const tok_1 = insertTokens(tok, std::pair<Token*, Token*>(mRangeType.first, mNameToken->linkAt(1)));
+                Token* const tok_1 = insertTokens(tok, std::pair<const Token*, Token*>(mRangeType.first, mNameToken->linkAt(1)));
                 tok_1->originalName(originalname);
                 tok->deleteThis();
                 return;
@@ -998,7 +998,7 @@ namespace {
             return false;
         }
 
-        static Token* insertTokens(Token* to, std::pair<Token*,Token*> range) {
+        static Token* insertTokens(Token* to, std::pair<const Token*,Token*> range) {
             for (const Token* from = range.first; from != range.second; from = from->next()) {
                 to->insertToken(from->str());
                 to->next()->column(to->column());
@@ -5537,7 +5537,7 @@ void Tokenizer::createLinks2()
     bool isStruct = false;
 
     std::stack<Token*> type;
-    std::stack<Token*> templateTokens;
+    std::stack<const Token*> templateTokens;
     for (Token *token = list.front(); token; token = token->next()) {
         if (Token::Match(token, "%name%|> %name% [:<]"))
             isStruct = true;
@@ -7026,7 +7026,7 @@ void Tokenizer::simplifyFunctionParameters()
             // We have found old style function, now we need to change it
 
             // First step: Get list of argument names in parentheses
-            std::map<std::string, Token *> argumentNames;
+            std::map<std::string, const Token *> argumentNames;
             bool bailOut = false;
             const Token * tokparam = nullptr;
 
@@ -7145,7 +7145,7 @@ void Tokenizer::simplifyFunctionParameters()
             if (argumentNames.size() != argumentNames2.size()) {
                 //move back 'tok1' to the last ';'
                 tok1 = tok1->previous();
-                for (const std::pair<const std::string, Token *>& argumentName : argumentNames) {
+                for (const std::pair<const std::string, const Token *>& argumentName : argumentNames) {
                     if (argumentNames2.find(argumentName.first) == argumentNames2.end()) {
                         //add the missing parameter argument declaration
                         tok1->insertToken(";");

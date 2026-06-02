@@ -623,7 +623,7 @@ void TemplateSimplifier::deleteToken(Token *tok)
         tok->deleteThis();
 }
 
-static void invalidateForwardDecls(const Token* beg, const Token* end, std::map<Token*, Token*>* forwardDecls) {
+static void invalidateForwardDecls(const Token* beg, const Token* end, std::map<const Token*, Token*>* forwardDecls) {
     if (!forwardDecls)
         return;
     for (auto& fwd : *forwardDecls) {
@@ -635,7 +635,7 @@ static void invalidateForwardDecls(const Token* beg, const Token* end, std::map<
     }
 }
 
-bool TemplateSimplifier::removeTemplate(Token *tok, std::map<Token*, Token*>* forwardDecls)
+bool TemplateSimplifier::removeTemplate(Token *tok, std::map<const Token*, Token*>* forwardDecls)
 {
     if (!Token::simpleMatch(tok, "template <"))
         return false;
