@@ -41,8 +41,6 @@ class Tokenizer;
  */
 
 class CPPCHECKLIB CheckPostfixOperator : public Check {
-    friend class TestPostfixOperator;
-
 public:
     /** This constructor is used when registering the CheckPostfixOperator */
     CheckPostfixOperator() : Check("Using postfix operators") {}

@@ -58,8 +58,6 @@ struct VariableValue {
 /** @brief Checking for uninitialized variables */
 
 class CPPCHECKLIB CheckUninitVar : public Check {
-    friend class TestUninitVar;
-
 public:
     /** @brief This constructor is used when registering the CheckUninitVar */
     CheckUninitVar() : Check("Uninitialized variables") {}

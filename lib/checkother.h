@@ -50,10 +50,6 @@ struct UnionMember;
 /** @brief Various small checks */
 
 class CPPCHECKLIB CheckOther : public Check {
-    friend class TestCharVar;
-    friend class TestIncompleteStatement;
-    friend class TestOther;
-
 public:
     /** @brief This constructor is used when registering the CheckClass */
     CheckOther() : Check("Other") {}

@@ -41,8 +41,6 @@ class Tokenizer;
  */
 
 class CPPCHECKLIB Check64BitPortability : public Check {
-    friend class Test64BitPortability;
-
 public:
     /** This constructor is used when registering the Check64BitPortability */
     Check64BitPortability() : Check("64-bit portability") {}

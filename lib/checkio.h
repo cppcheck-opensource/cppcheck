@@ -42,8 +42,6 @@ enum class Severity : std::uint8_t;
 
 /** @brief %Check input output operations. */
 class CPPCHECKLIB CheckIO : public Check {
-    friend class TestIO;
-
 public:
     /** @brief This constructor is used when registering CheckIO */
     CheckIO() : Check("IO using format string") {}

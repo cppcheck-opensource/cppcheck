@@ -49,10 +49,6 @@ enum class FunctionType : std::uint8_t;
 
 /** @brief %Check classes. Uninitialized member variables, non-conforming operators, missing virtual destructor, etc */
 class CPPCHECKLIB CheckClass : public Check {
-    friend class TestClass;
-    friend class TestConstructors;
-    friend class TestUnusedPrivateFunction;
-
 public:
     /** @brief This constructor is used when registering the CheckClass */
     CheckClass() : Check("Class") {}

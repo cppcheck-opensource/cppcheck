@@ -65,8 +65,6 @@ enum class Severity : std::uint8_t;
  */
 
 class CPPCHECKLIB CheckMemoryLeakInFunction : public Check {
-    friend class TestMemleakInFunction;
-
 public:
     /** @brief This constructor is used when registering this class */
     CheckMemoryLeakInFunction() : Check("Memory leaks (function variables)") {}
@@ -92,8 +90,6 @@ private:
  */
 
 class CPPCHECKLIB CheckMemoryLeakInClass : public Check {
-    friend class TestMemleakInClass;
-
 public:
     CheckMemoryLeakInClass() : Check("Memory leaks (class variables)") {}
 
@@ -112,8 +108,6 @@ private:
 /** @brief detect simple memory leaks for struct members */
 
 class CPPCHECKLIB CheckMemoryLeakStructMember : public Check {
-    friend class TestMemleakStructMember;
-
 public:
     CheckMemoryLeakStructMember() : Check("Memory leaks (struct members)") {}
 
@@ -132,8 +126,6 @@ private:
 /** @brief detect simple memory leaks (address not taken) */
 
 class CPPCHECKLIB CheckMemoryLeakNoVar : public Check {
-    friend class TestMemleakNoVar;
-
 public:
     CheckMemoryLeakNoVar() : Check("Memory leaks (address not taken)") {}
 
