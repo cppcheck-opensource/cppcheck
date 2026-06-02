@@ -430,6 +430,7 @@ private:
         TEST_CASE(symboldatabase110);
         TEST_CASE(symboldatabase111); // [[fallthrough]]
         TEST_CASE(symboldatabase112); // explicit operator
+        TEST_CASE(symboldatabase113);
 
         TEST_CASE(createSymbolDatabaseFindAllScopes1);
         TEST_CASE(createSymbolDatabaseFindAllScopes2);
@@ -5862,6 +5863,33 @@ private:
         const Token *f = db ? Token::findsimplematch(tokenizer.tokens(), "operatorbool") : nullptr;
         ASSERT(f != nullptr);
         ASSERT(f && f->function() && f->function()->isExplicit());
+    }
+
+    void symboldatabase113() {
+        GET_SYMBOL_DB("template <typename T>\n"
+                      "struct S {\n"
+                      "  S();\n"
+                      "  int& g() { return a; }\n"
+                      "  struct I;\n"
+                      "private:\n"
+                      "  int a;\n"
+                      "};\n"
+                      "template <>\n"
+                      "struct S<int>::I{};\n");
+        ASSERT(db->scopeList.size() == 4);
+        auto it = db->scopeList.begin();
+        ++it;
+        ASSERT_EQUALS_ENUM(ScopeType::eStruct, it->type);
+        ASSERT_EQUALS("I", it->className);
+        ASSERT_EQUALS(0, it->varlist.size());
+        ++it;
+        ASSERT_EQUALS_ENUM(ScopeType::eStruct, it->type);
+        ASSERT_EQUALS("S < int >", it->className);
+        ASSERT_EQUALS(1, it->varlist.size());
+        ++it;
+        ASSERT_EQUALS_ENUM(ScopeType::eFunction, it->type);
+        ASSERT_EQUALS("g", it->className);
+        ASSERT_EQUALS(0, it->varlist.size());
     }
 
     void createSymbolDatabaseFindAllScopes1() {
