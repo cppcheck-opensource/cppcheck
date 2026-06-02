@@ -2,7 +2,17 @@ import datetime
 import glob
 import os
 import re
+import sys
 import requests
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    # Fallback: passthrough iterator if tqdm is not installed
+    def tqdm(iterable, total=None, desc=None, **kwargs):
+        if desc:
+            print(desc, file=sys.stderr)
+        return iterable
 
 def print_checkers(glob_pattern:str):
     checkers = {}
@@ -935,24 +945,22 @@ def listCertFiles(content_subdir:str):
 
 def printCertCInfo(content_subdir:str):
     """Fetches CERT C rules information."""
-    # Fetching the CERT C rules page
+    paths = listCertFiles(content_subdir)
     rules = {}
-    for path in listCertFiles(content_subdir):
+    for path in tqdm(paths, desc=f'Fetching {content_subdir}', file=sys.stderr):
         raw = 'https://raw.githubusercontent.com/%s/%s/%s' % (CERT_REPO, CERT_BRANCH, path)
         text = requests.get(raw, timeout=30).text
         res = re.search(r'^#\s+([A-Z]{3}\d{2}-C(?:PP)?)\b', text, re.MULTILINE)
         if res is None:
             continue
-        # Find risk assessment section.
         head = re.search(r'^#{0,4}\s*Risk Assessments?\s*$', text, re.MULTILINE)
         if head is None:
             continue
-        # Look in section
         section = text[head.end():]
         nexthead = re.search(r'^#{1,4}\s+\S', section, re.MULTILINE)
         if nexthead:
             section = section[:nexthead.start()]
-        level = re.search(r'\bL[1-3]\b', section, re.MULTILINE)
+        level = re.search(r'\bL[1-3]\b', section)
         if level is None:
             continue
         rules[res.group(1)] = level.group(0)
