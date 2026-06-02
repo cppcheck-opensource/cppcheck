@@ -4866,7 +4866,7 @@ private:
                       errout_str());
 
         check("int f(std::vector<int>* p) {\n" // #14810
-	        "    return *p->cbegin();\n"
+              "    return *p->cbegin();\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:1:25]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n", errout_str());
     }
