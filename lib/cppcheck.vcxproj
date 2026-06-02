@@ -57,6 +57,7 @@
     <ClCompile Include="checknullpointer.cpp" />
     <ClCompile Include="checkother.cpp" />
     <ClCompile Include="checkpostfixoperator.cpp" />
+    <ClCompile Include="checks.cpp" />
     <ClCompile Include="checksizeof.cpp" />
     <ClCompile Include="checkstl.cpp" />
     <ClCompile Include="checkstring.cpp" />
@@ -130,6 +131,7 @@
     <ClInclude Include="checknullpointer.h" />
     <ClInclude Include="checkother.h" />
     <ClInclude Include="checkpostfixoperator.h" />
+    <ClInclude Include="checks.h" />
     <ClInclude Include="checksizeof.h" />
     <ClInclude Include="checkstl.h" />
     <ClInclude Include="checkstring.h" />

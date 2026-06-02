@@ -228,6 +228,7 @@ LIBOBJ =      $(libcppdir)/valueflow.o \
               $(libcppdir)/checknullpointer.o \
               $(libcppdir)/checkother.o \
               $(libcppdir)/checkpostfixoperator.o \
+              $(libcppdir)/checks.o \
               $(libcppdir)/checksizeof.o \
               $(libcppdir)/checkstl.o \
               $(libcppdir)/checkstring.o \
@@ -559,6 +560,9 @@ $(libcppdir)/checkother.o: lib/checkother.cpp lib/addoninfo.h lib/astutils.h lib
 
 $(libcppdir)/checkpostfixoperator.o: lib/checkpostfixoperator.cpp lib/addoninfo.h lib/check.h lib/checkers.h lib/checkpostfixoperator.h lib/config.h lib/errortypes.h lib/library.h lib/mathlib.h lib/platform.h lib/regex.h lib/settings.h lib/smallvector.h lib/sourcelocation.h lib/standards.h lib/symboldatabase.h lib/templatesimplifier.h lib/token.h lib/tokenize.h lib/tokenlist.h lib/utils.h lib/vfvalue.h
 	$(CXX) ${INCLUDE_FOR_LIB} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(libcppdir)/checkpostfixoperator.cpp
+
+$(libcppdir)/checks.o: lib/checks.cpp
+	$(CXX) ${INCLUDE_FOR_LIB} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(libcppdir)/checks.cpp
 
 $(libcppdir)/checksizeof.o: lib/checksizeof.cpp lib/addoninfo.h lib/check.h lib/checkers.h lib/checksizeof.h lib/config.h lib/errortypes.h lib/library.h lib/mathlib.h lib/platform.h lib/regex.h lib/settings.h lib/smallvector.h lib/sourcelocation.h lib/standards.h lib/symboldatabase.h lib/templatesimplifier.h lib/token.h lib/tokenize.h lib/tokenlist.h lib/utils.h lib/vfvalue.h
 	$(CXX) ${INCLUDE_FOR_LIB} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(libcppdir)/checksizeof.cpp
