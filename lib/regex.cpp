@@ -258,7 +258,6 @@ static T* createAndCompileRegex(std::string pattern, std::string& err)
     return regex;
 }
 
-// cppcheck-suppress shadowFunction - FP see #14802
 std::shared_ptr<Regex> Regex::create(std::string pattern, Engine engine, std::string& err)
 {
     Regex* regex = nullptr;
