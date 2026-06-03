@@ -3864,7 +3864,7 @@ private:
         const char code[] = "using std::vector;\n" // #12041
                             "typedef vector<int> ints;\n"
                             "void f(ints v);\n";
-        const char exp[] = "3: void f ( std :: vector < int > v@var1 ) ;";
+        const char exp[] = "void f ( std :: vector < int > v ) ;";
         ASSERT_EQUALS(exp, tok(code));
     }
 
