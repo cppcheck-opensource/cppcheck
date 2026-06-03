@@ -5661,6 +5661,14 @@ private:
               "}\n",
               dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
+
+        check("void f(const std::vector<std::string>& v) {\n" // #14812
+              "    std::set<std::string> s;\n"
+              "    for (const std::string& a : v) {\n"
+              "        s.insert(a);\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:11]: (style) Consider using std::copy algorithm instead of a raw loop. [useStlAlgorithm]\n", errout_str());
     }
 
     void loopAlgoIncrement() {
