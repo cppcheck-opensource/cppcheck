@@ -1162,10 +1162,7 @@ static bool isPointerArithmeticAdd(const Token* tok)
         return false;
 
     const Token* intOp = astIsPointer(tok->astOperand1()) ? tok->astOperand2() : tok->astOperand1();
-    if (intOp && intOp->hasKnownIntValue() && intOp->getKnownIntValue() != 0)
-        return true;
-
-    return false;
+    return intOp && intOp->hasKnownIntValue() && intOp->getKnownIntValue() != 0;
 }
 
 static const Token* getPointerAdditionCalcToken(const Token * const tok)
