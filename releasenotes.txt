@@ -9,6 +9,7 @@ New checks:
 - funcArgNamesDifferentUnnamed warns on function declarations/definitions where a parameter in either location is unnamed
 - uninitMemberVarNoCtor warns on user-defined types where (1) some but not all members requiring initialization have in-class initializers or (2) there is a mixture of members which do/do not require initialization.
 - fcloseInLoopCondition warns when fclose() is used as a while loop condition, which may skip the loop body or double-close the file handle.
+- ftell() result is unspecified when file is opened in mode "t".
 
 C/C++ support:
 -

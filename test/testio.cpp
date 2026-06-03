@@ -44,6 +44,7 @@ private:
         TEST_CASE(fileIOwithoutPositioning);
         TEST_CASE(seekOnAppendedFile);
         TEST_CASE(fflushOnInputStream);
+        TEST_CASE(ftellCompatibility);
         TEST_CASE(incompatibleFileOpen);
 
         TEST_CASE(testScanf1); // Scanf without field limiters
@@ -726,6 +727,22 @@ private:
               "}");
         ASSERT_EQUALS("", errout_str()); // #6566
     }
+
+    void ftellCompatibility() {
+
+        check("void foo() {\n"
+              "     FILE *f = fopen(\"\", \"rt\");\n"
+              "     if (f)\n"
+              "     {\n"
+              "         extern long position;\n"
+              "         fseek(f, 0, SEEK_END);\n"
+              "         position = ftell(f);\n"
+              "         fclose(f);\n"
+              "     }\n"
+              "}\n", dinit(CheckOptions, $.portability = true));
+        ASSERT_EQUALS("[test.cpp:7:21]: (portability) ftell() result is unspecified when file is opened in mode \"t\" [ftellTextModeFile]\n", errout_str());
+    }
+
 
     void fflushOnInputStream() {
         check("void foo()\n"
