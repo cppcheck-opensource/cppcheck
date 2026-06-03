@@ -3118,7 +3118,7 @@ void CheckStlImpl::useStlAlgorithm()
             if (memberAccessTok && loopType == LoopType::RANGE) {
                 const int contVarId = memberAccessTok->astOperand1()->varId();
                 if (contVarId == loopVar->varId())
-                    continue;                
+                    continue;
                 using Action = Library::Container::Action;
                 const auto action = astContainerAction(memberAccessTok->astOperand1(), mSettings.library);
                 if (contains({Action::PUSH, Action::INSERT}, action)) {
