@@ -1246,6 +1246,7 @@ void SymbolDatabase::createSymbolDatabaseSetTypePointers()
 {
     std::unordered_set<std::string> typenames;
     for (const Type &t : typeList) {
+        // cppcheck-suppress useStlAlgorithm - std::transform is cumbersome
         typenames.insert(t.name());
     }
 
@@ -4599,8 +4600,7 @@ void SymbolDatabase::printXml(std::ostream &out) const
     }
 
     // Variables..
-    for (const Variable *var : mVariableList)
-        variables.insert(var);
+    std::copy(mVariableList.begin(), mVariableList.end(), std::inserter(variables, variables.end()));
     outs += "  <variables>\n";
     for (const Variable *var : variables) {
         if (!var)

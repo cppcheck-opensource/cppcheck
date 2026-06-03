@@ -3916,6 +3916,7 @@ void TemplateSimplifier::simplifyTemplates(const std::time_t maxtime)
         std::unordered_map<std::string, int> nameOrdinal;
         int ordinal = 0;
         for (const auto& decl : mTemplateDeclarations) {
+            // cppcheck-suppress useStlAlgorithm - std::transform is cumbersome
             nameOrdinal.emplace(decl.fullName(), ordinal++);
         }
 

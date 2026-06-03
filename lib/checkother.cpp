@@ -4584,6 +4584,7 @@ void CheckOtherImpl::checkUnionZeroInit()
     std::unordered_map<const Scope *, Union> unionsByScopeId;
     const std::vector<Union> unions = parseUnions(*symbolDatabase, mSettings);
     for (const Union &u : unions) {
+        // cppcheck-suppress useStlAlgorithm - std::transform is cumbersome
         unionsByScopeId.emplace(u.scope, u);
     }
 
