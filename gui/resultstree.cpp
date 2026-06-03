@@ -427,8 +427,8 @@ void ResultsTree::clear(const QString &filename)
 
         if (stripped == fileItem->text() ||
             filename == fileItem->errorItem->file0) {
-            mModel->removeRow(i);
             mErrorList.removeAll(fileItem->errorItem->toString());
+            mModel->removeRow(i);
             break;
         }
     }
@@ -445,8 +445,8 @@ void ResultsTree::clearRecheckFile(const QString &filename)
         QString storedfile = fileItem->getErrorPathItem().file;
         storedfile = ((!mCheckPath.isEmpty() && storedfile.startsWith(mCheckPath)) ? storedfile.mid(mCheckPath.length() + 1) : storedfile);
         if (actualfile == storedfile) {
-            mModel->removeRow(i);
             mErrorList.removeAll(fileItem->errorItem->toString());
+            mModel->removeRow(i);
             break;
         }
     }
