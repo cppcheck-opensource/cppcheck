@@ -1156,16 +1156,16 @@ static bool isIfConstexpr(const Token* tok) {
     return Token::simpleMatch(top->astOperand1(), "if") && top->astOperand1()->isConstexpr();
 }
 
-static const Token* isPointerArithmeticAdd(const Token* tok)
+static bool isPointerArithmeticAdd(const Token* tok)
 {
     if (!tok || tok->str() != "+" || !astIsPointer(tok))
-        return nullptr;
+        return false;
 
     const Token* intOp = astIsPointer(tok->astOperand1()) ? tok->astOperand2() : tok->astOperand1();
     if (intOp && intOp->hasKnownIntValue() && intOp->getKnownIntValue() != 0)
-        return tok;
+        return true;
 
-    return nullptr;
+    return false;
 }
 
 static const Token* getPointerAdditionCalcToken(const Token * const tok)
@@ -1847,7 +1847,7 @@ void CheckConditionImpl::checkPointerAdditionResultNotNull()
             if (tok->isExpandedMacro())
                 continue;
 
-            const bool usedAsBool = astIsPointer(tok) && isUsedAsBool(tok, *mSettings);
+            const bool usedAsBool = astIsPointer(tok) && isUsedAsBool(tok, mSettings);
             if (!tok->isComparisonOp() && !usedAsBool)
                 continue;
 
