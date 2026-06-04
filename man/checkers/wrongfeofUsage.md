@@ -9,9 +9,12 @@
 
 `feof()` returns non-zero only after a read operation has failed because the end of file was reached. When used as the sole condition of a loop, the loop body executes one extra time after the last successful read: the read fails silently (or returns partial data), and only then does `feof()` return true and terminate the loop.
 
-This checker warns when it finds feof in the loop condition and either:
-- no file-read call (e.g. `fgets`, `fread`, `fscanf`) precedes the loop and is also present inside the loop body
-- a control-flow statement (`return`, `break`, `goto`, `continue`, `throw`) is present in the the loop body.
+This checker matches `while (!feof(fp))` and `do { ... } while (!feof(fp))` loops and warns when all of the following are true:
+
+- The loop body contains at least one file-read call (`fgets`, `fgetc`, `getc`, `fread`, or `fscanf`) on the same file pointer.
+- The destination (return value or output buffer) of the **last** file-read call in the loop is used after that call within the same loop iteration.
+
+The checker skips loops that contain a control-flow statement (`return`, `break`, `goto`, `continue`, `throw`) as those are too complex to analyze reliably, and loops where the file pointer appears in a context other than a recognised I/O function (`fgets`, `fgetc`, `getc`, `fread`, `fscanf`, `fprintf`, `fwrite`, `fputs`, `fputc`, `putc`).
 
 ## How to fix
 
