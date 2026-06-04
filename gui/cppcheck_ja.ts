@@ -1732,17 +1732,17 @@ Options:
     <message>
         <location filename="projectfile.ui" line="350"/>
         <source>Include file</source>
-        <translation type="unfinished"></translation>
+        <translation>インクルードファイル</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="360"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-family:&apos;monospace&apos;; color:#000000; background-color:#ffffff;&quot;&gt;Force inclusion of a header file&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-family:&apos;monospace&apos;; color:#000000; background-color:#ffffff;&quot;&gt;ヘッダファイルを強制的にインクルードします&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="367"/>
         <source>Browse..</source>
-        <translation type="unfinished"></translation>
+        <translation>ブラウズ..</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="390"/>
@@ -2091,12 +2091,12 @@ Options:
     <message>
         <location filename="projectfiledialog.cpp" line="649"/>
         <source>C/C++ header</source>
-        <translation type="unfinished"></translation>
+        <translation>C/C++のヘッダー</translation>
     </message>
     <message>
         <location filename="projectfiledialog.cpp" line="651"/>
         <source>Include file</source>
-        <translation type="unfinished"></translation>
+        <translation>ファイルのインクルード</translation>
     </message>
     <message>
         <location filename="projectfiledialog.cpp" line="884"/>
