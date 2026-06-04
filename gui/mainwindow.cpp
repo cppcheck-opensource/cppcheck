@@ -568,12 +568,8 @@ void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLib, const bo
 
     // filter requested files
     if (!recheckFiles.isEmpty()) {
-        QSet<QString> filesToCheck;
-        for (const QString& file : recheckFiles) {
-            filesToCheck.insert(file);
-        }
         p.fileSettings.remove_if([&](const FileSettings& fs) {
-            return !filesToCheck.contains(QString::fromStdString(fs.filename()));
+            return !recheckFiles.contains(QString::fromStdString(fs.filename()));
         });
     }
 
