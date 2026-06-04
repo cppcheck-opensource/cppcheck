@@ -559,12 +559,19 @@ void MainWindow::saveSettings() const
     mUI->mResults->saveSettings(mSettings);
 }
 
-void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLib, const bool checkConfig)
+void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLib, const bool checkConfig, const QStringList& recheckFiles)
 {
     Settings checkSettings;
     auto supprs = std::make_shared<Suppressions>();
     if (!getCppcheckSettings(checkSettings, *supprs))
         return;
+
+    // filter requested files
+    if (!recheckFiles.isEmpty()) {
+        p.fileSettings.remove_if([&](const FileSettings& fs) {
+            return !recheckFiles.contains(QString::fromStdString(fs.filename()));
+        });
+    }
 
     clearResults();
 
@@ -1958,7 +1965,7 @@ void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringLis
             msg.exec();
             return;
         }
-        doAnalyzeProject(p, checkLib, checkConfig);  // TODO: avoid copy
+        doAnalyzeProject(p, checkLib, checkConfig, recheckFiles);  // TODO: avoid copy
         return;
     }
 

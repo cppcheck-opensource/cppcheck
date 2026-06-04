@@ -309,7 +309,7 @@ private:
      * @param checkLib Flag to indicate if library should be checked
      * @param checkConfig Flag to indicate if the configuration should be checked.
      */
-    void doAnalyzeProject(ImportProject p, bool checkLib = false, bool checkConfig = false);
+    void doAnalyzeProject(ImportProject p, bool checkLib = false, bool checkConfig = false, const QStringList& recheckFiles = QStringList());
 
     /**
      * @brief Analyze all files specified in parameter files
