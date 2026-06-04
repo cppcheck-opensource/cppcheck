@@ -2,10 +2,7 @@
 # Environment reference https://help.github.com/en/actions/reference/virtual-environments-for-github-hosted-runners
 name: include-what-you-use
 
-on:
-  schedule:
-    - cron: '0 0 * * 0'
-  workflow_dispatch:
+on: [push, pull_request]
 
 permissions:
   contents: read
@@ -36,7 +33,7 @@ jobs:
       image: ${{ matrix.image }}
 
     env:
-      QT_VERSION: 6.10.0
+      QT_VERSION: 6.11.1
 
     steps:
       - uses: actions/checkout@v4
@@ -196,7 +193,7 @@ jobs:
     if: ${{ github.repository_owner == 'cppcheck-opensource' }}
 
     env:
-      QT_VERSION: 6.10.0
+      QT_VERSION: 6.11.1
 
     steps:
       - uses: actions/checkout@v4

@@ -28,4 +28,5 @@ Other:
 - Moved source code from https://github.com/danmar/cppcheck to https://github.com/cppcheck-opensource/cppcheck
 - The official Windows binary is now built with Visual Studio 2026.
 - Updated simplecpp to 1.7.0.
+- Updated Qt to 6.11.1 (official binary only).
 -

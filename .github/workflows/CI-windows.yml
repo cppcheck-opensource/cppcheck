@@ -25,7 +25,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-2022, windows-2025]
-        qt_ver: [6.10.0]
+        qt_ver: [6.11.1]
       fail-fast: false
 
     runs-on: ${{ matrix.os }}
@@ -123,7 +123,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: 6.10.0
+          version: 6.11.1
           modules: 'qtcharts'
           setup-python: 'false'
           cache: true
