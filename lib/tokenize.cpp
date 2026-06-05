@@ -2450,8 +2450,7 @@ namespace {
             while (scope && scope->parent) {
                 if (scope->name.empty())
                     break;
-                fullName.insert(0, " :: ");
-                fullName.insert(0, scope->name);
+                utils::string::prepend(fullName, scope->name, " :: ");
                 scope = scope->parent;
             }
         }
@@ -2620,7 +2619,7 @@ namespace {
                     }
                     // inline member function
                     else if ((scopeInfo->type == ScopeInfo3::Record || scopeInfo->type == ScopeInfo3::Namespace) && tok1 && Token::Match(tok1->tokAt(-1), "%name% (")) {
-                        std::string scope = scopeInfo->name + "::" + tok1->strAt(-1);
+                        std::string scope = utils::string::create(scopeInfo->name, "::", tok1->strAt(-1));
                         scopeInfo = scopeInfo->addChild(ScopeInfo3::MemberFunction, std::move(scope), tok, tok->link());
                         added = true;
                     }
