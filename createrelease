@@ -44,7 +44,7 @@
 # cd ~/cppchecksolutions/cppcheck && python3 tools/get_checkers.py > lib/checkers.cpp
 #
 # Update copyright year: TODO release script
-# git diff $PREV -- */*.cpp */*.h | grep '^diff --git a/' | sed 's|.* b/||' | xargs sed -i 's/Copyright (C) 2007-20[12]./Copyright (C) 2007-$(date +%Y)/'
+# git diff $PREV -- */*.cpp */*.h | grep '^diff --git a/' | sed 's|.* b/||' | xargs sed -i "s/Copyright (C) 2007-20[12]./Copyright (C) 2007-$(date +%Y)/"
 # git diff | grep '^diff --git a/'
 #
 # Make sure "cppcheck --errorlist" works:
@@ -138,8 +138,8 @@
 # * mkdir out && python3 ~/cppchecksolutions/release/getWorkflowAndIssueLogs.py -r /cppcheck-opensource//cppcheck -t $VERSION -p out
 
 # Folder/tag to use:
-folder=$1
-tag=$folder.0
+tag=$1
+folder=${tag%.*}
 
 # Name of release:
 releasename=cppcheck-$tag
