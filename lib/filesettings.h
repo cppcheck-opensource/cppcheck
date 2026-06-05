@@ -46,9 +46,9 @@ public:
             throw std::runtime_error("empty path specified");
     }
 
-    void setPath(std::string path)
+    void setPath(std::string p)
     {
-        mPath = std::move(path);
+        mPath = std::move(p);
         mPathSimplified = Path::simplifyPath(mPath);
         mPathAbsolute.clear();
     }
@@ -76,9 +76,9 @@ public:
         return mSize;
     }
 
-    void setLang(Standards::Language lang)
+    void setLang(Standards::Language language)
     {
-        mLang = lang;
+        mLang = language;
     }
 
     Standards::Language lang() const
