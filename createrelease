@@ -52,7 +52,7 @@
 #
 # Update AUTHORS using output from:
 # git log --format='%aN' $PREV..HEAD | sort -u > AUTHORS2 && diff -y AUTHORS AUTHORS2 | less
-# Include usernames in PR title and commit message
+# Include github usernames in PR title and commit message
 #
 # Update GUI translations:
 # cd ~/cppchecksolutions/cppcheck/gui && lupdate gui.pro
