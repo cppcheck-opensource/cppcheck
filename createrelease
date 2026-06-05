@@ -8,9 +8,17 @@
 # Review trac roadmap, are tickets closed properly?
 # Only tickets that should be retargeted should be open.
 #
-# update cppcheck used in premium addon CI
-# create jira issue "CI: update cppcheck binary"
-# cd ~/cppchecksolutions/addon/tools && python3 ci-update-cppcheck.py
+# Versioning scheme
+# ========================
+# VERSION=2.22.0      # the new release tag created
+# PREV=2.21.0         # the previous release
+# BRANCH=2.22.x       # release branch
+#
+#   2.22.x          BRANCH  - release branch
+#   2.22.0          TAG     - the release
+#   2.22.1, ...     TAG     - patch releases
+#   2.22.0-rc1      TAG     - release candidate
+#
 #
 # update mappings..
 # cd ~/cppchecksolutions/addon/coverage
@@ -37,45 +45,48 @@
 # cd ~/cppchecksolutions/cppcheck && python3 tools/get_checkers.py > lib/checkers.cpp
 #
 # Update copyright year TODO release script
-# git diff 2.8 -- */*.cpp */*.h | grep '^diff --git a/' | sed 's|.* b/||' | xargs sed -i 's/Copyright (C) 2007-20[12]./Copyright (C) 2007-2022/'
+# git diff $PREV -- */*.cpp */*.h | grep '^diff --git a/' | sed 's|.* b/||' | xargs sed -i 's/Copyright (C) 2007-20[12]./Copyright (C) 2007-2022/'
 # git diff | grep '^diff --git a/'
 #
 # Make sure "cppcheck --errorlist" works:
 # make clean && make -j4 && ./cppcheck --errorlist > errlist.xml && xmllint --noout errlist.xml
 #
 # Update AUTHORS using output from:
-# git log --format='%aN' 2.7..HEAD | sort -u > AUTHORS2 && diff -y AUTHORS AUTHORS2 | less
+# git log --format='%aN' $PREV..HEAD | sort -u > AUTHORS2 && diff -y AUTHORS AUTHORS2 | less
 #
 # Update GUI translations
 # lupdate gui.pro
 #
-# Create 2.18.x branch
-# git checkout -b 2.18.x ; git push -u origin 2.18.x
+# Create new release branch
+# git checkout -b $BRANCH ; git push -u origin $BRANCH
 # in fork:
 #  * add upstream: git remote add upstream git@github.com:/cppcheck-opensource//cppcheck.git
-#  * add branch:   git fetch upstream 2.19.x
+#  * add branch:   git fetch upstream $BRANCH
 #
 # Release notes:
 # - ensure safety critical issues are listed properly
 # - empty the releasenotes.txt in main branch
 #
 # Update version numbers in:
-# python3 tools/release-set-version.py 2.19.0
+# python3 tools/release-set-version.py $VERSION
 # Verify:
 # grep '\.99' */*.[ch]* && grep '[0-9][0-9] dev' */*.[ch]*
 # egrep "2\.[0-9]+" */*.h */*.cpp man/*.md | grep -v "test/test" | less
-# git commit -a -m "2.8: Set versions"
+# git commit -a -m "$VERSION: Set versions"
 #
 # Build and test the windows installer
 #
 # Update the Makefile:
 # make dmake && ./dmake --release
-# git commit -a -m "2.8: Updated Makefile"
+# git commit -a -m "$VERSION: Updated Makefile"
+#
+# Commit changes
+# git push
 #
 # Ensure that CI is happy
 #
 # Tag:
-# git tag 2.8-rc1
+# git tag $VERSION-rc1
 # git push --tags
 #
 # Release
@@ -86,8 +97,8 @@
 # Create a release folder on sourceforge:
 # https://sourceforge.net/projects/cppcheck/files/cppcheck/
 #
-# git tag 2.8 ; git push --tags
-# ./createrelease 2.8
+# git tag $VERSION ; git push --tags
+# ./createrelease $VERSION
 #
 # copy msi from release-windows, install and test cppcheck
 # copy manual from build-manual
@@ -95,8 +106,8 @@
 # Update download link on index.php main page
 #
 # Trac:
-# 1. Create ticket "2.18 safety cosmetic changes"
-#    git log --format=oneline 2.17.0..HEAD | egrep -v "^[0-9a-f]*[ ][ ]*([Ff]ix|fixed|Fixup|Fixes|refs)?[ ]*#*[0-9]+"
+# 1. Create ticket "$VERSION safety cosmetic changes"
+#    git log --format=oneline $PREV..HEAD | egrep -v "^[0-9a-f]*[ ][ ]*([Ff]ix|fixed|Fixup|Fixes|refs)?[ ]*#*[0-9]+"
 # 2. Check priorities for all tickets in milestone. Should be: safety-*
 # 3. Create new milestone
 # 4. Close old milestone
@@ -113,7 +124,7 @@
 # (example: https://trac.cppcheck.net/ticket/13715)
 # - type: defect
 # - component: Performance
-# - summary: [meta] performance regressions in 2.x
+# - summary: [meta] performance regressions in $VERSION
 #
 # run daca with new release
 # 1. edit tools/donate-cpu-server.py. Update OLD_VERSION and SERVER_VERSION
@@ -123,8 +134,8 @@
 # * trac: cd /var && nice tar -cJf ~/trac.tar.xz trac-cppcheck/db/trac.db
 # * daca: cd /var && nice tar -cJf ~/daca.tar.xz daca@home
 # * git: git checkout -f && git checkout main && git pull && tar -cJf git.tar.xz .git
-# * git log 2.16.0..2.17.0 > Changelog
-# * mkdir out && python3 ~/cppchecksolutions/release/getWorkflowAndIssueLogs.py -r /cppcheck-opensource//cppcheck -t 2.15.0 -p out
+# * git log $PREV..$VERSION > Changelog
+# * mkdir out && python3 ~/cppchecksolutions/release/getWorkflowAndIssueLogs.py -r /cppcheck-opensource//cppcheck -t $VERSION -p out
 
 # Folder/tag to use
 folder=$1
