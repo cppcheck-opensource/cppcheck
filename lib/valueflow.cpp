@@ -2034,8 +2034,8 @@ static void valueFlowForwardLifetime(Token * tok, const TokenList &tokenlist, Er
                     val.lifetimeKind = ValueFlow::Value::LifetimeKind::SubObject;
             }
             std::vector<const Token*> parents = getLhsLifetimeParents(parent->astOperand1(), settings.library);
-            for (const Token *parent : parents)
-                valueFlowForward(nextExpression, endOfVarScope, parent, values, tokenlist, errorLogger, settings);
+            for (const Token *p : parents)
+                valueFlowForward(nextExpression, endOfVarScope, p, values, tokenlist, errorLogger, settings);
         }
         // Constructor
     } else if (Token::simpleMatch(parent, "{") && !isScopeBracket(parent)) {
