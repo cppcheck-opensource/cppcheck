@@ -19,7 +19,6 @@
 #   2.22.1, ...     TAG     - patch releases
 #   2.22.0-rc1      TAG     - release candidate
 #
-#
 # Update mappings:
 # cd ~/cppchecksolutions/addon/coverage
 # CPPCHECK_REPO=~/cppchecksolutions/cppcheck python3 coverage.py --code
@@ -53,15 +52,15 @@
 #
 # Update AUTHORS using output from:
 # git log --format='%aN' $PREV..HEAD | sort -u > AUTHORS2 && diff -y AUTHORS AUTHORS2 | less
-# include usernames in pr title and commmmit message
+# Include usernames in PR title and commit message
 #
 # Update GUI translations:
 # cd ~/cppchecksolutions/cppcheck/gui && lupdate gui.pro
 #
 # Create new release branch:
-# git checkout -b $BRANCH ; git push -u origin $BRANCH
+# git checkout -b $BRANCH && git push -u origin $BRANCH
 # in fork:
-#  * add upstream: git remote add upstream git@github.com:/cppcheck-opensource//cppcheck.git
+#  * add upstream: git remote add upstream git@github.com:cppcheck-opensource/cppcheck.git
 #  * add branch:   git fetch upstream $BRANCH
 #
 # Release notes:
@@ -81,7 +80,7 @@
 # make dmake && ./dmake --release
 # git commit -a -m "$VERSION: Updated Makefile"
 #
-# Commit changes:
+# Push changes:
 # git push
 #
 # Ensure that CI is happy
