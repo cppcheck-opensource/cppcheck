@@ -4864,6 +4864,28 @@ private:
         ASSERT_EQUALS("[test.cpp:1:12]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n"
                       "[test.cpp:1:20]: (style) Parameter 'q' can be declared as pointer to const [constParameterPointer]\n",
                       errout_str());
+
+        check("struct S {\n" // #14817
+              "    explicit S(int *a) : m{ a[0], a[1] } {}\n"
+              "    int m[2];\n"
+              "}"
+              "struct T {\n"
+              "    explicit T(int *a) : m{ &a[0], &a[1] } {}\n"
+              "    int* m[2];\n"
+              "};\n");
+        ASSERT_EQUALS("[test.cpp:2:21]: (style) Parameter 'a' can be declared as pointer to const [constParameterPointer]\n",
+                      errout_str());
+
+        check("class A {\n" // #11471
+              "public:\n"
+              "    A(const int& i, int) : m_i(&i) {}\n"
+              "    const int* m_i;\n"
+              "};\n"
+              "A f(int& s) {\n"
+              "    return A(s, 0);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:6:10]: (style) Parameter 's' can be declared as reference to const [constParameterReference]\n",
+                      errout_str());
     }
 
     void constArray() {

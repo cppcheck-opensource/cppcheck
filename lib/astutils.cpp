@@ -2592,6 +2592,8 @@ bool isVariableChangedByFunctionCall(const Token *tok, int indirect, const Setti
     if (const Variable* var = tok->variable()) {
         if (tok == var->nameToken() && (!var->isReference() || (var->isConst() && var->type() == tok1->type())) && (!var->isClass() || (var->valueType() && var->valueType()->container))) // const ref or passed to (copy) ctor
             return false;
+        if (var->isArray() && var->valueType() && var->valueType()->pointer == 0 && var->valueType()->isPrimitive())
+            return false;
     }
 
     std::vector<const Variable*> args = getArgumentVars(tok, argnr);
