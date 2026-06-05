@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# A script for creating release packages. The release packages are create in the home directory.
+# A script for creating release packages. The release packages are created in the home directory.
 #
 # Create release candidate
 # ========================
@@ -43,8 +43,8 @@
 # Generate lib/checkers.cpp: (TODO the premium checkers should not be statically coded)
 # cd ~/cppchecksolutions/cppcheck && python3 tools/get_checkers.py > lib/checkers.cpp
 #
-# Update copyright year TODO release script:
-# git diff $PREV -- */*.cpp */*.h | grep '^diff --git a/' | sed 's|.* b/||' | xargs sed -i 's/Copyright (C) 2007-20[12]./Copyright (C) 2007-2022/'
+# Update copyright year: TODO release script
+# git diff $PREV -- */*.cpp */*.h | grep '^diff --git a/' | sed 's|.* b/||' | xargs sed -i 's/Copyright (C) 2007-20[12]./Copyright (C) 2007-$(date +%Y)/'
 # git diff | grep '^diff --git a/'
 #
 # Make sure "cppcheck --errorlist" works:
@@ -97,7 +97,7 @@
 # Create a release folder on sourceforge:
 # https://sourceforge.net/projects/cppcheck/files/cppcheck/
 #
-# git tag $VERSION ; git push --tags
+# git tag $VERSION && git push --tags
 # ./createrelease $VERSION
 #
 # Copy msi from release-windows, install and test cppcheck
