@@ -182,7 +182,6 @@ jobs:
           ln -s iwyu_tool.py /usr/local/bin/iwyu_tool
 
       - name: iwyu_tool
-        if: false
         run: |
           # TODO: exclude auto-generated source files
           iwyu_tool -p cmake.output -j $(nproc) -- -w -Xiwyu --max_line_length=1024 -Xiwyu --comment_style=long -Xiwyu --quoted_includes_first -Xiwyu --update_comments ${{ matrix.mapping_file_opt }} ${{ matrix.clang_inc }} > iwyu.log
