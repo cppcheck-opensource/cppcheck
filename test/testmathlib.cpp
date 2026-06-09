@@ -64,6 +64,7 @@ private:
         TEST_CASE(tan);
         TEST_CASE(abs);
         TEST_CASE(toString);
+        TEST_CASE(valueShift);
     }
 
     void isGreater() const {
@@ -1510,6 +1511,20 @@ private:
 
         ASSERT_EQUALS("2.22507385851e-308", MathLib::toString(std::numeric_limits<double>::min()));
         ASSERT_EQUALS("1.79769313486e+308", MathLib::toString(std::numeric_limits<double>::max()));
+    }
+
+    void valueShift() const {
+        // ordinary shifts
+        ASSERT_EQUALS("16", (MathLib::value("1") << MathLib::value("4")).str());
+        ASSERT_EQUALS("64", (MathLib::value("256") >> MathLib::value("2")).str());
+
+        // a large hex literal is not negative as a string but parses to a negative
+        // bigint; shifting it must not be performed (left shift of a negative value
+        // and shifting by a negative count are both undefined). the operand is
+        // returned unchanged, as already done for counts >= bigint_bits.
+        ASSERT_EQUALS("9223372036854775808U", (MathLib::value("0x8000000000000000") << MathLib::value("1")).str());
+        ASSERT_EQUALS("1", (MathLib::value("1") << MathLib::value("0x8000000000000000")).str());
+        ASSERT_EQUALS("1", (MathLib::value("1") >> MathLib::value("0x8000000000000000")).str());
     }
 };
 
