@@ -3862,7 +3862,8 @@ void Tokenizer::simplifyRedundantConsecutiveBraces()
     for (Token *tok = list.front(); tok;) {
         if (Token::simpleMatch(tok, "= {")) {
             tok = tok->linkAt(1);
-        } else if (Token::simpleMatch(tok, "{ {") && Token::simpleMatch(tok->linkAt(1), "} }")) {
+        } else if (Token::simpleMatch(tok, "{ {") && Token::simpleMatch(tok->linkAt(1), "} }") &&
+                   !Token::Match(tok->previous(), "%name%")) {
             //remove internal parentheses
             tok->linkAt(1)->deleteThis();
             tok->deleteNext();
