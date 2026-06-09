@@ -85,17 +85,26 @@ def man_search(manpage):
     apis = set()
     for lineread in MANPAGE:
         lineread = str(lineread)
-        dprint(2, '%s' % (lineread))
+        dprint(1, '%s' % (lineread))
         if 'MT-Safe' in lineread:
             vprint(1, 'clearing MT-Safe %s', lineread)
             apis.clear()
 
-        res = re.search(r'\.BR\s+(\w+)\s', lineread)
-        # vprint(1, '%s for %s' % (res, lineread))
-        if res:
-            apis.add(res.group(1))
-            dprint(1, 'found api %s in %s' % (res.group(1), lineread))
-            continue
+        if '.BR' in lineread:
+            function_names = re.sub(r'^.*\.BR ', '', lineread)
+            dprint(1, 'function_names 1:\n\t%s\n' % (function_names))
+            function_names = re.sub(r'\\\\~', '', function_names)
+            dprint(1, 'function_names 1a:\n\t%s\n' % (function_names))
+            function_names = function_names.replace(r'\n', '')
+            dprint(1, 'function_names 2:\n\t%s\n' % (function_names))
+            function_names = re.sub(r"[~() ']+", '', function_names)
+            dprint(1, 'function_names 3:\n\t%s\n' % (function_names))
+            function_names = re.split(',', function_names)
+            dprint(1, 'function_names split:\n\t%s\n' % (function_names))
+            
+            for fn in function_names:
+                if fn:
+                    apis.add(fn)
 
         if 'MT-Unsafe' in lineread:
             resUnsafe = re.search("MT-Unsafe\\s+(.*)(\\n\'|$)", lineread)
@@ -103,7 +112,7 @@ def man_search(manpage):
             if resUnsafe:
                 values = resUnsafe.group(1)
                 dprint(1, 'a %s' % values)
-                values = re.sub(r'\\n\'$', '', values)
+                values = re.sub(r"\\n\'$", '', values)
                 #
                 values = values.split(' ')
                 dprint(1, 'values %s' % list(values))
