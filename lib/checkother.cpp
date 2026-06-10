@@ -464,6 +464,8 @@ void CheckOtherImpl::warningIntToPointerCast()
                 format = "decimal";
             else if (MathLib::isOct(from->str()))
                 format = "octal";
+            else if (MathLib::isBin(from->str()))
+                format = "binary";
             else
                 continue;
             intToPointerCastError(tok, format);

@@ -2362,6 +2362,9 @@ private:
         checkIntToPointerCast("struct S { int i; };\n" // #13886, don't crash
                               "int f() { return sizeof(((struct S*)0)->i); }");
         ASSERT_EQUALS("", errout_str());
+
+        checkIntToPointerCast("auto p = (int*)0b10;"); // #14180
+        ASSERT_EQUALS("[test.cpp:1:10]: (portability) Casting non-zero binary integer literal to pointer. [intToPointerCast]\n", errout_str());
     }
 
     struct CheckInvalidPointerCastOptions
@@ -4863,6 +4866,33 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:1:12]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n"
                       "[test.cpp:1:20]: (style) Parameter 'q' can be declared as pointer to const [constParameterPointer]\n",
+                      errout_str());
+
+        check("struct S {\n" // #14817
+              "    explicit S(int *a) : m{ a[0], a[1] } {}\n"
+              "    int m[2];\n"
+              "};"
+              "struct T {\n"
+              "    explicit T(int *a) : m{ &a[0], &a[1] } {}\n"
+              "    int* m[2];\n"
+              "};\n"
+              "struct X{ int& r1, &r2; }\n"
+              "int f(int* a) {\n"
+              "    S m[2]{a[0], a[1]};\n"
+              "    return m[0].r1 + m[1].r2;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:21]: (style) Parameter 'a' can be declared as pointer to const [constParameterPointer]\n",
+                      errout_str());
+
+        check("class A {\n" // #11471
+              "public:\n"
+              "    A(const int& i, int) : m_i(&i) {}\n"
+              "    const int* m_i;\n"
+              "};\n"
+              "A f(int& s) {\n"
+              "    return A(s, 0);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:6:10]: (style) Parameter 's' can be declared as reference to const [constParameterReference]\n",
                       errout_str());
     }
 
