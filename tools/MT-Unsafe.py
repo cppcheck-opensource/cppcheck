@@ -101,7 +101,7 @@ def man_search(manpage):
             dprint(1, 'function_names 3:\n\t%s\n' % (function_names))
             function_names = re.split(',', function_names)
             dprint(1, 'function_names split:\n\t%s\n' % (function_names))
-            
+
             for fn in function_names:
                 if fn:
                     apis.add(fn)
