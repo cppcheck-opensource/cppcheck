@@ -825,6 +825,7 @@ unsigned int CppCheck::check(const FileSettings &fs)
     else
         tempSettings.userDefines += fs.cppcheckDefines();
     tempSettings.includePaths = fs.includePaths;
+    tempSettings.userIncludes.insert(tempSettings.userIncludes.end(), fs.forcedIncludes.cbegin(), fs.forcedIncludes.cend());
     tempSettings.userUndefs.insert(fs.undefs.cbegin(), fs.undefs.cend());
     if (fs.standard.find("++") != std::string::npos)
         tempSettings.standards.setCPP(fs.standard);

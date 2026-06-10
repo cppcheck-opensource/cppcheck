@@ -148,6 +148,7 @@ struct CPPCHECKLIB FileSettings {
     }
     std::set<std::string> undefs;
     std::list<std::string> includePaths;
+    std::list<std::string> forcedIncludes;
     // only used by clang mode
     std::list<std::string> systemIncludePaths;
     std::string standard;
