@@ -742,6 +742,10 @@ jobs:
           make -C cmake.output autogen
           make -C cmake.output gui-build-deps triage-build-ui-deps
 
+      - name: Check Config
+        run: |
+          ./selfcheck.sh "--check-config"
+
       - name: Self check
         run: |
           ./selfcheck.sh
