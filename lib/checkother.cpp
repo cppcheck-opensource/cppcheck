@@ -3313,7 +3313,7 @@ static bool constructorTakesReference(const Scope * const classScope)
 {
     return std::any_of(classScope->functionList.begin(), classScope->functionList.end(), [&](const Function& constructor) {
         if (constructor.isConstructor()) {
-            for (int argnr = 0U; argnr < constructor.argCount(); argnr++) {
+            for (size_t argnr = 0U; argnr < constructor.argCount(); argnr++) {
                 const Variable * const argVar = constructor.getArgumentVar(argnr);
                 if (argVar && argVar->isReference()) {
                     return true;
@@ -4036,7 +4036,7 @@ void CheckOtherImpl::checkFuncArgNamesDifferent()
         std::vector<const Token *>  declarations(function->argCount());
         std::vector<const Token *>  definitions(function->argCount());
         const Token * decl = function->argDef->next();
-        for (int j = 0; j < function->argCount(); ++j) {
+        for (size_t j = 0; j < function->argCount(); ++j) {
             // get the definition
             const Variable * variable = function->getArgumentVar(j);
             if (variable) {
@@ -4064,11 +4064,11 @@ void CheckOtherImpl::checkFuncArgNamesDifferent()
         // check for different argument order
         if (warning) {
             bool order_different = false;
-            for (int j = 0; j < function->argCount(); ++j) {
+            for (size_t j = 0; j < function->argCount(); ++j) {
                 if (!declarations[j] || !definitions[j] || declarations[j]->str() == definitions[j]->str())
                     continue;
 
-                for (int k = 0; k < function->argCount(); ++k) {
+                for (size_t k = 0; k < function->argCount(); ++k) {
                     if (j != k && definitions[k] && declarations[j]->str() == definitions[k]->str()) {
                         order_different = true;
                         break;
@@ -4082,7 +4082,7 @@ void CheckOtherImpl::checkFuncArgNamesDifferent()
         }
         // check for different argument names
         if (style && inconclusive) {
-            for (int j = 0; j < function->argCount(); ++j) {
+            for (size_t j = 0; j < function->argCount(); ++j) {
                 const bool warn = (declarations[j] != nullptr) != (definitions[j] != nullptr) ||
                                   (declarations[j] && definitions[j] && declarations[j]->str() != definitions[j]->str());
                 if (warn)
@@ -4092,7 +4092,7 @@ void CheckOtherImpl::checkFuncArgNamesDifferent()
     }
 }
 
-void CheckOtherImpl::funcArgNamesDifferent(const std::string & functionName, nonneg int index,
+void CheckOtherImpl::funcArgNamesDifferent(const std::string & functionName, size_t index,
                                            const Token* declaration, const Token* definition)
 {
     std::list<const Token *> tokens = { declaration,definition };
