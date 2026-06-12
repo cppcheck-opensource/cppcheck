@@ -12861,6 +12861,18 @@ private:
               "    h(b ? h(gA(5, std::move(s))) : h(gB(7, std::move(s))));\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("int cb(std::string);\n" // #13628
+              "void f(bool b, std::string s1) {\n"
+              "    std::string s2 = b ? cb(std::move(s1)) : s1;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("int cb(std::string);\n"
+              "void f(bool b, std::string s1) {\n"
+              "    std::string s2 = b ? cb(std::move(s1)) : s1 + s1;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void movePointerAlias()
