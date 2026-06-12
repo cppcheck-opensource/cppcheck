@@ -869,7 +869,7 @@ char * overlappingWriteFunction_strncat(const char *src, char *dest, const std::
     // cppcheck-suppress overlappingWriteFunction
     (void)strncat(dest, dest+1, 2);
     char buffer[] = "strncat";
-    // cppcheck-suppress overlappingWriteFunction
+    // cppcheck-suppress [overlappingWriteFunction,returnDanglingLifetime]
     return strncat(buffer, buffer + 1, 3);
 }
 
@@ -882,7 +882,7 @@ wchar_t * overlappingWriteFunction_wcsncat(const wchar_t *src, wchar_t *dest, co
     // cppcheck-suppress overlappingWriteFunction
     (void)wcsncat(dest, dest+1, 2);
     wchar_t buffer[] = L"strncat";
-    // cppcheck-suppress overlappingWriteFunction
+    // cppcheck-suppress [overlappingWriteFunction,returnDanglingLifetime]
     return wcsncat(buffer, buffer + 1, 3);
 }
 
@@ -917,8 +917,8 @@ char * overlappingWriteFunction_strncpy(char *buf, const std::size_t count)
 
 void * overlappingWriteFunction_memmove(void)
 {
-    // No warning shall be shown:
     char str[] = "memmove handles overlapping data well";
+    // cppcheck-suppress returnDanglingLifetime
     return memmove(str,str+3,4);
 }
 
