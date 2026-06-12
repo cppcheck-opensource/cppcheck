@@ -624,9 +624,9 @@ void ProjectFileDialog::browseImportProject()
     const QFileInfo inf(mProjectFile->getFilename());
     const QDir &dir = inf.absoluteDir();
     QMap<QString,QString> filters;
-    filters[tr("Visual Studio")] = "*.sln *.slnx *.vcxproj";
+    filters["Visual Studio"] = "*.sln *.slnx *.vcxproj";
     filters[tr("Compile database")] = "compile_commands.json";
-    filters[tr("Borland C++ Builder 6")] = "*.bpr";
+    filters["Borland C++ Builder 6"] = "*.bpr";
     QString fileName = QFileDialog::getOpenFileName(this, tr("Import Project"),
                                                     dir.canonicalPath(),
                                                     toFilterString(filters));
