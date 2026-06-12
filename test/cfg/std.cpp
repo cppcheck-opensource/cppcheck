@@ -4982,6 +4982,18 @@ std::span<const int> returnDanglingLifetime_std_span1() {
 }
 #endif
 
+void* returnDanglingLifetime_memcpy() { // #14833
+    char a[4];
+    // cppcheck-suppress returnDanglingLifetime
+    return memcpy(a, "abc", 4);
+}
+
+wchar_t* returnDanglingLifetime_wcscat() {
+    wchar_t a[10]{L"abc"};
+    // cppcheck-suppress returnDanglingLifetime
+    return wcscat(a, L"def");
+}
+
 void beginEnd()
 {
     std::vector<int> v;
