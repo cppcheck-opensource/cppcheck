@@ -842,6 +842,39 @@ private:
                       "[test.cpp:4:1]: (error) suppression without error ID [invalidSuppression]\n"
                       "[test.cpp:6:1]: (error) suppression without error ID [invalidSuppression]\n", errout_str());
 
+        ASSERT_EQUALS(1, (this->*check)("// cppcheck-suppress-file :id0\n"
+                                        "// cppcheck-suppress :id\n"
+                                        "// cppcheck-suppress [:id1,id2]\n"
+                                        "// cppcheck-suppress-begin :id3\n"
+                                        "void f() {}\n"
+                                        "// cppcheck-suppress-end :id3\n",
+                                        ""));
+        ASSERT_EQUALS("[test.cpp:1:1]: (error) Failed to add suppression. Invalid id \":id0\" [invalidSuppression]\n"
+                      "[test.cpp:5:1]: (error) Failed to add suppression. Invalid id \":id\" [invalidSuppression]\n" // TODO: should we report the location of the suppression instead?
+                      "[test.cpp:5:1]: (error) Failed to add suppression. Invalid id \":id1\" [invalidSuppression]\n" // TODO: should we report the location of the suppression instead?
+                      "[test.cpp:4:1]: (error) Failed to add suppression. Invalid id \":id3\" [invalidSuppression]\n"
+                      "[test.cpp:5:1]: (information) Unmatched suppression: id2 [unmatchedSuppression]\n", errout_str()); // TODO: should we report the location of the suppression instead?
+
+        ASSERT_EQUALS(1, (this->*check)("// cppcheck-suppress-file id\n"
+                                        "// cppcheck-suppress-file [id,id0,id0]\n" // TODO: duplicated suppression "id" not detected
+                                        "// cppcheck-suppress id1\n"
+                                        "// cppcheck-suppress id1\n"
+                                        "// cppcheck-suppress [id1,id2,id2]\n"
+                                        "// cppcheck-suppress-begin [id3,id3]\n"
+                                        "void f() {}\n"
+                                        "// cppcheck-suppress-end [id3,id3]\n",
+                                        ""));
+        ASSERT_EQUALS("[test.cpp:2:1]: (error) suppression 'id0:test.cpp:2' already exists [invalidSuppression]\n"
+                      "[test.cpp:7:1]: (error) suppression 'id1:test.cpp:7' already exists [invalidSuppression]\n" // TODO: should we report the location of the suppression instead?
+                      "[test.cpp:7:1]: (error) suppression 'id2:test.cpp:7' already exists [invalidSuppression]\n" // TODO: should we report the location of the suppression instead?
+                      "[test.cpp:6:1]: (error) suppression 'id3:test.cpp:6' already exists [invalidSuppression]\n"
+                      "[test.cpp:1:1]: (information) Unmatched suppression: id [unmatchedSuppression]\n"
+                      "[test.cpp:2:1]: (information) Unmatched suppression: id [unmatchedSuppression]\n" // TODO: should not be reported
+                      "[test.cpp:2:1]: (information) Unmatched suppression: id0 [unmatchedSuppression]\n"
+                      "[test.cpp:7:1]: (information) Unmatched suppression: id1 [unmatchedSuppression]\n" // TODO: should we report the location of the suppression instead?
+                      "[test.cpp:7:1]: (information) Unmatched suppression: id2 [unmatchedSuppression]\n" // TODO: should we report the location of the suppression instead?
+                      "[test.cpp:6:1]: (information) Unmatched suppression: id3 [unmatchedSuppression]\n", errout_str());
+
         ASSERT_EQUALS(1, (this->*check)("void f() {\n"
                                         "    int a;\n"
                                         "    // cppcheck-suppress-begin uninitvar\n"
