@@ -220,6 +220,8 @@ private:
         TEST_CASE(VariableValueType4); // smart pointer type
         TEST_CASE(VariableValueType5); // smart pointer type
         TEST_CASE(VariableValueType6); // smart pointer type
+        TEST_CASE(VariableValueType7);
+        TEST_CASE(VariableValueType8);
         TEST_CASE(VariableValueTypeReferences);
         TEST_CASE(VariableValueTypeTemplate);
 
@@ -1314,6 +1316,71 @@ private:
         ASSERT(check);
         ASSERT(check->valueType());
         ASSERT(check->valueType()->smartPointerTypeToken);
+    }
+
+    void VariableValueType7() {
+        GET_SYMBOL_DB("void f() {\n"
+                      "    auto x0 = 0;\n"
+                      "    auto &x1 = x0;\n"
+                      "    auto &x2 {x0};\n"
+                      "    auto &&x3 = 0;\n"
+                      "    auto &&x4 {0};\n"
+                      "}\n");
+
+        const Token* x1 = Token::findsimplematch(tokenizer.tokens(), "x1");
+        const Token* x2 = Token::findsimplematch(tokenizer.tokens(), "x2");
+        const Token* x3 = Token::findsimplematch(tokenizer.tokens(), "x3");
+        const Token* x4 = Token::findsimplematch(tokenizer.tokens(), "x4");
+
+        ASSERT(x1);
+        ASSERT(x2);
+        ASSERT(x3);
+        ASSERT(x4);
+
+        ASSERT_EQUALS_ENUM(ValueType::INT, x1->valueType()->type);
+        ASSERT_EQUALS_ENUM(ValueType::INT, x2->valueType()->type);
+        ASSERT_EQUALS_ENUM(ValueType::INT, x3->valueType()->type);
+        ASSERT_EQUALS_ENUM(ValueType::INT, x4->valueType()->type);
+
+        ASSERT_EQUALS_ENUM(Reference::LValue, x1->valueType()->reference);
+        ASSERT_EQUALS_ENUM(Reference::LValue, x2->valueType()->reference);
+        ASSERT_EQUALS_ENUM(Reference::RValue, x3->valueType()->reference);
+        ASSERT_EQUALS_ENUM(Reference::RValue, x4->valueType()->reference);
+    }
+
+    void VariableValueType8() {
+        GET_SYMBOL_DB("void f() {\n"
+                      "    char buf[128];\n"
+                      "    const auto *const x0 {buf};\n"
+                      "    auto *const x1 {buf};\n"
+                      "    const auto *x2 {buf};\n"
+                      "    auto x3 {buf};\n"
+                      "}\n");
+
+        const Token* x0 = Token::findsimplematch(tokenizer.tokens(), "x0");
+        const Token* x1 = Token::findsimplematch(tokenizer.tokens(), "x1");
+        const Token* x2 = Token::findsimplematch(tokenizer.tokens(), "x2");
+        const Token* x3 = Token::findsimplematch(tokenizer.tokens(), "x3");
+
+        ASSERT(x0);
+        ASSERT(x1);
+        ASSERT(x2);
+        ASSERT(x3);
+
+        ASSERT_EQUALS_ENUM(ValueType::CHAR, x0->valueType()->type);
+        ASSERT_EQUALS_ENUM(ValueType::CHAR, x1->valueType()->type);
+        ASSERT_EQUALS_ENUM(ValueType::CHAR, x2->valueType()->type);
+        ASSERT_EQUALS_ENUM(ValueType::CHAR, x3->valueType()->type);
+
+        ASSERT_EQUALS(3, x0->valueType()->constness);
+        ASSERT_EQUALS(1, x1->valueType()->constness);
+        ASSERT_EQUALS(2, x2->valueType()->constness);
+        ASSERT_EQUALS(0, x3->valueType()->constness);
+
+        ASSERT_EQUALS(1, x0->valueType()->pointer);
+        ASSERT_EQUALS(1, x1->valueType()->pointer);
+        ASSERT_EQUALS(1, x2->valueType()->pointer);
+        ASSERT_EQUALS(1, x3->valueType()->pointer);
     }
 
     void VariableValueTypeReferences() {
