@@ -80,6 +80,7 @@ private:
         TEST_CASE(structmember32); // #14483
         TEST_CASE(structmember33);
         TEST_CASE(structmember34);
+        TEST_CASE(structmember35);
         TEST_CASE(structmember_macro);
         TEST_CASE(structmember_template_argument); // #13887 - do not report that member used in template argument is unused
         TEST_CASE(classmember);
@@ -2099,6 +2100,16 @@ private:
                                "  std::unique_ptr<int> p;\n"
                                "};\n");
         ASSERT_EQUALS("[test.cpp:2:24]: (style) struct member 'S::p' is never used. [unusedStructMember]\n", errout_str());
+    }
+
+    void structmember35() {
+        checkStructMemberUsage("struct S { int i; };\n"
+                               "int f() { return g<S>(); }\n");
+        ASSERT_EQUALS("", errout_str());
+
+        checkStructMemberUsage("struct S { int i; };\n"
+                               "int f() { A<S> *a = nullptr; (void) a; }\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void structmember_macro() {
