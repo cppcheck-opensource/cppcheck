@@ -2,10 +2,7 @@
 # Environment reference https://help.github.com/en/actions/reference/virtual-environments-for-github-hosted-runners
 name: include-what-you-use
 
-on:
-  schedule:
-    - cron: '0 0 * * 0'
-  workflow_dispatch:
+on: [pull_request, push]
 
 permissions:
   contents: read
@@ -18,15 +15,9 @@ jobs:
         # "opensuse/tumbleweed:latest" / "fedora:rawhide" / "debian:unstable" / "archlinux:latest"
         include:
           - os: ubuntu-22.04
-            image: "fedora:rawhide"
-            stdlib: libstdc++
-          - os: ubuntu-22.04
-            image: "fedora:rawhide"
-            stdlib: libc++
-          - os: macos-26
             image: ""
-            stdlib: libc++  # no libstdc++ on macOS
-            mapping_file_opt: '-Xiwyu --mapping_file=$(realpath ./macos.imp)'
+            stdlib: libstdc++
+            latest: true
       fail-fast: false
 
     runs-on: ${{ matrix.os }}
@@ -100,6 +91,17 @@ jobs:
           # on Apple Silicon files are symlinked under /opt/homebrew/bin
           ln -s /opt/homebrew/bin/iwyu_tool.py /usr/local/bin/iwyu_tool
 
+      - name: Install missing software on ubuntu
+        if: contains(matrix.os, 'ubuntu') && matrix.latest
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl-dev  # fixes missing dependency for Qt in CMake
+
+      - name: Install missing software on ubuntu (cfg)
+        if: contains(matrix.os, 'ubuntu') && matrix.latest
+        run: |
+          sudo apt-get install libcairo2-dev libcurl4-openssl-dev liblua5.3-dev libssl-dev libsqlite3-dev libcppunit-dev libsigc++-2.0-dev libgtk-3-dev libboost-all-dev libselinux-dev libwxgtk3.0-gtk3-dev xmlstarlet qtbase5-dev libgcc-11-dev
+
       # Fails on OpenSUSE:
       # Warning: Failed to restore: Tar failed with error: Unable to locate executable file: tar. Please verify either the file path exists or the file can be found within a directory specified by the PATH environment variable. Also check the file mode to verify the file is executable.
       # Also the shell is broken afterwards:
@@ -134,6 +136,7 @@ jobs:
       # Fails on Debian:
       # /__w/cppcheck/Qt/6.7.0/gcc_64/libexec/rcc: error while loading shared libraries: libglib-2.0.so.0: cannot open shared object file: No such file or directory
       - name: Prepare CMake dependencies
+        if: false
         run: |
           # make sure the auto-generated GUI sources exist
           make -C cmake.output autogen
@@ -146,8 +149,41 @@ jobs:
           make -C cmake.output gui-build-deps
           make -C cmake.output triage-build-ui-deps
 
+      - name: Install clang
+        if: contains(matrix.os, 'ubuntu') && matrix.latest
+        run: |
+          sudo apt-get purge --auto-remove llvm-15 clang-15 python3-lldb-14 llvm-14 clang-14 llvm-13 clang-13
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 23
+          sudo apt-get install -y libclang-23-dev
+
+      - name: check out include-what-you-use
+        if: contains(matrix.os, 'ubuntu') && matrix.latest
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          repository: 'include-what-you-use/include-what-you-use'
+          ref: ''
+          path: 'include-what-you-use'
+
+      - name: run include-what-you-use CMake
+        if: contains(matrix.os, 'ubuntu') && matrix.latest
+        run: |
+          cmake -S include-what-you-use -B include-what-you-use-build -DCMAKE_BUILD_TYPE=Release
+        env:
+          CC: clang-23
+          CXX: clang++-23
+
+      - name: install include-what-you-use
+        if: contains(matrix.os, 'ubuntu') && matrix.latest
+        run: |
+          sudo cmake --build include-what-you-use-build --target install -- -j$(nproc)
+          ln -s iwyu_tool.py /usr/local/bin/iwyu_tool
+
       - name: iwyu_tool
         run: |
+          # TODO: exclude auto-generated source files
           iwyu_tool -p cmake.output -j $(nproc) -- -w -Xiwyu --max_line_length=1024 -Xiwyu --comment_style=long -Xiwyu --quoted_includes_first -Xiwyu --update_comments ${{ matrix.mapping_file_opt }} ${{ matrix.clang_inc }} > iwyu.log
 
       # TODO: run with all configurations
@@ -163,7 +199,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: success() || failure()
         with:
-          name: Compilation Database (include-what-you-use - ${{ matrix.os }} ${{ matrix.stdlib }})
+          name: Compilation Database (include-what-you-use - ${{ matrix.os }} ${{ matrix.image }} ${{ matrix.stdlib }})
           path: ./cmake.output/compile_commands.json
 
       - uses: actions/upload-artifact@v4
@@ -177,93 +213,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: success() || failure()
         with:
-          name: Logs (include-what-you-use - ${{ matrix.os }} ${{ matrix.stdlib }})
-          path: ./*.log
-
-  clang-include-cleaner:
-
-    strategy:
-      matrix:
-        stdlib: [libstdc++, libc++]
-        include:
-          - stdlib: libstdc++
-            use_libcxx: Off
-          - stdlib: libc++
-            use_libcxx: On
-      fail-fast: false
-
-    runs-on: ubuntu-22.04
-    if: ${{ github.repository_owner == 'cppcheck-opensource' }}
-
-    env:
-      QT_VERSION: 6.10.0
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Install missing software
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake make libpcre3-dev
-          sudo apt-get install -y libgl-dev  # missing dependency for using Qt in CMake
-
-      - name: Install clang
-        run: |
-          sudo apt-get purge --auto-remove llvm python3-lldb-14 llvm-14
-          wget https://apt.llvm.org/llvm.sh
-          chmod +x llvm.sh
-          sudo ./llvm.sh 22
-          sudo apt-get install -y clang-tools-22
-
-      - name: Install libc++
-        if: matrix.stdlib == 'libc++'
-        run: |
-          sudo apt-get install -y libc++-22-dev
-
-      - name: Install Qt ${{ env.QT_VERSION }}
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: ${{ env.QT_VERSION }}
-          modules: 'qtcharts'
-          setup-python: 'false'
-          install-deps: false
-          cache: true
-
-      - name: Prepare CMake
-        run: |
-          # TODO: re-enable HAVE_RULES
-          cmake -S . -B cmake.output -Werror=dev -DCMAKE_BUILD_TYPE=Release -DHAVE_RULES=Off -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCPPCHK_GLIBCXX_DEBUG=Off -DUSE_MATCHCOMPILER=Off -DEXTERNALS_AS_SYSTEM=On -DUSE_LIBCXX=${{ matrix.use_libcxx }}
-        env:
-          CC: clang-22
-          CXX: clang++-22
-
-      - name: Prepare CMake dependencies
-        run: |
-          # make sure the auto-generated GUI sources exist
-          make -C cmake.output autogen
-          # make sure the precompiled headers exist
-          #make -C cmake.output/cli cmake_pch.hxx.pch
-          #make -C cmake.output/gui cmake_pch.hxx.pch
-          #make -C cmake.output/lib cmake_pch.hxx.pch
-          #make -C cmake.output/test cmake_pch.hxx.pch
-          # make sure the auto-generated GUI dependencies exist
-          make -C cmake.output gui-build-deps
-
-      - name: clang-include-cleaner
-        run: |
-          # TODO: run multi-threaded
-          find $PWD/cli $PWD/lib $PWD/test $PWD/gui -maxdepth 1 -name "*.cpp" | xargs -t -n 1 clang-include-cleaner-22 --print=changes --extra-arg=-w --extra-arg=-stdlib=${{ matrix.stdlib }} -p cmake.output > clang-include-cleaner.log 2>&1
-
-      - uses: actions/upload-artifact@v4
-        if: success() || failure()
-        with:
-          name: Compilation Database (clang-include-cleaner - ${{ matrix.stdlib }})
-          path: ./cmake.output/compile_commands.json
-
-      - uses: actions/upload-artifact@v4
-        if: success() || failure()
-        with:
-          name: Logs (clang-include-cleaner - ${{ matrix.stdlib }})
+          name: Logs (include-what-you-use - ${{ matrix.os }} ${{ matrix.image }} ${{ matrix.stdlib }})
           path: ./*.log
