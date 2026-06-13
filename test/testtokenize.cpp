@@ -440,6 +440,7 @@ private:
         TEST_CASE(astfuncdecl);
         TEST_CASE(astarrayinit);
         TEST_CASE(astbracedinit);
+        TEST_CASE(astarrayofptrs);
 
         TEST_CASE(startOfExecutableScope);
 
@@ -7541,6 +7542,11 @@ private:
         ASSERT_EQUALS("ab{", testAst("int &a { b };", AstStyle::Simple, ListSimplification::Full));
         ASSERT_EQUALS("a0{", testAst("int &&a { 0 };", AstStyle::Simple, ListSimplification::Full));
         ASSERT_EQUALS("anullptr{", testAst("int *a { nullptr };", AstStyle::Simple, ListSimplification::Full));
+    }
+
+    void astarrayofptrs() {
+        ASSERT_EQUALS("a1[", testAst("int *a[1];", AstStyle::Simple, ListSimplification::Full));
+        ASSERT_EQUALS("a1[", testAst("int **a[1];", AstStyle::Simple, ListSimplification::Full));
     }
 
 #define isStartOfExecutableScope(offset, code) isStartOfExecutableScope_(offset, code, __FILE__, __LINE__)
