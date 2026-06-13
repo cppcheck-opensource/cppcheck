@@ -1155,10 +1155,6 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage_iterateScopes(const Scope* c
                         variables.read(tok2->varId(), tok);
                 }
             }
-        } else if (tok->variable() && tok->variable()->isClass() && tok->variable()->type() &&
-                   (tok->variable()->type()->needInitialization == Type::NeedInitialization::False) &&
-                   tok->strAt(1) == ";") {
-            variables.write(tok->varId(), tok);
         }
     }
 }
