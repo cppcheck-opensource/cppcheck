@@ -845,7 +845,7 @@ namespace {
                     return Break();
                 } else if (Token* callTok = callExpr(tok)) {
                     // TODO: Dont traverse tokens a second time
-                    if (start != callTok && tok != callTok && updateRecursive(callTok->astOperand1()) == Progress::Break)
+                    if (start != callTok && tok != callTok && (tok->str() != "." || tok != callTok->astOperand1()) && updateRecursive(callTok->astOperand1()) == Progress::Break)
                         return Break();
                     // Since the call could be an unknown macro, traverse the tokens as a range instead of recursively
                     if (!Token::simpleMatch(callTok, "( )") &&

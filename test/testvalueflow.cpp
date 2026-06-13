@@ -1077,6 +1077,14 @@ private:
                "  }\n"
                "}\n";
         ASSERT_EQUALS(false, testValueOfX(code, 13U, ValueFlow::Value::MoveKind::MovedVariable));
+
+        code = "struct S { int f(int); };\n" // #11751
+               "S g(S);\n"
+               "void h() {\n"
+               "    S x;\n"
+               "    g(std::move(x)).f(1);\n"
+               "}\n";
+        ASSERT_EQUALS(false, testValueOfX(code, 5U, ValueFlow::Value::MoveKind::MovedVariable));
     }
 
     void valueFlowCalculations() {
