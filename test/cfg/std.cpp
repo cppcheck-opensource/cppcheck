@@ -5379,3 +5379,13 @@ int containerOutOfBounds_std_initializer_list() { // #14340
     int i = *x.end();
     return i + containerOutOfBounds_std_initializer_list_access(x);
 }
+
+int* missingReturn_std_throw_with_nested() { // #14374
+    try {
+        int* p = new int();
+        return p;
+    }
+    catch (...) {
+        std::throw_with_nested(std::runtime_error("xyz"));
+    }
+}
