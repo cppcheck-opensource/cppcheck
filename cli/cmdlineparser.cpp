@@ -1029,6 +1029,9 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         else if (std::strcmp(argv[i], "--no-safety") == 0)
             mSettings.safety = false;
 
+        else if (std::strcmp(argv[i], "--no-whole-program") == 0)
+            mSettings.wholeProgram = false;
+
         // Write results in file
         else if (std::strncmp(argv[i], "--output-file=", 14) == 0)
             mSettings.outputFile = Path::simplifyPath(argv[i] + 14);
@@ -1569,6 +1572,9 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         else if (std::strcmp(argv[i], "-v") == 0 || std::strcmp(argv[i], "--verbose") == 0)
             mSettings.verbose = true;
 
+        else if (std::strcmp(argv[i], "--whole-program") == 0)
+            mSettings.wholeProgram = true;
+
         // Write results in results.xml
         else if (std::strcmp(argv[i], "--xml") == 0) {
             if (outputFormatOptionProvided) {
@@ -1636,12 +1642,15 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         // TODO: bail out instead?
         if (mSettings.checks.isEnabled(Checks::unusedFunction))
         {
-            mLogger.printMessage("unusedFunction check requires --cppcheck-build-dir to be active with -j.");
+            mLogger.printMessage("disabling unusedFunction check as it requires --cppcheck-build-dir to be active with -j");
             mSettings.checks.disable(Checks::unusedFunction);
             // TODO: is there some later logic to remove?
         }
-        // TODO: enable
-        //mLogger.printMessage("whole program analysis requires --cppcheck-build-dir to be active with -j.");
+        // TODO: bail out instead?
+        if (mSettings.wholeProgram) {
+            mLogger.printMessage("disabling whole program analysis as it requires --cppcheck-build-dir to be active with -j.");
+            mSettings.wholeProgram = false;
+        }
     }
 
     if (!mSettings.checks.isEnabled(Checks::unusedFunction))
