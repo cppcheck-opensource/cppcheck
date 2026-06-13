@@ -109,10 +109,10 @@ unsigned CheckStatistics::getCount(const QString &tool, ShowTypes::ShowType type
 QStringList CheckStatistics::getTools() const
 {
     QSet<QString> ret;
-    for (const QString& tool: mStyle.keys()) ret.insert(tool);
-    for (const QString& tool: mWarning.keys()) ret.insert(tool);
-    for (const QString& tool: mPerformance.keys()) ret.insert(tool);
-    for (const QString& tool: mPortability.keys()) ret.insert(tool);
-    for (const QString& tool: mError.keys()) ret.insert(tool);
+    std::copy(mStyle.keys().begin(), mStyle.keys().end(), std::inserter(ret, ret.end()));
+    std::copy(mWarning.keys().begin(), mWarning.keys().end(), std::inserter(ret, ret.end()));
+    std::copy(mPerformance.keys().begin(), mPerformance.keys().end(), std::inserter(ret, ret.end()));
+    std::copy(mPortability.keys().begin(), mPortability.keys().end(), std::inserter(ret, ret.end()));
+    std::copy(mError.keys().begin(), mError.keys().end(), std::inserter(ret, ret.end()));
     return ret.values();
 }

@@ -3116,19 +3116,18 @@ void CheckStlImpl::useStlAlgorithm()
             bool useLoopVarInMemCall;
             const Token *memberAccessTok = singleMemberCallInScope(bodyTok, loopVar->varId(), useLoopVarInMemCall, mSettings);
             if (memberAccessTok && loopType == LoopType::RANGE) {
-                const Token *memberCallTok = memberAccessTok->astOperand2();
                 const int contVarId = memberAccessTok->astOperand1()->varId();
                 if (contVarId == loopVar->varId())
                     continue;
-                if (memberCallTok->str() == "push_back" ||
-                    memberCallTok->str() == "push_front" ||
-                    memberCallTok->str() == "emplace_back") {
+                using Action = Library::Container::Action;
+                const auto action = astContainerAction(memberAccessTok->astOperand1(), mSettings.library);
+                if (contains({Action::PUSH, Action::INSERT}, action)) {
                     std::string algo;
                     if (useLoopVarInMemCall)
                         algo = "std::copy";
                     else
                         algo = "std::transform";
-                    useStlAlgorithmError(memberCallTok, algo);
+                    useStlAlgorithmError(memberAccessTok->astOperand2(), algo);
                 }
                 continue;
             }
