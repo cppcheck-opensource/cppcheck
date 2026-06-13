@@ -613,7 +613,7 @@ private:
                     "            return i;\n"
                     "    return 0;\n"
                     "}\n");
-        ASSERT_EQUALS("[test.cpp:8:0]: style: Consider using std::find_if algorithm instead of a raw loop. [useStlAlgorithm]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:8:13]: style: Consider using std::find_if algorithm instead of a raw loop. [useStlAlgorithm]\n", errout_str());
 
         checkNormal("bool g();\n"
                     "int f(int x) {\n"
@@ -626,7 +626,7 @@ private:
                     "            return i;\n"
                     "    return 0;\n"
                     "}\n");
-        ASSERT_EQUALS("[test.cpp:8:0]: style: Consider using std::find_if algorithm instead of a raw loop. [useStlAlgorithm]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:8:13]: style: Consider using std::find_if algorithm instead of a raw loop. [useStlAlgorithm]\n", errout_str());
 
         checkNormal("bool g();\n"
                     "void f(int x) {\n"
@@ -5260,7 +5260,7 @@ private:
               "        return s.erase(it);\n"
               "    return s.end();\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:3:0]: (style) Consider using std::find_if algorithm instead of a raw loop. [useStlAlgorithm]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:9]: (style) Consider using std::find_if algorithm instead of a raw loop. [useStlAlgorithm]\n", errout_str());
 
         // #11381
         check("int f(std::map<int, int>& map) {\n"
@@ -5953,7 +5953,7 @@ private:
               "            v1.erase(it1);\n"
               "    }\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:9:0]: (style) Consider using std::find_if algorithm instead of a raw loop. [useStlAlgorithm]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:9:17]: (style) Consider using std::find_if algorithm instead of a raw loop. [useStlAlgorithm]\n", errout_str());
 
         check("bool f(const std::set<std::string>& set, const std::string& f) {\n" // #11595
               "    for (const std::string& s : set) {\n"
