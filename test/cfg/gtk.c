@@ -596,3 +596,43 @@ void gtk_widget_destroy_test() {
     // cppcheck-suppress mismatchAllocDealloc
     g_object_unref(widget);
 }
+
+void g_return_if_fail_test(const char *s) {
+    // cppcheck-suppress valueFlowBailout
+    g_return_if_fail(s);
+
+    if (*s)
+        // cppcheck-suppress valueFlowBailout
+        g_return_if_fail(*s == 'a');
+    else
+        g_info("Test the else branch can be parsed");
+}
+
+int g_return_val_if_fail_test(const char *s) {
+    // cppcheck-suppress valueFlowBailout
+    g_return_val_if_fail(s, 1);
+
+    if (*s)
+        // cppcheck-suppress valueFlowBailout
+        g_return_val_if_fail(*s == 'a', 1);
+    else
+        g_info("Test the else branch can be parsed");
+
+    return 0;
+}
+
+void g_return_if_reached_test(const char *s) {
+    if (s)
+        g_return_if_reached();
+    else
+        g_info("Test the else branch can be parsed");
+}
+
+int g_return_val_if_reached_test(const char *s) {
+    if (s)
+        g_return_val_if_reached(1);
+    else
+        g_info("Test the else branch can be parsed");
+
+    return 0;
+}
