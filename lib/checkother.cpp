@@ -1945,13 +1945,16 @@ void CheckOtherImpl::checkConstPointer()
             if (deref == MEMBER) {
                 if (!gparent)
                     continue;
-                if (parent->astOperand2()) {
-                    if (parent->astOperand2()->function() && parent->astOperand2()->function()->isConst())
+                const Token* funcParent = parent;
+                while (Token::simpleMatch(funcParent->astParent(), "."))
+                    funcParent = funcParent->astParent();
+                if (funcParent->astOperand2()) {
+                    if (funcParent->astOperand2()->function() && funcParent->astOperand2()->function()->isConst())
                         continue;
-                    if (mSettings.library.isFunctionConst(parent->astOperand2()))
+                    if (mSettings.library.isFunctionConst(funcParent->astOperand2()))
                         continue;
-                    if (parent->astOperand2()->varId()) {
-                        if (gparent->str() == "?" && astIsLHS(parent))
+                    if (funcParent->astOperand2()->varId()) {
+                        if (gparent->str() == "?" && astIsLHS(funcParent))
                             continue;
                     }
                 }
