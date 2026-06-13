@@ -22,7 +22,6 @@
 #include "errortypes.h"
 #include "fixture.h"
 #include "helpers.h"
-#include "suppressions.h"
 
 #include <list>
 #include <string>
@@ -237,14 +236,14 @@ private:
     }
 
     void FileLocationSetFile2() const {
-        ErrorMessage::FileLocation loc("foo1.cpp", SuppressionList::Suppression::NO_LINE, 0); // TODO: should not depend on Suppression
+        ErrorMessage::FileLocation loc("foo1.cpp", 0, 0);
         loc.setfile("foo.cpp");
         ASSERT_EQUALS("foo1.cpp", loc.getOrigFile(false));
         ASSERT_EQUALS("foo.cpp", loc.getfile(false));
-        ASSERT_EQUALS(SuppressionList::Suppression::NO_LINE, loc.line);
+        ASSERT_EQUALS(0, loc.line);
         ASSERT_EQUALS(0, loc.column);
-        ASSERT_EQUALS("[foo.cpp]", loc.stringify(false));
-        ASSERT_EQUALS("[foo.cpp]", loc.stringify(true));
+        ASSERT_EQUALS("[foo.cpp:0]", loc.stringify(false));
+        ASSERT_EQUALS("[foo.cpp:0:0]", loc.stringify(true));
     }
 
     void ErrorMessageConstruct() const {
