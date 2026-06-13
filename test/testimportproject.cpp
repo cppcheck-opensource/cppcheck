@@ -73,6 +73,7 @@ private:
         TEST_CASE(importCompileCommands13); // #13333: duplicate file entries
         TEST_CASE(importCompileCommands14); // #14156
         TEST_CASE(importCompileCommands15); // #14306
+        TEST_CASE(importCompileCommandsForcedInclude); // -include / /FI force-include
         TEST_CASE(importCompileCommandsArgumentsSection); // Handle arguments section
         TEST_CASE(importCompileCommandsNoCommandSection); // gracefully handles malformed json
         TEST_CASE(importCompileCommandsDirectoryMissing); // 'directory' field missing
@@ -434,6 +435,24 @@ private:
         const FileSettings &fs = importer.fileSettings.front();
         ASSERT_EQUALS(1, fs.includePaths.size());
         ASSERT_EQUALS("C:/Users/abcd/efg/hijk/path/123/", fs.includePaths.front());
+    }
+
+    void importCompileCommandsForcedInclude() const { // -include / /FI force-include
+        REDIRECT;
+        constexpr char json[] =
+            R"([{
+               "file": "/x/a.c",
+               "directory": "/x",
+               "command": "cc -include prefix.h /FIplatform.h -c a.c"
+            }])";
+        std::istringstream istr(json);
+        TestImporter importer;
+        ASSERT_EQUALS(true, importer.importCompileCommands(istr));
+        ASSERT_EQUALS(1, importer.fileSettings.size());
+        const FileSettings &fs = importer.fileSettings.front();
+        ASSERT_EQUALS(2, fs.forcedIncludes.size());
+        ASSERT_EQUALS("prefix.h", fs.forcedIncludes.front()); // gcc/clang -include
+        ASSERT_EQUALS("platform.h", fs.forcedIncludes.back()); // MSVC/clang-cl /FI
     }
 
     void importCompileCommandsArgumentsSection() const {
