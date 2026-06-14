@@ -95,7 +95,7 @@ static bool hasVolatileCastOrVar(const Token *expr)
     return ret;
 }
 
-FwdAnalysis::Result FwdAnalysis::checkRecursive(const Token *expr, const Token *startToken, const Token *endToken, const std::set<nonneg int> &exprVarIds, bool local, bool inInnerClass, int depth)
+FwdAnalysis::Result FwdAnalysis::checkRecursive(const Token *expr, const Token *startToken, const Token *endToken, const std::set<nonneg int> &exprVarIds, bool local, bool inInnerClass, int depth) const
 {
     // Parse the given tokens
     if (++depth > 1000)
@@ -381,7 +381,7 @@ std::set<nonneg int> FwdAnalysis::getExprVarIds(const Token* expr, bool* localOu
     return exprVarIds;
 }
 
-FwdAnalysis::Result FwdAnalysis::check(const Token* expr, const Token* startToken, const Token* endToken)
+FwdAnalysis::Result FwdAnalysis::check(const Token* expr, const Token* startToken, const Token* endToken) const
 {
     // all variable ids in expr.
     bool local = true;
