@@ -12955,6 +12955,10 @@ private:
             "[test.cpp:1:12]: (style, inconclusive) Function 'f' argument 1 names different: declaration 'a' definition '<unnamed>'. [funcArgNamesDifferentUnnamed]\n"
             "[test.cpp:4:12]: (style, inconclusive) Function 'g' argument 1 names different: declaration '<unnamed>' definition 'b'. [funcArgNamesDifferentUnnamed]\n",
             errout_str());
+
+        check("void f(void (*fp)(), int x);\n" // #14847
+              "void f(void (*fp)(), int x) {}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void funcArgOrderDifferent() {
