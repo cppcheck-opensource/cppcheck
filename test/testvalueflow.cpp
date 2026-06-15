@@ -908,6 +908,19 @@ private:
             ASSERT_EQUALS(true, lifetimes.size() == 1);
             ASSERT_EQUALS(true, lifetimes.front() == "a");
         }
+        {
+            const char code[] = "void f(const char *s, size_t len) {\n"
+                                "    char buf[10];\n"
+                                "    {\n"
+                                "        char *tmp = buf;\n"
+                                "        s = strcpy(tmp, s);\n"
+                                "    }\n"
+                                "    if (s[len] == '\0') {}\n"
+                                "}\n";
+            lifetimes = lifetimeValues(code, "s [");
+            ASSERT_EQUALS(true, lifetimes.size() == 1);
+            ASSERT_EQUALS(true, lifetimes.front() == "buf");
+        }
     }
 
     void valueFlowArrayElement() {
