@@ -94,7 +94,7 @@ public:
 };
 
 
-#if defined(__GNUC__) && __GNUC__ <= 9
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ <= 9
 // Hack to workaround GCC bug.
 // Details: https://trac.cppcheck.net/ticket/14850
 // seen on:
