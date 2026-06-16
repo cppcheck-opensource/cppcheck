@@ -127,28 +127,14 @@ jobs:
       # /usr/lib/ccache/bin - Alpine Linux
 
       - name: Build cppcheck
-        if: "!contains(matrix.image, 'oraclelinux')"
         run: |
           export PATH="/usr/lib/ccache/bin:/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           make -j$(nproc) HAVE_RULES=yes CXXOPTS="-Werror"
 
-      - name: Build cppcheck (Oracle Linux)
-        if: contains(matrix.image, 'oraclelinux')
-        run: |
-          export PATH="/usr/lib/ccache/bin:/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          make -j$(nproc) HAVE_RULES=yes CXXOPTS="-Werror" CPPFLAGS="-DGCC_BUG_HACK_NOEXCEPT"
-
       - name: Build test
-        if: "!contains(matrix.image, 'oraclelinux')"
         run: |
           export PATH="/usr/lib/ccache/bin:/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           make -j$(nproc) HAVE_RULES=yes CXXOPTS="-Werror" testrunner
-
-      - name: Build test (Oracle Linux)
-        if: contains(matrix.image, 'oraclelinux')
-        run: |
-          export PATH="/usr/lib/ccache/bin:/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          make -j$(nproc) HAVE_RULES=yes CXXOPTS="-Werror" CPPFLAGS="-DGCC_BUG_HACK_NOEXCEPT" testrunner
 
       - name: Run test
         run: |
