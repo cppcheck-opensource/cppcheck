@@ -4052,7 +4052,7 @@ void CheckOtherImpl::checkFuncArgNamesDifferent()
                     break;
                 }
                 // skip over templates and arrays
-                if (decl->link() && !Token::Match(decl, "[()]"))
+                if (decl->link() && (!Token::Match(decl, "[()]") || Token::simpleMatch(decl->tokAt(-1), ") (")))
                     decl = decl->link();
                 else if (decl->varId())
                     declarations[j] = decl;

@@ -12959,6 +12959,10 @@ private:
         check("void f(void (*fp)(), int x);\n" // #14847
               "void f(void (*fp)(), int x) {}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("void f(void (*fp)(int a, int b), int b);\n" // #14853
+              "void f(void (*fp)(int a, int b), int b) {}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void funcArgOrderDifferent() {
