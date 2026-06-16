@@ -94,6 +94,13 @@ public:
 };
 
 
+#ifdef GCC_BUG_HACK_NOEXCEPT
+#define  NOEXCEPT
+#else 
+#define  NOEXCEPT  noexcept
+#endif
+
+
 /**
  * @brief This is just a container for general settings so that we don't need
  * to pass individual values to functions or constructors now or in the
@@ -113,8 +120,8 @@ public:
     Settings(const Settings&);
     Settings& operator=(const Settings&);
 
-    Settings(Settings&&) noexcept;
-    Settings& operator=(Settings&&) noexcept;
+    Settings(Settings&&) NOEXCEPT;
+    Settings& operator=(Settings&&) NOEXCEPT;
 
     static std::string loadCppcheckCfg(Settings& settings, Suppressions& suppressions, bool debug = false);
 
