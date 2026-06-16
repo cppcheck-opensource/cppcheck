@@ -94,7 +94,12 @@ public:
 };
 
 
-#ifdef GCC_BUG_HACK_NOEXCEPT
+#if defined(__GNUC__) && __GNUC__ <= 9
+// Hack to workaround GCC bug.
+// Details: https://trac.cppcheck.net/ticket/14850
+// seen on:
+// oraclelinux:8, g++-8.5
+// ubuntu:20.04, g++-9.4.0
 #define  NOEXCEPT
 #else
 #define  NOEXCEPT  noexcept
