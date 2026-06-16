@@ -96,7 +96,7 @@ public:
 
 #ifdef GCC_BUG_HACK_NOEXCEPT
 #define  NOEXCEPT
-#else 
+#else
 #define  NOEXCEPT  noexcept
 #endif
 
