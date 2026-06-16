@@ -2552,7 +2552,7 @@ void CheckStlImpl::checkDereferenceInvalidIterator2()
                     emptyAdvance = tok->astParent();
                 }
             }
-            if (!CheckNullPointerImpl::isPointerDeRef(tok, unknown, mSettings) && !isInvalidIterator && !emptyAdvance) {
+            if (!CheckNullPointerImpl::isPointerDeRef(tok, unknown, mSettings.library) && !isInvalidIterator && !emptyAdvance) {
                 if (!unknown)
                     continue;
                 inconclusive = true;
@@ -2895,7 +2895,7 @@ namespace {
             int n = 1 + (astIsPointer(tok) ? 1 : 0);
             for (int i = 0; i < n; i++) {
                 bool inconclusive = false;
-                if (isVariableChangedByFunctionCall(tok, i, mSettings, &inconclusive))
+                if (isVariableChangedByFunctionCall(tok, i, mSettings.library, &inconclusive))
                     return true;
                 if (inconclusive)
                     return true;

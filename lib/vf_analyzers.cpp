@@ -222,7 +222,7 @@ struct ValueFlowAnalyzer : Analyzer {
                 return Action::Read;
         }
         bool inconclusive = false;
-        if (isVariableChangedByFunctionCall(tok, getIndirect(tok), getSettings(), &inconclusive))
+        if (isVariableChangedByFunctionCall(tok, getIndirect(tok), getSettings().library, &inconclusive))
             return Action::Read | Action::Invalid;
         if (inconclusive)
             return Action::Read | Action::Inconclusive;
@@ -1569,7 +1569,7 @@ struct ContainerExpressionAnalyzer : ExpressionAnalyzer {
             case Library::Container::Action::APPEND: {
                 std::vector<const Token*> args = getArguments(tok->astParent()->tokAt(2));
                 if (args.size() == 1) // TODO: handle overloads
-                    n = ValueFlow::valueFlowGetStrLength(tok->astParent()->tokAt(3), settings);
+                    n = ValueFlow::valueFlowGetStrLength(tok->astParent()->tokAt(3), settings.library);
                 if (n == 0) // TODO: handle known empty append
                     val->setPossible();
                 break;

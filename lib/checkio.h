@@ -35,6 +35,7 @@ class Token;
 class Variable;
 class ErrorLogger;
 class Tokenizer;
+class Library;
 enum class Severity : std::uint8_t;
 
 /// @addtogroup Checks
@@ -101,7 +102,7 @@ public:
         bool isKnownType() const;
         bool isStdVectorOrString();
         bool isStdContainer(const Token *tok);
-        bool isLibraryType(const Settings &settings) const;
+        bool isLibraryType(const Library &library) const;
 
         const Variable* variableInfo{};
         const Token* typeToken{};

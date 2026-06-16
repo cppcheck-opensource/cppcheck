@@ -133,7 +133,7 @@ static int getMinFormatStringOutputLength(const std::vector<const Token*> &param
             case 's':
                 parameterLength = 0;
                 if (inputArgNr < parameters.size())
-                    parameterLength = ValueFlow::valueFlowGetStrLength(parameters[inputArgNr], settings);
+                    parameterLength = ValueFlow::valueFlowGetStrLength(parameters[inputArgNr], settings.library);
 
                 handleNextParameter = true;
                 break;
