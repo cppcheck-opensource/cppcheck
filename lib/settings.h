@@ -100,9 +100,9 @@ public:
 // seen on:
 // oraclelinux:8, g++-8.5
 // ubuntu:20.04, g++-9.4.0
-#define  NOEXCEPT
+#define  CPPCHECK_NOEXCEPT
 #else
-#define  NOEXCEPT  noexcept
+#define  CPPCHECK_NOEXCEPT  noexcept
 #endif
 
 
@@ -125,8 +125,8 @@ public:
     Settings(const Settings&);
     Settings& operator=(const Settings&);
 
-    Settings(Settings&&) NOEXCEPT;
-    Settings& operator=(Settings&&) NOEXCEPT;
+    Settings(Settings&&) CPPCHECK_NOEXCEPT;
+    Settings& operator=(Settings&&) CPPCHECK_NOEXCEPT;
 
     static std::string loadCppcheckCfg(Settings& settings, Suppressions& suppressions, bool debug = false);
 
