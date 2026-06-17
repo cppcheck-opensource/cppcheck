@@ -1264,7 +1264,7 @@ private:
         code = "bool f(unsigned a) {\n"
                "    bool x = -a < 1;\n"
                "    return x;\n"
-              "}";
+               "}";
         ASSERT_EQUALS(false, testValueOfXKnown(code, 3U, 1));
 
         // Logical and
