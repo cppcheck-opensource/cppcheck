@@ -556,14 +556,15 @@ ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok) cons
 {
     if (!bufTok->valueType())
         return ValueFlow::Value(-1);
-    if (bufTok->isUnaryOp("&"))
-        bufTok = bufTok->astOperand1();
     const Token* varTok = bufTok;
-    if (Token::simpleMatch(bufTok, "[")) {
-        const Token* index = bufTok->astOperand2();
-        if (!(index && index->hasKnownIntValue() && index->getKnownIntValue() == 0))
-            return ValueFlow::Value(-1);
-        varTok = varTok->astOperand1();
+    if (bufTok->isUnaryOp("&")) {
+        bufTok = bufTok->astOperand1();
+        if (Token::simpleMatch(bufTok, "[")) {
+            const Token* index = bufTok->astOperand2();
+            if (!(index && index->hasKnownIntValue() && index->getKnownIntValue() == 0))
+                return ValueFlow::Value(-1);
+            varTok = bufTok->astOperand1();
+        }
     }
     const Variable *var = varTok->variable();
 
