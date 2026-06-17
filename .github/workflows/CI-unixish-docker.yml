@@ -31,8 +31,8 @@ jobs:
             with_gui: false  # it appears FindQt6.cmake is not provided by any package
             full_build: false  # FIXME: test-signalhandler.cpp fails to build since feenableexcept() is missing
           - image: "oraclelinux:8"
-            with_gui: false  # no qt6 are installed
-            full_build: true  # FIXME: test-signalhandler.cpp fails to build since feenableexcept() is missing
+            with_gui: false  # no qt6 are installed, missing GUI in old distros is OK
+            full_build: true
       fail-fast: false # Prefer quick result
 
     runs-on: ubuntu-22.04
