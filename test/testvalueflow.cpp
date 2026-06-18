@@ -1261,7 +1261,7 @@ private:
         ASSERT_EQUALS(1U, values.size());
         ASSERT_EQUALS(-10, values.back().intvalue);
 
-        code = "bool f(unsigned a) {\n"
+        code = "bool f(unsigned a) {\n" // #14848
                "    bool x = -a < 1;\n"
                "    return x;\n"
                "}";
