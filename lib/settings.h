@@ -97,9 +97,7 @@ public:
 #if defined(__GNUC__) && !defined(__clang__) && __GNUC__ <= 9
 // Hack to workaround GCC bug.
 // Details: https://trac.cppcheck.net/ticket/14850
-// seen on:
-// oraclelinux:8, g++-8.5
-// ubuntu:20.04, g++-9.4.0
+// seen on g++ before 10.x
 #define  CPPCHECK_NOEXCEPT
 #else
 #define  CPPCHECK_NOEXCEPT  noexcept
