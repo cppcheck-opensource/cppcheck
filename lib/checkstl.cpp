@@ -637,12 +637,14 @@ void CheckStlImpl::iterators()
 void CheckStlImpl::mismatchingContainerIteratorError(const Token* containerTok, const Token* iterTok, const Token* containerTok2)
 {
     const std::string container(containerTok ? containerTok->expressionString() : std::string("v1"));
+    const std::string containerTemp(isTemporary(containerTok, &mSettings.library) ? " temporary " : " ");
     const std::string container2(containerTok2 ? containerTok2->expressionString() : std::string("v2"));
+    const std::string containerTemp2(isTemporary(containerTok2, &mSettings.library) ? " temporary " : " ");
     const std::string iter(iterTok ? iterTok->expressionString() : std::string("it"));
     reportError(containerTok,
                 Severity::error,
                 "mismatchingContainerIterator",
-                "Iterator '" + iter + "' referring to container '" + container2 + "' is used with container '" + container + "'.",
+                "Iterator '" + iter + "' referring to" + containerTemp2 + "container '" + container2 + "' is used with" + containerTemp + "container '" + container + "'.",
                 CWE664,
                 Certainty::normal);
 }
@@ -884,7 +886,7 @@ void CheckStlImpl::mismatchingContainerIterator()
             const std::vector<const Token *> args = getArguments(ftok);
 
             const Library::Container * c = tok->valueType()->container;
-            const Library::Container::Action action = c->getAction(tok->strAt(2));
+            const Library::Container::Action action = c->getAction(ftok->str());
             const Token* iterTok = nullptr;
             if (action == Library::Container::Action::INSERT && args.size() == 2) {
                 // Skip if iterator pair
