@@ -1422,6 +1422,7 @@ private:
         ASSERT_EQUALS("void f ( ) { }", tok("void f(){{{}}}"));
         ASSERT_EQUALS("void f ( ) { for ( ; ; ) { } }", tok("void f () { for(;;){} }"));
         ASSERT_EQUALS("void f ( ) { { scope_lock lock ; foo ( ) ; } { scope_lock lock ; bar ( ) ; } }", tok("void f () { {scope_lock lock; foo();} {scope_lock lock; bar();} }"));
+        ASSERT_EQUALS("std :: map < int , int > m { { } } ;", tok("std::map<int, int> m{ {} };"));
     }
 
     void simplifyOverride() { // ticket #5069

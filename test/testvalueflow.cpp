@@ -908,6 +908,19 @@ private:
             ASSERT_EQUALS(true, lifetimes.size() == 1);
             ASSERT_EQUALS(true, lifetimes.front() == "a");
         }
+        {
+            const char code[] = "void f(const char *s, size_t len) {\n"
+                                "    char buf[10];\n"
+                                "    {\n"
+                                "        char *tmp = buf;\n"
+                                "        s = strcpy(tmp, s);\n"
+                                "    }\n"
+                                "    if (s[len] == '\0') {}\n"
+                                "}\n";
+            lifetimes = lifetimeValues(code, "s [");
+            ASSERT_EQUALS(true, lifetimes.size() == 1);
+            ASSERT_EQUALS(true, lifetimes.front() == "buf");
+        }
     }
 
     void valueFlowArrayElement() {
@@ -1077,6 +1090,14 @@ private:
                "  }\n"
                "}\n";
         ASSERT_EQUALS(false, testValueOfX(code, 13U, ValueFlow::Value::MoveKind::MovedVariable));
+
+        code = "struct S { int f(int); };\n" // #11751
+               "S g(S);\n"
+               "void h() {\n"
+               "    S x;\n"
+               "    g(std::move(x)).f(1);\n"
+               "}\n";
+        ASSERT_EQUALS(false, testValueOfX(code, 5U, ValueFlow::Value::MoveKind::MovedVariable));
     }
 
     void valueFlowCalculations() {

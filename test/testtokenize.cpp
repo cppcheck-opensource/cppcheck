@@ -233,6 +233,7 @@ private:
         TEST_CASE(vardecl32);
         TEST_CASE(vardecl33);
         TEST_CASE(vardecl34);
+        TEST_CASE(vardecl35);
         TEST_CASE(vardecl_stl_1);
         TEST_CASE(vardecl_stl_2);
         TEST_CASE(vardecl_stl_3);
@@ -2854,6 +2855,32 @@ private:
         {
             const char code[] = "static enum { E } const *f() { return NULL; }";
             ASSERT_EQUALS("enum Anonymous0 { E } ; static enum Anonymous0 const * f ( ) { return NULL ; }", tokenizeAndStringify(code, dinit(TokenizeOptions, $.cpp = false)));
+        }
+    }
+
+    void vardecl35() { // #14842
+        {
+            const char code[] = "auto f() -> void {\n"
+                                "    auto p = new int;\n"
+                                "    *p = 0;\n"
+                                "}\n";
+            ASSERT_EQUALS("auto f ( ) . void {\n"
+                          "auto p ; p = new int ;\n"
+                          "* p = 0 ;\n"
+                          "}", tokenizeAndStringify(code));
+            ignore_errout();
+        }
+        {
+            const char code[] = "auto f() -> ::std::vector<int> {\n"
+                                "    int i = 0;\n"
+                                "    return { i };\n"
+                                "}";
+            ASSERT_EQUALS("auto f ( ) . :: std :: vector < int > {\n"
+                          "int i ; i = 0 ;\n"
+                          "return { i } ;\n"
+                          "}",
+                          tokenizeAndStringify(code));
+            ignore_errout();
         }
     }
 
@@ -8821,14 +8848,11 @@ private:
     }
 
     void testDirectiveIncludeLocations() {
+        ScopedFile inc1("inc1.h", "#define macro2 val\n#include \"inc2.h\"\n#define macro4 val\n");
+        ScopedFile inc2("inc2.h", "#define macro3 val\n");
+        // TODO: preprocess?
         const char filedata[] = "#define macro1 val\n"
-                                "#file \"inc1.h\"\n"
-                                "#define macro2 val\n"
-                                "#file \"inc2.h\"\n"
-                                "#define macro3 val\n"
-                                "#endfile\n"
-                                "#define macro4 val\n"
-                                "#endfile\n"
+                                "#include \"inc1.h\"\n"
                                 "#define macro5 val\n";
         const char dumpdata[] = "  <directivelist>\n"
                                 "    <directive file=\"test.c\" linenr=\"1\" str=\"#define macro1 val\">\n"
@@ -8839,8 +8863,14 @@ private:
                                 "    </directive>\n"
                                 "    <directive file=\"test.c\" linenr=\"2\" str=\"#include &quot;inc1.h&quot;\">\n"
                                 "      <token column=\"1\" str=\"#\"/>\n"
-                                "      <token column=\"2\" str=\"file\"/>\n"
-                                "      <token column=\"7\" str=\"&quot;inc1.h&quot;\"/>\n"
+                                "      <token column=\"2\" str=\"include\"/>\n"
+                                "      <token column=\"10\" str=\"&quot;inc1.h&quot;\"/>\n"
+                                "    </directive>\n"
+                                "    <directive file=\"test.c\" linenr=\"3\" str=\"#define macro5 val\">\n"
+                                "      <token column=\"1\" str=\"#\"/>\n"
+                                "      <token column=\"2\" str=\"define\"/>\n"
+                                "      <token column=\"9\" str=\"macro5\"/>\n"
+                                "      <token column=\"16\" str=\"val\"/>\n"
                                 "    </directive>\n"
                                 "    <directive file=\"inc1.h\" linenr=\"1\" str=\"#define macro2 val\">\n"
                                 "      <token column=\"1\" str=\"#\"/>\n"
@@ -8850,14 +8880,8 @@ private:
                                 "    </directive>\n"
                                 "    <directive file=\"inc1.h\" linenr=\"2\" str=\"#include &quot;inc2.h&quot;\">\n"
                                 "      <token column=\"1\" str=\"#\"/>\n"
-                                "      <token column=\"2\" str=\"file\"/>\n"
-                                "      <token column=\"7\" str=\"&quot;inc2.h&quot;\"/>\n"
-                                "    </directive>\n"
-                                "    <directive file=\"inc2.h\" linenr=\"1\" str=\"#define macro3 val\">\n"
-                                "      <token column=\"1\" str=\"#\"/>\n"
-                                "      <token column=\"2\" str=\"define\"/>\n"
-                                "      <token column=\"9\" str=\"macro3\"/>\n"
-                                "      <token column=\"16\" str=\"val\"/>\n"
+                                "      <token column=\"2\" str=\"include\"/>\n"
+                                "      <token column=\"10\" str=\"&quot;inc2.h&quot;\"/>\n"
                                 "    </directive>\n"
                                 "    <directive file=\"inc1.h\" linenr=\"3\" str=\"#define macro4 val\">\n"
                                 "      <token column=\"1\" str=\"#\"/>\n"
@@ -8865,10 +8889,10 @@ private:
                                 "      <token column=\"9\" str=\"macro4\"/>\n"
                                 "      <token column=\"16\" str=\"val\"/>\n"
                                 "    </directive>\n"
-                                "    <directive file=\"test.c\" linenr=\"3\" str=\"#define macro5 val\">\n"
+                                "    <directive file=\"inc2.h\" linenr=\"1\" str=\"#define macro3 val\">\n"
                                 "      <token column=\"1\" str=\"#\"/>\n"
                                 "      <token column=\"2\" str=\"define\"/>\n"
-                                "      <token column=\"9\" str=\"macro5\"/>\n"
+                                "      <token column=\"9\" str=\"macro3\"/>\n"
                                 "      <token column=\"16\" str=\"val\"/>\n"
                                 "    </directive>\n"
                                 "  </directivelist>\n"

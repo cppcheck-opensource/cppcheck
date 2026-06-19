@@ -7083,6 +7083,24 @@ private:
                               "    S<0> s;\n"
                               "}\n");
         ASSERT_EQUALS("[test.cpp:6:10]: (style) Unused variable: s [unusedVariable]\n", errout_str());
+
+        functionVariableUsage("template <typename T>\n" // #14783
+                              "struct A {\n"
+                              "    A() = default;\n"
+                              "};\n"
+                              "void f() {\n"
+                              "    A<int> a;\n"
+                              "}\n");
+        ASSERT_EQUALS("[test.cpp:6:12]: (style) Unused variable: a [unusedVariable]\n", errout_str());
+
+        functionVariableUsage("template <typename T>\n" // #14784
+                              "struct A {\n"
+                              "    A() {}\n"
+                              "};\n"
+                              "void f() {\n"
+                              "    A<int> a;\n"
+                              "}\n");
+        ASSERT_EQUALS("[test.cpp:6:12]: (style) Unused variable: a [unusedVariable]\n", errout_str());
     }
 
     void localvarFuncPtr() {
@@ -7171,6 +7189,7 @@ private:
                               "void f() {\n"
                               "    Y y;\n"
                               "}"); // #4695
+        ASSERT_EQUALS("[test.cpp:6:7]: (style) Unused variable: y [unusedVariable]\n", errout_str());
     }
 
     void crash3() {

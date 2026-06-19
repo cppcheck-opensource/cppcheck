@@ -2362,6 +2362,9 @@ private:
         checkIntToPointerCast("struct S { int i; };\n" // #13886, don't crash
                               "int f() { return sizeof(((struct S*)0)->i); }");
         ASSERT_EQUALS("", errout_str());
+
+        checkIntToPointerCast("auto p = (int*)0b10;"); // #14180
+        ASSERT_EQUALS("[test.cpp:1:10]: (portability) Casting non-zero binary integer literal to pointer. [intToPointerCast]\n", errout_str());
     }
 
     struct CheckInvalidPointerCastOptions
@@ -4864,6 +4867,11 @@ private:
         ASSERT_EQUALS("[test.cpp:1:12]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n"
                       "[test.cpp:1:20]: (style) Parameter 'q' can be declared as pointer to const [constParameterPointer]\n",
                       errout_str());
+
+        check("int f(std::vector<int>* p) {\n" // #14810
+              "    return *p->cbegin();\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:1:25]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n", errout_str());
 
         check("struct S { std::string a; };\n" // #13678
               "struct T { S s; };\n"
@@ -12870,6 +12878,18 @@ private:
               "    h(b ? h(gA(5, std::move(s))) : h(gB(7, std::move(s))));\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("int cb(std::string);\n" // #13628
+              "void f(bool b, std::string s1) {\n"
+              "    std::string s2 = b ? cb(std::move(s1)) : s1;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("int cb(std::string);\n"
+              "void f(bool b, std::string s1) {\n"
+              "    std::string s2 = b ? cb(std::move(s1)) : s1 + s1;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void movePointerAlias()
@@ -12964,6 +12984,10 @@ private:
             "[test.cpp:1:12]: (style, inconclusive) Function 'f' argument 1 names different: declaration 'a' definition '<unnamed>'. [funcArgNamesDifferentUnnamed]\n"
             "[test.cpp:4:12]: (style, inconclusive) Function 'g' argument 1 names different: declaration '<unnamed>' definition 'b'. [funcArgNamesDifferentUnnamed]\n",
             errout_str());
+
+        check("void f(void (*fp)(), int x);\n" // #14847
+              "void f(void (*fp)(), int x) {}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void funcArgOrderDifferent() {

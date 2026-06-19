@@ -614,8 +614,11 @@ void CheckAutoVariablesImpl::checkVarLifetimeScope(const Token * start, const To
                 }
             }
         }
-        const bool escape = Token::simpleMatch(tok->astParent(), "throw") ||
-                            (Token::simpleMatch(tok->astParent(), "return") && !Function::returnsStandardType(scope->function));
+        const Token* retThrow = tok->astParent();
+        if (Token::simpleMatch(retThrow, "new"))
+            retThrow = retThrow->astParent();
+        const bool escape = Token::simpleMatch(retThrow, "throw") ||
+                            (Token::simpleMatch(retThrow, "return") && !Function::returnsStandardType(scope->function));
         std::unordered_set<const Token*> exprs;
         for (const ValueFlow::Value& val:tok->values()) {
             if (!val.isLocalLifetimeValue() && !val.isSubFunctionLifetimeValue())

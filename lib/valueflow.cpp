@@ -2591,7 +2591,7 @@ static void valueFlowLifetimeFunction(Token *tok, const TokenList &tokenlist, Er
             std::vector<const Token*> args = getArguments(tok);
             if (iArg > 0 && iArg <= args.size()) {
                 const Token* varTok = args[iArg - 1];
-                if (varTok->variable() && varTok->variable()->isLocal())
+                if (varTok->variable() && varTok->variable()->isLocal() && varTok->variable()->isArray())
                     LifetimeStore{ varTok, "Passed to '" + tok->str() + "'.", ValueFlow::Value::LifetimeKind::Address }.byRef(
                         tok->next(), tokenlist, errorLogger, settings);
             }
@@ -3296,8 +3296,11 @@ static void valueFlowAfterMove(const TokenList& tokenlist, const SymbolDatabase&
                         ternaryColon = ternaryColon->astParent();
                     if (Token::simpleMatch(ternaryColon, ":")) {
                         endOfFunctionCall = ternaryColon->astOperand2();
-                        if (Token::simpleMatch(endOfFunctionCall, "("))
-                            endOfFunctionCall = endOfFunctionCall->link();
+                        Token* next = nextAfterAstRightmostLeaf(endOfFunctionCall);
+                        if (next)
+                            endOfFunctionCall = next;
+                        else
+                            endOfFunctionCall = endOfFunctionCall->next();
                     }
                 }
                 ValueFlow::Value value;

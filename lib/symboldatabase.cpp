@@ -175,9 +175,9 @@ void SymbolDatabase::createSymbolDatabaseFindAllScopes()
     // Store current access in each scope (depends on evaluation progress)
     std::map<const Scope*, AccessControl> access;
 
-    std::map<Scope *, std::set<std::string>> forwardDecls;
+    std::map<const Scope *, std::set<std::string>> forwardDecls;
 
-    const std::function<Scope *(const Token *, Scope *)> findForwardDeclScope = [&](const Token *tok, Scope *startScope) {
+    const std::function<const Scope *(const Token *, const Scope *)> findForwardDeclScope = [&](const Token *tok, const Scope *startScope) {
         if (tok->str() == "::")
             return findForwardDeclScope(tok->next(), &scopeList.front());
 
@@ -187,14 +187,14 @@ void SymbolDatabase::createSymbolDatabaseFindAllScopes()
             });
 
             if (it == startScope->nestedList.cend())
-                return static_cast<Scope *>(nullptr);
+                return static_cast<const Scope *>(nullptr);
 
             return findForwardDeclScope(tok->tokAt(2), *it);
         }
 
         auto it = forwardDecls.find(startScope);
         if (it == forwardDecls.cend())
-            return static_cast<Scope *>(nullptr);
+            return static_cast<const Scope *>(nullptr);
 
         return it->second.count(tok->str()) > 0 ? startScope : nullptr;
     };

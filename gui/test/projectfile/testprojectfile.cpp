@@ -18,6 +18,7 @@
 
 #include "testprojectfile.h"
 
+#include "addoninfo.h"
 #include "library.h"
 #include "platform.h"
 #include "projectfile.h"

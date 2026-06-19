@@ -4240,6 +4240,117 @@ def test_no_valid_configuration(tmp_path):
     ]
 
 
+# The implementation for "A::a" is missing - so don't check if "A::b" is used or not
+def test_unused_private_function_incomplete_impl(tmpdir):
+    test_inc = os.path.join(tmpdir, 'test.h')
+    with open(test_inc, 'wt') as f:
+        f.write(
+"""
+class A
+{
+public:
+    A();
+    void a();
+private:
+    void b();
+};
+""")
+
+    test_file = os.path.join(tmpdir, 'test.cpp')
+    with open(test_file, 'wt') as f:
+        f.write(
+"""
+#include "test.h"
+
+A::A() { }
+void A::b() { }
+""")
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--enable=style',
+        '--suppress=functionStatic',  # we do not care about this - this was converted from TestUnusedPrivateFunction
+        test_file
+    ]
+
+    ret, stdout, stderr = cppcheck(args)
+    assert stdout == ''
+    assert stderr.splitlines() == []
+    assert ret == 0, stdout
+
+
+def test_unused_private_function_multi_file(tmpdir):  # ticket #2567
+    test_inc = os.path.join(tmpdir, 'test.h')
+    with open(test_inc, 'wt') as f:
+        f.write(
+"""
+struct Fred
+{
+    Fred()
+    {
+        Init();
+    }
+private:
+    void Init();
+};
+""")
+
+    test_file = os.path.join(tmpdir, 'test.cpp')
+    with open(test_file, 'wt') as f:
+        f.write(
+"""
+#include "test.h"
+
+void Fred::Init()
+{
+}
+""")
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--enable=style',
+        '--suppress=functionStatic',  # we do not care about this - this was converted from TestUnusedPrivateFunction
+        test_file
+    ]
+
+    ret, stdout, stderr = cppcheck(args)
+    assert stdout == ''
+    assert stderr.splitlines() == []
+    assert ret == 0, stdout
+
+
+def test_missing_doublequote_include(tmpdir):
+    test_inc = os.path.join(tmpdir, 'abc.h')
+    with open(test_inc, 'wt') as f:
+        f.write(
+'''
+#define a
+"
+''')
+
+    test_file = os.path.join(tmpdir, 'test.cpp')
+    with open(test_file, 'wt') as f:
+        f.write(
+"""
+#include "abc.h"
+""")
+
+    args = [
+        '-q',
+        '--template=simple',
+        test_file
+    ]
+
+    ret, stdout, stderr = cppcheck(args)
+    assert stdout == ''
+    assert stderr.splitlines() == [
+        f"{test_inc}:3:1: error: No pair for character (\"). Can't process file. File is either invalid or unicode, which is currently not supported. [syntaxError]"
+    ]
+    assert ret == 0, stdout
+
+
 def test_no_valid_configuration_check_config(tmp_path):
     test_file = tmp_path / 'test.c'
     with open(test_file, "w") as f:
@@ -4318,25 +4429,25 @@ def __test_active_checkers(tmp_path, active_cnt, total_cnt, use_misra=False, use
 
 
 def test_active_unusedfunction_only(tmp_path):
-    __test_active_checkers(tmp_path, 1, 186, use_unusedfunction_only=True)
+    __test_active_checkers(tmp_path, 1, 187, use_unusedfunction_only=True)
 
 
 def test_active_unusedfunction_only_builddir(tmp_path):
     checkers_exp = [
         'CheckUnusedFunctions::check'
     ]
-    __test_active_checkers(tmp_path, 1, 186, use_unusedfunction_only=True, checkers_exp=checkers_exp)
+    __test_active_checkers(tmp_path, 1, 187, use_unusedfunction_only=True, checkers_exp=checkers_exp)
 
 
 def test_active_unusedfunction_only_misra(tmp_path):
-    __test_active_checkers(tmp_path, 1, 386, use_unusedfunction_only=True, use_misra=True)
+    __test_active_checkers(tmp_path, 1, 387, use_unusedfunction_only=True, use_misra=True)
 
 
 def test_active_unusedfunction_only_misra_builddir(tmp_path):
     checkers_exp = [
         'CheckUnusedFunctions::check'
     ]
-    __test_active_checkers(tmp_path, 1, 386, use_unusedfunction_only=True, use_misra=True, checkers_exp=checkers_exp)
+    __test_active_checkers(tmp_path, 1, 387, use_unusedfunction_only=True, use_misra=True, checkers_exp=checkers_exp)
 
 
 def test_analyzerinfo(tmp_path):

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(Cppcheck VERSION 2.20.99 LANGUAGES CXX)
+project(Cppcheck VERSION 2.21.99 LANGUAGES CXX)
 
 include(cmake/options.cmake)
 

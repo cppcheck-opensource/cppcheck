@@ -232,6 +232,7 @@ private:
         TEST_CASE(simplifyTypedef159);
         TEST_CASE(simplifyTypedef160);
         TEST_CASE(simplifyTypedef161);
+        TEST_CASE(simplifyTypedef162);
 
         TEST_CASE(simplifyTypedefFunction1);
         TEST_CASE(simplifyTypedefFunction2); // ticket #1685
@@ -3857,6 +3858,14 @@ private:
         const char cur2[] = "p = new int ( * ) [ n ] [ 3 ] ;";
         const char exp2[] = "p = new ( int ( * [ n ] ) [ 3 ] ) ;";
         TODO_ASSERT_EQUALS(exp2, cur2, tok(code2));
+    }
+
+    void simplifyTypedef162() {
+        const char code[] = "using std::vector;\n" // #12041
+                            "typedef vector<int> ints;\n"
+                            "void f(ints v);\n";
+        const char exp[] = "void f ( std :: vector < int > v ) ;";
+        ASSERT_EQUALS(exp, tok(code));
     }
 
     void simplifyTypedefFunction1() {

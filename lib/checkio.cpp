@@ -507,6 +507,137 @@ void CheckIOImpl::invalidScanfError(const Token *tok)
                 CWE119, Certainty::normal);
 }
 
+static const Token* findFileReadCall(const Token *start, const Token *end, int varid)
+{
+    const Token* found = Token::findmatch(start, "fgets|fgetc|getc|fread|fscanf (", end);
+    while (found) {
+        const std::vector<const Token*> args = getArguments(found);
+        if (!args.empty()) {
+            const bool match = (found->str() == "fscanf")
+                               ? args.front()->varId() == varid
+                               : args.back()->varId() == varid;
+            if (match)
+                return found;
+        }
+        found = Token::findmatch(found->next(), "fgets|fgetc|getc|fread|fscanf (", end);
+    }
+    return nullptr;
+}
+
+void CheckIOImpl::checkWrongfeofUsage()
+{
+    const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
+
+    logChecker("CheckIO::checkWrongfeofUsage");
+
+    for (const Scope * scope : symbolDatabase->functionScopes) {
+        for (const Token *tok = scope->bodyStart->next(); tok != scope->bodyEnd; tok = tok->next()) {
+            // TODO: Handle for loops
+            if (!Token::Match(tok, "while ( ! feof ( %var% )"))
+                continue;
+
+            // Bail out if we cannot identify file pointer
+            const int fpVarId = tok->tokAt(5)->varId();
+            if (fpVarId == 0)
+                continue;
+
+            const Token *endCond = tok->linkAt(1);
+            const Token *bodyStart;
+            const Token *bodyEnd;
+
+            if (Token::simpleMatch(tok->previous(), "}") && tok->previous()->scope()->type == ScopeType::eDo) {
+                bodyEnd = tok->previous();
+                bodyStart = bodyEnd->link();
+            } else {
+                if (!Token::simpleMatch(endCond, ") {"))
+                    continue;
+                bodyEnd = endCond->linkAt(1);
+                bodyStart = endCond->next();
+            }
+
+            // Bail out if the loop contains control flow (too complex to analyze)
+            if (Token::findmatch(bodyStart, "return|break|goto|continue|throw", bodyEnd))
+                continue;
+
+            // Bail out if fp is used outside of known file I/O functions.
+            // If it is passed to an unknown function, reads may occur there.
+            bool fpUsedElsewhere = false;
+            for (const Token *t = bodyStart->next(); t && t != bodyEnd; t = t->next()) {
+                if (t->varId() != fpVarId)
+                    continue;
+                const Token *p = t->astParent();
+                while (p && p->str() == ",")
+                    p = p->astParent();
+                if (!p || !Token::Match(p->astOperand1(), "fgets|fgetc|getc|fread|fscanf|fprintf|fwrite|fputs|fputc|putc")) {
+                    fpUsedElsewhere = true;
+                    break;
+                }
+            }
+            if (fpUsedElsewhere)
+                continue;
+
+            // No file read call in the loop: feof can never become true inside it
+            const Token *loopFileReadCallTok = findFileReadCall(bodyStart, bodyEnd, fpVarId);
+            if (!loopFileReadCallTok) {
+                // TODO: Warn about infinite loop
+                continue;
+            }
+
+            // Find last file read
+            const Token *lastLoopFileReadCallTok = loopFileReadCallTok;
+            while (loopFileReadCallTok) {
+                lastLoopFileReadCallTok = loopFileReadCallTok;
+                loopFileReadCallTok = findFileReadCall(lastLoopFileReadCallTok->next(), bodyEnd, fpVarId);
+            }
+
+            // Warn if the destination of the last file read is used after the call before bodyEnd.
+            // If it is not, the stale buffer is never accessed on the extra iteration at EOF.
+
+            if (lastLoopFileReadCallTok->str() == "fgetc" || lastLoopFileReadCallTok->str() == "getc") {
+                // Warn if the return value feeds into an expression (astParent of the call node)
+                if (lastLoopFileReadCallTok->astParent() && lastLoopFileReadCallTok->astParent()->astParent())
+                    wrongfeofUsage(getCondTok(tok));
+            } else {
+                const std::vector<const Token*> args = getArguments(lastLoopFileReadCallTok);
+                // Collect destination varIds
+                std::vector<nonneg int> destVarIds;
+                if (lastLoopFileReadCallTok->str() == "fscanf") {
+                    // args[0]=fp, args[1]=format, args[2+]=destinations (typically &var)
+                    for (std::size_t i = 2; i < args.size(); ++i) {
+                        const Token *destTok = Token::Match(args[i], "& %var%") ? args[i]->next() : args[i];
+                        if (destTok->varId() != 0)
+                            destVarIds.push_back(destTok->varId());
+                    }
+                } else {
+                    // Handle fgets, fread
+                    // First argument is the destination buffer
+                    if (!args.empty() && args.front()->varId() != 0)
+                        destVarIds.push_back(args.front()->varId());
+                }
+
+                // Search for any destination use between this call's ';' and endBody
+                const Token *semiColonTok = lastLoopFileReadCallTok->linkAt(1)->next();
+                for (const Token *t = semiColonTok; t && t != bodyEnd; t = t->next()) {
+                    if (std::find(destVarIds.begin(), destVarIds.end(), t->varId()) != destVarIds.end()) {
+                        wrongfeofUsage(getCondTok(tok));
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void CheckIOImpl::wrongfeofUsage(const Token * tok)
+{
+    reportError(tok, Severity::warning,
+                "wrongfeofUsage",
+                "Using feof() as a loop condition causes the last line to be processed twice.\n"
+                "feof() returns true only after a read has failed due to end-of-file, so the loop "
+                "body executes once more after the last successful read. Check the return value of "
+                "the read function instead (e.g. fgets, fread, fscanf).");
+}
+
 //---------------------------------------------------------------------------
 //    printf("%u", "xyz"); // Wrong argument type
 //    printf("%u%s", 1); // Too few arguments
@@ -2057,6 +2188,7 @@ void CheckIO::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
     checkIO.checkWrongPrintfScanfArguments();
     checkIO.checkCoutCerrMisusage();
     checkIO.checkFileUsage();
+    checkIO.checkWrongfeofUsage();
     checkIO.invalidScanf();
 }
 
@@ -2072,6 +2204,7 @@ void CheckIO::getErrorMessages(ErrorLogger& errorLogger, const Settings &setting
     c.fcloseInLoopConditionError(nullptr, "fp");
     c.seekOnAppendedFileError(nullptr);
     c.incompatibleFileOpenError(nullptr, "tmp");
+    c.wrongfeofUsage(nullptr);
     c.invalidScanfError(nullptr);
     c.wrongPrintfScanfArgumentsError(nullptr, "printf",3,2);
     c.invalidScanfArgTypeError_s(nullptr,  1, "s", nullptr);

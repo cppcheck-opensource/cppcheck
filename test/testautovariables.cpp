@@ -4062,6 +4062,14 @@ private:
               "    struct S s = { .i = 0, true };\n"
               "}\n"); // don't crash
         ASSERT_EQUALS("", errout_str());
+
+        check("struct A { int& r; };\n" // #14772
+              "A* f() {\n"
+              "    int x = 0;\n"
+              "    return new A{ x };\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:19] -> [test.cpp:3:9] -> [test.cpp:4:17]: (error) Returning object that points to local variable 'x' that will be invalid when returning. [returnDanglingLifetime]\n",
+                      errout_str());
     }
 
     void danglingLifetimeInitList() {

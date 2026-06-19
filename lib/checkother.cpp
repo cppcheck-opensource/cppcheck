@@ -464,6 +464,8 @@ void CheckOtherImpl::warningIntToPointerCast()
                 format = "decimal";
             else if (MathLib::isOct(from->str()))
                 format = "octal";
+            else if (MathLib::isBin(from->str()))
+                format = "binary";
             else
                 continue;
             intToPointerCastError(tok, format);
@@ -4044,7 +4046,7 @@ void CheckOtherImpl::checkFuncArgNamesDifferent()
                 definitions[j] = variable->nameToken();
             }
             // get the declaration (search for first token with varId)
-            while (decl && !Token::Match(decl, ",|)|;")) {
+            while (decl && !Token::Match(decl, "[,;]")) {
                 // skip everything after the assignment because
                 // it could also have a varId or be the first
                 // token with a varId if there is no name token
@@ -4053,7 +4055,7 @@ void CheckOtherImpl::checkFuncArgNamesDifferent()
                     break;
                 }
                 // skip over templates and arrays
-                if (decl->link() && decl->str() != "(")
+                if (decl->link() && !Token::Match(decl, "[()]"))
                     decl = decl->link();
                 else if (decl->varId())
                     declarations[j] = decl;

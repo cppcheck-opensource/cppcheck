@@ -122,7 +122,7 @@ static QStringList getLabels() {
         QObject::tr("Rule"),
         QObject::tr("Since date"),
         QObject::tr("Tags"),
-        QObject::tr("CWE")};
+        "CWE"};
 }
 
 static Severity getSeverity(ReportType reportType, const ErrorItem& errorItem) {
@@ -427,8 +427,8 @@ void ResultsTree::clear(const QString &filename)
 
         if (stripped == fileItem->text() ||
             filename == fileItem->errorItem->file0) {
-            mModel->removeRow(i);
             mErrorList.removeAll(fileItem->errorItem->toString());
+            mModel->removeRow(i);
             break;
         }
     }
@@ -445,8 +445,8 @@ void ResultsTree::clearRecheckFile(const QString &filename)
         QString storedfile = fileItem->getErrorPathItem().file;
         storedfile = ((!mCheckPath.isEmpty() && storedfile.startsWith(mCheckPath)) ? storedfile.mid(mCheckPath.length() + 1) : storedfile);
         if (actualfile == storedfile) {
-            mModel->removeRow(i);
             mErrorList.removeAll(fileItem->errorItem->toString());
+            mModel->removeRow(i);
             break;
         }
     }
@@ -741,7 +741,7 @@ void ResultsTree::startApplication(const ResultItem *target, int application)
     //If there are no applications specified, tell the user about it
     if (mApplications->getApplicationCount() == 0) {
         QMessageBox msg(QMessageBox::Critical,
-                        tr("Cppcheck"),
+                        "Cppcheck",
                         tr("No editor application configured.\n\n"
                            "Configure the editor application for Cppcheck in preferences/Applications."),
                         QMessageBox::Ok,
@@ -755,7 +755,7 @@ void ResultsTree::startApplication(const ResultItem *target, int application)
 
     if (application == -1) {
         QMessageBox msg(QMessageBox::Critical,
-                        tr("Cppcheck"),
+                        "Cppcheck",
                         tr("No default editor application selected.\n\n"
                            "Please select the default editor application in preferences/Applications."),
                         QMessageBox::Ok,

@@ -48,8 +48,6 @@ namespace ValueFlow
 /** @brief check for null pointer dereferencing */
 
 class CPPCHECKLIB CheckNullPointer : public Check {
-    friend class TestNullPointer;
-
 public:
     /** @brief This constructor is used when registering the CheckNullPointer */
     CheckNullPointer() : Check("Null pointer") {}
