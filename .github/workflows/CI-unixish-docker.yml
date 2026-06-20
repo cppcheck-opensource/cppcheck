@@ -30,9 +30,6 @@ jobs:
           - image: "alpine:3.23"
             with_gui: false  # it appears FindQt6.cmake is not provided by any package
             full_build: false  # FIXME: test-signalhandler.cpp fails to build since feenableexcept() is missing
-          - image: "oraclelinux:8"
-            with_gui: false  # no qt6 are installed, missing GUI in old distros is OK
-            full_build: true
       fail-fast: false # Prefer quick result
 
     runs-on: ubuntu-22.04
@@ -66,12 +63,6 @@ jobs:
         run: |
           apk add cmake make g++ pcre-dev
 
-      - name: Install missing software on Oracle Linux
-        if: contains(matrix.image, 'oraclelinux')
-        run: |
-          yum install -y git python3 which epel-release
-          yum install -y cmake3 gcc-c++ make pcre-devel
-
       # needs to be called after the package installation since
       # - it doesn't call "apt-get update"
       - name: ccache
@@ -96,7 +87,7 @@ jobs:
 
     strategy:
       matrix:
-        image: ["ubuntu:24.04", "ubuntu:25.10", "alpine:3.23", "oraclelinux:8"]
+        image: ["ubuntu:24.04", "ubuntu:25.10", "alpine:3.23"]
       fail-fast: false # Prefer quick result
 
     runs-on: ubuntu-22.04
@@ -119,12 +110,6 @@ jobs:
         if: contains(matrix.image, 'alpine')
         run: |
           apk add make g++ pcre-dev bash python3 libxml2-utils
-
-      - name: Install missing software on Oracle Linux
-        if: contains(matrix.image, 'oraclelinux')
-        run: |
-          yum install -y git python3 which epel-release
-          yum install -y cmake3 gcc-c++ make pcre-devel
 
       # needs to be called after the package installation since
       # - it doesn't call "apt-get update"
