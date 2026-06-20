@@ -869,7 +869,7 @@ char * overlappingWriteFunction_strncat(const char *src, char *dest, const std::
     // cppcheck-suppress overlappingWriteFunction
     (void)strncat(dest, dest+1, 2);
     char buffer[] = "strncat";
-    // cppcheck-suppress overlappingWriteFunction
+    // cppcheck-suppress [overlappingWriteFunction,returnDanglingLifetime]
     return strncat(buffer, buffer + 1, 3);
 }
 
@@ -882,7 +882,7 @@ wchar_t * overlappingWriteFunction_wcsncat(const wchar_t *src, wchar_t *dest, co
     // cppcheck-suppress overlappingWriteFunction
     (void)wcsncat(dest, dest+1, 2);
     wchar_t buffer[] = L"strncat";
-    // cppcheck-suppress overlappingWriteFunction
+    // cppcheck-suppress [overlappingWriteFunction,returnDanglingLifetime]
     return wcsncat(buffer, buffer + 1, 3);
 }
 
@@ -917,8 +917,8 @@ char * overlappingWriteFunction_strncpy(char *buf, const std::size_t count)
 
 void * overlappingWriteFunction_memmove(void)
 {
-    // No warning shall be shown:
     char str[] = "memmove handles overlapping data well";
+    // cppcheck-suppress returnDanglingLifetime
     return memmove(str,str+3,4);
 }
 
@@ -4982,6 +4982,18 @@ std::span<const int> returnDanglingLifetime_std_span1() {
 }
 #endif
 
+void* returnDanglingLifetime_memcpy() { // #14833
+    char a[4];
+    // cppcheck-suppress returnDanglingLifetime
+    return memcpy(a, "abc", 4);
+}
+
+wchar_t* returnDanglingLifetime_wcscat() {
+    wchar_t a[10]{L"abc"};
+    // cppcheck-suppress returnDanglingLifetime
+    return wcscat(a, L"def");
+}
+
 void beginEnd()
 {
     std::vector<int> v;
@@ -5366,4 +5378,14 @@ int containerOutOfBounds_std_initializer_list() { // #14340
     // cppcheck-suppress derefInvalidIterator
     int i = *x.end();
     return i + containerOutOfBounds_std_initializer_list_access(x);
+}
+
+int* missingReturn_std_throw_with_nested() { // #14374
+    try {
+        int* p = new int();
+        return p;
+    }
+    catch (...) {
+        std::throw_with_nested(std::runtime_error("xyz"));
+    }
 }

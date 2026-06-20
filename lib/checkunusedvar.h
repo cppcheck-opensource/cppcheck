@@ -43,8 +43,6 @@ class Tokenizer;
 /** @brief Various small checks */
 
 class CPPCHECKLIB CheckUnusedVar : public Check {
-    friend class TestUnusedVar;
-
 public:
     /** @brief This constructor is used when registering the CheckClass */
     CheckUnusedVar() : Check("UnusedVar") {}

@@ -464,6 +464,8 @@ void CheckOtherImpl::warningIntToPointerCast()
                 format = "decimal";
             else if (MathLib::isOct(from->str()))
                 format = "octal";
+            else if (MathLib::isBin(from->str()))
+                format = "binary";
             else
                 continue;
             intToPointerCastError(tok, format);
@@ -1287,7 +1289,7 @@ void CheckOtherImpl::checkVariableScope()
                 tok = tok->link();
 
                 // parse else if blocks..
-            } else if (Token::simpleMatch(tok, "else { if (") && tok->next()->isSimplifiedScope() && Token::simpleMatch(tok->linkAt(3), ") {")) {
+            } else if (Token::simpleMatch(tok, "else { if (") && tok->next()->isInsertedBrace() && Token::simpleMatch(tok->linkAt(3), ") {")) {
                 tok = tok->next();
             } else if (tok->varId() == var->declarationId() || tok->str() == "goto") {
                 reduce = false;
@@ -1413,7 +1415,7 @@ bool CheckOtherImpl::checkInnerScope(const Token *tok, const Variable* var, bool
                 if (scope->type == ScopeType::eSwitch)
                     return false; // Used in outer switch scope - unsafe or impossible to reduce scope
 
-                if (scope->bodyStart && scope->bodyStart->isSimplifiedScope())
+                if (scope->bodyStart && scope->bodyStart->isSimplifiedIfInitStmt())
                     return false; // simplified if/for/switch init statement
             }
             if (var->isArrayOrPointer()) {
@@ -4041,7 +4043,7 @@ void CheckOtherImpl::checkFuncArgNamesDifferent()
                 definitions[j] = variable->nameToken();
             }
             // get the declaration (search for first token with varId)
-            while (decl && !Token::Match(decl, ",|)|;")) {
+            while (decl && !Token::Match(decl, "[,;]")) {
                 // skip everything after the assignment because
                 // it could also have a varId or be the first
                 // token with a varId if there is no name token
@@ -4050,7 +4052,7 @@ void CheckOtherImpl::checkFuncArgNamesDifferent()
                     break;
                 }
                 // skip over templates and arrays
-                if (decl->link() && decl->str() != "(")
+                if (decl->link() && precedes(decl, decl->link()) && !Token::Match(decl, "( [*&]"))
                     decl = decl->link();
                 else if (decl->varId())
                     declarations[j] = decl;
@@ -4584,6 +4586,7 @@ void CheckOtherImpl::checkUnionZeroInit()
     std::unordered_map<const Scope *, Union> unionsByScopeId;
     const std::vector<Union> unions = parseUnions(*symbolDatabase, mSettings);
     for (const Union &u : unions) {
+        // cppcheck-suppress useStlAlgorithm - std::transform is cumbersome
         unionsByScopeId.emplace(u.scope, u);
     }
 

@@ -107,7 +107,7 @@ void LibraryDialog::openCfg()
     QFile file(selectedFile);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QMessageBox msg(QMessageBox::Critical,
-                        tr("Cppcheck"),
+                        "Cppcheck",
                         tr("Cannot open file %1.").arg(selectedFile),
                         QMessageBox::Ok,
                         this);
@@ -119,7 +119,7 @@ void LibraryDialog::openCfg()
     const QString errmsg = tempdata.open(file);
     if (!errmsg.isNull()) {
         QMessageBox msg(QMessageBox::Critical,
-                        tr("Cppcheck"),
+                        "Cppcheck",
                         tr("Failed to load %1. %2.").arg(selectedFile).arg(errmsg),
                         QMessageBox::Ok,
                         this);
@@ -156,7 +156,7 @@ void LibraryDialog::saveCfg()
         mUi->buttonSave->setEnabled(false);
     } else {
         QMessageBox msg(QMessageBox::Critical,
-                        tr("Cppcheck"),
+                        "Cppcheck",
                         tr("Cannot save file %1.").arg(mFileName),
                         QMessageBox::Ok,
                         this);

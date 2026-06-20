@@ -30,6 +30,7 @@
 #include <list>
 #include <string>
 #include <utility>
+#include <vector>
 
 static bool isUnchanged(const Token *startToken, const Token *endToken, const std::set<nonneg int> &exprVarIds, bool local)
 {
@@ -94,7 +95,7 @@ static bool hasVolatileCastOrVar(const Token *expr)
     return ret;
 }
 
-FwdAnalysis::Result FwdAnalysis::checkRecursive(const Token *expr, const Token *startToken, const Token *endToken, const std::set<nonneg int> &exprVarIds, bool local, bool inInnerClass, int depth)
+FwdAnalysis::Result FwdAnalysis::checkRecursive(const Token *expr, const Token *startToken, const Token *endToken, const std::set<nonneg int> &exprVarIds, bool local, bool inInnerClass, int depth) const
 {
     // Parse the given tokens
     if (++depth > 1000)
@@ -155,10 +156,6 @@ FwdAnalysis::Result FwdAnalysis::checkRecursive(const Token *expr, const Token *
         }
 
         if (tok->str() == "}") {
-            // Known value => possible value
-            if (tok->scope() == expr->scope())
-                mValueFlowKnown = false;
-
             if (tok->scope()->isLoopScope()) {
                 // check condition
                 const Token *conditionStart = nullptr;
@@ -195,65 +192,6 @@ FwdAnalysis::Result FwdAnalysis::checkRecursive(const Token *expr, const Token *
         if (Token::simpleMatch(tok, "asm ("))
             return Result(Result::Type::BAILOUT);
 
-        if (mWhat == What::ValueFlow && (Token::Match(tok, "while|for (") || Token::simpleMatch(tok, "do {"))) {
-            const Token *bodyStart = nullptr;
-            const Token *conditionStart = nullptr;
-            if (Token::simpleMatch(tok, "do {")) {
-                bodyStart = tok->next();
-                if (Token::simpleMatch(bodyStart->link(), "} while ("))
-                    conditionStart = bodyStart->link()->tokAt(2);
-            } else {
-                conditionStart = tok->next();
-                if (Token::simpleMatch(conditionStart->link(), ") {"))
-                    bodyStart = conditionStart->link()->next();
-            }
-
-            if (!bodyStart || !conditionStart)
-                return Result(Result::Type::BAILOUT);
-
-            // Is expr changed in condition?
-            if (!isUnchanged(conditionStart, conditionStart->link(), exprVarIds, local))
-                return Result(Result::Type::BAILOUT);
-
-            // Is expr changed in loop body?
-            if (!isUnchanged(bodyStart, bodyStart->link(), exprVarIds, local))
-                return Result(Result::Type::BAILOUT);
-        }
-
-        if (mWhat == What::ValueFlow && Token::simpleMatch(tok, "if (") && Token::simpleMatch(tok->linkAt(1), ") {")) {
-            const Token *bodyStart = tok->linkAt(1)->next();
-            const Token *conditionStart = tok->next();
-            const Token *condTok = conditionStart->astOperand2();
-            if (const ValueFlow::Value* v = condTok->getKnownValue(ValueFlow::Value::ValueType::INT)) {
-                const bool cond = !!v->intvalue;
-                if (cond) {
-                    FwdAnalysis::Result result = checkRecursive(expr, bodyStart, bodyStart->link(), exprVarIds, local, true, depth);
-                    if (result.type != Result::Type::NONE)
-                        return result;
-                } else if (Token::simpleMatch(bodyStart->link(), "} else {")) {
-                    bodyStart = bodyStart->link()->tokAt(2);
-                    FwdAnalysis::Result result = checkRecursive(expr, bodyStart, bodyStart->link(), exprVarIds, local, true, depth);
-                    if (result.type != Result::Type::NONE)
-                        return result;
-                }
-            }
-            tok = bodyStart->link();
-            if (isReturnScope(tok, mSettings.library))
-                return Result(Result::Type::BAILOUT);
-            if (Token::simpleMatch(tok, "} else {"))
-                tok = tok->linkAt(2);
-            if (!tok)
-                return Result(Result::Type::BAILOUT);
-
-            // Is expr changed in condition?
-            if (!isUnchanged(conditionStart, conditionStart->link(), exprVarIds, local))
-                return Result(Result::Type::BAILOUT);
-
-            // Is expr changed in condition body?
-            if (!isUnchanged(bodyStart, bodyStart->link(), exprVarIds, local))
-                return Result(Result::Type::BAILOUT);
-        }
-
         if (!local && Token::Match(tok, "%name% (") && !Token::simpleMatch(tok->linkAt(1), ") {")) {
             // TODO: this is a quick bailout
             return Result(Result::Type::BAILOUT);
@@ -279,22 +217,15 @@ FwdAnalysis::Result FwdAnalysis::checkRecursive(const Token *expr, const Token *
                 parent = parent->astParent();
                 if (parent->str() == "(" && !parent->isCast())
                     break;
-                if (isSameExpression(false, expr, parent, mSettings, true, false, nullptr)) {
+                if (isSameExpression(false, expr, parent, mSettings, true, false, nullptr))
                     same = true;
-                    if (mWhat == What::ValueFlow) {
-                        KnownAndToken v;
-                        v.known = mValueFlowKnown;
-                        v.token = parent;
-                        mValueFlow.push_back(v);
-                    }
-                }
                 if (Token::Match(parent, ". %var%") && parent->next()->varId() && exprVarIds.find(parent->next()->varId()) == exprVarIds.end() &&
                     isSameExpression(false, expr->astOperand1(), parent->astOperand1(), mSettings, true, false, nullptr)) {
                     other = true;
                     break;
                 }
             }
-            if (mWhat != What::ValueFlow && same && Token::simpleMatch(parent->astParent(), "[") && parent == parent->astParent()->astOperand2()) {
+            if (same && Token::simpleMatch(parent->astParent(), "[") && parent == parent->astParent()->astOperand2()) {
                 return Result(Result::Type::READ);
             }
             if (other)
@@ -381,8 +312,6 @@ FwdAnalysis::Result FwdAnalysis::checkRecursive(const Token *expr, const Token *
                 return result1;
             if (mWhat == What::UnusedValue && result1.type == Result::Type::WRITE && expr->variable() && expr->variable()->isReference())
                 return result1;
-            if (mWhat == What::ValueFlow && result1.type == Result::Type::WRITE)
-                mValueFlowKnown = false;
             if (mWhat == What::Reassign && result1.type == Result::Type::BREAK) {
                 const Token *scopeEndToken = findNextTokenFromBreak(result1.token);
                 if (scopeEndToken) {
@@ -394,8 +323,6 @@ FwdAnalysis::Result FwdAnalysis::checkRecursive(const Token *expr, const Token *
             if (Token::simpleMatch(tok->linkAt(1), "} else {")) {
                 const Token *elseStart = tok->linkAt(1)->tokAt(2);
                 const Result &result2 = checkRecursive(expr, elseStart, elseStart->link(), exprVarIds, local, inInnerClass, depth);
-                if (mWhat == What::ValueFlow && result2.type == Result::Type::WRITE)
-                    mValueFlowKnown = false;
                 if (result2.type == Result::Type::READ || result2.type == Result::Type::BAILOUT)
                     return result2;
                 if (result1.type == Result::Type::WRITE && result2.type == Result::Type::WRITE)
@@ -454,7 +381,7 @@ std::set<nonneg int> FwdAnalysis::getExprVarIds(const Token* expr, bool* localOu
     return exprVarIds;
 }
 
-FwdAnalysis::Result FwdAnalysis::check(const Token* expr, const Token* startToken, const Token* endToken)
+FwdAnalysis::Result FwdAnalysis::check(const Token* expr, const Token* startToken, const Token* endToken) const
 {
     // all variable ids in expr.
     bool local = true;
@@ -475,7 +402,7 @@ FwdAnalysis::Result FwdAnalysis::check(const Token* expr, const Token* startToke
     Result result = checkRecursive(expr, startToken, endToken, exprVarIds, local, false);
 
     // Break => continue checking in outer scope
-    while (mWhat!=What::ValueFlow && result.type == FwdAnalysis::Result::Type::BREAK) {
+    while (result.type == FwdAnalysis::Result::Type::BREAK) {
         const Token *scopeEndToken = findNextTokenFromBreak(result.token);
         if (!scopeEndToken)
             break;

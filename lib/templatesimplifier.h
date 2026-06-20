@@ -463,7 +463,7 @@ private:
     /**
      * Remove a specific "template < ..." template class/function
      */
-    static bool removeTemplate(Token *tok, std::map<Token*, Token*>* forwardDecls = nullptr);
+    static bool removeTemplate(Token *tok, std::map<const Token*, Token*>* forwardDecls = nullptr);
 
     /** Syntax error
      * @throws InternalError thrown unconditionally
@@ -512,9 +512,9 @@ private:
 
     std::list<TokenAndName> mTemplateDeclarations;
     std::list<TokenAndName> mTemplateForwardDeclarations;
-    std::map<Token *, Token *> mTemplateForwardDeclarationsMap;
-    std::map<Token *, Token *> mTemplateSpecializationMap;
-    std::map<Token *, Token *> mTemplatePartialSpecializationMap;
+    std::map<const Token *, Token *> mTemplateForwardDeclarationsMap;
+    std::map<const Token *, Token *> mTemplateSpecializationMap;
+    std::map<const Token *, Token *> mTemplatePartialSpecializationMap;
     std::list<TokenAndName> mTemplateInstantiations;
     std::list<TokenAndName> mInstantiatedTemplates;
     std::list<TokenAndName> mMemberFunctionsToDelete;
