@@ -128,6 +128,7 @@ public:
     void useClosedFileError(const Token *tok);
     void fcloseInLoopConditionError(const Token *tok, const std::string &varname);
     void seekOnAppendedFileError(const Token *tok);
+    void ftellFileError(const Token *tok);
     void incompatibleFileOpenError(const Token *tok, const std::string &filename);
     void invalidScanfError(const Token *tok);
     void wrongfeofUsage(const Token *tok);
