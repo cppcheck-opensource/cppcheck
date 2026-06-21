@@ -438,6 +438,12 @@ void CheckIOImpl::seekOnAppendedFileError(const Token *tok)
                 "seekOnAppendedFile", "Repositioning operation performed on a file opened in append mode has no effect.", CWE398, Certainty::normal);
 }
 
+void CheckIOImpl::ftellFileError(const Token *tok)
+{
+    reportError(tok, Severity::portability,
+                "ftellTextModeFile", "ftell() result is unspecified when file is opened in mode \"t\"", CWE474, Certainty::normal);
+}
+
 void CheckIOImpl::incompatibleFileOpenError(const Token *tok, const std::string &filename)
 {
     reportError(tok, Severity::warning,
