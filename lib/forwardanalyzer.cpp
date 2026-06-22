@@ -782,7 +782,7 @@ namespace {
                             } else if (thenBranch.check) {
                                 return Break();
                             } else {
-                                if (analyzer->isConditional() && stopUpdates())
+                                if (stopOnCondition(condTok) && stopUpdates())
                                     return Break(Analyzer::Terminate::Conditional);
                                 analyzer->assume(condTok, false);
                             }

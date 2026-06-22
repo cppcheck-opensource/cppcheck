@@ -1198,16 +1198,42 @@ struct SingleValueFlowAnalyzer : ValueFlowAnalyzer {
 
     bool stopOnCondition(const Token* condTok) const override
     {
-        if (value.isNonValue())
-            return false;
         if (value.isImpossible())
             return false;
-        if (isConditional() && !value.isKnown())
-            return true;
-        if (value.isSymbolicValue())
+        // Lifetime values must keep flowing through conditions to detect dangling dereferences on every path.
+        if (value.isLifetimeValue())
             return false;
+        // A value carrying the explicit 'conditional' flag (e.g. an uninitialized value, or a value lowered
+        // to possible after a branch that modifies the variable) can depend on conditions that don't mention
+        // the variable itself, so stop at any subsequent condition to stay conservative.
+        if (value.conditional && !value.isKnown())
+            return true;
+        if (value.isNonValue())
+            return false;
+        if (value.isSymbolicValue())
+            return isConditional() && !value.isKnown();
+        // The value may still be conditional via the originating 'condition' token (e.g. a possible null
+        // pointer after 'if (p && ...)'). Such a value may keep flowing past a later condition, but only
+        // when that condition actually refers to the tracked value: then cppcheck can reason about how the
+        // condition constrains it. If the value is not mentioned, a correlation that cppcheck cannot follow
+        // during forward analysis (e.g. 'bool ok = (p != nullptr); if (!ok) return;') could make a later
+        // dereference safe, so stop conservatively to avoid false positives.
+        if (value.condition && !value.isKnown() && !conditionReferencesValue(condTok))
+            return true;
         ConditionState cs = analyzeCondition(condTok);
         return cs.isUnknownDependent();
+    }
+
+    // Does the condition mention the tracked value, either directly or through a symbolic alias?
+    bool conditionReferencesValue(const Token* condTok) const
+    {
+        return findAstNode(condTok, [&](const Token* tok) {
+            if (match(tok))
+                return true;
+            return std::any_of(tok->values().cbegin(), tok->values().cend(), [&](const ValueFlow::Value& v) {
+                return v.isSymbolicValue() && !v.isImpossible() && v.tokvalue && match(v.tokvalue);
+            });
+        }) != nullptr;
     }
 
     bool updateScope(const Token* endBlock, bool /*modified*/) const override {

@@ -143,6 +143,8 @@ private:
         TEST_CASE(nullpointer103);
         TEST_CASE(nullpointer104); // #13881
         TEST_CASE(nullpointer105); // #13861
+        TEST_CASE(nullpointer106); // #13682
+        TEST_CASE(nullpointer107); // #13682 (no false positive past unrelated conditions)
         TEST_CASE(nullpointer_addressOf); // address of
         TEST_CASE(nullpointerSwitch); // #2626
         TEST_CASE(nullpointer_cast); // #4692
@@ -2962,6 +2964,79 @@ private:
               "void foo(void) {\n"
               "    ns::S x = {0};\n"
               "    x[1].a = 2;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void nullpointer106() // #13682
+    {
+        // An unrelated condition between the null check and the dereference must not stop the analysis
+        check("struct S {\n"
+              "    bool b;\n"
+              "    bool f() const;\n"
+              "};\n"
+              "void f(const S* p, const S* o) {\n"
+              "    const S* p1 = p;\n"
+              "    if (p1 && p1->f())\n"
+              "        return;\n"
+              "    if (p == o)\n"
+              "        return;\n"
+              "    if (p1->b) {}\n"
+              "}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:7:9] -> [test.cpp:11:9]: (warning) Either the condition 'p1' is redundant or there is possible null pointer dereference: p1. [nullPointerRedundantCheck]\n",
+            errout_str());
+    }
+
+    void nullpointer107() // #13682 - don't flow past a condition that doesn't reference the pointer
+    {
+        // The pointer's null-ness is cached in a boolean; the guard 'if (!ok)' makes the deref safe but
+        // cppcheck cannot follow that correlation during forward analysis -> must not warn (no false positive)
+        check("struct S { void g(); bool f() const; };\n"
+              "void f(S* p) {\n"
+              "    bool ok = (p != nullptr);\n"
+              "    if (p && p->f())\n"
+              "        return;\n"
+              "    if (!ok)\n"
+              "        return;\n"
+              "    p->g();\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // A guard on an unrelated boolean (that the caller may use to imply validity) is not something
+        // cppcheck can follow -> stay conservative and do not warn
+        check("struct S { void g(); bool f() const; };\n"
+              "void f(S* p, bool valid) {\n"
+              "    S* p1 = p;\n"
+              "    if (p1 && p1->f())\n"
+              "        return;\n"
+              "    if (!valid)\n"
+              "        return;\n"
+              "    p1->g();\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // A guard on a different pointer must not be assumed to constrain this one
+        check("struct S { void g(); bool f() const; };\n"
+              "void f(S* p, S* q) {\n"
+              "    S* p1 = p;\n"
+              "    if (p1 && p1->f())\n"
+              "        return;\n"
+              "    if (!q)\n"
+              "        return;\n"
+              "    p1->g();\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // A direct null guard on the pointer (or its alias) is still handled and must not warn
+        check("struct S { void g(); bool f() const; };\n"
+              "void f(S* p) {\n"
+              "    S* p1 = p;\n"
+              "    if (p1 && p1->f())\n"
+              "        return;\n"
+              "    if (!p)\n"
+              "        return;\n"
+              "    p1->g();\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
     }
