@@ -1182,6 +1182,8 @@ static const Token* getPointerAdditionCalcToken(const Token * const tok)
         for (const ValueFlow::Value& val : op->values()) {
             if (!val.isSymbolicValue())
                 continue;
+            if (!val.isKnown())
+                continue;
             if (isPointerArithmeticAdd(val.tokvalue))
                 return op;
         }
