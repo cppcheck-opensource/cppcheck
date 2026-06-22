@@ -1200,7 +1200,7 @@ struct SingleValueFlowAnalyzer : ValueFlowAnalyzer {
     {
         if (value.isImpossible())
             return false;
-        // lifetime values must keep flowing to find dangling derefs on all paths
+        // lifetime values must keep flowing to properly track aliases
         if (value.isLifetimeValue())
             return false;
         // 'conditional' flag (uninit, or lowered after a modifying branch): may depend on a
