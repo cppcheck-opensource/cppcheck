@@ -2988,10 +2988,9 @@ private:
             errout_str());
     }
 
-    void nullpointer107() // #13682 - don't flow past a condition that doesn't reference the pointer
+    void nullpointer107() // #13682 - guards that depend on the pointer indirectly
     {
-        // The pointer's null-ness is cached in a boolean; the guard 'if (!ok)' makes the deref safe but
-        // cppcheck cannot follow that correlation during forward analysis -> must not warn (no false positive)
+        // cached null-check 'ok'; guard 'if (!ok)' is safe -> no FP
         check("struct S { void g(); bool f() const; };\n"
               "void f(S* p) {\n"
               "    bool ok = (p != nullptr);\n"
@@ -3003,8 +3002,7 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        // A guard on an unrelated boolean (that the caller may use to imply validity) is not something
-        // cppcheck can follow -> stay conservative and do not warn
+        // unrelated bool guard -> conservative, no FP
         check("struct S { void g(); bool f() const; };\n"
               "void f(S* p, bool valid) {\n"
               "    S* p1 = p;\n"
@@ -3016,7 +3014,7 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        // A guard on a different pointer must not be assumed to constrain this one
+        // guard on a different pointer -> no FP
         check("struct S { void g(); bool f() const; };\n"
               "void f(S* p, S* q) {\n"
               "    S* p1 = p;\n"
@@ -3028,7 +3026,7 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        // A direct null guard on the pointer (or its alias) is still handled and must not warn
+        // direct null guard on the alias -> no FP
         check("struct S { void g(); bool f() const; };\n"
               "void f(S* p) {\n"
               "    S* p1 = p;\n"
@@ -3040,10 +3038,7 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        // 'if (ok) return;' means the surviving path has ok==false, i.e. p==nullptr, so 'p->g()'
-        // dereferences a null pointer. ProgramMemory cannot evaluate the cached 'ok' (== (p != nullptr))
-        // during forward analysis, so the conditionReferencesValue() guard stops the analysis here and the
-        // definite null dereference is missed. This should warn once ProgramMemory can follow 'ok'.
+        // FN: 'if (ok)' => survivor has p==nullptr, but the cached 'ok' is not followed -> should warn
         check("struct S { void g(); bool f() const; };\n"
               "void f(S* p) {\n"
               "    bool ok = (p != nullptr);\n"
@@ -3058,10 +3053,7 @@ private:
             "",
             errout_str());
 
-        // 'q' aliases 'p' (symbolic q==p), so the guard 'if (q)' constrains 'p'. Modifying 'q' via sink()
-        // drops the symbolic relationship; conditionReferencesValue() only inspects symbolic values, so it
-        // no longer sees that the guard relates to 'p', stops the analysis, and the possible null
-        // dereference of 'p' is missed. A more robust dependency check (not symbolic-only) should warn.
+        // FN: sink(q) drops the q==p symbolic, so guard 'if (q)' is no longer seen to relate to p -> should warn
         check("struct S { void g(); bool f() const; };\n"
               "void sink(S*&);\n"
               "void f(S* p) {\n"
@@ -3078,13 +3070,8 @@ private:
             "",
             errout_str());
 
-        // These are dereferences that are actually safe, but the dependency that makes them safe is hidden
-        // behind a conditional modification. ProgramMemory tracks 'q'/'ok' and would normally evaluate the
-        // guard, but a conditional modification ('if (c) ...') makes it stop tracking the value, so the guard
-        // can no longer be evaluated during forward analysis. Without conditionReferencesValue() the possible
-        // null value would flow past the guard and produce a false positive; these must stay warning-free.
-
-        // symbolic substitution: 'q == p', conditionally re-assigned to 'p' (value preserved)
+        // a conditional modification makes ProgramMemory drop the guard (FP-prone) -> must stay quiet:
+        // alias 'q==p' re-assigned to p under a condition
         check("struct S { void g(); bool f() const; };\n"
               "void f(S* p, bool c) {\n"
               "    S* q = p;\n"
@@ -3098,7 +3085,7 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        // conditional assignment of a cached condition: 'ok == (p != nullptr)', conditionally refreshed
+        // cached 'ok' refreshed under a condition
         check("struct S { void g(); bool f() const; };\n"
               "void f(S* p, bool c) {\n"
               "    bool ok = (p != nullptr);\n"
