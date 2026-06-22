@@ -145,7 +145,7 @@ private:
         TEST_CASE(nullpointer105); // #13861
         TEST_CASE(nullpointer106); // #13682
         TEST_CASE(nullpointer107); // #13682 (no false positive past unrelated conditions)
-        TEST_CASE(nullpointer108); // #13682 (FN: definite null deref missed due to ProgramMemory)
+        TEST_CASE(nullpointer109); // #13682 (no FP when guard depends on pointer via conditional modification)
         TEST_CASE(nullpointer_addressOf); // address of
         TEST_CASE(nullpointerSwitch); // #2626
         TEST_CASE(nullpointer_cast); // #4692
@@ -3040,10 +3040,7 @@ private:
               "    p1->g();\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
-    }
 
-    void nullpointer108() // #13682 - FN: dereference of a definitely-null pointer is missed
-    {
         // 'if (ok) return;' means the surviving path has ok==false, i.e. p==nullptr, so 'p->g()'
         // dereferences a null pointer. ProgramMemory cannot evaluate the cached 'ok' (== (p != nullptr))
         // during forward analysis, so the conditionReferencesValue() guard stops the analysis here and the
@@ -3061,6 +3058,63 @@ private:
             "[test.cpp:4:9] -> [test.cpp:8:5]: (warning) Either the condition 'p' is redundant or there is possible null pointer dereference: p. [nullPointerRedundantCheck]\n",
             "",
             errout_str());
+
+        // 'q' aliases 'p' (symbolic q==p), so the guard 'if (q)' constrains 'p'. Modifying 'q' via sink()
+        // drops the symbolic relationship; conditionReferencesValue() only inspects symbolic values, so it
+        // no longer sees that the guard relates to 'p', stops the analysis, and the possible null
+        // dereference of 'p' is missed. A more robust dependency check (not symbolic-only) should warn.
+        check("struct S { void g(); bool f() const; };\n"
+              "void sink(S*&);\n"
+              "void f(S* p) {\n"
+              "    S* q = p;\n"
+              "    if (p && p->f())\n"
+              "        return;\n"
+              "    sink(q);\n"
+              "    if (q)\n"
+              "        return;\n"
+              "    p->g();\n"
+              "}\n");
+        TODO_ASSERT_EQUALS(
+            "[test.cpp:5:9] -> [test.cpp:10:5]: (warning) Either the condition 'p' is redundant or there is possible null pointer dereference: p. [nullPointerRedundantCheck]\n",
+            "",
+            errout_str());
+    }
+
+    void nullpointer109() // #13682 - no false positive when a guard depends on the pointer through a conditional modification
+    {
+        // These are dereferences that are actually safe, but the dependency that makes them safe is hidden
+        // behind a conditional modification. ProgramMemory tracks 'q'/'ok' and would normally evaluate the
+        // guard, but a conditional modification ('if (c) ...') makes it stop tracking the value, so the guard
+        // can no longer be evaluated during forward analysis. Without conditionReferencesValue() the possible
+        // null value would flow past the guard and produce a false positive; these must stay warning-free.
+
+        // symbolic substitution: 'q == p', conditionally re-assigned to 'p' (value preserved)
+        check("struct S { void g(); bool f() const; };\n"
+              "void f(S* p, bool c) {\n"
+              "    S* q = p;\n"
+              "    if (p && p->f())\n"
+              "        return;\n"
+              "    if (c)\n"
+              "        q = p;\n"
+              "    if (!q)\n"
+              "        return;\n"
+              "    p->g();\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // conditional assignment of a cached condition: 'ok == (p != nullptr)', conditionally refreshed
+        check("struct S { void g(); bool f() const; };\n"
+              "void f(S* p, bool c) {\n"
+              "    bool ok = (p != nullptr);\n"
+              "    if (p && p->f())\n"
+              "        return;\n"
+              "    if (c)\n"
+              "        ok = (p != nullptr);\n"
+              "    if (!ok)\n"
+              "        return;\n"
+              "    p->g();\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void nullpointer_addressOf() { // address of
