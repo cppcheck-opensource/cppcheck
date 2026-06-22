@@ -613,7 +613,7 @@ namespace ValueFlow
         }
 
         // unary minus
-        else if (parent->isUnaryOp("-")) {
+        else if (parent->isUnaryOp("-") && !astIsUnsigned(parent)) {
             for (const Value &val : tok->values()) {
                 if (!val.isIntValue() && !val.isFloatValue())
                     continue;

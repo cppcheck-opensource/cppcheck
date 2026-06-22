@@ -732,11 +732,11 @@ public:
         setFlag(fIsTemplate, b);
     }
 
-    bool isSimplifiedScope() const {
-        return getFlag(fIsSimplifedScope);
+    bool isSimplifiedIfInitStmt() const {
+        return getFlag(fIsSimplifiedIfInitStmt);
     }
-    void isSimplifiedScope(bool b) {
-        setFlag(fIsSimplifedScope, b);
+    void isSimplifiedIfInitStmt(bool b) {
+        setFlag(fIsSimplifiedIfInitStmt, b);
     }
 
     bool isFinalType() const {
@@ -765,6 +765,14 @@ public:
     }
     void isAnonymous(bool b) {
         setFlag(fIsAnonymous, b);
+    }
+
+    bool isInsertedBrace() const {
+        return getFlag(fIsInsertedBrace);
+    }
+    Token* isInsertedBrace(bool b) {
+        setFlag(fIsInsertedBrace, b);
+        return this;
     }
 
     // cppcheck-suppress unusedFunction
@@ -1498,7 +1506,7 @@ private:
         fIsImplicitInt          = (1ULL << 33), // Is "int" token implicitly added?
         fIsInline               = (1ULL << 34), // Is this a inline type
         fIsTemplate             = (1ULL << 35),
-        fIsSimplifedScope       = (1ULL << 36), // scope added when simplifying e.g. if (int i = ...; ...)
+        fIsSimplifiedIfInitStmt = (1ULL << 36), // simplified if/switch/while init statement e.g. if (int i = ...; ...) => { int i = ...; if (..) ..  }
         fIsRemovedVoidParameter = (1ULL << 37), // A void function parameter has been removed
         fIsIncompleteConstant   = (1ULL << 38),
         fIsRestrict             = (1ULL << 39), // Is this a restrict pointer type
@@ -1508,6 +1516,7 @@ private:
         fIsInitComma            = (1ULL << 43), // Is this comma located inside some {..}. i.e: {1,2,3,4}
         fIsInitBracket          = (1ULL << 44), // Is this bracket used as a part of variable initialization i.e: int a{5}, b(2);
         fIsAnonymous            = (1ULL << 45), // Is this a token added for an unnamed member
+        fIsInsertedBrace        = (1ULL << 46), // brace added when simplifying e.g. if (x) f(); => if (x) { f(); }
     };
 
     enum : std::uint8_t {

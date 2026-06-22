@@ -227,6 +227,7 @@ private:
         TEST_CASE(buffer_overrun_35); //#2304
         TEST_CASE(buffer_overrun_36);
         TEST_CASE(buffer_overrun_37);
+        TEST_CASE(buffer_overrun_38);
         TEST_CASE(buffer_overrun_errorpath);
         TEST_CASE(buffer_overrun_bailoutIfSwitch);  // ticket #2378 : bailoutIfSwitch
         TEST_CASE(buffer_overrun_function_array_argument);
@@ -3505,6 +3506,39 @@ private:
               "    memcpy(dst, src, sizeof(src));\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void buffer_overrun_38() { // #9173
+        check("void f() {\n"
+              "    int a[10];\n"
+              "    memset(&a[0], 0, 20 * sizeof(int));\n"
+              "}\n"
+              "void g() {\n"
+              "    int a[10];\n"
+              "    memset(&a[0], 0, 10 * sizeof(int));\n"
+              "}\n"
+              "void h() {\n"
+              "    int a[10];\n"
+              "    memset(&a[5], 0, 5 * sizeof(int));\n"
+              "}\n"
+              "void i() {\n"
+              "    int a[10][10];\n"
+              "    memset(&a[0][0], 0, 100 * sizeof(int));\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:12]: (error) Buffer is accessed out of bounds: &a[0] [bufferAccessOutOfBounds]\n", errout_str());
+
+        check("void f() {\n"
+              "    int a[10];\n"
+              "    memset(&a[5], 0, 10 * sizeof(int));\n"
+              "}\n"
+              "void g() {\n"
+              "    int a[1][1];\n"
+              "    memset(&a[0][0], 0, 10 * sizeof(int));\n"
+              "}\n");
+        TODO_ASSERT_EQUALS("[test.cpp:3:12]: (error) Buffer is accessed out of bounds: &a[5] [bufferAccessOutOfBounds]\n"
+                           "[test.cpp:7:12]: (error) Buffer is accessed out of bounds: &a[0][0] [bufferAccessOutOfBounds]\n",
+                           "",
+                           errout_str());
     }
 
     void buffer_overrun_errorpath() {

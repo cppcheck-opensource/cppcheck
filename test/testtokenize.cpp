@@ -140,6 +140,7 @@ private:
 
         TEST_CASE(whileAddBraces);
         TEST_CASE(whileAddBracesLabels);
+        TEST_CASE(whileAddBracesDump);
 
         TEST_CASE(doWhileAddBraces);
         TEST_CASE(doWhileAddBracesLabels);
@@ -1530,6 +1531,17 @@ private:
                                            "    catch(...) { --x; }\n"
                                            "}"));
         ASSERT_EQUALS("", filter_valueflow(errout_str()));
+    }
+
+    void whileAddBracesDump() {
+        const char code[] = "void f(){while(a);}";
+        SimpleTokenizer tokenizer(settingsDefault, *this, false);
+        ASSERT(tokenizer.tokenize(code));
+        ASSERT(Token::simpleMatch(tokenizer.tokens(), "void f ( ) { while ( a ) { ; } }"));
+        std::ostringstream ostr;
+        tokenizer.dump(ostr);
+        const std::string dump = ostr.str();
+        ASSERT(dump.find("isInsertedBrace=\"true\"") != std::string::npos);
     }
 
     void doWhileAddBraces() {
@@ -6689,6 +6701,7 @@ private:
         ASSERT_EQUALS("foria:( asize.(", testAst("for(decltype(a.size()) i:a);"));
         ASSERT_EQUALS("forec0{([,(:( fb.return", testAst("for (auto e : c(0, [](auto f) { return f->b; }));")); // #10802
         ASSERT_EQUALS("forvar1{;;(", testAst("for(int var{1};;)")); // #12867
+        ASSERT_EQUALS("forxg{([(:( si.return", testAst("for (auto [x] : g([](S s) { return s.i; })) {}")); // #11861
 
         // for with initializer (c++20)
         ASSERT_EQUALS("forab=ca:;(", testAst("for(a=b;int c:a)"));
@@ -7880,6 +7893,8 @@ private:
                                              "}\n"));
 
         ignore_errout();
+
+        ASSERT_EQUALS(";", tokenizeAndStringify("typedef std::size_t size_t;\n")); // #14809
     }
 
 

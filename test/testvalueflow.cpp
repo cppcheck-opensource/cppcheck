@@ -1269,6 +1269,12 @@ private:
         ASSERT_EQUALS(1U, values.size());
         ASSERT_EQUALS(-10, values.back().intvalue);
 
+        code = "bool f(unsigned a) {\n" // #14848
+               "    bool x = -a < 1;\n"
+               "    return x;\n"
+               "}";
+        ASSERT_EQUALS(false, testValueOfXKnown(code, 3U, 1));
+
         // Logical and
         code = "void f(bool b) {\n"
                "   bool x = false && b;\n"

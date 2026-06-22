@@ -79,8 +79,8 @@ Settings::~Settings() = default;
 Settings::Settings(const Settings&) = default;
 Settings & Settings::operator=(const Settings &) = default;
 
-Settings::Settings(Settings&&) noexcept = default;
-Settings & Settings::operator=(Settings &&) noexcept = default;
+Settings::Settings(Settings&&) CPPCHECK_NOEXCEPT = default;
+Settings & Settings::operator=(Settings &&) CPPCHECK_NOEXCEPT = default;
 
 std::string Settings::loadCppcheckCfg(Settings& settings, Suppressions& suppressions, bool debug)
 {

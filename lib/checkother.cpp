@@ -1289,7 +1289,7 @@ void CheckOtherImpl::checkVariableScope()
                 tok = tok->link();
 
                 // parse else if blocks..
-            } else if (Token::simpleMatch(tok, "else { if (") && tok->next()->isSimplifiedScope() && Token::simpleMatch(tok->linkAt(3), ") {")) {
+            } else if (Token::simpleMatch(tok, "else { if (") && tok->next()->isInsertedBrace() && Token::simpleMatch(tok->linkAt(3), ") {")) {
                 tok = tok->next();
             } else if (tok->varId() == var->declarationId() || tok->str() == "goto") {
                 reduce = false;
@@ -1415,7 +1415,7 @@ bool CheckOtherImpl::checkInnerScope(const Token *tok, const Variable* var, bool
                 if (scope->type == ScopeType::eSwitch)
                     return false; // Used in outer switch scope - unsafe or impossible to reduce scope
 
-                if (scope->bodyStart && scope->bodyStart->isSimplifiedScope())
+                if (scope->bodyStart && scope->bodyStart->isSimplifiedIfInitStmt())
                     return false; // simplified if/for/switch init statement
             }
             if (var->isArrayOrPointer()) {
@@ -4055,7 +4055,7 @@ void CheckOtherImpl::checkFuncArgNamesDifferent()
                     break;
                 }
                 // skip over templates and arrays
-                if (decl->link() && !Token::Match(decl, "[()]"))
+                if (decl->link() && precedes(decl, decl->link()) && !Token::Match(decl, "( [*&]"))
                     decl = decl->link();
                 else if (decl->varId())
                     declarations[j] = decl;
@@ -4589,6 +4589,7 @@ void CheckOtherImpl::checkUnionZeroInit()
     std::unordered_map<const Scope *, Union> unionsByScopeId;
     const std::vector<Union> unions = parseUnions(*symbolDatabase, mSettings);
     for (const Union &u : unions) {
+        // cppcheck-suppress useStlAlgorithm - std::transform is cumbersome
         unionsByScopeId.emplace(u.scope, u);
     }
 

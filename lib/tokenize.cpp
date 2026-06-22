@@ -6218,6 +6218,8 @@ void Tokenizer::dump(std::ostream &out) const
         }
         if (tok->isRemovedVoidParameter())
             outs += " isRemovedVoidParameter=\"true\"";
+        if (tok->isInsertedBrace())
+            outs += " isInsertedBrace=\"true\"";
         if (tok->isSplittedVarDeclComma())
             outs += " isSplittedVarDeclComma=\"true\"";
         if (tok->isSplittedVarDeclEq())
@@ -7004,10 +7006,12 @@ Token *Tokenizer::simplifyAddBracesPair(Token *tok, bool commandWithCondition)
         tokAfterCondition->previous()->insertToken("{");
         Token * tokOpenBrace=tokAfterCondition->previous();
         tokOpenBrace->column(tokAfterCondition->column());
+        tokOpenBrace->isInsertedBrace(true);
 
         tokEnd->insertToken("}");
         Token * tokCloseBrace=tokEnd->next();
         tokCloseBrace->column(tokEnd->column());
+        tokCloseBrace->isInsertedBrace(true);
 
         Token::createMutualLinks(tokOpenBrace,tokCloseBrace);
         tokBracesEnd=tokCloseBrace;
@@ -8038,8 +8042,8 @@ void Tokenizer::elseif()
 
             if (Token::Match(tok2, "}|;")) {
                 if (tok2->next() && tok2->strAt(1) != "else") {
-                    tok->insertToken("{")->isSimplifiedScope(true);
-                    tok2->insertToken("}")->isSimplifiedScope(true);
+                    tok->insertToken("{")->isInsertedBrace(true);
+                    tok2->insertToken("}")->isInsertedBrace(true);
                     Token::createMutualLinks(tok->next(), tok2->next());
                     break;
                 }
@@ -8105,7 +8109,8 @@ void Tokenizer::simplifyIfSwitchForInit()
         tok->str("{");
         endscope->insertToken("}");
         Token::createMutualLinks(tok, endscope->next());
-        tok->isSimplifiedScope(true);
+        tok->isInsertedBrace(true);
+        tok->isSimplifiedIfInitStmt(true);
     }
 }
 

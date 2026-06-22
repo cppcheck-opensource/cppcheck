@@ -149,6 +149,11 @@ void ImportProject::parseArgs(FileSettings &fs, const std::vector<std::string> &
             continue;
         }
 
+        if (!(optArg = getOptArg({ "-include", "/FI", "-FI" }, i)).empty()) {
+            fs.forcedIncludes.push_back(std::move(optArg));
+            continue;
+        }
+
         if (!(optArg = getOptArg({ "-D", "/D" }, i)).empty()) {
             defs += optArg + ";";
             continue;

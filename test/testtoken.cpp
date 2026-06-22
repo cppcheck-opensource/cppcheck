@@ -1059,7 +1059,6 @@ private:
         standard_types.emplace_back("long");
         standard_types.emplace_back("float");
         standard_types.emplace_back("double");
-        standard_types.emplace_back("size_t");
 
         for (auto test_op = standard_types.cbegin(); test_op != standard_types.cend(); ++test_op) {
             auto tokensFrontBack = std::make_shared<TokensFrontBack>();
@@ -1484,13 +1483,6 @@ private:
             tok.str("char"); // not treated as keyword in TokenList::isKeyword()
             assert_tok(&tok, Token::Type::eType, /*l=*/ false, /*std=*/ true);
         }
-        {
-            TokenList list_c{settingsDefault, Standards::Language::C};
-            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
-            Token tok(list_c, std::move(tokensFrontBack));
-            tok.str("size_t"); // not treated as keyword in TokenList::isKeyword()
-            assert_tok(&tok, Token::Type::eType, /*l=*/ false, /*std=*/ true);
-        }
     }
 
     void update_property_info_etype_cpp() const
@@ -1502,21 +1494,12 @@ private:
             tok.str("bool"); // not treated as keyword in TokenList::isKeyword()
             assert_tok(&tok, Token::Type::eType, /*l=*/ false, /*std=*/ true);
         }
-        {
-            TokenList list_cpp{settingsDefault, Standards::Language::CPP};
-            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
-            Token tok(list_cpp, std::move(tokensFrontBack));
-            tok.str("size_t");
-            assert_tok(&tok, Token::Type::eType, /*l=*/ false, /*std=*/ true);
-        }
     }
 
     void update_property_info_replace() const // #13743
     {
         auto tokensFrontBack = std::make_shared<TokensFrontBack>();
         Token tok(list, std::move(tokensFrontBack));
-        tok.str("size_t");
-        assert_tok(&tok, Token::Type::eType, false, true);
         tok.str("long");
         assert_tok(&tok, Token::Type::eType, false, true);
     }

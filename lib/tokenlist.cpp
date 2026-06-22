@@ -1696,6 +1696,8 @@ static Token * createAstAtToken(Token *tok)
                 tok->next()->astOperand1(tok);
                 tok->next()->astOperand2(colon);
 
+                createAstAtTokenInner(colon, tok->linkAt(1), cpp);
+
                 return decl;
             }
         }

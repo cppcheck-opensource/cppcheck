@@ -29,6 +29,6 @@ namespace CheckInstances
 {
     /** List of registered check classes. This is used by Cppcheck to run checks and generate documentation */
     CPPCHECKLIB const std::list<Check *>& get();
-};
+}
 
 #endif // checksH
