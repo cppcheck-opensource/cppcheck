@@ -4905,7 +4905,7 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:3:11]: (style) Parameter 's' can be declared as pointer to const [constParameterPointer]\n"
                       "[test.cpp:6:11]: (style) Parameter 't' can be declared as pointer to const [constParameterPointer]\n",
-                      errout_str();
+                      errout_str());
     }
 
     void constArray() {
