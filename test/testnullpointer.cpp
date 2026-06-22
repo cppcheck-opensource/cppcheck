@@ -145,6 +145,7 @@ private:
         TEST_CASE(nullpointer105); // #13861
         TEST_CASE(nullpointer106); // #13682
         TEST_CASE(nullpointer107); // #13682 (no false positive past unrelated conditions)
+        TEST_CASE(nullpointer108); // #13682 (FN: definite null deref missed due to ProgramMemory)
         TEST_CASE(nullpointer_addressOf); // address of
         TEST_CASE(nullpointerSwitch); // #2626
         TEST_CASE(nullpointer_cast); // #4692
@@ -3039,6 +3040,27 @@ private:
               "    p1->g();\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void nullpointer108() // #13682 - FN: dereference of a definitely-null pointer is missed
+    {
+        // 'if (ok) return;' means the surviving path has ok==false, i.e. p==nullptr, so 'p->g()'
+        // dereferences a null pointer. ProgramMemory cannot evaluate the cached 'ok' (== (p != nullptr))
+        // during forward analysis, so the conditionReferencesValue() guard stops the analysis here and the
+        // definite null dereference is missed. This should warn once ProgramMemory can follow 'ok'.
+        check("struct S { void g(); bool f() const; };\n"
+              "void f(S* p) {\n"
+              "    bool ok = (p != nullptr);\n"
+              "    if (p && p->f())\n"
+              "        return;\n"
+              "    if (ok)\n"
+              "        return;\n"
+              "    p->g();\n"
+              "}\n");
+        TODO_ASSERT_EQUALS(
+            "[test.cpp:4:9] -> [test.cpp:8:5]: (warning) Either the condition 'p' is redundant or there is possible null pointer dereference: p. [nullPointerRedundantCheck]\n",
+            "",
+            errout_str());
     }
 
     void nullpointer_addressOf() { // address of
