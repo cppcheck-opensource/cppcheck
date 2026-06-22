@@ -1200,24 +1200,20 @@ struct SingleValueFlowAnalyzer : ValueFlowAnalyzer {
     {
         if (value.isImpossible())
             return false;
-        // Lifetime values must keep flowing through conditions to detect dangling dereferences on every path.
+        // lifetime values must keep flowing to find dangling derefs on all paths
         if (value.isLifetimeValue())
             return false;
-        // A value carrying the explicit 'conditional' flag (e.g. an uninitialized value, or a value lowered
-        // to possible after a branch that modifies the variable) can depend on conditions that don't mention
-        // the variable itself, so stop at any subsequent condition to stay conservative.
+        // 'conditional' flag (uninit, or lowered after a modifying branch): may depend on a
+        // condition that doesn't mention the variable -> stop
         if (value.conditional && !value.isKnown())
             return true;
         if (value.isNonValue())
             return false;
         if (value.isSymbolicValue())
             return isConditional() && !value.isKnown();
-        // The value may still be conditional via the originating 'condition' token (e.g. a possible null
-        // pointer after 'if (p && ...)'). Such a value may keep flowing past a later condition, but only
-        // when that condition actually refers to the tracked value: then cppcheck can reason about how the
-        // condition constrains it. If the value is not mentioned, a correlation that cppcheck cannot follow
-        // during forward analysis (e.g. 'bool ok = (p != nullptr); if (!ok) return;') could make a later
-        // dereference safe, so stop conservatively to avoid false positives.
+        // conditional via the originating 'condition' (e.g. possible null after 'if (p && ...)'): only flow
+        // if the condition references the value, else a correlation we can't follow (e.g.
+        // 'bool ok = (p != nullptr); if (!ok)') could make a later deref safe -> stop
         if (value.condition && !value.isKnown() && !conditionReferencesValue(condTok))
             return true;
         ConditionState cs = analyzeCondition(condTok);
