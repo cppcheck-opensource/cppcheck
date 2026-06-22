@@ -144,8 +144,7 @@ private:
         TEST_CASE(nullpointer104); // #13881
         TEST_CASE(nullpointer105); // #13861
         TEST_CASE(nullpointer106); // #13682
-        TEST_CASE(nullpointer107); // #13682 (no false positive past unrelated conditions)
-        TEST_CASE(nullpointer109); // #13682 (no FP when guard depends on pointer via conditional modification)
+        TEST_CASE(nullpointer107); // #13682 (FP/FN cases around guards that depend on the pointer indirectly)
         TEST_CASE(nullpointer_addressOf); // address of
         TEST_CASE(nullpointerSwitch); // #2626
         TEST_CASE(nullpointer_cast); // #4692
@@ -3078,10 +3077,7 @@ private:
             "[test.cpp:5:9] -> [test.cpp:10:5]: (warning) Either the condition 'p' is redundant or there is possible null pointer dereference: p. [nullPointerRedundantCheck]\n",
             "",
             errout_str());
-    }
 
-    void nullpointer109() // #13682 - no false positive when a guard depends on the pointer through a conditional modification
-    {
         // These are dereferences that are actually safe, but the dependency that makes them safe is hidden
         // behind a conditional modification. ProgramMemory tracks 'q'/'ok' and would normally evaluate the
         // guard, but a conditional modification ('if (c) ...') makes it stop tracking the value, so the guard
