@@ -3540,7 +3540,7 @@ private:
                            "",
                            errout_str());
 
-        check("void f() {\n"
+        check("void f() {\n" // #14866
               "    std::vector<char> buf(25);\n"
               "    std::memset(&buf[0], 0, 25);\n"
               "}\n");
