@@ -2332,9 +2332,6 @@ namespace simplecpp {
             const Token *nextTok = B->next;
 
             if (canBeConcatenatedStringOrChar) {
-                if (unexpectedA)
-                    throw invalidHashHash::unexpectedToken(tok->location, name(), A);
-
                 // It seems clearer to handle this case separately even though the code is similar-ish, but we don't want to merge here.
                 // TODO The question is whether the ## or varargs may still apply, and how to provoke?
                 if (expandArg(tokensB, B, parametertokens)) {
