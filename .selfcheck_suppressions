@@ -79,3 +79,4 @@ useStlAlgorithm:externals/simplecpp/simplecpp.cpp
 funcArgNamesDifferentUnnamed:externals/simplecpp/simplecpp.h
 missingMemberCopy:externals/simplecpp/simplecpp.h
 shadowFunction:externals/simplecpp/simplecpp.h
+knownConditionTrueFalse:externals/simplecpp/simplecpp.cpp
