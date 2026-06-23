@@ -2711,7 +2711,7 @@ namespace {
     {
         Token *tok1 = tok;
 
-        if (tok1 && tok1->str() != nameToken->str())
+        if (!tok1 || tok1->str() != nameToken->str())
             return false;
 
         // skip this using

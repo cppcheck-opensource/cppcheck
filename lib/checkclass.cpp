@@ -3452,8 +3452,7 @@ void CheckClassImpl::checkUselessOverride()
 
                     if (isSameCode) {
                         // bailout for shadowed members
-                        if (!classScope->definedType ||
-                            !getDuplInheritedMembersRecursive(classScope->definedType, classScope->definedType, /*skipPrivate*/ false).empty() ||
+                        if (!getDuplInheritedMembersRecursive(classScope->definedType, classScope->definedType, /*skipPrivate*/ false).empty() ||
                             !getDuplInheritedMemberFunctionsRecursive(classScope->definedType, classScope->definedType, /*skipPrivate*/ false).empty())
                             continue;
                         uselessOverrideError(baseFunc, &func, true);
