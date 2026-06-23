@@ -134,7 +134,6 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     # TODO: fix and enable these warnings - or move to suppression list below
     add_compile_options_safe(-Wno-sign-conversion)
     add_compile_options_safe(-Wno-shadow-field-in-constructor)
-    add_compile_options_safe(-Wno-shorten-64-to-32)
     add_compile_options_safe(-Wno-implicit-int-conversion)
     add_compile_options_safe(-Wno-double-promotion)
     add_compile_options_safe(-Wno-shadow-field)
