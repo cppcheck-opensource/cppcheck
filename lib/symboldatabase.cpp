@@ -8478,7 +8478,7 @@ namespace {
 }
 
 template<class F>
-static Result accumulateStructMembers(const Scope* scope, F f, ValueType::Accuracy accuracy)
+static Result accumulateStructMembers(const Scope* scope, F f, ValueType::Accuracy accuracy, const Settings& settings)
 {
     size_t total = 0;
     std::set<const Scope*> anonScopes;
@@ -8496,6 +8496,10 @@ static Result accumulateStructMembers(const Scope* scope, F f, ValueType::Accura
                 const auto ret = anonScopes.insert(var.nameToken()->scope());
                 if (ret.second)
                     total = f(total, *vt, dim, bits);
+            }
+            else if (vt->container && vt->container->startPattern == "std :: array <") {
+                const ValueType vtElement = ValueType::parseDecl(vt->containerTypeToken, settings);
+                total = f(total, vtElement, dim, bits);
             }
             else
                 total = f(total, *vt, dim, bits);
@@ -8536,12 +8540,12 @@ static size_t getAlignOf(const ValueType& vt, const Settings& settings, ValueTyp
             size_t a = getAlignOf(vt2, settings, accuracy, ValueType::SizeOf::Pointer, ++maxRecursion);
             return std::max(max, a);
         };
-        Result result = accumulateStructMembers(vt.typeScope, accHelper, accuracy);
+        Result result = accumulateStructMembers(vt.typeScope, accHelper, accuracy, settings);
         size_t total = result.total;
         if (const Type* dt = vt.typeScope->definedType) {
             total = std::accumulate(dt->derivedFrom.begin(), dt->derivedFrom.end(), total, [&](size_t v, const Type::BaseInfo& bi) {
                 if (bi.type && bi.type->classScope)
-                    v += accumulateStructMembers(bi.type->classScope, accHelper, accuracy).total;
+                    v += accumulateStructMembers(bi.type->classScope, accHelper, accuracy, settings).total;
                 return v;
             });
         }
@@ -8629,14 +8633,14 @@ size_t ValueType::getSizeOf( const Settings& settings, Accuracy accuracy, SizeOf
             }
             return typeScope->type == ScopeType::eUnion ? std::max(total, n) : total + padding + n;
         };
-        Result result = accumulateStructMembers(typeScope, accHelper, accuracy);
+        Result result = accumulateStructMembers(typeScope, accHelper, accuracy, settings);
         size_t total = result.total;
         if (currentBitCount > 0)
             total += currentBitfieldAlloc;
         if (const ::Type* dt = typeScope->definedType) {
             total = std::accumulate(dt->derivedFrom.begin(), dt->derivedFrom.end(), total, [&](size_t v, const ::Type::BaseInfo& bi) {
                 if (bi.type && bi.type->classScope)
-                    v += accumulateStructMembers(bi.type->classScope, accHelper, accuracy).total;
+                    v += accumulateStructMembers(bi.type->classScope, accHelper, accuracy, settings).total;
                 return v;
             });
         }

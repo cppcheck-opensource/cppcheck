@@ -1812,6 +1812,20 @@ private:
         ASSERT_EQUALS(1U, values.size());
         ASSERT_EQUALS(2 * settings.platform.sizeof_pointer, values.back().intvalue);
         ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueKind::Known, values.back().valueKind);
+
+        code = "struct S { std::array<int, 3> a; };\n"
+               "x = sizeof(S);\n";
+        values = tokenValues(code, "( S");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(3 * settings.platform.sizeof_int, values.back().intvalue);
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueKind::Known, values.back().valueKind);
+
+        code = "std::array<int, 3> a;\n"
+               "x = sizeof(a);\n";
+        values = tokenValues(code, "( a");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(3 * settings.platform.sizeof_int, values.back().intvalue);
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueKind::Known, values.back().valueKind);
     }
 
     void valueFlowComma()
