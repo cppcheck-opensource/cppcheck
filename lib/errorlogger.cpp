@@ -22,7 +22,6 @@
 #include "cppcheck.h"
 #include "path.h"
 #include "settings.h"
-#include "suppressions.h"
 #include "token.h"
 #include "tokenlist.h"
 #include "utils.h"
@@ -766,13 +765,11 @@ std::string ErrorMessage::FileLocation::stringify(bool addcolumn) const
     std::string str;
     str += '[';
     str += Path::toNativeSeparators(mFileName);
-    if (line != SuppressionList::Suppression::NO_LINE) { // TODO: should not depend on Suppression
+    str += ':';
+    str += std::to_string(line);
+    if (addcolumn) {
         str += ':';
-        str += std::to_string(line);
-        if (addcolumn) {
-            str += ':';
-            str += std::to_string(column);
-        }
+        str += std::to_string(column);
     }
     str += ']';
     return str;

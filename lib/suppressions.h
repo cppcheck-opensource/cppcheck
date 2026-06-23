@@ -69,7 +69,7 @@ public:
 
     struct CPPCHECKLIB Suppression {
         Suppression() = default;
-        Suppression(std::string id, std::string file, int line=NO_LINE) : errorId(std::move(id)), fileName(std::move(file)), lineNumber(line) {}
+        Suppression(std::string id, std::string file, unsigned int line=0) : errorId(std::move(id)), fileName(std::move(file)), lineNumber(line) {}
 
         bool operator<(const Suppression &other) const {
             if (errorId != other.errorId)
@@ -153,9 +153,9 @@ public:
         std::string extraComment;
         // TODO: use simplecpp::Location?
         int fileIndex{};
-        int lineNumber = NO_LINE; // TODO: needs to be unsigned
-        int lineBegin = NO_LINE;
-        int lineEnd = NO_LINE;
+        unsigned int lineNumber{};
+        unsigned int lineBegin{};
+        unsigned int lineEnd {};
         int column{};
         Type type = Type::unique;
         std::string symbolName;
@@ -166,8 +166,6 @@ public:
         bool checked{}; /** This suppression applied to code which was being analyzed but did not match the error in an isSuppressed() call */
         bool isInline{};
         bool isPolyspace{};
-
-        enum : std::int8_t { NO_LINE = -1 };
     };
 
     /**
@@ -312,7 +310,7 @@ namespace polyspace {
         Parser() = delete;
         explicit Parser(const Settings &settings);
 
-        std::list<SuppressionList::Suppression> parse(const std::string &comment, int line, const std::string &filename) const;
+        std::list<SuppressionList::Suppression> parse(const std::string &comment, unsigned int line, const std::string &filename) const;
 
         static int parseRange(const std::string& comment, std::string::size_type& pos);
         static std::vector<std::pair<std::string, std::string>> parseFamilyRules(const std::string& comment, std::string::size_type& pos);

@@ -51,7 +51,7 @@ SuppressionList::ErrorMessage SuppressionList::ErrorMessage::fromErrorMessage(co
         ret.lineNumber = msg.callStack.back().line;
     } else {
         ret.setFileName(msg.file0);
-        ret.lineNumber = SuppressionList::Suppression::NO_LINE;
+        ret.lineNumber = 0;
     }
     ret.certainty = msg.certainty;
     ret.symbolNames = msg.symbolNames();
@@ -133,7 +133,7 @@ std::string SuppressionList::parseXmlFile(const char *filename)
             else if (std::strcmp(name, "fileName") == 0)
                 s.fileName = Path::simplifyPath(text);
             else if (std::strcmp(name, "lineNumber") == 0)
-                s.lineNumber = strToInt<int>(text);
+                s.lineNumber = strToInt<unsigned int>(text);
             else if (std::strcmp(name, "symbolName") == 0)
                 s.symbolName = text;
             else if (*text && std::strcmp(name, "hash") == 0)
@@ -248,7 +248,7 @@ SuppressionList::Suppression SuppressionList::parseLine(std::string line)
                     throw std::runtime_error("filename is missing");
 
                 try {
-                    suppression.lineNumber = strToInt<int>(line_s);
+                    suppression.lineNumber = strToInt<unsigned int>(line_s);
                 } catch (const std::runtime_error& e) {
                     throw std::runtime_error(std::string("invalid line number (") + e.what() + ")");
                 }
@@ -416,7 +416,7 @@ SuppressionList::Suppression::Result SuppressionList::Suppression::isSuppressed(
         if (!errorId.empty() && !matchglob(errorId, errmsg.errorId))
             return Result::Checked;
     } else {
-        if ((SuppressionList::Type::unique == type) && (lineNumber != NO_LINE) && (lineNumber != errmsg.lineNumber)) {
+        if ((SuppressionList::Type::unique == type) && (lineNumber != 0) && (lineNumber != errmsg.lineNumber)) {
             if (!thisAndNextLine || lineNumber + 1 != errmsg.lineNumber)
                 return Result::None;
         }
@@ -525,15 +525,15 @@ void SuppressionList::dump(std::ostream & out, const std::string& filePath) cons
         out << " errorId=\"" << ErrorLogger::toxml(suppression.errorId) << '"';
         if (!suppression.fileName.empty())
             out << " fileName=\"" << ErrorLogger::toxml(suppression.fileName) << '"';
-        if (suppression.lineNumber != Suppression::NO_LINE)
+        if (suppression.lineNumber != 0)
             out << " lineNumber=\"" << suppression.lineNumber << '"';
         if (!suppression.symbolName.empty())
             out << " symbolName=\"" << ErrorLogger::toxml(suppression.symbolName) << '\"';
         if (suppression.hash > 0)
             out << " hash=\"" << suppression.hash << '\"';
-        if (suppression.lineBegin != Suppression::NO_LINE)
+        if (suppression.lineBegin != 0)
             out << " lineBegin=\"" << suppression.lineBegin << '"';
-        if (suppression.lineEnd != Suppression::NO_LINE)
+        if (suppression.lineEnd != 0)
             out << " lineEnd=\"" << suppression.lineEnd << '"';
         if (suppression.type == SuppressionList::Type::file)
             out << " type=\"file\"";
@@ -566,7 +566,7 @@ std::list<SuppressionList::Suppression> SuppressionList::getUnmatchedLocalSuppre
             continue;
         if (s.matched)
             continue;
-        if ((s.lineNumber != Suppression::NO_LINE) && !s.checked)
+        if ((s.lineNumber != 0) && !s.checked)
             continue;
         if (s.type == SuppressionList::Type::macro)
             continue;
@@ -632,7 +632,7 @@ std::list<SuppressionList::Suppression> SuppressionList::getSuppressions() const
 void SuppressionList::markUnmatchedInlineSuppressionsAsChecked(const TokenList &tokenlist) {
     std::lock_guard<std::mutex> lg(mSuppressionsSync);
 
-    int currLineNr = -1;
+    unsigned int currLineNr = 0;
     int currFileIdx = -1;
     for (const Token *tok = tokenlist.front(); tok; tok = tok->next()) {
         if (currFileIdx != tok->fileIndex() || currLineNr != tok->linenr()) {
@@ -662,7 +662,7 @@ std::string SuppressionList::Suppression::toString() const
     if (!fileName.empty()) {
         s += ':';
         s += fileName;
-        if (lineNumber != -1) {
+        if (lineNumber != 0) {
             s += ':';
             s += std::to_string(lineNumber);
         }
@@ -747,7 +747,7 @@ polyspace::CommentKind polyspace::Parser::parseKind(const std::string& comment, 
 }
 
 
-std::list<SuppressionList::Suppression> polyspace::Parser::parse(const std::string &comment, int line, const std::string &filename) const
+std::list<SuppressionList::Suppression> polyspace::Parser::parse(const std::string &comment, unsigned int line, const std::string &filename) const
 {
     // Syntax for a polyspace suppression:
     // https://se.mathworks.com/help/bugfinder/ug/annotate-hide-known-acceptable-polyspace-results-web-browser.html
