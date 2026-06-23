@@ -475,16 +475,18 @@ bool SuppressionList::isSuppressed(const SuppressionList::ErrorMessage &errmsg, 
 
     // TODO: handle unmatchedPolyspaceSuppression?
     const bool unmatchedSuppression(errmsg.errorId == "unmatchedSuppression");
-    
+    bool returnValue = false;
     for (Suppression &s : mSuppressions) {
         if (!global && !s.isLocal())
             continue;
         if (unmatchedSuppression && s.errorId != errmsg.errorId)
             continue;
+        if (returnValue && s.matched)
+            continue;
         if (s.isMatch(errmsg))
-            return true;
+            returnValue = true;
     }
-    return false;
+    return returnValue;
 }
 
 bool SuppressionList::isSuppressedExplicitly(const SuppressionList::ErrorMessage &errmsg, bool global)
