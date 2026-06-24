@@ -165,8 +165,8 @@ namespace ValueFlow
             if (obj && !obj->isLiteral() && obj->valueType() &&
                 (obj->valueType()->pointer == 0 || // <- TODO this is a bailout, abort when there are array->pointer conversions
                  (obj->variable() && !obj->variable()->isArray())) &&
-                !obj->valueType()->isEnum() &&
-                !(obj->valueType()->container && obj->valueType()->container->startPattern == "std :: array <")) { // <- TODO this is a bailout, handle enum with non-int types
+                !obj->valueType()->isEnum() && // <- TODO this is a bailout, handle enum with non-int types
+                !(obj->valueType()->container && obj->valueType()->container->startPattern == "std :: array <")) {
                 const auto ptrPointee = obj->valueType()->pointer > 0 ? ValueType::SizeOf::Pointer : ValueType::SizeOf::Pointee;
                 const size_t sz = obj->valueType()->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ptrPointee);
                 if (sz) {
