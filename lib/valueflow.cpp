@@ -4099,6 +4099,8 @@ static bool isVariableInit(const Token *tok)
         return false;
     if (var->nameToken() != tok->astOperand1())
         return false;
+    if (var->isPointer())
+        return true;
     const ValueType* vt = var->valueType();
     if (!vt)
         return false;
