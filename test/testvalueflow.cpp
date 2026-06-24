@@ -3188,6 +3188,18 @@ private:
                "    return x;\n"
                "}\n";
         ASSERT_EQUALS(true, testValueOfXKnown(code, 3U, -1));
+
+        code = "A* f() {\n" // #14864
+               "    A* x{};\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXKnown(code, 3U, 0));
+
+        code = "A* f() {\n"
+               "    A* x{ nullptr };\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXKnown(code, 3U, 0));
     }
 
     void valueFlowAfterSwap()
