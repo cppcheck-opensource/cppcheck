@@ -4894,7 +4894,7 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:6:10]: (style) Parameter 's' can be declared as reference to const [constParameterReference]\n",
                       errout_str());
- 
+
         check("struct S { std::string a; };\n" // #13678
               "struct T { S s; };\n"
               "bool f(S* s) {\n"
@@ -4924,7 +4924,7 @@ private:
               "    }\n"
               "    int* m;\n"
               "};\n");
-        ASSERT_EQUALS("[test.cpp:2:13]: (style) Either there is a missing override/final keyword, or the parameter 'p' can be declared as pointer to const [constParameterPointer]\n",
+        ASSERT_EQUALS("[test.cpp:2:17]: (style) Either there is a missing override/final keyword, or the parameter 'p' can be declared as pointer to const [constParameterPointer]\n",
                       errout_str());
     }
 
