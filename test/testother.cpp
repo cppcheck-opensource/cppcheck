@@ -4896,13 +4896,13 @@ private:
                       errout_str());
 
         check("struct S : U {\n" // #13944
-              "void f(int* p) const {\n"
-              "    if (m == p) {}\n"
-              "}\n"
-              "void g(int* p) final {\n"
-              "    if (m == p) {}\n"
-              "}\n"
-              "int* m;\n"
+              "    void f(int* p) const {\n"
+              "        if (m == p) {}\n"
+              "    }\n"
+              "    void g(int* p) final {\n"
+              "        if (m == p) {}\n"
+              "    }\n"
+              "    int* m;\n"
               "};\n");
         ASSERT_EQUALS("[test.cpp:2:13]: (style) Either there is a missing override/final keyword, or the parameter 'p' can be declared as pointer to const [constParameterPointer]\n",
                       errout_str());
