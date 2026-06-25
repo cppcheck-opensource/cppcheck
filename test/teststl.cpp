@@ -2736,7 +2736,7 @@ private:
               "}\n", s);
         ASSERT_EQUALS("[test.cpp:5:9]: warning: Array index -1 is out of bounds. [negativeContainerIndex]\n"
                       "[test.cpp:8:8]: note: Calling function 'f', 1st argument '-1' value is -1\n"
-                      "[test.cpp:3:9]: note: Assuming condition is true\n"
+                      "[test.cpp:3:9]: note: Assuming condition is false\n"
                       "[test.cpp:5:9]: note: Negative array index\n",
                       errout_str());
     }

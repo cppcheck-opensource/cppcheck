@@ -412,23 +412,8 @@ namespace {
             return bail;
         }
 
-        Progress updateBranch(Branch& branch, int depth, bool flow)
+        Progress updateBranch(Branch& branch, int depth)
         {
-            // Determine the branch's effect on the value without reporting (read-only)
-            branch.action |= analyzeScope(branch.endBlock);
-            // Mirror checkBranch()/tryForkUpdateScope(): only flow the value into the branch when
-            // the analyzer allows it. A conditional value (e.g. a possible null carried under an
-            // unrelated condition) must not be propagated into the branch, otherwise it produces
-            // false positives. 'flow' is evaluated on the unassumed value by the caller.
-            if (!flow) {
-                bool unknown = false;
-                if (isEscapeScope(branch.endBlock, unknown)) {
-                    branch.escape = true;
-                    branch.escapeUnknown = unknown;
-                }
-                return Progress::Continue;
-            }
-
             // Save and reset actions
             Analyzer::Action prevActions = actions;
             actions = Analyzer::Action::None;
@@ -796,18 +781,13 @@ namespace {
                                 return Break();
                         } else {
                             const bool conditional = stopOnCondition(condTok);
-                            // Decide whether the value may flow into each branch using the unassumed
-                            // value (as checkBranch() does), before assume() makes the forks conditional
-                            const bool flowThen = analyzer->updateScope(thenBranch.endBlock, analyzeScope(thenBranch.endBlock).isModified());
-                            const bool flowElse = hasElse && elseBranch.endBlock &&
-                                                  analyzer->updateScope(elseBranch.endBlock, analyzeScope(elseBranch.endBlock).isModified());
                             ForwardTraversal ft = fork();
                             ft.analyzer->assume(condTok, true);
-                            Progress p = ft.updateBranch(thenBranch, depth - 1, flowThen);
+                            Progress p = ft.updateBranch(thenBranch, depth - 1);
 
                             analyzer->assume(condTok, false);
                             if (hasElse) {
-                                if (updateBranch(elseBranch, depth - 1, flowElse) == Progress::Break)
+                                if (updateBranch(elseBranch, depth - 1) == Progress::Break)
                                     return Break();
                             }
                             if (thenBranch.isDead() || elseBranch.isDead()) {
