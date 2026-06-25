@@ -3539,6 +3539,12 @@ private:
                            "[test.cpp:7:12]: (error) Buffer is accessed out of bounds: &a[0][0] [bufferAccessOutOfBounds]\n",
                            "",
                            errout_str());
+
+        check("void f() {\n" // #14866
+              "    std::vector<char> buf(25);\n"
+              "    std::memset(&buf[0], 0, 25);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void buffer_overrun_errorpath() {

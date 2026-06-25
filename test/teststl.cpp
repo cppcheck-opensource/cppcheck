@@ -2345,6 +2345,15 @@ private:
               "    }   \n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("std::string g1();\n" // #12520
+              "const std::string& g2();\n"
+              "void f() {\n"
+              "    g1().erase(g1().begin());\n"
+              "    g2().erase(g2().begin());\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:7]: (error) Iterator 'g1().begin()' referring to temporary container 'g1()' is used with temporary container 'g1()'. [mismatchingContainerIterator]\n",
+                      errout_str());
     }
 
     void eraseIteratorOutOfBounds() {

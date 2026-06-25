@@ -392,7 +392,7 @@ bool CheckLeakAutoVarImpl::checkScope(const Token * const startToken,
                 });
             });
             if (hasOutParam) {
-                for (int i = 0; i < args.size(); i++) {
+                for (size_t i = 0; i < args.size(); i++) {
                     if (!argChecks.count(i + 1))
                         continue;
                     const ArgumentChecks argCheck = argChecks.at(i + 1);

@@ -7893,6 +7893,8 @@ private:
                                              "}\n"));
 
         ignore_errout();
+
+        ASSERT_EQUALS(";", tokenizeAndStringify("typedef std::size_t size_t;\n")); // #14809
     }
 
 
