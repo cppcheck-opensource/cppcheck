@@ -455,7 +455,7 @@ bool CheckConditionImpl::isOverlappingCond(const Token * const cond1, const Toke
         if (!num1->isNumber() || MathLib::isNegative(num1->str()))
             return false;
 
-        if (!Token::Match(cond2, "&|==") || !cond2->astOperand1() || !cond2->astOperand2())
+        if (!Token::Match(cond2, "&|==") || !cond2->astOperand1())
             return false;
         const Token *expr2 = cond2->astOperand1();
         const Token *num2  = cond2->astOperand2();

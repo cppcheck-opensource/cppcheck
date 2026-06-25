@@ -495,8 +495,6 @@ bool isTemporary(const Token* tok, const Library* library, bool unknown)
         }
         return unknown;
     }
-    if (tok->isCast())
-        return false;
     // Currying a function is unknown in cppcheck
     if (Token::simpleMatch(tok, "(") && Token::simpleMatch(tok->astOperand1(), "("))
         return unknown;
@@ -1543,8 +1541,6 @@ bool isUsedAsBool(const Token* const tok, const Settings& settings)
         return true;
     if (parent->isCast())
         return !Token::simpleMatch(parent->astOperand1(), "dynamic_cast") && isUsedAsBool(parent, settings);
-    if (parent->isUnaryOp("*"))
-        return isUsedAsBool(parent, settings);
     if (Token::Match(parent, "==|!=") && tok->valueType() && tok->valueType()->pointer &&
         tok->astSibling()->hasKnownIntValue() && tok->astSibling()->getKnownIntValue() == 0)
         return true;

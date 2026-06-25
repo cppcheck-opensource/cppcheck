@@ -549,7 +549,7 @@ void CheckStlImpl::iterators()
                     }
 
                     // Not different containers if a reference is used..
-                    if (containerToken && containerToken->variable() && containerToken->variable()->isReference()) {
+                    if (containerToken->variable() && containerToken->variable()->isReference()) {
                         const Token *nameToken = containerToken->variable()->nameToken();
                         if (Token::Match(nameToken, "%name% =")) {
                             const Token *name1 = nameToken->tokAt(2);

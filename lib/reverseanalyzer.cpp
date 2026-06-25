@@ -340,9 +340,6 @@ namespace {
                         valueFlowGenericForward(condTok, analyzer, tokenlist, errorLogger, settings);
                     else if (condAction.isRead())
                         break;
-                    // If the condition modifies the variable then bail
-                    if (condAction.isModified())
-                        break;
                     tok = jumpToStart(tok->link());
                     continue;
                 }

@@ -1043,10 +1043,8 @@ void SymbolDatabase::createSymbolDatabaseNeedInitialization()
                             scope.definedType->needInitialization = Type::NeedInitialization::True;
                         else if (!unknown)
                             scope.definedType->needInitialization = Type::NeedInitialization::False;
-                        else {
-                            if (scope.definedType->needInitialization == Type::NeedInitialization::Unknown)
-                                unknowns++;
-                        }
+                        else
+                            unknowns++;
                     }
                 } else if (scope.type == ScopeType::eUnion && scope.definedType->needInitialization == Type::NeedInitialization::Unknown)
                     scope.definedType->needInitialization = Type::NeedInitialization::True;

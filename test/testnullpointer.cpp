@@ -143,6 +143,8 @@ private:
         TEST_CASE(nullpointer103);
         TEST_CASE(nullpointer104); // #13881
         TEST_CASE(nullpointer105); // #13861
+        TEST_CASE(nullpointer106); // #13682
+        TEST_CASE(nullpointer107); // #13682 (FP/FN cases around guards that depend on the pointer indirectly)
         TEST_CASE(nullpointer_addressOf); // address of
         TEST_CASE(nullpointerSwitch); // #2626
         TEST_CASE(nullpointer_cast); // #4692
@@ -2962,6 +2964,138 @@ private:
               "void foo(void) {\n"
               "    ns::S x = {0};\n"
               "    x[1].a = 2;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void nullpointer106() // #13682
+    {
+        // An unrelated condition between the null check and the dereference must not stop the analysis
+        check("struct S {\n"
+              "    bool b;\n"
+              "    bool f() const;\n"
+              "};\n"
+              "void f(const S* p, const S* o) {\n"
+              "    const S* p1 = p;\n"
+              "    if (p1 && p1->f())\n"
+              "        return;\n"
+              "    if (p == o)\n"
+              "        return;\n"
+              "    if (p1->b) {}\n"
+              "}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:7:9] -> [test.cpp:11:9]: (warning) Either the condition 'p1' is redundant or there is possible null pointer dereference: p1. [nullPointerRedundantCheck]\n",
+            errout_str());
+    }
+
+    void nullpointer107() // #13682 - guards that depend on the pointer indirectly
+    {
+        // cached null-check 'ok'; guard 'if (!ok)' is safe -> no FP
+        check("struct S { void g(); bool f() const; };\n"
+              "void f(S* p) {\n"
+              "    bool ok = (p != nullptr);\n"
+              "    if (p && p->f())\n"
+              "        return;\n"
+              "    if (!ok)\n"
+              "        return;\n"
+              "    p->g();\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // unrelated bool guard -> conservative, no FP
+        check("struct S { void g(); bool f() const; };\n"
+              "void f(S* p, bool valid) {\n"
+              "    S* p1 = p;\n"
+              "    if (p1 && p1->f())\n"
+              "        return;\n"
+              "    if (!valid)\n"
+              "        return;\n"
+              "    p1->g();\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // guard on a different pointer -> no FP
+        check("struct S { void g(); bool f() const; };\n"
+              "void f(S* p, S* q) {\n"
+              "    S* p1 = p;\n"
+              "    if (p1 && p1->f())\n"
+              "        return;\n"
+              "    if (!q)\n"
+              "        return;\n"
+              "    p1->g();\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // direct null guard on the alias -> no FP
+        check("struct S { void g(); bool f() const; };\n"
+              "void f(S* p) {\n"
+              "    S* p1 = p;\n"
+              "    if (p1 && p1->f())\n"
+              "        return;\n"
+              "    if (!p)\n"
+              "        return;\n"
+              "    p1->g();\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // FN: 'if (ok)' => survivor has p==nullptr, but the cached 'ok' is not followed -> should warn
+        check("struct S { void g(); bool f() const; };\n"
+              "void f(S* p) {\n"
+              "    bool ok = (p != nullptr);\n"
+              "    if (p && p->f())\n"
+              "        return;\n"
+              "    if (ok)\n"
+              "        return;\n"
+              "    p->g();\n"
+              "}\n");
+        TODO_ASSERT_EQUALS(
+            "[test.cpp:4:9] -> [test.cpp:8:5]: (warning) Either the condition 'p' is redundant or there is possible null pointer dereference: p. [nullPointerRedundantCheck]\n",
+            "",
+            errout_str());
+
+        // FN: sink(q) drops the q==p symbolic, so guard 'if (q)' is no longer seen to relate to p -> should warn
+        check("struct S { void g(); bool f() const; };\n"
+              "void sink(S*&);\n"
+              "void f(S* p) {\n"
+              "    S* q = p;\n"
+              "    if (p && p->f())\n"
+              "        return;\n"
+              "    sink(q);\n"
+              "    if (q)\n"
+              "        return;\n"
+              "    p->g();\n"
+              "}\n");
+        TODO_ASSERT_EQUALS(
+            "[test.cpp:5:9] -> [test.cpp:10:5]: (warning) Either the condition 'p' is redundant or there is possible null pointer dereference: p. [nullPointerRedundantCheck]\n",
+            "",
+            errout_str());
+
+        // a conditional modification makes ProgramMemory drop the guard (FP-prone) -> must stay quiet:
+        // alias 'q==p' re-assigned to p under a condition
+        check("struct S { void g(); bool f() const; };\n"
+              "void f(S* p, bool c) {\n"
+              "    S* q = p;\n"
+              "    if (p && p->f())\n"
+              "        return;\n"
+              "    if (c)\n"
+              "        q = p;\n"
+              "    if (!q)\n"
+              "        return;\n"
+              "    p->g();\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // cached 'ok' refreshed under a condition
+        check("struct S { void g(); bool f() const; };\n"
+              "void f(S* p, bool c) {\n"
+              "    bool ok = (p != nullptr);\n"
+              "    if (p && p->f())\n"
+              "        return;\n"
+              "    if (c)\n"
+              "        ok = (p != nullptr);\n"
+              "    if (!ok)\n"
+              "        return;\n"
+              "    p->g();\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
     }

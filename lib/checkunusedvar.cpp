@@ -249,7 +249,7 @@ void Variables::clearAliases(nonneg int varid)
 
 void Variables::eraseAliases(nonneg int varid)
 {
-    VariableUsage *usage = find(varid);
+    const VariableUsage *usage = find(varid);
 
     if (usage) {
         for (auto aliases = usage->_aliases.cbegin(); aliases != usage->_aliases.cend(); ++aliases)
@@ -329,7 +329,7 @@ void Variables::write(nonneg int varid, const Token* tok)
 
 void Variables::writeAliases(nonneg int varid, const Token* tok)
 {
-    VariableUsage *usage = find(varid);
+    const VariableUsage *usage = find(varid);
 
     if (usage) {
         for (auto aliases = usage->_aliases.cbegin(); aliases != usage->_aliases.cend(); ++aliases) {

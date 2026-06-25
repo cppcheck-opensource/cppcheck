@@ -1198,16 +1198,38 @@ struct SingleValueFlowAnalyzer : ValueFlowAnalyzer {
 
     bool stopOnCondition(const Token* condTok) const override
     {
-        if (value.isNonValue())
-            return false;
         if (value.isImpossible())
             return false;
-        if (isConditional() && !value.isKnown())
-            return true;
-        if (value.isSymbolicValue())
+        // lifetime values must keep flowing to properly track aliases
+        if (value.isLifetimeValue())
             return false;
+        // 'conditional' flag (uninit, or lowered after a modifying branch): may depend on a
+        // condition that doesn't mention the variable -> stop
+        if (value.conditional && !value.isKnown())
+            return true;
+        if (value.isNonValue())
+            return false;
+        if (value.isSymbolicValue())
+            return isConditional() && !value.isKnown();
+        // conditional via the originating 'condition' (e.g. possible null after 'if (p && ...)'): only flow
+        // if the condition references the value, else a correlation we can't follow (e.g.
+        // 'bool ok = (p != nullptr); if (!ok)') could make a later deref safe -> stop
+        if (value.condition && !value.isKnown() && !conditionReferencesValue(condTok))
+            return true;
         ConditionState cs = analyzeCondition(condTok);
         return cs.isUnknownDependent();
+    }
+
+    // Does the condition mention the tracked value, either directly or through a symbolic alias?
+    bool conditionReferencesValue(const Token* condTok) const
+    {
+        return findAstNode(condTok, [&](const Token* tok) {
+            if (match(tok))
+                return true;
+            return std::any_of(tok->values().cbegin(), tok->values().cend(), [&](const ValueFlow::Value& v) {
+                return v.isSymbolicValue() && !v.isImpossible() && v.tokvalue && match(v.tokvalue);
+            });
+        }) != nullptr;
     }
 
     bool updateScope(const Token* endBlock, bool /*modified*/) const override {
