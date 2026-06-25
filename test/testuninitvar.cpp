@@ -4284,7 +4284,7 @@ private:
                         "    else y = 123;\n" // <- y is always initialized
                         "    return y;\n"
                         "}");
-        TODO_ASSERT_EQUALS("", "[test.cpp:5:9] -> [test.cpp:7:12]: (warning) Uninitialized variable: y [uninitvar]\n", errout_str());
+        ASSERT_EQUALS("", errout_str()); // #4560: fork-based condition analysis tracks x==0 -> else branch -> y initialized
 
         valueFlowUninit("void f(int x) {\n" // #3948
                         "  int value;\n"

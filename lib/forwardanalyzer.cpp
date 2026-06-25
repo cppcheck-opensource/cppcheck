@@ -412,8 +412,23 @@ namespace {
             return bail;
         }
 
-        Progress updateBranch(Branch& branch, int depth)
+        Progress updateBranch(Branch& branch, int depth, bool flow)
         {
+            // Determine the branch's effect on the value without reporting (read-only)
+            branch.action |= analyzeScope(branch.endBlock);
+            // Mirror checkBranch()/tryForkUpdateScope(): only flow the value into the branch when
+            // the analyzer allows it. A conditional value (e.g. a possible null carried under an
+            // unrelated condition) must not be propagated into the branch, otherwise it produces
+            // false positives. 'flow' is evaluated on the unassumed value by the caller.
+            if (!flow) {
+                bool unknown = false;
+                if (isEscapeScope(branch.endBlock, unknown)) {
+                    branch.escape = true;
+                    branch.escapeUnknown = unknown;
+                }
+                return Progress::Continue;
+            }
+
             // Save and reset actions
             Analyzer::Action prevActions = actions;
             actions = Analyzer::Action::None;
@@ -765,20 +780,34 @@ namespace {
                         const bool hasElse = Token::simpleMatch(endBlock, "} else {");
                         tok = hasElse ? endBlock->linkAt(2) : endBlock;
                         if (thenBranch.check) {
+                            // The condition is only "known" because of an earlier assumption, so the
+                            // skipped else block could still modify the value -> lower to possible
+                            if (analyzer->isConditional() && hasElse && analyzeScope(elseBranch.endBlock).isModified() &&
+                                !analyzer->lowerToPossible())
+                                return Break(Analyzer::Terminate::Bail);
                             if (updateScope(thenBranch.endBlock, depth - 1) == Progress::Break)
                                 return Break();
                         } else if (elseBranch.check) {
+                            // Likewise the skipped then block could still modify the value
+                            if (analyzer->isConditional() && analyzeScope(thenBranch.endBlock).isModified() &&
+                                !analyzer->lowerToPossible())
+                                return Break(Analyzer::Terminate::Bail);
                             if (elseBranch.endBlock && updateScope(elseBranch.endBlock, depth - 1) == Progress::Break)
                                 return Break();
                         } else {
-                            const bool conditional = analyzer->isConditional();
+                            const bool conditional = stopOnCondition(condTok);
+                            // Decide whether the value may flow into each branch using the unassumed
+                            // value (as checkBranch() does), before assume() makes the forks conditional
+                            const bool flowThen = analyzer->updateScope(thenBranch.endBlock, analyzeScope(thenBranch.endBlock).isModified());
+                            const bool flowElse = hasElse && elseBranch.endBlock &&
+                                                  analyzer->updateScope(elseBranch.endBlock, analyzeScope(elseBranch.endBlock).isModified());
                             ForwardTraversal ft = fork();
                             ft.analyzer->assume(condTok, true);
-                            Progress p = ft.updateBranch(thenBranch, depth - 1);
+                            Progress p = ft.updateBranch(thenBranch, depth - 1, flowThen);
 
                             analyzer->assume(condTok, false);
                             if (hasElse) {
-                                if (updateBranch(elseBranch, depth - 1) == Progress::Break)
+                                if (updateBranch(elseBranch, depth - 1, flowElse) == Progress::Break)
                                     return Break();
                             }
                             if (thenBranch.isDead() || elseBranch.isDead()) {

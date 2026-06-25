@@ -368,7 +368,7 @@ private:
                     "    if(b) ++x;\n"
                     "    return s[x];\n"
                     "}");
-        ASSERT_EQUALS("[test.cpp:5:13]: error: Out of bounds access in 's[x]', if 's' size is 6 and 'x' is 6 [containerOutOfBounds]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:5:13]: error: Out of bounds access in 's[x]', if 's' size is 6 and 'x' is 7 [containerOutOfBounds]\n", errout_str());
 
         checkNormal("void f() {\n"
                     "    static const int N = 4;\n"
@@ -2736,7 +2736,7 @@ private:
               "}\n", s);
         ASSERT_EQUALS("[test.cpp:5:9]: warning: Array index -1 is out of bounds. [negativeContainerIndex]\n"
                       "[test.cpp:8:8]: note: Calling function 'f', 1st argument '-1' value is -1\n"
-                      "[test.cpp:3:9]: note: Assuming condition is false\n"
+                      "[test.cpp:3:9]: note: Assuming condition is true\n"
                       "[test.cpp:5:9]: note: Negative array index\n",
                       errout_str());
     }
