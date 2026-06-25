@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2024 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,28 +18,61 @@
 
 #include "color.h"
 
+#include <cstdlib>
+#include <sstream>
+#include <iostream>
+
 #ifndef _WIN32
 #include <unistd.h>
 #endif
-#include <cstddef>
-#include <sstream> // IWYU pragma: keep
 
-#ifdef _WIN32
-std::ostream& operator<<(std::ostream& os, const Color& /*c*/)
+bool gDisableColors = false;
+
+#ifndef _WIN32
+static bool isStreamATty(const std::ostream & os)
 {
-#else
-std::ostream& operator<<(std::ostream & os, const Color& c)
-{
-    static const bool use_color = isatty(STDOUT_FILENO);
-    if (use_color)
-        return os << "\033[" << static_cast<std::size_t>(c) << "m";
+    static const bool stdout_tty = isatty(STDOUT_FILENO);
+    static const bool stderr_tty = isatty(STDERR_FILENO);
+    if (&os == &std::cout)
+        return stdout_tty;
+    if (&os == &std::cerr)
+        return stderr_tty;
+    return (stdout_tty && stderr_tty);
+}
 #endif
+
+static bool isColorEnabled(const std::ostream & os)
+{
+    // See https://bixense.com/clicolors/
+    static const bool color_forced_off = (nullptr != std::getenv("NO_COLOR"));
+    if (color_forced_off)
+    {
+        return false;
+    }
+    static const bool color_forced_on = (nullptr != std::getenv("CLICOLOR_FORCE"));
+    if (color_forced_on)
+    {
+        return true;
+    }
+#ifdef _WIN32
+    (void)os;
+    return false;
+#else
+    return isStreamATty(os);
+#endif
+}
+
+std::ostream& operator<<(std::ostream & os, Color c)
+{
+    if (!gDisableColors && isColorEnabled(os))
+        return os << "\033[" << static_cast<std::size_t>(c) << "m";
+
     return os;
 }
 
-std::string toString(const Color& c)
+std::string toString(Color c)
 {
-    std::stringstream ss;
+    std::ostringstream ss;
     ss << c;
     return ss.str();
 }

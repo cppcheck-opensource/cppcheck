@@ -1,3 +1,3 @@
-samples/memleak/bad.c:8:5: error: Memory leak: a [memleak]
+samples\memleak\bad.c:10:5: error: Memory leak: a [memleak]
     return result;
     ^

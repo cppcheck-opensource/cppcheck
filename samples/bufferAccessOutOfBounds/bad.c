@@ -1,8 +1,7 @@
+#include <stdio.h>
 int main()
 {
-    int a[2];
-    int i;
-    for (i = 0; i < 3; i++)
-        a[i] = 0;
-    return a[0];
+    char str[5];
+    strcpy(str, "0123456789abcdef");
+    return 0;
 }

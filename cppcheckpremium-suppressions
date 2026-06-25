@@ -1,0 +1,267 @@
+
+# open source warnings are handled by the selfcheck.yml
+noExplicitConstructor
+postfixOperator
+shadowFunction
+useStlAlgorithm
+normalCheckLevelMaxBranches
+
+###########################################################################################################################
+# Cert C++
+###########################################################################################################################
+
+# False positives for (a?b:c)&=true;
+premium-cert-exp35-c
+# False positives for initializations
+premium-cert-exp45-c
+# False positives when casting to uintptr
+premium-cert-int36-c
+
+# too picky
+premium-cert-arr30-c
+premium-cert-int32-c
+premium-cert-str34-c
+
+# we intentionally pass structs
+premium-cert-dcl39-c-*
+
+# we don't want to check the return values of fclose/sprintf/etc
+premium-cert-err33-c
+
+# TODO: Is there unsafe allocations, in case of exceptions) in cppcheck
+# we have global objects
+premium-cert-err58-cpp
+
+# TODO: Exception objects must be nothrow copy constructible.
+premium-cert-err60-cpp
+
+# TODO should we throw Token?
+premium-cert-err61-cpp
+
+# TODO: Detect errors when converting a string to a number. The library function 'atoi()' shall not be used.
+premium-cert-err62-cpp
+
+# TODO: Can we reduce some const_cast?
+premium-cert-exp55-cpp
+
+
+###########################################################################################################################
+# Misra C++ 2023
+###########################################################################################################################
+
+# There are false positives
+premium-misra-cpp-2023-6.5.1:lib/symboldatabase.cpp
+premium-misra-cpp-2023-6.7.2
+premium-misra-cpp-2023-8.18.2
+# False positives: #13004
+premium-misra-cpp-2023-8.2.7:lib/valueflow.cpp
+premium-misra-cpp-2023-8.2.7:lib/checkclass.cpp
+
+
+# ignored function return value (emplace etc)
+premium-misra-cpp-2023-0.1.2
+
+# TODO use named function arguments
+premium-misra-cpp-2023-0.2.2
+
+# we comment out code by intention in some cases
+premium-misra-cpp-2023-5.7.2
+
+# TODO should we use this rule?
+premium-misra-cpp-2023-5.10.1
+
+# we use octal by intention in lib/color.cpp
+premium-misra-cpp-2023-5.13.2:lib/color.cpp
+
+# we intentionally write numeric constants without suffixes
+premium-misra-cpp-2023-5.13.4
+
+# we declare variables, functions, etc in global namespace by intention
+premium-misra-cpp-2023-6.0.3
+
+# TODO use inline for template functions?
+premium-misra-cpp-2023-6.2.4
+
+# TODO ensure we don't conceal methods in derived classes
+premium-misra-cpp-2023-6.4.2
+
+# Internal linkage using "static" keyword
+premium-misra-cpp-2023-6.5.2
+
+# we use local static variables by intention
+premium-misra-cpp-2023-6.7.1
+
+# Could write good warnings but also has a warning about safe code
+premium-misra-cpp-2023-6.8.3
+
+# FIXME enforce proper ref qualifications
+premium-misra-cpp-2023-6.8.4
+
+# We intentionally use the standard integer types
+premium-misra-cpp-2023-6.9.2
+
+# we have conversion from bool to int by intention
+premium-misra-cpp-2023-7.0.1
+
+# we convert integer to bool by intention
+premium-misra-cpp-2023-7.0.2
+
+# Misra C++ is too pedantic about using character values
+premium-misra-cpp-2023-7.0.3
+
+# signed integer expression in bitwise rhs by intention
+premium-misra-cpp-2023-7.0.4
+
+# integer promotions
+premium-misra-cpp-2023-7.0.5
+
+# sign conversions in assignments by intention
+premium-misra-cpp-2023-7.0.6
+
+# we intentionally have array-to-pointer decay in some function calls
+premium-misra-cpp-2023-7.11.2
+
+# warns when we use callbacks
+premium-misra-cpp-2023-7.11.3
+
+# too picky about operator precedence.
+premium-misra-cpp-2023-8.0.1
+
+# TODO review lambda captures
+premium-misra-cpp-2023-8.1.1
+
+# TODO should we use this rule?
+premium-misra-cpp-2023-8.1.2
+
+# TODO use strchr instead of memchr?
+premium-misra-cpp-2023-8.2.6
+
+# intentional pointer to int conversion in lib/utils.h to output dump files
+premium-misra-cpp-2023-8.2.7:lib/utils.h
+
+# TODO check ellipsis usage
+premium-misra-cpp-2023-8.2.11
+
+# we call functions etc by intention in && || RHS
+premium-misra-cpp-2023-8.14.1
+
+# we use c-style casts by intention
+premium-misra-cpp-2023-8.2.2
+
+# we use const_cast by intention
+premium-misra-cpp-2023-8.2.3
+
+# we use recursion by intention
+premium-misra-cpp-2023-8.2.10
+
+# we separate variable declarations by intention with comma
+premium-misra-cpp-2023-8.19.1
+
+# we leave out {} sometimes
+premium-misra-cpp-2023-9.3.1
+
+# we leave out "else" by intention
+premium-misra-cpp-2023-9.4.1
+
+# looping through linked lists by intention
+premium-misra-cpp-2023-9.5.1
+
+# I believe it warns in some cases where we don't have UB
+premium-misra-cpp-2023-9.5.2
+
+# cppcheck does not understand that __builtin_unreachable() is noreturn
+premium-misra-cpp-2023-9.6.4:lib/utils.h
+
+# we declare multiple variables by intention
+premium-misra-cpp-2023-10.0.1
+
+# we do not define enum type explicitly by intention
+premium-misra-cpp-2023-10.2.1
+
+# TODO we have unscoped enums
+premium-misra-cpp-2023-10.2.2
+
+# we use arrays by intention
+premium-misra-cpp-2023-11.3.1
+
+# we dont initialize variables directly by intention
+premium-misra-cpp-2023-11.6.1
+
+# we have enums where only last constant is initialized by intention
+premium-misra-cpp-2023-11.6.3
+
+# we use unions by intention
+premium-misra-cpp-2023-12.3.1
+
+# TODO ensure overrides match
+premium-misra-cpp-2023-13.3.2
+
+# TODO use the same parameter names in overridden methods.
+premium-misra-cpp-2023-13.3.3
+
+# we sometimes use both public/private data members by intention
+premium-misra-cpp-2023-14.1.1
+
+# TODO should we use this rule?
+premium-misra-cpp-2023-15.0.1
+
+# seems too picky (explicitly calling InferModel and Analyzer base class constructors even though they are defaulted).
+premium-misra-cpp-2023-15.1.2
+
+# TODO use explicit for conversion operator
+premium-misra-cpp-2023-15.1.3
+
+# TODO: should we use this rule?
+premium-misra-cpp-2023-16.6.1
+
+# TODO: should we use this rule?
+premium-misra-cpp-2023-17.8.1
+
+# TODO: should we throw token pointers?
+premium-misra-cpp-2023-18.1.1
+
+# TODO do not throw token pointer?
+premium-misra-cpp-2023-18.3.2:lib/tokenize.cpp
+
+# in smallvector we intentionally put a constant above some preprocessor includes
+premium-misra-cpp-2023-19.0.3:lib/smallvector.h
+
+# code is intentional, should cppcheck premium understand __has_cpp_attribute and compiler defines better?
+premium-misra-cpp-2023-19.1.3:lib/config.h
+
+# we use #/## by intention in some cases
+premium-misra-cpp-2023-19.3.1
+
+# We use #pragma by intention
+premium-misra-cpp-2023-19.6.1
+
+# We use atoi by intention
+premium-misra-cpp-2023-21.2.1
+
+# We use <cstring> functions by intention
+premium-misra-cpp-2023-21.2.2
+
+# We have limited use of std::getenv by intention
+premium-misra-cpp-2023-21.2.3
+
+# Dynamic memory usage in std::string etc
+premium-misra-cpp-2023-21.6.1
+
+# We use new/delete by intention sometimes
+premium-misra-cpp-2023-21.6.2
+
+# TODO use std::make_unique when we require C++14
+premium-misra-cpp-2023-23.11.1
+
+# we use <cctype> by intention
+premium-misra-cpp-2023-24.5.1
+
+# we use std::vector<bool> by intention in lib/infer.cpp but in general it should be avoided
+premium-misra-cpp-2023-26.3.1:lib/infer.cpp
+
+# TODO review that std::move is used properly
+premium-misra-cpp-2023-28.6.1
+
+# we use cstdio by intention
+premium-misra-cpp-2023-30.0.1
+

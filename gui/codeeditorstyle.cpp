@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,35 +18,36 @@
 
 #include "codeeditorstyle.h"
 
+#include <QList>
 #include <QSettings>
+#include <QVariant>
 
 CodeEditorStyle::CodeEditorStyle(
-    const QColor& CtrlFGColor, const QColor& CtrlBGColor,
-    const QColor& HiLiBGColor,
-    const QColor& LnNumFGColor, const QColor& LnNumBGColor,
-    const QColor& KeyWdFGColor, const QFont::Weight& KeyWdWeight,
-    const QColor& ClsFGColor, const QFont::Weight& ClsWeight,
-    const QColor& QteFGColor, const QFont::Weight& QteWeight,
-    const QColor& CmtFGColor, const QFont::Weight& CmtWeight,
-    const QColor& SymbFGColor, const QColor& SymbBGColor,
-    const QFont::Weight& SymbWeight) :
-    mSystemTheme(false),
-    widgetFGColor(CtrlFGColor),
-    widgetBGColor(CtrlBGColor),
-    highlightBGColor(HiLiBGColor),
-    lineNumFGColor(LnNumFGColor),
-    lineNumBGColor(LnNumBGColor),
-    keywordColor(KeyWdFGColor),
-    keywordWeight(KeyWdWeight),
-    classColor(ClsFGColor),
-    classWeight(ClsWeight),
-    quoteColor(QteFGColor),
-    quoteWeight(QteWeight),
-    commentColor(CmtFGColor),
-    commentWeight(CmtWeight),
-    symbolFGColor(SymbFGColor),
-    symbolBGColor(SymbBGColor),
-    symbolWeight(SymbWeight)
+    QColor ctrlFGColor, QColor ctrlBGColor,
+    QColor hiLiBGColor,
+    QColor lnNumFGColor, QColor lnNumBGColor,
+    QColor keyWdFGColor, QFont::Weight keyWdWeight,
+    QColor clsFGColor, QFont::Weight clsWeight,
+    QColor qteFGColor, QFont::Weight qteWeight,
+    QColor cmtFGColor, QFont::Weight cmtWeight,
+    QColor symbFGColor, QColor symbBGColor,
+    QFont::Weight symbWeight) :
+    widgetFGColor(ctrlFGColor),
+    widgetBGColor(ctrlBGColor),
+    highlightBGColor(hiLiBGColor),
+    lineNumFGColor(lnNumFGColor),
+    lineNumBGColor(lnNumBGColor),
+    keywordColor(keyWdFGColor),
+    keywordWeight(keyWdWeight),
+    classColor(clsFGColor),
+    classWeight(clsWeight),
+    quoteColor(qteFGColor),
+    quoteWeight(qteWeight),
+    commentColor(cmtFGColor),
+    commentWeight(cmtWeight),
+    symbolFGColor(symbFGColor),
+    symbolBGColor(symbBGColor),
+    symbolWeight(symbWeight)
 {}
 
 bool CodeEditorStyle::operator==(const CodeEditorStyle& rhs) const
@@ -174,8 +175,8 @@ void CodeEditorStyle::saveSettings(QSettings *settings,
     }
 
     settings->beginGroup(SETTINGS_STYLE_GROUP);
-    bool isDefaultLight = (defaultStyleLight == theStyle);
-    bool isDefaultDark = (defaultStyleDark == theStyle);
+    const bool isDefaultLight = (defaultStyleLight == theStyle);
+    const bool isDefaultDark = (defaultStyleDark == theStyle);
     if (isDefaultLight && !isDefaultDark) {
         settings->setValue(SETTINGS_STYLE_TYPE,
                            SETTINGS_STYLE_TYPE_LIGHT);

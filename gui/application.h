@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2021 Cppcheck team.
+ * Copyright (C) 2007-2024 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,14 +42,14 @@
  */
 class Application {
 public:
-    Application() {}
-    Application(const QString &name, const QString &path, const QString &params);
+    Application() = default;
+    Application(QString name, QString path, QString params);
 
     /**
      * @brief Get application name.
      * @return Application name.
      */
-    QString getName() const {
+    const QString& getName() const {
         return mName;
     }
 
@@ -57,7 +57,7 @@ public:
      * @brief Get application path.
      * @return Application path.
      */
-    QString getPath() const {
+    const QString& getPath() const {
         return mPath;
     }
 
@@ -65,7 +65,7 @@ public:
      * @brief Get application command line parameters.
      * @return Application command line parameters.
      */
-    QString getParameters() const {
+    const QString& getParameters() const {
         return mParameters;
     }
 

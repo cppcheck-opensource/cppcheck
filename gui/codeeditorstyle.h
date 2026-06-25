@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2025 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include <QColor>
 #include <QFont>
 #include <QString>
+#include <Qt>
 
 const QString SETTINGS_STYLE_GROUP("EditorStyle");
 const QString SETTINGS_STYLE_TYPE("StyleType");
@@ -50,16 +51,15 @@ class QSettings;
 class CodeEditorStyle {
 public:
     explicit CodeEditorStyle(
-        const QColor& CtrlFGColor, const QColor& CtrlBGColor,
-        const QColor& HiLiBGColor,
-        const QColor& LnNumFGColor, const QColor& LnNumBGColor,
-        const QColor& KeyWdFGColor, const QFont::Weight& KeyWdWeight,
-        const QColor& ClsFGColor, const QFont::Weight& ClsWeight,
-        const QColor& QteFGColor, const QFont::Weight& QteWeight,
-        const QColor& CmtFGColor, const QFont::Weight& CmtWeight,
-        const QColor& SymbFGColor, const QColor& SymbBGColor,
-        const QFont::Weight& SymbWeight);
-    ~CodeEditorStyle() {}
+        QColor ctrlFGColor, QColor ctrlBGColor,
+        QColor hiLiBGColor,
+        QColor lnNumFGColor, QColor lnNumBGColor,
+        QColor keyWdFGColor, QFont::Weight keyWdWeight,
+        QColor clsFGColor, QFont::Weight clsWeight,
+        QColor qteFGColor, QFont::Weight qteWeight,
+        QColor cmtFGColor, QFont::Weight cmtWeight,
+        QColor symbFGColor, QColor symbBGColor,
+        QFont::Weight symbWeight);
 
     bool operator==(const CodeEditorStyle& rhs) const;
     bool operator!=(const CodeEditorStyle& rhs) const;
@@ -73,7 +73,7 @@ public:
     static void saveSettings(QSettings *settings, const CodeEditorStyle& theStyle);
 
 public:
-    bool mSystemTheme;
+    bool mSystemTheme{};
     QColor widgetFGColor;
     QColor widgetBGColor;
     QColor highlightBGColor;

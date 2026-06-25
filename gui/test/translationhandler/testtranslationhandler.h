@@ -1,4 +1,4 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
  * Copyright (C) 2007-2021 Cppcheck team.
  *
@@ -22,5 +22,5 @@ class TestTranslationHandler : public QObject {
     Q_OBJECT
 
 private slots:
-    void construct();
+    void construct() const;
 };

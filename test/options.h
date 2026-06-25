@@ -1,5 +1,5 @@
 // Cppcheck - A tool for static C/C++ code analysis
-// Copyright (C) 2007-2021 Cppcheck team.
+// Copyright (C) 2007-2026 Cppcheck team.
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,8 +17,14 @@
 #ifndef OPTIONS_H
 #define OPTIONS_H
 
+#include <map>
+#include <memory>
 #include <set>
 #include <string>
+#include <vector>
+
+class TimerResultsIntf;
+class TimerResults;
 
 /**
  * @brief Class to parse command-line parameters for ./testrunner .
@@ -29,12 +35,24 @@ class options {
 public:
     /** Call from main() to populate object */
     options(int argc, const char* const argv[]);
+    ~options();
     /** Don't print the name of each method being tested. */
     bool quiet() const;
     /** Print help. */
     bool help() const;
-    /** Which test should be run. Empty string means 'all tests' */
-    const std::set<std::string>& which_test() const;
+    /** Print summary. */
+    bool summary() const;
+    /** Perform dry run. */
+    bool dry_run() const;
+    /** Exclude provided lists of tests. */
+    bool exclude_tests() const;
+    /** The timer results. */
+    TimerResultsIntf* timer_results() const;
+    /** Which tests should be run. */
+    const std::map<std::string, std::set<std::string>>& which_tests() const;
+
+    /** Errors encountered during option processing. */
+    const std::vector<std::string>& errors() const;
 
     const std::string& exe() const;
 
@@ -43,9 +61,14 @@ public:
     options& operator =(const options&) = delete;
 
 private:
-    std::set<std::string> mWhichTests;
-    const bool mQuiet;
-    const bool mHelp;
+    std::map<std::string, std::set<std::string>> mWhichTests;
+    std::vector<std::string> mErrors;
+    bool mQuiet{};
+    bool mHelp{};
+    bool mSummary{true};
+    bool mDryRun{};
+    bool mExcludeTests{};
+    std::unique_ptr<TimerResults> mTimerResults;
     std::string mExe;
 };
 

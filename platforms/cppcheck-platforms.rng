@@ -9,43 +9,39 @@
 				<data type="NCName"/>
 			</element>
 			<element name="sizeof">
-				<zeroOrMore>
-					<choice>
-						<element name="bool">
-							<data type="integer"/>
-						</element>
-						<element name="short">
-							<data type="integer"/>
-						</element>
-						<element name="int">
-							<data type="integer"/>
-						</element>
-						<element name="long">
-							<data type="integer"/>
-						</element>
-						<element name="long-long">
-							<data type="integer"/>
-						</element>
-						<element name="float">
-							<data type="integer"/>
-						</element>
-						<element name="double">
-							<data type="integer"/>
-						</element>
-						<element name="long-double">
-							<data type="integer"/>
-						</element>
-						<element name="pointer">
-							<data type="integer"/>
-						</element>
-						<element name="size_t">
-							<data type="integer"/>
-						</element>
-						<element name="wchar_t">
-							<data type="integer"/>
-						</element>
-					</choice>
-				</zeroOrMore>
+				<element name="bool">
+					<data type="integer"/>
+				</element>
+				<element name="short">
+					<data type="integer"/>
+				</element>
+				<element name="int">
+					<data type="integer"/>
+				</element>
+				<element name="long">
+					<data type="integer"/>
+				</element>
+				<element name="long-long">
+					<data type="integer"/>
+				</element>
+				<element name="float">
+					<data type="integer"/>
+				</element>
+				<element name="double">
+					<data type="integer"/>
+				</element>
+				<element name="long-double">
+					<data type="integer"/>
+				</element>
+				<element name="pointer">
+					<data type="integer"/>
+				</element>
+				<element name="size_t">
+					<data type="integer"/>
+				</element>
+				<element name="wchar_t">
+					<data type="integer"/>
+				</element>
 			</element>
 		</element>
 	</start>

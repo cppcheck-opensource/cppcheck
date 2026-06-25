@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2025 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,10 +21,12 @@
 #include "pathmatch.h"
 
 #include <algorithm>
+#include <iterator>
 #include <string>
 #include <vector>
 
 #include <QDir>
+#include <Qt>
 
 QStringList FileList::getDefaultFilters()
 {
@@ -97,9 +99,8 @@ QStringList FileList::getFileList() const
             names << name;
         }
         return names;
-    } else {
-        return applyExcludeList();
     }
+    return applyExcludeList();
 }
 
 void FileList::addExcludeList(const QStringList &paths)
@@ -110,25 +111,23 @@ void FileList::addExcludeList(const QStringList &paths)
 static std::vector<std::string> toStdStringList(const QStringList &stringList)
 {
     std::vector<std::string> ret;
-    for (const QString &s : stringList) {
-        ret.push_back(s.toStdString());
-    }
+    std::transform(stringList.cbegin(), stringList.cend(), std::back_inserter(ret), [](const QString& s) {
+        return s.toStdString();
+    });
     return ret;
 }
 
 QStringList FileList::applyExcludeList() const
 {
-#ifdef _WIN32
-    const PathMatch pathMatch(toStdStringList(mExcludedPaths), true);
-#else
-    const PathMatch pathMatch(toStdStringList(mExcludedPaths), false);
-#endif
+    const PathMatch pathMatch(toStdStringList(mExcludedPaths), QDir::currentPath().toStdString());
 
     QStringList paths;
     for (const QFileInfo& item : mFileList) {
-        QString name = QDir::fromNativeSeparators(item.canonicalFilePath());
-        if (!pathMatch.match(name.toStdString()))
-            paths << name;
+        if (pathMatch.match(QDir::fromNativeSeparators(item.filePath()).toStdString()))
+            continue;
+        QString canonical = QDir::fromNativeSeparators(item.canonicalFilePath());
+        if (!pathMatch.match(canonical.toStdString()))
+            paths << canonical;
     }
     return paths;
 }

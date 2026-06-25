@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,9 +23,11 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 #include "errortypes.h"
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -35,10 +37,11 @@ namespace ValueFlow {
 
 class Settings;
 class Token;
-class Tokenizer;
 class Function;
 class Variable;
 class ErrorLogger;
+class Tokenizer;
+struct UnionMember;
 
 /// @addtogroup Checks
 /// @{
@@ -49,65 +52,85 @@ class ErrorLogger;
 class CPPCHECKLIB CheckOther : public Check {
 public:
     /** @brief This constructor is used when registering the CheckClass */
-    CheckOther() : Check(myName()) {}
+    CheckOther() : Check("Other") {}
 
-    /** @brief This constructor is used when running checks. */
-    CheckOther(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
+private:
     /** @brief Run checks against the normal token list */
-    void runChecks(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger) override {
-        CheckOther checkOther(tokenizer, settings, errorLogger);
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
-        // Checks
-        checkOther.warningOldStylePointerCast();
-        checkOther.invalidPointerCast();
-        checkOther.checkCharVariable();
-        checkOther.checkRedundantAssignment();
-        checkOther.checkRedundantAssignmentInSwitch();
-        checkOther.checkSuspiciousCaseInSwitch();
-        checkOther.checkDuplicateBranch();
-        checkOther.checkDuplicateExpression();
-        checkOther.checkUnreachableCode();
-        checkOther.checkSuspiciousSemicolon();
-        checkOther.checkVariableScope();
-        checkOther.checkSignOfUnsignedVariable();  // don't ignore casts (#3574)
-        checkOther.checkIncompleteArrayFill();
-        checkOther.checkVarFuncNullUB();
-        checkOther.checkNanInArithmeticExpression();
-        checkOther.checkCommaSeparatedReturn();
-        checkOther.checkRedundantPointerOp();
-        checkOther.checkZeroDivision();
-        checkOther.checkNegativeBitwiseShift();
-        checkOther.checkInterlockedDecrement();
-        checkOther.checkUnusedLabel();
-        checkOther.checkEvaluationOrder();
-        checkOther.checkFuncArgNamesDifferent();
-        checkOther.checkShadowVariables();
-        checkOther.checkKnownArgument();
-        checkOther.checkComparePointers();
-        checkOther.checkIncompleteStatement();
-        checkOther.checkRedundantCopy();
-        checkOther.clarifyCalculation();
-        checkOther.checkPassByReference();
-        checkOther.checkConstVariable();
-        checkOther.checkConstPointer();
-        checkOther.checkComparisonFunctionIsAlwaysTrueOrFalse();
-        checkOther.checkInvalidFree();
-        checkOther.clarifyStatement();
-        checkOther.checkCastIntToCharAndBack();
-        checkOther.checkMisusedScopedObject();
-        checkOther.checkAccessOfMovedVariable();
-        checkOther.checkModuloOfOne();
-        checkOther.checkOverlappingWrite();
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
+
+    std::string classInfo() const override {
+        return "Other checks\n"
+
+               // error
+               "- division with zero\n"
+               "- scoped object destroyed immediately after construction\n"
+               "- assignment in an assert statement\n"
+               "- free() or delete of an invalid memory location\n"
+               "- bitwise operation with negative right operand\n"
+               "- cast the return values of getc(),fgetc() and getchar() to character and compare it to EOF\n"
+               "- race condition with non-interlocked access after InterlockedDecrement() call\n"
+               "- expression 'x = x++;' depends on order of evaluation of side effects\n"
+               "- overlapping write of union\n"
+
+               // warning
+               "- either division by zero or useless condition\n"
+               "- access of moved or forwarded variable.\n"
+
+               // performance
+               "- redundant data copying for const variable\n"
+               "- subsequent assignment or copying to a variable or buffer\n"
+               "- passing parameter by value\n"
+
+               // portability
+               "- Passing NULL pointer to function with variable number of arguments leads to UB.\n"
+
+               // style
+               "- C-style pointer cast in C++ code\n"
+               "- casting between incompatible pointer types\n"
+               "- [Incomplete statement](IncompleteStatement)\n"
+               "- [check how signed char variables are used](CharVar)\n"
+               "- variable scope can be limited\n"
+               "- unusual pointer arithmetic. For example: \"abc\" + 'd'\n"
+               "- redundant assignment, increment, or bitwise operation in a switch statement\n"
+               "- redundant strcpy in a switch statement\n"
+               "- Suspicious case labels in switch()\n"
+               "- assignment of a variable to itself\n"
+               "- Comparison of values leading always to true or false\n"
+               "- Clarify calculation with parentheses\n"
+               "- suspicious comparison of '\\0' with a char\\* variable\n"
+               "- duplicate break statement\n"
+               "- unreachable code\n"
+               "- testing if unsigned variable is negative/positive\n"
+               "- Suspicious use of ; at the end of 'if/for/while' statement.\n"
+               "- Array filled incompletely using memset/memcpy/memmove.\n"
+               "- NaN (not a number) value used in arithmetic expression.\n"
+               "- comma in return statement (the comma can easily be misread as a semicolon).\n"
+               "- prefer erfc, expm1 or log1p to avoid loss of precision.\n"
+               "- identical code in both branches of if/else or ternary operator.\n"
+               "- redundant pointer operation on pointer like &\\*some_ptr.\n"
+               "- find unused 'goto' labels.\n"
+               "- function declaration and definition argument names different.\n"
+               "- function declaration and definition argument order different.\n"
+               "- shadow variable.\n"
+               "- variable can be declared const.\n"
+               "- calculating modulo of one.\n"
+               "- known function argument, suspicious calculation.\n";
     }
+};
+
+class CPPCHECKLIB CheckOtherImpl : public CheckImpl {
+public:
+    /** @brief This constructor is used when running checks. */
+    CheckOtherImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** Is expression a comparison that checks if a nonzero (unsigned/pointer) expression is less than zero? */
-    static bool comparisonNonZeroExpressionLessThanZero(const Token *tok, const ValueFlow::Value **zeroValue, const Token **nonZeroExpr);
+    static bool comparisonNonZeroExpressionLessThanZero(const Token *tok, const ValueFlow::Value *&zeroValue, const Token *&nonZeroExpr, bool suppress = false);
 
     /** Is expression a comparison that checks if a nonzero (unsigned/pointer) expression is positive? */
-    static bool testIfNonZeroExpressionIsPositive(const Token *tok, const ValueFlow::Value **zeroValue, const Token **nonZeroExpr);
-
+    static bool testIfNonZeroExpressionIsPositive(const Token *tok, const ValueFlow::Value *&zeroValue, const Token *&nonZeroExpr);
 
     /** @brief Clarify calculation for ".. a * b ? .." */
     void clarifyCalculation();
@@ -118,12 +141,20 @@ public:
     /** @brief Are there C-style pointer casts in a c++ file? */
     void warningOldStylePointerCast();
 
+    /** @brief Dangerous type cast */
+    void warningDangerousTypeCast();
+
+    /** @brief Casting non-hexadecimal integer literal to pointer */
+    void warningIntToPointerCast();
+
+    void suspiciousFloatingPointCast();
+
     /** @brief Check for pointer casts to a type with an incompatible binary data representation */
     void invalidPointerCast();
 
     /** @brief %Check scope of variables */
     void checkVariableScope();
-    static bool checkInnerScope(const Token *tok, const Variable* var, bool& used);
+    bool checkInnerScope(const Token *tok, const Variable* var, bool& used) const;
 
     /** @brief %Check for comma separated statements in return */
     void checkCommaSeparatedReturn();
@@ -149,8 +180,8 @@ public:
     /** @brief copying to memory or assigning to a variable twice */
     void checkRedundantAssignment();
 
-    /** @brief %Check for assigning to the same variable twice in a switch statement*/
-    void checkRedundantAssignmentInSwitch();
+    /** @brief %Check for redundant bitwise operation in switch statement*/
+    void redundantBitwiseOperationInSwitchError();
 
     /** @brief %Check for code like 'case A||B:'*/
     void checkSuspiciousCaseInSwitch();
@@ -218,23 +249,32 @@ public:
 
     void checkKnownArgument();
 
+    void checkKnownPointerToBool();
+
     void checkComparePointers();
 
     void checkModuloOfOne();
 
+    /**
+     * @throws InternalError thrown if largest union member could not be found
+     */
+    void checkUnionZeroInit();
+
     void checkOverlappingWrite();
     void overlappingWriteUnion(const Token *tok);
-    void overlappingWriteFunction(const Token *tok);
+    void overlappingWriteFunction(const Token *tok, const std::string& funcname);
 
-private:
     // Error messages..
-    void checkComparisonFunctionIsAlwaysTrueOrFalseError(const Token* tok, const std::string &functionName, const std::string &varName, const bool result);
+    void checkComparisonFunctionIsAlwaysTrueOrFalseError(const Token* tok, const std::string &functionName, const std::string &varName, bool result);
     void checkCastIntToCharAndBackError(const Token *tok, const std::string &strFunctionName);
     void clarifyCalculationError(const Token *tok, const std::string &op);
     void clarifyStatementError(const Token* tok);
-    void cstyleCastError(const Token *tok);
+    void cstyleCastError(const Token *tok, bool isPtr = true);
+    void dangerousTypeCastError(const Token *tok, bool isPtr);
+    void intToPointerCastError(const Token *tok, const std::string& format);
+    void suspiciousFloatingPointCastError(const Token *tok);
     void invalidPointerCastError(const Token* tok, const std::string& from, const std::string& to, bool inconclusive, bool toIsInt);
-    void passedByValueError(const Token *tok, const std::string &parname, bool inconclusive);
+    void passedByValueError(const Variable* var, bool inconclusive, bool isRangeBasedFor = false);
     void constVariableError(const Variable *var, const Function *function);
     void constStatementError(const Token *tok, const std::string &type, bool inconclusive);
     void signedCharArrayIndexError(const Token *tok);
@@ -246,12 +286,12 @@ private:
     void redundantAssignmentError(const Token *tok1, const Token* tok2, const std::string& var, bool inconclusive);
     void redundantInitializationError(const Token *tok1, const Token* tok2, const std::string& var, bool inconclusive);
     void redundantAssignmentInSwitchError(const Token *tok1, const Token *tok2, const std::string &var);
+    void redundantAssignmentSameValueError(const Token* tok, const ValueFlow::Value* val, const std::string& var);
     void redundantCopyError(const Token *tok1, const Token* tok2, const std::string& var);
-    void redundantCopyInSwitchError(const Token *tok1, const Token* tok2, const std::string &var);
     void redundantBitwiseOperationInSwitchError(const Token *tok, const std::string &varname);
     void suspiciousCaseInSwitchError(const Token* tok, const std::string& operatorString);
     void selfAssignmentError(const Token *tok, const std::string &varname);
-    void misusedScopeObjectError(const Token *tok, const std::string &varname);
+    void misusedScopeObjectError(const Token *tok, const std::string &varname, bool isAssignment = false);
     void duplicateBranchError(const Token *tok1, const Token *tok2, ErrorPath errors);
     void duplicateAssignExpressionError(const Token *tok1, const Token *tok2, bool inconclusive);
     void oppositeExpressionError(const Token *opTok, ErrorPath errors);
@@ -259,7 +299,8 @@ private:
     void duplicateValueTernaryError(const Token *tok);
     void duplicateExpressionTernaryError(const Token *tok, ErrorPath errors);
     void duplicateBreakError(const Token *tok, bool inconclusive);
-    void unreachableCodeError(const Token* tok, bool inconclusive);
+    void unreachableCodeError(const Token* tok, const Token* noreturn, bool inconclusive);
+    void redundantContinueError(const Token* tok);
     void unsignedLessThanZeroError(const Token *tok, const ValueFlow::Value *v, const std::string &varname);
     void pointerLessThanZeroError(const Token *tok, const ValueFlow::Value *v);
     void unsignedPositiveError(const Token *tok, const ValueFlow::Value *v, const std::string &varname);
@@ -273,154 +314,21 @@ private:
     void redundantPointerOpError(const Token* tok, const std::string& varname, bool inconclusive, bool addressOfDeref);
     void raceAfterInterlockedDecrementError(const Token* tok);
     void unusedLabelError(const Token* tok, bool inSwitch, bool hasIfdef);
-    void unknownEvaluationOrder(const Token* tok);
-    static bool isMovedParameterAllowedForInconclusiveFunction(const Token * tok);
+    void unknownEvaluationOrder(const Token* tok, bool isUnspecifiedBehavior = false);
     void accessMovedError(const Token *tok, const std::string &varname, const ValueFlow::Value *value, bool inconclusive);
-    void funcArgNamesDifferent(const std::string & functionName, nonneg int index, const Token* declaration, const Token* definition);
+    void funcArgNamesDifferent(const std::string & functionName, size_t index, const Token* declaration, const Token* definition);
     void funcArgOrderDifferent(const std::string & functionName, const Token * declaration, const Token * definition, const std::vector<const Token*> & declarations, const std::vector<const Token*> & definitions);
-    void shadowError(const Token *var, const Token *shadowed, std::string type);
+    void shadowError(const Token *shadows, const std::string &shadowsType, const Token *shadowed, const std::string &shadowedType);
     void knownArgumentError(const Token *tok, const Token *ftok, const ValueFlow::Value *value, const std::string &varexpr, bool isVariableExpressionHidden);
+    void knownPointerToBoolError(const Token* tok, const ValueFlow::Value* value);
     void comparePointersError(const Token *tok, const ValueFlow::Value *v1, const ValueFlow::Value *v2);
     void checkModuloOfOneError(const Token *tok);
+    void unionZeroInitError(const Token *tok, const UnionMember& largestMember);
 
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override {
-        CheckOther c(nullptr, settings, errorLogger);
-
-        ErrorPath errorPath;
-
-        // error
-        c.zerodivError(nullptr, nullptr);
-        c.misusedScopeObjectError(nullptr, "varname");
-        c.invalidPointerCastError(nullptr,  "float *", "double *", false, false);
-        c.negativeBitwiseShiftError(nullptr, 1);
-        c.negativeBitwiseShiftError(nullptr, 2);
-        c.raceAfterInterlockedDecrementError(nullptr);
-        c.invalidFreeError(nullptr, "malloc", false);
-        c.overlappingWriteUnion(nullptr);
-        c.overlappingWriteFunction(nullptr);
-
-        //performance
-        c.redundantCopyError(nullptr,  "varname");
-        c.redundantCopyError(nullptr, nullptr, "var");
-
-        // style/warning
-        c.checkComparisonFunctionIsAlwaysTrueOrFalseError(nullptr, "isless","varName",false);
-        c.checkCastIntToCharAndBackError(nullptr, "func_name");
-        c.cstyleCastError(nullptr);
-        c.passedByValueError(nullptr, "parametername", false);
-        c.constVariableError(nullptr, nullptr);
-        c.constStatementError(nullptr, "type", false);
-        c.signedCharArrayIndexError(nullptr);
-        c.unknownSignCharArrayIndexError(nullptr);
-        c.charBitOpError(nullptr);
-        c.variableScopeError(nullptr,  "varname");
-        c.redundantAssignmentInSwitchError(nullptr, nullptr, "var");
-        c.redundantCopyInSwitchError(nullptr, nullptr, "var");
-        c.suspiciousCaseInSwitchError(nullptr,  "||");
-        c.selfAssignmentError(nullptr,  "varname");
-        c.clarifyCalculationError(nullptr,  "+");
-        c.clarifyStatementError(nullptr);
-        c.duplicateBranchError(nullptr, nullptr, errorPath);
-        c.duplicateAssignExpressionError(nullptr, nullptr, true);
-        c.oppositeExpressionError(nullptr, errorPath);
-        c.duplicateExpressionError(nullptr, nullptr, nullptr, errorPath);
-        c.duplicateValueTernaryError(nullptr);
-        c.duplicateExpressionTernaryError(nullptr, errorPath);
-        c.duplicateBreakError(nullptr,  false);
-        c.unreachableCodeError(nullptr,  false);
-        c.unsignedLessThanZeroError(nullptr, nullptr, "varname");
-        c.unsignedPositiveError(nullptr, nullptr, "varname");
-        c.pointerLessThanZeroError(nullptr, nullptr);
-        c.pointerPositiveError(nullptr, nullptr);
-        c.suspiciousSemicolonError(nullptr);
-        c.incompleteArrayFillError(nullptr,  "buffer", "memset", false);
-        c.varFuncNullUBError(nullptr);
-        c.nanInArithmeticExpressionError(nullptr);
-        c.commaSeparatedReturnError(nullptr);
-        c.redundantPointerOpError(nullptr,  "varname", false, /*addressOfDeref*/ true);
-        c.unusedLabelError(nullptr, false, false);
-        c.unusedLabelError(nullptr, false, true);
-        c.unusedLabelError(nullptr, true, false);
-        c.unusedLabelError(nullptr, true, true);
-        c.unknownEvaluationOrder(nullptr);
-        c.accessMovedError(nullptr, "v", nullptr, false);
-        c.funcArgNamesDifferent("function", 1, nullptr, nullptr);
-        c.redundantBitwiseOperationInSwitchError(nullptr, "varname");
-        c.shadowError(nullptr, nullptr, "variable");
-        c.shadowError(nullptr, nullptr, "function");
-        c.shadowError(nullptr, nullptr, "argument");
-        c.knownArgumentError(nullptr, nullptr, nullptr, "x", false);
-        c.comparePointersError(nullptr, nullptr, nullptr);
-        c.redundantAssignmentError(nullptr, nullptr, "var", false);
-        c.redundantInitializationError(nullptr, nullptr, "var", false);
-
-        const std::vector<const Token *> nullvec;
-        c.funcArgOrderDifferent("function", nullptr, nullptr, nullvec, nullvec);
-        c.checkModuloOfOneError(nullptr);
+    bool diag(const Token* tok) {
+        return !mRedundantAssignmentDiag.emplace(tok).second;
     }
-
-    static std::string myName() {
-        return "Other";
-    }
-
-    std::string classInfo() const override {
-        return "Other checks\n"
-
-               // error
-               "- division with zero\n"
-               "- scoped object destroyed immediately after construction\n"
-               "- assignment in an assert statement\n"
-               "- free() or delete of an invalid memory location\n"
-               "- bitwise operation with negative right operand\n"
-               "- cast the return values of getc(),fgetc() and getchar() to character and compare it to EOF\n"
-               "- race condition with non-interlocked access after InterlockedDecrement() call\n"
-               "- expression 'x = x++;' depends on order of evaluation of side effects\n"
-               "- overlapping write of union\n"
-
-               // warning
-               "- either division by zero or useless condition\n"
-               "- access of moved or forwarded variable.\n"
-
-               // performance
-               "- redundant data copying for const variable\n"
-               "- subsequent assignment or copying to a variable or buffer\n"
-               "- passing parameter by value\n"
-
-               // portability
-               "- Passing NULL pointer to function with variable number of arguments leads to UB.\n"
-
-               // style
-               "- C-style pointer cast in C++ code\n"
-               "- casting between incompatible pointer types\n"
-               "- [Incomplete statement](IncompleteStatement)\n"
-               "- [check how signed char variables are used](CharVar)\n"
-               "- variable scope can be limited\n"
-               "- unusual pointer arithmetic. For example: \"abc\" + 'd'\n"
-               "- redundant assignment, increment, or bitwise operation in a switch statement\n"
-               "- redundant strcpy in a switch statement\n"
-               "- Suspicious case labels in switch()\n"
-               "- assignment of a variable to itself\n"
-               "- Comparison of values leading always to true or false\n"
-               "- Clarify calculation with parentheses\n"
-               "- suspicious comparison of '\\0' with a char\\* variable\n"
-               "- duplicate break statement\n"
-               "- unreachable code\n"
-               "- testing if unsigned variable is negative/positive\n"
-               "- Suspicious use of ; at the end of 'if/for/while' statement.\n"
-               "- Array filled incompletely using memset/memcpy/memmove.\n"
-               "- NaN (not a number) value used in arithmetic expression.\n"
-               "- comma in return statement (the comma can easily be misread as a semicolon).\n"
-               "- prefer erfc, expm1 or log1p to avoid loss of precision.\n"
-               "- identical code in both branches of if/else or ternary operator.\n"
-               "- redundant pointer operation on pointer like &\\*some_ptr.\n"
-               "- find unused 'goto' labels.\n"
-               "- function declaration and definition argument names different.\n"
-               "- function declaration and definition argument order different.\n"
-               "- shadow variable.\n"
-               "- variable can be declared const.\n"
-               "- calculating modulo of one.\n"
-               "- known function argument, suspicious calculation.\n";
-    }
+    std::set<const Token*> mRedundantAssignmentDiag;
 };
 /// @}
 //---------------------------------------------------------------------------

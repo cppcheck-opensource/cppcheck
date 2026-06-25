@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Cppcheck - A tool for static C/C++ code analysis
 # Copyright (C) 2007-2021 Cppcheck team.
@@ -158,35 +158,35 @@ class MatchCompiler:
     def _compileCmd(tok):
         if tok == '%any%':
             return 'true'
-        elif tok == '%assign%':
+        if tok == '%assign%':
             return 'tok->isAssignmentOp()'
-        elif tok == '%bool%':
+        if tok == '%bool%':
             return 'tok->isBoolean()'
-        elif tok == '%char%':
+        if tok == '%char%':
             return '(tok->tokType() == Token::eChar)'
-        elif tok == '%comp%':
+        if tok == '%comp%':
             return 'tok->isComparisonOp()'
-        elif tok == '%num%':
+        if tok == '%num%':
             return 'tok->isNumber()'
-        elif tok == '%cop%':
+        if tok == '%cop%':
             return 'tok->isConstOp()'
-        elif tok == '%op%':
+        if tok == '%op%':
             return 'tok->isOp()'
-        elif tok == '%or%':
+        if tok == '%or%':
             return '(tok->tokType() == Token::eBitOp && tok->str() == MatchCompiler::makeConstString("|") )'
-        elif tok == '%oror%':
+        if tok == '%oror%':
             return '(tok->tokType() == Token::eLogicalOp && tok->str() == MatchCompiler::makeConstString("||"))'
-        elif tok == '%str%':
+        if tok == '%str%':
             return '(tok->tokType() == Token::eString)'
-        elif tok == '%type%':
-            return '(tok->isName() && tok->varId() == 0U && (tok->str() != MatchCompiler::makeConstString("delete") || !tok->isKeyword()))'
-        elif tok == '%name%':
+        if tok == '%type%':
+            return '(tok->isName() && tok->varId() == 0U)'
+        if tok == '%name%':
             return 'tok->isName()'
-        elif tok == '%var%':
+        if tok == '%var%':
             return '(tok->varId() != 0)'
-        elif tok == '%varid%':
+        if tok == '%varid%':
             return '(tok->isName() && tok->varId() == varid)'
-        elif (len(tok) > 2) and (tok[0] == "%"):
+        if (len(tok) > 2) and (tok[0] == "%"):
             print("unhandled:" + tok)
         elif tok in tokTypes:
             cond = ' || '.join(['tok->tokType() == Token::{}'.format(tokType) for tokType in tokTypes[tok]])
@@ -206,7 +206,7 @@ class MatchCompiler:
                 arg2 = ', const int varid'
 
             ret = '// pattern: ' + pattern + '\n'
-            ret += 'static bool match' + \
+            ret += 'MAYBE_UNUSED static inline bool match' + \
                 str(nr) + '(' + tokenType + '* tok' + arg2 + ') {\n'
             returnStatement = 'return false;\n'
 
@@ -290,7 +290,7 @@ class MatchCompiler:
             more_args += ', int varid'
 
         ret = '// pattern: ' + pattern + '\n'
-        ret += 'template<class T> static T * findmatch' + \
+        ret += 'template<class T> MAYBE_UNUSED static inline T * findmatch' + \
             str(findmatchnr) + '(T * start_tok' + more_args + ') {\n'
         ret += '    for (; start_tok' + endCondition + \
             '; start_tok = start_tok->next()) {\n'
@@ -373,7 +373,7 @@ class MatchCompiler:
         if varId:
             more_args = ', const int varid'
 
-        ret = 'static bool match_verify' + \
+        ret = 'MAYBE_UNUSED static inline bool match_verify' + \
             str(verifyNumber) + '(const Token *tok' + more_args + ') {\n'
 
         origMatchName = 'Match'
@@ -509,7 +509,7 @@ class MatchCompiler:
         if varId:
             more_args += ', const int varid'
 
-        ret = 'template < class T > static T * findmatch_verify' + \
+        ret = 'template < class T > MAYBE_UNUSED static inline T * findmatch_verify' + \
             str(verifyNumber) + '(T * tok' + more_args + ') {\n'
 
         origFindMatchName = 'findmatch'
@@ -679,11 +679,10 @@ class MatchCompiler:
     def convertFile(self, srcname, destname, line_directive):
         self._reset()
 
-        fin = io.open(srcname, "rt", encoding="utf-8")
-        srclines = fin.readlines()
-        fin.close()
+        with io.open(srcname, "rt", encoding="utf-8") as fin:
+            srclines = fin.readlines()
 
-        code = u''
+        code = ''
 
         modified = False
 
@@ -691,6 +690,8 @@ class MatchCompiler:
         for line in srclines:
             if not modified:
                 line_orig = line
+            else:
+                line_orig = None
 
             linenr += 1
             # Compile Token::Match and Token::simpleMatch
@@ -708,28 +709,41 @@ class MatchCompiler:
             code += line
 
         # Compute matchFunctions
-        strFunctions = u''
-        for function in self._rawMatchFunctions:
-            strFunctions += function
+        strFunctions = ''.join(self._rawMatchFunctions)
 
-        lineno = u''
+        lineno = ''
         if line_directive:
-            lineno = u'#line 1 "' + srcname + '"\n'
+            lineno = '#line 1 "' + srcname + '"\n'
 
-        header = u'#include "matchcompiler.h"\n'
-        header += u'#include <string>\n'
-        header += u'#include <cstring>\n'
+        header = '#include "matchcompiler.h"\n'
+        header += '#include <string>\n'
+        header += '#include <cstring>\n'
         if len(self._rawMatchFunctions):
-            header += u'#include "errorlogger.h"\n'
-            header += u'#include "token.h"\n'
+            header += '#include "errorlogger.h"\n'
+            header += '#include "token.h"\n'
+            header += '#if defined(__clang__)\n'
+            header += '#include "config.h"\n'
+            header += '#define MAYBE_UNUSED [[maybe_unused]]\n'  # this attribute is also available in earlier standards
+            header += 'SUPPRESS_WARNING_CLANG_PUSH("-Wc++17-attribute-extensions")\n'  # suppress waning about using above attribute in earlier standard
+            header += '#else\n'
+            header += '#define MAYBE_UNUSED\n'
+            header += '#endif\n'
 
-        fout = io.open(destname, 'wt', encoding="utf-8")
-        if modified or len(self._rawMatchFunctions):
-            fout.write(header)
-            fout.write(strFunctions)
-        fout.write(lineno)
-        fout.write(code)
-        fout.close()
+        footer = ''
+        if len(self._rawMatchFunctions):
+            footer += '#if defined(__clang__)\n'
+            footer += 'SUPPRESS_WARNING_CLANG_POP\n'
+            footer += '#endif\n'
+            footer += '#undef MAYBE_UNUSED\n'
+
+        with io.open(destname, 'wt', encoding="utf-8") as fout:
+            if modified or len(self._rawMatchFunctions):
+                fout.write(header)
+                fout.write(strFunctions)
+            fout.write(lineno)
+            fout.write(code)
+            if modified or len(self._rawMatchFunctions):
+                fout.write(footer)
 
 
 def main():
@@ -760,7 +774,7 @@ def main():
 
     # Check if we are invoked from the right place
     if not os.path.exists(lib_dir):
-        print('Directory "' + lib_dir + '"not found.')
+        print('Directory "' + lib_dir + '" not found.')
         sys.exit(-1)
 
     # Create build directory if needed

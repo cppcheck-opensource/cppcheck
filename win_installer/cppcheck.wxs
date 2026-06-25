@@ -13,6 +13,7 @@
     <Media Id='1' Cabinet='Cppcheck.cab' EmbedCab='yes' CompressionLevel='high' DiskPrompt='CD-ROM 1' />
     <Property Id='DiskPrompt' Value='Cppcheck installation [1]' />
 
+    <!-- TODO: what is DiskId for? It is used inconsistently -->
     <Directory Id='TARGETDIR' Name='SourceDir'>
       <Directory Id='System32' FileSource='SystemFolder' />
       <Directory Id='$(var.PlatformProgramFilesFolder)' Name='PFiles'>
@@ -36,15 +37,18 @@
             </File>
             <File Id='onlinehelpqhc' Name='online-help.qhc' Source='$(var.GuiHelpDir)\online-help.qhc' />
             <File Id='onlinehelpqch' Name='online-help.qch' Source='$(var.GuiHelpDir)\online-help.qch' />
-            <File Id='Qt5Coredll' Name='Qt5Core.dll' Source='$(var.QtDllDir)\Qt5Core.dll' />
-            <File Id='Qt5Guidll' Name='Qt5Gui.dll' Source='$(var.QtDllDir)\Qt5Gui.dll' />
-            <File Id='Qt5Helpdll' Name='Qt5Help.dll' Source='$(var.QtDllDir)\Qt5Help.dll' />
-            <File Id='Qt5Sqldll' Name='Qt5Sql.dll' Source='$(var.QtDllDir)\Qt5Sql.dll' />
-            <File Id='Qt5Widgetsdll' Name='Qt5Widgets.dll' Source='$(var.QtDllDir)\Qt5Widgets.dll' />
-            <File Id='Qt5PrintSupportdll' Name='Qt5PrintSupport.dll' Source='$(var.QtDllDir)\Qt5PrintSupport.dll' />
-            <?if $(var.Platform) = x64 ?>
-              <File Id='Qt5Chartsdll' Name='Qt5Charts.dll' Source='$(var.QtDllDir)\Qt5Charts.dll' />
-            <?endif?>
+            <File Id='Qt6Coredll' Name='Qt6Core.dll' Source='$(var.QtDllDir)\Qt6Core.dll' />
+            <File Id='Qt6Guidll' Name='Qt6Gui.dll' Source='$(var.QtDllDir)\Qt6Gui.dll' />
+            <File Id='Qt6Helpdll' Name='Qt6Help.dll' Source='$(var.QtDllDir)\Qt6Help.dll' />
+            <File Id='Qt6Sqldll' Name='Qt6Sql.dll' Source='$(var.QtDllDir)\Qt6Sql.dll' />
+            <File Id='Qt6Widgetsdll' Name='Qt6Widgets.dll' Source='$(var.QtDllDir)\Qt6Widgets.dll' />
+            <File Id='Qt6PrintSupportdll' Name='Qt6PrintSupport.dll' Source='$(var.QtDllDir)\Qt6PrintSupport.dll' />
+            <File Id='Qt6Chartsdll' Name='Qt6Charts.dll' Source='$(var.QtDllDir)\Qt6Charts.dll' />
+            <File Id='Qt6Network.dll' Name='Qt6Network.dll' DiskId='1' Source='$(var.QtDllDir)\Qt6Network.dll' />
+            <File Id='Qt6OpenGL.dll' Name='Qt6OpenGL.dll' DiskId='1' Source='$(var.QtDllDir)\Qt6OpenGL.dll' />
+            <File Id='Qt6OpenGLWidgets.dll' Name='Qt6OpenGLWidgets.dll' DiskId='1' Source='$(var.QtDllDir)\Qt6OpenGLWidgets.dll' />
+            <File Id='libcrypto.dll' Name='libcrypto-3-x64.dll' DiskId='1' Source='$(var.QtDllDir)\libcrypto-3-x64.dll' />
+            <File Id='libssl.dll' Name='libssl-3-x64.dll' DiskId='1' Source='$(var.QtDllDir)\libssl-3-x64.dll' />
           </Component>
           <Directory Id='QtPlatformsFolder' Name='platforms'>
             <Component Id='QtPlatforms' DiskId='1' Guid='$(var.qtplatformsGUID)'>
@@ -53,14 +57,7 @@
           </Directory>
           <Directory Id='QtStylesFolder' Name='styles'>
             <Component Id='QtStyles' DiskId='1' Guid='$(var.qtstylesGUID)'>
-              <File Id='qwindowsvistastyledll' Name='qwindowsvistastyle.dll' Source='$(var.QtDllDir)\styles\qwindowsvistastyle.dll' />
-            </Component>
-          </Directory>
-          <Directory Id='QtSqlDriversFolder' Name='sqldrivers'>
-            <Component Id='QtSqlDrivers' DiskId='1' Guid='$(var.qtsqldriversGUID)'>
-              <File Id='qsqlitedll' Name='qsqlite.dll' Source='$(var.QtDllDir)\sqldrivers\qsqlite.dll' />
-              <File Id='qsqlodbcdll' Name='qsqlodbc.dll' Source='$(var.QtDllDir)\sqldrivers\qsqlodbc.dll' />
-              <File Id='qsqlpsqldll' Name='qsqlpsql.dll' Source='$(var.QtDllDir)\sqldrivers\qsqlpsql.dll' />
+              <File Id='qmodernwindowsstyledll' Name='qmodernwindowsstyle.dll' Source='$(var.QtDllDir)\styles\qmodernwindowsstyle.dll' />
             </Component>
           </Directory>
           <Directory Id='TranslationsFolder' Name='lang'>
@@ -71,17 +68,20 @@
               <File Id='cppcheck_fr.qm' Name='cppcheck_fr.qm' Source='$(var.TranslationsDir)\cppcheck_fr.qm' />
               <File Id='cppcheck_it.qm' Name='cppcheck_it.qm' Source='$(var.TranslationsDir)\cppcheck_it.qm' />
               <File Id='cppcheck_ja.qm' Name='cppcheck_ja.qm' Source='$(var.TranslationsDir)\cppcheck_ja.qm' />
+              <File Id='cppcheck_ka.qm' Name='cppcheck_ka.qm' Source='$(var.TranslationsDir)\cppcheck_ka.qm' />
               <File Id='cppcheck_ko.qm' Name='cppcheck_ko.qm' Source='$(var.TranslationsDir)\cppcheck_ko.qm' />
               <File Id='cppcheck_nl.qm' Name='cppcheck_nl.qm' Source='$(var.TranslationsDir)\cppcheck_nl.qm' />
               <File Id='cppcheck_ru.qm' Name='cppcheck_ru.qm' Source='$(var.TranslationsDir)\cppcheck_ru.qm' />
               <File Id='cppcheck_sr.qm' Name='cppcheck_sr.qm' Source='$(var.TranslationsDir)\cppcheck_sr.qm' />
               <File Id='cppcheck_sv.qm' Name='cppcheck_sv.qm' Source='$(var.TranslationsDir)\cppcheck_sv.qm' />
               <File Id='cppcheck_zh_CN.qm' Name='cppcheck_zh_CN.qm' Source='$(var.TranslationsDir)\cppcheck_zh_CN.qm' />
+              <File Id='cppcheck_zh_TW.qm' Name='cppcheck_zh_TW.qm' Source='$(var.TranslationsDir)\cppcheck_zh_TW.qm' />
             </Component>
           </Directory>
           <Directory Id='CfgsFolder' Name='cfg'>
             <Component Id='MandatoryCfgs' Guid='$(var.mandatoryCfgsGUID)'>
               <File Id='std.cfg' Name='std.cfg' Source='$(var.CfgsDir)\std.cfg' />
+              <File Id='posix.cfg' Name='posix.cfg' Source='$(var.CfgsDir)\posix.cfg' />
               <File Id='windows.cfg' Name='windows.cfg' Source='$(var.CfgsDir)\windows.cfg' />
             </Component>
             <Component Id='OptionalCfgs' Guid='$(var.optionalCfgsGUID)'>
@@ -90,12 +90,16 @@
               <File Id='boost.cfg' Name='boost.cfg' Source='$(var.CfgsDir)\boost.cfg' />
               <File Id='bsd.cfg' Name='bsd.cfg' Source='$(var.CfgsDir)\bsd.cfg' />
               <File Id='cairo.cfg' Name='cairo.cfg' Source='$(var.CfgsDir)\cairo.cfg' />
+              <File Id='cppcheck_lib.cfg' Name='cppcheck-lib.cfg' Source='$(var.CfgsDir)\cppcheck-lib.cfg' />
               <File Id='cppunit.cfg' Name='cppunit.cfg' Source='$(var.CfgsDir)\cppunit.cfg' />
               <File Id='dpdk.cfg' Name='dpdk.cfg' Source='$(var.CfgsDir)\dpdk.cfg' />
               <File Id='embedded_sql.cfg' Name='embedded_sql.cfg' Source='$(var.CfgsDir)\embedded_sql.cfg' />
+              <File Id='emscripten.cfg' Name='emscripten.cfg' Source='$(var.CfgsDir)\emscripten.cfg' />
+              <File Id='ginac.cfg' Name='ginac.cfg' Source='$(var.CfgsDir)\ginac.cfg' />
               <File Id='gnu.cfg' Name='gnu.cfg' Source='$(var.CfgsDir)\gnu.cfg' />
               <File Id='googletest.cfg' Name='googletest.cfg' Source='$(var.CfgsDir)\googletest.cfg' />
               <File Id='gtk.cfg' Name='gtk.cfg' Source='$(var.CfgsDir)\gtk.cfg' />
+              <File Id='icu.cfg' Name='icu.cfg' Source='$(var.CfgsDir)\icu.cfg' />
               <File Id='kde.cfg' Name='kde.cfg' Source='$(var.CfgsDir)\kde.cfg' />
               <File Id='libcerror.cfg' Name='libcerror.cfg' Source='$(var.CfgsDir)\libcerror.cfg' />
               <File Id='libcurl.cfg' Name='libcurl.cfg' Source='$(var.CfgsDir)\libcurl.cfg' />
@@ -107,20 +111,26 @@
               <File Id='microsoft_unittest.cfg' Name='microsoft_unittest.cfg' Source='$(var.CfgsDir)\microsoft_unittest.cfg' />
               <File Id='motif.cfg' Name='motif.cfg' Source='$(var.CfgsDir)\motif.cfg' />
               <File Id='nspr.cfg' Name='nspr.cfg' Source='$(var.CfgsDir)\nspr.cfg' />
+              <File Id='ntl.cfg' Name='ntl.cfg' Source='$(var.CfgsDir)\ntl.cfg' />
               <File Id='opencv2.cfg' Name='opencv2.cfg' Source='$(var.CfgsDir)\opencv2.cfg' />
               <File Id='opengl.cfg' Name='opengl.cfg' Source='$(var.CfgsDir)\opengl.cfg' />
               <File Id='openmp.cfg' Name='openmp.cfg' Source='$(var.CfgsDir)\openmp.cfg' />
               <File Id='openssl.cfg' Name='openssl.cfg' Source='$(var.CfgsDir)\openssl.cfg' />
-              <File Id='posix.cfg' Name='posix.cfg' Source='$(var.CfgsDir)\posix.cfg' />
+              <File Id='pcre.cfg' Name='pcre.cfg' Source='$(var.CfgsDir)\pcre.cfg' />
+              <File Id='protobuf.cfg' Name='protobuf.cfg' Source='$(var.CfgsDir)\protobuf.cfg' />
               <File Id='python.cfg' Name='python.cfg' Source='$(var.CfgsDir)\python.cfg' />
               <File Id='qt.cfg' Name='qt.cfg' Source='$(var.CfgsDir)\qt.cfg' />
               <File Id='ruby.cfg' Name='ruby.cfg' Source='$(var.CfgsDir)\ruby.cfg' />
               <File Id='sdl.cfg' Name='sdl.cfg' Source='$(var.CfgsDir)\sdl.cfg' />
+              <File Id='selinux.cfg' Name='selinux.cfg' Source='$(var.CfgsDir)\selinux.cfg' />
               <File Id='sfml.cfg' Name='sfml.cfg' Source='$(var.CfgsDir)\sfml.cfg' />
               <File Id='sqlite3.cfg' Name='sqlite3.cfg' Source='$(var.CfgsDir)\sqlite3.cfg' />
               <File Id='tinyxml2.cfg' Name='tinyxml2.cfg' Source='$(var.CfgsDir)\tinyxml2.cfg' />
               <File Id='vcl.cfg' Name='vcl.cfg' Source='$(var.CfgsDir)\vcl.cfg' />
+              <File Id='wxsqlite3.cfg' Name='wxsqlite3.cfg' Source='$(var.CfgsDir)\wxsqlite3.cfg' />
+              <File Id='wxsvg.cfg' Name='wxsvg.cfg' Source='$(var.CfgsDir)\wxsvg.cfg' />
               <File Id='wxwidgets.cfg' Name='wxwidgets.cfg' Source='$(var.CfgsDir)\wxwidgets.cfg' />
+              <File Id='zephyr.cfg' Name='zephyr.cfg' Source='$(var.CfgsDir)\zephyr.cfg' />
               <File Id='zlib.cfg' Name='zlib.cfg' Source='$(var.CfgsDir)\zlib.cfg' />
             </Component>
           </Directory>
@@ -139,27 +149,31 @@
               <File Id='mips32.xml' Name='mips32.xml' Source='$(var.PtfsDir)\mips32.xml' />
               <File Id='cray_sv1.xml' Name='cray_sv1.xml' Source='$(var.PtfsDir)\cray_sv1.xml' />
               <File Id='msp430_eabi_large_datamodel.xml' Name='msp430_eabi_large_datamodel.xml' Source='$(var.PtfsDir)\msp430_eabi_large_datamodel.xml' />
-              <File Id='unix32unsigned.xml' Name='unix32-unsigned.xml' Source='$(var.PtfsDir)\unix32-unsigned.xml' />
-              <File Id='unix64unsigned.xml' Name='unix64-unsigned.xml' Source='$(var.PtfsDir)\unix64-unsigned.xml' />
+              <File Id='riscv32.xml' Name='riscv32.xml' Source='$(var.PtfsDir)\riscv32.xml' />
+              <File Id='riscv64.xml' Name='riscv64.xml' Source='$(var.PtfsDir)\riscv64.xml' />
             </Component>
           </Directory>
           <Directory Id='AddonsFolder' Name='addons'>
             <Component Id='Addons' Guid='$(var.addonsGUID)'>
+              <File Id='__init__.py' Name='__init__.py' Source='$(var.AddonsDir)\__init__.py' />
+              <File Id='cppcheck.py' Name='cppcheck.py' Source='$(var.AddonsDir)\cppcheck.py' />
               <File Id='cppcheckdata.py' Name='cppcheckdata.py' Source='$(var.AddonsDir)\cppcheckdata.py' />
               <File Id='findcasts.py' Name='findcasts.py' Source='$(var.AddonsDir)\findcasts.py' />
               <File Id='misc.py' Name='misc.py' Source='$(var.AddonsDir)\misc.py' />
               <File Id='misra.py' Name='misra.py' Source='$(var.AddonsDir)\misra.py' />
               <File Id='misra_9.py' Name='misra_9.py' Source='$(var.AddonsDir)\misra_9.py' />
               <File Id='naming.py' Name='naming.py' Source='$(var.AddonsDir)\naming.py' />
+              <File Id='namingng.json' Name='namingng.json' Source='$(var.AddonsDir)\namingng.json' />
+              <File Id='namingng.config.json' Name='namingng.config.json' Source='$(var.AddonsDir)\namingng.config.json' />
               <File Id='namingng.py' Name='namingng.py' Source='$(var.AddonsDir)\namingng.py' />
               <File Id='ROS_naming.json' Name='ROS_naming.json' Source='$(var.AddonsDir)\ROS_naming.json' />
+              <File Id='runaddon.py' Name='runaddon.py' Source='$(var.AddonsDir)\runaddon.py' />
               <File Id='threadsafety.py' Name='threadsafety.py' Source='$(var.AddonsDir)\threadsafety.py' />
               <File Id='y2038.py' Name='y2038.py' Source='$(var.AddonsDir)\y2038.py' />
             </Component>
           </Directory>
           <Component Id='BaseDocs' Guid='$(var.basedocsGUID)'>
             <File Id='authors.txt' Name='authors.txt' DiskId='1' Source='..\authors' />
-            <File Id='readme.txt' Name='readme.txt' DiskId='1' Source='..\readme.txt' />
             <File Id='GPLv3.txt' Name='GPLv3.txt' DiskId='1' Source='GPLv3.txt' />
             <File Id='picojson_license.txt' Name='picojson-license.txt' DiskId='1' Source='../externals/picojson/LICENSE' />
             <File Id='simplecpp_license.txt' Name='simplecpp-license.txt' DiskId='1' Source='../externals/simplecpp/LICENSE' />
@@ -196,7 +210,6 @@
         <ComponentRef Id='GuiExecutable' />
         <ComponentRef Id='QtPlatforms' />
         <ComponentRef Id='QtStyles' />
-        <ComponentRef Id='QtSqlDrivers' />
         <Feature Id='Translations' Title='GUI Translations' AllowAdvertise='no' Description='Translations for graphical user interface' Level='1'>
           <ComponentRef Id='GuiTranslations' />
         </Feature>
@@ -217,6 +230,7 @@
     </Feature>
 
     <MajorUpgrade DowngradeErrorMessage='Downgrade is not allowed'/>
+    <!-- TODO: remove old workarounds -->
     <!--Remove some pre 1.57 versions which can't be upgraded with MajorUpgrade-->
     <InstallExecuteSequence>
       <Custom Action='UninstallOld152' After='InstallFinalize'>NOT Installed</Custom>

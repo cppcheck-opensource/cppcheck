@@ -19,15 +19,21 @@ endif()
 
 if(ANALYZE_UNDEFINED)
     # TODO: enable signed-integer-overflow
-    add_compile_options(-fsanitize=undefined -fsanitize=nullability -fno-sanitize=signed-integer-overflow)
+    add_compile_options(-fsanitize=undefined -fno-sanitize=signed-integer-overflow)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        add_compile_options(-fsanitize=nullability)
+    endif()
     add_compile_options(-fno-sanitize-recover=all)
     add_compile_options(-fno-omit-frame-pointer)
 
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=undefined -fsanitize=nullability -fno-sanitize=signed-integer-overflow")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=undefined -fno-sanitize=signed-integer-overflow")
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=nullability")
+    endif()
 endif()
 
-if(ANALYZE_DATAFLOW)
-    add_compile_options(-fsanitize=dataflow)
+if(ANALYZE_TYPE)
+    add_compile_options(-fsanitize=type)
 
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=dataflow")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=type")
 endif()

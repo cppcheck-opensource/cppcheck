@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,10 +19,20 @@
 #ifndef CMDLINE_PARSER_H
 #define CMDLINE_PARSER_H
 
+#include <cstddef>
+#include <cstdint>
+#include <list>
 #include <string>
 #include <vector>
 
+#include "cmdlinelogger.h"
+#include "filesettings.h"
+#include "standards.h"
+#include "utils.h"
+
 class Settings;
+struct Suppressions;
+class Library;
 
 /// @addtogroup CLI
 /// @{
@@ -40,85 +50,121 @@ class CmdLineParser {
 public:
     /**
      * The constructor.
+     * @param logger The logger instance to log messages through
      * @param settings Settings instance that will be modified according to
      * options user has given.
+     * @param suppressions Suppressions instance that keeps the suppressions
      */
-    explicit CmdLineParser(Settings *settings);
+    CmdLineParser(CmdLineLogger &logger, Settings &settings, Suppressions &suppressions);
 
+    enum class Result : std::uint8_t { Success, Exit, Fail };
+
+    /**
+     * @brief Parse command line args and fill settings and file lists
+     * from there.
+     *
+     * @param argc argc from main()
+     * @param argv argv from main()
+     * @return false when errors are found in the input
+     */
+    bool fillSettingsFromArgs(int argc, const char* const argv[]);
+
+    /**
+     * @brief Filter files
+     *
+     * @param fileFilters file filters
+     * @param filesResolved all the files in project
+     * @return the files in filesResolved that match filters
+     */
+    static std::list<FileWithDetails> filterFiles(const std::vector<std::string>& fileFilters,
+                                                  const std::list<FileWithDetails>& filesResolved);
+
+    /**
+     * Return the files user gave to command line.
+     */
+    const std::list<FileWithDetails>& getFiles() const {
+        return mFiles;
+    }
+
+    /**
+     * Return the file settings read from command line.
+     */
+    const std::list<FileSettings>& getFileSettings() const {
+        return mFileSettings;
+    }
+
+protected:
     /**
      * Parse given command line.
      * @return true if command line was ok, false if there was an error.
      */
-    bool parseFromArgs(int argc, const char* const argv[]);
+    Result parseFromArgs(int argc, const char* const argv[]);
 
     /**
-     * Return if user wanted to see program version.
+     * Get Cppcheck version
      */
-    bool getShowVersion() const {
-        return mShowVersion;
-    }
+    std::string getVersion() const;
 
-    /**
-     * Return if user wanted to see list of error messages.
-     */
-    bool getShowErrorMessages() const {
-        return mShowErrorMessages;
-    }
-
-    /**
-     * Return the path names user gave to command line.
-     */
-    const std::vector<std::string>& getPathNames() const {
-        return mPathNames;
-    }
-
-    /**
-     * Return if help is shown to user.
-     */
-    bool getShowHelp() const {
-        return mShowHelp;
-    }
-
-    /**
-     * Return if we should exit after printing version, help etc.
-     */
-    bool exitAfterPrinting() const {
-        return mExitAfterPrint;
-    }
-
-    /**
-     * Return a list of paths user wants to ignore.
-     */
-    const std::vector<std::string>& getIgnoredPaths() const {
-        return mIgnoredPaths;
-    }
-
-protected:
-
+private:
     /**
      * Print help text to the console.
      */
-    static void printHelp();
+    void printHelp() const;
+
+    template<typename T>
+    bool parseNumberArg(const char* const arg, std::size_t offset, T& num, bool mustBePositive = false)
+    {
+        T tmp;
+        std::string err;
+        if (!strToInt(arg + offset, tmp, &err)) {
+            mLogger.printError("argument to '" + std::string(arg, offset) + "' is not valid - " + err + ".");
+            return false;
+        }
+        if (mustBePositive && tmp < 0) {
+            mLogger.printError("argument to '" + std::string(arg, offset) + "' needs to be a positive integer.");
+            return false;
+        }
+        num = tmp;
+        return true;
+    }
 
     /**
-     * Print message (to stdout).
+     * Tries to load a library and prints warning/error messages
+     * @return false, if an error occurred (except unknown XML elements)
      */
-    static void printMessage(const std::string &message);
+    bool tryLoadLibrary(Library& destination, const std::string& basepath, const char* filename, bool debug);
 
     /**
-     * Print error message (to stdout).
+     * @brief Load libraries
+     * @param settings Settings
+     * @return Returns true if successful
      */
-    static void printError(const std::string &message);
+    bool loadLibraries(Settings& settings);
 
-private:
+    /**
+     * @brief Load addons
+     * @param settings Settings
+     * @return Returns true if successful
+     */
+    bool loadAddons(Settings& settings);
+
+    bool loadCppcheckCfg();
+
+    void outputFormatOptionMixingError() const;
+
+    CmdLineLogger &mLogger;
+
+    Settings &mSettings;
+    Suppressions &mSuppressions;
+
+protected:
     std::vector<std::string> mPathNames;
+    std::list<FileWithDetails> mFiles;
+    std::list<FileSettings> mFileSettings;
     std::vector<std::string> mIgnoredPaths;
-    Settings *mSettings;
-    bool mShowHelp;
-    bool mShowVersion;
-    bool mShowErrorMessages;
-    bool mExitAfterPrint;
-    std::string mVSConfig;
+    bool mAnalyzeAllVsConfigsSetOnCmdLine = false;
+    /** @brief Name of the language that is enforced. Empty per default. */
+    Standards::Language mEnforcedLang{Standards::Language::None};
 };
 
 /// @}

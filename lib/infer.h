@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2025 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,19 +21,26 @@
 
 #include "config.h"
 #include "mathlib.h"
-#include "valueflow.h"
 
 #include <list>
 #include <string>
 #include <vector>
 
-struct Interval;
+class Token;
 template<class T> class ValuePtr;
+
+namespace ValueFlow
+{
+    class Value;
+}
 
 struct InferModel {
     virtual bool match(const ValueFlow::Value& value) const = 0;
     virtual ValueFlow::Value yield(MathLib::bigint value) const = 0;
-    virtual ~InferModel() {}
+    virtual ~InferModel() = default;
+    InferModel(const InferModel&) = default;
+protected:
+    InferModel() = default;
 };
 
 std::vector<ValueFlow::Value> infer(const ValuePtr<InferModel>& model,
@@ -54,6 +61,8 @@ std::vector<ValueFlow::Value> infer(const ValuePtr<InferModel>& model,
 CPPCHECKLIB std::vector<MathLib::bigint> getMinValue(const ValuePtr<InferModel>& model, const std::list<ValueFlow::Value>& values);
 std::vector<MathLib::bigint> getMaxValue(const ValuePtr<InferModel>& model, const std::list<ValueFlow::Value>& values);
 
-std::string toString(const Interval& i);
+ValuePtr<InferModel> makeIntegralInferModel();
+
+ValueFlow::Value inferCondition(const std::string& op, const Token* varTok, MathLib::bigint val);
 
 #endif

@@ -1,11 +1,17 @@
 #!/bin/bash
 #
-# uncrustify-0.72 is used to format cppcheck source code.
-# source code: https://github.com/uncrustify/uncrustify/archive/refs/tags/uncrustify-0.72.0.zip
-# building in Linux: mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make
-# building in Windows: mkdir build && cd build && cmake -G"NMake Makefiles" -DCMAKE_BUILD_TYPE=Release .. && nmake
+# uncrustify-0.80.1 is used to format cppcheck source code.
+#
+# 1. Download source code: https://github.com/uncrustify/uncrustify/archive/refs/tags/uncrustify-0.80.1.zip
+#    It's important that all Cppcheck developers use the exact same version so we don't get a "format battle".
+# 2. Building:
+#    - Linux: mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make
+#    - Windows: mkdir build && cd build && cmake -G"NMake Makefiles" -DCMAKE_BUILD_TYPE=Release .. && nmake
+# 3. Ensure that the binary "uncrustify" is found by runformat. Either:
+#    - you can put uncrustify in your PATH
+#    - you can create an environment variable UNCRUSTIFY that has the full path of the binary
 
-UNCRUSTIFY_VERSION="0.72.0"
+UNCRUSTIFY_VERSION="0.80.1"
 UNCRUSTIFY="${UNCRUSTIFY-uncrustify}"
 
 DETECTED_VERSION=$("$UNCRUSTIFY" --version 2>&1 | grep -o -E '[0-9.]+')
@@ -38,11 +44,13 @@ function formatCplusplus {
 
 }
 
-formatCplusplus cli/
-formatCplusplus democlient/
-formatCplusplus gui/
-formatCplusplus lib/
-formatCplusplus oss-fuzz/
-formatCplusplus test/
-formatCplusplus tools/
-formatCplusplus samples/
+ls */*.cpp */*.h | xargs -n 1 -P $CPUCOUNT -I{} -t $UNCRUSTIFY -c .uncrustify.cfg -l CPP --no-backup --replace {}
+
+#formatCplusplus cli/
+#formatCplusplus democlient/
+#formatCplusplus gui/
+#formatCplusplus lib/
+#formatCplusplus oss-fuzz/
+#formatCplusplus test/
+#formatCplusplus tools/
+#formatCplusplus samples/

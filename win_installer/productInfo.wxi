@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Include>
-  <?define ProductName = "Cppcheck $(var.Platform) 2.8" ?>
+  <?define ProductName = "Cppcheck $(var.Platform) 2.22 dev" ?>
   <?define ProductNameShort = "Cppcheck" ?>
-  <?define ProductVersion = "2.8" ?>
+  <?define ProductVersion = "2.21.99" ?>
 
   <?define ProductManufacturer = "The Cppcheck team" ?>
   <?define ProductDescription = "Cppcheck is a tool for static analysis of C/C++ code" ?>
@@ -14,7 +14,6 @@
   <?define guiGUID = "D7D3FF8E-1D82-4215-B59B-4715A748C540" ?>
   <?define qtplatformsGUID = "E2C326DF-11F1-4C05-A955-2E2D2A3B0515" ?>
   <?define qtstylesGUID = "A9CC70D0-52BA-4A8E-9EAF-FABF8DDEB200" ?>
-  <?define qtsqldriversGUID = "619FF989-BA0B-48D7-BE49-CE48C6E899E8" ?>
   <?define guiTranslationsGUID = "24738151-890D-4fcc-824C-DA7FF63E0D7F" ?>
   <?define mandatoryCfgsGUID = "EE95621C-25E7-491A-8DE9-EA6E6967C176" ?>
   <?define optionalCfgsGUID = "3A8AE067-5F41-4D29-A35C-CC0FAB648608" ?>

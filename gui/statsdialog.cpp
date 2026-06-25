@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,43 +19,65 @@
 #include "statsdialog.h"
 
 #include "checkstatistics.h"
-#include "common.h"
 #include "projectfile.h"
 #include "showtypes.h"
 
+#include <algorithm>
+
 #include "ui_statsdialog.h"
 
+#include <QApplication>
 #include <QClipboard>
 #include <QDate>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFont>
+#include <QLabel>
+#include <QLineEdit>
 #include <QMimeData>
+#include <QPageSize>
+#include <QPlainTextEdit>
 #include <QPrinter>
-#include <QRegularExpression>
+#include <QPushButton>
+#include <QStringList>
 #include <QTextDocument>
 #include <QWidget>
+#include <Qt>
 
-#ifdef HAVE_QCHART
+#ifdef QT_CHARTS_LIB
+#include "common.h"
+
 #include <QAbstractSeries>
 #include <QChartView>
+#include <QDateTime>
 #include <QDateTimeAxis>
+#include <QDir>
+#include <QFile>
+#include <QIODevice>
+#include <QLayout>
 #include <QLineSeries>
+#include <QList>
+#include <QPainter>
+#include <QPointF>
+#include <QRegularExpression>
 #include <QTextStream>
 #include <QValueAxis>
 
-#if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
-using namespace QtCharts;
-#endif
+static QLineSeries *numberOfReports(const QString &fileName, const QString &severity);
+static QChartView *createChart(const QString &statsFile, const QString &tool);
 #endif
 
 static const QString CPPCHECK("cppcheck");
 
 StatsDialog::StatsDialog(QWidget *parent)
     : QDialog(parent),
-    mUI(new Ui::StatsDialog),
-    mStatistics(nullptr)
+    mUI(new Ui::StatsDialog)
 {
     mUI->setupUi(this);
+
+    QFont font("courier");
+    font.setStyleHint(QFont::Monospace);
+    mUI->mCheckersReport->setFont(font);
 
     setWindowFlags(Qt::Window);
 
@@ -76,7 +98,7 @@ void StatsDialog::setProject(const ProjectFile* projectFile)
         mUI->mIncludePaths->setText(projectFile->getIncludeDirs().join(";"));
         mUI->mDefines->setText(projectFile->getDefines().join(";"));
         mUI->mUndefines->setText(projectFile->getUndefines().join(";"));
-#ifndef HAVE_QCHART
+#ifndef QT_CHARTS_LIB
         mUI->mTabHistory->setVisible(false);
 #else
         QString statsFile;
@@ -89,9 +111,9 @@ void StatsDialog::setProject(const ProjectFile* projectFile)
         }
         mUI->mLblHistoryFile->setText(tr("File: ") + (statsFile.isEmpty() ? tr("No cppcheck build dir") : statsFile));
         if (!statsFile.isEmpty()) {
-            QChartView *chartView;
-            chartView = createChart(statsFile, "cppcheck");
+            QChartView *chartView = createChart(statsFile, "cppcheck");
             mUI->mTabHistory->layout()->addWidget(chartView);
+            // cppcheck-suppress knownConditionTrueFalse - TODO in getClangAnalyzer()
             if (projectFile->getClangAnalyzer()) {
                 chartView = createChart(statsFile, CLANG_ANALYZER);
                 mUI->mTabHistory->layout()->addWidget(chartView);
@@ -124,12 +146,12 @@ void StatsDialog::setNumberOfFilesScanned(int num)
 void StatsDialog::setScanDuration(double seconds)
 {
     // Factor the duration into units (days/hours/minutes/seconds)
-    int secs = seconds;
-    int days = secs / (24 * 60 * 60);
+    int secs = static_cast<int>(seconds);
+    const int days = secs / (24 * 60 * 60);
     secs -= days * (24 * 60 * 60);
-    int hours = secs / (60 * 60);
+    const int hours = secs / (60 * 60);
     secs -= hours * (60 * 60);
-    int mins = secs / 60;
+    const int mins = secs / 60;
     secs -= mins * 60;
 
     // Concatenate the two most significant units (e.g. "1 day and 3 hours")
@@ -174,7 +196,7 @@ void StatsDialog::pdfExport()
                          .arg(tr("Information messages"))
                          .arg(mStatistics->getCount(CPPCHECK,ShowTypes::ShowInformation));
 
-    QString fileName = QFileDialog::getSaveFileName((QWidget*)nullptr, tr("Export PDF"), QString(), "*.pdf");
+    QString fileName = QFileDialog::getSaveFileName(nullptr, tr("Export PDF"), QString(), "*.pdf");
     if (QFileInfo(fileName).suffix().isEmpty()) {
         fileName.append(".pdf");
     }
@@ -339,7 +361,7 @@ void StatsDialog::copyToClipboard()
 
     const QString htmlSummary = htmlSettings + htmlPrevious + htmlStatistics;
 
-    QMimeData *mimeData = new QMimeData();
+    auto *mimeData = new QMimeData();
     mimeData->setText(textSummary);
     mimeData->setHtml(htmlSummary);
     clipboard->setMimeData(mimeData);
@@ -348,25 +370,27 @@ void StatsDialog::copyToClipboard()
 void StatsDialog::setStatistics(const CheckStatistics *stats)
 {
     mStatistics = stats;
-    mUI->mLblErrors->setText(QString("%1").arg(stats->getCount(CPPCHECK,ShowTypes::ShowErrors)));
-    mUI->mLblWarnings->setText(QString("%1").arg(stats->getCount(CPPCHECK,ShowTypes::ShowWarnings)));
-    mUI->mLblStyle->setText(QString("%1").arg(stats->getCount(CPPCHECK,ShowTypes::ShowStyle)));
-    mUI->mLblPortability->setText(QString("%1").arg(stats->getCount(CPPCHECK,ShowTypes::ShowPortability)));
-    mUI->mLblPerformance->setText(QString("%1").arg(stats->getCount(CPPCHECK,ShowTypes::ShowPerformance)));
-    mUI->mLblInformation->setText(QString("%1").arg(stats->getCount(CPPCHECK,ShowTypes::ShowInformation)));
+    mUI->mLblErrors->setText(QString::number(stats->getCount(CPPCHECK,ShowTypes::ShowErrors)));
+    mUI->mLblWarnings->setText(QString::number(stats->getCount(CPPCHECK,ShowTypes::ShowWarnings)));
+    mUI->mLblStyle->setText(QString::number(stats->getCount(CPPCHECK,ShowTypes::ShowStyle)));
+    mUI->mLblPortability->setText(QString::number(stats->getCount(CPPCHECK,ShowTypes::ShowPortability)));
+    mUI->mLblPerformance->setText(QString::number(stats->getCount(CPPCHECK,ShowTypes::ShowPerformance)));
+    mUI->mLblInformation->setText(QString::number(stats->getCount(CPPCHECK,ShowTypes::ShowInformation)));
+    mUI->mLblActiveCheckers->setText(QString::number(stats->getNumberOfActiveCheckers()));
+    mUI->mCheckersReport->setPlainText(stats->getCheckersReport());
 }
 
-#ifdef HAVE_QCHART
-QChartView *StatsDialog::createChart(const QString &statsFile, const QString &tool)
+#ifdef QT_CHARTS_LIB
+QChartView *createChart(const QString &statsFile, const QString &tool)
 {
-    QChart *chart = new QChart;
+    auto *chart = new QChart;
     chart->addSeries(numberOfReports(statsFile, tool + "-error"));
     chart->addSeries(numberOfReports(statsFile, tool + "-warning"));
     chart->addSeries(numberOfReports(statsFile, tool + "-style"));
     chart->addSeries(numberOfReports(statsFile, tool + "-performance"));
     chart->addSeries(numberOfReports(statsFile, tool + "-portability"));
 
-    QDateTimeAxis *axisX = new QDateTimeAxis;
+    auto *axisX = new QDateTimeAxis;
     axisX->setTitleText("Date");
     chart->addAxis(axisX, Qt::AlignBottom);
 
@@ -374,7 +398,7 @@ QChartView *StatsDialog::createChart(const QString &statsFile, const QString &to
         s->attachAxis(axisX);
     }
 
-    QValueAxis *axisY = new QValueAxis;
+    auto *axisY = new QValueAxis;
     axisY->setLabelFormat("%i");
     axisY->setTitleText("Count");
     chart->addAxis(axisY, Qt::AlignLeft);
@@ -382,10 +406,10 @@ QChartView *StatsDialog::createChart(const QString &statsFile, const QString &to
     qreal maxY = 0;
     for (QAbstractSeries *s : chart->series()) {
         s->attachAxis(axisY);
-        if (QLineSeries *ls = dynamic_cast<QLineSeries*>(s)) {
+        if (const auto *ls = dynamic_cast<const QLineSeries*>(s)) {
             for (QPointF p : ls->points()) {
-                if (p.y() > maxY)
-                    maxY = p.y();
+                // cppcheck-suppress useStlAlgorithm - this would reduce the readability of the code
+                maxY = std::max(p.y(), maxY);
             }
         }
     }
@@ -394,14 +418,14 @@ QChartView *StatsDialog::createChart(const QString &statsFile, const QString &to
     //chart->createDefaultAxes();
     chart->setTitle(tool);
 
-    QChartView *chartView = new QChartView(chart);
+    auto *chartView = new QChartView(chart);
     chartView->setRenderHint(QPainter::Antialiasing);
     return chartView;
 }
 
-QLineSeries *StatsDialog::numberOfReports(const QString &fileName, const QString &severity) const
+QLineSeries *numberOfReports(const QString &fileName, const QString &severity)
 {
-    QLineSeries *series = new QLineSeries();
+    auto *series = new QLineSeries();
     series->setName(severity);
     QFile f(fileName);
     if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -412,9 +436,9 @@ QLineSeries *StatsDialog::numberOfReports(const QString &fileName, const QString
             static const QRegularExpression rxdate("^\\[(\\d\\d)\\.(\\d\\d)\\.(\\d\\d\\d\\d)\\]$");
             const QRegularExpressionMatch matchRes = rxdate.match(line);
             if (matchRes.hasMatch()) {
-                int y = matchRes.captured(3).toInt();
-                int m = matchRes.captured(2).toInt();
-                int d = matchRes.captured(1).toInt();
+                const int y = matchRes.captured(3).toInt();
+                const int m = matchRes.captured(2).toInt();
+                const int d = matchRes.captured(1).toInt();
                 QDateTime dt;
                 dt.setDate(QDate(y,m,d));
                 if (t == dt.toMSecsSinceEpoch())
@@ -423,7 +447,7 @@ QLineSeries *StatsDialog::numberOfReports(const QString &fileName, const QString
                     t = dt.toMSecsSinceEpoch();
             }
             if (line.startsWith(severity + ':')) {
-                int y = line.mid(1+severity.length()).toInt();
+                const int y = line.mid(1+severity.length()).toInt();
                 series->append(t, y);
             }
         }

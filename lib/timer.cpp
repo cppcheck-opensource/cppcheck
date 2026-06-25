@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2021 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,66 +20,83 @@
 
 #include <algorithm>
 #include <iostream>
+#include <numeric>
 #include <utility>
 #include <vector>
-/*
-    TODO:
-    - rename "file" to "single"
-    - synchronise map access in multithreaded mode or disable timing
-    - add unit tests
-        - for --showtime (needs input file)
-        - for Timer* classes
- */
 
 namespace {
-    using dataElementType = std::pair<std::string, struct TimerResultsData>;
-    bool more_second_sec(const dataElementType& lhs, const dataElementType& rhs)
-    {
-        return lhs.second.seconds() > rhs.second.seconds();
-    }
+    // TODO: remove and print through (synchronized) ErrorLogger instead
+    std::mutex stdCoutLock;
 }
 
-void TimerResults::showResults(SHOWTIME_MODES mode) const
+// TODO: this does not include any file context when SHOWTIME_FILE thus rendering it useless - should we include the logging with the progress logging?
+// that could also get rid of the broader locking
+void TimerResults::showResults(size_t max_results, bool metrics) const
 {
-    if (mode == SHOWTIME_MODES::SHOWTIME_NONE)
-        return;
+    using dataElementType = std::pair<std::string, std::vector<std::chrono::milliseconds>>;
 
-    std::cout << std::endl;
-    TimerResultsData overallData;
+    std::vector<dataElementType> data;
+    {
+        std::lock_guard<std::mutex> l(mResultsSync);
 
-    std::vector<dataElementType> data(mResults.begin(), mResults.end());
-    std::sort(data.begin(), data.end(), more_second_sec);
+        data.reserve(mResults.size());
+        data.insert(data.begin(), mResults.cbegin(), mResults.cend());
+    }
+
+    const auto asSeconds = [](std::chrono::milliseconds ms) -> std::chrono::duration<double> {
+        return std::chrono::duration_cast<std::chrono::duration<double>>(ms);
+    };
+
+    const auto getSeconds = [&asSeconds](const std::vector<std::chrono::milliseconds>& results) -> std::chrono::duration<double> {
+        return std::accumulate(results.cbegin(), results.cend(), std::chrono::duration<double>{}, [&asSeconds](std::chrono::duration<double> secs, std::chrono::milliseconds duration) {
+            return secs + asSeconds(duration);
+        });
+    };
+
+    std::sort(data.begin(), data.end(), [&getSeconds](const dataElementType& lhs, const dataElementType& rhs) -> bool {
+        return getSeconds(lhs.second) > getSeconds(rhs.second);
+    });
+
+    // lock the whole logging operation to avoid multiple threads printing their results at the same time
+    std::lock_guard<std::mutex> l(stdCoutLock);
 
     size_t ordinal = 1; // maybe it would be nice to have an ordinal in output later!
-    for (std::vector<dataElementType>::const_iterator iter=data.begin(); iter!=data.end(); ++iter) {
-        const double sec = iter->second.seconds();
-        const double secAverage = sec / (double)(iter->second.mNumberOfResults);
-        overallData.mClocks += iter->second.mClocks;
-        if ((mode != SHOWTIME_MODES::SHOWTIME_TOP5) || (ordinal<=5)) {
-            std::cout << iter->first << ": " << sec << "s (avg. " << secAverage << "s - " << iter->second.mNumberOfResults  << " result(s))" << std::endl;
+    for (auto iter=data.cbegin(); iter!=data.cend(); ++iter) {
+        if (ordinal <= max_results) {
+            const double sec = getSeconds(iter->second).count();
+            std::cout << iter->first << ": " << sec << "s";
+            if (metrics) {
+                const double secAverage = sec / static_cast<double>(iter->second.size());
+                const double secMin = asSeconds(*std::min_element(iter->second.cbegin(), iter->second.cend())).count();
+                const double secMax = asSeconds(*std::max_element(iter->second.cbegin(), iter->second.cend())).count();
+                std::cout << " (avg. " << secAverage << "s / min " << secMin << "s / max " << secMax << "s - " << iter->second.size() << " result(s))";
+            }
+            std::cout << std::endl;
         }
         ++ordinal;
     }
-
-    const double secOverall = overallData.seconds();
-    std::cout << "Overall time: " << secOverall << "s" << std::endl;
 }
 
-void TimerResults::addResults(const std::string& str, std::clock_t clocks)
+void TimerResults::addResults(const std::string& name, std::chrono::milliseconds duration)
 {
-    mResults[str].mClocks += clocks;
-    mResults[str].mNumberOfResults++;
+    std::lock_guard<std::mutex> l(mResultsSync);
+
+    mResults[name].push_back(duration);
 }
 
-Timer::Timer(const std::string& str, SHOWTIME_MODES showtimeMode, TimerResultsIntf* timerResults)
-    : mStr(str)
-    , mTimerResults(timerResults)
-    , mStart(0)
-    , mShowTimeMode(showtimeMode)
-    , mStopped(false)
+void TimerResults::reset()
 {
-    if (showtimeMode != SHOWTIME_MODES::SHOWTIME_NONE)
-        mStart = std::clock();
+    std::lock_guard<std::mutex> l(mResultsSync);
+    mResults.clear();
+}
+
+Timer::Timer(std::string str, TimerResultsIntf* timerResults)
+    : mName(std::move(str))
+    , mResults(timerResults)
+{
+    if (!mResults)
+        return;
+    mStart = Clock::now();
 }
 
 Timer::~Timer()
@@ -89,18 +106,54 @@ Timer::~Timer()
 
 void Timer::stop()
 {
-    if ((mShowTimeMode != SHOWTIME_MODES::SHOWTIME_NONE) && !mStopped) {
-        const std::clock_t end = std::clock();
-        const std::clock_t diff = end - mStart;
+    if (mStart == TimePoint{})
+        return;
 
-        if (mShowTimeMode == SHOWTIME_MODES::SHOWTIME_FILE) {
-            const double sec = (double)diff / CLOCKS_PER_SEC;
-            std::cout << mStr << ": " << sec << "s" << std::endl;
-        } else {
-            if (mTimerResults)
-                mTimerResults->addResults(mStr, diff);
+    const auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - mStart);
+    mResults->addResults(mName, diff);
+
+    mStart = TimePoint{}; // prevent multiple stops
+}
+
+static std::string durationToString(std::chrono::milliseconds duration)
+{
+    // Extract hours
+    auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
+    duration -= hours; // Subtract the extracted hours
+
+    // Extract minutes
+    auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
+    duration -= minutes; // Subtract the extracted minutes
+
+    // Extract seconds
+    std::chrono::duration<double> seconds = std::chrono::duration_cast<std::chrono::duration<double>>(duration);
+
+    std::string ellapsedTime;
+    if (hours.count() > 0)
+        ellapsedTime += std::to_string(hours.count()) + "h ";
+    if (minutes.count() > 0)
+        ellapsedTime += std::to_string(minutes.count()) + "m ";
+    std::string secondsStr{std::to_string(seconds.count())};
+    auto pos = secondsStr.find_first_of('.');
+    if (pos != std::string::npos && (pos + 4) < secondsStr.size())
+        secondsStr.resize(pos + 4); // keep three decimal
+    return (ellapsedTime + secondsStr + "s");
+}
+
+OneShotTimer::OneShotTimer(std::string name)
+{
+    class MyResults : public TimerResultsIntf
+    {
+    private:
+        void addResults(const std::string &name, std::chrono::milliseconds duration) override
+        {
+            std::lock_guard<std::mutex> l(stdCoutLock);
+
+            // TODO: do not use std::cout directly
+            std::cout << name << ": " << durationToString(duration) << std::endl;
         }
-    }
+    };
 
-    mStopped = true;
+    mResults.reset(new MyResults);
+    mTimer.reset(new Timer(std::move(name), mResults.get()));
 }

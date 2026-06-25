@@ -1,9 +1,6 @@
 # Version for libraries CPP
-SET(VERSION "2.7")
-STRING(REGEX MATCHALL "[0-9]" VERSION_PARTS "${VERSION}")
-LIST(GET VERSION_PARTS 0 VERSION_MAJOR)
-LIST(GET VERSION_PARTS 1 VERSION_MINOR)
-SET(SOVERSION "${VERSION_MAJOR}.${VERSION_MINOR}")
+# Version string must have 3 "parts". https://sourceforge.net/p/cppcheck/discussion/development/thread/e57efb2b62/
+SET(SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
 
 # Postfix of so's:
 SET(DLLVERSION "")

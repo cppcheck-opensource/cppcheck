@@ -11,7 +11,10 @@ Here we go:
 Appendix A Summary of guidelines
 
 Rule 1.2
-Rule text.
+ Rule text.
+
+Rule 2.1
+Rule text for 2.1.
 
 Stop parsing after this line:
 Appendix B

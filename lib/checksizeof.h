@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 
 #include <string>
@@ -41,26 +42,32 @@ class Tokenizer;
 class CPPCHECKLIB CheckSizeof : public Check {
 public:
     /** @brief This constructor is used when registering the CheckClass */
-    CheckSizeof() : Check(myName()) {}
+    CheckSizeof() : Check("Sizeof") {}
 
-    /** @brief This constructor is used when running checks. */
-    CheckSizeof(const Tokenizer* tokenizer, const Settings* settings, ErrorLogger* errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
+private:
     /** @brief Run checks against the normal token list */
-    void runChecks(const Tokenizer* tokenizer, const Settings* settings, ErrorLogger* errorLogger) override {
-        CheckSizeof checkSizeof(tokenizer, settings, errorLogger);
+    void runChecks(const Tokenizer& tokenizer, ErrorLogger& errorLogger) override;
 
-        // Checks
-        checkSizeof.sizeofsizeof();
-        checkSizeof.sizeofCalculation();
-        checkSizeof.sizeofFunction();
-        checkSizeof.suspiciousSizeofCalculation();
-        checkSizeof.checkSizeofForArrayParameter();
-        checkSizeof.checkSizeofForPointerSize();
-        checkSizeof.checkSizeofForNumericParameter();
-        checkSizeof.sizeofVoid();
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings& settings) const override;
+
+    std::string classInfo() const override {
+        return "sizeof() usage checks\n"
+               "- sizeof for array given as function argument\n"
+               "- sizeof for numeric given as function argument\n"
+               "- using sizeof(pointer) instead of the size of pointed data\n"
+               "- look for 'sizeof sizeof ..'\n"
+               "- look for calculations inside sizeof()\n"
+               "- look for function calls inside sizeof()\n"
+               "- look for suspicious calculations with sizeof()\n"
+               "- using 'sizeof(void)' which is undefined\n";
     }
+};
+
+class CPPCHECKLIB CheckSizeofImpl : public CheckImpl {
+public:
+    /** @brief This constructor is used when running checks. */
+    CheckSizeofImpl(const Tokenizer* tokenizer, const Settings& settings, ErrorLogger& errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** @brief %Check for 'sizeof sizeof ..' */
     void sizeofsizeof();
@@ -86,7 +93,6 @@ public:
     /** @brief %Check for using sizeof(void) */
     void sizeofVoid();
 
-private:
     // Error messages..
     void sizeofsizeofError(const Token* tok);
     void sizeofCalculationError(const Token* tok, bool inconclusive);
@@ -100,39 +106,6 @@ private:
     void sizeofVoidError(const Token *tok);
     void sizeofDereferencedVoidPointerError(const Token *tok, const std::string &varname);
     void arithOperationsOnVoidPointerError(const Token* tok, const std::string &varname, const std::string &vartype);
-
-    void getErrorMessages(ErrorLogger* errorLogger, const Settings* settings) const override {
-        CheckSizeof c(nullptr, settings, errorLogger);
-
-        c.sizeofForArrayParameterError(nullptr);
-        c.sizeofForPointerError(nullptr, "varname");
-        c.divideBySizeofError(nullptr, "memset");
-        c.sizeofForNumericParameterError(nullptr);
-        c.sizeofsizeofError(nullptr);
-        c.sizeofCalculationError(nullptr, false);
-        c.sizeofFunctionError(nullptr);
-        c.multiplySizeofError(nullptr);
-        c.divideSizeofError(nullptr);
-        c.sizeofVoidError(nullptr);
-        c.sizeofDereferencedVoidPointerError(nullptr, "varname");
-        c.arithOperationsOnVoidPointerError(nullptr, "varname", "vartype");
-    }
-
-    static std::string myName() {
-        return "Sizeof";
-    }
-
-    std::string classInfo() const override {
-        return "sizeof() usage checks\n"
-               "- sizeof for array given as function argument\n"
-               "- sizeof for numeric given as function argument\n"
-               "- using sizeof(pointer) instead of the size of pointed data\n"
-               "- look for 'sizeof sizeof ..'\n"
-               "- look for calculations inside sizeof()\n"
-               "- look for function calls inside sizeof()\n"
-               "- look for suspicious calculations with sizeof()\n"
-               "- using 'sizeof(void)' which is undefined\n";
-    }
 };
 /// @}
 //---------------------------------------------------------------------------

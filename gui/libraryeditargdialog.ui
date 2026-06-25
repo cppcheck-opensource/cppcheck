@@ -366,7 +366,7 @@
    <sender>minsize1type</sender>
    <signal>currentIndexChanged(int)</signal>
    <receiver>LibraryEditArgDialog</receiver>
-   <slot>minsizeChanged(int)</slot>
+   <slot>minsizeChanged()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>413</x>
@@ -382,7 +382,7 @@
    <sender>minsize2type</sender>
    <signal>currentIndexChanged(int)</signal>
    <receiver>LibraryEditArgDialog</receiver>
-   <slot>minsizeChanged(int)</slot>
+   <slot>minsizeChanged()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>436</x>
@@ -396,6 +396,6 @@
   </connection>
  </connections>
  <slots>
-  <slot>minsizeChanged(int)</slot>
+  <slot>minsizeChanged()</slot>
  </slots>
 </ui>

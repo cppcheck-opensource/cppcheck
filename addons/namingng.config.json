@@ -1,0 +1,19 @@
+{
+    "RE_VARNAME": ["[a-z]*[a-zA-Z0-9_]*\\Z"],
+    "RE_PRIVATE_MEMBER_VARIABLE": null,
+    "RE_FUNCTIONNAME": ["[a-z0-9A-Z]*\\Z"],
+    "include_guard": {
+        "input": "path",
+        "prefix": "",
+        "suffix": "",
+        "case": "upper",
+        "max_linenr": 5,
+        "RE_HEADERFILE": "[^/].*\\.h\\Z",
+        "required": true
+    },
+    "var_prefixes": {"uint32_t": "ui32",
+                     "int*": "intp"},
+    "function_prefixes": {"uint16_t": "ui16",
+                          "uint32_t": "ui32"},
+    "skip_one_char_variables": false
+}

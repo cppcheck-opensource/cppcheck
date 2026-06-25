@@ -1,13 +1,8 @@
-# we are not using all methods of their interfaces
-unusedFunction:externals/tinyxml2/tinyxml2.cpp
-unusedFunction:externals/simplecpp/simplecpp.cpp
+# should not be reported - see #13387
+checkersReport
 
-# TODO: fix these
-# false positive - # 10660
-unusedFunction:gui/mainwindow.cpp
-unusedFunction:gui/resultstree.cpp
-unusedFunction:gui/codeeditor.cpp
-# usage is disabled
-unusedFunction:lib/symboldatabase.cpp
-# false positive - #10661
-unusedFunction:oss-fuzz/main.cpp
+# we are not using all methods of their interfaces
+unusedFunction:externals/*/*
+
+# Q_OBJECT functions which are not called in our code
+unusedFunction:cmake.output.notest/gui/cppcheck-gui_autogen/*/moc_aboutdialog.cpp

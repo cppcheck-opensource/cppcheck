@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2025 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,47 +18,82 @@
 
 #include "errortypes.h"
 
-std::string Severity::toString(Severity::SeverityType severity)
+#include "utils.h"
+
+static std::string typeToString(InternalError::Type type)
+{
+    switch (type) {
+    case InternalError::Type::AST:
+        return "internalAstError";
+    case InternalError::Type::SYNTAX:
+        return "syntaxError";
+    case InternalError::Type::UNKNOWN_MACRO:
+        return "unknownMacro";
+    case InternalError::Type::INTERNAL:
+        return "internalError";
+    case InternalError::Type::LIMIT:
+        return "cppcheckLimit";
+    case InternalError::Type::INSTANTIATION:
+        return "instantiationError";
+    }
+    cppcheck::unreachable();
+}
+
+InternalError::InternalError(const Token *tok, std::string errorMsg, Type type) :
+    InternalError(tok, std::move(errorMsg), "", type)
+{}
+
+InternalError::InternalError(const Token *tok, std::string errorMsg, std::string details, Type type) :
+    token(tok), errorMessage(std::move(errorMsg)), details(std::move(details)), type(type), id(typeToString(type))
+{}
+
+std::string severityToString(Severity severity)
 {
     switch (severity) {
-    case none:
+    case Severity::none:
         return "";
-    case error:
+    case Severity::error:
         return "error";
-    case warning:
+    case Severity::warning:
         return "warning";
-    case style:
+    case Severity::style:
         return "style";
-    case performance:
+    case Severity::performance:
         return "performance";
-    case portability:
+    case Severity::portability:
         return "portability";
-    case information:
+    case Severity::information:
         return "information";
-    case debug:
+    case Severity::debug:
         return "debug";
+    case Severity::internal:
+        return "internal";
     }
-    throw InternalError(nullptr, "Unknown severity");
+    cppcheck::unreachable();
 }
-Severity::SeverityType Severity::fromString(const std::string& severity)
+
+// TODO: bail out on invalid severity
+Severity severityFromString(const std::string& severity)
 {
     if (severity.empty())
-        return none;
+        return Severity::none;
     if (severity == "none")
-        return none;
+        return Severity::none;
     if (severity == "error")
-        return error;
+        return Severity::error;
     if (severity == "warning")
-        return warning;
+        return Severity::warning;
     if (severity == "style")
-        return style;
+        return Severity::style;
     if (severity == "performance")
-        return performance;
+        return Severity::performance;
     if (severity == "portability")
-        return portability;
+        return Severity::portability;
     if (severity == "information")
-        return information;
+        return Severity::information;
     if (severity == "debug")
-        return debug;
-    return none;
+        return Severity::debug;
+    if (severity == "internal")
+        return Severity::internal;
+    return Severity::none;
 }

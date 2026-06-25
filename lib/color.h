@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2021 Cppcheck team.
+ * Copyright (C) 2007-2024 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,10 +21,11 @@
 
 #include "config.h"
 
+#include <cstdint>
 #include <ostream>
 #include <string>
 
-enum class Color {
+enum class Color : std::uint8_t {
     Reset      = 0,
     Bold       = 1,
     Dim        = 2,
@@ -32,14 +33,12 @@ enum class Color {
     FgGreen    = 32,
     FgBlue     = 34,
     FgMagenta  = 35,
-    FgDefault  = 39,
-    BgRed      = 41,
-    BgGreen    = 42,
-    BgBlue     = 44,
-    BgDefault  = 49
+    FgDefault  = 39
 };
-CPPCHECKLIB std::ostream& operator<<(std::ostream& os, const Color& c);
+CPPCHECKLIB std::ostream& operator<<(std::ostream& os, Color c);
 
-std::string toString(const Color& c);
+CPPCHECKLIB std::string toString(Color c);
+
+extern CPPCHECKLIB bool gDisableColors; // for testing
 
 #endif

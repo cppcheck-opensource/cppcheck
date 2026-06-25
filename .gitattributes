@@ -1,0 +1,19 @@
+## standard default enconding
+* text=auto
+
+## UNIX specific files
+*.sh    text eol=lf
+
+## Windows specific files
+*.bat               text eol=crlf
+*.cmd               text eol=crlf
+*.ps1               text eol=crlf
+*.vcxproj           text eol=crlf
+*.vcxproj.filters   text eol=crlf
+*.sln               text eol=crlf
+*.wixproj           text eol=crlf
+*.wxi               text eol=crlf
+*.wxs               text eol=crlf
+
+## Binary resources
+*.pdf binary

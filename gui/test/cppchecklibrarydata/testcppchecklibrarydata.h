@@ -1,4 +1,4 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
  * Copyright (C) 2007-2021 Cppcheck team.
  *
@@ -19,6 +19,7 @@
 #include "cppchecklibrarydata.h"
 
 #include <QObject>
+#include <QString>
 
 class TestCppcheckLibraryData : public QObject {
     Q_OBJECT
@@ -41,13 +42,19 @@ private slots:
     void markupValid();
     void containerValid();
 
-private:
-    void loadCfgFile(QString filename, CppcheckLibraryData &data, QString &res, bool removeFile = false);
-    void saveCfgFile(QString filename, CppcheckLibraryData &data);
+    void validateAllCfg();
 
+private:
+    static void loadCfgFile(const QString &filename, CppcheckLibraryData &data, QString &res, bool removeFile = false);
+    static void saveCfgFile(const QString &filename, CppcheckLibraryData &data);
+
+    // cppcheck-suppress naming-privateMemberVariable - TODO: fix this
     CppcheckLibraryData libraryData;
+    // cppcheck-suppress naming-privateMemberVariable - TODO: fix this
     CppcheckLibraryData fileLibraryData;
+    // cppcheck-suppress naming-privateMemberVariable - TODO: fix this
     QString result;
 
+    // cppcheck-suppress naming-privateMemberVariable - TODO: fix this
     static const QString TempCfgFile;
 };

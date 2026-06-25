@@ -52,6 +52,16 @@
     </widget>
    </item>
    <item>
+    <widget class="QLabel" name="mLabelCriticalErrors">
+     <property name="styleSheet">
+      <string notr="true">color: red;</string>
+     </property>
+     <property name="text">
+      <string>Critical errors</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QSplitter" name="mVerticalSplitter">
      <property name="orientation">
       <enum>Qt::Vertical</enum>

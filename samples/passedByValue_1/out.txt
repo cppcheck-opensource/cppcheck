@@ -1,0 +1,3 @@
+samples\passedByValue_1\bad.cpp:4:28: performance: Function parameter 's' should be passed by const reference. [passedByValue]
+    explicit C(std::string s)
+                           ^

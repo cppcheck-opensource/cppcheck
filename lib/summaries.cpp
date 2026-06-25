@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include "summaries.h"
 
 #include "analyzerinfo.h"
+#include "path.h"
 #include "settings.h"
 #include "symboldatabase.h"
 #include "token.h"
@@ -28,14 +29,16 @@
 #include <algorithm>
 #include <fstream>
 #include <map>
+#include <sstream>
+#include <utility>
 #include <vector>
 
 
 
-std::string Summaries::create(const Tokenizer *tokenizer, const std::string &cfg)
+std::string Summaries::create(const Tokenizer &tokenizer, const std::string &cfg, std::size_t fsFileId)
 {
-    const SymbolDatabase *symbolDatabase = tokenizer->getSymbolDatabase();
-    const Settings *settings = tokenizer->getSettings();
+    const SymbolDatabase *symbolDatabase = tokenizer.getSymbolDatabase();
+    const Settings &settings = tokenizer.getSettings();
 
     std::ostringstream ostr;
     for (const Scope *scope : symbolDatabase->functionScopes) {
@@ -79,9 +82,9 @@ std::string Summaries::create(const Tokenizer *tokenizer, const std::string &cfg
         ostr << std::endl;
     }
 
-    if (!settings->buildDir.empty()) {
-        std::string filename = AnalyzerInformation::getAnalyzerInfoFile(settings->buildDir, tokenizer->list.getSourceFilePath(), cfg);
-        std::string::size_type pos = filename.rfind(".a");
+    if (!settings.buildDir.empty()) {
+        std::string filename = AnalyzerInformation::getAnalyzerInfoFile(settings.buildDir, Path::simplifyPath(tokenizer.list.getSourceFilePath()), cfg, fsFileId);
+        const std::string::size_type pos = filename.rfind(".a");
         if (pos != std::string::npos) {
             filename[pos+1] = 's';
             std::ofstream fout(filename);
@@ -103,13 +106,13 @@ static std::vector<std::string> getSummaryFiles(const std::string &filename)
         return ret;
     std::string line;
     while (std::getline(fin, line)) {
-        std::string::size_type dotA = line.find(".a");
-        std::string::size_type colon = line.find(":");
+        const std::string::size_type dotA = line.find(".a");
+        const std::string::size_type colon = line.find(':');
         if (colon > line.size() || dotA > colon)
             continue;
         std::string f = line.substr(0,colon);
         f[dotA + 1] = 's';
-        ret.push_back(f);
+        ret.push_back(std::move(f));
     }
     return ret;
 }
@@ -120,13 +123,13 @@ static std::vector<std::string> getSummaryData(const std::string &line, const st
     const std::string::size_type start = line.find(" " + data + ":[");
     if (start == std::string::npos)
         return ret;
-    const std::string::size_type end = line.find("]", start);
+    const std::string::size_type end = line.find(']', start);
     if (end >= line.size())
         return ret;
 
     std::string::size_type pos1 = start + 3 + data.size();
     while (pos1 < end) {
-        std::string::size_type pos2 = line.find_first_of(",]",pos1);
+        const std::string::size_type pos2 = line.find_first_of(",]",pos1);
         ret.push_back(line.substr(pos1, pos2-pos1-1));
         pos1 = pos2 + 1;
     }
@@ -169,11 +172,10 @@ void Summaries::loadReturn(const std::string &buildDir, std::set<std::string> &s
         std::string line;
         while (std::getline(fin, line)) {
             // Get function name
-            const std::string::size_type pos1 = 0;
-            const std::string::size_type pos2 = line.find(" ", pos1);
-            const std::string functionName = (pos2 == std::string::npos) ? line : line.substr(0, pos2);
+            constexpr std::string::size_type pos1 = 0;
+            const std::string::size_type pos2 = line.find(' ', pos1);
+            std::string functionName = (pos2 == std::string::npos) ? line : line.substr(0, pos2);
             std::vector<std::string> call = getSummaryData(line, "call");
-            functionCalls[functionName] = call;
             if (call.empty())
                 return1.push_back(functionName);
             else {
@@ -181,6 +183,7 @@ void Summaries::loadReturn(const std::string &buildDir, std::set<std::string> &s
                     functionCalledBy[c].push_back(functionName);
                 }
             }
+            functionCalls[functionName] = std::move(call);
         }
     }
     summaryReturn.insert(return1.cbegin(), return1.cend());

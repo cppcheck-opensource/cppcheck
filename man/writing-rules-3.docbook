@@ -185,7 +185,7 @@ void CheckOther::invalidFunctionUsage()
                     {
                         // convert next token into a number
                         MathLib::bigint radix;
-                        radix = MathLib::toLongNumber(tok2-&gt;strAt(1));
+                        radix = MathLib::toBigNumber(tok2-&gt;strAt(1));
 
                         // invalid radix?
                         if (!(radix == 0 || (radix &gt;= 2 &amp;&amp; radix &lt;= 36)))

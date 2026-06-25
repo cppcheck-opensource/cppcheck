@@ -2,10 +2,12 @@
 // Test library configuration for googletest.cfg
 //
 // Usage:
-// $ cppcheck --check-library --library=googletest --enable=information --error-exitcode=1 --inline-suppr --suppress=missingIncludeSystem test/cfg/googletest.cpp
+// $ cppcheck --check-library --library=googletest --enable=style,information --inconclusive --error-exitcode=1 --inline-suppr test/cfg/googletest.cpp
 // =>
 // No warnings about bad library configuration, unmatched suppressions, etc. exitcode=0
 //
+
+// cppcheck-suppress-file valueFlowBailout
 
 #include <gmock/gmock-generated-matchers.h>
 #include <gtest/gtest.h>
@@ -15,15 +17,28 @@ namespace ExampleNamespace {
     constexpr long long TOLERANCE = 10;
 
     // #9397 syntaxError when MATCHER_P is not known
+    // cppcheck-suppress symbolDatabaseWarning
     MATCHER_P(ExampleMatcherPTest, expected, "")
     {
+        // cppcheck-suppress valueFlowBailoutIncompleteVar
         return ((arg <= (expected + TOLERANCE)) && (arg >= (expected - TOLERANCE)));
     }
 
     // syntaxError when MATCHER is not known
+    // cppcheck-suppress symbolDatabaseWarning
     MATCHER(ExampleMatcherTest, "")
     {
         return (arg == TOLERANCE);
+    }
+
+    // syntaxError when TYPED_TEST is not known
+    TYPED_TEST (ExampleTypedTest, cppcheck_test)
+    {
+    }
+
+    // syntaxError when TYPED_TEST_P is not known
+    TYPED_TEST_P (ExampleTypedTestP, cppcheck)
+    {
     }
 }
 
@@ -47,6 +62,7 @@ TEST(test_cppcheck, cppcheck)
 // #9964 - avoid compareBoolExpressionWithInt false positive
 TEST(Test, assert_false_fp)
 {
+    // cppcheck-suppress valueFlowBailoutIncompleteVar
     ASSERT_FALSE(errno < 0);
 }
 
@@ -70,6 +86,7 @@ TEST(Test, warning_in_assert_macros)
     // cppcheck-suppress duplicateExpression
     ASSERT_GE(i, i);
 
+    // cppcheck-suppress valueFlowBailoutIncompleteVar
     unsigned int u = errno;
     // cppcheck-suppress [unsignedPositive]
     ASSERT_GE(u, 0);

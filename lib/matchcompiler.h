@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2021 Cppcheck team.
+ * Copyright (C) 2007-2024 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ namespace MatchCompiler {
     template<unsigned int n>
     class ConstString {
     public:
-        typedef const char(&StringRef)[n];
+        using StringRef = const char (&)[n];
         explicit ConstString(StringRef s)
             : _s(s) {}
 
@@ -46,7 +46,7 @@ namespace MatchCompiler {
     }
 
     template<>
-    inline bool equalN<0>(const char[], const char[])
+    inline bool equalN<0>(const char /*s1*/[], const char /*s2*/[])
     {
         return true;
     }

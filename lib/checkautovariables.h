@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,16 +23,18 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 #include "errortypes.h"
 
 #include <string>
+#include <set>
 
 class Settings;
 class Token;
-class Tokenizer;
 class ErrorLogger;
 class Variable;
+class Tokenizer;
 
 namespace ValueFlow {
     class Value;
@@ -46,19 +48,32 @@ namespace ValueFlow {
 class CPPCHECKLIB CheckAutoVariables : public Check {
 public:
     /** This constructor is used when registering the CheckClass */
-    CheckAutoVariables() : Check(myName()) {}
+    CheckAutoVariables() : Check("Auto Variables") {}
 
-    /** This constructor is used when running checks. */
-    CheckAutoVariables(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
+private:
     /** @brief Run checks against the normal token list */
-    void runChecks(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger) override {
-        CheckAutoVariables checkAutoVariables(tokenizer, settings, errorLogger);
-        checkAutoVariables.assignFunctionArg();
-        checkAutoVariables.checkVarLifetime();
-        checkAutoVariables.autoVariables();
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
+
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
+
+    std::string classInfo() const override {
+        return "A pointer to a variable is only valid as long as the variable is in scope.\n"
+               "Check:\n"
+               "- returning a pointer to auto or temporary variable\n"
+               "- assigning address of an variable to an effective parameter of a function\n"
+               "- returning reference to local/temporary variable\n"
+               "- returning address of function parameter\n"
+               "- suspicious assignment of pointer argument\n"
+               "- useless assignment of function argument\n";
     }
+};
+
+class CPPCHECKLIB CheckAutoVariablesImpl : public CheckImpl
+{
+public:
+    /** This constructor is used when running checks. */
+    CheckAutoVariablesImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** assign function argument */
     void assignFunctionArg();
@@ -72,61 +87,26 @@ public:
     bool checkAutoVariableAssignment(const Token *expr, bool inconclusive, const Token *startToken = nullptr);
 
     void checkVarLifetime();
-
     void checkVarLifetimeScope(const Token * start, const Token * end);
 
-private:
-    void errorReturnAddressToAutoVariable(const Token *tok);
-    void errorReturnAddressToAutoVariable(const Token *tok, const ValueFlow::Value *value);
-    void errorReturnPointerToLocalArray(const Token *tok);
     void errorAutoVariableAssignment(const Token *tok, bool inconclusive);
     void errorReturnDanglingLifetime(const Token *tok, const ValueFlow::Value* val);
     void errorInvalidLifetime(const Token *tok, const ValueFlow::Value* val);
-    void errorDanglngLifetime(const Token *tok, const ValueFlow::Value *val);
+    void errorDanglngLifetime(const Token *tok, const ValueFlow::Value *val, bool isStatic = false);
     void errorDanglingTemporaryLifetime(const Token* tok, const ValueFlow::Value* val, const Token* tempTok);
     void errorReturnReference(const Token* tok, ErrorPath errorPath, bool inconclusive);
     void errorDanglingReference(const Token *tok, const Variable *var, ErrorPath errorPath);
     void errorDanglingTempReference(const Token* tok, ErrorPath errorPath, bool inconclusive);
     void errorReturnTempReference(const Token* tok, ErrorPath errorPath, bool inconclusive);
     void errorInvalidDeallocation(const Token *tok, const ValueFlow::Value *val);
-    void errorReturnAddressOfFunctionParameter(const Token *tok, const std::string &varname);
     void errorUselessAssignmentArg(const Token *tok);
     void errorUselessAssignmentPtrArg(const Token *tok);
 
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override {
-        ErrorPath errorPath;
-        CheckAutoVariables c(nullptr,settings,errorLogger);
-        c.errorAutoVariableAssignment(nullptr, false);
-        c.errorReturnAddressToAutoVariable(nullptr);
-        c.errorReturnPointerToLocalArray(nullptr);
-        c.errorReturnReference(nullptr, errorPath, false);
-        c.errorDanglingReference(nullptr, nullptr, errorPath);
-        c.errorReturnTempReference(nullptr, errorPath, false);
-        c.errorDanglingTempReference(nullptr, errorPath, false);
-        c.errorInvalidDeallocation(nullptr, nullptr);
-        c.errorReturnAddressOfFunctionParameter(nullptr, "parameter");
-        c.errorUselessAssignmentArg(nullptr);
-        c.errorUselessAssignmentPtrArg(nullptr);
-        c.errorReturnDanglingLifetime(nullptr, nullptr);
-        c.errorInvalidLifetime(nullptr, nullptr);
-        c.errorDanglngLifetime(nullptr, nullptr);
-        c.errorDanglingTemporaryLifetime(nullptr, nullptr, nullptr);
-    }
+    /** returns true if tokvalue has already been diagnosed */
+private:
+    bool diag(const Token* tokvalue);
 
-    static std::string myName() {
-        return "Auto Variables";
-    }
-
-    std::string classInfo() const override {
-        return "A pointer to a variable is only valid as long as the variable is in scope.\n"
-               "Check:\n"
-               "- returning a pointer to auto or temporary variable\n"
-               "- assigning address of an variable to an effective parameter of a function\n"
-               "- returning reference to local/temporary variable\n"
-               "- returning address of function parameter\n"
-               "- suspicious assignment of pointer argument\n"
-               "- useless assignment of function argument\n";
-    }
+    std::set<const Token*> mDiagDanglingTemp;
 };
 /// @}
 //---------------------------------------------------------------------------

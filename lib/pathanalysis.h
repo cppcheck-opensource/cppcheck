@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2025 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,32 +21,28 @@
 
 #include "errortypes.h"
 
+#include <cstdint>
 #include <functional>
-#include <list>
 #include <utility>
 
-class Library;
 class Scope;
 class Token;
 
 struct PathAnalysis {
-    enum class Progress {
+    enum class Progress : std::uint8_t {
         Continue,
         Break
     };
-    PathAnalysis(const Token* start, const Library& library)
-        : start(start), library(&library)
+
+    explicit PathAnalysis(const Token* start)
+        : mStart(start)
     {}
-    const Token * start;
-    const Library * library;
 
     struct Info {
         const Token* tok;
         ErrorPath errorPath;
         bool known;
     };
-
-    void forward(const std::function<Progress(const Info&)>& f) const;
 
     Info forwardFind(std::function<bool(const Info&)> pred) const {
         Info result{};
@@ -60,8 +56,11 @@ struct PathAnalysis {
         return result;
     }
 private:
+    const Token * mStart;
 
-    Progress forwardRecursive(const Token* tok, Info info, const std::function<PathAnalysis::Progress(const Info&)>& f) const;
+    void forward(const std::function<Progress(const Info&)>& f) const;
+
+    static Progress forwardRecursive(const Token* tok, Info info, const std::function<PathAnalysis::Progress(const Info&)>& f);
     Progress forwardRange(const Token* startToken, const Token* endToken, Info info, const std::function<Progress(const Info&)>& f) const;
 
     static const Scope* findOuterScope(const Scope * scope);
@@ -76,7 +75,7 @@ private:
  * @param dest The path destination
  * @param errorPath Adds the path traversal to the errorPath
  */
-bool reaches(const Token * start, const Token * dest, const Library& library, ErrorPath* errorPath);
+bool reaches(const Token * start, const Token * dest, ErrorPath* errorPath);
 
 #endif
 

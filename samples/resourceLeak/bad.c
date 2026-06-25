@@ -1,7 +1,7 @@
 #include <stdio.h>
 int main()
 {
-    FILE *a = fopen("good.c", "r");
+    const FILE *a = fopen("good.c", "r");
     if (!a)
         return 0;
 

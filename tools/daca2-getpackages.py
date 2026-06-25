@@ -24,6 +24,7 @@ def wget(filepath):
     if '/' in filepath:
         filename = filename[filename.rfind('/') + 1:]
     for d in DEBIAN:
+        # TODO: handle exitcode?
         subprocess.call(
             ['nice', 'wget', '--tries=10', '--timeout=300', '-O', filename, d + filepath])
         if os.path.isfile(filename):
@@ -41,12 +42,13 @@ def latestvername(names):
 def getpackages():
     if not wget('ls-lR.gz'):
         sys.exit(1)
+    # TODO: handle exitcode?
     subprocess.call(['nice', 'gunzip', 'ls-lR.gz'])
     if not os.path.isfile('ls-lR'):
         sys.exit(1)
-    f = open('ls-lR', 'rt')
-    lines = f.readlines()
-    f.close()
+    with open('ls-lR', 'rt') as f:
+        lines = f.readlines()
+    # TODO: handle exitcode?
     subprocess.call(['rm', 'ls-lR'])
 
     # Example content in ls-lR:

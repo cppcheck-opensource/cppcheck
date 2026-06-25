@@ -1,6 +1,94 @@
 ---
-Checks:          '*,-abseil-*,-altera-*,-android-*,-boost-*,-cert-*,-cppcoreguidelines-*,-darwin-*,-fuchsia-*,-google-*,-hicpp-*,-linuxkernel-*,-llvm-*,-llvmlibc-*,-mpi-*,-objc-*,-openmp-*,-zircon-*,-readability-braces-around-statements,-readability-magic-numbers,-bugprone-macro-parentheses,-readability-isolate-declaration,-readability-function-size,-modernize-use-trailing-return-type,-readability-implicit-bool-conversion,-readability-uppercase-literal-suffix,-modernize-use-auto,-readability-else-after-return,-modernize-use-default-member-init,-readability-named-parameter,-readability-redundant-member-init,-performance-faster-string-find,-modernize-avoid-c-arrays,-modernize-use-equals-default,-readability-container-size-empty,-readability-simplify-boolean-expr,-modernize-pass-by-value,-bugprone-branch-clone,-bugprone-narrowing-conversions,-modernize-raw-string-literal,-readability-convert-member-functions-to-static,-modernize-loop-convert,-readability-const-return-type,-performance-unnecessary-value-param,-modernize-return-braced-init-list,-performance-inefficient-string-concatenation,-misc-throw-by-value-catch-by-reference,-readability-avoid-const-params-in-decls,-readability-non-const-parameter,-misc-non-private-member-variables-in-classes,-bugprone-suspicious-string-compare,-clang-analyzer-*,-bugprone-signed-char-misuse,-readability-make-member-function-const,-misc-no-recursion,-readability-use-anyofallof,-performance-no-automatic-move,-bugprone-suspicious-include,-modernize-replace-random-shuffle,-readability-function-cognitive-complexity,-readability-redundant-access-specifiers,-performance-noexcept-move-constructor,-concurrency-mt-unsafe,-bugprone-easily-swappable-parameters,-readability-suspicious-call-argument,-readability-identifier-length,-readability-container-data-pointer'
+Checks: >
+        *,
+        -abseil-*,
+        -altera-*,
+        -android-*,
+        -boost-*,
+        -cert-*,
+        -cppcoreguidelines-*,
+        -darwin-*,
+        -fuchsia-*,
+        -google-*,
+        -hicpp-*,
+        -linuxkernel-*,
+        -llvm-*,
+        -llvmlibc-*,
+        -mpi-*,
+        -objc-*,
+        -openmp-*,
+        -zircon-*,
+        cppcoreguidelines-pro-type-static-cast-downcast,
+        cppcoreguidelines-rvalue-reference-param-not-moved,
+        google-explicit-constructor,
+        -bugprone-assignment-in-if-condition,
+        -bugprone-branch-clone,
+        -bugprone-command-processor,
+        -bugprone-easily-swappable-parameters,
+        -bugprone-empty-catch,
+        -bugprone-macro-parentheses,
+        -bugprone-narrowing-conversions,
+        -bugprone-signed-char-misuse,
+        -bugprone-switch-missing-default-case,
+        -bugprone-throwing-static-initialization,
+        -bugprone-unchecked-optional-access,
+        -clang-analyzer-*,
+        -concurrency-mt-unsafe,
+        -misc-const-correctness,
+        -misc-no-recursion,
+        -misc-non-private-member-variables-in-classes,
+        -misc-throw-by-value-catch-by-reference,
+        -misc-use-anonymous-namespace,
+        -modernize-avoid-c-arrays,
+        -modernize-deprecated-ios-base-aliases,
+        -misc-include-cleaner,
+        -misc-multiple-inheritance,
+        -misc-unused-using-decls,
+        -modernize-avoid-c-style-cast,
+        -modernize-loop-convert,
+        -modernize-macro-to-enum,
+        -modernize-raw-string-literal,
+        -modernize-replace-auto-ptr,
+        -modernize-return-braced-init-list,
+        -modernize-type-traits,
+        -modernize-use-designated-initializers,
+        -modernize-use-nodiscard,
+        -modernize-use-scoped-lock,
+        -modernize-use-trailing-return-type,
+        -performance-avoid-endl,
+        -performance-inefficient-string-concatenation,
+        -performance-no-automatic-move,
+        -portability-avoid-pragma-once,
+        -portability-simd-intrinsics,
+        -portability-std-allocator-const,
+        -readability-avoid-nested-conditional-operator,
+        -readability-braces-around-statements,
+        -readability-container-data-pointer,
+        -readability-enum-initial-value,
+        -readability-function-cognitive-complexity,
+        -readability-function-size,
+        -readability-identifier-length,
+        -readability-identifier-naming,
+        -readability-implicit-bool-conversion,
+        -readability-inconsistent-ifelse-braces,
+        -readability-isolate-declaration,
+        -readability-magic-numbers,
+        -readability-redundant-parentheses,
+        -readability-suspicious-call-argument,
+        -readability-uppercase-literal-suffix,
+        -readability-use-concise-preprocessor-directives,
+        -misc-unconventional-assign-operator
 WarningsAsErrors: '*'
+HeaderFilterRegex: '(cli|gui|frontend|lib|oss-fuzz|test|triage)\/[a-z_]+\.h'
+ExcludeHeaderFilterRegex: 'ui_.*.h'
 CheckOptions:
   - key:             misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic
     value:           '1'
+  - key:             readability-simplify-boolean-expr.SimplifyDeMorgan
+    value:           '0'
+  - key:             modernize-use-trailing-return-type.TransformFunctions
+    value:           false
+  - key:             misc-override-with-different-visibility.DisallowedVisibilityChange
+    value:           widening
+  - key:             misc-use-internal-linkage.AnalyzeTypes
+    value:           false

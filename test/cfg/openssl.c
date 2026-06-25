@@ -2,13 +2,15 @@
 // Test library configuration for openssl.cfg
 //
 // Usage:
-// $ cppcheck --check-library --library=openssl --enable=information --error-exitcode=1 --inline-suppr --suppress=missingIncludeSystem test/cfg/openssl.c
+// $ cppcheck --check-library --library=openssl --enable=style,information --inconclusive --error-exitcode=1 --inline-suppr test/cfg/openssl.c
 // =>
 // No warnings about bad library configuration, unmatched suppressions, etc. exitcode=0
 //
 
-#include <openssl/ssl.h>
 #include <openssl/bio.h>
+#include <openssl/evp.h>
+//#include <openssl/types.h>
+#include <stdio.h>
 #include <string.h>
 
 void valid_code(BIO * bio)
@@ -17,17 +19,18 @@ void valid_code(BIO * bio)
 }
 
 // Example for encrypting a string using IDEA (from https://www.openssl.org/docs/man1.1.1/man3/EVP_CIPHER_CTX_new.html)
-int valid_code_do_crypt(char *outfile)
+int valid_code_do_crypt(const char *outfile)
 {
     unsigned char outbuf[1024];
     int outlen, tmplen;
-    unsigned char key[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-    unsigned char iv[] = {1,2,3,4,5,6,7,8};
-    char intext[] = "Some Crypto Text";
+    const unsigned char key[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+    const unsigned char iv[] = {1,2,3,4,5,6,7,8};
+    const char intext[] = "Some Crypto Text";
     EVP_CIPHER_CTX *ctx;
     FILE *out;
 
     ctx = EVP_CIPHER_CTX_new();
+    // cppcheck-suppress checkLibraryFunction
     EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv);
 
     if (!EVP_EncryptUpdate(ctx, outbuf, &outlen, intext, strlen(intext))) {
@@ -61,7 +64,7 @@ void invalidPrintfArgType_test(BIO * bio)
 
 void EVP_CIPHER_CTX_new_test()
 {
-    EVP_CIPHER_CTX * ctx = EVP_CIPHER_CTX_new();
+    const EVP_CIPHER_CTX * ctx = EVP_CIPHER_CTX_new();
     printf("%p", ctx);
     // cppcheck-suppress resourceLeak
 }

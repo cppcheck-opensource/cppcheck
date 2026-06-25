@@ -1,3 +1,3 @@
-samples\bufferAccessOutOfBounds\bad.c:6:10: error: Array 'a[2]' accessed at index 2, which is out of bounds. [arrayIndexOutOfBounds]
-        a[i] = 0;
-         ^
+samples\bufferAccessOutOfBounds\bad.c:5:12: error: Buffer is accessed out of bounds: str [bufferAccessOutOfBounds]
+    strcpy(str, "0123456789abcdef");
+           ^

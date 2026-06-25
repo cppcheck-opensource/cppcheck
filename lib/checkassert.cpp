@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,49 +22,70 @@
 
 #include "checkassert.h"
 
+#include "astutils.h"
 #include "errortypes.h"
+#include "library.h"
 #include "settings.h"
 #include "symboldatabase.h"
 #include "token.h"
 #include "tokenize.h"
 #include "tokenlist.h"
 
+#include <algorithm>
+#include <utility>
+
 //---------------------------------------------------------------------------
 
 // CWE ids used
-static const struct CWE CWE398(398U);   // Indicator of Poor Code Quality
+static const CWE CWE398(398U);   // Indicator of Poor Code Quality
 
-// Register this check class (by creating a static instance of it)
-namespace {
-    CheckAssert instance;
-}
-
-void CheckAssert::assertWithSideEffects()
+void CheckAssertImpl::assertWithSideEffects()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
+
+    logChecker("CheckAssert::assertWithSideEffects"); // warning
 
     for (const Token* tok = mTokenizer->list.front(); tok; tok = tok->next()) {
         if (!Token::simpleMatch(tok, "assert ("))
             continue;
 
-        const Token *endTok = tok->next()->link();
+        const Token *endTok = tok->linkAt(1);
         for (const Token* tmp = tok->next(); tmp != endTok; tmp = tmp->next()) {
             if (Token::simpleMatch(tmp, "sizeof ("))
                 tmp = tmp->linkAt(1);
 
             checkVariableAssignment(tmp, tok->scope());
 
-            if (tmp->tokType() != Token::eFunction)
-                continue;
-
-            const Function* f = tmp->function();
-            if (f->nestedIn->isClassOrStruct() && !f->isStatic() && !f->isConst()) {
-                sideEffectInAssertError(tmp, f->name()); // Non-const member function called
+            if (tmp->tokType() != Token::eFunction) {
+                if (const Library::Function* f = mSettings.library.getFunction(tmp)) {
+                    if (f->isconst || f->ispure)
+                        continue;
+                    if (Library::getContainerYield(tmp->next()) != Library::Container::Yield::NO_YIELD) // bailout, assume read access
+                        continue;
+                    if (std::any_of(f->argumentChecks.begin(), f->argumentChecks.end(), [](const std::pair<int, Library::ArgumentChecks>& ac) {
+                        return ac.second.iteratorInfo.container > 0; // bailout, takes iterators -> assume read access
+                    }))
+                        continue;
+                    if (tmp->str() == "get" && Token::simpleMatch(tmp->astParent(), ".") && astIsSmartPointer(tmp->astParent()->astOperand1()))
+                        continue;
+                    if (f->containerYield == Library::Container::Yield::START_ITERATOR || // bailout for std::begin/end/prev/next
+                        f->containerYield == Library::Container::Yield::END_ITERATOR ||
+                        f->containerYield == Library::Container::Yield::ITERATOR)
+                        continue;
+                    sideEffectInAssertError(tmp, mSettings.library.getFunctionName(tmp));
+                }
                 continue;
             }
+
+            const Function* f = tmp->function();
             const Scope* scope = f->functionScope;
-            if (!scope) continue;
+            if (!scope) {
+                // guess that const method doesn't have side effects
+                if (f->nestedIn->isClassOrStruct() && !f->isConst() && !f->isStatic())
+                    sideEffectInAssertError(tmp, f->name()); // Non-const member function called, assume it has side effects
+                continue;
+            }
 
             for (const Token *tok2 = scope->bodyStart; tok2 != scope->bodyEnd; tok2 = tok2->next()) {
                 if (!tok2->isAssignmentOp() && tok2->tokType() != Token::eIncDecOp)
@@ -96,7 +117,7 @@ void CheckAssert::assertWithSideEffects()
 //---------------------------------------------------------------------------
 
 
-void CheckAssert::sideEffectInAssertError(const Token *tok, const std::string& functionName)
+void CheckAssertImpl::sideEffectInAssertError(const Token *tok, const std::string& functionName)
 {
     reportError(tok, Severity::warning,
                 "assertWithSideEffect",
@@ -108,7 +129,7 @@ void CheckAssert::sideEffectInAssertError(const Token *tok, const std::string& f
                 "builds, this is a bug.", CWE398, Certainty::normal);
 }
 
-void CheckAssert::assignmentInAssertError(const Token *tok, const std::string& varname)
+void CheckAssertImpl::assignmentInAssertError(const Token *tok, const std::string& varname)
 {
     reportError(tok, Severity::warning,
                 "assignmentInAssert",
@@ -121,11 +142,13 @@ void CheckAssert::assignmentInAssertError(const Token *tok, const std::string& v
 }
 
 // checks if side effects happen on the variable prior to tmp
-void CheckAssert::checkVariableAssignment(const Token* assignTok, const Scope *assertionScope)
+void CheckAssertImpl::checkVariableAssignment(const Token* assignTok, const Scope *assertionScope)
 {
     if (!assignTok->isAssignmentOp() && assignTok->tokType() != Token::eIncDecOp)
         return;
 
+    if (!assignTok->astOperand1())
+        return;
     const Variable* var = assignTok->astOperand1()->variable();
     if (!var)
         return;
@@ -149,8 +172,21 @@ void CheckAssert::checkVariableAssignment(const Token* assignTok, const Scope *a
     // TODO: function calls on var
 }
 
-bool CheckAssert::inSameScope(const Token* returnTok, const Token* assignTok)
+bool CheckAssertImpl::inSameScope(const Token* returnTok, const Token* assignTok)
 {
     // TODO: even if a return is in the same scope, the assignment might not affect it.
     return returnTok->scope() == assignTok->scope();
+}
+
+void CheckAssert::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
+{
+    CheckAssertImpl checkAssert(&tokenizer, tokenizer.getSettings(), errorLogger);
+    checkAssert.assertWithSideEffects();
+}
+
+void CheckAssert::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
+{
+    CheckAssertImpl c(nullptr, settings, errorLogger);
+    c.sideEffectInAssertError(nullptr, "function");
+    c.assignmentInAssertError(nullptr, "var");
 }

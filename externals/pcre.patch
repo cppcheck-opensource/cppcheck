@@ -1,0 +1,12 @@
+diff -urN pcre/CMakeLists.txt pcre-8.45/CMakeLists.txt
+--- pcre/CMakeLists.txt	2021-11-05 13:28:16.000000000 +0100
++++ pcre-8.45/CMakeLists.txt	2025-04-02 10:18:49.636009900 +0200
+@@ -77,7 +77,7 @@
+ # CMP0026 to avoid warnings for the use of LOCATION in GET_TARGET_PROPERTY.
+ 
+ CMAKE_MINIMUM_REQUIRED(VERSION 2.8.5)
+-CMAKE_POLICY(SET CMP0026 OLD)
++#CMAKE_POLICY(SET CMP0026 OLD)
+ 
+ # For FindReadline.cmake. This was changed to allow setting CMAKE_MODULE_PATH
+ # on the command line.

@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 
 #include <string>
@@ -31,7 +32,6 @@ class ErrorLogger;
 class Settings;
 class Token;
 class Tokenizer;
-
 
 /// @addtogroup Checks
 /// @{
@@ -43,45 +43,34 @@ class Tokenizer;
 class CPPCHECKLIB Check64BitPortability : public Check {
 public:
     /** This constructor is used when registering the Check64BitPortability */
-    Check64BitPortability() : Check(myName()) {}
-
-    /** This constructor is used when running checks. */
-    Check64BitPortability(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
-    /** @brief Run checks against the normal token list */
-    void runChecks(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger) override {
-        Check64BitPortability check64BitPortability(tokenizer, settings, errorLogger);
-        check64BitPortability.pointerassignment();
-    }
-
-    /** Check for pointer assignment */
-    void pointerassignment();
+    Check64BitPortability() : Check("64-bit portability") {}
 
 private:
+    /** @brief Run checks against the normal token list */
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
-    void assignmentAddressToIntegerError(const Token *tok);
-    void assignmentIntegerToAddressError(const Token *tok);
-    void returnIntegerError(const Token *tok);
-    void returnPointerError(const Token *tok);
-
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override {
-        Check64BitPortability c(nullptr, settings, errorLogger);
-        c.assignmentAddressToIntegerError(nullptr);
-        c.assignmentIntegerToAddressError(nullptr);
-        c.returnIntegerError(nullptr);
-        c.returnPointerError(nullptr);
-    }
-
-    static std::string myName() {
-        return "64-bit portability";
-    }
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "Check if there is 64-bit portability issues:\n"
                "- assign address to/from int/long\n"
                "- casting address from/to integer when returning from function\n";
     }
+};
+
+class CPPCHECKLIB Check64BitPortabilityImpl : public CheckImpl {
+public:
+    /** This constructor is used when running checks. */
+    Check64BitPortabilityImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
+
+    /** Check for pointer assignment */
+    void pointerassignment();
+
+    void assignmentAddressToIntegerError(const Token *tok);
+    void assignmentIntegerToAddressError(const Token *tok);
+    void returnIntegerError(const Token *tok);
+    void returnPointerError(const Token *tok);
 };
 /// @}
 //---------------------------------------------------------------------------

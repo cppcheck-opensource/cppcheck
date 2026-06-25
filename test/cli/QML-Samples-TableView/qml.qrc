@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file>main.qml</file>
+        <file>TableView.qml</file>
+        <file>TableRow.qml</file>
+        <file>TableColumn.qml</file>
+    </qresource>
+</RCC>

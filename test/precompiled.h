@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2021 Cppcheck team.
+ * Copyright (C) 2007-2024 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,8 +17,16 @@
  */
 
 #pragma once
-#include "testsuite.h"
-#include "settings.h"
-#include "tokenize.h"
-#include "library.h"
+
+// IWYU pragma: begin_keep
 #include "check.h"
+#include "config.h"
+#include "importproject.h"
+#include "library.h"
+#include "mathlib.h"
+#include "settings.h"
+#include "timer.h"
+#include "token.h"
+#include "tokenlist.h"
+#include "tokenize.h"
+// IWYU pragma: end_keep

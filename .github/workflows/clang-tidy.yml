@@ -2,60 +2,92 @@
 # Environment reference https://help.github.com/en/actions/reference/virtual-environments-for-github-hosted-runners
 name: clang-tidy
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - 'main'
+      - 'releases/**'
+      - '2.*'
+    tags:
+      - '2.*'
+  pull_request:
+  schedule:
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
 
     runs-on: ubuntu-22.04
 
-    container:
-      image: "ubuntu:22.04"
-
     env:
-      QT_VERSION: 5.15.2
+      QT_VERSION: 6.10.0
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Install missing software
         run: |
-          apt-get update
-          apt-get install -y cmake clang-14 make
-          apt-get install -y libpcre3-dev
-          apt-get install -y libffi7 # work around missing dependency for Qt install step
-          apt-get install -y clang-tidy-14
+          sudo apt-get update
+          sudo apt-get install -y cmake make
+          sudo apt-get install -y libpcre3-dev
+          sudo apt-get install -y libgl-dev  # fixes missing dependency for Qt in CMake
 
-      - name: Cache Qt ${{ env.QT_VERSION }}
-        id: cache-qt
-        uses: actions/cache@v1  # not v2!
-        with:
-          path: ../Qt
-          key: Linux-QtCache-${{ env.QT_VERSION }}-qtcharts
+      - name: Install clang
+        run: |
+          sudo apt-get purge --auto-remove llvm python3-lldb-14 llvm-14
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 22
+          sudo apt-get install -y clang-tidy-22
 
       - name: Install Qt ${{ env.QT_VERSION }}
-        uses: jurplel/install-qt-action@v2
+        uses: jurplel/install-qt-action@v4
         with:
-          install-deps: 'nosudo'
           version: ${{ env.QT_VERSION }}
           modules: 'qtcharts'
-          cached: ${{ steps.cache-qt.outputs.cache-hit }}
+          setup-python: 'false'
+          install-deps: false
+          cache: true
+
+      - name: Verify clang-tidy configuration
+        run: |
+          clang-tidy-22 --verify-config
 
       - name: Prepare CMake
         run: |
-          cmake -S . -B cmake.output -G "Unix Makefiles" -DHAVE_RULES=On -DBUILD_TESTS=On -DBUILD_GUI=On -DWITH_QCHART=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DCPPCHK_GLIBCXX_DEBUG=Off
+          cmake -S . -B cmake.output -Werror=dev --warn-uninitialized -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCPPCHK_GLIBCXX_DEBUG=Off -DCMAKE_COMPILE_WARNING_AS_ERROR=On
         env:
-          CC: clang-14
-          CXX: clang++-14
+          CC: clang-22
+          CXX: clang++-22
 
       - name: Prepare CMake dependencies
         run: |
-          # make sure the precompiled headers exist
-          make -C cmake.output/lib cmake_pch.hxx.pch
-          make -C cmake.output/test cmake_pch.hxx.pch
           # make sure the auto-generated GUI sources exist
           make -C cmake.output autogen
+          # make sure the precompiled headers exist
+          make -C cmake.output/cli cmake_pch.hxx.pch
+          make -C cmake.output/gui cmake_pch.hxx.pch
+          make -C cmake.output/lib cmake_pch.hxx.pch
+          make -C cmake.output/test cmake_pch.hxx.pch
 
       - name: Clang-Tidy
+        if: ${{ github.event.schedule == '' && github.event_name != 'workflow_dispatch' }}
         run: |
           cmake --build cmake.output --target run-clang-tidy 2> /dev/null
+
+      - name: Clang Static Analyzer
+        if: ${{ github.event.schedule != '' || github.event_name == 'workflow_dispatch' }}
+        run: |
+          cmake --build cmake.output --target run-clang-tidy-csa 2> /dev/null
+
+      - uses: actions/upload-artifact@v4
+        if: success() || failure()
+        with:
+          name: Compilation Database
+          path: ./cmake.output/compile_commands.json

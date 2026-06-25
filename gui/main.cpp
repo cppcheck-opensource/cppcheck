@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 #include "cppcheck.h"
 #include "common.h"
 #include "mainwindow.h"
-#include "erroritem.h"
+#include "erroritem.h" // IWYU pragma: keep
 #include "translationhandler.h"
 
 #ifdef _WIN32
@@ -29,12 +29,16 @@
 #else
 #include <iostream>
 #endif
+#include <algorithm>
 #include <string>
 
 #include <QApplication>
 #include <QCoreApplication>
-#include <QStringList>
+#include <QIcon>
 #include <QSettings>
+#include <QString>
+#include <QStringList>
+#include <QVariant>
 
 
 static void ShowUsage();
@@ -43,28 +47,24 @@ static bool CheckArgs(const QStringList &args);
 
 int main(int argc, char *argv[])
 {
-
-#if (QT_VERSION >= QT_VERSION_CHECK(5, 6, 0)) && (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
-    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-    QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
-#endif
-
     QApplication app(argc, argv);
 
     QCoreApplication::setOrganizationName("Cppcheck");
     QCoreApplication::setApplicationName("Cppcheck-GUI");
 
-    QSettings* settings = new QSettings("Cppcheck", "Cppcheck-GUI", &app);
+    auto* settings = new QSettings("Cppcheck", "Cppcheck-GUI", &app);
 
     // Set data dir..
-    for (const QString& arg : QApplication::arguments()) {
-        if (arg.startsWith("--data-dir=")) {
-            settings->setValue("DATADIR", arg.mid(11));
-            return 0;
-        }
+    const QStringList args = QApplication::arguments();
+    auto it = std::find_if(args.cbegin(), args.cend(), [](const QString& arg) {
+        return arg.startsWith("--data-dir=");
+    });
+    if (it != args.end()) {
+        settings->setValue("DATADIR", it->mid(11));
+        return 0;
     }
 
-    TranslationHandler* th = new TranslationHandler(&app);
+    auto* th = new TranslationHandler(&app);
     th->setLanguage(settings->value(SETTINGS_LANGUAGE, th->suggestLanguage()).toString());
 
     if (!CheckArgs(QApplication::arguments()))
@@ -124,6 +124,7 @@ static void ShowUsage()
 
 static void ShowVersion()
 {
+// TODO: should only *not* show a dialog when we are on a command-line
 #if defined(_WIN32)
     AboutDialog *dlg = new AboutDialog(CppCheck::version(), CppCheck::extraVersion(), 0);
     dlg->exec();

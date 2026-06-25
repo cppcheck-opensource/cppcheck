@@ -31,7 +31,6 @@
   <ItemGroup>
     <Content Include="config.wxi" />
     <Content Include="productInfo.wxi" />
-    <Content Include="readme.txt" />
   </ItemGroup>
   <Import Project="$(WixTargetsPath)" />
   <Target Name="All" DependsOnTargets="Clean;Validate;Build" />

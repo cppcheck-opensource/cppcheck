@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2024 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,10 +19,14 @@
 #ifndef sourcelocationH
 #define sourcelocationH
 
+#include "config.h"
+
 #ifdef __CPPCHECK__
 #define CPPCHECK_HAS_SOURCE_LOCATION 0
 #define CPPCHECK_HAS_SOURCE_LOCATION_TS 0
-#elif defined(__has_include)
+#define CPPCHECK_HAS_SOURCE_LOCATION_INTRINSICS 0
+#else
+
 #if __has_include(<source_location>) && __cplusplus >= 202003L
 #define CPPCHECK_HAS_SOURCE_LOCATION 1
 #else
@@ -33,9 +37,16 @@
 #else
 #define CPPCHECK_HAS_SOURCE_LOCATION_TS 0
 #endif
+
+#if __has_builtin(__builtin_FILE)
+#define CPPCHECK_HAS_SOURCE_LOCATION_INTRINSICS 1
+#if !__has_builtin(__builtin_COLUMN)
+#define __builtin_COLUMN() 0
+#endif
 #else
-#define CPPCHECK_HAS_SOURCE_LOCATION 0
-#define CPPCHECK_HAS_SOURCE_LOCATION_TS 0
+#define CPPCHECK_HAS_SOURCE_LOCATION_INTRINSICS 0
+#endif
+
 #endif
 
 #if CPPCHECK_HAS_SOURCE_LOCATION
@@ -45,10 +56,26 @@ using SourceLocation = std::source_location;
 #include <experimental/source_location>
 using SourceLocation = std::experimental::source_location;
 #else
+#include <cstdint>
 struct SourceLocation {
+#if CPPCHECK_HAS_SOURCE_LOCATION_INTRINSICS
+    static SourceLocation current(std::uint_least32_t line = __builtin_LINE(),
+                                  std::uint_least32_t column = __builtin_COLUMN(),
+                                  const char* file_name = __builtin_FILE(),
+                                  const char* function_name = __builtin_FUNCTION())
+    {
+        SourceLocation result{};
+        result.m_line = line;
+        result.m_column = column;
+        result.m_file_name = file_name;
+        result.m_function_name = function_name;
+        return result;
+    }
+#else
     static SourceLocation current() {
         return SourceLocation();
     }
+#endif
     std::uint_least32_t m_line = 0;
     std::uint_least32_t m_column = 0;
     const char* m_file_name = "";

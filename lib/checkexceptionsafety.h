@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,21 +22,15 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
-#include "errortypes.h"
-#include "tokenize.h"
 
 #include <string>
 
 class Settings;
 class ErrorLogger;
 class Token;
-
-// CWE ID used:
-static const struct CWE CWE398(398U);   // Indicator of Poor Code Quality
-static const struct CWE CWE703(703U);   // Improper Check or Handling of Exceptional Conditions
-static const struct CWE CWE480(480U);   // Use of Incorrect Operator
-
+class Tokenizer;
 
 /// @addtogroup Checks
 /// @{
@@ -53,25 +47,32 @@ static const struct CWE CWE480(480U);   // Use of Incorrect Operator
 class CPPCHECKLIB CheckExceptionSafety : public Check {
 public:
     /** This constructor is used when registering the CheckClass */
-    CheckExceptionSafety() : Check(myName()) {}
+    CheckExceptionSafety() : Check("Exception Safety") {}
 
-    /** This constructor is used when running checks. */
-    CheckExceptionSafety(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
+private:
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
-    void runChecks(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger) override {
-        if (tokenizer->isC())
-            return;
+    /** Generate all possible errors (for --errorlist) */
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
-        CheckExceptionSafety checkExceptionSafety(tokenizer, settings, errorLogger);
-        checkExceptionSafety.destructors();
-        checkExceptionSafety.deallocThrow();
-        checkExceptionSafety.checkRethrowCopy();
-        checkExceptionSafety.checkCatchExceptionByValue();
-        checkExceptionSafety.nothrowThrows();
-        checkExceptionSafety.unhandledExceptionSpecification();
-        checkExceptionSafety.rethrowNoCurrentException();
+    /** wiki formatted description of the class (for --doc) */
+    std::string classInfo() const override {
+        return "Checking exception safety\n"
+               "- Throwing exceptions in destructors\n"
+               "- Throwing exception during invalid state\n"
+               "- Throwing a copy of a caught exception instead of rethrowing the original exception\n"
+               "- Exception caught by value instead of by reference\n"
+               "- Throwing exception in noexcept, nothrow(), __attribute__((nothrow)) or __declspec(nothrow) function\n"
+               "- Unhandled exception specification when calling function foo()\n"
+               "- Rethrow without currently handled exception\n";
     }
+};
+
+class CPPCHECKLIB CheckExceptionSafetyImpl : public CheckImpl {
+public:
+    /** This constructor is used when running checks. */
+    CheckExceptionSafetyImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** Don't throw exceptions in destructors */
     void destructors();
@@ -94,46 +95,17 @@ public:
     /** @brief %Check for rethrow not from catch scope */
     void rethrowNoCurrentException();
 
-private:
     /** Don't throw exceptions in destructors */
-    void destructorsError(const Token * const tok, const std::string &className);
-    void deallocThrowError(const Token * const tok, const std::string &varname);
-    void rethrowCopyError(const Token * const tok, const std::string &varname);
+    void destructorsError(const Token * tok, const std::string &className);
+    void deallocThrowError(const Token * tok, const std::string &varname);
+    void rethrowCopyError(const Token * tok, const std::string &varname);
     void catchExceptionByValueError(const Token *tok);
-    void noexceptThrowError(const Token * const tok);
+    void noexceptThrowError(const Token * tok);
+    void entryPointThrowError(const Token * tok);
     /** Missing exception specification */
-    void unhandledExceptionSpecificationError(const Token * const tok1, const Token * const tok2, const std::string & funcname);
+    void unhandledExceptionSpecificationError(const Token * tok1, const Token * tok2, const std::string & funcname);
     /** Rethrow without currently handled exception */
     void rethrowNoCurrentExceptionError(const Token *tok);
-
-    /** Generate all possible errors (for --errorlist) */
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override {
-        CheckExceptionSafety c(nullptr, settings, errorLogger);
-        c.destructorsError(nullptr, "Class");
-        c.deallocThrowError(nullptr, "p");
-        c.rethrowCopyError(nullptr, "varname");
-        c.catchExceptionByValueError(nullptr);
-        c.noexceptThrowError(nullptr);
-        c.unhandledExceptionSpecificationError(nullptr, nullptr, "funcname");
-        c.rethrowNoCurrentExceptionError(nullptr);
-    }
-
-    /** Short description of class (for --doc) */
-    static std::string myName() {
-        return "Exception Safety";
-    }
-
-    /** wiki formatted description of the class (for --doc) */
-    std::string classInfo() const override {
-        return "Checking exception safety\n"
-               "- Throwing exceptions in destructors\n"
-               "- Throwing exception during invalid state\n"
-               "- Throwing a copy of a caught exception instead of rethrowing the original exception\n"
-               "- Exception caught by value instead of by reference\n"
-               "- Throwing exception in noexcept, nothrow(), __attribute__((nothrow)) or __declspec(nothrow) function\n"
-               "- Unhandled exception specification when calling function foo()\n"
-               "- Rethrow without currently handled exception\n";
-    }
 };
 /// @}
 //---------------------------------------------------------------------------

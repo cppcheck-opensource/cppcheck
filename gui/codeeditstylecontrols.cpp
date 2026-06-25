@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2024 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,10 @@
 #include "codeeditstylecontrols.h"
 
 #include <QColorDialog>
+#include <QDialog>
+#include <QObject>
+#include <QString>
+#include <QVariant>
 
 class QWidget;
 
@@ -47,7 +51,7 @@ void SelectColorButton::changeColor()
 {
     QColorDialog pDlg(mColor);
     pDlg.setModal(true);
-    int nResult = pDlg.exec();
+    const int nResult = pDlg.exec();
     if (nResult == QDialog::Accepted) {
         setColor(pDlg.selectedColor());
         emit colorChanged(mColor);
@@ -61,14 +65,13 @@ void SelectColorButton::setColor(const QColor& color)
 }
 
 // cppcheck-suppress unusedFunction
-const QColor& SelectColorButton::getColor()
+const QColor& SelectColorButton::getColor() const
 {
     return mColor;
 }
 
 SelectFontWeightCombo::SelectFontWeightCombo(QWidget* parent) :
-    QComboBox(parent),
-    mWeight(QFont::Normal)
+    QComboBox(parent)
 {
     addItem(QObject::tr("Thin"),
             QVariant(static_cast<int>(QFont::Thin)));
@@ -95,7 +98,7 @@ SelectFontWeightCombo::SelectFontWeightCombo(QWidget* parent) :
 
 void SelectFontWeightCombo::updateWeight()
 {
-    int nResult = findData(QVariant(static_cast<int>(mWeight)));
+    const int nResult = findData(QVariant(static_cast<int>(mWeight)));
 
     if (nResult != -1) {
         setCurrentIndex(nResult);
@@ -112,14 +115,14 @@ void SelectFontWeightCombo::changeWeight(int index)
     }
 }
 
-void SelectFontWeightCombo::setWeight(const QFont::Weight& weight)
+void SelectFontWeightCombo::setWeight(QFont::Weight weight)
 {
     mWeight = weight;
     updateWeight();
 }
 
 // cppcheck-suppress unusedFunction
-const QFont::Weight& SelectFontWeightCombo::getWeight()
+const QFont::Weight& SelectFontWeightCombo::getWeight() const
 {
     return mWeight;
 }

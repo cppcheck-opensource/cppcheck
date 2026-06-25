@@ -10,13 +10,13 @@
 
 
     <Type Name="TokenList">
-    <DisplayString>{mTokensFrontBack.front->mStr} - {mTokensFrontBack.back->mStr}</DisplayString>
+    <DisplayString>{mTokensFrontBack->front->mStr} - {mTokensFrontBack->back->mStr}</DisplayString>
     <Expand>
       <Item Name="[files]">mFiles</Item>
       <CustomListItems Optional="true" MaxItemsPerView="5000">
-        <Variable Name="pCurr" InitialValue="mTokensFrontBack.front" />
+        <Variable Name="pCurr" InitialValue="mTokensFrontBack->front" />
         <Loop>
-          <If Condition="pCurr == mTokensFrontBack.back">
+          <If Condition="pCurr == mTokensFrontBack->back">
             <Break Condition="1"/>
           </If>
           <Item>pCurr</Item>

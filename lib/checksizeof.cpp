@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,31 +21,30 @@
 #include "checksizeof.h"
 
 #include "errortypes.h"
+#include "library.h"
 #include "settings.h"
 #include "symboldatabase.h"
 #include "token.h"
 #include "tokenize.h"
 
+#include <algorithm>
+#include <iterator>
 #include <map>
 #include <vector>
 
 //---------------------------------------------------------------------------
 
-// Register this check class (by creating a static instance of it)
-namespace {
-    CheckSizeof instance;
-}
-
 // CWE IDs used:
-static const struct CWE CWE398(398U);   // Indicator of Poor Code Quality
-static const struct CWE CWE467(467U);   // Use of sizeof() on a Pointer Type
-static const struct CWE CWE682(682U);   // Incorrect Calculation
+static const CWE CWE467(467U);   // Use of sizeof() on a Pointer Type
+static const CWE CWE682(682U);   // Incorrect Calculation
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
-void CheckSizeof::checkSizeofForNumericParameter()
+void CheckSizeofImpl::checkSizeofForNumericParameter()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
+
+    logChecker("CheckSizeof::checkSizeofForNumericParameter"); // warning
 
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * scope : symbolDatabase->functionScopes) {
@@ -58,7 +57,7 @@ void CheckSizeof::checkSizeofForNumericParameter()
     }
 }
 
-void CheckSizeof::sizeofForNumericParameterError(const Token *tok)
+void CheckSizeofImpl::sizeofForNumericParameterError(const Token *tok)
 {
     reportError(tok, Severity::warning,
                 "sizeofwithnumericparameter", "Suspicious usage of 'sizeof' with a numeric constant as parameter.\n"
@@ -70,10 +69,13 @@ void CheckSizeof::sizeofForNumericParameterError(const Token *tok)
 
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
-void CheckSizeof::checkSizeofForArrayParameter()
+void CheckSizeofImpl::checkSizeofForArrayParameter()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
+
+    logChecker("CheckSizeof::checkSizeofForArrayParameter"); // warning
+
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * scope : symbolDatabase->functionScopes) {
         for (const Token* tok = scope->bodyStart->next(); tok != scope->bodyEnd; tok = tok->next()) {
@@ -85,14 +87,14 @@ void CheckSizeof::checkSizeofForArrayParameter()
                 }
 
                 const Variable *var = varTok->variable();
-                if (var && var->isArray() && var->isArgument() && !var->isReference())
+                if (var && var->isArray() && var->isArgument() && !var->isReference() && !(var->isStlType() && var->getTypeName() == "std::array"))
                     sizeofForArrayParameterError(tok);
             }
         }
     }
 }
 
-void CheckSizeof::sizeofForArrayParameterError(const Token *tok)
+void CheckSizeofImpl::sizeofForArrayParameterError(const Token *tok)
 {
     reportError(tok, Severity::warning,
                 "sizeofwithsilentarraypointer", "Using 'sizeof' on array given as function argument "
@@ -108,10 +110,12 @@ void CheckSizeof::sizeofForArrayParameterError(const Token *tok)
                 );
 }
 
-void CheckSizeof::checkSizeofForPointerSize()
+void CheckSizeofImpl::checkSizeofForPointerSize()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
+
+    logChecker("CheckSizeof::checkSizeofForPointerSize"); // warning
 
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * scope : symbolDatabase->functionScopes) {
@@ -125,12 +129,12 @@ void CheckSizeof::checkSizeofForPointerSize()
             // Once leaving those tests, it is mandatory to have:
             // - variable matching the used pointer
             // - tokVar pointing on the argument where sizeof may be used
-            if (Token::Match(tok->tokAt(2), "malloc|alloca|calloc (")) {
+            if (Token::Match(tok->tokAt(2), "%name% (") && mSettings.library.getAllocFuncInfo(tok->tokAt(2))) {
                 if (Token::Match(tok, "%var% ="))
                     variable = tok;
                 else if (tok->strAt(1) == ")" && Token::Match(tok->linkAt(1)->tokAt(-2), "%var% ="))
                     variable = tok->linkAt(1)->tokAt(-2);
-                else if (tok->link() && Token::Match(tok, "> ( malloc|alloca|calloc (") && Token::Match(tok->link()->tokAt(-3), "%var% ="))
+                else if (tok->link() && Token::Match(tok, "> ( %name% (") && Token::Match(tok->link()->tokAt(-3), "%var% ="))
                     variable = tok->link()->tokAt(-3);
                 tokSize = tok->tokAt(4);
                 tokFunc = tok->tokAt(2);
@@ -168,9 +172,11 @@ void CheckSizeof::checkSizeofForPointerSize()
                         auto hasMultiplication = [](const Token* parTok) -> bool {
                             while (parTok) { // Allow division if followed by multiplication
                                 if (parTok->isArithmeticalOp() && parTok->str() == "*") {
-                                    for (const Token* szTok : { parTok->astOperand1(), parTok->astOperand2() })
-                                        if (Token::simpleMatch(szTok, "(") && Token::simpleMatch(szTok->previous(), "sizeof"))
-                                            return true;
+                                    const Token* szToks[] = { parTok->astOperand1(), parTok->astOperand2() };
+                                    if (std::any_of(std::begin(szToks), std::end(szToks), [](const Token* szTok) {
+                                        return Token::simpleMatch(szTok, "(") && Token::simpleMatch(szTok->previous(), "sizeof");
+                                    }))
+                                        return true;
                                 }
                                 parTok = parTok->astParent();
                             }
@@ -225,8 +231,10 @@ void CheckSizeof::checkSizeofForPointerSize()
                 continue;
 
             // Now check for the sizeof usage: Does the level of pointer indirection match?
-            if (tokSize->linkAt(1)->strAt(-1) == "*") {
-                if (variable && variable->valueType() && variable->valueType()->pointer == 1 && variable->valueType()->type != ValueType::VOID)
+            const Token * const tokLink = tokSize->linkAt(1);
+            if (tokLink && tokLink->strAt(-1) == "*") {
+                if (variable && variable->valueType() && variable->valueType()->pointer == 1 && variable->valueType()->type != ValueType::VOID &&
+                    variable->valueType()->isTypeEqual(tokSize->next()->astOperand2()->valueType()))
                     sizeofForPointerError(variable, variable->str());
                 else if (variable2 && variable2->valueType() && variable2->valueType()->pointer == 1 && variable2->valueType()->type != ValueType::VOID)
                     sizeofForPointerError(variable2, variable2->str());
@@ -255,7 +263,7 @@ void CheckSizeof::checkSizeofForPointerSize()
     }
 }
 
-void CheckSizeof::sizeofForPointerError(const Token *tok, const std::string &varname)
+void CheckSizeofImpl::sizeofForPointerError(const Token *tok, const std::string &varname)
 {
     reportError(tok, Severity::warning, "pointerSize",
                 "Size of pointer '" + varname + "' used instead of size of its data.\n"
@@ -264,7 +272,7 @@ void CheckSizeof::sizeofForPointerError(const Token *tok, const std::string &var
                 "write 'sizeof(*" + varname + ")'.", CWE467, Certainty::normal);
 }
 
-void CheckSizeof::divideBySizeofError(const Token *tok, const std::string &memfunc)
+void CheckSizeofImpl::divideBySizeofError(const Token *tok, const std::string &memfunc)
 {
     reportError(tok, Severity::warning, "sizeofDivisionMemfunc",
                 "Division by result of sizeof(). " + memfunc + "() expects a size in bytes, did you intend to multiply instead?", CWE682, Certainty::normal);
@@ -272,10 +280,12 @@ void CheckSizeof::divideBySizeofError(const Token *tok, const std::string &memfu
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-void CheckSizeof::sizeofsizeof()
+void CheckSizeofImpl::sizeofsizeof()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
+
+    logChecker("CheckSizeof::sizeofsizeof"); // warning
 
     for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
         if (Token::Match(tok, "sizeof (| sizeof")) {
@@ -285,7 +295,7 @@ void CheckSizeof::sizeofsizeof()
     }
 }
 
-void CheckSizeof::sizeofsizeofError(const Token *tok)
+void CheckSizeofImpl::sizeofsizeofError(const Token *tok)
 {
     reportError(tok, Severity::warning,
                 "sizeofsizeof", "Calling 'sizeof' on 'sizeof'.\n"
@@ -296,12 +306,14 @@ void CheckSizeof::sizeofsizeofError(const Token *tok)
 
 //-----------------------------------------------------------------------------
 
-void CheckSizeof::sizeofCalculation()
+void CheckSizeofImpl::sizeofCalculation()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
-    const bool printInconclusive = mSettings->certainty.isEnabled(Certainty::inconclusive);
+    logChecker("CheckSizeof::sizeofCalculation"); // warning
+
+    const bool printInconclusive = mSettings.certainty.isEnabled(Certainty::inconclusive);
 
     for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
         if (!Token::simpleMatch(tok, "sizeof ("))
@@ -310,7 +322,7 @@ void CheckSizeof::sizeofCalculation()
         // ignore if the `sizeof` result is cast to void inside a macro, i.e. the calculation is
         // expected to be parsed but skipped, such as in a disabled custom ASSERT() macro
         if (tok->isExpandedMacro() && tok->previous()) {
-            const Token *cast_end = (tok->previous()->str() == "(") ? tok->previous() : tok;
+            const Token *cast_end = (tok->strAt(-1) == "(") ? tok->previous() : tok;
             if (Token::simpleMatch(cast_end->tokAt(-3), "( void )") ||
                 Token::simpleMatch(cast_end->tokAt(-4), "static_cast < void >")) {
                 continue;
@@ -332,7 +344,7 @@ void CheckSizeof::sizeofCalculation()
     }
 }
 
-void CheckSizeof::sizeofCalculationError(const Token *tok, bool inconclusive)
+void CheckSizeofImpl::sizeofCalculationError(const Token *tok, bool inconclusive)
 {
     reportError(tok, Severity::warning,
                 "sizeofCalculation", "Found calculation inside sizeof().", CWE682, inconclusive ? Certainty::inconclusive : Certainty::normal);
@@ -340,10 +352,12 @@ void CheckSizeof::sizeofCalculationError(const Token *tok, bool inconclusive)
 
 //-----------------------------------------------------------------------------
 
-void CheckSizeof::sizeofFunction()
+void CheckSizeofImpl::sizeofFunction()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning) && !mSettings.isPremiumEnabled("sizeofFunctionCall"))
         return;
+
+    logChecker("CheckSizeof::sizeofFunction"); // warning
 
     for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
         if (Token::simpleMatch(tok, "sizeof (")) {
@@ -351,7 +365,7 @@ void CheckSizeof::sizeofFunction()
             // ignore if the `sizeof` result is cast to void inside a macro, i.e. the calculation is
             // expected to be parsed but skipped, such as in a disabled custom ASSERT() macro
             if (tok->isExpandedMacro() && tok->previous()) {
-                const Token *cast_end = (tok->previous()->str() == "(") ? tok->previous() : tok;
+                const Token *cast_end = (tok->strAt(-1) == "(") ? tok->previous() : tok;
                 if (Token::simpleMatch(cast_end->tokAt(-3), "( void )") ||
                     Token::simpleMatch(cast_end->tokAt(-4), "static_cast < void >")) {
                     continue;
@@ -361,7 +375,7 @@ void CheckSizeof::sizeofFunction()
             if (const Token *argument = tok->next()->astOperand2()) {
                 const Token *checkToken = argument->previous();
                 if (checkToken->tokType() == Token::eName)
-                    break;
+                    continue;
                 const Function * fun = checkToken->function();
                 // Don't report error if the function is overloaded
                 if (fun && fun->nestedIn->functionMap.count(checkToken->str()) == 1) {
@@ -372,7 +386,7 @@ void CheckSizeof::sizeofFunction()
     }
 }
 
-void CheckSizeof::sizeofFunctionError(const Token *tok)
+void CheckSizeofImpl::sizeofFunctionError(const Token *tok)
 {
     reportError(tok, Severity::warning,
                 "sizeofFunctionCall", "Found function call inside sizeof().", CWE682, Certainty::normal);
@@ -381,10 +395,12 @@ void CheckSizeof::sizeofFunctionError(const Token *tok)
 //-----------------------------------------------------------------------------
 // Check for code like sizeof()*sizeof() or sizeof(ptr)/value
 //-----------------------------------------------------------------------------
-void CheckSizeof::suspiciousSizeofCalculation()
+void CheckSizeofImpl::suspiciousSizeofCalculation()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning) || !mSettings->certainty.isEnabled(Certainty::inconclusive))
+    if (!mSettings.severity.isEnabled(Severity::warning) || !mSettings.certainty.isEnabled(Certainty::inconclusive))
         return;
+
+    logChecker("CheckSizeof::suspiciousSizeofCalculation"); // warning,inconclusive
 
     for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
         if (Token::simpleMatch(tok, "sizeof (")) {
@@ -409,13 +425,13 @@ void CheckSizeof::suspiciousSizeofCalculation()
     }
 }
 
-void CheckSizeof::multiplySizeofError(const Token *tok)
+void CheckSizeofImpl::multiplySizeofError(const Token *tok)
 {
     reportError(tok, Severity::warning,
                 "multiplySizeof", "Multiplying sizeof() with sizeof() indicates a logic error.", CWE682, Certainty::inconclusive);
 }
 
-void CheckSizeof::divideSizeofError(const Token *tok)
+void CheckSizeofImpl::divideSizeofError(const Token *tok)
 {
     reportError(tok, Severity::warning,
                 "divideSizeof", "Division of result of sizeof() on pointer type.\n"
@@ -423,10 +439,12 @@ void CheckSizeof::divideSizeofError(const Token *tok)
                 "not the size of the memory area it points to.", CWE682, Certainty::inconclusive);
 }
 
-void CheckSizeof::sizeofVoid()
+void CheckSizeofImpl::sizeofVoid()
 {
-    if (!mSettings->severity.isEnabled(Severity::portability))
+    if (!mSettings.severity.isEnabled(Severity::portability))
         return;
+
+    logChecker("CheckSizeof::sizeofVoid"); // portability
 
     for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
         if (Token::simpleMatch(tok, "sizeof ( void )")) {
@@ -459,23 +477,55 @@ void CheckSizeof::sizeofVoid()
     }
 }
 
-void CheckSizeof::sizeofVoidError(const Token *tok)
+void CheckSizeofImpl::sizeofVoidError(const Token *tok)
 {
     const std::string message = "Behaviour of 'sizeof(void)' is not covered by the ISO C standard.";
     const std::string verbose = message + " A value for 'sizeof(void)' is defined only as part of a GNU C extension, which defines 'sizeof(void)' to be 1.";
     reportError(tok, Severity::portability, "sizeofVoid", message + "\n" + verbose, CWE682, Certainty::normal);
 }
 
-void CheckSizeof::sizeofDereferencedVoidPointerError(const Token *tok, const std::string &varname)
+void CheckSizeofImpl::sizeofDereferencedVoidPointerError(const Token *tok, const std::string &varname)
 {
     const std::string message = "'*" + varname + "' is of type 'void', the behaviour of 'sizeof(void)' is not covered by the ISO C standard.";
     const std::string verbose = message + " A value for 'sizeof(void)' is defined only as part of a GNU C extension, which defines 'sizeof(void)' to be 1.";
     reportError(tok, Severity::portability, "sizeofDereferencedVoidPointer", message + "\n" + verbose, CWE682, Certainty::normal);
 }
 
-void CheckSizeof::arithOperationsOnVoidPointerError(const Token* tok, const std::string &varname, const std::string &vartype)
+void CheckSizeofImpl::arithOperationsOnVoidPointerError(const Token* tok, const std::string &varname, const std::string &vartype)
 {
     const std::string message = "'$symbol' is of type '" + vartype + "'. When using void pointers in calculations, the behaviour is undefined.";
     const std::string verbose = message + " Arithmetic operations on 'void *' is a GNU C extension, which defines the 'sizeof(void)' to be 1.";
     reportError(tok, Severity::portability, "arithOperationsOnVoidPointer", "$symbol:" + varname + '\n' + message + '\n' + verbose, CWE467, Certainty::normal);
+}
+
+void CheckSizeof::runChecks(const Tokenizer& tokenizer, ErrorLogger& errorLogger)
+{
+    CheckSizeofImpl checkSizeof(&tokenizer, tokenizer.getSettings(), errorLogger);
+
+    // Checks
+    checkSizeof.sizeofsizeof();
+    checkSizeof.sizeofCalculation();
+    checkSizeof.sizeofFunction();
+    checkSizeof.suspiciousSizeofCalculation();
+    checkSizeof.checkSizeofForArrayParameter();
+    checkSizeof.checkSizeofForPointerSize();
+    checkSizeof.checkSizeofForNumericParameter();
+    checkSizeof.sizeofVoid();
+}
+
+void CheckSizeof::getErrorMessages(ErrorLogger& errorLogger, const Settings& settings) const
+{
+    CheckSizeofImpl c(nullptr, settings, errorLogger);
+    c.sizeofForArrayParameterError(nullptr);
+    c.sizeofForPointerError(nullptr, "varname");
+    c.divideBySizeofError(nullptr, "memset");
+    c.sizeofForNumericParameterError(nullptr);
+    c.sizeofsizeofError(nullptr);
+    c.sizeofCalculationError(nullptr, false);
+    c.sizeofFunctionError(nullptr);
+    c.multiplySizeofError(nullptr);
+    c.divideSizeofError(nullptr);
+    c.sizeofVoidError(nullptr);
+    c.sizeofDereferencedVoidPointerError(nullptr, "varname");
+    c.arithOperationsOnVoidPointerError(nullptr, "varname", "vartype");
 }

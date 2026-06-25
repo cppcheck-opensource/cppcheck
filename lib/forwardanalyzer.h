@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2021 Cppcheck team.
+ * Copyright (C) 2007-2024 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,15 +21,19 @@
 
 #include "analyzer.h"
 
+class ErrorLogger;
 class Settings;
 class Token;
+class TokenList;
 template<class T> class ValuePtr;
 
 Analyzer::Result valueFlowGenericForward(Token* start,
                                          const Token* end,
                                          const ValuePtr<Analyzer>& a,
-                                         const Settings* settings);
+                                         const TokenList& tokenList,
+                                         ErrorLogger& errorLogger,
+                                         const Settings& settings);
 
-Analyzer::Result valueFlowGenericForward(Token* start, const ValuePtr<Analyzer>& a, const Settings* settings);
+Analyzer::Result valueFlowGenericForward(Token* start, const ValuePtr<Analyzer>& a, const TokenList& tokenList, ErrorLogger& errorLogger, const Settings& settings);
 
 #endif

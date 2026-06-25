@@ -1,9 +1,11 @@
 #include <stdlib.h>
 int main()
 {
-    int result;
+    int result = 0;
     char *a = malloc(10);
-    a[0] = 0;
-    result = a[0];
+    if (a) {
+        a[0] = 0;
+        result = a[0];
+    }
     return result;
 }

@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2025 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,15 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-#include "settings.h"
+#include "fixture.h"
+#include "helpers.h"
 #include "summaries.h"
-#include "testsuite.h"
-#include "tokenize.h"
 
-#include <iosfwd>       // for istringstream, ostringstream
+#include <cstddef>
 #include <string>
-
 
 class TestSummaries : public TestFixture {
 public:
@@ -39,16 +36,12 @@ private:
     }
 
 #define createSummaries(...) createSummaries_(__FILE__, __LINE__, __VA_ARGS__)
-    std::string createSummaries_(const char* file, int line, const char code[], const char filename[] = "test.cpp") {
-        // Clear the error buffer..
-        errout.str("");
-
+    template<size_t size>
+    std::string createSummaries_(const char* file, int line, const char (&code)[size]) {
         // tokenize..
-        Settings settings;
-        Tokenizer tokenizer(&settings, this);
-        std::istringstream istr(code);
-        ASSERT_LOC(tokenizer.tokenize(istr, filename), file, line);
-        return Summaries::create(&tokenizer, "");
+        SimpleTokenizer tokenizer(settingsDefault, *this);
+        ASSERT_LOC(tokenizer.tokenize(code), file, line);
+        return Summaries::create(tokenizer, "", 0);
     }
 
     void createSummaries1() {

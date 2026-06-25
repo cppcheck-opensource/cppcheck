@@ -1,6 +1,6 @@
 ---
 title: Writing addons
-subtitle: Version 2.9
+subtitle: Version 2.22 dev
 author: Cppcheck team
 lang: en
 documentclass: report
@@ -17,7 +17,7 @@ This document provides an overview about writing Cppcheck addons.
 
 See class `Token` in cppcheckdata.py
 
-Cppcheck splits up the code in tokens. Operators, numbers, identifiers, etc.
+Cppcheck splits the code up in tokens: operators, numbers, identifiers, etc.
 
 Example C code:
 
@@ -49,7 +49,7 @@ The `cfg.tokenlist` does not always match the raw input code exactly. For instan
  * The `cfg.tokenlist` is preprocessed.
  * There is no typedefs in `cfg.tokenlist`.
  * C++ templates are instantiated when possible in `cfg.tokenlist`.
- * Variable declarations are sometimes splitted up.
+ * Variable declarations are sometimes split up.
  * If you don't write {} around the body for a if/else/while/for etc then those are inserted in the `cfg.tokenlist`.
  * ...
 

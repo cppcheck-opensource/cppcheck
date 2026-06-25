@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,55 +21,55 @@
 //---------------------------------------------------------------------------
 
 #include "config.h"
-#include "errortypes.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <istream>
 #include <list>
+#include <mutex>
+#include <set>
 #include <string>
+#include <utility>
 #include <vector>
+#include <map>
+
+class TokenList;
+class ErrorMessage;
+enum class Certainty : std::uint8_t;
+class FileWithDetails;
+class Settings;
 
 /// @addtogroup Core
 /// @{
 
-class Tokenizer;
-
 /** @brief class for handling suppressions */
-class CPPCHECKLIB Suppressions {
+class CPPCHECKLIB SuppressionList {
 public:
+
+    enum class Type : std::uint8_t {
+        unique, file, block, blockBegin, blockEnd, macro
+    };
 
     struct CPPCHECKLIB ErrorMessage {
         std::size_t hash;
         std::string errorId;
-        void setFileName(const std::string &s);
+        void setFileName(std::string s);
         const std::string &getFileName() const {
             return mFileName;
         }
-        int lineNumber;
-        Certainty::CertaintyLevel certainty;
+        int lineNumber; // TODO: need to be unsigned
+        Certainty certainty;
         std::string symbolNames;
+        std::set<std::string> macroNames;
+
+        static SuppressionList::ErrorMessage fromErrorMessage(const ::ErrorMessage &msg, const std::set<std::string> &macroNames);
     private:
         std::string mFileName;
     };
 
     struct CPPCHECKLIB Suppression {
-        Suppression() : lineNumber(NO_LINE), hash(0), thisAndNextLine(false), matched(false), checked(false) {}
-        Suppression(const Suppression &other) {
-            *this = other;
-        }
-        Suppression(const std::string &id, const std::string &file, int line=NO_LINE) : errorId(id), fileName(file), lineNumber(line), hash(0), thisAndNextLine(false), matched(false), checked(false) {}
-
-        Suppression & operator=(const Suppression &other) {
-            errorId = other.errorId;
-            fileName = other.fileName;
-            lineNumber = other.lineNumber;
-            symbolName = other.symbolName;
-            hash = other.hash;
-            thisAndNextLine = other.thisAndNextLine;
-            matched = other.matched;
-            checked = other.checked;
-            return *this;
-        }
+        Suppression() = default;
+        Suppression(std::string id, std::string file, int line=NO_LINE) : errorId(std::move(id)), fileName(std::move(file)), lineNumber(line) {}
 
         bool operator<(const Suppression &other) const {
             if (errorId != other.errorId)
@@ -80,11 +80,35 @@ public:
                 return fileName < other.fileName;
             if (symbolName != other.symbolName)
                 return symbolName < other.symbolName;
+            if (macroName != other.macroName)
+                return macroName < other.macroName;
             if (hash != other.hash)
                 return hash < other.hash;
             if (thisAndNextLine != other.thisAndNextLine)
                 return thisAndNextLine;
             return false;
+        }
+
+        bool operator==(const Suppression &other) const {
+            if (errorId != other.errorId)
+                return false;
+            if (lineNumber < other.lineNumber)
+                return false;
+            if (fileName != other.fileName)
+                return false;
+            if (symbolName != other.symbolName)
+                return false;
+            if (macroName != other.macroName)
+                return false;
+            if (hash != other.hash)
+                return false;
+            if (type != other.type)
+                return false;
+            if (lineBegin != other.lineBegin)
+                return false;
+            if (lineEnd != other.lineEnd)
+                return false;
+            return true;
         }
 
         /**
@@ -95,14 +119,22 @@ public:
          */
         bool parseComment(std::string comment, std::string *errorMessage);
 
-        bool isSuppressed(const ErrorMessage &errmsg) const;
+        enum class Result : std::uint8_t {
+            None,
+            Checked,
+            Matched
+        };
+
+        Result isSuppressed(const ErrorMessage &errmsg) const;
 
         bool isMatch(const ErrorMessage &errmsg);
 
-        std::string getText() const;
+        bool isWildcard() const {
+            return fileName.find_first_of("?*") != std::string::npos;
+        }
 
         bool isLocal() const {
-            return !fileName.empty() && fileName.find_first_of("?*") == std::string::npos;
+            return !fileName.empty() && !isWildcard();
         }
 
         bool isSameParameters(const Suppression &other) const {
@@ -114,16 +146,28 @@ public:
                    thisAndNextLine == other.thisAndNextLine;
         }
 
+        std::string toString() const;
+
         std::string errorId;
         std::string fileName;
-        int lineNumber;
+        std::string extraComment;
+        // TODO: use simplecpp::Location?
+        int fileIndex{};
+        int lineNumber = NO_LINE; // TODO: needs to be unsigned
+        int lineBegin = NO_LINE;
+        int lineEnd = NO_LINE;
+        int column{};
+        Type type = Type::unique;
         std::string symbolName;
-        std::size_t hash;
-        bool thisAndNextLine; // Special case for backwards compatibility: { // cppcheck-suppress something
-        bool matched;
-        bool checked; // for inline suppressions, checked or not
+        std::string macroName;
+        std::size_t hash{};
+        bool thisAndNextLine{}; // Special case for backwards compatibility: { // cppcheck-suppress something
+        bool matched{}; /** This suppression was fully matched in an isSuppressed() call */
+        bool checked{}; /** This suppression applied to code which was being analyzed but did not match the error in an isSuppressed() call */
+        bool isInline{};
+        bool isPolyspace{};
 
-        enum { NO_LINE = -1 };
+        enum : std::int8_t { NO_LINE = -1 };
     };
 
     /**
@@ -149,6 +193,14 @@ public:
     static std::vector<Suppression> parseMultiSuppressComment(const std::string &comment, std::string *errorMessage);
 
     /**
+     * Create a Suppression object from a suppression line
+     * @param line The line to parse.
+     * @return a suppression object
+     * @throws std::runtime_error thrown if the given suppression is invalid
+     */
+    static Suppression parseLine(std::string line);
+
+    /**
      * @brief Don't show the given error.
      * @param line Description of error to suppress (in id:file:line format).
      * @return error message. empty upon success
@@ -161,62 +213,121 @@ public:
      * @param suppression suppression details
      * @return error message. empty upon success
      */
-    std::string addSuppression(const Suppression &suppression);
+    std::string addSuppression(Suppression suppression);
 
     /**
      * @brief Combine list of suppressions into the current suppressions.
      * @param suppressions list of suppression details
      * @return error message. empty upon success
      */
-    std::string addSuppressions(const std::list<Suppression> &suppressions);
+    std::string addSuppressions(std::list<Suppression> suppressions);
+
+    /**
+     * @brief Updates the state of the given suppression.
+     * @param suppression the suppression to update
+     * @return true if suppression to update was found
+     */
+    bool updateSuppressionState(const SuppressionList::Suppression& suppression);
+
+    /**
+     * @brief Returns true if this message should not be shown to the user.
+     * @param errmsg error message
+     * @param global use global suppressions
+     * @return true if this error is suppressed.
+     */
+    bool isSuppressed(const ErrorMessage &errmsg, bool global = true);
+
+    /**
+     * @brief Returns true if this message is "explicitly" suppressed. The suppression "id" must match textually exactly.
+     * @param errmsg error message
+     * @param global use global suppressions
+     * @return true if this error is explicitly suppressed.
+     */
+    bool isSuppressedExplicitly(const ErrorMessage &errmsg, bool global = true);
 
     /**
      * @brief Returns true if this message should not be shown to the user.
      * @param errmsg error message
      * @return true if this error is suppressed.
      */
-    bool isSuppressed(const ErrorMessage &errmsg);
-
-    /**
-     * @brief Returns true if this message should not be shown to the user, only uses local suppressions.
-     * @param errmsg error message
-     * @return true if this error is suppressed.
-     */
-    bool isSuppressedLocal(const ErrorMessage &errmsg);
+    bool isSuppressed(const ::ErrorMessage &errmsg, const std::set<std::string>& macroNames);
 
     /**
      * @brief Create an xml dump of suppressions
      * @param out stream to write XML to
      */
-    void dump(std::ostream &out) const;
+    void dump(std::ostream &out, const std::string& filePath = {}) const;
 
     /**
      * @brief Returns list of unmatched local (per-file) suppressions.
      * @return list of unmatched suppressions
      */
-    std::list<Suppression> getUnmatchedLocalSuppressions(const std::string &file, const bool unusedFunctionChecking) const;
+    std::list<Suppression> getUnmatchedLocalSuppressions(const FileWithDetails &file) const;
 
     /**
      * @brief Returns list of unmatched global (glob pattern) suppressions.
      * @return list of unmatched suppressions
      */
-    std::list<Suppression> getUnmatchedGlobalSuppressions(const bool unusedFunctionChecking) const;
+    std::list<Suppression> getUnmatchedGlobalSuppressions() const;
+
+    /**
+     * @brief Returns list of unmatched inline suppressions.
+     * @return list of unmatched suppressions
+     */
+    std::list<Suppression> getUnmatchedInlineSuppressions() const;
 
     /**
      * @brief Returns list of all suppressions.
      * @return list of suppressions
      */
-    const std::list<Suppression> &getSuppressions() const;
+    std::list<Suppression> getSuppressions() const;
 
     /**
      * @brief Marks Inline Suppressions as checked if source line is in the token stream
      */
-    void markUnmatchedInlineSuppressionsAsChecked(const Tokenizer &tokenizer);
+    void markUnmatchedInlineSuppressionsAsChecked(const TokenList &tokenlist);
 
 private:
+    mutable std::mutex mSuppressionsSync;
     /** @brief List of error which the user doesn't want to see. */
     std::list<Suppression> mSuppressions;
 };
+
+struct Suppressions
+{
+    /** @brief suppress message (--suppressions) */
+    SuppressionList nomsg;
+    /** @brief suppress exitcode */
+    SuppressionList nofail;
+};
+
+namespace polyspace {
+
+    enum class CommentKind : std::uint8_t {
+        Invalid, Regular, Begin, End,
+    };
+
+    class CPPCHECKLIB Parser {
+    public:
+        Parser() = delete;
+        explicit Parser(const Settings &settings);
+
+        std::list<SuppressionList::Suppression> parse(const std::string &comment, int line, const std::string &filename) const;
+
+        static int parseRange(const std::string& comment, std::string::size_type& pos);
+        static std::vector<std::pair<std::string, std::string>> parseFamilyRules(const std::string& comment, std::string::size_type& pos);
+
+    private:
+        std::set<std::string> parseIds(const std::string& comment, std::string::size_type& pos) const;
+
+        static CommentKind parseKind(const std::string& comment, std::string::size_type& pos);
+
+        std::map<std::string, std::string> mFamilyMap;
+    };
+
+    bool CPPCHECKLIB isPolyspaceComment(const std::string &comment);
+
+}
 
 /// @}
 //---------------------------------------------------------------------------

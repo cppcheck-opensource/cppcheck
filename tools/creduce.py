@@ -1,4 +1,10 @@
-import argparse, contextlib, multiprocessing, os, tempfile, shutil, subprocess
+import argparse
+import contextlib
+import multiprocessing
+import os
+import tempfile
+import shutil
+import subprocess
 
 @contextlib.contextmanager
 def mkdtemp():

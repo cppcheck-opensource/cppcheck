@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,22 +20,29 @@
 #ifndef THREADHANDLER_H
 #define THREADHANDLER_H
 
+#include "settings.h"
 #include "suppressions.h"
 #include "threadresult.h"
 
+#include <cstddef>
+#include <list>
+#include <memory>
 #include <set>
+#include <string>
 
 #include <QDateTime>
 #include <QElapsedTimer>
+#include <QList>
 #include <QObject>
+#include <QString>
 #include <QStringList>
 
 class ResultsView;
 class CheckThread;
 class QSettings;
-class Settings;
 class ImportProject;
 class ErrorItem;
+class FileWithDetails;
 
 /// @addtogroup GUI
 /// @{
@@ -52,17 +59,11 @@ public:
     ~ThreadHandler() override;
 
     /**
-     * @brief Set the number of threads to use
-     * @param count The number of threads to use
-     */
-    void setThreadCount(const int count);
-
-    /**
      * @brief Initialize the threads (connect all signals to resultsview's slots)
      *
      * @param view View to show error results
      */
-    void initialize(ResultsView *view);
+    void initialize(const ResultsView *view);
 
     /**
      * @brief Load settings
@@ -80,8 +81,8 @@ public:
         mAddonsAndTools = addonsAndTools;
     }
 
-    void setSuppressions(const QList<Suppressions::Suppression> &s) {
-        mSuppressions = s;
+    void setSuppressions(const QList<SuppressionList::Suppression> &s) {
+        mSuppressionsUI = s;
     }
 
     void setClangIncludePaths(const QStringList &s) {
@@ -99,7 +100,7 @@ public:
      *
      * @param files files to check
      */
-    void setFiles(const QStringList &files);
+    void setFiles(std::list<FileWithDetails> files);
 
     /**
      * @brief Set project to check
@@ -112,8 +113,9 @@ public:
      * @brief Start the threads to check the files
      *
      * @param settings Settings for checking
+     * @param supprs Suppressions for checking
      */
-    void check(const Settings &settings);
+    void check(const Settings &settings, const std::shared_ptr<Suppressions>& supprs);
 
     /**
      * @brief Set files to check
@@ -127,7 +129,7 @@ public:
      *
      * @param files list of files to be checked
      */
-    void setCheckFiles(const QStringList& files);
+    void setCheckFiles(std::list<FileWithDetails> files);
 
     /**
      * @brief Is checking running?
@@ -161,7 +163,7 @@ public:
      * @brief Get files that should be rechecked because they have been
      * changed.
      */
-    QStringList getReCheckFiles(bool all) const;
+    std::list<FileWithDetails> getReCheckFiles(bool all) const;
 
     /**
      * @brief Get start time of last check
@@ -177,6 +179,11 @@ public:
      */
     void setCheckStartTime(QDateTime checkStartTime);
 
+    /**
+     * @brief Emit the threadDetailsUpdated signal
+     */
+    void emitThreadDetailsUpdated();
+
 signals:
     /**
      * @brief Signal that all threads are done
@@ -184,9 +191,16 @@ signals:
      */
     void done();
 
+    // NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name) - caused by generated MOC code
     void log(const QString &msg);
 
+    // NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name) - caused by generated MOC code
     void debugError(const ErrorItem &item);
+
+    /**
+     * @brief Emitted when thread details are updated.
+     */
+    void threadDetailsUpdated(QMap<int, CheckThread::Details> threadDetails);
 
 public slots:
 
@@ -195,6 +209,22 @@ public slots:
      *
      */
     void stop();
+
+    /**
+     * @brief Slot threads use to signal this class that it started checking a file
+     * @param details Details about what file is being checked and by what thread
+     */
+    void startCheck(CheckThread::Details details);
+
+    /**
+     * @brief Slot threads use to signal this class that it finish checking a file
+     * @param details Details about what file finished being checked and by what thread
+     */
+    void finishCheck(CheckThread::Details details);
+
+signals:
+    void progress(QString filename, QString stage, std::size_t value);
+
 protected slots:
     /**
      * @brief Slot that a single thread is done
@@ -206,7 +236,7 @@ protected:
      * @brief List of files checked last time (used when rechecking)
      *
      */
-    QStringList mLastFiles;
+    std::list<FileWithDetails> mLastFiles;
 
     /** @brief date and time when current checking started */
     QDateTime mCheckStartTime;
@@ -226,13 +256,25 @@ protected:
      * @brief The previous scan duration in milliseconds.
      *
      */
-    int mScanDuration;
+    int mScanDuration{};
+
+    /**
+     * @brief Create checker threads
+     * @param count The number of threads to spawn
+     */
+    void createThreads(int count);
 
     /**
      * @brief Function to delete all threads
      *
      */
     void removeThreads();
+
+    /*
+     * @brief Apply check settings to a checker thread
+     * @param thread The thread to setup
+     */
+    void setupCheckThread(CheckThread &thread) const;
 
     /**
      * @brief Thread results are stored here
@@ -250,13 +292,32 @@ protected:
      * @brief The amount of threads currently running
      *
      */
-    int mRunningThreadCount;
+    int mRunningThreadCount{};
 
-    bool mAnalyseWholeProgram;
+    /**
+     * @brief A whole program check is queued by check()
+     */
+    bool mAnalyseWholeProgram{};
+    std::string mCtuInfo;
 
     QStringList mAddonsAndTools;
-    QList<Suppressions::Suppression> mSuppressions;
+    QList<SuppressionList::Suppression> mSuppressionsUI;
     QStringList mClangIncludePaths;
+
+    /// @{
+    /**
+     * @brief Settings specific to the current analysis
+     */
+    QStringList mCheckAddonsAndTools;
+    Settings mCheckSettings;
+    std::shared_ptr<Suppressions> mCheckSuppressions;
+    /// @}
+
+    /**
+     * @brief Details about currently running threads
+     */
+    QMap<int, CheckThread::Details> mThreadDetails;
+
 private:
 
     /**

@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include "check64bit.h"
 
 #include "errortypes.h"
+#include "platform.h"
 #include "settings.h"
 #include "symboldatabase.h"
 #include "token.h"
@@ -33,18 +34,29 @@
 //---------------------------------------------------------------------------
 
 // CWE ids used
-static const struct CWE CWE398(398U);   // Indicator of Poor Code Quality
-static const struct CWE CWE758(758U);   // Reliance on Undefined, Unspecified, or Implementation-Defined Behavior
+static const CWE CWE758(758U);   // Reliance on Undefined, Unspecified, or Implementation-Defined Behavior
 
-// Register this check class (by creating a static instance of it)
-namespace {
-    Check64BitPortability instance;
+static bool is32BitIntegerReturn(const Function* func, const Settings& settings)
+{
+    if (settings.platform.sizeof_pointer != 8)
+        return false;
+    const ValueType* vt = func->arg->valueType();
+    return vt && vt->pointer == 0 && vt->isIntegral() && vt->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer) == 4;
 }
 
-void Check64BitPortability::pointerassignment()
+static bool isFunctionPointer(const Token* tok)
 {
-    if (!mSettings->severity.isEnabled(Severity::portability))
+    if (!tok || !tok->variable())
+        return false;
+    return Tokenizer::isFunctionPointer(tok->variable()->nameToken());
+}
+
+void Check64BitPortabilityImpl::pointerassignment()
+{
+    if (!mSettings.severity.isEnabled(Severity::portability))
         return;
+
+    logChecker("Check64BitPortability::pointerassignment"); // portability
 
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
 
@@ -56,7 +68,7 @@ void Check64BitPortability::pointerassignment()
         bool retPointer = false;
         if (scope->function->token->strAt(-1) == "*") // Function returns a pointer
             retPointer = true;
-        else if (Token::Match(scope->function->token->previous(), "int|long|DWORD")) // Function returns an integer
+        else if (is32BitIntegerReturn(scope->function, mSettings))
             ;
         else
             continue;
@@ -64,7 +76,7 @@ void Check64BitPortability::pointerassignment()
         for (const Token* tok = scope->bodyStart->next(); tok != scope->bodyEnd; tok = tok->next()) {
             // skip nested functions
             if (tok->str() == "{") {
-                if (tok->scope()->type == Scope::ScopeType::eFunction || tok->scope()->type == Scope::ScopeType::eLambda)
+                if (tok->scope()->type == ScopeType::eFunction || tok->scope()->type == ScopeType::eLambda)
                     tok = tok->link();
             }
 
@@ -78,11 +90,20 @@ void Check64BitPortability::pointerassignment()
             if (!returnType)
                 continue;
 
-            if (retPointer && !returnType->typeScope && returnType->pointer == 0U)
+            if (retPointer && !returnType->typeScope && returnType->pointer == 0)
                 returnIntegerError(tok);
 
-            if (!retPointer && returnType->pointer >= 1U)
-                returnPointerError(tok);
+            if (!retPointer) {
+                bool warn = returnType->pointer >= 1;
+                if (!warn) {
+                    const Token* tok2 = tok->astOperand1();
+                    while (tok2 && tok2->isCast())
+                        tok2 = tok2->astOperand2() ? tok2->astOperand2() : tok2->astOperand1();
+                    warn = tok2 && tok2->valueType() && tok2->valueType()->pointer;
+                }
+                if (warn)
+                    returnPointerError(tok);
+            }
         }
     }
 
@@ -98,16 +119,17 @@ void Check64BitPortability::pointerassignment()
                 continue;
 
             // Assign integer to pointer..
-            if (lhstype->pointer >= 1U &&
+            if (lhstype->pointer >= 1 &&
                 !tok->astOperand2()->isNumber() &&
-                rhstype->pointer == 0U &&
+                rhstype->pointer == 0 &&
                 rhstype->originalTypeName.empty() &&
-                rhstype->type == ValueType::Type::INT)
+                rhstype->type == ValueType::Type::INT &&
+                !isFunctionPointer(tok->astOperand1()))
                 assignmentIntegerToAddressError(tok);
 
             // Assign pointer to integer..
-            if (rhstype->pointer >= 1U &&
-                lhstype->pointer == 0U &&
+            if (rhstype->pointer >= 1 &&
+                lhstype->pointer == 0 &&
                 lhstype->originalTypeName.empty() &&
                 lhstype->isIntegral() &&
                 lhstype->type >= ValueType::Type::CHAR &&
@@ -117,7 +139,7 @@ void Check64BitPortability::pointerassignment()
     }
 }
 
-void Check64BitPortability::assignmentAddressToIntegerError(const Token *tok)
+void Check64BitPortabilityImpl::assignmentAddressToIntegerError(const Token *tok)
 {
     reportError(tok, Severity::portability,
                 "AssignmentAddressToInteger",
@@ -128,7 +150,7 @@ void Check64BitPortability::assignmentAddressToIntegerError(const Token *tok)
                 "way is to store addresses only in pointer types (or typedefs like uintptr_t).", CWE758, Certainty::normal);
 }
 
-void Check64BitPortability::assignmentIntegerToAddressError(const Token *tok)
+void Check64BitPortabilityImpl::assignmentIntegerToAddressError(const Token *tok)
 {
     reportError(tok, Severity::portability,
                 "AssignmentIntegerToAddress",
@@ -139,7 +161,7 @@ void Check64BitPortability::assignmentIntegerToAddressError(const Token *tok)
                 "way is to store addresses only in pointer types (or typedefs like uintptr_t).", CWE758, Certainty::normal);
 }
 
-void Check64BitPortability::returnPointerError(const Token *tok)
+void Check64BitPortabilityImpl::returnPointerError(const Token *tok)
 {
     reportError(tok, Severity::portability,
                 "CastAddressToIntegerAtReturn",
@@ -147,10 +169,10 @@ void Check64BitPortability::returnPointerError(const Token *tok)
                 "Returning an address value in a function with integer (int/long/etc) return type is not portable across "
                 "different platforms and compilers. For example in 32-bit Windows and Linux they are same width, but in "
                 "64-bit Windows and Linux they are of different width. In worst case you end up casting 64-bit address down "
-                "to 32-bit integer. The safe way is to always return an integer.", CWE758, Certainty::normal);
+                "to 32-bit integer. The safe way is to return a type such as intptr_t.", CWE758, Certainty::normal);
 }
 
-void Check64BitPortability::returnIntegerError(const Token *tok)
+void Check64BitPortabilityImpl::returnIntegerError(const Token *tok)
 {
     reportError(tok, Severity::portability,
                 "CastIntegerToAddressAtReturn",
@@ -159,4 +181,19 @@ void Check64BitPortability::returnIntegerError(const Token *tok)
                 "platforms and compilers. For example in 32-bit Windows and Linux they are same width, but in 64-bit Windows "
                 "and Linux they are of different width. In worst case you end up casting 64-bit integer down to 32-bit pointer. "
                 "The safe way is to always return a pointer.", CWE758, Certainty::normal);
+}
+
+void Check64BitPortability::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
+{
+    Check64BitPortabilityImpl check64BitPortability(&tokenizer, tokenizer.getSettings(), errorLogger);
+    check64BitPortability.pointerassignment();
+}
+
+void Check64BitPortability::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
+{
+    Check64BitPortabilityImpl c(nullptr, settings, errorLogger);
+    c.assignmentAddressToIntegerError(nullptr);
+    c.assignmentIntegerToAddressError(nullptr);
+    c.returnIntegerError(nullptr);
+    c.returnPointerError(nullptr);
 }

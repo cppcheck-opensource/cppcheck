@@ -1,4 +1,4 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
  * Copyright (C) 2007-2021 Cppcheck team.
  *
@@ -22,14 +22,15 @@ class TestFileList : public QObject {
     Q_OBJECT
 
 private slots:
-    void addFile();
-    void addPathList();
-    void addFile_notexist();
-    void addFile_unknown();
-    void addDirectory();
-    void addDirectory_recursive();
-    void filterFiles();
-    void filterFiles2();
-    void filterFiles3();
-    void filterFiles4();
+    void addFile() const;
+    void addPathList() const;
+    void addFile_notexist() const;
+    void addFile_unknown() const;
+    void addDirectory() const;
+    void addDirectory_recursive() const;
+    void filterFiles() const;
+    void filterFiles2() const;
+    void filterFiles3() const;
+    void filterFiles4() const;
+    void filterFiles5() const;
 };

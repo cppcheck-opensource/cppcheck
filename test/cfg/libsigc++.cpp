@@ -2,12 +2,15 @@
 // Test library configuration for libsigc++.cfg
 //
 // Usage:
-// $ cppcheck --check-library --enable=information --error-exitcode=1 --suppress=missingIncludeSystem --inline-suppr test/cfg/libsigc++.cpp
+// $ cppcheck --check-library --library=libsigc++ --enable=style,information --inconclusive --error-exitcode=1 --inline-suppr test/cfg/libsigc++.cpp
 // =>
 // No warnings about bad library configuration, unmatched suppressions, etc. exitcode=0
 //
 
-#include <sigc++/sigc++.h>
+#include <sigc++/sigc++.h> // IWYU pragma: keep
+#include <sigc++/functors/mem_fun.h>
+#include <sigc++/functors/slot.h>
+#include <sigc++/trackable.h>
 
 struct struct1 : public sigc::trackable {
     void func1(int) const {}

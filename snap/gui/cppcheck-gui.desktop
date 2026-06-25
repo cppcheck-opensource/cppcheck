@@ -1,9 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Cppcheck
-Comment=A tool for static C/C++ code analysis
-Exec=cppcheck-gui
-Icon=${SNAP}/meta/gui/cppcheck-gui.png
-Terminal=true
-StartupNotify=true
-Categories=Development;Debugger;Qt;

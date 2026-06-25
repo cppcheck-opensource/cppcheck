@@ -1,10 +1,12 @@
 // Test library configuration for bsd.cfg
 //
 // Usage:
-// $ cppcheck --library=bsd --check-library --enable=information --error-exitcode=1 --suppress=missingIncludeSystem --inline-suppr test/cfg/bsd.c
+// $ cppcheck --check-library --library=bsd --enable=style,information --inconclusive --error-exitcode=1 --inline-suppr test/cfg/bsd.c
 // =>
 // No warnings about bad library configuration, unmatched suppressions, etc. exitcode=0
 //
+
+// cppcheck-suppress-file valueFlowBailout
 
 #include <string.h>
 #include <stdlib.h>
@@ -30,11 +32,15 @@ void nullPointer_setlinebuf(FILE *stream)
 // #9323, #9331
 void verify_timercmp(struct timeval t)
 {
+    // TODO cppcheck-suppress duplicateExpression
     (void)timercmp(&t, &t, <);
+    // TODO cppcheck-suppress duplicateExpression
     (void)timercmp(&t, &t, <=);
     (void)timercmp(&t, &t, ==);
     (void)timercmp(&t, &t, !=);
+    // TODO cppcheck-suppress duplicateExpression
     (void)timercmp(&t, &t, >=);
+    // TODO cppcheck-suppress duplicateExpression
     (void)timercmp(&t, &t, >);
 }
 
@@ -70,6 +76,7 @@ ssize_t nullPointer_pwritev(int fd, const struct iovec *iov, int iovcnt, off_t o
 void uninitvar_timercmp(struct timeval t)
 {
     struct timeval uninit;
+    // cppcheck-suppress uninitvar
     (void)timercmp(&t, &uninit, <);
     (void)timercmp(&uninit, &t, <=);
     (void)timercmp(&uninit, &uninit, ==);
@@ -77,6 +84,7 @@ void uninitvar_timercmp(struct timeval t)
 
 void nullPointer_timercmp(struct timeval t)
 {
+    // cppcheck-suppress constVariablePointer
     struct timeval *p=0;
     // cppcheck-suppress nullPointer
     (void)timercmp(&t, p, <);
@@ -142,4 +150,33 @@ void uninitvar(void)
 
     // cppcheck-suppress uninitvar
     (void) arc4random_uniform(uint32Uninit);
+}
+
+void arrayIndexOutOfBounds(void)
+{
+    char * pAlloc = calloc(2, 3);
+    // cppcheck-suppress nullPointerOutOfMemory
+    pAlloc[5] = 'a';
+    // cppcheck-suppress arrayIndexOutOfBounds
+    // cppcheck-suppress nullPointerOutOfMemory
+    pAlloc[6] = 1;
+    // cppcheck-suppress memleakOnRealloc
+    pAlloc = reallocarray(pAlloc, 3, 3);
+    pAlloc[8] = 'a';
+    // cppcheck-suppress arrayIndexOutOfBounds
+    pAlloc[9] = 1;
+    free(pAlloc);
+}
+
+void reallocarray_memleak(void) {
+    char *a = (char *)malloc(10);
+    // cppcheck-suppress [memleakOnRealloc, unreadVariable]
+    a = reallocarray(a, 100, 2);
+    // cppcheck-suppress memleak
+}
+
+void reallocarray_notused(void)
+{
+    // cppcheck-suppress [leakReturnValNotUsed, ignoredReturnValue]
+    reallocarray(NULL, 10, 10);
 }

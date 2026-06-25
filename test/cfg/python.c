@@ -2,7 +2,7 @@
 // Test library configuration for python.cfg
 //
 // Usage:
-// $ cppcheck --check-library --library=python --enable=information --error-exitcode=1 --inline-suppr --suppress=missingIncludeSystem test/cfg/python.c
+// $ cppcheck --check-library --library=python --enable=style,information --inconclusive --error-exitcode=1 --inline-suppr test/cfg/python.c
 // =>
 // No warnings about bad library configuration, unmatched suppressions, etc. exitcode=0
 //
@@ -10,6 +10,7 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h> // should be the first include
 #include <stdio.h>
+#include <stdlib.h>
 
 void validCode(PyObject * pPyObjArg)
 {
@@ -25,8 +26,10 @@ void validCode(PyObject * pPyObjArg)
     Py_CLEAR(pPyObjNULL);
     (void)PyErr_NewException("text", NULL, NULL);
 
+    // cppcheck-suppress unusedAllocatedMemory
     char * pBuf1 = PyMem_Malloc(5);
     PyMem_Free(pBuf1);
+    // cppcheck-suppress unusedAllocatedMemory
     int * pIntBuf1 = PyMem_New(int, 10);
     PyMem_Free(pIntBuf1);
 }
@@ -41,7 +44,7 @@ void nullPointer()
 
 void PyMem_Malloc_memleak()
 {
-    char * pBuf1 = PyMem_Malloc(1);
+    const char * pBuf1 = PyMem_Malloc(1);
     printf("%p", pBuf1);
     // cppcheck-suppress memleak
 }
@@ -56,7 +59,7 @@ void PyMem_Malloc_mismatchAllocDealloc()
 
 void PyMem_New_memleak()
 {
-    char * pBuf1 = PyMem_New(char, 5);
+    const char * pBuf1 = PyMem_New(char, 5);
     printf("%p", pBuf1);
     // cppcheck-suppress memleak
 }

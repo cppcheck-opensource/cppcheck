@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2025 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,28 +28,45 @@
 
 #include "ui_settings.h"
 
+#include <QCheckBox>
+#include <QDialogButtonBox>
+#include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QGroupBox>
+#include <QLabel>
+#include <QLineEdit>
 #include <QList>
+#include <QListWidget>
+#include <QListWidgetItem>
+#include <QPushButton>
+#include <QRadioButton>
 #include <QSettings>
+#include <QSize>
 #include <QThread>
+#include <QVariant>
 #include <QWidget>
 
 SettingsDialog::SettingsDialog(ApplicationList *list,
                                TranslationHandler *translator,
+                               bool premium,
                                QWidget *parent) :
     QDialog(parent),
     mApplications(list),
     mTempApplications(new ApplicationList(this)),
     mTranslator(translator),
-    mUI(new Ui::Settings)
+    mUI(new Ui::Settings),
+    mPremium(premium)
 {
     mUI->setupUi(this);
     mUI->mPythonPathWarning->setStyleSheet("color: red");
     QSettings settings;
     mTempApplications->copy(list);
 
+    int maxjobs = QThread::idealThreadCount();
+
     mUI->mJobs->setText(settings.value(SETTINGS_CHECK_THREADS, 1).toString());
+    mUI->mJobs->setValidator(new QIntValidator(1, maxjobs, this));
     mUI->mForce->setCheckState(boolToCheckState(settings.value(SETTINGS_CHECK_FORCE, false).toBool()));
     mUI->mShowFullPath->setCheckState(boolToCheckState(settings.value(SETTINGS_SHOW_FULL_PATH, false).toBool()));
     mUI->mShowNoErrorsMessage->setCheckState(boolToCheckState(settings.value(SETTINGS_SHOW_NO_ERRORS, false).toBool()));
@@ -59,9 +76,12 @@ SettingsDialog::SettingsDialog(ApplicationList *list,
     mUI->mInlineSuppressions->setCheckState(boolToCheckState(settings.value(SETTINGS_INLINE_SUPPRESSIONS, false).toBool()));
     mUI->mEnableInconclusive->setCheckState(boolToCheckState(settings.value(SETTINGS_INCONCLUSIVE_ERRORS, false).toBool()));
     mUI->mShowStatistics->setCheckState(boolToCheckState(settings.value(SETTINGS_SHOW_STATISTICS, false).toBool()));
-    mUI->mShowErrorId->setCheckState(boolToCheckState(settings.value(SETTINGS_SHOW_ERROR_ID, false).toBool()));
+    mUI->mShowErrorId->setCheckState(boolToCheckState(settings.value(SETTINGS_SHOW_ERROR_ID, true).toBool()));
+    mUI->mCheckForUpdates->setCheckState(boolToCheckState(settings.value(SETTINGS_CHECK_FOR_UPDATES, false).toBool()));
     mUI->mEditPythonPath->setText(settings.value(SETTINGS_PYTHON_PATH, QString()).toString());
     validateEditPythonPath();
+    if (premium)
+        mUI->mGroupBoxMisra->setVisible(false);
     mUI->mEditMisraFile->setText(settings.value(SETTINGS_MISRA_FILE, QString()).toString());
 
 #ifdef Q_OS_WIN
@@ -75,7 +95,7 @@ SettingsDialog::SettingsDialog(ApplicationList *list,
     mCurrentStyle = new CodeEditorStyle(CodeEditorStyle::loadSettings(&settings));
     manageStyleControls();
 
-    connect(mUI->mEditPythonPath, SIGNAL(textEdited(const QString&)),
+    connect(mUI->mEditPythonPath, SIGNAL(textEdited(QString)),
             this, SLOT(validateEditPythonPath()));
 
     connect(mUI->mButtons, &QDialogButtonBox::accepted, this, &SettingsDialog::ok);
@@ -102,11 +122,7 @@ SettingsDialog::SettingsDialog(ApplicationList *list,
     mUI->mListWidget->setSortingEnabled(false);
     populateApplicationList();
 
-    const int count = QThread::idealThreadCount();
-    if (count != -1)
-        mUI->mLblIdealThreads->setText(QString::number(count));
-    else
-        mUI->mLblIdealThreads->setText(tr("N/A"));
+    mUI->mLblMaxThreads->setText(QString::number(maxjobs));
 
     loadSettings();
     initTranslationsList();
@@ -115,6 +131,7 @@ SettingsDialog::SettingsDialog(ApplicationList *list,
 SettingsDialog::~SettingsDialog()
 {
     saveSettings();
+    delete mCurrentStyle;
     delete mUI;
 }
 
@@ -122,7 +139,7 @@ void SettingsDialog::initTranslationsList()
 {
     const QString current = mTranslator->getCurrentLanguage();
     for (const TranslationInfo& translation : mTranslator->getTranslations()) {
-        QListWidgetItem *item = new QListWidgetItem;
+        auto *item = new QListWidgetItem;
         item->setText(translation.mName);
         item->setData(mLangCodeRole, QVariant(translation.mCode));
         mUI->mListLanguages->addItem(item);
@@ -141,10 +158,7 @@ Qt::CheckState SettingsDialog::boolToCheckState(bool yes)
 
 bool SettingsDialog::checkStateToBool(Qt::CheckState state)
 {
-    if (state == Qt::Checked) {
-        return true;
-    }
-    return false;
+    return state == Qt::Checked;
 }
 
 
@@ -164,13 +178,9 @@ void SettingsDialog::saveSettings() const
 
 void SettingsDialog::saveSettingValues() const
 {
-    int jobs = mUI->mJobs->text().toInt();
-    if (jobs <= 0) {
-        jobs = 1;
-    }
-
     QSettings settings;
-    settings.setValue(SETTINGS_CHECK_THREADS, jobs);
+    if (mUI->mJobs->hasAcceptableInput())
+        settings.setValue(SETTINGS_CHECK_THREADS, mUI->mJobs->text().toInt());
     saveCheckboxValue(&settings, mUI->mForce, SETTINGS_CHECK_FORCE);
     saveCheckboxValue(&settings, mUI->mSaveAllErrors, SETTINGS_SAVE_ALL_ERRORS);
     saveCheckboxValue(&settings, mUI->mSaveFullPath, SETTINGS_SAVE_FULL_PATH);
@@ -181,8 +191,10 @@ void SettingsDialog::saveSettingValues() const
     saveCheckboxValue(&settings, mUI->mEnableInconclusive, SETTINGS_INCONCLUSIVE_ERRORS);
     saveCheckboxValue(&settings, mUI->mShowStatistics, SETTINGS_SHOW_STATISTICS);
     saveCheckboxValue(&settings, mUI->mShowErrorId, SETTINGS_SHOW_ERROR_ID);
+    saveCheckboxValue(&settings, mUI->mCheckForUpdates, SETTINGS_CHECK_FOR_UPDATES);
     settings.setValue(SETTINGS_PYTHON_PATH, mUI->mEditPythonPath->text());
-    settings.setValue(SETTINGS_MISRA_FILE, mUI->mEditMisraFile->text());
+    if (!mPremium)
+        settings.setValue(SETTINGS_MISRA_FILE, mUI->mEditMisraFile->text());
 
 #ifdef Q_OS_WIN
     settings.setValue(SETTINGS_CLANG_PATH, mUI->mEditClangPath->text());
@@ -197,7 +209,7 @@ void SettingsDialog::saveSettingValues() const
     CodeEditorStyle::saveSettings(&settings, *mCurrentStyle);
 }
 
-void SettingsDialog::saveCheckboxValue(QSettings *settings, QCheckBox *box,
+void SettingsDialog::saveCheckboxValue(QSettings *settings, const QCheckBox *box,
                                        const QString &name)
 {
     settings->setValue(name, checkStateToBool(box->checkState()));
@@ -256,7 +268,7 @@ void SettingsDialog::removeApplication()
 void SettingsDialog::editApplication()
 {
     for (QListWidgetItem *item : mUI->mListWidget->selectedItems()) {
-        int row = mUI->mListWidget->row(item);
+        const int row = mUI->mListWidget->row(item);
         Application& app = mTempApplications->getApplication(row);
         ApplicationDialog dialog(tr("Modify an application"), app, this);
 
@@ -273,7 +285,7 @@ void SettingsDialog::defaultApplication()
 {
     QList<QListWidgetItem *> selected = mUI->mListWidget->selectedItems();
     if (!selected.isEmpty()) {
-        int index = mUI->mListWidget->row(selected[0]);
+        const int index = mUI->mListWidget->row(selected[0]);
         mTempApplications->setDefault(index);
         mUI->mListWidget->clear();
         populateApplicationList();
@@ -371,7 +383,7 @@ void SettingsDialog::setCodeEditorStyleDefault()
 void SettingsDialog::editCodeEditorStyle()
 {
     StyleEditDialog dlg(*mCurrentStyle, this);
-    int nResult = dlg.exec();
+    const int nResult = dlg.exec();
     if (nResult == QDialog::Accepted) {
         *mCurrentStyle = dlg.getStyle();
         manageStyleControls();
@@ -391,9 +403,9 @@ void SettingsDialog::browseClangPath()
 
 void SettingsDialog::manageStyleControls()
 {
-    bool isSystemTheme = mCurrentStyle->isSystemTheme();
-    bool isDefaultLight = !isSystemTheme && *mCurrentStyle == defaultStyleLight;
-    bool isDefaultDark =  !isSystemTheme && *mCurrentStyle == defaultStyleDark;
+    const bool isSystemTheme = mCurrentStyle->isSystemTheme();
+    const bool isDefaultLight = !isSystemTheme && *mCurrentStyle == defaultStyleLight;
+    const bool isDefaultDark =  !isSystemTheme && *mCurrentStyle == defaultStyleDark;
     mUI->mThemeSystem->setChecked(isSystemTheme);
     mUI->mThemeLight->setChecked(isDefaultLight && !isDefaultDark);
     mUI->mThemeDark->setChecked(!isDefaultLight && isDefaultDark);

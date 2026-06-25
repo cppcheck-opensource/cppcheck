@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,16 @@
 //---------------------------------------------------------------------------
 
 #include "config.h"
+#include "mathlib.h"
+#include "standards.h"
+#include "utils.h"
 
+#include <cassert>
 #include <climits>
+#include <cstddef>
+#include <cstdint>
 #include <string>
+#include <vector>
 
 /// @addtogroup Core
 /// @{
@@ -33,151 +40,181 @@ namespace tinyxml2 {
     class XMLDocument;
 }
 
-namespace cppcheck {
+/**
+ * @brief Platform settings
+ */
+class CPPCHECKLIB Platform {
+private:
+    static long long min_value(std::uint8_t bit) {
+        assert(bit > 0);
+        if (bit >= 64)
+            return LLONG_MIN;
+        return -(1LL << (bit-1));
+    }
 
-    /**
-     * @brief Platform settings
-     */
-    class CPPCHECKLIB Platform {
-    private:
-        static long long min_value(int bit) {
-            if (bit >= 64)
-                return LLONG_MIN;
-            return -(1LL << (bit-1));
-        }
+    static long long max_value(std::uint8_t bit) {
+        assert(bit > 0);
+        if (bit >= 64)
+            return (~0ULL) >> 1;
+        return (1LL << (bit-1)) - 1LL;
+    }
 
-        static long long max_value(int bit) {
-            if (bit >= 64)
-                return (~0ULL) >> 1;
-            return (1LL << (bit-1)) - 1LL;
-        }
-    public:
-        Platform();
-        virtual ~Platform() {}
+    static unsigned long long max_value_unsigned(std::uint8_t bit) {
+        assert(bit > 0);
+        if (bit >= 64)
+            return ~0ULL;
+        return (1ULL << bit) - 1ULL;
+    }
 
-        bool isIntValue(long long value) const {
-            return value >= min_value(int_bit) && value <= max_value(int_bit);
-        }
+    void calculateBitMembers() {
+        short_bit = char_bit * sizeof_short;
+        int_bit = char_bit * sizeof_int;
+        long_bit = char_bit * sizeof_long;
+        long_long_bit = char_bit * sizeof_long_long;
+        float_bit = char_bit * sizeof_float;
+        double_bit = char_bit * sizeof_double;
+        long_double_bit = char_bit * sizeof_long_double;
+    }
 
-        bool isIntValue(unsigned long long value) const {
-            unsigned long long intMax = max_value(int_bit);
-            return value <= intMax;
-        }
+    /** provides list of defines specified by the limit.h/climits includes */
+    std::string getLimitsDefines(bool c99) const;
 
-        bool isLongValue(long long value) const {
-            return value >= min_value(long_bit) && value <= max_value(long_bit);
-        }
+protected:
+    /** load platform from xml document, primarily for testing */
+    bool loadFromXmlDocument(const tinyxml2::XMLDocument *doc);
+public:
+    Platform();
 
-        bool isLongValue(unsigned long long value) const {
-            unsigned long long longMax = max_value(long_bit);
-            return value <= longMax;
-        }
+    bool isIntValue(MathLib::bigint value) const {
+        return value >= min_value(int_bit) && value <= max_value(int_bit);
+    }
 
-        bool isLongLongValue(unsigned long long value) const {
-            unsigned long long longLongMax = max_value(long_long_bit);
-            return value <= longLongMax;
-        }
+    bool isIntValue(MathLib::biguint value) const {
+        const unsigned long long intMax = max_value(int_bit);
+        return value <= intMax;
+    }
 
-        nonneg int char_bit;       /// bits in char
-        nonneg int short_bit;      /// bits in short
-        nonneg int int_bit;        /// bits in int
-        nonneg int long_bit;       /// bits in long
-        nonneg int long_long_bit;  /// bits in long long
+    bool isLongValue(MathLib::bigint value) const {
+        return value >= min_value(long_bit) && value <= max_value(long_bit);
+    }
 
-        /** size of standard types */
-        nonneg int sizeof_bool;
-        nonneg int sizeof_short;
-        nonneg int sizeof_int;
-        nonneg int sizeof_long;
-        nonneg int sizeof_long_long;
-        nonneg int sizeof_float;
-        nonneg int sizeof_double;
-        nonneg int sizeof_long_double;
-        nonneg int sizeof_wchar_t;
-        nonneg int sizeof_size_t;
-        nonneg int sizeof_pointer;
+    bool isLongValue(MathLib::biguint value) const {
+        const MathLib::biguint longMax = max_value(long_bit);
+        return value <= longMax;
+    }
 
-        char defaultSign;  // unsigned:'u', signed:'s', unknown:'\0'
+    bool isLongLongValue(MathLib::biguint value) const {
+        const MathLib::biguint longLongMax = max_value(long_long_bit);
+        return value <= longLongMax;
+    }
 
-        enum PlatformType {
-            Unspecified, // No platform specified
-            Native, // whatever system this code was compiled on
-            Win32A,
-            Win32W,
-            Win64,
-            Unix32,
-            Unix64,
-            PlatformFile
-        };
+    std::uint8_t char_bit;       /// bits in char
+    std::uint8_t short_bit;      /// bits in short
+    std::uint8_t int_bit;        /// bits in int
+    std::uint8_t long_bit;       /// bits in long
+    std::uint8_t long_long_bit;  /// bits in long long
+    std::uint8_t float_bit;  /// bits in float
+    std::uint8_t double_bit;  /// bits in double
+    std::uint8_t long_double_bit;  /// bits in long double
 
-        /** platform type */
-        PlatformType platformType;
+    /** size of standard types */
+    std::size_t sizeof_bool;
+    std::size_t sizeof_short;
+    std::size_t sizeof_int;
+    std::size_t sizeof_long;
+    std::size_t sizeof_long_long;
+    std::size_t sizeof_float;
+    std::size_t sizeof_double;
+    std::size_t sizeof_long_double;
+    std::size_t sizeof_wchar_t;
+    std::size_t sizeof_size_t;
+    std::size_t sizeof_pointer;
 
-        /** set the platform type for predefined platforms */
-        bool platform(PlatformType type);
+    char defaultSign;  // unsigned:'u', signed:'s', unknown:'\0'
 
-        /**
-         * load platform file
-         * @param exename application path
-         * @param filename platform filename
-         * @return returns true if file was loaded successfully
-         */
-        bool loadPlatformFile(const char exename[], const std::string &filename);
+    bool windows{false}; // indicates if the platform is Windows
 
-        /** load platform from xml document, primarily for testing */
-        bool loadFromXmlDocument(const tinyxml2::XMLDocument *doc);
-
-        /**
-         * @brief Returns true if platform type is Windows
-         * @return true if Windows platform type.
-         */
-        bool isWindowsPlatform() const {
-            return platformType == Win32A ||
-                   platformType == Win32W ||
-                   platformType == Win64;
-        }
-
-        const char *platformString() const {
-            return platformString(platformType);
-        }
-
-        static const char *platformString(PlatformType pt) {
-            switch (pt) {
-            case Unspecified:
-                return "Unspecified";
-            case Native:
-                return "Native";
-            case Win32A:
-                return "win32A";
-            case Win32W:
-                return "win32W";
-            case Win64:
-                return "win64";
-            case Unix32:
-                return "unix32";
-            case Unix64:
-                return "unix64";
-            case PlatformFile:
-                return "platformFile";
-            default:
-                return "unknown";
-            }
-        }
-
-        long long unsignedCharMax() const {
-            return max_value(char_bit + 1);
-        }
-
-        long long signedCharMax() const {
-            return max_value(char_bit);
-        }
-
-        long long signedCharMin() const {
-            return min_value(char_bit);
-        }
+    enum Type : std::uint8_t {
+        Unspecified, // No platform specified
+        Native, // whatever system this code was compiled on
+        Win32A,
+        Win32W,
+        Win64,
+        Unix32,
+        Unix64,
+        File
     };
 
-}
+    /** platform type */
+    Type type;
+
+    /** set the platform type for predefined platforms - deprecated use set(const std::string&, std::string&) instead */
+    bool set(Type t);
+
+    /** set the platform type */
+    bool set(const std::string& platformstr, std::string& errstr, const std::vector<std::string>& paths = {}, bool debug = false);
+
+    /**
+     * load platform file
+     * @param paths the additional paths to look into
+     * @param filename platform filename
+     * @param debug log verbose information about the lookup
+     * @return returns true if file was loaded successfully
+     */
+    bool loadFromFile(const std::vector<std::string>& paths, const std::string &filename, bool debug = false);
+
+
+    /**
+     * @brief Returns true if platform type is Windows
+     * @return true if Windows platform type.
+     */
+    bool isWindows() const {
+        return windows;
+    }
+
+    const char *toString() const {
+        return toString(type);
+    }
+
+    static const char *toString(Type pt) {
+        switch (pt) {
+        case Type::Unspecified:
+            return "unspecified";
+        case Type::Native:
+            return "native";
+        case Type::Win32A:
+            return "win32A";
+        case Type::Win32W:
+            return "win32W";
+        case Type::Win64:
+            return "win64";
+        case Type::Unix32:
+            return "unix32";
+        case Type::Unix64:
+            return "unix64";
+        case Type::File:
+            return "platformFile";
+        }
+        cppcheck::unreachable();
+    }
+
+    long long unsignedCharMax() const {
+        return max_value(char_bit + 1);
+    }
+
+    long long signedCharMax() const {
+        return max_value(char_bit);
+    }
+
+    long long signedCharMin() const {
+        return min_value(char_bit);
+    }
+
+    /** provides list of defines specified by the limit.h/climits includes */
+    std::string getLimitsDefines(Standards::cstd_t cstd) const;
+    /** provides list of defines specified by the limit.h/climits includes */
+    std::string getLimitsDefines(Standards::cppstd_t cppstd) const;
+};
 
 /// @}
 //---------------------------------------------------------------------------

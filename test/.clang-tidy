@@ -1,0 +1,7 @@
+---
+InheritParentConfig: true
+CheckOptions:
+  #- key:             bugprone-unused-return-value.CheckedFunctions
+  #  value:           '::.*'
+  - key:             bugprone-unused-return-value.AllowCastToVoid
+    value:           'true'

@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2025 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,14 +19,17 @@
 #include "newsuppressiondialog.h"
 
 #include "cppcheck.h"
-#include "color.h"
 #include "errorlogger.h"
 #include "suppressions.h"
 
 #include "ui_newsuppressiondialog.h"
 
-#include <functional>
 #include <string>
+
+#include <QComboBox>
+#include <QLineEdit>
+#include <QString>
+#include <QStringList>
 
 class QWidget;
 
@@ -38,16 +41,18 @@ NewSuppressionDialog::NewSuppressionDialog(QWidget *parent) :
 
     class QErrorLogger : public ErrorLogger {
     public:
-        void reportOut(const std::string & /*outmsg*/, Color) override {}
+        void reportOut(const std::string & /*outmsg*/, Color /*c*/) override {}
         void reportErr(const ErrorMessage &msg) override {
             errorIds << QString::fromStdString(msg.id);
+        }
+        void reportMetric(const std::string &metric) override {
+            (void) metric;
         }
         QStringList errorIds;
     };
 
     QErrorLogger errorLogger;
-    CppCheck cppcheck(errorLogger, false, nullptr);
-    cppcheck.getErrorMessages();
+    CppCheck::getErrorMessages(errorLogger);
     errorLogger.errorIds.sort();
 
     mUI->mComboErrorId->addItems(errorLogger.errorIds);
@@ -60,9 +65,9 @@ NewSuppressionDialog::~NewSuppressionDialog()
     delete mUI;
 }
 
-Suppressions::Suppression NewSuppressionDialog::getSuppression() const
+SuppressionList::Suppression NewSuppressionDialog::getSuppression() const
 {
-    Suppressions::Suppression ret;
+    SuppressionList::Suppression ret;
     ret.errorId = mUI->mComboErrorId->currentText().toStdString();
     if (ret.errorId.empty())
         ret.errorId = "*";
@@ -73,7 +78,7 @@ Suppressions::Suppression NewSuppressionDialog::getSuppression() const
     return ret;
 }
 
-void NewSuppressionDialog::setSuppression(const Suppressions::Suppression &suppression)
+void NewSuppressionDialog::setSuppression(const SuppressionList::Suppression &suppression)
 {
     setWindowTitle(tr("Edit suppression"));
     mUI->mComboErrorId->setCurrentText(QString::fromStdString(suppression.errorId));

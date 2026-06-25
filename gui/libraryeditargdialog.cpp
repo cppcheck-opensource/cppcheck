@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2024 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,13 @@
 #include "libraryeditargdialog.h"
 
 #include "ui_libraryeditargdialog.h"
+
+#include <QCheckBox>
+#include <QComboBox>
+#include <QLineEdit>
+#include <QSpinBox>
+#include <QString>
+#include <QStringList>
 
 class QWidget;
 
@@ -110,7 +117,7 @@ CppcheckLibraryData::Function::Arg LibraryEditArgDialog::getArg() const
     return ret;
 }
 
-void LibraryEditArgDialog::minsizeChanged(int)
+void LibraryEditArgDialog::minsizeChanged()
 {
     mUi->minsize1arg->setEnabled(mUi->minsize1type->currentIndex() != 0);
     mUi->minsize1arg2->setEnabled(mUi->minsize1type->currentText() == "mul");

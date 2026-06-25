@@ -1,24 +1,40 @@
-#!/usr/bin/env python
+"""
+usage: reduce.py [-h] -exe EXE -exe_args EXE_ARGS -expected EXPECTED -file FILE [-segfault]
+
+options:
+  -h, --help            show this help message and exit
+  -exe EXE, --exe EXE   cppcheck executable
+  -exe_args EXE_ARGS, --exe_args EXE_ARGS
+                        cppcheck executable commands
+  -expected EXPECTED, --expected EXPECTED
+                        expected text output
+  -file FILE, --file FILE
+                        source file
+  -segfault, --segfault
+"""
+
+#!/usr/bin/env python3
 import subprocess
 import sys
 import time
+import argparse
 
 
 class Reduce:
     def __init__(self, cmd, expected, file, segfault=None):
-        if cmd is None:
+        if not "".join(cmd):
             raise RuntimeError('Abort: No --cmd')
 
-        if not segfault and expected is None:
+        if not segfault and not expected:
             raise RuntimeError('Abort: No --expected')
 
-        if file is None:
+        if not file:
             raise RuntimeError('Abort: No --file')
 
         # need to add '--error-exitcode=0' so detected issues will not be interpreted as a crash
         if segfault and '--error-exitcode=0' not in cmd:
             print("Adding '--error-exitcode=0' to --cmd")
-            self.__cmd = cmd + ' --error-exitcode=0'
+            self.__cmd = cmd + ['--error-exitcode=0']
         else:
             self.__cmd = cmd
         self.__expected = expected
@@ -30,7 +46,7 @@ class Reduce:
         self.__elapsed_time = None
 
     def print_info(self):
-        print('CMD=' + self.__cmd)
+        print('CMD=', " ".join(self.__cmd))
         if self.__segfault:
             print('EXPECTED=SEGFAULT')
         else:
@@ -38,24 +54,17 @@ class Reduce:
         print('FILE=' + self.__file)
 
     def __communicate(self, p, timeout=None, **kwargs):
-        if sys.version_info[0] < 3:
-            return p.communicate(**kwargs)
-        else:
-            return p.communicate(timeout=timeout)
+        return p.communicate(timeout=timeout)
 
     def runtool(self, filedata=None):
-        if sys.version_info[0] < 3:
-            class TimeoutExpired(Exception):
-                pass
-        else:
-            TimeoutExpired = subprocess.TimeoutExpired
+        TimeoutExpired = subprocess.TimeoutExpired
 
         timeout = None
         if self.__elapsed_time:
             timeout = self.__elapsed_time * 2
-        p = subprocess.Popen(self.__cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        p = subprocess.Popen(self.__cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         try:
-            comm = self.__communicate(p, timeout=timeout)
+            stdout, stderr = self.__communicate(p, timeout=timeout)
         except TimeoutExpired:
             print('timeout')
             p.kill()
@@ -69,20 +78,19 @@ class Reduce:
             if p.returncode != 0:
                 return True
         elif p.returncode == 0:
-            out = comm[0] + '\n' + comm[1]
+            out = stdout + '\n' + stderr
             if self.__expected in out:
                 return True
         else:
             # Something could be wrong, for example the command line for Cppcheck (CMD).
             # Print the output to give a hint how to fix it.
-            print('Error: {}\n{}'.format(comm[0], comm[1]))
+            print('Error: {}\n{}'.format(stdout, stderr))
         return False
 
     def __writefile(self, filename, filedata):
-        f = open(filename, 'wt')
-        for line in filedata:
-            f.write(line)
-        f.close()
+        with open(filename, 'wt') as f:
+            for line in filedata:
+                f.write(line)
 
     def replaceandrun(self, what, filedata, i, line):
         print(what + ' ' + str(i + 1) + '/' + str(len(filedata)) + '..')
@@ -164,8 +172,7 @@ class Reduce:
                 i1 = i
                 i2 = i + chunksize
                 i = i2
-                if i2 > len(lines):
-                    i2 = len(lines)
+                i2 = min(i2, len(lines))
 
                 filedata2 = list(filedata)
                 for line in lines[i1:i2]:
@@ -250,10 +257,7 @@ class Reduce:
             elif stmt and '{' in strippedline and strippedline.find('}') == len(strippedline) - 1:
                 self.replaceandrun('remove line', filedata, i, '')
 
-            if strippedline[-1] in ';{}':
-                stmt = True
-            else:
-                stmt = False
+            stmt = strippedline[-1] in ';{}'
 
     def set_elapsed_time(self, elapsed_time):
         self.__elapsed_time = elapsed_time
@@ -275,31 +279,27 @@ def main():
     # TODO: add --hang option to detect code which impacts the analysis time
     def show_syntax():
         print('Syntax:')
-        print('  reduce.py --cmd=<full command> --expected=<expected text output> --file=<source file> [--segfault]')
+        print('  reduce.py --exe <cppcheck executable> --exe_args <full command> --expected <expected text output> --file <source file> [--segfault]')
         print('')
         print("Example. source file = foo/bar.c")
         print(
-            "  reduce.py --cmd='./cppcheck --enable=style foo/bar.c' --expected=\"Variable 'x' is reassigned\" --file=foo/bar.c")
+            '  reduce.py --exe ./cppcheck --exe_args " --enable=style" --expected "Variable \'x\' is reassigned" --file foo/bar.c')
         sys.exit(1)
 
     if len(sys.argv) == 1:
         show_syntax()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-exe', '--exe', required=True, help="cppcheck executable")
+    parser.add_argument('-exe_args', '--exe_args', required=False, default="", help="cppcheck executable commands")
+    parser.add_argument('-expected', '--expected', required=True, help="expected text output")
+    parser.add_argument('-file', '--file', required=True, help="source file")
+    parser.add_argument('-segfault', '--segfault', required=False, action='store_true')
+    args = parser.parse_args()
 
-    arg_cmd = None
-    arg_expected = None
-    arg_file = None
-    arg_segfault = False
-
-    for arg in sys.argv[1:]:
-        if arg.startswith('--cmd='):
-            arg_cmd = arg[arg.find('=') + 1:]
-        elif arg.startswith('--expected='):
-            arg_expected = arg[arg.find('=') + 1:]
-        elif arg.startswith('--file='):
-            arg_file = arg[arg.find('=') + 1:]
-        elif arg == '--segfault':
-            arg_segfault = True
-
+    arg_file = args.file
+    arg_cmd = [args.exe] + args.exe_args.split() + [arg_file]
+    arg_expected = args.expected
+    arg_segfault = args.segfault
     try:
         reduce = Reduce(arg_cmd, arg_expected, arg_file, arg_segfault)
     except RuntimeError as e:

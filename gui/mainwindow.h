@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,11 +20,15 @@
 #define MAINWINDOW_H
 
 #include "library.h"
-#include "settings.h"
 #include "platforms.h"
+
+#include <cstdint>
+#include <list>
 
 #include <QFileDialog>
 #include <QMainWindow>
+#include <QObject>
+#include <QString>
 #include <QStringList>
 
 class ThreadHandler;
@@ -38,8 +42,11 @@ class QSettings;
 class QTimer;
 class QLineEdit;
 class ImportProject;
-class QCloseEvent;
-class QObject;
+class QNetworkAccessManager;
+class QNetworkReply;
+class Settings;
+struct Suppressions;
+class FileWithDetails;
 namespace Ui {
     class MainWindow;
 }
@@ -58,7 +65,7 @@ public:
     /**
      * @brief Maximum number of MRU project items in File-menu.
      */
-    enum { MaxRecentProjects = 5 };
+    enum : std::uint8_t { MaxRecentProjects = 5 };
 
     MainWindow(TranslationHandler* th, QSettings* settings);
     MainWindow(const MainWindow &) = delete;
@@ -163,6 +170,9 @@ public slots:
     /** @brief Slot to to show authors list */
     void showAuthors();
 
+    /** @brief Slot to to show EULA */
+    void showEULA();
+
     /** @brief Slot to save results */
     void save();
 
@@ -187,7 +197,10 @@ public slots:
     /** @brief Slot for showing the library editor */
     void showLibraryEditor();
 
-protected slots:
+    /** @brief Slot for showing the thread details window */
+    void showThreadDetails();
+
+private slots:
 
     /** @brief Slot for checkthread's done signal */
     void analysisDone();
@@ -228,7 +241,15 @@ protected slots:
     /** Suppress error ids */
     void suppressIds(QStringList ids);
 
+private slots:
+    void replyFinished(QNetworkReply *reply);
+
+    void hideInformation();
+
+    void changeReportType();
 private:
+
+    bool isCppcheckPremium() const;
 
     /** Get filename for last results */
     QString getLastResults() const;
@@ -240,15 +261,16 @@ private:
      * @brief Reanalyze selected files
      * @param files list of selected files
      */
-    void reAnalyzeSelected(QStringList files);
+    void reAnalyzeSelected(const QStringList& files);
 
     /**
      * @brief Analyze the project.
      * @param projectFile Pointer to the project to analyze.
-     * @param checkLibrary Flag to indicate if the library should be checked.
-     * @param checkConfiguration Flag to indicate if the configuration should be checked.
+     * @param recheckFiles files to recheck, empty => check all files
+     * @param checkLib Flag to indicate if the library should be checked.
+     * @param checkConfig Flag to indicate if the configuration should be checked.
      */
-    void analyzeProject(const ProjectFile *projectFile, const bool checkLibrary = false, const bool checkConfiguration = false);
+    void analyzeProject(const ProjectFile *projectFile, const QStringList& recheckFiles, bool checkLib = false, bool checkConfig = false);
 
     /**
      * @brief Set current language
@@ -284,26 +306,24 @@ private:
     /**
      * @brief Analyze project
      * @param p imported project
-     * @param checkLibrary Flag to indicate if library should be checked
-     * @param checkConfiguration Flag to indicate if the configuration should be checked.
+     * @param checkLib Flag to indicate if library should be checked
+     * @param checkConfig Flag to indicate if the configuration should be checked.
      */
-    void doAnalyzeProject(ImportProject p, const bool checkLibrary = false, const bool checkConfiguration = false);
+    void doAnalyzeProject(ImportProject p, bool checkLib = false, bool checkConfig = false, const QStringList& recheckFiles = QStringList());
 
     /**
      * @brief Analyze all files specified in parameter files
      *
      * @param files List of files and/or directories to analyze
-     * @param checkLibrary Flag to indicate if library should be checked
-     * @param checkConfiguration Flag to indicate if the configuration should be checked.
+     * @param checkLib Flag to indicate if library should be checked
+     * @param checkConfig Flag to indicate if the configuration should be checked.
      */
-    void doAnalyzeFiles(const QStringList &files, const bool checkLibrary = false, const bool checkConfiguration = false);
+    void doAnalyzeFiles(const QStringList &files, bool checkLib = false, bool checkConfig = false);
 
     /**
      * @brief Get our default cppcheck settings and read project file.
-     *
-     * @return Default cppcheck settings
      */
-    Settings getCppcheckSettings();
+    bool getCppcheckSettings(Settings& settings, Suppressions& supprs);
 
     /** @brief Load program settings */
     void loadSettings();
@@ -318,7 +338,7 @@ private:
     void formatAndSetTitle(const QString &text = QString());
 
     /** @brief Show help contents */
-    void openOnlineHelp();
+    static void openOnlineHelp();
 
     /**
      * @brief Enable or disable project file actions.
@@ -379,7 +399,7 @@ private:
      * @param filename filename (no path)
      * @return error code
      */
-    Library::Error loadLibrary(Library *library, const QString &filename);
+    Library::Error loadLibrary(Library &library, const QString &filename);
 
     /**
      * @brief Tries to load library file, prints message on error
@@ -387,7 +407,9 @@ private:
      * @param filename filename (no path)
      * @return True if no error
      */
-    bool tryLoadLibrary(Library *library, const QString& filename);
+    bool tryLoadLibrary(Library &library, const QString& filename);
+
+    QString loadAddon(Settings &settings, const QString &filesDir, const QString &pythonCmd, const QString& addon);
 
     /**
      * @brief Update project MRU items in File-menu.
@@ -405,6 +427,9 @@ private:
      * @param project Full path of the project file to remove.
      */
     void removeProjectMRU(const QString &project);
+
+    /** @brief Generate list of detailed files from list of filenames. */
+    std::list<FileWithDetails> enrichFilesForAnalysis(const QStringList& fileNames, const Settings& settings) const;
 
     /** @brief Program settings */
     QSettings *mSettings;
@@ -425,10 +450,10 @@ private:
     QString mCurrentDirectory;
 
     /** @brief Scratchpad. */
-    ScratchPad* mScratchPad;
+    ScratchPad* mScratchPad{};
 
     /** @brief Project (file). */
-    ProjectFile *mProjectFile;
+    ProjectFile* mProjectFile{};
 
     /** @brief Filter field in the Filter toolbar. */
     QLineEdit* mLineEditFilter;
@@ -445,15 +470,18 @@ private:
     /** @brief GUI actions for selecting language. */
     QActionGroup *mSelectLanguageActions;
 
+    /** @brief GUI actions for selecting report. */
+    QActionGroup *mSelectReportActions;
+
     /**
      * @brief Are we exiting the cppcheck?
      * If this is true then the cppcheck is waiting for check threads to exit
      * so that the application can be closed.
      */
-    bool mExiting;
+    bool mExiting{};
 
     /** @brief Set to true in case of loading log file. */
-    bool mIsLogfileLoaded;
+    bool mIsLogfileLoaded{};
 
     /**
      * @brief Project MRU menu actions.
@@ -463,6 +491,8 @@ private:
 
     QString mCppcheckCfgAbout;
     QString mCppcheckCfgProductName;
+
+    QNetworkAccessManager *mNetworkAccessManager = nullptr;
 };
 /// @}
 #endif // MAINWINDOW_H

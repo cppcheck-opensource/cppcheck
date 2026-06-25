@@ -1,0 +1,3 @@
+samples\unreadVariable\bad.cpp:5:34: style: Variable 's2' is assigned a value that is never used. [unreadVariable]
+    std::string s1 = "test1", s2 = "test2";
+                                 ^

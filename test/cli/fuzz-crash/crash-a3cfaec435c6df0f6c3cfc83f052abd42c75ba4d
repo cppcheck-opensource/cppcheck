@@ -1,0 +1,1 @@
+typedef C();typedef const C*(*func2)();d(func2())

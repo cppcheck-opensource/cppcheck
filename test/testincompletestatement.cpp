@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,54 +18,44 @@
 
 #include "checkother.h"
 #include "errortypes.h"
+#include "helpers.h"
 #include "settings.h"
-#include "testsuite.h"
-#include "tokenize.h"
+#include "fixture.h"
 
-#include <iosfwd>
-#include <map>
+#include <cstddef>
 #include <string>
-#include <utility>
-#include <vector>
-
-#include <simplecpp.h>
 
 class TestIncompleteStatement : public TestFixture {
 public:
     TestIncompleteStatement() : TestFixture("TestIncompleteStatement") {}
 
 private:
-    Settings settings;
+    const Settings settings = settingsBuilder().severity(Severity::warning).library("std.cfg").build();
+    const Settings settings_i = settingsBuilder(settings).certainty(Certainty::inconclusive).build();
 
-    void check(const char code[], bool inconclusive = false) {
-        // Clear the error buffer..
-        errout.str("");
+    struct CheckOptions
+    {
+        bool inconclusive = false;
+        bool cpp = true;
+    };
 
-        settings.certainty.setEnabled(Certainty::inconclusive, inconclusive);
+#define check(...) check_(__FILE__, __LINE__, __VA_ARGS__)
+    template<size_t size>
+    void check_(const char* file, int line, const char (&code)[size], const CheckOptions& options = make_default_obj()) {
+        const Settings &settings1 = options.inconclusive ? settings_i : settings;
 
-        // Raw tokens..
-        std::vector<std::string> files(1, "test.cpp");
-        std::istringstream istr(code);
-        const simplecpp::TokenList tokens1(istr, files, files[0]);
-
-        // Preprocess..
-        simplecpp::TokenList tokens2(files);
-        std::map<std::string, simplecpp::TokenList*> filedata;
-        simplecpp::preprocess(tokens2, tokens1, files, filedata, simplecpp::DUI());
+        SimpleTokenizer2 tokenizer(settings1, *this, code, options.cpp ? "test.cpp" : "test.c");
 
         // Tokenize..
-        Tokenizer tokenizer(&settings, this);
-        tokenizer.createTokens(std::move(tokens2));
-        tokenizer.simplifyTokens1("");
+        ASSERT_LOC(tokenizer.simplifyTokens1(""), file, line);
 
         // Check for incomplete statements..
-        CheckOther checkOther(&tokenizer, &settings, this);
+        CheckOtherImpl checkOther(&tokenizer, settings1, *this);
         checkOther.checkIncompleteStatement();
     }
 
     void run() override {
-        settings.severity.enable(Severity::warning);
-
+        mNewTemplate = true;
         TEST_CASE(test1);
         TEST_CASE(test2);
         TEST_CASE(test3);
@@ -95,6 +85,7 @@ private:
         TEST_CASE(archive);             // ar & x
         TEST_CASE(ast);
         TEST_CASE(oror);                // dostuff() || x=32;
+        TEST_CASE(functioncall);
     }
 
     void test1() {
@@ -104,7 +95,7 @@ private:
               "    \"abc\";\n"
               "}");
 
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void test2() {
@@ -113,7 +104,7 @@ private:
               "    \"abc\";\n"
               "}");
 
-        ASSERT_EQUALS("[test.cpp:3]: (warning) Redundant code: Found a statement that begins with string constant.\n", errout.str());
+        ASSERT_EQUALS("[test.cpp:3:5]: (warning) Redundant code: Found a statement that begins with string constant. [constStatement]\n", errout_str());
     }
 
     void test3() {
@@ -122,7 +113,7 @@ private:
               "    const char *str[] = { \"abc\" };\n"
               "}");
 
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void test4() {
@@ -136,7 +127,7 @@ private:
               "};\n"
               "}");
 
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void test5() {
@@ -145,7 +136,7 @@ private:
               "    50;\n"
               "}");
 
-        ASSERT_EQUALS("[test.cpp:3]: (warning) Redundant code: Found a statement that begins with numeric constant.\n", errout.str());
+        ASSERT_EQUALS("[test.cpp:3:5]: (warning) Redundant code: Found a statement that begins with numeric constant. [constStatement]\n", errout_str());
     }
 
     void test6() {
@@ -170,7 +161,7 @@ private:
               "    (void)c;\n"
               "  }\n"
               "}");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void test_numeric() {
@@ -185,21 +176,21 @@ private:
               "    };\n"
               "}");
 
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void void0() { // #6327
         check("void f() { (void*)0; }");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("#define X  0\n"
               "void f() { X; }");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void intarray() {
         check("int arr[] = { 100/2, 1*100 };");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void structarraynull() {
@@ -207,7 +198,7 @@ private:
               "    { 100/2, 1*100 }\n"
               "    { 90, 70 }\n"
               "}");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void structarray() {
@@ -215,14 +206,14 @@ private:
               "    { 100/2, 1*100 }\n"
               "    { 90, 70 }\n"
               "};");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void conditionalcall() {
         check("void f() {\n"
               "    0==x ? X() : Y();\n"
               "}");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void structinit() {
@@ -230,7 +221,7 @@ private:
         check("void f() {\n"
               "    ABC abc{1,2,3};\n"
               "}");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         // #6260 - C++11 array initialization
         check("void foo() {\n"
@@ -238,30 +229,30 @@ private:
               "        {\"b\", \"\"},\n"
               "    };\n"
               "}");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         // #2482 - false positive for empty struct
         check("struct A {};");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         // #4387 - C++11 initializer list
         check("A::A() : abc{0} {}");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         // #5042 - C++11 initializer list
         check("A::A() : abc::def<int>{0} {}");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         // #4503 - vector init
         check("void f() { vector<int> v{1}; }");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void returnstruct() {
         check("struct s foo() {\n"
               "    return (struct s){0,0};\n"
               "}");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         // #4754
         check("unordered_map<string, string>  foo() {\n"
@@ -270,19 +261,19 @@ private:
               "        {\"happy\", \"sad\"}\n"
               "    };\n"
               "}");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("struct s foo() {\n"
               "  return (struct s){0};\n"
               "}");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void cast() {
         check("void f() {\n"
               "    ((struct foo *)(0x1234))->xy = 1;\n"
               "}");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("bool f(const std::exception& e) {\n" // #10918
               "    try {\n"
@@ -293,7 +284,7 @@ private:
               "        return false;\n"
               "    }\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void increment() {
@@ -301,26 +292,26 @@ private:
               "    int x = 1;\n"
               "    x++, x++;\n"
               "}");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void cpp11init() {
         check("void f() {\n"
               "    int x{1};\n"
               "}");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("std::vector<int> f(int* p) {\n"
               "    return std::vector<int>({ p[0] });\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void cpp11init2() {
         check("x<string> handlers{\n"
               "  { \"mode2\", []() { return 2; } },\n"
               "};");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void cpp11init3() {
@@ -328,80 +319,86 @@ private:
               "void f() {\n"
               "A{}(0);\n"
               "}");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("template<class> struct A { void operator()(int); };\n"
               "void f() {\n"
               "A<int>{}(0);\n"
               "}");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void block() {
         check("void f() {\n"
               "    ({ do_something(); 0; });\n"
               "}");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("void f() {\n"
               "out:\n"
               "    ({ do_something(); 0; });\n"
               "}");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void mapindex() {
         check("void f() {\n"
               "  map[{\"1\",\"2\"}]=0;\n"
               "}");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
     }
 
-    // #8827
     void commaoperator1() {
-        check("void foo(int,const char*,int);\n"
+        check("void foo(int,const char*,int);\n" // #8827
               "void f(int value) {\n"
               "    foo(42,\"test\",42),(value&42);\n"
               "}");
-        ASSERT_EQUALS("[test.cpp:3]: (warning) Found suspicious operator ',', result is not used.\n", errout.str());
+        ASSERT_EQUALS("[test.cpp:3:22]: (warning) Found suspicious operator ',', result is not used. [constStatement]\n", errout_str());
+
+        check("int f() {\n" // #11257
+              "    int y;\n"
+              "    y = (3, 4);\n"
+              "    return y;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:11]: (warning) Found suspicious operator ',', result is not used. [constStatement]\n", errout_str());
     }
 
     void commaoperator2() {
         check("void f() {\n"
               "    for(unsigned int a=0, b; a<10; a++ ) {}\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("void g();\n" // #10952
               "bool f() {\n"
               "    return (void)g(), false;\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("void f(int a, int b, int c, int d) {\n"
               "    Eigen::Vector4d V;\n"
               "    V << a, b, c, d;\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("struct S { Eigen::Vector4d V; };\n"
               "struct T { int a, int b, int c, int d; };\n"
               "void f(S& s, const T& t) {\n"
               "    s.V << t.a, t.b, t.c, t.d;\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("struct S { Eigen::Vector4d V[2]; };\n"
               "void f(int a, int b, int c, int d) {\n"
               "    S s[1];\n"
               "    s[0].V[1] << a, b, c, d;\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("void f() {\n"
               "    a.b[4][3].c()->d << x , y, z;\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("struct V {\n"
               "    Eigen::Vector3d& operator[](int i) { return v[i]; }\n"
@@ -411,7 +408,14 @@ private:
               "void V::f(int a, int b, int c) {\n"
               "    (*this)[0] << a, b, c;\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f() {\n" // #11359
+              "    struct S {\n"
+              "        S(int x, int y) {}\n"
+              "    } s(1, 2);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     // #8451
@@ -425,25 +429,25 @@ private:
               "    (!x);\n"
               "    (unsigned int)!x;\n"
               "    ~x;\n"
-              "}\n", true);
-        ASSERT_EQUALS("[test.cpp:2]: (warning) Redundant code: Found a statement that begins with numeric constant.\n"
-                      "[test.cpp:3]: (warning) Redundant code: Found a statement that begins with numeric constant.\n"
-                      "[test.cpp:4]: (warning) Redundant code: Found a statement that begins with numeric constant.\n"
-                      "[test.cpp:5]: (warning) Redundant code: Found a statement that begins with numeric constant.\n"
-                      "[test.cpp:6]: (warning, inconclusive) Found suspicious operator '!', result is not used.\n"
-                      "[test.cpp:7]: (warning, inconclusive) Found suspicious operator '!', result is not used.\n"
-                      "[test.cpp:8]: (warning) Redundant code: Found unused cast of expression '!x'.\n"
-                      "[test.cpp:9]: (warning, inconclusive) Found suspicious operator '~', result is not used.\n",
-                      errout.str());
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:2:5]: (warning) Redundant code: Found a statement that begins with numeric constant. [constStatement]\n"
+                      "[test.cpp:3:6]: (warning) Redundant code: Found a statement that begins with numeric constant. [constStatement]\n"
+                      "[test.cpp:4:5]: (warning) Redundant code: Found a statement that begins with numeric constant. [constStatement]\n"
+                      "[test.cpp:5:6]: (warning) Redundant code: Found a statement that begins with numeric constant. [constStatement]\n"
+                      "[test.cpp:6:5]: (warning, inconclusive) Found suspicious operator '!', result is not used. [constStatement]\n"
+                      "[test.cpp:7:6]: (warning, inconclusive) Found suspicious operator '!', result is not used. [constStatement]\n"
+                      "[test.cpp:8:5]: (warning) Redundant code: Found unused cast of expression '!x'. [constStatement]\n"
+                      "[test.cpp:9:5]: (warning, inconclusive) Found suspicious operator '~', result is not used. [constStatement]\n",
+                      errout_str());
 
-        check("void f1(int x) { x; }", true);
-        ASSERT_EQUALS("[test.cpp:1]: (warning) Unused variable value 'x'\n", errout.str());
+        check("void f1(int x) { x; }", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:1:18]: (warning) Unused variable value 'x' [constStatement]\n", errout_str());
 
         check("void f() { if (Type t; g(t)) {} }"); // #9776
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("void f(int x) { static_cast<unsigned>(x); }");
-        ASSERT_EQUALS("[test.cpp:1]: (warning) Redundant code: Found unused cast of expression 'x'.\n", errout.str());
+        ASSERT_EQUALS("[test.cpp:1:38]: (warning) Redundant code: Found unused cast of expression 'x'. [constStatement]\n", errout_str());
 
         check("void f(int x, int* p) {\n"
               "    static_cast<void>(x);\n"
@@ -451,20 +455,20 @@ private:
               "    static_cast<void*>(p);\n"
               "    (void*)p;\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("void f() { false; }"); // #10856
-        ASSERT_EQUALS("[test.cpp:1]: (warning) Redundant code: Found a statement that begins with bool constant.\n", errout.str());
+        ASSERT_EQUALS("[test.cpp:1:12]: (warning) Redundant code: Found a statement that begins with bool constant. [constStatement]\n", errout_str());
 
         check("void f(int i) {\n"
               "    (float)(char)i;\n"
               "    static_cast<float>((char)i);\n"
               "    (char)static_cast<float>(i);\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2]: (warning) Redundant code: Found unused cast of expression 'i'.\n"
-                      "[test.cpp:3]: (warning) Redundant code: Found unused cast of expression 'i'.\n"
-                      "[test.cpp:4]: (warning) Redundant code: Found unused cast of expression 'i'.\n",
-                      errout.str());
+        ASSERT_EQUALS("[test.cpp:2:5]: (warning) Redundant code: Found unused cast of expression 'i'. [constStatement]\n"
+                      "[test.cpp:3:23]: (warning) Redundant code: Found unused cast of expression 'i'. [constStatement]\n"
+                      "[test.cpp:4:5]: (warning) Redundant code: Found unused cast of expression 'i'. [constStatement]\n",
+                      errout_str());
 
         check("namespace M {\n"
               "    namespace N { typedef char T; }\n"
@@ -472,7 +476,7 @@ private:
               "void f(int i) {\n"
               "    (M::N::T)i;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:5]: (warning) Redundant code: Found unused cast of expression 'i'.\n", errout.str());
+        ASSERT_EQUALS("[test.cpp:5:5]: (warning) Redundant code: Found unused cast of expression 'i'. [constStatement]\n", errout_str());
 
         check("void f(int (g)(int a, int b)) {\n" // #10873
               "    int p = 0, q = 1;\n"
@@ -483,7 +487,7 @@ private:
               "  (sprintf)(buf, \"%d\", 42);\n"
               "  (printf)(\"abc\");\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("struct S; struct T; struct U;\n"
               "void f() {\n"
@@ -492,16 +496,16 @@ private:
               "    (S)static_cast<U>(t);\n"
               "    static_cast<S>((U)t);\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("void f(bool b) { b ? true : false; }\n"); // #10865
-        ASSERT_EQUALS("[test.cpp:1]: (warning) Redundant code: Found unused result of ternary operator.\n", errout.str());
+        ASSERT_EQUALS("[test.cpp:1:20]: (warning) Redundant code: Found unused result of ternary operator. [constStatement]\n", errout_str());
 
         check("struct S { void (*f)() = nullptr; };\n" // #10877
               "void g(S* s) {\n"
               "    (s->f == nullptr) ? nullptr : (s->f(), nullptr);\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("void f(bool b) {\n"
               "    g() ? true : false;\n"
@@ -511,7 +515,7 @@ private:
               "    C c{ b ? true : false, 1 };\n"
               "    b = (b ? true : false);\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("void f(int i) {\n"
               "    for (i; ;) {}\n"
@@ -523,15 +527,15 @@ private:
               "    for (\"x\"; ;) {}\n"
               "    for (L\"y\"; ;) {}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2]: (warning) Unused variable value 'i'\n"
-                      "[test.cpp:3]: (warning) Redundant code: Found unused cast of expression 'i'.\n"
-                      "[test.cpp:4]: (warning) Redundant code: Found a statement that begins with numeric constant.\n"
-                      "[test.cpp:5]: (warning) Redundant code: Found a statement that begins with bool constant.\n"
-                      "[test.cpp:6]: (warning) Redundant code: Found a statement that begins with character constant.\n"
-                      "[test.cpp:7]: (warning) Redundant code: Found a statement that begins with character constant.\n"
-                      "[test.cpp:8]: (warning) Redundant code: Found a statement that begins with string constant.\n"
-                      "[test.cpp:9]: (warning) Redundant code: Found a statement that begins with string constant.\n",
-                      errout.str());
+        ASSERT_EQUALS("[test.cpp:2:10]: (warning) Unused variable value 'i' [constStatement]\n"
+                      "[test.cpp:3:10]: (warning) Redundant code: Found unused cast of expression 'i'. [constStatement]\n"
+                      "[test.cpp:4:10]: (warning) Redundant code: Found a statement that begins with numeric constant. [constStatement]\n"
+                      "[test.cpp:5:10]: (warning) Redundant code: Found a statement that begins with bool constant. [constStatement]\n"
+                      "[test.cpp:6:10]: (warning) Redundant code: Found a statement that begins with character constant. [constStatement]\n"
+                      "[test.cpp:7:10]: (warning) Redundant code: Found a statement that begins with character constant. [constStatement]\n"
+                      "[test.cpp:8:10]: (warning) Redundant code: Found a statement that begins with string constant. [constStatement]\n"
+                      "[test.cpp:9:10]: (warning) Redundant code: Found a statement that begins with string constant. [constStatement]\n",
+                      errout_str());
 
         check("struct S { bool b{}; };\n"
               "struct T {\n"
@@ -549,12 +553,12 @@ private:
               "    u[0].g();\n"
               "    u[1].s[0].b;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:7]: (warning) Redundant code: Found unused member access.\n"
-                      "[test.cpp:8]: (warning) Redundant code: Found unused member access.\n"
-                      "[test.cpp:10]: (warning) Redundant code: Found unused member access.\n"
-                      "[test.cpp:12]: (warning) Redundant code: Found unused member access.\n"
-                      "[test.cpp:15]: (warning) Redundant code: Found unused member access.\n",
-                      errout.str());
+        ASSERT_EQUALS("[test.cpp:7:6]: (warning) Redundant code: Found unused member access. [constStatement]\n"
+                      "[test.cpp:8:6]: (warning) Redundant code: Found unused member access. [constStatement]\n"
+                      "[test.cpp:10:7]: (warning) Redundant code: Found unused member access. [constStatement]\n"
+                      "[test.cpp:12:11]: (warning) Redundant code: Found unused member access. [constStatement]\n"
+                      "[test.cpp:15:14]: (warning) Redundant code: Found unused member access. [constStatement]\n",
+                      errout_str());
 
         check("struct S { int a[2]{}; };\n"
               "struct T { S s; };\n"
@@ -569,11 +573,11 @@ private:
               "    int j[2][2][1] = {};\n"
               "    j[0][0][0];\n" // <--
               "}\n");
-        ASSERT_EQUALS("[test.cpp:6]: (warning) Redundant code: Found unused array access.\n"
-                      "[test.cpp:8]: (warning) Redundant code: Found unused array access.\n"
-                      "[test.cpp:10]: (warning) Redundant code: Found unused array access.\n"
-                      "[test.cpp:12]: (warning) Redundant code: Found unused array access.\n",
-                      errout.str());
+        ASSERT_EQUALS("[test.cpp:6:6]: (warning) Redundant code: Found unused array access. [constStatement]\n"
+                      "[test.cpp:8:11]: (warning) Redundant code: Found unused array access. [constStatement]\n"
+                      "[test.cpp:10:10]: (warning) Redundant code: Found unused array access. [constStatement]\n"
+                      "[test.cpp:12:6]: (warning) Redundant code: Found unused array access. [constStatement]\n",
+                      errout_str());
 
         check("void g(std::map<std::string, std::string>& map) {\n"
               "    int j[2]{};\n"
@@ -592,13 +596,13 @@ private:
               "    map[\"abc\"];\n" // #10928
               "    std::auto_ptr<Int> app[4];" // #10919
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("struct S { void* p; };\n" // #10875
               "void f(S s) {\n"
               "    delete (int*)s.p;\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("struct T {\n" // #10874
               "    T* p;\n"
@@ -606,37 +610,37 @@ private:
               "void f(T* t) {\n"
               "    for (decltype(t->p) (c) = t->p; ;) {}\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("void f(int i, std::vector<int*> v);\n" // #10880
               "void g() {\n"
               "    f(1, { static_cast<int*>(nullptr) });\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("struct S { int i; };\n" // #10882
               "enum E {};\n"
               "void f(const S* s) {\n"
               "    E e = (E)!s->i;\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("void f(int* p) {\n" // #10932
               "    int& r(*p[0]);\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("struct S { int i; };\n" // #10917
               "bool f(S s) {\n"
               "    return [](int i) { return i > 0; }(s.i);\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("extern int (*p);\n" // #10936
               "void f() {\n"
               "    for (int i = 0; ;) {}\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("class T {};\n" // #10849
               "void f() {\n"
@@ -645,7 +649,7 @@ private:
               "        return 0;\n"
               "    };\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("namespace N {\n" // #10876
               "    template <class R, class S, void(*T)(R&, float, S)>\n"
@@ -655,79 +659,181 @@ private:
               "        for (typename T::iterator v = c.begin(); v != c.end(); ++v) {}\n"
               "    }\n"
               "}\n");
-        ASSERT_EQUALS("", errout.str());
+        ASSERT_EQUALS("", errout_str());
 
         check("void f(std::string a, std::string b) {\n" // #7529
               "    const std::string s = \" x \" + a;\n"
               "    +\" y = \" + b;\n"
-              "}\n", /*inconclusive*/ true);
-        ASSERT_EQUALS("[test.cpp:3]: (warning, inconclusive) Found suspicious operator '+', result is not used.\n", errout.str());
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:3:14]: (warning, inconclusive) Found suspicious operator '+', result is not used. [constStatement]\n", errout_str());
 
         check("void f() {\n"
               "    *new int;\n"
-              "}\n", /*inconclusive*/ true);
-        ASSERT_EQUALS("[test.cpp:2]: (warning, inconclusive) Found suspicious operator '*', result is not used.\n", errout.str());
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:2:5]: (warning, inconclusive) Found suspicious operator '*', result is not used. [constStatement]\n", errout_str());
+
+        check("void f(int x, int y) {\n" // #12525
+              "    x * y;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:2:7]: (warning, inconclusive) Found suspicious operator '*', result is not used. [constStatement]\n", errout_str());
+
+        check("void f() {\n" // #5475
+              "    std::string(\"a\") + \"a\";\n"
+              "}\n"
+              "void f(std::string& a) {\n"
+              "    a.erase(3) + \"suf\";\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:2:22]: (warning, inconclusive) Found suspicious operator '+', result is not used. [constStatement]\n"
+                      "[test.cpp:5:16]: (warning, inconclusive) Found suspicious operator '+', result is not used. [constStatement]\n",
+                      errout_str());
+
+        check("void f(XMLElement& parent) {\n" // #11234
+              "    auto** elem = &parent.firstChild;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f() {\n" // #11301
+              "    NULL;\n"
+              "    nullptr;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:5]: (warning) Redundant code: Found a statement that begins with NULL constant. [constStatement]\n"
+                      "[test.cpp:3:5]: (warning) Redundant code: Found a statement that begins with NULL constant. [constStatement]\n",
+                      errout_str());
+
+        check("struct S { int i; };\n" // #6504
+              "void f(S* s) {\n"
+              "    (*s).i;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:9]: (warning) Redundant code: Found unused member access. [constStatement]\n", errout_str());
+
+        check("int a[2];\n" // #11370
+              "void f() {\n"
+              "    auto g = [](decltype(a[0]) i) {};\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("enum E { E0 };\n"
+              "void f() {\n"
+              "    E0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:5]: (warning) Redundant code: Found a statement that begins with enumerator constant. [constStatement]\n",
+                      errout_str());
+
+        check("void f(int* a) {\n" // #12534
+              "    a[a[3]];\n"
+              "    a[a[g()]];\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:6]: (warning) Redundant code: Found unused array access. [constStatement]\n",
+                      errout_str());
+
+        check("void f() {\n" // #13153
+              "    []() {} ();\n"
+              "    []() {};\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:5]: (warning) Redundant code: Found unused lambda. [constStatement]\n",
+                      errout_str());
+
+        check("int main() {\n" // #13177
+              "    sizeof(int);\n"
+              "    alignof(long double*);\n"
+              "    noexcept(int());\n"
+              "    typeid(int);\n"
+              "    return(0);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:11]: (warning) Redundant code: Found unused 'sizeof' expression. [constStatement]\n"
+                      "[test.cpp:3:12]: (warning) Redundant code: Found unused 'alignof' expression. [constStatement]\n"
+                      "[test.cpp:4:13]: (warning) Redundant code: Found unused 'noexcept' expression. [constStatement]\n"
+                      "[test.cpp:5:11]: (warning) Redundant code: Found unused 'typeid' expression. [constStatement]\n",
+                      errout_str());
+
+        check("void f() {\n" // #14044
+              "    g<sizeof(wchar_t)>();\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S;\n" // #14664
+              "S* a[1];\n"
+              "void f() {\n"
+              "    a[0];\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:6]: (warning) Redundant code: Found unused array access. [constStatement]\n",
+                      errout_str());
     }
 
     void vardecl() {
         // #8984
-        check("void f() { a::b *c = d(); }", true);
-        ASSERT_EQUALS("", errout.str());
+        check("void f() { a::b *c = d(); }", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
 
-        check("void f() { std::vector<b> *c; }", true);
-        ASSERT_EQUALS("", errout.str());
+        check("void f() { std::vector<b> *c; }", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
 
-        check("void f() { a::b &c = d(); }", true);
-        ASSERT_EQUALS("", errout.str());
+        check("void f() { a::b &c = d(); }", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
 
-        check("void f() { std::vector<b> &c; }", true);
-        ASSERT_EQUALS("", errout.str());
+        check("void f() { std::vector<b> &c; }", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
 
-        check("void f() { a::b &&c = d(); }", true);
-        ASSERT_EQUALS("", errout.str());
+        check("void f() { a::b &&c = d(); }", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
 
-        check("void f() { std::vector<b> &&c; }", true);
-        ASSERT_EQUALS("", errout.str());
+        check("void f() { std::vector<b> &&c; }", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
 
-        check("void f() { char * const * a, * const * b; }", true);
-        ASSERT_EQUALS("", errout.str());
+        check("void f() { char * const * a, * const * b; }", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
 
-        check("void f() { char * const * a = 0, * volatile restrict * b; }", true);
-        ASSERT_EQUALS("", errout.str());
+        check("void f() { char * const * a = 0, * volatile restrict * b; }", dinit(CheckOptions, $.inconclusive = true, $.cpp = false));
+        ASSERT_EQUALS("", errout_str());
 
-        check("void f() { char * const * a = 0, * volatile const * b; }", true);
-        ASSERT_EQUALS("", errout.str());
+        check("void f() { char * const * a = 0, * volatile const * b; }", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
     }
 
     void archive() {
         check("void f(Archive &ar) {\n"
               "  ar & x;\n"
-              "}", true);
-        ASSERT_EQUALS("", errout.str());
+              "}", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
 
         check("void f(int ar) {\n"
               "  ar & x;\n"
-              "}", true);
-        ASSERT_EQUALS("[test.cpp:2]: (warning, inconclusive) Found suspicious operator '&', result is not used.\n", errout.str());
+              "}", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:2:6]: (warning, inconclusive) Found suspicious operator '&', result is not used. [constStatement]\n", errout_str());
     }
 
     void ast() {
-        check("struct c { void a() const { for (int x=0; x;); } };", true);
-        ASSERT_EQUALS("", errout.str());
+        check("struct c { void a() const { for (int x=0; x;); } };", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
     }
 
     void oror() {
         check("void foo() {\n"
               "    params_given (params, \"overrides\") || (overrides = \"1\");\n"
-              "}", true);
-        ASSERT_EQUALS("", errout.str());
+              "}", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
 
         check("void f(std::ifstream& file) {\n" // #10930
               "    int a{}, b{};\n"
               "    (file >> a) || (file >> b);\n"
               "    (file >> a) && (file >> b);\n"
-              "}\n", true);
-        ASSERT_EQUALS("", errout.str());
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void functioncall() {
+        check("void g();\n" // #13794
+              "void f() {\n"
+              "    g;\n"
+              "    exit;\n"
+              "    std::free;\n"
+              "    ::std::terminate;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:3:5]: (warning) Redundant code: Found unused function. [constStatement]\n"
+                      "[test.cpp:4:5]: (warning) Redundant code: Found unused function. [constStatement]\n"
+                      "[test.cpp:5:8]: (warning) Redundant code: Found unused function. [constStatement]\n"
+                      "[test.cpp:6:10]: (warning) Redundant code: Found unused function. [constStatement]\n",
+                      errout_str());
     }
 };
 

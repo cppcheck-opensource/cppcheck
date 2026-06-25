@@ -21,12 +21,13 @@
 #include "erroritem.h"
 #include "xmlreportv2.h"
 
+#include <QList>
 #include <QtTest>
 
-void TestXmlReportV2::readXml()
+void TestXmlReportV2::readXml() const
 {
     const QString filepath(QString(SRCDIR) + "/../data/xmlfiles/xmlreport_v2.xml");
-    XmlReportV2 report(filepath);
+    XmlReportV2 report(filepath, QString());
     QVERIFY(report.open());
     QList<ErrorItem> errors = report.read();
     QCOMPARE(errors.size(), 6);

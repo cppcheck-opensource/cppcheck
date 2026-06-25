@@ -1,4 +1,4 @@
-int* foo(int *p)
+static int* foo(int *p)
 {
     return p + 4;
 }

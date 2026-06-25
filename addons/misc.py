@@ -16,7 +16,7 @@ VERIFY_EXPECTED = []
 VERIFY_ACTUAL = []
 
 def reportError(token, severity, msg, id):
-    if id == 'debug' and DEBUG == False:
+    if id == 'debug' and not DEBUG:
         return
     if VERIFY:
         VERIFY_ACTUAL.append(str(token.linenr) + ':' + id)

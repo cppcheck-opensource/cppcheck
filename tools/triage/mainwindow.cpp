@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2021 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,27 +18,56 @@
 
 #include "mainwindow.h"
 
+#include "codeeditor.h"
+
 #include "ui_mainwindow.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <ctime>
+#include <random>
 
+#include <QAction>
+#include <QApplication>
+#include <QByteArray>
+#include <QCheckBox>
 #include <QClipboard>
+#include <QComboBox>
+#include <QCoreApplication>
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFlags>
+#include <QHeaderView>
+#include <QIODevice>
+#include <QLineEdit>
+#include <QList>
+#include <QListWidget>
+#include <QListWidgetItem>
+#include <QMenu>
 #include <QMimeDatabase>
+#include <QMimeType>
 #include <QProcess>
 #include <QProgressDialog>
 #include <QRegularExpression>
+#include <QStatusBar>
+#include <QStringLiteral>
+#include <QTabWidget>
 #include <QTextStream>
+#include <QTreeView>
+#include <QtCore>
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 5, 0))
+#include <QtLogging>
+#endif
 
-const QString WORK_FOLDER(QDir::homePath() + "/triage");
-const QString DACA2_PACKAGES(QDir::homePath() + "/daca2-packages");
+class QWidget;
 
-const int MAX_ERRORS = 100;
+static const QString WORK_FOLDER(QDir::homePath() + "/triage");
+static const QString DACA2_PACKAGES(QDir::homePath() + "/daca2-packages");
+
+static constexpr int MAX_ERRORS = 100;
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -48,10 +77,11 @@ MainWindow::MainWindow(QWidget *parent) :
     srcFiles{"*.cpp", "*.cxx", "*.cc", "*.c++", "*.C", "*.c", "*.cl"}
 {
     ui->setupUi(this);
+    // NOLINTNEXTLINE(bugprone-random-generator-seed) - the random numbers are not used in a security context so this should be sufficient
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
     QDir workFolder(WORK_FOLDER);
     if (!workFolder.exists()) {
-        workFolder.mkdir(WORK_FOLDER);
+        (void)workFolder.mkdir(WORK_FOLDER);
     }
 
     ui->results->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -83,7 +113,7 @@ void MainWindow::loadFile()
     if (fileName.isEmpty())
         return;
     QFile file(fileName);
-    file.open(QIODevice::ReadOnly | QIODevice::Text);
+    (void)file.open(QIODevice::ReadOnly | QIODevice::Text); // TODO: check result
     QTextStream textStream(&file);
     load(textStream);
 }
@@ -98,6 +128,7 @@ void MainWindow::loadFromClipboard()
 
 void MainWindow::load(QTextStream &textStream)
 {
+    bool local = false;
     QString url;
     QString errorMessage;
     QStringList versions;
@@ -106,20 +137,23 @@ void MainWindow::load(QTextStream &textStream)
         QString line = textStream.readLine();
         if (line.isNull())
             break;
-        if (line.startsWith("ftp://")) {
+        if (line.startsWith("ftp://") || line.startsWith("https://") || (line.startsWith(DACA2_PACKAGES) && line.endsWith(".tar.xz"))) {
+            local = line.startsWith(DACA2_PACKAGES) && line.endsWith(".tar.xz");
             url = line;
             if (!errorMessage.isEmpty())
                 mAllErrors << errorMessage;
             errorMessage.clear();
         } else if (!url.isEmpty()) {
             static const QRegularExpression severityRe("^.*: (error|warning|style|note):.*$");
-            if (severityRe.match(line).hasMatch())
+            if (!severityRe.match(line).hasMatch())
                 continue;
-            const QRegularExpressionMatch matchRes = mVersionRe.match(line);
-            if (matchRes.hasMatch()) {
-                const QString version = matchRes.captured(1);
-                if (versions.indexOf(version) < 0)
-                    versions << version;
+            if (!local) {
+                const QRegularExpressionMatch matchRes = mVersionRe.match(line);
+                if (matchRes.hasMatch()) {
+                    const QString version = matchRes.captured(1);
+                    if (versions.indexOf(version) < 0)
+                        versions << version;
+                }
             }
             if (line.indexOf(": note:") > 0)
                 errorMessage += '\n' + line;
@@ -147,12 +181,12 @@ void MainWindow::refreshResults()
     filter(ui->version->currentText());
 }
 
-void MainWindow::filter(const QString& filter)
+void MainWindow::filter(const QString& filterStr)
 {
     QStringList allErrors;
 
     for (const QString &errorItem : mAllErrors) {
-        if (filter.isEmpty()) {
+        if (filterStr.isEmpty()) {
             allErrors << errorItem;
             continue;
         }
@@ -161,7 +195,7 @@ void MainWindow::filter(const QString& filter)
         if (lines.size() < 2)
             continue;
 
-        if (lines[1].startsWith(filter))
+        if (lines[1].startsWith(filterStr))
             allErrors << errorItem;
     }
 
@@ -173,7 +207,7 @@ void MainWindow::filter(const QString& filter)
             if (allErrors[i].indexOf("test") > 0)
                 allErrors.removeAt(i);
         }
-        std::random_shuffle(allErrors.begin(), allErrors.end());
+        std::shuffle(allErrors.begin(), allErrors.end(), std::mt19937(std::random_device()()));
         ui->results->addItems(allErrors.mid(0, MAX_ERRORS));
         ui->results->sortItems();
     } else {
@@ -212,7 +246,7 @@ bool MainWindow::runProcess(const QString &programName, const QStringList &argum
         errorstr.append(process.errorString());
         ui->statusBar->showMessage(errorstr);
     } else {
-        int exitCode = process.exitCode();
+        const int exitCode = process.exitCode();
         if (exitCode != 0) {
             success = false;
             const QByteArray stderrOutput = process.readAllStandardError();
@@ -258,16 +292,19 @@ bool MainWindow::unpackArchive(const QString &archiveName)
 void MainWindow::showResult(QListWidgetItem *item)
 {
     ui->statusBar->clearMessage();
-    if (!item->text().startsWith("ftp://"))
+    const bool local = item->text().startsWith(DACA2_PACKAGES);
+    if (!item->text().startsWith("ftp://") && !item->text().startsWith("https://") && !local)
         return;
     const QStringList lines = item->text().split("\n");
     if (lines.size() < 2)
         return;
     const QString &url = lines[0];
     QString msg = lines[1];
-    const QRegularExpressionMatch matchRes = mVersionRe.match(msg);
-    if (matchRes.hasMatch())
-        msg = matchRes.captured(2);
+    if (!local) {
+        const QRegularExpressionMatch matchRes = mVersionRe.match(msg);
+        if (matchRes.hasMatch())
+            msg = matchRes.captured(2);
+    }
     const QString archiveName = url.mid(url.lastIndexOf("/") + 1);
     const int pos1 = msg.indexOf(":");
     const int pos2 = msg.indexOf(":", pos1+1);
@@ -279,7 +316,7 @@ void MainWindow::showResult(QListWidgetItem *item)
         if (QFileInfo::exists(daca2archiveFile)) {
             if (!unpackArchive(daca2archiveFile))
                 return;
-        } else {
+        } else if (!local) {
             const QString archiveFullPath {WORK_FOLDER + '/' + archiveName};
             if (!QFileInfo::exists(archiveFullPath)) {
                 // Download archive
@@ -326,6 +363,7 @@ void MainWindow::findInFilesClicked()
     ui->inFilesResult->clear();
     const QString text = ui->filterEdit->text();
 
+    // cppcheck-suppress shadowFunction - TODO: fix this
     QStringList filter;
     if (ui->hFilesFilter->isChecked())
         filter.append(hFiles);
@@ -379,7 +417,7 @@ void MainWindow::resultsContextMenu(const QPoint& pos)
         return;
     QMenu submenu;
     submenu.addAction("Copy");
-    QAction* menuItem = submenu.exec(ui->results->mapToGlobal(pos));
+    const QAction* menuItem = submenu.exec(ui->results->mapToGlobal(pos));
     if (menuItem && menuItem->text().contains("Copy"))
     {
         QString text;

@@ -1,0 +1,6 @@
+{
+    "script":"namingng.py",
+    "args":[
+        "--configfile=namingng.config.json"
+    ]
+}

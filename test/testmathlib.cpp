@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,15 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
+#include "fixture.h"
 #include "mathlib.h"
-#include "testsuite.h"
+#include "standards.h"
+#include "token.h"
+#include "tokenlist.h"
 
 #include <limits>
+#include <memory>
 #include <string>
-
-struct InternalError;
-
+#include <utility>
 
 class TestMathLib : public TestFixture {
 public:
@@ -53,7 +54,8 @@ private:
         TEST_CASE(calculate);
         TEST_CASE(calculate1);
         TEST_CASE(typesuffix);
-        TEST_CASE(toLongNumber);
+        TEST_CASE(toBigNumber);
+        TEST_CASE(toBigUNumber);
         TEST_CASE(toDoubleNumber);
         TEST_CASE(naninf);
         TEST_CASE(isNullValue);
@@ -62,7 +64,6 @@ private:
         TEST_CASE(tan);
         TEST_CASE(abs);
         TEST_CASE(toString);
-        TEST_CASE(CPP14DigitSeparators);
     }
 
     void isGreater() const {
@@ -145,13 +146,13 @@ private:
         ASSERT_EQUALS("5.0",  MathLib::divide("25.5", "5.1"));
         ASSERT_EQUALS("7.0",  MathLib::divide("21.", "3"));
         ASSERT_EQUALS("1",    MathLib::divide("3", "2"));
-        ASSERT_THROW(MathLib::divide("123", "0"), InternalError);  // decimal zero: throw
-        ASSERT_THROW(MathLib::divide("123", "00"), InternalError); // octal zero: throw
-        ASSERT_THROW(MathLib::divide("123", "0x0"), InternalError); // hex zero: throw
-        MathLib::divide("123", "0.0f"); // float zero: don't throw
-        MathLib::divide("123", "0.0"); // double zero: don't throw
-        MathLib::divide("123", "0.0L"); // long double zero: don't throw
-        ASSERT_THROW(MathLib::divide("-9223372036854775808", "-1"), InternalError); // #4520 - out of range => throw
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::divide("123", "0"), INTERNAL, "Internal Error: Division by zero");  // decimal zero: throw
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::divide("123", "00"), INTERNAL, "Internal Error: Division by zero"); // octal zero: throw
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::divide("123", "0x0"), INTERNAL, "Internal Error: Division by zero"); // hex zero: throw
+        ASSERT_NO_THROW(MathLib::divide("123", "0.0f")); // float zero
+        ASSERT_NO_THROW(MathLib::divide("123", "0.0")); // double zero
+        ASSERT_NO_THROW(MathLib::divide("123", "0.0L")); // long double zero
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::divide("-9223372036854775808", "-1"), INTERNAL, "Internal Error: Division overflow"); // #4520 - out of range => throw
         ASSERT_EQUALS("4611686018427387904",  MathLib::divide("-9223372036854775808", "-2")); // #6679
 
 
@@ -166,7 +167,7 @@ private:
         ASSERT_EQUALS("1", MathLib::calculate("0", "1", '^'));
 
         // Unknown action should throw exception
-        ASSERT_THROW(MathLib::calculate("1","2",'j'),InternalError);
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::calculate("1","2",'j'),INTERNAL, "Unexpected action 'j' in MathLib::calculate().");
     }
 
     void calculate1() const {
@@ -180,10 +181,10 @@ private:
         ASSERT_EQUALS("12.0", MathLib::calculate("12.0", "13.0", '%'));
         ASSERT_EQUALS("1.3",  MathLib::calculate("5.3",  "2.0",  '%'));
         ASSERT_EQUALS("1.7",  MathLib::calculate("18.5", "4.2",  '%'));
-        MathLib::calculate("123", "0.0", '%'); // don't throw
+        ASSERT_NO_THROW(MathLib::calculate("123", "0.0", '%'));
 #endif
 
-        ASSERT_THROW(MathLib::calculate("123", "0", '%'), InternalError); // throw
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::calculate("123", "0", '%'), INTERNAL, "Internal Error: Division by zero"); // throw
 
         ASSERT_EQUALS("0", MathLib::calculate("1", "1", '^'));
         ASSERT_EQUALS("3", MathLib::calculate("2", "1", '^'));
@@ -249,187 +250,347 @@ private:
         ASSERT_EQUALS("2ULL",  MathLib::add("1ULL", "1LLU"));
     }
 
-    void toLongNumber() const {
+    void toBigNumber() const {
+        // zero input
+        ASSERT_EQUALS(0, MathLib::toBigNumber("0"));
+        ASSERT_EQUALS(0, MathLib::toBigNumber("-0"));
+        ASSERT_EQUALS(0, MathLib::toBigNumber("+0"));
+        ASSERT_EQUALS(0, MathLib::toBigNumber("0L"));
+        ASSERT_EQUALS(0, MathLib::toBigNumber("0l"));
+        ASSERT_EQUALS(0, MathLib::toBigNumber("0LL"));
+        ASSERT_EQUALS(0, MathLib::toBigNumber("0ll"));
+        ASSERT_EQUALS(0, MathLib::toBigNumber("0U"));
+        ASSERT_EQUALS(0, MathLib::toBigNumber("0u"));
+        ASSERT_EQUALS(0, MathLib::toBigNumber("0UL"));
+        ASSERT_EQUALS(0, MathLib::toBigNumber("0ul"));
+        ASSERT_EQUALS(0, MathLib::toBigNumber("0ULL"));
+        ASSERT_EQUALS(0, MathLib::toBigNumber("0ull"));
+        ASSERT_EQUALS(0, MathLib::toBigNumber("0i64")); // Visual Studio-specific
+        ASSERT_EQUALS(0, MathLib::toBigNumber("0ui64")); // Visual Studio-specific
+
+        // TODO: needs to fail
+        //ASSERT_EQUALS(0, MathLib::toBigNumber("0lll"));
+        //ASSERT_EQUALS(0, MathLib::toBigNumber("0uu"));
+
+        ASSERT_EQUALS(1U, MathLib::toBigNumber("1U"));
+        ASSERT_EQUALS(10000U, MathLib::toBigNumber("1e4"));
+        ASSERT_EQUALS(10000U, MathLib::toBigNumber("1e4"));
+        ASSERT_EQUALS(0xFF00000000000000UL, MathLib::toBigNumber("0xFF00000000000000UL"));
+        ASSERT_EQUALS(0x0A00000000000000UL, MathLib::toBigNumber("0x0A00000000000000UL"));
+
         // from hex
-        ASSERT_EQUALS(0,      MathLib::toLongNumber("0x0"));
-        ASSERT_EQUALS(0,      MathLib::toLongNumber("-0x0"));
-        ASSERT_EQUALS(0,      MathLib::toLongNumber("+0x0"));
-        ASSERT_EQUALS(10,     MathLib::toLongNumber("0xa"));
-        ASSERT_EQUALS(10995,  MathLib::toLongNumber("0x2AF3"));
-        ASSERT_EQUALS(-10,    MathLib::toLongNumber("-0xa"));
-        ASSERT_EQUALS(-10995, MathLib::toLongNumber("-0x2AF3"));
-        ASSERT_EQUALS(10,     MathLib::toLongNumber("+0xa"));
-        ASSERT_EQUALS(10995,  MathLib::toLongNumber("+0x2AF3"));
+        ASSERT_EQUALS(0, MathLib::toBigNumber("0x0"));
+        ASSERT_EQUALS(0, MathLib::toBigNumber("-0x0"));
+        ASSERT_EQUALS(0, MathLib::toBigNumber("+0x0"));
+        ASSERT_EQUALS(10, MathLib::toBigNumber("0xa"));
+        ASSERT_EQUALS(10995, MathLib::toBigNumber("0x2AF3"));
+        ASSERT_EQUALS(-10, MathLib::toBigNumber("-0xa"));
+        ASSERT_EQUALS(-10995, MathLib::toBigNumber("-0x2AF3"));
+        ASSERT_EQUALS(10, MathLib::toBigNumber("+0xa"));
+        ASSERT_EQUALS(10995, MathLib::toBigNumber("+0x2AF3"));
 
         // from octal
-        ASSERT_EQUALS(8,    MathLib::toLongNumber("010"));
-        ASSERT_EQUALS(8,    MathLib::toLongNumber("+010"));
-        ASSERT_EQUALS(-8,   MathLib::toLongNumber("-010"));
-        ASSERT_EQUALS(125,  MathLib::toLongNumber("0175"));
-        ASSERT_EQUALS(125,  MathLib::toLongNumber("+0175"));
-        ASSERT_EQUALS(-125, MathLib::toLongNumber("-0175"));
+        ASSERT_EQUALS(8, MathLib::toBigNumber("010"));
+        ASSERT_EQUALS(8, MathLib::toBigNumber("+010"));
+        ASSERT_EQUALS(-8, MathLib::toBigNumber("-010"));
+        ASSERT_EQUALS(125, MathLib::toBigNumber("0175"));
+        ASSERT_EQUALS(125, MathLib::toBigNumber("+0175"));
+        ASSERT_EQUALS(-125, MathLib::toBigNumber("-0175"));
 
         // from binary
-        ASSERT_EQUALS(0,    MathLib::toLongNumber("0b0"));
-        ASSERT_EQUALS(1,    MathLib::toLongNumber("0b1"));
-        ASSERT_EQUALS(1,    MathLib::toLongNumber("0b1U"));
-        ASSERT_EQUALS(1,    MathLib::toLongNumber("0b1L"));
-        ASSERT_EQUALS(1,    MathLib::toLongNumber("0b1LU"));
-        ASSERT_EQUALS(1,    MathLib::toLongNumber("0b1LL"));
-        ASSERT_EQUALS(1,    MathLib::toLongNumber("0b1LLU"));
-        ASSERT_EQUALS(1,    MathLib::toLongNumber("+0b1"));
-        ASSERT_EQUALS(-1,   MathLib::toLongNumber("-0b1"));
-        ASSERT_EQUALS(215,  MathLib::toLongNumber("0b11010111"));
-        ASSERT_EQUALS(-215, MathLib::toLongNumber("-0b11010111"));
-        ASSERT_EQUALS(215,  MathLib::toLongNumber("0B11010111"));
+        ASSERT_EQUALS(0, MathLib::toBigNumber("0b0"));
+        ASSERT_EQUALS(1, MathLib::toBigNumber("0b1"));
+        ASSERT_EQUALS(1, MathLib::toBigNumber("0b1U"));
+        ASSERT_EQUALS(1, MathLib::toBigNumber("0b1L"));
+        ASSERT_EQUALS(1, MathLib::toBigNumber("0b1LU"));
+        ASSERT_EQUALS(1, MathLib::toBigNumber("0b1LL"));
+        ASSERT_EQUALS(1, MathLib::toBigNumber("0b1LLU"));
+        ASSERT_EQUALS(1, MathLib::toBigNumber("+0b1"));
+        ASSERT_EQUALS(-1, MathLib::toBigNumber("-0b1"));
+        ASSERT_EQUALS(9U, MathLib::toBigNumber("011"));
+        ASSERT_EQUALS(5U, MathLib::toBigNumber("0b101"));
+        ASSERT_EQUALS(215, MathLib::toBigNumber("0b11010111"));
+        ASSERT_EQUALS(-215, MathLib::toBigNumber("-0b11010111"));
+        ASSERT_EQUALS(215, MathLib::toBigNumber("0B11010111"));
 
         // from base 10
-        ASSERT_EQUALS(10,  MathLib::toLongNumber("10"));
-        ASSERT_EQUALS(10,  MathLib::toLongNumber("10."));
-        ASSERT_EQUALS(10,  MathLib::toLongNumber("10.0"));
-        ASSERT_EQUALS(100, MathLib::toLongNumber("10E+1"));
-        ASSERT_EQUALS(1,   MathLib::toLongNumber("10E-1"));
-        ASSERT_EQUALS(100, MathLib::toLongNumber("+10E+1"));
-        ASSERT_EQUALS(-1,  MathLib::toLongNumber("-10E-1"));
-        ASSERT_EQUALS(100, MathLib::toLongNumber("+10.E+1"));
-        ASSERT_EQUALS(-1,  MathLib::toLongNumber("-10.E-1"));
-        ASSERT_EQUALS(100, MathLib::toLongNumber("+10.0E+1"));
-        ASSERT_EQUALS(-1,  MathLib::toLongNumber("-10.0E-1"));
+        ASSERT_EQUALS(10, MathLib::toBigNumber("10"));
+        ASSERT_EQUALS(10, MathLib::toBigNumber("10."));
+        ASSERT_EQUALS(10, MathLib::toBigNumber("10.0"));
+        ASSERT_EQUALS(100, MathLib::toBigNumber("10E+1"));
+        ASSERT_EQUALS(1, MathLib::toBigNumber("10E-1"));
+        ASSERT_EQUALS(100, MathLib::toBigNumber("+10E+1"));
+        ASSERT_EQUALS(-1, MathLib::toBigNumber("-10E-1"));
+        ASSERT_EQUALS(100, MathLib::toBigNumber("+10.E+1"));
+        ASSERT_EQUALS(-1, MathLib::toBigNumber("-10.E-1"));
+        ASSERT_EQUALS(100, MathLib::toBigNumber("+10.0E+1"));
+        ASSERT_EQUALS(-1, MathLib::toBigNumber("-10.0E-1"));
 
         // from char
-        ASSERT_EQUALS((int)('A'),    MathLib::toLongNumber("'A'"));
-        ASSERT_EQUALS((int)('\x10'), MathLib::toLongNumber("'\\x10'"));
-        ASSERT_EQUALS((int)('\100'), MathLib::toLongNumber("'\\100'"));
-        ASSERT_EQUALS((int)('\200'), MathLib::toLongNumber("'\\200'"));
-        ASSERT_EQUALS((int)(L'A'),   MathLib::toLongNumber("L'A'"));
+        ASSERT_EQUALS(static_cast<int>('A'), MathLib::toBigNumber("'A'"));
+        ASSERT_EQUALS(static_cast<int>('\x10'), MathLib::toBigNumber("'\\x10'"));
+        ASSERT_EQUALS(static_cast<int>('\100'), MathLib::toBigNumber("'\\100'"));
+        ASSERT_EQUALS(static_cast<int>('\200'), MathLib::toBigNumber("'\\200'"));
+        ASSERT_EQUALS(static_cast<int>(L'A'), MathLib::toBigNumber("L'A'"));
 
-        ASSERT_EQUALS(-8552249625308161526, MathLib::toLongNumber("0x89504e470d0a1a0a"));
-        ASSERT_EQUALS(-8481036456200365558, MathLib::toLongNumber("0x8a4d4e470d0a1a0a"));
-        ASSERT_EQUALS(9894494448401390090ULL, MathLib::toULongNumber("0x89504e470d0a1a0a"));
-        ASSERT_EQUALS(9965707617509186058ULL, MathLib::toULongNumber("0x8a4d4e470d0a1a0a"));
-
-        // zero input
-        ASSERT_EQUALS(0,  MathLib::toULongNumber("0"));
-        ASSERT_EQUALS(0,  MathLib::toULongNumber("-0"));
-        ASSERT_EQUALS(0,  MathLib::toULongNumber("+0"));
-        ASSERT_EQUALS(0U, MathLib::toULongNumber("0U"));
-        ASSERT_EQUALS(0,  MathLib::toULongNumber("-0x0"));
-
-        ASSERT_EQUALS(1U,     MathLib::toULongNumber("1U"));
-        ASSERT_EQUALS(10000U, MathLib::toULongNumber("1e4"));
-        ASSERT_EQUALS(10000U, MathLib::toULongNumber("1e4"));
-        ASSERT_EQUALS(0xFF00000000000000UL, MathLib::toULongNumber("0xFF00000000000000UL"));
-        ASSERT_EQUALS(0x0A00000000000000UL, MathLib::toULongNumber("0x0A00000000000000UL"));
-        ASSERT_EQUALS(0,  MathLib::toULongNumber("0b0"));
-        ASSERT_EQUALS(1,  MathLib::toULongNumber("0b1"));
-        ASSERT_EQUALS(1,  MathLib::toULongNumber("0b1U"));
-        ASSERT_EQUALS(1,  MathLib::toULongNumber("0b1L"));
-        ASSERT_EQUALS(1,  MathLib::toULongNumber("0b1LU"));
-        ASSERT_EQUALS(1,  MathLib::toULongNumber("0b1LL"));
-        ASSERT_EQUALS(1,  MathLib::toULongNumber("0b1LLU"));
-        ASSERT_EQUALS(9U, MathLib::toULongNumber("011"));
-        ASSERT_EQUALS(5U, MathLib::toULongNumber("0b101"));
+        ASSERT_EQUALS(-8552249625308161526, MathLib::toBigNumber("0x89504e470d0a1a0a"));
+        ASSERT_EQUALS(-8481036456200365558, MathLib::toBigNumber("0x8a4d4e470d0a1a0a"));
 
         // from long long
         /*
-         * ASSERT_EQUALS(0xFF00000000000000LL, MathLib::toLongNumber("0xFF00000000000000LL"));
+         * ASSERT_EQUALS(0xFF00000000000000LL, MathLib::toBigNumber("0xFF00000000000000LL"));
          * This does not work in a portable way!
          * While it succeeds on 32bit Visual Studio it fails on Linux 64bit because it is greater than 0x7FFFFFFFFFFFFFFF (=LLONG_MAX)
          */
 
-        ASSERT_EQUALS(0x0A00000000000000LL, MathLib::toLongNumber("0x0A00000000000000LL"));
+        ASSERT_EQUALS(0x0A00000000000000LL, MathLib::toBigNumber("0x0A00000000000000LL"));
 
         // min/max numeric limits
-        ASSERT_EQUALS(std::numeric_limits<long long>::min(), MathLib::toLongNumber(std::to_string(std::numeric_limits<long long>::min())));
-        ASSERT_EQUALS(std::numeric_limits<long long>::max(), MathLib::toLongNumber(std::to_string(std::numeric_limits<long long>::max())));
-        ASSERT_EQUALS(std::numeric_limits<unsigned long long>::min(), MathLib::toLongNumber(std::to_string(std::numeric_limits<unsigned long long>::min())));
-        ASSERT_EQUALS(std::numeric_limits<unsigned long long>::max(), MathLib::toLongNumber(std::to_string(std::numeric_limits<unsigned long long>::max())));
-
-        ASSERT_EQUALS(std::numeric_limits<long long>::min(), MathLib::toULongNumber(std::to_string(std::numeric_limits<long long>::min())));
-        ASSERT_EQUALS(std::numeric_limits<long long>::max(), MathLib::toULongNumber(std::to_string(std::numeric_limits<long long>::max())));
-        ASSERT_EQUALS(std::numeric_limits<unsigned long long>::min(), MathLib::toULongNumber(std::to_string(std::numeric_limits<unsigned long long>::min())));
-        ASSERT_EQUALS(std::numeric_limits<unsigned long long>::max(), MathLib::toULongNumber(std::to_string(std::numeric_limits<unsigned long long>::max())));
+        ASSERT_EQUALS(std::numeric_limits<long long>::min(),
+                      MathLib::toBigNumber(std::to_string(std::numeric_limits<long long>::min())));
+        ASSERT_EQUALS(std::numeric_limits<long long>::max(),
+                      MathLib::toBigNumber(std::to_string(std::numeric_limits<long long>::max())));
+        ASSERT_EQUALS(std::numeric_limits<unsigned long long>::min(),
+                      MathLib::toBigNumber(std::to_string(std::numeric_limits<unsigned long long>::min())));
+        ASSERT_EQUALS(std::numeric_limits<unsigned long long>::max(),
+                      MathLib::toBigNumber(std::to_string(std::numeric_limits<unsigned long long>::max())));
 
         // min/max and out-of-bounds - hex
         {
-            const MathLib::bigint i = 0xFFFFFFFFFFFFFFFF;
-            ASSERT_EQUALS(i, MathLib::toLongNumber(std::to_string(i)));
-            ASSERT_EQUALS(i, MathLib::toLongNumber("0xFFFFFFFFFFFFFFFF"));
+            constexpr MathLib::bigint i = 0xFFFFFFFFFFFFFFFF;
+            ASSERT_EQUALS(i, MathLib::toBigNumber(std::to_string(i)));
+            ASSERT_EQUALS(i, MathLib::toBigNumber("0xFFFFFFFFFFFFFFFF"));
         }
         {
-            const MathLib::biguint u = 0xFFFFFFFFFFFFFFFF;
-            ASSERT_EQUALS(u, MathLib::toULongNumber(std::to_string(u)));
-            ASSERT_EQUALS(u, MathLib::toULongNumber("0xFFFFFFFFFFFFFFFF"));
-        }
-        {
-            const MathLib::bigint i = -0xFFFFFFFFFFFFFFFF;
-            ASSERT_EQUALS(i, MathLib::toLongNumber(std::to_string(i)));
-            ASSERT_EQUALS(i, MathLib::toLongNumber("-0xFFFFFFFFFFFFFFFF"));
-        }
-        {
-            const MathLib::biguint u = -0xFFFFFFFFFFFFFFFF;
-            ASSERT_EQUALS(u, MathLib::toULongNumber(std::to_string(u)));
-            ASSERT_EQUALS(u, MathLib::toULongNumber("-0xFFFFFFFFFFFFFFFF"));
+            constexpr MathLib::bigint i = -0xFFFFFFFFFFFFFFFF;
+            ASSERT_EQUALS(i, MathLib::toBigNumber(std::to_string(i)));
+            ASSERT_EQUALS(i, MathLib::toBigNumber("-0xFFFFFFFFFFFFFFFF"));
         }
 
-        ASSERT_THROW(MathLib::toLongNumber("0x10000000000000000"), InternalError);
-        ASSERT_THROW(MathLib::toULongNumber("0x10000000000000000"), InternalError);
-        ASSERT_THROW(MathLib::toLongNumber("-0x10000000000000000"), InternalError);
-        ASSERT_THROW(MathLib::toULongNumber("-0x10000000000000000"), InternalError);
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigNumber("0x10000000000000000"), INTERNAL, "Internal Error. MathLib::toBigNumber: out_of_range: 0x10000000000000000");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigNumber("-0x10000000000000000"), INTERNAL, "Internal Error. MathLib::toBigNumber: out_of_range: -0x10000000000000000");
 
         // min/max and out-of-bounds - octal
         {
-            const MathLib::bigint i = 01777777777777777777777;
-            ASSERT_EQUALS(i, MathLib::toLongNumber(std::to_string(i)));
-            ASSERT_EQUALS(i, MathLib::toLongNumber("01777777777777777777777"));
+            constexpr MathLib::bigint i = 01777777777777777777777;
+            ASSERT_EQUALS(i, MathLib::toBigNumber(std::to_string(i)));
+            ASSERT_EQUALS(i, MathLib::toBigNumber("01777777777777777777777"));
         }
         {
-            const MathLib::biguint u = 01777777777777777777777;
-            ASSERT_EQUALS(u, MathLib::toULongNumber(std::to_string(u)));
-            ASSERT_EQUALS(u, MathLib::toULongNumber("01777777777777777777777"));
-        }
-        {
-            const MathLib::bigint i = -01777777777777777777777;
-            ASSERT_EQUALS(i, MathLib::toLongNumber(std::to_string(i)));
-            ASSERT_EQUALS(i, MathLib::toLongNumber("-01777777777777777777777"));
-        }
-        {
-            const MathLib::biguint u = -01777777777777777777777;
-            ASSERT_EQUALS(u, MathLib::toULongNumber(std::to_string(u)));
-            ASSERT_EQUALS(u, MathLib::toULongNumber("-01777777777777777777777"));
+            constexpr MathLib::bigint i = -01777777777777777777777;
+            ASSERT_EQUALS(i, MathLib::toBigNumber(std::to_string(i)));
+            ASSERT_EQUALS(i, MathLib::toBigNumber("-01777777777777777777777"));
         }
 
-        ASSERT_THROW(MathLib::toLongNumber("02000000000000000000000"), InternalError);
-        ASSERT_THROW(MathLib::toULongNumber("02000000000000000000000"), InternalError);
-        ASSERT_THROW(MathLib::toLongNumber("-02000000000000000000000"), InternalError);
-        ASSERT_THROW(MathLib::toULongNumber("-02000000000000000000000"), InternalError);
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigNumber("02000000000000000000000"), INTERNAL, "Internal Error. MathLib::toBigNumber: out_of_range: 02000000000000000000000");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigNumber("-02000000000000000000000"), INTERNAL, "Internal Error. MathLib::toBigNumber: out_of_range: -02000000000000000000000");
 
-        // min/max and out-of-bounds - decimal
+        // min/max and out-of-range - decimal
         {
-            const MathLib::bigint i = 18446744073709551615;
-            ASSERT_EQUALS(i, MathLib::toLongNumber(std::to_string(i)));
-            ASSERT_EQUALS(i, MathLib::toLongNumber("18446744073709551615"));
+            constexpr MathLib::bigint i = 18446744073709551615ULL;
+            ASSERT_EQUALS(i, MathLib::toBigNumber(std::to_string(i)));
+            ASSERT_EQUALS(i, MathLib::toBigNumber("18446744073709551615"));
         }
         {
-            const MathLib::biguint u = 18446744073709551615;
-            ASSERT_EQUALS(u, MathLib::toULongNumber(std::to_string(u)));
-            ASSERT_EQUALS(u, MathLib::toULongNumber("18446744073709551615"));
-        }
-        {
-            const MathLib::bigint i = -18446744073709551615;
-            ASSERT_EQUALS(i, MathLib::toLongNumber(std::to_string(i)));
-            ASSERT_EQUALS(i, MathLib::toLongNumber("-18446744073709551615"));
-        }
-        {
-            const MathLib::biguint u = -18446744073709551615;
-            ASSERT_EQUALS(u, MathLib::toULongNumber(std::to_string(u)));
-            ASSERT_EQUALS(u, MathLib::toULongNumber("-18446744073709551615"));
+            constexpr MathLib::bigint i = -18446744073709551615ULL;
+            ASSERT_EQUALS(i, MathLib::toBigNumber(std::to_string(i)));
+            ASSERT_EQUALS(i, MathLib::toBigNumber("-18446744073709551615"));
         }
 
-        ASSERT_THROW(MathLib::toLongNumber("18446744073709551616"), InternalError);
-        ASSERT_THROW(MathLib::toULongNumber("18446744073709551616"), InternalError);
-        ASSERT_THROW(MathLib::toLongNumber("-18446744073709551616"), InternalError);
-        ASSERT_THROW(MathLib::toULongNumber("-18446744073709551616"), InternalError);
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigNumber("18446744073709551616"), INTERNAL, "Internal Error. MathLib::toBigNumber: out_of_range: 18446744073709551616");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigNumber("-18446744073709551616"), INTERNAL, "Internal Error. MathLib::toBigNumber: out_of_range: -18446744073709551616");
+
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigNumber("invalid"), INTERNAL, "Internal Error. MathLib::toBigNumber: invalid_argument: invalid");
+
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigNumber("1invalid"), INTERNAL, "Internal Error. MathLib::toBigNumber: input was not completely consumed: 1invalid");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigNumber("1 invalid"), INTERNAL, "Internal Error. MathLib::toBigNumber: input was not completely consumed: 1 invalid");
+
+        {
+            TokenList list{settingsDefault, Standards::Language::C};
+            list.appendFileIfNew("test.c");
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            auto *tok = new Token(list, std::move(tokensFrontBack));
+            tok->str("invalid");
+            ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigNumber(tok), INTERNAL, "Internal Error. MathLib::toBigNumber: invalid_argument: invalid");
+            ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigNumber("invalid", tok), INTERNAL, "Internal Error. MathLib::toBigNumber: invalid_argument: invalid");
+            TokenList::deleteTokens(tok);
+        }
+
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigNumber("''"), INTERNAL, "Internal Error. MathLib::toBigNumber: characterLiteralToLL('') => empty character literal");
+
+        // TODO: test binary
+        // TODO: test floating point
+
+        // TODO: test with 128-bit values
+    }
+
+    void toBigUNumber() const {
+        // zero input
+        ASSERT_EQUALS(0, MathLib::toBigUNumber("0"));
+        ASSERT_EQUALS(0, MathLib::toBigUNumber("-0"));
+        ASSERT_EQUALS(0, MathLib::toBigUNumber("+0"));
+        ASSERT_EQUALS(0, MathLib::toBigUNumber("0L"));
+        ASSERT_EQUALS(0, MathLib::toBigUNumber("0l"));
+        ASSERT_EQUALS(0, MathLib::toBigUNumber("0LL"));
+        ASSERT_EQUALS(0, MathLib::toBigUNumber("0ll"));
+        ASSERT_EQUALS(0, MathLib::toBigUNumber("0U"));
+        ASSERT_EQUALS(0, MathLib::toBigUNumber("0u"));
+        ASSERT_EQUALS(0, MathLib::toBigUNumber("0UL"));
+        ASSERT_EQUALS(0, MathLib::toBigUNumber("0ul"));
+        ASSERT_EQUALS(0, MathLib::toBigUNumber("0ULL"));
+        ASSERT_EQUALS(0, MathLib::toBigUNumber("0ull"));
+        ASSERT_EQUALS(0, MathLib::toBigUNumber("0i64")); // Visual Studio-specific
+        ASSERT_EQUALS(0, MathLib::toBigUNumber("0ui64")); // Visual Studio-specific
+
+        // TODO: needs to fail
+        //ASSERT_EQUALS(0, MathLib::toBigUNumber("0lll"));
+        //ASSERT_EQUALS(0, MathLib::toBigUNumber("0uu"));
+
+        ASSERT_EQUALS(1U, MathLib::toBigUNumber("1U"));
+        ASSERT_EQUALS(10000U, MathLib::toBigUNumber("1e4"));
+        ASSERT_EQUALS(10000U, MathLib::toBigUNumber("1e4"));
+        ASSERT_EQUALS(0xFF00000000000000UL, MathLib::toBigUNumber("0xFF00000000000000UL"));
+        ASSERT_EQUALS(0x0A00000000000000UL, MathLib::toBigUNumber("0x0A00000000000000UL"));
+
+        // from hex
+        ASSERT_EQUALS(0, MathLib::toBigUNumber("0x0"));
+        ASSERT_EQUALS(0, MathLib::toBigUNumber("-0x0"));
+        ASSERT_EQUALS(0, MathLib::toBigUNumber("+0x0"));
+        ASSERT_EQUALS(10, MathLib::toBigUNumber("0xa"));
+        ASSERT_EQUALS(10995, MathLib::toBigUNumber("0x2AF3"));
+        ASSERT_EQUALS(-10, MathLib::toBigUNumber("-0xa"));
+        ASSERT_EQUALS(-10995, MathLib::toBigUNumber("-0x2AF3"));
+        ASSERT_EQUALS(10, MathLib::toBigUNumber("+0xa"));
+        ASSERT_EQUALS(10995, MathLib::toBigUNumber("+0x2AF3"));
+
+        // from octal
+        ASSERT_EQUALS(8, MathLib::toBigUNumber("010"));
+        ASSERT_EQUALS(8, MathLib::toBigUNumber("+010"));
+        ASSERT_EQUALS(-8, MathLib::toBigUNumber("-010"));
+        ASSERT_EQUALS(125, MathLib::toBigUNumber("0175"));
+        ASSERT_EQUALS(125, MathLib::toBigUNumber("+0175"));
+        ASSERT_EQUALS(-125, MathLib::toBigUNumber("-0175"));
+
+        // from binary
+        ASSERT_EQUALS(0, MathLib::toBigUNumber("0b0"));
+        ASSERT_EQUALS(1, MathLib::toBigUNumber("0b1"));
+        ASSERT_EQUALS(1, MathLib::toBigUNumber("0b1U"));
+        ASSERT_EQUALS(1, MathLib::toBigUNumber("0b1L"));
+        ASSERT_EQUALS(1, MathLib::toBigUNumber("0b1LU"));
+        ASSERT_EQUALS(1, MathLib::toBigUNumber("0b1LL"));
+        ASSERT_EQUALS(1, MathLib::toBigUNumber("0b1LLU"));
+        ASSERT_EQUALS(1, MathLib::toBigUNumber("+0b1"));
+        ASSERT_EQUALS(-1, MathLib::toBigUNumber("-0b1"));
+        ASSERT_EQUALS(9U, MathLib::toBigUNumber("011"));
+        ASSERT_EQUALS(5U, MathLib::toBigUNumber("0b101"));
+        ASSERT_EQUALS(215, MathLib::toBigUNumber("0b11010111"));
+        ASSERT_EQUALS(-215, MathLib::toBigUNumber("-0b11010111"));
+        ASSERT_EQUALS(215, MathLib::toBigUNumber("0B11010111"));
+
+        // from base 10
+        ASSERT_EQUALS(10, MathLib::toBigUNumber("10"));
+        ASSERT_EQUALS(10, MathLib::toBigUNumber("10."));
+        ASSERT_EQUALS(10, MathLib::toBigUNumber("10.0"));
+        ASSERT_EQUALS(100, MathLib::toBigUNumber("10E+1"));
+        ASSERT_EQUALS(1, MathLib::toBigUNumber("10E-1"));
+        ASSERT_EQUALS(100, MathLib::toBigUNumber("+10E+1"));
+        ASSERT_EQUALS(-1, MathLib::toBigUNumber("-10E-1"));
+        ASSERT_EQUALS(100, MathLib::toBigUNumber("+10.E+1"));
+        ASSERT_EQUALS(-1, MathLib::toBigUNumber("-10.E-1"));
+        ASSERT_EQUALS(100, MathLib::toBigUNumber("+10.0E+1"));
+        ASSERT_EQUALS(-1, MathLib::toBigUNumber("-10.0E-1"));
+
+        // from char
+        ASSERT_EQUALS(static_cast<int>('A'), MathLib::toBigUNumber("'A'"));
+        ASSERT_EQUALS(static_cast<int>('\x10'), MathLib::toBigUNumber("'\\x10'"));
+        ASSERT_EQUALS(static_cast<int>('\100'), MathLib::toBigUNumber("'\\100'"));
+        ASSERT_EQUALS(static_cast<int>('\200'), MathLib::toBigUNumber("'\\200'"));
+        ASSERT_EQUALS(static_cast<int>(L'A'), MathLib::toBigUNumber("L'A'"));
+
+        ASSERT_EQUALS(9894494448401390090ULL, MathLib::toBigUNumber("0x89504e470d0a1a0a"));
+        ASSERT_EQUALS(9965707617509186058ULL, MathLib::toBigUNumber("0x8a4d4e470d0a1a0a"));
+
+        // from long long
+        /*
+         * ASSERT_EQUALS(0xFF00000000000000LL, MathLib::toBigUNumber("0xFF00000000000000LL"));
+         * This does not work in a portable way!
+         * While it succeeds on 32bit Visual Studio it fails on Linux 64bit because it is greater than 0x7FFFFFFFFFFFFFFF (=LLONG_MAX)
+         */
+
+        ASSERT_EQUALS(0x0A00000000000000LL, MathLib::toBigUNumber("0x0A00000000000000LL"));
+
+        // min/max numeric limits
+        ASSERT_EQUALS(std::numeric_limits<long long>::min(),
+                      MathLib::toBigUNumber(std::to_string(std::numeric_limits<long long>::min())));
+        ASSERT_EQUALS(std::numeric_limits<long long>::max(),
+                      MathLib::toBigUNumber(std::to_string(std::numeric_limits<long long>::max())));
+        ASSERT_EQUALS(std::numeric_limits<unsigned long long>::min(),
+                      MathLib::toBigUNumber(std::to_string(std::numeric_limits<unsigned long long>::min())));
+        ASSERT_EQUALS(std::numeric_limits<unsigned long long>::max(),
+                      MathLib::toBigUNumber(std::to_string(std::numeric_limits<unsigned long long>::max())));
+
+        // min/max and out-of-bounds - hex
+        {
+            constexpr MathLib::biguint u = 0xFFFFFFFFFFFFFFFF;
+            ASSERT_EQUALS(u, MathLib::toBigUNumber(std::to_string(u)));
+            ASSERT_EQUALS(u, MathLib::toBigUNumber("0xFFFFFFFFFFFFFFFF"));
+        }
+        {
+            constexpr MathLib::biguint u = -0xFFFFFFFFFFFFFFFF;
+            ASSERT_EQUALS(u, MathLib::toBigUNumber(std::to_string(u)));
+            ASSERT_EQUALS(u, MathLib::toBigUNumber("-0xFFFFFFFFFFFFFFFF"));
+        }
+
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigUNumber("0x10000000000000000"), INTERNAL, "Internal Error. MathLib::toBigUNumber: out_of_range: 0x10000000000000000");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigUNumber("-0x10000000000000000"), INTERNAL, "Internal Error. MathLib::toBigUNumber: out_of_range: -0x10000000000000000");
+
+        // min/max and out-of-bounds - octal
+        {
+            constexpr MathLib::biguint u = 01777777777777777777777;
+            ASSERT_EQUALS(u, MathLib::toBigUNumber(std::to_string(u)));
+            ASSERT_EQUALS(u, MathLib::toBigUNumber("01777777777777777777777"));
+        }
+        {
+            constexpr MathLib::biguint u = -01777777777777777777777;
+            ASSERT_EQUALS(u, MathLib::toBigUNumber(std::to_string(u)));
+            ASSERT_EQUALS(u, MathLib::toBigUNumber("-01777777777777777777777"));
+        }
+
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigUNumber("02000000000000000000000"), INTERNAL, "Internal Error. MathLib::toBigUNumber: out_of_range: 02000000000000000000000");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigUNumber("-02000000000000000000000"), INTERNAL, "Internal Error. MathLib::toBigUNumber: out_of_range: -02000000000000000000000");
+
+        // min/max and out-of-range - decimal
+        {
+            constexpr MathLib::biguint u = 18446744073709551615ULL;
+            ASSERT_EQUALS(u, MathLib::toBigUNumber(std::to_string(u)));
+            ASSERT_EQUALS(u, MathLib::toBigUNumber("18446744073709551615"));
+        }
+        {
+            constexpr MathLib::biguint u = -18446744073709551615ULL;
+            ASSERT_EQUALS(u, MathLib::toBigUNumber(std::to_string(u)));
+            ASSERT_EQUALS(u, MathLib::toBigUNumber("-18446744073709551615"));
+        }
+
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigUNumber("18446744073709551616"), INTERNAL, "Internal Error. MathLib::toBigUNumber: out_of_range: 18446744073709551616");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigUNumber("-18446744073709551616"), INTERNAL, "Internal Error. MathLib::toBigUNumber: out_of_range: -18446744073709551616");
+
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigUNumber("invalid"), INTERNAL, "Internal Error. MathLib::toBigUNumber: invalid_argument: invalid");
+
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigUNumber("1invalid"), INTERNAL, "Internal Error. MathLib::toBigUNumber: input was not completely consumed: 1invalid");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigUNumber("1 invalid"), INTERNAL, "Internal Error. MathLib::toBigUNumber: input was not completely consumed: 1 invalid");
+
+        {
+            TokenList list{settingsDefault, Standards::Language::C};
+            list.appendFileIfNew("test.c");
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            auto *tok = new Token(list, std::move(tokensFrontBack));
+            tok->str("invalid");
+            ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigUNumber(tok), INTERNAL, "Internal Error. MathLib::toBigUNumber: invalid_argument: invalid");
+            ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigUNumber("invalid", tok), INTERNAL, "Internal Error. MathLib::toBigUNumber: invalid_argument: invalid");
+            TokenList::deleteTokens(tok);
+        }
+
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toBigUNumber("''"), INTERNAL, "Internal Error. MathLib::toBigUNumber: characterLiteralToLL('') => empty character literal");
 
         // TODO: test binary
         // TODO: test floating point
@@ -438,10 +599,22 @@ private:
     }
 
     void toDoubleNumber() const {
-        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1"),        0.001);
+        // float values
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1."),       0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1.f"),      0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1.F"),      0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1.l"),      0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1.L"),      0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1.0"),      0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1.0f"),     0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1.0F"),     0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1.0l"),     0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1.0L"),     0.001);
         ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("0x1"),      0.001);
         ASSERT_EQUALS_DOUBLE(10.0,   MathLib::toDoubleNumber("10"),       0.001);
         ASSERT_EQUALS_DOUBLE(1000.0, MathLib::toDoubleNumber("10E+2"),    0.001);
+        ASSERT_EQUALS_DOUBLE(1000.0, MathLib::toDoubleNumber("10E+2l"),   0.001);
+        ASSERT_EQUALS_DOUBLE(1000.0, MathLib::toDoubleNumber("10E+2L"),   0.001);
         ASSERT_EQUALS_DOUBLE(100.0,  MathLib::toDoubleNumber("1.0E+2"),   0.001);
         ASSERT_EQUALS_DOUBLE(-100.0, MathLib::toDoubleNumber("-1.0E+2"),  0.001);
         ASSERT_EQUALS_DOUBLE(-1e+10, MathLib::toDoubleNumber("-1.0E+10"), 1);
@@ -449,6 +622,27 @@ private:
         ASSERT_EQUALS_DOUBLE(1e+10,  MathLib::toDoubleNumber("+1.0E+10"), 1);
         ASSERT_EQUALS_DOUBLE(100.0,  MathLib::toDoubleNumber("1.0E+2"),   0.001);
         ASSERT_EQUALS_DOUBLE(1e+10,  MathLib::toDoubleNumber("1.0E+10"),  1);
+
+        // valid non-float values
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1"),        0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1l"),       0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1L"),       0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1ll"),      0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1LL"),      0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1u"),       0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1U"),       0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1ul"),      0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1UL"),      0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1ULL"),     0.001);
+        // TODO: make these work with libc++
+#ifndef _LIBCPP_VERSION
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1i64"),     0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1I64"),     0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1ui64"),    0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1UI64"),    0.001);
+        ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1I64"),     0.001);
+#endif
+
         ASSERT_EQUALS_DOUBLE(0.0,    MathLib::toDoubleNumber("0E+0"),     0.000001);
         ASSERT_EQUALS_DOUBLE(0.0,    MathLib::toDoubleNumber("0E-0"),     0.000001);
         ASSERT_EQUALS_DOUBLE(0.0,    MathLib::toDoubleNumber("0E+00"),    0.000001);
@@ -476,7 +670,61 @@ private:
         ASSERT_EQUALS_DOUBLE(9.0, MathLib::toDoubleNumber("0x1.2P3"), 0.000001);
         ASSERT_EQUALS_DOUBLE(0.0625, MathLib::toDoubleNumber("0x.1P0"), 0.000001);
 
+        // from char
+        ASSERT_EQUALS_DOUBLE(static_cast<double>('A'),    MathLib::toDoubleNumber("'A'"), 0.000001);
+        ASSERT_EQUALS_DOUBLE(static_cast<double>('\x10'), MathLib::toDoubleNumber("'\\x10'"), 0.000001);
+        ASSERT_EQUALS_DOUBLE(static_cast<double>('\100'), MathLib::toDoubleNumber("'\\100'"), 0.000001);
+        ASSERT_EQUALS_DOUBLE(static_cast<double>('\200'), MathLib::toDoubleNumber("'\\200'"), 0.000001);
+        ASSERT_EQUALS_DOUBLE(static_cast<double>(L'A'),   MathLib::toDoubleNumber("L'A'"), 0.000001);
+
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("invalid"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: conversion failed: invalid");
+
+        // AppleClang before 18 reports a different error
+#if (defined(__APPLE__) && defined(__MACH__)) && (defined(_LIBCPP_VERSION) && (_LIBCPP_VERSION < 180000))
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1invalid"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: conversion failed: 1invalid");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1.1invalid"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: conversion failed: 1.1invalid");
+#else
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1invalid"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: input was not completely consumed: 1invalid");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1.1invalid"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: input was not completely consumed: 1.1invalid");
+#endif
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1 invalid"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: input was not completely consumed: 1 invalid");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("-1e-08.0"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: input was not completely consumed: -1e-08.0");
+
+        // invalid suffices
+#ifdef _LIBCPP_VERSION
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1f"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: conversion failed: 1f");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1F"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: conversion failed: 1F");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1.ff"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: conversion failed: 1.ff");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1.FF"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: conversion failed: 1.FF");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1.0ff"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: conversion failed: 1.0ff");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1.0FF"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: conversion failed: 1.0FF");
+#else
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1f"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: input was not completely consumed: 1f");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1F"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: input was not completely consumed: 1F");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1.ff"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: input was not completely consumed: 1.ff");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1.FF"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: input was not completely consumed: 1.FF");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1.0ff"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: input was not completely consumed: 1.0ff");
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1.0FF"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: input was not completely consumed: 1.0FF");
+#endif
+        // TODO: needs to fail
+        //ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1.ll"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: input was not completely consumed: 1.ll");
+        //ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1.0LL"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: input was not completely consumed: 1.0LL");
+        //ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1.0ll"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: input was not completely consumed: 1.0ll");
+        //ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1.0LL"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: input was not completely consumed: 1.0LL");
+
+        {
+            TokenList list{settingsDefault, Standards::Language::C};
+            list.appendFileIfNew("test.c");
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            auto *tok = new Token(list, std::move(tokensFrontBack));
+            tok->str("invalid");
+            ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber(tok), INTERNAL, "Internal Error. MathLib::toDoubleNumber: conversion failed: invalid");
+            ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("invalid", tok), INTERNAL, "Internal Error. MathLib::toDoubleNumber: conversion failed: invalid");
+            TokenList::deleteTokens(tok);
+        }
+
         // verify: string --> double --> string conversion
+        // TODO: add L, min/max
         ASSERT_EQUALS("1.0",  MathLib::toString(MathLib::toDoubleNumber("1.0f")));
         ASSERT_EQUALS("1.0",  MathLib::toString(MathLib::toDoubleNumber("1.0")));
         ASSERT_EQUALS("0.0",  MathLib::toString(MathLib::toDoubleNumber("0.0f")));
@@ -492,6 +740,8 @@ private:
         ASSERT_EQUALS("0.0",  MathLib::toString(MathLib::toDoubleNumber("-0")));
         ASSERT_EQUALS("0.0",  MathLib::toString(MathLib::toDoubleNumber("-0.")));
         ASSERT_EQUALS("0.0",  MathLib::toString(MathLib::toDoubleNumber("-0.0")));
+
+        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("''"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: characterLiteralToLL('') => empty character literal");
     }
 
     void isint() const {
@@ -759,6 +1009,14 @@ private:
         ASSERT_EQUALS(true, MathLib::isIntHex("-0x0ULL"));
         ASSERT_EQUALS(true, MathLib::isIntHex("+0x0LLU"));
         ASSERT_EQUALS(true, MathLib::isIntHex("-0x0LLU"));
+        ASSERT_EQUALS(true, MathLib::isIntHex("+0x0Z"));
+        ASSERT_EQUALS(true, MathLib::isIntHex("-0x0Z"));
+        ASSERT_EQUALS(true, MathLib::isIntHex("+0x0ZU"));
+        ASSERT_EQUALS(true, MathLib::isIntHex("-0x0ZU"));
+        ASSERT_EQUALS(true, MathLib::isIntHex("+0x0UZ"));
+        ASSERT_EQUALS(true, MathLib::isIntHex("-0x0UZ"));
+        ASSERT_EQUALS(true, MathLib::isIntHex("+0x0Uz"));
+        ASSERT_EQUALS(true, MathLib::isIntHex("-0x0Uz"));
 
         // negative testing
         ASSERT_EQUALS(false, MathLib::isIntHex("+0x"));
@@ -771,10 +1029,6 @@ private:
         ASSERT_EQUALS(false, MathLib::isIntHex("  "));
         ASSERT_EQUALS(false, MathLib::isIntHex(" "));
         ASSERT_EQUALS(false, MathLib::isIntHex("0"));
-        ASSERT_EQUALS(false, MathLib::isIntHex("+0x0Z"));
-        ASSERT_EQUALS(false, MathLib::isIntHex("-0x0Z"));
-        ASSERT_EQUALS(false, MathLib::isIntHex("+0x0Uz"));
-        ASSERT_EQUALS(false, MathLib::isIntHex("-0x0Uz"));
         ASSERT_EQUALS(false, MathLib::isIntHex("+0x0Lz"));
         ASSERT_EQUALS(false, MathLib::isIntHex("-0x0Lz"));
         ASSERT_EQUALS(false, MathLib::isIntHex("+0x0LUz"));
@@ -800,6 +1054,7 @@ private:
         ASSERT_EQUALS(false, MathLib::isValidIntegerSuffix(""));
         ASSERT_EQUALS(false, MathLib::isValidIntegerSuffix("ux"));
         ASSERT_EQUALS(false, MathLib::isValidIntegerSuffix("ulx"));
+        ASSERT_EQUALS(false, MathLib::isValidIntegerSuffix("uu"));
         ASSERT_EQUALS(false, MathLib::isValidIntegerSuffix("lx"));
         ASSERT_EQUALS(false, MathLib::isValidIntegerSuffix("lux"));
         ASSERT_EQUALS(false, MathLib::isValidIntegerSuffix("lll"));
@@ -816,12 +1071,19 @@ private:
         ASSERT_EQUALS(true, MathLib::isValidIntegerSuffix("u"));
         ASSERT_EQUALS(true, MathLib::isValidIntegerSuffix("ul"));
         ASSERT_EQUALS(true, MathLib::isValidIntegerSuffix("ull"));
+        ASSERT_EQUALS(true, MathLib::isValidIntegerSuffix("uz"));
         ASSERT_EQUALS(true, MathLib::isValidIntegerSuffix("l"));
         ASSERT_EQUALS(true, MathLib::isValidIntegerSuffix("lu"));
         ASSERT_EQUALS(true, MathLib::isValidIntegerSuffix("ll"));
         ASSERT_EQUALS(true, MathLib::isValidIntegerSuffix("llu"));
         ASSERT_EQUALS(true, MathLib::isValidIntegerSuffix("llU"));
         ASSERT_EQUALS(true, MathLib::isValidIntegerSuffix("LLU"));
+        ASSERT_EQUALS(true, MathLib::isValidIntegerSuffix("z"));
+        ASSERT_EQUALS(true, MathLib::isValidIntegerSuffix("Z"));
+        ASSERT_EQUALS(true, MathLib::isValidIntegerSuffix("zu"));
+        ASSERT_EQUALS(true, MathLib::isValidIntegerSuffix("UZ"));
+        ASSERT_EQUALS(true, MathLib::isValidIntegerSuffix("ZU"));
+
         // Microsoft extensions:
         ASSERT_EQUALS(true, MathLib::isValidIntegerSuffix("i64"));
         ASSERT_EQUALS(true, MathLib::isValidIntegerSuffix("I64"));
@@ -831,6 +1093,10 @@ private:
         ASSERT_EQUALS(false, MathLib::isValidIntegerSuffix("I64", false));
         ASSERT_EQUALS(false, MathLib::isValidIntegerSuffix("ui64", false));
         ASSERT_EQUALS(false, MathLib::isValidIntegerSuffix("UI64", false));
+
+        // User defined suffix literals
+        ASSERT_EQUALS(false, MathLib::isValidIntegerSuffix("_"));
+        ASSERT_EQUALS(true, MathLib::isValidIntegerSuffix("_MyUserDefinedLiteral"));
     }
 
     void ispositive() const {
@@ -855,6 +1121,13 @@ private:
         ASSERT_EQUALS(true,  MathLib::isFloat("0.f"));
         ASSERT_EQUALS(true,  MathLib::isFloat("0.f"));
         ASSERT_EQUALS(true,  MathLib::isFloat("0xA.Fp-10"));
+
+        // User defined suffix literals
+        ASSERT_EQUALS(false, MathLib::isFloat("0_"));
+        ASSERT_EQUALS(false, MathLib::isFloat("0._"));
+        ASSERT_EQUALS(false, MathLib::isFloat("0.1_"));
+        ASSERT_EQUALS(true, MathLib::isFloat("0.0_MyUserDefinedLiteral"));
+        ASSERT_EQUALS(true, MathLib::isFloat("0._MyUserDefinedLiteral"));
     }
 
     void isDecimalFloat() const {
@@ -962,6 +1235,13 @@ private:
         ASSERT_EQUALS(true, MathLib::isDecimalFloat("1.0E+1"));
         ASSERT_EQUALS(true, MathLib::isDecimalFloat("1.0E-1"));
         ASSERT_EQUALS(true, MathLib::isDecimalFloat("-1.0E+1"));
+
+        // User defined suffix literals
+        ASSERT_EQUALS(false, MathLib::isDecimalFloat("0_"));
+        ASSERT_EQUALS(false, MathLib::isDecimalFloat(".1_"));
+        ASSERT_EQUALS(false, MathLib::isDecimalFloat("0.1_"));
+        ASSERT_EQUALS(true, MathLib::isDecimalFloat("0.0_MyUserDefinedLiteral"));
+        ASSERT_EQUALS(true, MathLib::isDecimalFloat(".1_MyUserDefinedLiteral"));
     }
 
     void naninf() const {
@@ -977,7 +1257,7 @@ private:
         ASSERT_EQUALS("inf.0", MathLib::divide("3.0", "0.f")); // inf (#5875)
         ASSERT_EQUALS("-inf.0", MathLib::divide("-3.0", "0.0")); // -inf (#5142)
         ASSERT_EQUALS("-inf.0", MathLib::divide("-3.0", "0.0f")); // -inf (#5142)
-        ASSERT_EQUALS("-inf.0", MathLib::divide("-3.0", "-0.0f")); // inf (#5142)
+        ASSERT_EQUALS("inf.0", MathLib::divide("-3.0", "-0.0f")); // inf (#5142)
     }
 
     void isdec() const {
@@ -996,6 +1276,14 @@ private:
         ASSERT_EQUALS(false, MathLib::isDec("+x"));
         ASSERT_EQUALS(false, MathLib::isDec("x"));
         ASSERT_EQUALS(false, MathLib::isDec(""));
+
+        // User defined suffix literals
+        ASSERT_EQUALS(false, MathLib::isDec("0_"));
+        ASSERT_EQUALS(false, MathLib::isDec("+0_"));
+        ASSERT_EQUALS(false, MathLib::isDec("-1_"));
+        ASSERT_EQUALS(true, MathLib::isDec("0_MyUserDefinedLiteral"));
+        ASSERT_EQUALS(true, MathLib::isDec("+1_MyUserDefinedLiteral"));
+        ASSERT_EQUALS(true, MathLib::isDec("-1_MyUserDefinedLiteral"));
     }
 
     void isNullValue() const {
@@ -1216,30 +1504,12 @@ private:
         ASSERT_EQUALS("0.0", MathLib::toString(0.0));
         ASSERT_EQUALS("0.0", MathLib::toString(+0.0));
         ASSERT_EQUALS("0.0", MathLib::toString(-0.0));
-        // float (trailing f or F)
-        ASSERT_EQUALS("0",  MathLib::toString(+0.0f));
-        ASSERT_EQUALS("-0", MathLib::toString(-0.0F));
-        // double (tailing l or L)
-        ASSERT_EQUALS("0",  MathLib::toString(+0.0l));
-        ASSERT_EQUALS("-0", MathLib::toString(-0.0L));
-    }
 
-    void CPP14DigitSeparators() const { // Ticket #7137, #7565
-        ASSERT(MathLib::isDigitSeparator("'", 0) == false);
-        ASSERT(MathLib::isDigitSeparator("123'0;", 3));
-        ASSERT(MathLib::isDigitSeparator("foo(1'2);", 5));
-        ASSERT(MathLib::isDigitSeparator("foo(1,1'2);", 7));
-        ASSERT(MathLib::isDigitSeparator("int a=1'234-1'2-'0';", 7));
-        ASSERT(MathLib::isDigitSeparator("int a=1'234-1'2-'0';", 13));
-        ASSERT(MathLib::isDigitSeparator("int a=1'234-1'2-'0';", 16) == false);
-        ASSERT(MathLib::isDigitSeparator("int b=1+9'8;", 9));
-        ASSERT(MathLib::isDigitSeparator("if (1'2) { char c = 'c'; }", 5));
-        ASSERT(MathLib::isDigitSeparator("if (120%1'2) { char c = 'c'; }", 9));
-        ASSERT(MathLib::isDigitSeparator("if (120&1'2) { char c = 'c'; }", 9));
-        ASSERT(MathLib::isDigitSeparator("if (120|1'2) { char c = 'c'; }", 9));
-        ASSERT(MathLib::isDigitSeparator("if (120%1'2) { char c = 'c'; }", 24) == false);
-        ASSERT(MathLib::isDigitSeparator("if (120%1'2) { char c = 'c'; }", 26) == false);
-        ASSERT(MathLib::isDigitSeparator("0b0000001'0010'01110", 14));
+        ASSERT_EQUALS("1e-08", MathLib::toString(0.00000001));
+        ASSERT_EQUALS("-1e-08", MathLib::toString(-0.00000001));
+
+        ASSERT_EQUALS("2.22507385851e-308", MathLib::toString(std::numeric_limits<double>::min()));
+        ASSERT_EQUALS("1.79769313486e+308", MathLib::toString(std::numeric_limits<double>::max()));
     }
 };
 

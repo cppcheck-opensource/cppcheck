@@ -1,0 +1,1 @@
+f(){int a[5];memset(a,5)}

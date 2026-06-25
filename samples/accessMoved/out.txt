@@ -1,0 +1,9 @@
+samples\accessMoved\bad.cpp:8:18: warning: Access of moved variable 's'. [accessMoved]
+    std::cout << s << std::endl;
+                 ^
+samples\accessMoved\bad.cpp:6:9: note: Calling std::move(s)
+    foo(std::move(s));
+        ^
+samples\accessMoved\bad.cpp:8:18: note: Access of moved variable 's'.
+    std::cout << s << std::endl;
+                 ^

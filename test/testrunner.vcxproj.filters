@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Header Files">
@@ -18,11 +18,14 @@
       <Extensions>cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
   </ItemGroup>
-  <ItemGroup>
+  <ItemGroup Label="SourceFiles">
     <ClCompile Include="options.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="test64bit.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="testanalyzerinformation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="testautovariables.cpp">
@@ -85,16 +88,13 @@
     <ClCompile Include="testpreprocessor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="testrunner.cpp">
+    <ClCompile Include="testprocessexecutor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="testsimplifytokens.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="teststl.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="testsuite.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="testsuppressions.cpp">
@@ -134,9 +134,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="testio.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="testboost.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="testinternal.cpp">
@@ -205,9 +202,6 @@
     <ClCompile Include="testastutils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\lib\astutils.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="testsimplifyusing.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -220,18 +214,78 @@
     <ClCompile Include="testtokenrange.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="testclangimport.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\cli\signalhandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\cli\executor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\cli\processexecutor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\cli\singleexecutor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\cli\stacktrace.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="fixture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="helpers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="testcolor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="testsettings.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="testsingleexecutor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="testcheck.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="testfilesettings.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="testprogrammemory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="teststandards.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\cli\sehwrapper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="testexecutor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="testvfvalue.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\frontend\frontend.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="testfrontend.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="testregex.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
-  <ItemGroup>
+  <ItemGroup Label="HeaderFiles">
     <ClInclude Include="options.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="redirect.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="testsuite.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="testutils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\cli\filelister.h">
@@ -243,10 +297,37 @@
     <ClInclude Include="..\cli\cmdlineparser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\lib\config.h">
+    <ClInclude Include="precompiled.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="precompiled.h">
+    <ClInclude Include="..\cli\cppcheckexecutor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cli\signalhandler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cli\executor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cli\processexecutor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cli\singleexecutor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cli\stacktrace.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="fixture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="helpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cli\sehwrapper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\frontend\frontend.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

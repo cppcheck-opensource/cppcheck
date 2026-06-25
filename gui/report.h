@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2024 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,8 @@
 #ifndef REPORT_H
 #define REPORT_H
 
+#include <cstdint>
+
 #include <QFile>
 #include <QObject>
 #include <QString>
@@ -33,13 +35,13 @@ class ErrorItem;
  */
 class Report : public QObject {
 public:
-    enum Type {
+    enum Type : std::uint8_t {
         TXT,
         XMLV2,
         CSV,
     };
 
-    explicit Report(const QString &filename);
+    explicit Report(QString filename);
     ~Report() override;
 
     /**

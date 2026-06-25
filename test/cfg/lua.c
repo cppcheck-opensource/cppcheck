@@ -2,7 +2,7 @@
 // Test library configuration for lua.cfg
 //
 // Usage:
-// $ cppcheck --check-library --library=lua --enable=information --error-exitcode=1 --inline-suppr --suppress=missingIncludeSystem test/cfg/lua.c
+// $ cppcheck --check-library --library=lua --enable=style,information --inconclusive --error-exitcode=1 --inline-suppr test/cfg/lua.c
 // =>
 // No warnings about bad library configuration, unmatched suppressions, etc. exitcode=0
 //

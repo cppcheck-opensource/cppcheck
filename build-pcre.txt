@@ -2,19 +2,6 @@ PCRE is a library that is used by the optional "rules" feature for the command
 line version of cppcheck. It is readily available on Linux and Mac OS X, but
 must be obtained separately for Windows.
 
-If you're using qmake to generate makefiles, the following behavior applies:
-
-- If you're not on Windows, it assumes by default that you have PCRE and want
-  to enable rules support. You can disable rules support (removing the PCRE
-  dependency) by passing HAVE_RULES=no to qmake.
-
-- If you are on Windows, but have PCRE available, you can enable rules support
-  by passing HAVE_RULES=yes to qmake.
-
-  - Note: This includes using build.bat since it calls qmake - to use PCRE and
-    build.bat, you need to run set HAVE_RULES=yes before each run of build.bat
-
-
 Build instructions
 ------------------
 

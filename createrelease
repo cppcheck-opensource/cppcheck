@@ -1,95 +1,147 @@
 #!/bin/bash
 #
-# A script for creating release packages. The release packages are create in the home directory.
+# A script for creating release packages. The release packages are created in the home directory.
 #
 # Create release candidate
 # ========================
+#
+# Review trac roadmap, are tickets closed properly?
+# Only tickets that should be retargeted should be open.
+#
+# Versioning scheme
+# ========================
+# VERSION=2.22.0      # the new release tag created
+# PREV=2.21.0         # the previous release
+# BRANCH=2.22.x       # release branch
+#
+#   2.22.x          BRANCH  - release branch
+#   2.22.0          TAG     - the release
+#   2.22.1, ...     TAG     - patch releases
+#   2.22.0-rc1      TAG     - release candidate
+#
+# Update mappings:
+# cd ~/cppchecksolutions/addon/coverage
+# CPPCHECK_REPO=~/cppchecksolutions/cppcheck python3 coverage.py --code
+#
+# Check every isPremiumEnabled call: TODO write helper script
+# - every id should be in --errorlist
+#   git grep 'isPremiumEnabled[(]"' | sed 's/.*isPremiumEnabled[(]"//' | sed 's/".*//' | sort | uniq > ids1.txt
+#   ./cppcheck --errorlist | grep ' id="' | sed 's/.* id="//' | sed 's/".*//' | sort | uniq > ids2.txt
+#   diff -y ids1.txt ids2.txt
+# - premiumaddon: check coverage.py
+#   python3 coverage.py --id ; sort ids-*.txt | uniq > ~/cppcheck/ids3.txt
+#   diff -y ids2.txt ids3.txt
 #
 # Windows installer:
 # - ensure latest build was successful
 # - ensure cfg files etc are included (win_installer/cppcheck.wxs)
 #
-# self check, fix critical issues:
-# make clean && make CXXFLAGS=-O2 MATCHCOMPILER=yes -j4
-# ./cppcheck -D__CPPCHECK__ --std=c++11 --library=cppcheck-lib --enable=style --inconclusive --inline-suppr --suppress=bitwiseOnBoolean --suppress=shadowFunction --suppress=useStlAlgorithm --suppress=*:externals/picojson.h --suppress=functionConst --suppress=functionStatic --xml cli gui/*.cpp lib 2> selfcheck.xml
+# Self check, fix critical issues:
+# make clean && make CXXOPTS=-O2 MATCHCOMPILER=yes -j4
+# ./cppcheck -D__CPPCHECK__ -D__GNUC__ -DCHECK_INTERNAL -DHAVE_RULES --std=c++11 --library=cppcheck-lib --library=qt --enable=style --inconclusive --inline-suppr --suppress=bitwiseOnBoolean --suppress=shadowFunction --suppress=useStlAlgorithm --suppress=*:externals/picojson.h --suppress=functionConst --suppress=functionStatic --suppress=normalCheckLevelMaxBranches --xml cli gui/*.cpp lib 2> selfcheck.xml
 #
-# Update translations
-#   lupdate gui.pro
+# Generate lib/checkers.cpp: (TODO the premium checkers should not be statically coded)
+# cd ~/cppchecksolutions/cppcheck && python3 tools/get_checkers.py > lib/checkers.cpp
 #
-# Update copyright year
-# git diff 2.6 -- */*.cpp */*.h | grep '^diff --git a/' | sed 's|.* b/||' | xargs sed -i 's/Copyright (C) 2007-20[12]./Copyright (C) 2007-2022/'
+# Update copyright year: TODO release script
+# git diff $PREV -- */*.cpp */*.h | grep '^diff --git a/' | sed 's|.* b/||' | xargs sed -i "s/Copyright (C) 2007-20[12]./Copyright (C) 2007-$(date +%Y)/"
 # git diff | grep '^diff --git a/'
 #
 # Make sure "cppcheck --errorlist" works:
 # make clean && make -j4 && ./cppcheck --errorlist > errlist.xml && xmllint --noout errlist.xml
 #
 # Update AUTHORS using output from:
-# git log --format='%aN' 1.81..HEAD | sort -u > AUTHORS2 && diff -y AUTHORS AUTHORS2 | less
+# git log --format='%aN' $PREV..HEAD | sort -u > AUTHORS2 && diff -y AUTHORS AUTHORS2 | less
+# Include github usernames in PR title and commit message
 #
-# Create 2.6.x branch
-# git checkout -b 2.6.x ; git push -u origin 2.6.x
+# Update GUI translations:
+# cd ~/cppchecksolutions/cppcheck/gui && lupdate gui.pro
+#
+# Create new release branch:
+# git checkout -b $BRANCH && git push -u origin $BRANCH
+# in fork:
+#  * add upstream: git remote add upstream git@github.com:cppcheck-opensource/cppcheck.git
+#  * add branch:   git fetch upstream $BRANCH
+#
+# Release notes:
+# - ensure safety critical issues are listed properly
+# - empty the releasenotes.txt in main branch
 #
 # Update version numbers in:
-# sed -i -r "s/version 2[.][0-9]+([.]99)*/version 2.7/" cli/main.cpp
-# sed -i -r "s|2[.][0-9]+([.]99)*|2.7|" cmake/versions.cmake
-# sed -i -r "s/MINOR [0-9]+/MINOR 7/" lib/version.h
-# sed -i -r "s/2[.][0-9]+([.]99)*/2.7/" win_installer/productInfo.wxi
-# sed -i -r "s/subtitle: Version 2\.[0-9]+/subtitle: Version 2.7/" man/*.md
-# Ensure that "-rc1" is added in productInfo.wxi and lib/version.h
+# python3 tools/release-set-version.py $VERSION
 # Verify:
 # grep '\.99' */*.[ch]* && grep '[0-9][0-9] dev' */*.[ch]*
 # egrep "2\.[0-9]+" */*.h */*.cpp man/*.md | grep -v "test/test" | less
-# git commit -a -m "1.43: Set versions"
+# git commit -a -m "$VERSION: Set versions"
 #
 # Build and test the windows installer
 #
 # Update the Makefile:
 # make dmake && ./dmake --release
-# git commit -a -m "1.43: Updated Makefile"
+# git commit -a -m "$VERSION: Updated Makefile"
+#
+# Push changes:
+# git push
+#
+# Ensure that CI is happy
 #
 # Tag:
-# git tag 2.6-rc1
+# git tag $VERSION-rc1
 # git push --tags
 #
 # Release
-# =======
-#
-# Write release notes
+# ========================
 #
 # Remove "-rc1" from versions. Test: git grep "\-rc[0-9]"
-#
-# git tag 2.6 ; git push --tags
-# ./createrelease 2.6
 #
 # Create a release folder on sourceforge:
 # https://sourceforge.net/projects/cppcheck/files/cppcheck/
 #
-# copy msi from release-windows
-# copy manual from build-manual
+# git tag $VERSION && git push --tags
+# ./createrelease $VERSION
+#
+# Copy msi from release-windows, install and test cppcheck
+# Copy manual from build-manual
 #
 # Update download link on index.php main page
 #
-# write a news
+# Trac:
+# 1. Create ticket "$VERSION safety cosmetic changes"
+#    git log --format=oneline $PREV..HEAD | egrep -v "^[0-9a-f]*[ ][ ]*([Ff]ix|fixed|Fixup|Fixes|refs)?[ ]*#*[0-9]+"
+# 2. Check priorities for all tickets in milestone. Should be: safety-*
+# 3. Create new milestone
+# 4. Close old milestone
 #
-# save "cppcheck --doc" output on wiki
+# Write a news
 #
-# compile new democlient:
+# Save "cppcheck --doc" output on wiki
+#
+# Compile new democlient:
 # ssh -t danielmarjamaki,cppcheck@shell.sourceforge.net create
-# ./build-cppcheck.sh 1.43
+# ./build-cppcheck.sh
 #
-# run daca with new release
-# 1. edit tools/donate-cpu-server.py. Update OLD_VERSION and VERSION
-# 2. scp tools/donate-cpu-server.py danielmarjamaki@cppcheck1.osuosl.org:/var/daca@home/
+# Create a ticket with data from http://cppcheck1.osuosl.org:8000/time_gt.html for performance tracking
+# (example: https://trac.cppcheck.net/ticket/13715)
+# - type: defect
+# - component: Performance
+# - summary: [meta] performance regressions in $VERSION
 #
-# self check, fix stylistic issues:
-# ./cppcheck -D__CPPCHECK__ --library=cppcheck-lib --enable=style --inconclusive --inline-suppr --suppress=bitwiseOnBoolean --suppress=shadowFunction --suppress=useStlAlgorithm --suppress=*:externals/picojson.h cli gui/*.cpp lib
+# Run daca with new release:
+# 1. edit tools/donate-cpu-server.py. Update OLD_VERSION and SERVER_VERSION
+# 2. scp -i ~/.ssh/osuosl_id_rsa tools/donate-cpu-server.py danielmarjamaki@cppcheck1.osuosl.org:/var/daca@home/
 #
-# Set debug version (see 803eea912c9512c810a7e78d58bb927d89a6daa1)
+# Backup:
+# * trac: cd /var && nice tar -cJf ~/trac.tar.xz trac-cppcheck/db/trac.db
+# * daca: cd /var && nice tar -cJf ~/daca.tar.xz daca@home
+# * git: git checkout -f && git checkout main && git pull && tar -cJf git.tar.xz .git
+# * git log $PREV..$VERSION > Changelog
+# * mkdir out && python3 ~/cppchecksolutions/release/getWorkflowAndIssueLogs.py -r /cppcheck-opensource//cppcheck -t $VERSION -p out
 
-# Tag to use
+# Folder/tag to use:
 tag=$1
+folder=${tag%.*}
 
-# Name of release
+# Name of release:
 releasename=cppcheck-$tag
 
 set -e
@@ -98,37 +150,37 @@ cd ~/cppcheck
 
 git checkout $tag
 
-mkdir -p upload
+rm -rf upload
+mkdir -p upload/htdocs upload/frs
 
+# htdocs
 make clean
+make -j12
+rm -f cppcheck.cfg
+./cppcheck --version > upload/htdocs/version.txt
+# TODO manual, update version on webpage
 
-# Create archives..
-git archive --format=tar --prefix=$releasename/ $tag | gzip > upload/$releasename.tar.gz
-git archive --format=tar --prefix=$releasename/ $tag | bzip2 > upload/$releasename.tar.bz2
-git archive --format=zip -9 --prefix=$releasename/ $tag > upload/$releasename.zip
+# frs
+git archive --format=tar --prefix=$releasename/ $tag | gzip > upload/frs/$releasename.tar.gz
+git archive --format=tar --prefix=$releasename/ $tag | bzip2 > upload/frs/$releasename.tar.bz2
+git archive --format=zip -9 --prefix=$releasename/ $tag > upload/frs/$releasename.zip
+cp releasenotes.txt upload/frs/README.md
+# TODO msi
+
 cd upload
-scp $releasename.* danielmarjamaki,cppcheck@frs.sourceforge.net:/home/frs/project/c/cp/cppcheck/cppcheck/$tag/
-rm $releasename.*
+scp frs/* danielmarjamaki,cppcheck@frs.sourceforge.net:/home/frs/project/c/cp/cppcheck/cppcheck/$folder/
+scp htdocs/* danielmarjamaki,cppcheck@web.sourceforge.net:htdocs/
 cd ..
-
-# Generate version.txt
-make -j4
-./cppcheck --version > upload/version.txt
-
-cd ~/cppcheck/upload
-scp * danielmarjamaki,cppcheck@web.sourceforge.net:htdocs/
-
-cd ~/cppcheck
 rm -rf upload
 
-# Local cppcheck binary
+# Local cppcheck binary:
 mkdir -p ~/.cppcheck/$tag
 cd ~/.cppcheck/$tag
 cp -R ~/cppcheck/cfg .
 cp -R ~/cppcheck/addons .
 cp -R ~/cppcheck/platforms .
 cd ~/cppcheck
-make clean ; make -j4 FILESDIR=~/.cppcheck/$tag MATCHCOMPILER=yes
+make clean ; make -j12 FILESDIR=~/.cppcheck/$tag MATCHCOMPILER=yes CXXOPTS=-O2
 mv cppcheck ~/.cppcheck/cppcheck-$tag
 
 git checkout main

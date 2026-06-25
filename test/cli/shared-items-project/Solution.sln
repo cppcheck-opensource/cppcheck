@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34607.119
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Shared", "Shared\Shared.vcxitems", "{3633EE6F-E5E8-46FC-87C9-F13A18DB966A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Main", "Main\Main.vcxproj", "{074143A3-6080-409A-A181-24E4E468BFD8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{074143A3-6080-409A-A181-24E4E468BFD8}.Release|x64.ActiveCfg = Release|x64
+		{074143A3-6080-409A-A181-24E4E468BFD8}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {510D1526-E6EE-452F-A697-173A3D4C4E93}
+	EndGlobalSection
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		Shared\Shared.vcxitems*{074143a3-6080-409a-a181-24e4e468bfd8}*SharedItemsImports = 4
+		Shared\Shared.vcxitems*{3633ee6f-e5e8-46fc-87c9-f13a18db966a}*SharedItemsImports = 9
+	EndGlobalSection
+EndGlobal

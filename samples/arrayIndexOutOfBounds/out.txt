@@ -1,3 +1,0 @@
-samples\arrayIndexOutOfBounds\bad.c:7:6: error: Array 'a[2]' accessed at index 2, which is out of bounds. [arrayIndexOutOfBounds]
-    a[2] = 0;
-     ^

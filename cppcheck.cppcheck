@@ -18,6 +18,5 @@
     </paths>
     <exclude>
         <path name="gui/temp/"/>
-        <path name="test/test.cxx"/>
     </exclude>
 </project>

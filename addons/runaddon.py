@@ -1,4 +1,8 @@
-import cppcheckdata, cppcheck, runpy, sys, os
+import cppcheckdata
+import cppcheck
+import runpy
+import sys
+import os
 
 if __name__ == '__main__':
     addon = sys.argv[1]

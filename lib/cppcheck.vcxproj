@@ -1,64 +1,55 @@
-<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug-PCRE|Win32">
-      <Configuration>Debug-PCRE</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug-PCRE|x64">
       <Configuration>Debug-PCRE</Configuration>
       <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug|Win32">
-      <Configuration>Debug</Configuration>
-      <Platform>Win32</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Release-PCRE|Win32">
-      <Configuration>Release-PCRE</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Release-PCRE|x64">
       <Configuration>Release-PCRE</Configuration>
       <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|Win32">
-      <Configuration>Release</Configuration>
-      <Platform>Win32</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Release|x64">
       <Configuration>Release</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="..\externals\simplecpp\simplecpp.cpp" />
-    <ClCompile Include="..\externals\tinyxml2\tinyxml2.cpp" />
+  <ItemGroup Label="SourceFiles">
+    <ClCompile Include="..\externals\simplecpp\simplecpp.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+    </ClCompile>
+    <ClCompile Include="..\externals\tinyxml2\tinyxml2.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+    </ClCompile>
+    <ClCompile Include="valueflow.cpp" />
+    <ClCompile Include="tokenize.cpp" />
+    <ClCompile Include="symboldatabase.cpp" />
+    <ClCompile Include="addoninfo.cpp" />
     <ClCompile Include="analyzerinfo.cpp" />
     <ClCompile Include="astutils.cpp" />
-    <ClCompile Include="check.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-PCRE|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-PCRE|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|x64'">Create</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="check64bit.cpp" />
     <ClCompile Include="checkassert.cpp" />
     <ClCompile Include="checkautovariables.cpp" />
     <ClCompile Include="checkbool.cpp" />
-    <ClCompile Include="checkboost.cpp" />
     <ClCompile Include="checkbufferoverrun.cpp" />
     <ClCompile Include="checkclass.cpp" />
     <ClCompile Include="checkcondition.cpp" />
-    <ClCompile Include="checkfunctions.cpp" />
-    <ClCompile Include="checkstring.cpp" />
+    <ClCompile Include="checkers.cpp" />
+    <ClCompile Include="checkersidmapping.cpp" />
+    <ClCompile Include="checkersreport.cpp" />
     <ClCompile Include="checkexceptionsafety.cpp" />
+    <ClCompile Include="checkfunctions.cpp" />
+    <ClCompile Include="checkimpl.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-PCRE|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|x64'">Create</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="checkinternal.cpp" />
     <ClCompile Include="checkio.cpp" />
     <ClCompile Include="checkleakautovar.cpp" />
@@ -66,8 +57,10 @@
     <ClCompile Include="checknullpointer.cpp" />
     <ClCompile Include="checkother.cpp" />
     <ClCompile Include="checkpostfixoperator.cpp" />
+    <ClCompile Include="checks.cpp" />
     <ClCompile Include="checksizeof.cpp" />
     <ClCompile Include="checkstl.cpp" />
+    <ClCompile Include="checkstring.cpp" />
     <ClCompile Include="checktype.cpp" />
     <ClCompile Include="checkuninitvar.cpp" />
     <ClCompile Include="checkunusedfunctions.cpp" />
@@ -79,7 +72,12 @@
     <ClCompile Include="ctu.cpp" />
     <ClCompile Include="errorlogger.cpp" />
     <ClCompile Include="errortypes.cpp" />
+    <ClCompile Include="findtoken.cpp" />
+    <ClCompile Include="forwardanalyzer.cpp" />
+    <ClCompile Include="fwdanalysis.cpp" />
+    <ClCompile Include="importproject.cpp" />
     <ClCompile Include="infer.cpp" />
+    <ClCompile Include="keywords.cpp" />
     <ClCompile Include="library.cpp" />
     <ClCompile Include="mathlib.cpp" />
     <ClCompile Include="path.cpp" />
@@ -87,39 +85,46 @@
     <ClCompile Include="pathmatch.cpp" />
     <ClCompile Include="platform.cpp" />
     <ClCompile Include="preprocessor.cpp" />
-    <ClCompile Include="importproject.cpp" />
     <ClCompile Include="programmemory.cpp" />
+    <ClCompile Include="regex.cpp" />
+    <ClCompile Include="reverseanalyzer.cpp" />
+    <ClCompile Include="sarifreport.cpp" />
     <ClCompile Include="settings.cpp" />
+    <ClCompile Include="standards.cpp" />
     <ClCompile Include="summaries.cpp" />
     <ClCompile Include="suppressions.cpp" />
-    <ClCompile Include="symboldatabase.cpp" />
     <ClCompile Include="templatesimplifier.cpp" />
     <ClCompile Include="timer.cpp" />
     <ClCompile Include="token.cpp" />
-    <ClCompile Include="tokenize.cpp" />
     <ClCompile Include="tokenlist.cpp" />
     <ClCompile Include="utils.cpp" />
-    <ClCompile Include="valueflow.cpp" />
-    <ClCompile Include="forwardanalyzer.cpp" />
-    <ClCompile Include="reverseanalyzer.cpp" />
+    <ClCompile Include="vf_analyzers.cpp" />
+    <ClCompile Include="vf_common.cpp" />
+    <ClCompile Include="vf_settokenvalue.cpp" />
+    <ClCompile Include="vfvalue.cpp" />
   </ItemGroup>
-  <ItemGroup>
+  <ItemGroup Label="HeaderFiles">
     <ClInclude Include="..\externals\simplecpp\simplecpp.h" />
     <ClInclude Include="..\externals\tinyxml2\tinyxml2.h" />
+    <ClInclude Include="addoninfo.h" />
+    <ClInclude Include="analyzer.h" />
     <ClInclude Include="analyzerinfo.h" />
     <ClInclude Include="astutils.h" />
+    <ClInclude Include="calculate.h" />
     <ClInclude Include="check.h" />
     <ClInclude Include="check64bit.h" />
     <ClInclude Include="checkassert.h" />
     <ClInclude Include="checkautovariables.h" />
     <ClInclude Include="checkbool.h" />
-    <ClInclude Include="checkboost.h" />
     <ClInclude Include="checkbufferoverrun.h" />
     <ClInclude Include="checkclass.h" />
     <ClInclude Include="checkcondition.h" />
-    <ClInclude Include="checkfunctions.h" />
-    <ClInclude Include="checkstring.h" />
+    <ClInclude Include="checkers.h" />
+    <ClInclude Include="checkersidmapping.h" />
+    <ClInclude Include="checkersreport.h" />
     <ClInclude Include="checkexceptionsafety.h" />
+    <ClInclude Include="checkfunctions.h" />
+    <ClInclude Include="checkimpl.h" />
     <ClInclude Include="checkinternal.h" />
     <ClInclude Include="checkio.h" />
     <ClInclude Include="checkleakautovar.h" />
@@ -127,8 +132,10 @@
     <ClInclude Include="checknullpointer.h" />
     <ClInclude Include="checkother.h" />
     <ClInclude Include="checkpostfixoperator.h" />
+    <ClInclude Include="checks.h" />
     <ClInclude Include="checksizeof.h" />
     <ClInclude Include="checkstl.h" />
+    <ClInclude Include="checkstring.h" />
     <ClInclude Include="checktype.h" />
     <ClInclude Include="checkuninitvar.h" />
     <ClInclude Include="checkunusedfunctions.h" />
@@ -141,17 +148,32 @@
     <ClInclude Include="ctu.h" />
     <ClInclude Include="errorlogger.h" />
     <ClInclude Include="errortypes.h" />
+    <ClInclude Include="filesettings.h" />
+    <ClInclude Include="findtoken.h" />
+    <ClInclude Include="forwardanalyzer.h" />
+    <ClInclude Include="fwdanalysis.h" />
+    <ClInclude Include="importproject.h" />
     <ClInclude Include="infer.h" />
+    <ClInclude Include="json.h" />
+    <ClInclude Include="keywords.h" />
     <ClInclude Include="library.h" />
+    <ClInclude Include="matchcompiler.h" />
     <ClInclude Include="mathlib.h" />
     <ClInclude Include="path.h" />
+    <ClInclude Include="pathanalysis.h" />
     <ClInclude Include="pathmatch.h" />
     <ClInclude Include="platform.h" />
     <ClInclude Include="precompiled.h" />
     <ClInclude Include="preprocessor.h" />
-    <ClInclude Include="importproject.h" />
     <ClInclude Include="programmemory.h" />
+    <ClInclude Include="regex.h" />
+    <ClInclude Include="reverseanalyzer.h" />
+    <ClInclude Include="rule.h" />
+    <ClInclude Include="sarifreport.h" />
     <ClInclude Include="settings.h" />
+    <ClInclude Include="smallvector.h" />
+    <ClInclude Include="sourcelocation.h" />
+    <ClInclude Include="standards.h" />
     <ClInclude Include="summaries.h" />
     <ClInclude Include="suppressions.h" />
     <ClInclude Include="symboldatabase.h" />
@@ -163,7 +185,14 @@
     <ClInclude Include="tokenrange.h" />
     <ClInclude Include="utils.h" />
     <ClInclude Include="valueflow.h" />
+    <ClInclude Include="valueptr.h" />
     <ClInclude Include="version.h" />
+    <ClInclude Include="vf_analyze.h" />
+    <ClInclude Include="vf_analyzers.h" />
+    <ClInclude Include="vf_common.h" />
+    <ClInclude Include="vf_settokenvalue.h" />
+    <ClInclude Include="vfvalue.h" />
+    <ClInclude Include="xml.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="version.rc" />
@@ -177,18 +206,6 @@
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <CharacterSet>Unicode</CharacterSet>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
-    <PlatformToolset>v142</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|Win32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <CharacterSet>Unicode</CharacterSet>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
-    <PlatformToolset>v142</PlatformToolset>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
@@ -196,18 +213,6 @@
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <CharacterSet>Unicode</CharacterSet>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
-    <PlatformToolset>v142</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <CharacterSet>Unicode</CharacterSet>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
-    <PlatformToolset>v142</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-PCRE|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>false</WholeProgramOptimization>
@@ -227,22 +232,10 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings" />
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|Win32'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" />
-  </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|x64'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release-PCRE|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
@@ -253,117 +246,34 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)bin\debug\</OutDir>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|Win32'">$(SolutionDir)bin\debug\</OutDir>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)bin\debug\</OutDir>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|x64'">$(SolutionDir)bin\debug\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">temp\$(Configuration)_$(PlatformName)\</IntDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|Win32'">temp\$(Configuration)_$(PlatformName)\</IntDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">temp\$(Configuration)_$(PlatformName)\</IntDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|x64'">temp\$(Configuration)_$(PlatformName)\</IntDir>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">cppcheck-core</TargetName>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|Win32'">cppcheck-core</TargetName>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">cppcheck-core</TargetName>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|x64'">cppcheck-core</TargetName>
-    <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</IgnoreImportLibrary>
-    <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|Win32'">false</IgnoreImportLibrary>
     <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</IgnoreImportLibrary>
     <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|x64'">false</IgnoreImportLibrary>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)bin\</OutDir>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release-PCRE|Win32'">$(SolutionDir)bin\</OutDir>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)bin\</OutDir>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release-PCRE|x64'">$(SolutionDir)bin\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">temp\$(Configuration)_$(PlatformName)\</IntDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release-PCRE|Win32'">temp\$(Configuration)_$(PlatformName)\</IntDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">temp\$(Configuration)_$(PlatformName)\</IntDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release-PCRE|x64'">temp\$(Configuration)_$(PlatformName)\</IntDir>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">cppcheck-core</TargetName>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release-PCRE|Win32'">cppcheck-core</TargetName>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">cppcheck-core</TargetName>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release-PCRE|x64'">cppcheck-core</TargetName>
-    <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</IgnoreImportLibrary>
-    <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='Release-PCRE|Win32'">false</IgnoreImportLibrary>
     <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</IgnoreImportLibrary>
     <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='Release-PCRE|x64'">false</IgnoreImportLibrary>
-    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</LinkIncremental>
-    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|Win32'">true</LinkIncremental>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|x64'">true</LinkIncremental>
   </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <ClCompile>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>CPPCHECKLIB_EXPORT;TINYXML2_EXPORT;SIMPLECPP_EXPORT;WIN32;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <WarningLevel>Level4</WarningLevel>
-      <AdditionalIncludeDirectories>..\externals;..\externals\picojson;..\externals\simplecpp;..\externals\tinyxml2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4018;4127;4146;4244;4251;4267;4389;4482;4512;4701;4706;4800;4805</DisableSpecificWarnings>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>precompiled.h</PrecompiledHeaderFile>
-      <ForcedIncludeFiles>precompiled.h</ForcedIncludeFiles>
-      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
-      <LanguageStandard>stdcpp14</LanguageStandard>
-      <AdditionalOptions>/Zc:throwingNew /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
-    </ClCompile>
-    <Link>
-      <AdditionalLibraryDirectories>../externals;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <IgnoreAllDefaultLibraries>
-      </IgnoreAllDefaultLibraries>
-      <LargeAddressAware>true</LargeAddressAware>
-      <StackReserveSize>8000000</StackReserveSize>
-      <StackCommitSize>8000000</StackCommitSize>
-    </Link>
-    <PostBuildEvent>
-      <Command>xcopy "$(SolutionDir)addons" "$(OutDir)addons" /E /I /D /Y
-xcopy "$(SolutionDir)cfg" "$(OutDir)cfg" /E /I /D /Y
-xcopy "$(SolutionDir)platforms" "$(OutDir)platforms" /E /I /D /Y</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|Win32'">
-    <ClCompile>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>CPPCHECKLIB_EXPORT;TINYXML2_EXPORT;SIMPLECPP_EXPORT;WIN32;HAVE_RULES;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;TIXML_USE_STL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <WarningLevel>Level4</WarningLevel>
-      <AdditionalIncludeDirectories>..\externals;..\externals\picojson;..\externals\simplecpp;..\externals\tinyxml2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4018;4127;4146;4244;4251;4267;4389;4482;4512;4701;4706;4800;4805</DisableSpecificWarnings>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>precompiled.h</PrecompiledHeaderFile>
-      <ForcedIncludeFiles>precompiled.h</ForcedIncludeFiles>
-      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
-      <LanguageStandard>stdcpp14</LanguageStandard>
-      <AdditionalOptions>/Zc:throwingNew /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
-    </ClCompile>
-    <Link>
-      <AdditionalDependencies>pcre.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>../externals;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <LargeAddressAware>true</LargeAddressAware>
-      <StackReserveSize>8000000</StackReserveSize>
-      <StackCommitSize>8000000</StackCommitSize>
-    </Link>
-    <PostBuildEvent>
-      <Command>xcopy "$(SolutionDir)addons" "$(OutDir)addons" /E /I /D /Y
-xcopy "$(SolutionDir)cfg" "$(OutDir)cfg" /E /I /D /Y
-xcopy "$(SolutionDir)platforms" "$(OutDir)platforms" /E /I /D /Y</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>CPPCHECKLIB_EXPORT;TINYXML2_EXPORT;SIMPLECPP_EXPORT;WIN32;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;_WIN64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>CPPCHECKLIB_EXPORT;TINYXML2_EXPORT;SIMPLECPP_EXPORT;$(HaveBoost);_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level4</WarningLevel>
-      <AdditionalIncludeDirectories>..\externals;..\externals\picojson;..\externals\simplecpp;..\externals\tinyxml2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4018;4127;4146;4244;4251;4267;4389;4482;4512;4701;4706;4800;4805</DisableSpecificWarnings>
+      <AdditionalIncludeDirectories>..\externals;..\externals\picojson;..\externals\simplecpp;..\externals\tinyxml2;$(BoostInclude);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4018;4127;4146;4244;4251;4267;4389;4701;4706;4800;4805</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>precompiled.h</PrecompiledHeaderFile>
@@ -381,9 +291,12 @@ xcopy "$(SolutionDir)platforms" "$(OutDir)platforms" /E /I /D /Y</Command>
       <LargeAddressAware>true</LargeAddressAware>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(SolutionDir)addons" "$(OutDir)addons" /E /I /D /Y
+      <Command>xcopy "$(SolutionDir)addons/*.py" "$(OutDir)addons" /E /I /D /Y
+xcopy "$(SolutionDir)addons/*.json" "$(OutDir)addons" /E /I /D /Y
 xcopy "$(SolutionDir)cfg" "$(OutDir)cfg" /E /I /D /Y
-xcopy "$(SolutionDir)platforms" "$(OutDir)platforms" /E /I /D /Y</Command>
+xcopy "$(SolutionDir)platforms" "$(OutDir)platforms" /E /I /D /Y
+if exist "$(OutDir)platforms\unix32-unsigned.xml" del /q "$(OutDir)platforms\unix32-unsigned.xml"
+if exist "$(OutDir)platforms\unix64-unsigned.xml" del /q "$(OutDir)platforms\unix64-unsigned.xml"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-PCRE|x64'">
@@ -391,10 +304,10 @@ xcopy "$(SolutionDir)platforms" "$(OutDir)platforms" /E /I /D /Y</Command>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>CPPCHECKLIB_EXPORT;TINYXML2_EXPORT;SIMPLECPP_EXPORT;WIN32;HAVE_RULES;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;_WIN64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>CPPCHECKLIB_EXPORT;TINYXML2_EXPORT;SIMPLECPP_EXPORT;$(HaveBoost);HAVE_RULES;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level4</WarningLevel>
-      <AdditionalIncludeDirectories>..\externals;..\externals\picojson;..\externals\simplecpp;..\externals\tinyxml2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4018;4127;4146;4244;4251;4267;4389;4482;4512;4701;4706;4800;4805</DisableSpecificWarnings>
+      <AdditionalIncludeDirectories>..\externals;..\externals\picojson;..\externals\simplecpp;..\externals\tinyxml2;$(BoostInclude);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4018;4127;4146;4244;4251;4267;4389;4701;4706;4800;4805</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>precompiled.h</PrecompiledHeaderFile>
@@ -413,90 +326,12 @@ xcopy "$(SolutionDir)platforms" "$(OutDir)platforms" /E /I /D /Y</Command>
       <LargeAddressAware>true</LargeAddressAware>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(SolutionDir)addons" "$(OutDir)addons" /E /I /D /Y
+      <Command>xcopy "$(SolutionDir)addons/*.py" "$(OutDir)addons" /E /I /D /Y
+xcopy "$(SolutionDir)addons/*.json" "$(OutDir)addons" /E /I /D /Y
 xcopy "$(SolutionDir)cfg" "$(OutDir)cfg" /E /I /D /Y
-xcopy "$(SolutionDir)platforms" "$(OutDir)platforms" /E /I /D /Y</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <ClCompile>
-      <Optimization>MaxSpeed</Optimization>
-      <WarningLevel>Level4</WarningLevel>
-      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <OmitFramePointers>true</OmitFramePointers>
-      <StringPooling>true</StringPooling>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <AdditionalIncludeDirectories>..\externals;..\externals\picojson;..\externals\simplecpp;..\externals\tinyxml2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4018;4127;4146;4244;4251;4267;4389;4482;4512;4701;4706;4800;4805</DisableSpecificWarnings>
-      <PreprocessorDefinitions>CPPCHECKLIB_EXPORT;TINYXML2_EXPORT;SIMPLECPP_EXPORT;NDEBUG;WIN32;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <BufferSecurityCheck>false</BufferSecurityCheck>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>precompiled.h</PrecompiledHeaderFile>
-      <ForcedIncludeFiles>precompiled.h</ForcedIncludeFiles>
-      <AdditionalOptions>/Zc:throwingNew /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
-      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
-      <LanguageStandard>stdcpp14</LanguageStandard>
-    </ClCompile>
-    <Link>
-      <AdditionalLibraryDirectories>../externals;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <OptimizeReferences>true</OptimizeReferences>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <SetChecksum>true</SetChecksum>
-      <LargeAddressAware>true</LargeAddressAware>
-      <StackReserveSize>8000000</StackReserveSize>
-      <StackCommitSize>8000000</StackCommitSize>
-    </Link>
-    <PostBuildEvent>
-      <Command>xcopy "$(SolutionDir)addons" "$(OutDir)addons" /E /I /D /Y
-xcopy "$(SolutionDir)cfg" "$(OutDir)cfg" /E /I /D /Y
-xcopy "$(SolutionDir)platforms" "$(OutDir)platforms" /E /I /D /Y</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-PCRE|Win32'">
-    <ClCompile>
-      <Optimization>MaxSpeed</Optimization>
-      <WarningLevel>Level4</WarningLevel>
-      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <OmitFramePointers>true</OmitFramePointers>
-      <StringPooling>true</StringPooling>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <AdditionalIncludeDirectories>..\externals;..\externals\picojson;..\externals\simplecpp;..\externals\tinyxml2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4018;4127;4146;4244;4251;4267;4389;4482;4512;4701;4706;4800;4805</DisableSpecificWarnings>
-      <PreprocessorDefinitions>CPPCHECKLIB_EXPORT;TINYXML2_EXPORT;SIMPLECPP_EXPORT;NDEBUG;WIN32;HAVE_RULES;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;TIXML_USE_STL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <BufferSecurityCheck>false</BufferSecurityCheck>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>precompiled.h</PrecompiledHeaderFile>
-      <ForcedIncludeFiles>precompiled.h</ForcedIncludeFiles>
-      <AdditionalOptions>/Zc:throwingNew /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
-      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
-      <LanguageStandard>stdcpp14</LanguageStandard>
-    </ClCompile>
-    <Link>
-      <AdditionalDependencies>pcre.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>../externals;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <OptimizeReferences>true</OptimizeReferences>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <SetChecksum>true</SetChecksum>
-      <LargeAddressAware>true</LargeAddressAware>
-      <StackReserveSize>8000000</StackReserveSize>
-      <StackCommitSize>8000000</StackCommitSize>
-    </Link>
-    <PostBuildEvent>
-      <Command>xcopy "$(SolutionDir)addons" "$(OutDir)addons" /E /I /D /Y
-xcopy "$(SolutionDir)cfg" "$(OutDir)cfg" /E /I /D /Y
-xcopy "$(SolutionDir)platforms" "$(OutDir)platforms" /E /I /D /Y</Command>
+xcopy "$(SolutionDir)platforms" "$(OutDir)platforms" /E /I /D /Y
+if exist "$(OutDir)platforms\unix32-unsigned.xml" del /q "$(OutDir)platforms\unix32-unsigned.xml"
+if exist "$(OutDir)platforms\unix64-unsigned.xml" del /q "$(OutDir)platforms\unix64-unsigned.xml"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -509,9 +344,9 @@ xcopy "$(SolutionDir)platforms" "$(OutDir)platforms" /E /I /D /Y</Command>
       <OmitFramePointers>true</OmitFramePointers>
       <StringPooling>true</StringPooling>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <AdditionalIncludeDirectories>..\externals;..\externals\picojson;..\externals\simplecpp;..\externals\tinyxml2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4018;4127;4146;4244;4251;4267;4389;4482;4512;4701;4706;4800;4805</DisableSpecificWarnings>
-      <PreprocessorDefinitions>CPPCHECKLIB_EXPORT;TINYXML2_EXPORT;SIMPLECPP_EXPORT;NDEBUG;WIN32;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;_WIN64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\externals;..\externals\picojson;..\externals\simplecpp;..\externals\tinyxml2;$(BoostInclude);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4018;4127;4146;4244;4251;4267;4389;4701;4706;4800;4805</DisableSpecificWarnings>
+      <PreprocessorDefinitions>CPPCHECKLIB_EXPORT;TINYXML2_EXPORT;SIMPLECPP_EXPORT;$(HaveBoost);NDEBUG;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -534,9 +369,12 @@ xcopy "$(SolutionDir)platforms" "$(OutDir)platforms" /E /I /D /Y</Command>
       <LargeAddressAware>true</LargeAddressAware>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(SolutionDir)addons" "$(OutDir)addons" /E /I /D /Y
+      <Command>xcopy "$(SolutionDir)addons/*.py" "$(OutDir)addons" /E /I /D /Y
+xcopy "$(SolutionDir)addons/*.json" "$(OutDir)addons" /E /I /D /Y
 xcopy "$(SolutionDir)cfg" "$(OutDir)cfg" /E /I /D /Y
-xcopy "$(SolutionDir)platforms" "$(OutDir)platforms" /E /I /D /Y</Command>
+xcopy "$(SolutionDir)platforms" "$(OutDir)platforms" /E /I /D /Y
+if exist "$(OutDir)platforms\unix32-unsigned.xml" del /q "$(OutDir)platforms\unix32-unsigned.xml"
+if exist "$(OutDir)platforms\unix64-unsigned.xml" del /q "$(OutDir)platforms\unix64-unsigned.xml"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-PCRE|x64'">
@@ -549,9 +387,9 @@ xcopy "$(SolutionDir)platforms" "$(OutDir)platforms" /E /I /D /Y</Command>
       <OmitFramePointers>true</OmitFramePointers>
       <StringPooling>true</StringPooling>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <AdditionalIncludeDirectories>..\externals;..\externals\picojson;..\externals\simplecpp;..\externals\tinyxml2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4018;4127;4146;4244;4251;4267;4389;4482;4512;4701;4706;4800;4805</DisableSpecificWarnings>
-      <PreprocessorDefinitions>CPPCHECKLIB_EXPORT;TINYXML2_EXPORT;SIMPLECPP_EXPORT;NDEBUG;WIN32;HAVE_RULES;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;_WIN64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\externals;..\externals\picojson;..\externals\simplecpp;..\externals\tinyxml2;$(BoostInclude);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4018;4127;4146;4244;4251;4267;4389;4701;4706;4800;4805</DisableSpecificWarnings>
+      <PreprocessorDefinitions>CPPCHECKLIB_EXPORT;TINYXML2_EXPORT;SIMPLECPP_EXPORT;$(HaveBoost);NDEBUG;HAVE_RULES;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -575,9 +413,12 @@ xcopy "$(SolutionDir)platforms" "$(OutDir)platforms" /E /I /D /Y</Command>
       <LargeAddressAware>true</LargeAddressAware>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(SolutionDir)addons" "$(OutDir)addons" /E /I /D /Y
+      <Command>xcopy "$(SolutionDir)addons/*.py" "$(OutDir)addons" /E /I /D /Y
+xcopy "$(SolutionDir)addons/*.json" "$(OutDir)addons" /E /I /D /Y
 xcopy "$(SolutionDir)cfg" "$(OutDir)cfg" /E /I /D /Y
-xcopy "$(SolutionDir)platforms" "$(OutDir)platforms" /E /I /D /Y</Command>
+xcopy "$(SolutionDir)platforms" "$(OutDir)platforms" /E /I /D /Y
+if exist "$(OutDir)platforms\unix32-unsigned.xml" del /q "$(OutDir)platforms\unix32-unsigned.xml"
+if exist "$(OutDir)platforms\unix64-unsigned.xml" del /q "$(OutDir)platforms\unix64-unsigned.xml"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

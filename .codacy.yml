@@ -4,7 +4,5 @@ exclude_paths:
   - htmlreport/example.cc
   - samples/**/bad.c
   - samples/**/bad.cpp
-  - test/test.cxx
   - test/cfg/*.c
   - test/cfg/*.cpp
-  - test/synthetic/*.c

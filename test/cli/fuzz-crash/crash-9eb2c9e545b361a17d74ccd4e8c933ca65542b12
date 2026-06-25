@@ -1,0 +1,1 @@
+{template<>i}template<>fact2(){fact2<3>()}

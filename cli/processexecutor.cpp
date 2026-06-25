@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,33 +16,44 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#if defined(__CYGWIN__)
+#define _BSD_SOURCE // required to have getloadavg()
+#endif
+
 #include "processexecutor.h"
 
-#if !defined(WIN32) && !defined(__MINGW32__) && !defined(__CYGWIN__)
+#ifdef HAS_THREADING_MODEL_FORK
 
-#include "color.h"
-#include "config.h"
 #include "cppcheck.h"
-#include "cppcheckexecutor.h"
 #include "errorlogger.h"
 #include "errortypes.h"
-#include "importproject.h"
+#include "filesettings.h"
 #include "settings.h"
 #include "suppressions.h"
+#include "timer.h"
+#include "utils.h"
 
 #include <algorithm>
+#include <numeric>
+#include <cassert>
 #include <cerrno>
+#include <chrono>
 #include <csignal>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <fcntl.h>
-#include <functional>
 #include <iostream>
 #include <list>
+#include <map>
+#include <memory>
+#include <sstream>
 #include <sys/select.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <utility>
+#include <fcntl.h>
+
 
 #ifdef __SVR4  // Solaris
 #include <sys/loadavg.h>
@@ -52,147 +63,258 @@
 #include <sys/prctl.h>
 #endif
 
+enum class Color : std::uint8_t;
+
 // NOLINTNEXTLINE(misc-unused-using-decls) - required for FD_ZERO
 using std::memset;
 
 
-ProcessExecutor::ProcessExecutor(const std::map<std::string, std::size_t> &files, Settings &settings, ErrorLogger &errorLogger)
-    : Executor(files, settings, errorLogger)
-{}
-
-ProcessExecutor::~ProcessExecutor()
-{}
-
-class PipeWriter : public ErrorLogger {
-public:
-    enum PipeSignal {REPORT_OUT='1',REPORT_ERROR='2', REPORT_INFO='3', REPORT_VERIFICATION='4', CHILD_END='5'};
-
-    explicit PipeWriter(int pipe) : mWpipe(pipe) {}
-
-    void reportOut(const std::string &outmsg, Color c) override {
-        writeToPipe(REPORT_OUT, ::toString(c) + outmsg + ::toString(Color::Reset));
-    }
-
-    void reportErr(const ErrorMessage &msg) override {
-        report(msg, MessageType::REPORT_ERROR);
-    }
-
-    void reportInfo(const ErrorMessage &msg) override {
-        report(msg, MessageType::REPORT_INFO);
-    }
-
-    void writeEnd(const std::string& str) {
-        writeToPipe(CHILD_END, str);
-    }
-
-private:
-    enum class MessageType {REPORT_ERROR, REPORT_INFO};
-
-    void report(const ErrorMessage &msg, MessageType msgType) {
-        PipeSignal pipeSignal;
-        switch (msgType) {
-        case MessageType::REPORT_ERROR:
-            pipeSignal = REPORT_ERROR;
-            break;
-        case MessageType::REPORT_INFO:
-            pipeSignal = REPORT_INFO;
-            break;
-        }
-
-        writeToPipe(pipeSignal, msg.serialize());
-    }
-
-    void writeToPipe(PipeSignal type, const std::string &data)
-    {
-        unsigned int len = static_cast<unsigned int>(data.length() + 1);
-        char *out = new char[len + 1 + sizeof(len)];
-        out[0] = static_cast<char>(type);
-        std::memcpy(&(out[1]), &len, sizeof(len));
-        std::memcpy(&(out[1+sizeof(len)]), data.c_str(), len);
-        if (write(mWpipe, out, len + 1 + sizeof(len)) <= 0) {
-            delete[] out;
-            out = nullptr;
-            std::cerr << "#### ThreadExecutor::writeToPipe, Failed to write to pipe" << std::endl;
-            std::exit(EXIT_FAILURE);
-        }
-
-        delete[] out;
-    }
-
-    const int mWpipe;
-};
-
-int ProcessExecutor::handleRead(int rpipe, unsigned int &result)
+ProcessExecutor::ProcessExecutor(const std::list<FileWithDetails> &files, const std::list<FileSettings>& fileSettings, const Settings &settings, Suppressions &suppressions, ErrorLogger &errorLogger, TimerResults* timerResults, CppCheck::ExecuteCmdFn executeCommand)
+    : Executor(files, fileSettings, settings, suppressions, errorLogger, timerResults)
+    , mExecuteCommand(std::move(executeCommand))
 {
+    assert(mSettings.jobs > 1);
+}
+
+namespace {
+    class PipeWriter : public ErrorLogger {
+    public:
+        enum PipeSignal : std::uint8_t {REPORT_OUT='1',REPORT_ERROR='2',REPORT_SUPPR_INLINE='3',REPORT_SUPPR='4',CHILD_END='5',REPORT_METRIC='6',REPORT_TIMER='7'};
+
+        explicit PipeWriter(int pipe, bool debug) : mWpipe(pipe), mDebug(debug) {}
+
+        void reportOut(const std::string &outmsg, Color c) override {
+            writeToPipe(REPORT_OUT, static_cast<char>(c) + outmsg);
+        }
+
+        void reportErr(const ErrorMessage &msg) override {
+            writeToPipe(REPORT_ERROR, msg.serialize());
+        }
+
+        void writeSuppr(const SuppressionList &supprs) const {
+            for (const auto& suppr : supprs.getSuppressions())
+            {
+                if (suppr.isInline)
+                    writeToPipe(REPORT_SUPPR_INLINE, suppressionToString(suppr));
+                else if (suppr.checked)
+                    writeToPipe(REPORT_SUPPR, suppressionToString(suppr));
+            }
+        }
+
+        void reportMetric(const std::string &metric) override {
+            writeToPipe(REPORT_METRIC, metric);
+        }
+
+        void writeTimer(const TimerResults* timerResults) const {
+            if (!timerResults)
+                return;
+
+            for (const auto& entry : timerResults->getResults())
+            {
+                for (const auto& d : entry.second) {
+                    writeToPipe(REPORT_TIMER, entry.first + ";" + std::to_string(d.count()));
+                }
+            }
+        }
+
+        void writeEnd(const std::string& str) const {
+            writeToPipe(CHILD_END, str);
+        }
+
+    private:
+        static std::string suppressionToString(const SuppressionList::Suppression &suppr)
+        {
+            std::string suppr_str = suppr.toString();
+            suppr_str += ";";
+            suppr_str += std::to_string(suppr.column);
+            suppr_str += ";";
+            suppr_str += suppr.checked ? "1" : "0";
+            suppr_str += ";";
+            suppr_str += suppr.matched ? "1" : "0";
+            suppr_str += ";";
+            suppr_str += suppr.extraComment;
+            return suppr_str;
+        }
+
+        // TODO: how to log file name in error?
+        void writeToPipeInternal(PipeSignal type, const void* data, std::size_t to_write) const
+        {
+            const ssize_t bytes_written = write(mWpipe, data, to_write);
+            if (bytes_written <= 0) {
+                const int err = errno;
+                std::cerr << "#### ThreadExecutor::writeToPipeInternal() error for type " << static_cast<unsigned char>(type) << ": " << std::strerror(err) << std::endl;
+                std::exit(EXIT_FAILURE);
+            }
+            // TODO: write until everything is written
+            if (bytes_written != to_write) {
+                std::cerr << "#### ThreadExecutor::writeToPipeInternal() error for type " << static_cast<unsigned char>(type) << ": insufficient data written (expected: " << to_write << " / got: " << bytes_written << ")" << std::endl;
+                std::exit(EXIT_FAILURE);
+            }
+        }
+
+        void writeToPipe(PipeSignal type, const std::string &data) const
+        {
+            if (mDebug)
+                std::cout << "writeToPipe - " << static_cast<char>(type) << " - " << data << std::endl;
+
+            {
+                const auto t = static_cast<char>(type);
+                writeToPipeInternal(type, &t, 1);
+            }
+
+            const auto len = static_cast<unsigned int>(data.length());
+            {
+                static constexpr std::size_t l_size = sizeof(unsigned int);
+                writeToPipeInternal(type, &len, l_size);
+            }
+
+            if (len > 0) // TODO: unexpected - write a warning?
+                writeToPipeInternal(type, data.c_str(), len);
+        }
+
+        const int mWpipe;
+        const bool mDebug;
+    };
+}
+
+bool ProcessExecutor::handleRead(int rpipe, unsigned int &result, const std::string& filename)
+{
+    std::size_t bytes_to_read;
+    ssize_t bytes_read;
+
     char type = 0;
-    if (read(rpipe, &type, 1) <= 0) {
+    bytes_to_read = sizeof(char);
+    bytes_read = read(rpipe, &type, bytes_to_read);
+    if (bytes_read <= 0) {
         if (errno == EAGAIN)
-            return 0;
+            return true;
+
+        // TODO: log details about failure
 
         // need to increment so a missing pipe (i.e. premature exit of forked process) results in an error exitcode
         ++result;
-        return -1;
+        return false;
+    }
+    if (bytes_read != bytes_to_read) {
+        std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") error (type): insufficient data read (expected: " << bytes_to_read << " / got: " << bytes_read << ")" << std::endl;
+        std::exit(EXIT_FAILURE);
     }
 
-    if (type != PipeWriter::REPORT_OUT && type != PipeWriter::REPORT_ERROR && type != PipeWriter::REPORT_INFO && type != PipeWriter::CHILD_END) {
-        std::cerr << "#### ThreadExecutor::handleRead error, type was:" << type << std::endl;
+    if (type != PipeWriter::REPORT_OUT &&
+        type != PipeWriter::REPORT_ERROR &&
+        type != PipeWriter::REPORT_SUPPR_INLINE &&
+        type != PipeWriter::REPORT_SUPPR &&
+        type != PipeWriter::CHILD_END &&
+        type != PipeWriter::REPORT_METRIC &&
+        type != PipeWriter::REPORT_TIMER) {
+        std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") invalid type " << int(type) << std::endl;
         std::exit(EXIT_FAILURE);
     }
 
     unsigned int len = 0;
-    if (read(rpipe, &len, sizeof(len)) <= 0) {
-        std::cerr << "#### ThreadExecutor::handleRead error, type was:" << type << std::endl;
+    bytes_to_read = sizeof(len);
+    bytes_read = read(rpipe, &len, bytes_to_read);
+    if (bytes_read <= 0) {
+        const int err = errno;
+        std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") error (len) for type " << int(type) << ": " << std::strerror(err) << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+    if (bytes_read != bytes_to_read) {
+        std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") error (len) for type" << int(type) << ": insufficient data read (expected: " << bytes_to_read << " / got: " << bytes_read << ")"  << std::endl;
         std::exit(EXIT_FAILURE);
     }
 
-    // Don't rely on incoming data being null-terminated.
-    // Allocate +1 element and null-terminate the buffer.
-    char *buf = new char[len + 1];
-    const ssize_t readIntoBuf = read(rpipe, buf, len);
-    if (readIntoBuf <= 0) {
-        std::cerr << "#### ThreadExecutor::handleRead error, type was:" << type << std::endl;
-        std::exit(EXIT_FAILURE);
+    std::string buf(len, '\0');
+    if (len > 0) { // TODO: unexpected - write a warning?
+        char *data_start = &buf[0];
+        bytes_to_read = len;
+        do {
+            bytes_read = read(rpipe, data_start, bytes_to_read);
+            if (bytes_read <= 0) {
+                const int err = errno;
+                std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") error (buf) for type" << int(type) << ": " << std::strerror(err) << std::endl;
+                std::exit(EXIT_FAILURE);
+            }
+            bytes_to_read -= bytes_read;
+            data_start += bytes_read;
+        } while (bytes_to_read != 0);
     }
-    buf[readIntoBuf] = 0;
 
+    if (mSettings.debugipc)
+        std::cout << "handleRead - " << type << " - " << buf << std::endl;
+
+    bool res = true;
     if (type == PipeWriter::REPORT_OUT) {
-        mErrorLogger.reportOut(buf);
-    } else if (type == PipeWriter::REPORT_ERROR || type == PipeWriter::REPORT_INFO) {
+        // the first character is the color
+        const auto c = static_cast<Color>(buf[0]);
+        // TODO: avoid string copy
+        mErrorLogger.reportOut(buf.substr(1), c);
+    } else if (type == PipeWriter::REPORT_ERROR) {
         ErrorMessage msg;
         try {
             msg.deserialize(buf);
         } catch (const InternalError& e) {
-            std::cerr << "#### ThreadExecutor::handleRead error, internal error:" << e.errorMessage << std::endl;
+            std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") internal error: " << e.errorMessage << std::endl;
             std::exit(EXIT_FAILURE);
         }
 
-        if (!mSettings.nomsg.isSuppressed(msg.toSuppressionsErrorMessage())) {
-            // Alert only about unique errors
-            std::string errmsg = msg.toString(mSettings.verbose);
-            if (std::find(mErrorList.begin(), mErrorList.end(), errmsg) == mErrorList.end()) {
-                mErrorList.emplace_back(errmsg);
-                if (type == PipeWriter::REPORT_ERROR)
-                    mErrorLogger.reportErr(msg);
-                else
-                    mErrorLogger.reportInfo(msg);
+        if (hasToLog(msg))
+            mErrorLogger.reportErr(msg);
+    } else if (type == PipeWriter::REPORT_SUPPR_INLINE || type == PipeWriter::REPORT_SUPPR) {
+        if (!buf.empty()) {
+            // TODO: avoid string splitting
+            auto parts = splitString(buf, ';');
+            if (parts.size() < 5)
+            {
+                // TODO: make this non-fatal
+                std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") adding of inline suppression failed - insufficient data" << std::endl;
+                std::exit(EXIT_FAILURE);
+            }
+            auto suppr = SuppressionList::parseLine(parts[0]);
+            suppr.isInline = (type == PipeWriter::REPORT_SUPPR_INLINE);
+            suppr.column = strToInt<int>(parts[1]);
+            suppr.checked = parts[2] == "1";
+            suppr.matched = parts[3] == "1";
+            suppr.extraComment = parts[4];
+            for (std::size_t i = 5; i < parts.size(); i++) {
+                suppr.extraComment += ";" + parts[i];
+            }
+            const std::string err = mSuppressions.nomsg.addSuppression(suppr);
+            if (!err.empty()) {
+                // TODO: only update state if it doesn't exist - otherwise propagate error
+                mSuppressions.nomsg.updateSuppressionState(suppr); // TODO: check result
+                // TODO: make this non-fatal
+                //std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") adding of inline suppression failed - " << err << std::endl;
+                //std::exit(EXIT_FAILURE);
             }
         }
     } else if (type == PipeWriter::CHILD_END) {
-        std::istringstream iss(buf);
-        unsigned int fileResult = 0;
-        iss >> fileResult;
-        result += fileResult;
-        delete[] buf;
-        return -1;
+        result += std::stoi(buf);
+        res = false;
+    } else if (type == PipeWriter::REPORT_METRIC) {
+        mErrorLogger.reportMetric(buf);
+    } else if (type == PipeWriter::REPORT_TIMER) {
+        if (!mTimerResults) {
+            // TODO: make this non-fatal
+            std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") received timer results when no timer is enabled" << std::endl;
+            std::exit(EXIT_FAILURE);
+        }
+        const auto parts = splitString(buf, ';');
+        if (parts.size() < 2)
+        {
+            // TODO: make this non-fatal
+            std::cerr << "#### ThreadExecutor::handleRead(" << filename << ") adding of timer result failed - insufficient data" << std::endl;
+            std::exit(EXIT_FAILURE);
+        }
+        mTimerResults->addResults(parts[0], std::chrono::milliseconds{strToInt<long>(parts[1])});
     }
 
-    delete[] buf;
-    return 1;
+    return res;
 }
 
 bool ProcessExecutor::checkLoadAverage(size_t nchildren)
 {
-#if defined(__CYGWIN__) || defined(__QNX__) || defined(__HAIKU__)  // getloadavg() is unsupported on Cygwin, Qnx, Haiku.
+#if defined(__QNX__) || defined(__HAIKU__) || defined(_AIX) // getloadavg() is unsupported on Qnx, Haiku, AIX.
     (void)nchildren;
     return true;
 #else
@@ -204,7 +326,8 @@ bool ProcessExecutor::checkLoadAverage(size_t nchildren)
     if (getloadavg(&sample, 1) != 1) {
         // disable load average checking on getloadavg error
         return true;
-    } else if (sample < mSettings.loadAverage) {
+    }
+    if (sample < mSettings.loadAverage) {
         return true;
     }
     return false;
@@ -216,39 +339,44 @@ unsigned int ProcessExecutor::check()
     unsigned int fileCount = 0;
     unsigned int result = 0;
 
-    std::size_t totalfilesize = 0;
-    for (std::map<std::string, std::size_t>::const_iterator i = mFiles.begin(); i != mFiles.end(); ++i) {
-        totalfilesize += i->second;
-    }
+    const std::size_t totalfilesize = std::accumulate(mFiles.cbegin(), mFiles.cend(), std::size_t(0), [](std::size_t v, const FileWithDetails& p) {
+        return v + p.size();
+    });
+
+    // pass unmodified suppressions to forked process so we only transfer back the actual changes done by the fork
+    // and do not see the changes which have already been transferred back
+    Suppressions supprs;
+    supprs.nomsg.addSuppressions(mSuppressions.nomsg.getSuppressions());
+    supprs.nofail.addSuppressions(mSuppressions.nofail.getSuppressions());
 
     std::list<int> rpipes;
     std::map<pid_t, std::string> childFile;
     std::map<int, std::string> pipeFile;
     std::size_t processedsize = 0;
-    std::map<std::string, std::size_t>::const_iterator iFile = mFiles.begin();
-    std::list<ImportProject::FileSettings>::const_iterator iFileSettings = mSettings.project.fileSettings.begin();
+    auto iFile = mFiles.cbegin();
+    auto iFileSettings = mFileSettings.cbegin();
     for (;;) {
         // Start a new child
-        size_t nchildren = childFile.size();
-        if ((iFile != mFiles.end() || iFileSettings != mSettings.project.fileSettings.end()) && nchildren < mSettings.jobs && checkLoadAverage(nchildren)) {
+        const size_t nchildren = childFile.size();
+        if ((iFile != mFiles.cend() || iFileSettings != mFileSettings.cend()) && nchildren < mSettings.jobs && checkLoadAverage(nchildren)) {
             int pipes[2];
             if (pipe(pipes) == -1) {
                 std::cerr << "#### ThreadExecutor::check, pipe() failed: "<< std::strerror(errno) << std::endl;
                 std::exit(EXIT_FAILURE);
             }
 
-            int flags = 0;
-            if ((flags = fcntl(pipes[0], F_GETFL, 0)) < 0) {
+            const int flags = fcntl(pipes[0], F_GETFL, 0);
+            if (flags < 0) {
                 std::cerr << "#### ThreadExecutor::check, fcntl(F_GETFL) failed: "<< std::strerror(errno) << std::endl;
                 std::exit(EXIT_FAILURE);
             }
 
-            if (fcntl(pipes[0], F_SETFL, flags | O_NONBLOCK) < 0) {
+            if (fcntl(pipes[0], F_SETFL, flags) < 0) {
                 std::cerr << "#### ThreadExecutor::check, fcntl(F_SETFL) failed: "<< std::strerror(errno) << std::endl;
                 std::exit(EXIT_FAILURE);
             }
 
-            pid_t pid = fork();
+            const pid_t pid = fork();
             if (pid < 0) {
                 // Error
                 std::cerr << "#### ThreadExecutor::check, Failed to create child process: "<< std::strerror(errno) << std::endl;
@@ -259,67 +387,78 @@ unsigned int ProcessExecutor::check()
 #endif
                 close(pipes[0]);
 
-                PipeWriter pipewriter(pipes[1]);
-                CppCheck fileChecker(pipewriter, false, CppCheckExecutor::executeCommand);
-                fileChecker.settings() = mSettings;
+                // create a separate result object so we do not get the results which have already been transferred back
+                std::unique_ptr<TimerResults> timerResults;
+                if (mTimerResults)
+                    timerResults.reset(new TimerResults);
+
+                PipeWriter pipewriter(pipes[1], mSettings.debugipc);
+                CppCheck fileChecker(mSettings, supprs, pipewriter, timerResults.get(), false, mExecuteCommand);
                 unsigned int resultOfCheck = 0;
 
-                if (iFileSettings != mSettings.project.fileSettings.end()) {
+                if (iFileSettings != mFileSettings.end()) {
                     resultOfCheck = fileChecker.check(*iFileSettings);
                 } else {
                     // Read file from a file
-                    resultOfCheck = fileChecker.check(iFile->first);
+                    resultOfCheck = fileChecker.check(*iFile);
                 }
 
-                std::ostringstream oss;
-                oss << resultOfCheck;
-                pipewriter.writeEnd(oss.str());
+                pipewriter.writeSuppr(supprs.nomsg);
+
+                pipewriter.writeTimer(timerResults.get());
+
+                pipewriter.writeEnd(std::to_string(resultOfCheck));
                 std::exit(EXIT_SUCCESS);
             }
 
             close(pipes[1]);
             rpipes.push_back(pipes[0]);
-            if (iFileSettings != mSettings.project.fileSettings.end()) {
-                childFile[pid] = iFileSettings->filename + ' ' + iFileSettings->cfg;
-                pipeFile[pipes[0]] = iFileSettings->filename + ' ' + iFileSettings->cfg;
+            if (iFileSettings != mFileSettings.end()) {
+                childFile[pid] = iFileSettings->filename() + ' ' + iFileSettings->cfg;
+                pipeFile[pipes[0]] = iFileSettings->filename() + ' ' + iFileSettings->cfg;
                 ++iFileSettings;
             } else {
-                childFile[pid] = iFile->first;
-                pipeFile[pipes[0]] = iFile->first;
+                childFile[pid] = iFile->path();
+                pipeFile[pipes[0]] = iFile->path();
                 ++iFile;
             }
         }
         if (!rpipes.empty()) {
             fd_set rfds;
             FD_ZERO(&rfds);
-            for (std::list<int>::const_iterator rp = rpipes.begin(); rp != rpipes.end(); ++rp)
+            for (auto rp = rpipes.cbegin(); rp != rpipes.cend(); ++rp)
                 FD_SET(*rp, &rfds);
-            struct timeval tv; // for every second polling of load average condition
+            timeval tv; // for every second polling of load average condition
             tv.tv_sec = 1;
             tv.tv_usec = 0;
-            int r = select(*std::max_element(rpipes.begin(), rpipes.end()) + 1, &rfds, nullptr, nullptr, &tv);
+            const int r = select(*std::max_element(rpipes.cbegin(), rpipes.cend()) + 1, &rfds, nullptr, nullptr, &tv);
 
             if (r > 0) {
-                std::list<int>::iterator rp = rpipes.begin();
-                while (rp != rpipes.end()) {
+                auto rp = rpipes.cbegin();
+                while (rp != rpipes.cend()) {
                     if (FD_ISSET(*rp, &rfds)) {
-                        int readRes = handleRead(*rp, result);
-                        if (readRes == -1) {
+                        std::string name;
+                        const auto p = utils::as_const(pipeFile).find(*rp);
+                        if (p != pipeFile.cend()) {
+                            name = p->second;
+                        }
+                        const bool readRes = handleRead(*rp, result, name);
+                        if (!readRes) {
                             std::size_t size = 0;
-                            std::map<int, std::string>::iterator p = pipeFile.find(*rp);
-                            if (p != pipeFile.end()) {
-                                std::string name = p->second;
+                            if (p != pipeFile.cend()) {
                                 pipeFile.erase(p);
-                                std::map<std::string, std::size_t>::const_iterator fs = mFiles.find(name);
+                                const auto fs = std::find_if(mFiles.cbegin(), mFiles.cend(), [&name](const FileWithDetails& entry) {
+                                    return entry.path() == name;
+                                });
                                 if (fs != mFiles.end()) {
-                                    size = fs->second;
+                                    size = fs->size();
                                 }
                             }
 
                             fileCount++;
                             processedsize += size;
                             if (!mSettings.quiet)
-                                CppCheckExecutor::reportStatus(fileCount, mFiles.size() + mSettings.project.fileSettings.size(), processedsize, totalfilesize);
+                                Executor::reportStatus(fileCount, mFiles.size() + mFileSettings.size(), processedsize, totalfilesize);
 
                             close(*rp);
                             rp = rpipes.erase(rp);
@@ -332,11 +471,11 @@ unsigned int ProcessExecutor::check()
         }
         if (!childFile.empty()) {
             int stat = 0;
-            pid_t child = waitpid(0, &stat, WNOHANG);
+            const pid_t child = waitpid(0, &stat, WNOHANG);
             if (child > 0) {
                 std::string childname;
-                std::map<pid_t, std::string>::iterator c = childFile.find(child);
-                if (c != childFile.end()) {
+                const auto c = utils::as_const(childFile).find(child);
+                if (c != childFile.cend()) {
                     childname = c->second;
                     childFile.erase(c);
                 }
@@ -355,12 +494,13 @@ unsigned int ProcessExecutor::check()
                 }
             }
         }
-        if (iFile == mFiles.end() && iFileSettings == mSettings.project.fileSettings.end() && rpipes.empty() && childFile.empty()) {
+        if (iFile == mFiles.end() && iFileSettings == mFileSettings.end() && rpipes.empty() && childFile.empty()) {
             // All done
             break;
         }
     }
 
+    // TODO: we need to get the timing information from the subprocess
 
     return result;
 }
@@ -369,15 +509,15 @@ void ProcessExecutor::reportInternalChildErr(const std::string &childname, const
 {
     std::list<ErrorMessage::FileLocation> locations;
     locations.emplace_back(childname, 0, 0);
-    const ErrorMessage errmsg(locations,
-                              emptyString,
+    const ErrorMessage errmsg(std::move(locations),
+                              "",
                               Severity::error,
                               "Internal error: " + msg,
                               "cppcheckError",
                               Certainty::normal);
 
-    if (!mSettings.nomsg.isSuppressed(errmsg.toSuppressionsErrorMessage()))
+    if (hasToLog(errmsg))
         mErrorLogger.reportErr(errmsg);
 }
 
-#endif // !WIN32
+#endif // HAS_THREADING_MODEL_FORK

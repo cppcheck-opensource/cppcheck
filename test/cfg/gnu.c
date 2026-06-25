@@ -2,30 +2,163 @@
 // Test library configuration for gnu.cfg
 //
 // Usage:
-// $ cppcheck --check-library --library=gnu --enable=information --enable=style --error-exitcode=1 --suppress=missingIncludeSystem --inline-suppr test/cfg/gnu.c
+// $ cppcheck --check-library --library=gnu --enable=style,information --inconclusive --error-exitcode=1 --inline-suppr test/cfg/gnu.c
 // =>
 // No warnings about bad library configuration, unmatched suppressions, etc. exitcode=0
 //
+
+// cppcheck-suppress-file [valueFlowBailout,purgedConfiguration]
+
+#define _GNU_SOURCE
 
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
-#include <netdb.h>
-#include <sys/time.h>
 #include <sys/types.h>
 #include <pwd.h>
 #include <sys/mman.h>
 #include <sys/sem.h>
 #include <wchar.h>
-#ifndef __CYGWIN__
+#include <execinfo.h>
+#if !defined(__CYGWIN__) && !defined(__APPLE__)
 #include <sys/epoll.h>
 #endif
 #include <strings.h>
+#ifdef __gnu_linux__
+#include <error.h>
+#endif
+#include <unistd.h>
+#include <getopt.h>
+#include <netdb.h>
+#if !defined(__APPLE__)
+#include <byteswap.h>
+#include <features.h>
+#endif
+#include <sys/socket.h>
+#include <time.h>
+#include <stddef.h>
+
+#ifdef __gnu_linux__
+void unreachableCode_error(void) // #11197
+{
+    error(1, 0, ""); // will call exit() if the first parameter is non-zero
+    // cppcheck-suppress unusedVariable
+    // TODO cppcheck-suppress unreachableCode
+    int i;
+}
+#endif
 
 
-int nullPointer_getservent_r(struct servent *restrict result_buf, char *restrict buf, size_t buflen, struct servent **restrict result)
+int deallocuse_backtrace(int size) {
+    void **buffer = (void **)malloc(sizeof(void *) * size);
+    free(buffer);
+    // cppcheck-suppress deallocuse
+    // cppcheck-suppress nullPointerOutOfMemory
+    int numEntries = backtrace(buffer, size);
+    return numEntries;
+}
+
+#if !defined(__APPLE__)
+void leakReturnValNotUsed_get_current_dir_name(void)
+{
+    // cppcheck-suppress leakReturnValNotUsed
+    get_current_dir_name();
+}
+
+void memleak_get_current_dir_name0(void)
+{
+    const char *const name = get_current_dir_name();
+    if (name)
+    {
+        // cppcheck-suppress memleak
+        return;
+    }
+}
+
+void memleak_get_current_dir_name1(void)
+{
+    const char *const name = get_current_dir_name();
+    if (name)
+    {
+        free(name);
+        return;
+    }
+}
+
+int nullPointer_gethostbyname2_r(const char* name, int af, struct hostent* ret, const char* buf, size_t buflen, struct hostent** result, const int* h_errnop)
+{
+    // cppcheck-suppress nullPointer
+    (void) gethostbyname2_r(NULL, af, ret, buf, buflen, result, h_errnop);
+    // cppcheck-suppress nullPointer
+    (void) gethostbyname2_r(name, af, NULL, buf, buflen, result, h_errnop);
+    // cppcheck-suppress nullPointer
+    (void) gethostbyname2_r(name, af, ret, NULL, buflen, result, h_errnop);
+    // cppcheck-suppress nullPointer
+    (void) gethostbyname2_r(name, af, ret, buf, buflen, NULL, h_errnop);
+    // cppcheck-suppress nullPointer
+    (void) gethostbyname2_r(name, af, ret, buf, buflen, result, NULL);
+    return gethostbyname2_r(name, af, ret, buf, buflen, result, h_errnop);
+}
+
+int nullPointer_gethostbyname_r(const char* name, struct hostent* ret, const char* buf, size_t buflen, struct hostent** result, const int* h_errnop)
+{
+    // cppcheck-suppress nullPointer
+    (void) gethostbyname_r(NULL, ret, buf, buflen, result, h_errnop);
+    // cppcheck-suppress nullPointer
+    (void) gethostbyname_r(name, NULL, buf, buflen, result, h_errnop);
+    // cppcheck-suppress nullPointer
+    (void) gethostbyname_r(name, ret, NULL, buflen, result, h_errnop);
+    // cppcheck-suppress nullPointer
+    (void) gethostbyname_r(name, ret, buf, buflen, NULL, h_errnop);
+    // cppcheck-suppress nullPointer
+    (void) gethostbyname_r(name, ret, buf, buflen, result, NULL);
+    return gethostbyname_r(name, ret, buf, buflen, result, h_errnop);
+}
+
+int nullPointer_gethostbyaddr_r(const void* addr, socklen_t len, int type, struct hostent* ret, const char* buf, size_t buflen, struct hostent** result, const int* h_errnop)
+{
+    // cppcheck-suppress nullPointer
+    (void) gethostbyaddr_r(NULL, len, type, ret, buf, buflen, result, h_errnop);
+    // cppcheck-suppress nullPointer
+    (void) gethostbyaddr_r(addr, len, type, NULL, buf, buflen, result, h_errnop);
+    // cppcheck-suppress nullPointer
+    (void) gethostbyaddr_r(addr, len, type, ret, NULL, buflen, result, h_errnop);
+    // cppcheck-suppress nullPointer
+    (void) gethostbyaddr_r(addr, len, type, ret, buf, buflen, NULL, h_errnop);
+    // cppcheck-suppress nullPointer
+    (void) gethostbyaddr_r(addr, len, type, ret, buf, buflen, result, NULL);
+    return gethostbyaddr_r(addr, len, type, ret, buf, buflen, result, h_errnop);
+}
+#endif
+
+int nullPointer_getopt_long(int argc, char **argv, const char *optstring,
+                            const struct option *longopts, int *longindex)
+{
+    // cppcheck-suppress nullPointer
+    (void) getopt_long(argc, argv, NULL, longopts, longindex);
+    // cppcheck-suppress nullPointer
+    (void) getopt_long(argc, argv, optstring, NULL, longindex);
+    // cppcheck-suppress nullPointer
+    (void) getopt_long(argc, NULL, optstring, longopts, longindex);
+    return getopt_long(argc, argv, optstring, longopts, longindex);
+}
+
+int nullPointer_getopt_long_only(int argc, char* const* argv, const char* optstring,
+                                 const struct option* longopts, int* longindex)
+{
+    // cppcheck-suppress nullPointer
+    (void) getopt_long_only(argc, NULL, optstring, longopts, longindex);
+    // cppcheck-suppress nullPointer
+    (void) getopt_long_only(argc, argv, NULL, longopts, longindex);
+    // cppcheck-suppress nullPointer
+    (void) getopt_long_only(argc, argv, optstring, NULL, longindex);
+    return getopt_long_only(argc, argv, optstring, longopts, longindex);
+}
+
+#if !defined(__APPLE__)
+int nullPointer_getservent_r(struct servent *restrict result_buf, const char *restrict buf, size_t buflen, struct servent **restrict result)
 {
     // cppcheck-suppress nullPointer
     (void) getservent_r(NULL, buf, buflen, result);
@@ -38,12 +171,13 @@ int nullPointer_getservent_r(struct servent *restrict result_buf, char *restrict
 
 void *bufferAccessOutOfBounds_memrchr(const void *s, int c, size_t n)
 {
-    char buf[42]={0};
+    const char buf[42]={0};
     (void)memrchr(buf,c,42);
     // cppcheck-suppress bufferAccessOutOfBounds
     (void)memrchr(buf,c,43);
     return memrchr(s,c,n);
 }
+#endif
 
 void knownConditionTrueFalse_ffsl(long i)
 {
@@ -63,6 +197,7 @@ void knownConditionTrueFalse_ffsll(long long i)
     if (ffsll(i) == 0) {}
 }
 
+#if !defined(__APPLE__)
 int nullPointer_semtimedop(int semid, struct sembuf *sops, size_t nsops, const struct timespec *timeout)
 {
     (void) semtimedop(semid, sops, nsops, NULL); // If the timeout argument is NULL, then semtimedop() behaves exactly like semop().
@@ -98,39 +233,10 @@ int uninitvar_getpw(uid_t uid, char *buf)
     // cppcheck-suppress uninitvar
     return getpw(someUid, buf);
 }
-
-// #9323, #9331
-void syntaxError_timercmp(struct timeval t)
-{
-    (void)timercmp(&t, &t, <);
-    (void)timercmp(&t, &t, <=);
-    (void)timercmp(&t, &t, ==);
-    (void)timercmp(&t, &t, !=);
-    (void)timercmp(&t, &t, >=);
-    (void)timercmp(&t, &t, >);
-}
-
-// False negative: #9346
-void uninitvar_timercmp(struct timeval t)
-{
-    struct timeval uninit;
-    (void)timercmp(&t, &uninit, <);
-    (void)timercmp(&uninit, &t, <=);
-    (void)timercmp(&uninit, &uninit, ==);
-}
-
-void nullPointer_timercmp(struct timeval t)
-{
-    struct timeval *p=0;
-    // cppcheck-suppress nullPointer
-    (void)timercmp(&t, p, <);
-    // cppcheck-suppress nullPointer
-    (void)timercmp(p, &t, <=);
-    // cppcheck-suppress nullPointer
-    (void)timercmp(p, p, ==);
-}
+#endif
 
 // Declaration necessary because there is no specific / portable header.
+// https://www.eyrie.org/~eagle/software/rra-c-util/xmalloc.html
 extern void *xcalloc(size_t nmemb, size_t size);
 extern void *xmalloc(size_t size);
 extern void *xrealloc(void *block, size_t newsize);
@@ -190,17 +296,19 @@ int no_resourceLeak_mkostemp_02(char *template, int flags)
     return mkostemp(template, flags);
 }
 
-void valid_code(int argInt1, va_list valist_arg, int * parg)
+void valid_code(int argInt1, va_list valist_arg, const int * parg)
 {
     char *p;
 
     if (__builtin_expect(argInt1, 0)) {}
     if (__builtin_expect_with_probability(argInt1 + 1, 2, 0.5)) {}
+#ifdef __GLIBC__
     if (__glibc_unlikely(argInt1 != 0)) {}
     if (__glibc_likely(parg != NULL)) {}
-    void *ax1 = __builtin_assume_aligned(parg, 16);
+#endif
+    const void *ax1 = __builtin_assume_aligned(parg, 16);
     printf("%p", ax1);
-    void *ax2 = __builtin_assume_aligned(parg, 32, 8);
+    const void *ax2 = __builtin_assume_aligned(parg, 32, 8);
     printf("%p", ax2);
 
     p = (char *)malloc(10);
@@ -231,8 +339,10 @@ void valid_code(int argInt1, va_list valist_arg, int * parg)
 
     if (__alignof__(int) == 4) {}
 
-    void * p_mmap = mmap(NULL, 1, PROT_NONE, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
+    // cppcheck-suppress valueFlowBailoutIncompleteVar
+    const void * p_mmap = mmap(NULL, 1, PROT_NONE, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
     printf("%p", p_mmap);
+    // cppcheck-suppress nullPointerOutOfMemory
     munmap(p_mmap, 1);
 
     uint16_t i16_1 = 0, i16_2;
@@ -245,6 +355,7 @@ void valid_code(int argInt1, va_list valist_arg, int * parg)
     // cppcheck-suppress unreadVariable
     i64_2 = __builtin_bswap64(i64_1++);
 
+#if !defined(__APPLE__)
     // cppcheck-suppress zerodiv
     // cppcheck-suppress unreadVariable
     i16_1 /= bswap_16(0x1234) - 0x3412;
@@ -254,6 +365,7 @@ void valid_code(int argInt1, va_list valist_arg, int * parg)
     // cppcheck-suppress zerodiv
     // cppcheck-suppress unreadVariable
     i64_1 /= bswap_64(0x023456789abcde0f) - 0x0fdebc9a78563402;
+#endif
 }
 
 void ignoreleak(void)
@@ -269,21 +381,73 @@ void memleak_asprintf(char **ptr, const char *fmt, const int arg)
     if (-1 != asprintf(ptr,fmt,arg)) {
         free(ptr);
     }
-    if (-1 != asprintf(ptr,fmt,arg)) {
-        // TODO: Related to #8980 cppcheck-suppress memleak
+    if (-1 != asprintf(ptr,fmt,arg)) {}
+}
+
+void memleak_asprintf2() { // #12186
+    char* p = malloc(5);
+    // cppcheck-suppress memleak
+    (void)asprintf(&p, "%s", "test");
+    // cppcheck-suppress memleak
+}
+
+void memleak_asprintf3() {
+    char* p = malloc(5);
+    // cppcheck-suppress memleak
+    asprintf(&p, "%s", "test");
+    free(p);
+}
+
+void memleak_asprintf4(char** p) {
+    asprintf(p, "%s", "test");
+}
+
+void memleak_asprintf5(char* p) {
+    asprintf(&p, "%s", "test");
+    // cppcheck-suppress memleak
+}
+
+void memleak_asprintf6(const char* fmt, const int arg) {
+    char* ptr;
+    if (-1 == asprintf(&ptr, fmt, arg))
+        return;
+    printf("%s", ptr);
+    free(ptr);
+}
+
+void memleak_asprintf7(const char* fmt, const int arg) {
+    char* ptr;
+    if (asprintf(&ptr, fmt, arg) != -1) {
+        printf("%s", ptr);
+        free(ptr);
     }
+    else
+        return;
+}
+
+void memleak_asprintf8(const char *fmt, const int arg) // #12204
+{
+    char* ptr;
+    int ret = asprintf(&ptr, fmt, arg);
+    if (-1 == ret) {
+        return;
+    }
+    printf("%s", ptr);
+    free(ptr);
 }
 
 void memleak_xmalloc()
 {
     char *p = (char*)xmalloc(10);
+    // cppcheck-suppress nullPointerOutOfMemory
     p[9] = 0;
     // cppcheck-suppress memleak
 }
 
 void memleak_mmap()
 {
-    void * p_mmap = mmap(NULL, 1, PROT_NONE, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
+    // cppcheck-suppress valueFlowBailoutIncompleteVar
+    const void * p_mmap = mmap(NULL, 1, PROT_NONE, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
     printf("%p", p_mmap);
     // cppcheck-suppress memleak
 }
@@ -306,21 +470,25 @@ void bufferAccessOutOfBounds__builtin_memset(void)
 
 void bufferAccessOutOfBounds()
 {
-    char buf[2] = "a";
+    const char buf[2] = "a";
     // This is valid
     sethostname(buf, 2);
     // cppcheck-suppress bufferAccessOutOfBounds
     sethostname(buf, 4);
 
     char * pAlloc1 = xcalloc(2, 4);
+    // cppcheck-suppress nullPointerOutOfMemory
     memset(pAlloc1, 0, 8);
     // cppcheck-suppress bufferAccessOutOfBounds
+    // cppcheck-suppress nullPointerOutOfMemory
     memset(pAlloc1, 0, 9);
     free(pAlloc1);
 
     char * pAlloc2 = xmalloc(4);
+    // cppcheck-suppress nullPointerOutOfMemory
     memset(pAlloc2, 0, 4);
     // cppcheck-suppress bufferAccessOutOfBounds
+    // cppcheck-suppress nullPointerOutOfMemory
     memset(pAlloc2, 0, 5);
 
     pAlloc2 = xrealloc(pAlloc2, 10);
@@ -331,13 +499,14 @@ void bufferAccessOutOfBounds()
     free(pAlloc2);
 }
 
+#if !defined(__APPLE__)
 void leakReturnValNotUsed()
 {
-    // cppcheck-suppress unreadVariable
+    // cppcheck-suppress [unreadVariable, constVariablePointer]
     char* ptr = (char*)strdupa("test");
     // cppcheck-suppress ignoredReturnValue
     strdupa("test");
-    // cppcheck-suppress unreadVariable
+    // cppcheck-suppress [unreadVariable, constVariablePointer]
     char* ptr2 = (char*)strndupa("test", 1);
     // cppcheck-suppress ignoredReturnValue
     strndupa("test", 1);
@@ -350,8 +519,9 @@ void leakReturnValNotUsed()
     if (42 == __builtin_expect(42, 0))
         return;
 }
+#endif
 
-#ifndef __CYGWIN__
+#if !defined(__CYGWIN__) && !defined(__APPLE__)
 int nullPointer_epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
 {
     // no warning is expected
@@ -362,6 +532,7 @@ int nullPointer_epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
     //          Remove (deregister) the target file descriptor fd from the
     //          epoll instance referred to by epfd.  The event is ignored and
     //          can be NULL.
+    // cppcheck-suppress valueFlowBailoutIncompleteVar
     return epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
 }
 #endif

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>502</width>
-    <height>274</height>
+    <width>500</width>
+    <height>414</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -247,114 +247,150 @@
       <attribute name="title">
        <string>Statistics</string>
       </attribute>
-      <layout class="QFormLayout" name="formLayout">
+      <layout class="QGridLayout" name="gridLayout_2">
        <item row="0" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_5">
-         <item>
-          <widget class="QLabel" name="label">
-           <property name="text">
-            <string>Errors:</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="mLblErrors">
-           <property name="text">
-            <string notr="true">TextLabel</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>Errors:</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLabel" name="mLblErrors">
+         <property name="text">
+          <string notr="true">TextLabel</string>
+         </property>
+        </widget>
        </item>
        <item row="1" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_2">
-         <item>
-          <widget class="QLabel" name="label_2">
-           <property name="text">
-            <string>Warnings:</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="mLblWarnings">
-           <property name="text">
-            <string notr="true">TextLabel</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>Warnings:</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QLabel" name="mLblWarnings">
+         <property name="text">
+          <string notr="true">TextLabel</string>
+         </property>
+        </widget>
        </item>
        <item row="2" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_3">
-         <item>
-          <widget class="QLabel" name="label_3">
-           <property name="text">
-            <string>Stylistic warnings:</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="mLblStyle">
-           <property name="text">
-            <string notr="true">TextLabel</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
+        <widget class="QLabel" name="label_3">
+         <property name="text">
+          <string>Stylistic warnings:</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QLabel" name="mLblStyle">
+         <property name="text">
+          <string notr="true">TextLabel</string>
+         </property>
+        </widget>
        </item>
        <item row="3" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_8">
-         <item>
-          <widget class="QLabel" name="label_6">
-           <property name="text">
-            <string>Portability warnings:</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="mLblPortability">
-           <property name="text">
-            <string notr="true">TextLabel</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
+        <widget class="QLabel" name="label_6">
+         <property name="text">
+          <string>Portability warnings:</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QLabel" name="mLblPortability">
+         <property name="text">
+          <string notr="true">TextLabel</string>
+         </property>
+        </widget>
        </item>
        <item row="4" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_4">
-         <item>
-          <widget class="QLabel" name="label_4">
-           <property name="text">
-            <string>Performance issues:</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="mLblPerformance">
-           <property name="text">
-            <string notr="true">TextLabel</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>Performance issues:</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QLabel" name="mLblPerformance">
+         <property name="text">
+          <string notr="true">TextLabel</string>
+         </property>
+        </widget>
        </item>
        <item row="5" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_6">
-         <item>
-          <widget class="QLabel" name="label_5">
-           <property name="text">
-            <string>Information messages:</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="mLblInformation">
-           <property name="text">
-            <string notr="true">TextLabel</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>Information messages:</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <widget class="QLabel" name="mLblInformation">
+         <property name="text">
+          <string notr="true">TextLabel</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="0">
+        <widget class="QLabel" name="label_7">
+         <property name="text">
+          <string>Active checkers:</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QLabel" name="mLblActiveCheckers">
+         <property name="text">
+          <string notr="true">TextLabel</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="mCheckersTab">
+      <attribute name="title">
+       <string>Checkers</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_4">
+       <item>
+        <widget class="QPlainTextEdit" name="mCheckersReport">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="font">
+          <font>
+           <family>Courier 10 Pitch</family>
+          </font>
+         </property>
+         <property name="undoRedoEnabled">
+          <bool>true</bool>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>

@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,24 +36,20 @@
 
 //---------------------------------------------------------------------------
 
-// Register this check class (by creating a static instance of it)
-namespace {
-    CheckString instance;
-}
-
 // CWE ids used:
-static const struct CWE CWE570(570U);   // Expression is Always False
-static const struct CWE CWE571(571U);   // Expression is Always True
-static const struct CWE CWE595(595U);   // Comparison of Object References Instead of Object Contents
-static const struct CWE CWE628(628U);   // Function Call with Incorrectly Specified Arguments
-static const struct CWE CWE665(665U);   // Improper Initialization
-static const struct CWE CWE758(758U);   // Reliance on Undefined, Unspecified, or Implementation-Defined Behavior
+static const CWE CWE570(570U);   // Expression is Always False
+static const CWE CWE571(571U);   // Expression is Always True
+static const CWE CWE595(595U);   // Comparison of Object References Instead of Object Contents
+static const CWE CWE628(628U);   // Function Call with Incorrectly Specified Arguments
+static const CWE CWE665(665U);   // Improper Initialization
+static const CWE CWE758(758U);   // Reliance on Undefined, Unspecified, or Implementation-Defined Behavior
 
 //---------------------------------------------------------------------------
 // Writing string literal is UB
 //---------------------------------------------------------------------------
-void CheckString::stringLiteralWrite()
+void CheckStringImpl::stringLiteralWrite()
 {
+    logChecker("CheckString::stringLiteralWrite");
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * scope : symbolDatabase->functionScopes) {
         for (const Token* tok = scope->bodyStart->next(); tok != scope->bodyEnd; tok = tok->next()) {
@@ -70,10 +66,9 @@ void CheckString::stringLiteralWrite()
     }
 }
 
-void CheckString::stringLiteralWriteError(const Token *tok, const Token *strValue)
+void CheckStringImpl::stringLiteralWriteError(const Token *tok, const Token *strValue)
 {
-    std::list<const Token *> callstack;
-    callstack.push_back(tok);
+    std::list<const Token*> callstack{ tok };
     if (strValue)
         callstack.push_back(strValue);
 
@@ -82,7 +77,7 @@ void CheckString::stringLiteralWriteError(const Token *tok, const Token *strValu
         std::string s = strValue->str();
         // 20 is an arbitrary value, the max string length shown in a warning message
         if (s.size() > 20U)
-            s = s.substr(0,17) + "..\"";
+            s.replace(17, std::string::npos, "..\"");
         errmsg += " " + s;
     }
     errmsg += " directly or indirectly is undefined behaviour.";
@@ -94,13 +89,15 @@ void CheckString::stringLiteralWriteError(const Token *tok, const Token *strValu
 // Check for string comparison involving two static strings.
 // if(strcmp("00FF00","00FF00")==0) // <- statement is always true
 //---------------------------------------------------------------------------
-void CheckString::checkAlwaysTrueOrFalseStringCompare()
+void CheckStringImpl::checkAlwaysTrueOrFalseStringCompare()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
 
+    logChecker("CheckString::checkAlwaysTrueOrFalseStringCompare"); // warning
+
     for (const Token* tok = mTokenizer->tokens(); tok; tok = tok->next()) {
-        if (tok->isName() && tok->strAt(1) == "(" && Token::Match(tok, "memcmp|strncmp|strcmp|stricmp|strverscmp|bcmp|strcmpi|strcasecmp|strncasecmp|strncasecmp_l|strcasecmp_l|wcsncasecmp|wcscasecmp|wmemcmp|wcscmp|wcscasecmp_l|wcsncasecmp_l|wcsncmp|_mbscmp|_mbscmp_l|_memicmp|_memicmp_l|_stricmp|_wcsicmp|_mbsicmp|_stricmp_l|_wcsicmp_l|_mbsicmp_l")) {
+        if (tok->isName() && tok->strAt(1) == "(" && Token::Match(tok, "memcmp|strncmp|strcmp|stricmp|strverscmp|bcmp|strcmpi|strcasecmp|strncasecmp|strncasecmp_l|strcasecmp_l|wcsncasecmp|wcscasecmp|wmemcmp|wcscmp|wcscasecmp_l|wcsncasecmp_l|wcsncmp|_mbscmp|_mbscmp_l|_memicmp|_memicmp_l|_stricmp|_wcsicmp|wcsicmp|_mbsicmp|_stricmp_l|_wcsicmp_l|_mbsicmp_l")) {
             if (Token::Match(tok->tokAt(2), "%str% , %str% ,|)")) {
                 const std::string &str1 = tok->strAt(2);
                 const std::string &str2 = tok->strAt(4);
@@ -136,9 +133,9 @@ void CheckString::checkAlwaysTrueOrFalseStringCompare()
     }
 }
 
-void CheckString::alwaysTrueFalseStringCompareError(const Token *tok, const std::string& str1, const std::string& str2)
+void CheckStringImpl::alwaysTrueFalseStringCompareError(const Token *tok, const std::string& str1, const std::string& str2)
 {
-    const std::size_t stringLen = 10;
+    constexpr std::size_t stringLen = 10;
     const std::string string1 = (str1.size() < stringLen) ? str1 : (str1.substr(0, stringLen-2) + "..");
     const std::string string2 = (str2.size() < stringLen) ? str2 : (str2.substr(0, stringLen-2) + "..");
 
@@ -148,7 +145,7 @@ void CheckString::alwaysTrueFalseStringCompareError(const Token *tok, const std:
                 "Therefore the comparison is unnecessary and looks suspicious.", (str1==str2)?CWE571:CWE570, Certainty::normal);
 }
 
-void CheckString::alwaysTrueStringVariableCompareError(const Token *tok, const std::string& str1, const std::string& str2)
+void CheckStringImpl::alwaysTrueStringVariableCompareError(const Token *tok, const std::string& str1, const std::string& str2)
 {
     reportError(tok, Severity::warning, "stringCompare",
                 "Comparison of identical string variables.\n"
@@ -161,10 +158,12 @@ void CheckString::alwaysTrueStringVariableCompareError(const Token *tok, const s
 // Detect "str == '\0'" where "*str == '\0'" is correct.
 // Comparing char* with each other instead of using strcmp()
 //-----------------------------------------------------------------------------
-void CheckString::checkSuspiciousStringCompare()
+void CheckStringImpl::checkSuspiciousStringCompare()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
+
+    logChecker("CheckString::checkSuspiciousStringCompare"); // warning
 
     const SymbolDatabase* symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * scope : symbolDatabase->functionScopes) {
@@ -185,11 +184,11 @@ void CheckString::checkSuspiciousStringCompare()
                 continue;
 
             const ValueType* varType = varTok->valueType();
-            if (mTokenizer->isCPP() && (!varType || !varType->isIntegral()))
+            if (varTok->isCpp() && (!varType || !varType->isIntegral()))
                 continue;
 
             if (litTok->tokType() == Token::eString) {
-                if (mTokenizer->isC() || (varType && varType->pointer))
+                if (varTok->isC() || (varType && varType->pointer))
                     suspiciousStringCompareError(tok, varTok->expressionString(), litTok->isLong());
             } else if (litTok->tokType() == Token::eChar && varType && varType->pointer) {
                 suspiciousStringCompareError_char(tok, varTok->expressionString());
@@ -198,14 +197,14 @@ void CheckString::checkSuspiciousStringCompare()
     }
 }
 
-void CheckString::suspiciousStringCompareError(const Token* tok, const std::string& var, bool isLong)
+void CheckStringImpl::suspiciousStringCompareError(const Token* tok, const std::string& var, bool isLong)
 {
     const std::string cmpFunc = isLong ? "wcscmp" : "strcmp";
     reportError(tok, Severity::warning, "literalWithCharPtrCompare",
                 "$symbol:" + var + "\nString literal compared with variable '$symbol'. Did you intend to use " + cmpFunc + "() instead?", CWE595, Certainty::normal);
 }
 
-void CheckString::suspiciousStringCompareError_char(const Token* tok, const std::string& var)
+void CheckStringImpl::suspiciousStringCompareError_char(const Token* tok, const std::string& var)
 {
     reportError(tok, Severity::warning, "charLiteralWithCharPtrCompare",
                 "$symbol:" + var + "\nChar literal compared with pointer '$symbol'. Did you intend to dereference it?", CWE595, Certainty::normal);
@@ -221,8 +220,9 @@ static bool isChar(const Variable* var)
     return (var && !var->isPointer() && !var->isArray() && (var->typeStartToken()->str() == "char" || var->typeStartToken()->str() == "wchar_t"));
 }
 
-void CheckString::strPlusChar()
+void CheckStringImpl::strPlusChar()
 {
+    logChecker("CheckString::strPlusChar");
     const SymbolDatabase* symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * scope : symbolDatabase->functionScopes) {
         for (const Token* tok = scope->bodyStart->next(); tok != scope->bodyEnd; tok = tok->next()) {
@@ -236,7 +236,7 @@ void CheckString::strPlusChar()
     }
 }
 
-void CheckString::strPlusCharError(const Token *tok)
+void CheckStringImpl::strPlusCharError(const Token *tok)
 {
     std::string charType = "char";
     if (tok && tok->astOperand2() && tok->astOperand2()->variable())
@@ -246,14 +246,38 @@ void CheckString::strPlusCharError(const Token *tok)
     reportError(tok, Severity::error, "strPlusChar", "Unusual pointer arithmetic. A value of type '" + charType +"' is added to a string literal.", CWE665, Certainty::normal);
 }
 
+static bool isMacroUsage(const Token* tok)
+{
+    if (const Token* parent = tok->astParent()) {
+        while (parent && (parent->isCast() || parent->str() == "&&")) {
+            if (parent->isExpandedMacro())
+                return true;
+            parent = parent->astParent();
+        }
+        if (!parent)
+            return false;
+        if (parent->isExpandedMacro())
+            return true;
+        if (parent->isUnaryOp("!") || parent->isComparisonOp()) {
+            int argn{};
+            const Token* ftok = getTokenArgumentFunction(parent, argn);
+            if (ftok && !ftok->function())
+                return true;
+        }
+    }
+    return false;
+}
+
 //---------------------------------------------------------------------------
 // Implicit casts of string literals to bool
 // Comparing string literal with strlen() with wrong length
 //---------------------------------------------------------------------------
-void CheckString::checkIncorrectStringCompare()
+void CheckStringImpl::checkIncorrectStringCompare()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
+
+    logChecker("CheckString::checkIncorrectStringCompare"); // warning
 
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * scope : symbolDatabase->functionScopes) {
@@ -261,11 +285,11 @@ void CheckString::checkIncorrectStringCompare()
             // skip "assert(str && ..)" and "assert(.. && str)"
             if ((endsWith(tok->str(), "assert") || endsWith(tok->str(), "ASSERT")) &&
                 Token::Match(tok, "%name% (") &&
-                (Token::Match(tok->tokAt(2), "%str% &&") || Token::Match(tok->next()->link()->tokAt(-2), "&& %str% )")))
-                tok = tok->next()->link();
+                (Token::Match(tok->tokAt(2), "%str% &&") || Token::Match(tok->linkAt(1)->tokAt(-2), "&& %str% )")))
+                tok = tok->linkAt(1);
 
             if (Token::simpleMatch(tok, ". substr (") && Token::Match(tok->tokAt(3)->nextArgument(), "%num% )")) {
-                const MathLib::biguint clen = MathLib::toULongNumber(tok->linkAt(2)->strAt(-1));
+                const MathLib::biguint clen = MathLib::toBigUNumber(tok->linkAt(2)->tokAt(-1));
                 const Token* begin = tok->previous();
                 for (;;) { // Find start of statement
                     while (begin->link() && Token::Match(begin, "]|)|>"))
@@ -288,26 +312,25 @@ void CheckString::checkIncorrectStringCompare()
                         incorrectStringCompareError(tok->next(), "substr", end->strAt(1));
                     }
                 }
-            } else if (Token::Match(tok, "&&|%oror%|( %str%|%char% &&|%oror%|)") && !Token::Match(tok, "( %str%|%char% )")) {
-                incorrectStringBooleanError(tok->next(), tok->strAt(1));
-            } else if (Token::Match(tok, "if|while ( %str%|%char% )") && !tok->tokAt(2)->getValue(0)) {
-                incorrectStringBooleanError(tok->tokAt(2), tok->strAt(2));
-            } else if (tok->str() == "?" && Token::Match(tok->astOperand1(), "%str%|%char%"))
-                incorrectStringBooleanError(tok->astOperand1(), tok->astOperand1()->str());
+            } else if (Token::Match(tok, "%str%|%char%") &&
+                       !Token::Match(tok->next(), "%name%") &&
+                       isUsedAsBool(tok, mSettings) &&
+                       !isMacroUsage(tok))
+                incorrectStringBooleanError(tok, tok->str());
         }
     }
 }
 
-void CheckString::incorrectStringCompareError(const Token *tok, const std::string& func, const std::string &string)
+void CheckStringImpl::incorrectStringCompareError(const Token *tok, const std::string& func, const std::string &string)
 {
     reportError(tok, Severity::warning, "incorrectStringCompare", "$symbol:" + func + "\nString literal " + string + " doesn't match length argument for $symbol().", CWE570, Certainty::normal);
 }
 
-void CheckString::incorrectStringBooleanError(const Token *tok, const std::string& string)
+void CheckStringImpl::incorrectStringBooleanError(const Token *tok, const std::string& string)
 {
     const bool charLiteral = isCharLiteral(string);
     const std::string literalType = charLiteral ? "char" : "string";
-    const std::string result = getCharLiteral(string) == "\\0" ? "false" : "true";
+    const std::string result = bool_to_string(getCharLiteral(string) != "\\0");
     reportError(tok,
                 Severity::warning,
                 charLiteral ? "incorrectCharBooleanError" : "incorrectStringBooleanError",
@@ -318,10 +341,12 @@ void CheckString::incorrectStringBooleanError(const Token *tok, const std::strin
 // always true: strcmp(str,"a")==0 || strcmp(str,"b")
 // TODO: Library configuration for string comparison functions
 //---------------------------------------------------------------------------
-void CheckString::overlappingStrcmp()
+void CheckStringImpl::overlappingStrcmp()
 {
-    if (!mSettings->severity.isEnabled(Severity::warning))
+    if (!mSettings.severity.isEnabled(Severity::warning))
         return;
+
+    logChecker("CheckString::overlappingStrcmp"); // warning
 
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * scope : symbolDatabase->functionScopes) {
@@ -370,7 +395,7 @@ void CheckString::overlappingStrcmp()
                     if (args1[1]->isLiteral() &&
                         args2[1]->isLiteral() &&
                         args1[1]->str() != args2[1]->str() &&
-                        isSameExpression(mTokenizer->isCPP(), true, args1[0], args2[0], mSettings->library, true, false))
+                        isSameExpression(true, args1[0], args2[0], mSettings, true, false))
                         overlappingStrcmpError(eq0, ne0);
                 }
             }
@@ -378,7 +403,7 @@ void CheckString::overlappingStrcmp()
     }
 }
 
-void CheckString::overlappingStrcmpError(const Token *eq0, const Token *ne0)
+void CheckStringImpl::overlappingStrcmpError(const Token *eq0, const Token *ne0)
 {
     std::string eq0Expr(eq0 ? eq0->expressionString() : std::string("strcmp(x,\"abc\")"));
     if (eq0 && eq0->astParent()->str() == "!")
@@ -395,8 +420,10 @@ void CheckString::overlappingStrcmpError(const Token *eq0, const Token *ne0)
 // Overlapping source and destination passed to sprintf().
 // TODO: Library configuration for overlapping arguments
 //---------------------------------------------------------------------------
-void CheckString::sprintfOverlappingData()
+void CheckStringImpl::sprintfOverlappingData()
 {
+    logChecker("CheckString::sprintfOverlappingData");
+
     const SymbolDatabase* symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * scope : symbolDatabase->functionScopes) {
         for (const Token* tok = scope->bodyStart->next(); tok != scope->bodyEnd; tok = tok->next()) {
@@ -416,11 +443,10 @@ void CheckString::sprintfOverlappingData()
                 while (arg->isCast())
                     arg = arg->astOperand2() ? arg->astOperand2() : arg->astOperand1();
 
-                const bool same = isSameExpression(mTokenizer->isCPP(),
-                                                   false,
+                const bool same = isSameExpression(false,
                                                    dest,
                                                    arg,
-                                                   mSettings->library,
+                                                   mSettings,
                                                    true,
                                                    false);
                 if (same) {
@@ -431,7 +457,7 @@ void CheckString::sprintfOverlappingData()
     }
 }
 
-void CheckString::sprintfOverlappingDataError(const Token *funcTok, const Token *tok, const std::string &varname)
+void CheckStringImpl::sprintfOverlappingDataError(const Token *funcTok, const Token *tok, const std::string &varname)
 {
     const std::string func = funcTok ? funcTok->str() : "s[n]printf";
 
@@ -443,4 +469,34 @@ void CheckString::sprintfOverlappingDataError(const Token *funcTok, const Token 
                 "documentation (http://www.gnu.org/software/libc/manual/html_mono/libc.html#Formatted-Output-Functions): "
                 "\"If copying takes place between objects that overlap as a result of a call "
                 "to sprintf() or snprintf(), the results are undefined.\"", CWE628, Certainty::normal);
+}
+
+void CheckString::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
+{
+    CheckStringImpl checkString(&tokenizer, tokenizer.getSettings(), errorLogger);
+
+    // Checks
+    checkString.strPlusChar();
+    checkString.checkSuspiciousStringCompare();
+    checkString.stringLiteralWrite();
+    checkString.overlappingStrcmp();
+    checkString.checkIncorrectStringCompare();
+    checkString.sprintfOverlappingData();
+    checkString.checkAlwaysTrueOrFalseStringCompare();
+}
+
+void CheckString::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
+{
+    CheckStringImpl c(nullptr, settings, errorLogger);
+    c.stringLiteralWriteError(nullptr, nullptr);
+    c.sprintfOverlappingDataError(nullptr, nullptr, "varname");
+    c.strPlusCharError(nullptr);
+    c.incorrectStringCompareError(nullptr, "substr", "\"Hello World\"");
+    c.suspiciousStringCompareError(nullptr, "foo", false);
+    c.suspiciousStringCompareError_char(nullptr, "foo");
+    c.incorrectStringBooleanError(nullptr, "\"Hello World\"");
+    c.incorrectStringBooleanError(nullptr, "\'x\'");
+    c.alwaysTrueFalseStringCompareError(nullptr, "str1", "str2");
+    c.alwaysTrueStringVariableCompareError(nullptr, "varname1", "varname2");
+    c.overlappingStrcmpError(nullptr, nullptr);
 }

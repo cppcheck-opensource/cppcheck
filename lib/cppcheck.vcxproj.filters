@@ -9,8 +9,11 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{00a07a33-9811-481c-91aa-46bfba1cda93}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
-  <ItemGroup>
+  <ItemGroup Label="SourceFiles">
     <ClCompile Include="tokenize.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -62,6 +65,9 @@
     <ClCompile Include="errortypes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="fwdanalysis.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="mathlib.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -84,9 +90,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="token.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="checkboost.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="checkinternal.cpp">
@@ -188,8 +191,44 @@
     <ClCompile Include="infer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="vfvalue.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="checkersreport.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="keywords.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="addoninfo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="checkers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="checkersidmapping.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="standards.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vf_analyzers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vf_common.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vf_settokenvalue.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="findtoken.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="regex.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
-  <ItemGroup>
+  <ItemGroup Label="HeaderFiles">
     <ClInclude Include="checkbufferoverrun.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -232,6 +271,9 @@
     <ClInclude Include="errorlogger.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="fwdanalysis.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="mathlib.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -266,9 +308,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="checkautovariables.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="checkboost.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="checkio.h">
@@ -370,11 +409,90 @@
     <ClInclude Include="infer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="analyzer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="calculate.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="forwardanalyzer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pathanalysis.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="reverseanalyzer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="smallvector.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="standards.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="valueptr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vfvalue.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="keywords.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="checkersreport.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="addoninfo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="checkers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="checkersidmapping.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="filesettings.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="findtoken.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="matchcompiler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sourcelocation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vf_analyze.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vf_analyzers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vf_common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vf_settokenvalue.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="xml.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="regex.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="version.rc" />
+    <Natvis Include="cppcheck.natvis">
+      <Filter>Resource Files</Filter>
+    </Natvis>
   </ItemGroup>
   <ItemGroup>
-    <Natvis Include="cppcheck.natvis" />
+    <ResourceCompile Include="version.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>

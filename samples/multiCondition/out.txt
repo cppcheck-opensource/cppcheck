@@ -1,0 +1,9 @@
+samples\multiCondition\bad.c:4:14: style: Expression is always true because 'else if' condition is opposite to previous condition at line 3. [multiCondition]
+    else if (!b) {}
+             ^
+samples\multiCondition\bad.c:3:9: note: first condition
+    if (b) {}
+        ^
+samples\multiCondition\bad.c:4:14: note: else if condition is opposite to first condition
+    else if (!b) {}
+             ^

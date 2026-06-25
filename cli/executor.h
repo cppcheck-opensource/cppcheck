@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,11 +21,17 @@
 
 #include <cstddef>
 #include <list>
-#include <map>
+#include <mutex>
 #include <string>
+#include <unordered_set>
 
 class Settings;
 class ErrorLogger;
+class ErrorMessage;
+struct Suppressions;
+struct FileSettings;
+class FileWithDetails;
+class TimerResults;
 
 /// @addtogroup CLI
 /// @{
@@ -36,23 +42,43 @@ class ErrorLogger;
  */
 class Executor {
 public:
-    Executor(const std::map<std::string, std::size_t> &files, Settings &settings, ErrorLogger &errorLogger);
+    Executor(const std::list<FileWithDetails> &files, const std::list<FileSettings>& fileSettings, const Settings &settings, Suppressions &suppressions, ErrorLogger &errorLogger, TimerResults* timerResults);
+    virtual ~Executor() = default;
+
     Executor(const Executor &) = delete;
-    virtual ~Executor();
-    void operator=(const Executor &) = delete;
+    Executor& operator=(const Executor &) = delete;
 
     virtual unsigned int check() = 0;
 
     /**
-     * @return true if support for threads exist.
+     * Information about how many files have been checked
+     *
+     * @param fileindex This many files have been checked.
+     * @param filecount This many files there are in total.
+     * @param sizedone The sum of sizes of the files checked.
+     * @param sizetotal The total sizes of the files.
      */
-    static bool isEnabled();
+    void reportStatus(std::size_t fileindex, std::size_t filecount, std::size_t sizedone, std::size_t sizetotal);
 
 protected:
-    const std::map<std::string, std::size_t> &mFiles;
-    Settings &mSettings;
+    /**
+     * @brief Check if message is being suppressed and unique.
+     * @param msg the message to check
+     * @return true if message is not suppressed and unique
+     */
+    bool hasToLog(const ErrorMessage &msg);
+
+    const std::list<FileWithDetails> &mFiles;
+    const std::list<FileSettings>& mFileSettings;
+    const Settings &mSettings;
+    Suppressions &mSuppressions;
     ErrorLogger &mErrorLogger;
-    std::list<std::string> mErrorList;
+    TimerResults *mTimerResults;
+
+private:
+    std::mutex mErrorListSync;
+    // TODO: store hashes instead of the full messages
+    std::unordered_set<std::string> mErrorList;
 };
 
 /// @}

@@ -3,6 +3,7 @@
   <char_bit>8</char_bit>
   <default-sign>unsigned</default-sign>
   <sizeof>
+    <bool>1</bool>
     <short>2</short>
     <int>8</int>
     <long>8</long>

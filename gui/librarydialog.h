@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,10 @@
 #include "cppchecklibrarydata.h"
 
 #include <QDialog>
+#include <QObject>
+#include <QString>
 
 class QListWidgetItem;
-class QObject;
 class QWidget;
 namespace Ui {
     class LibraryDialog;
@@ -46,16 +47,16 @@ private slots:
     void addFunction();
     void changeFunction();
     void editArg();
-    void editFunctionName(QListWidgetItem*);
-    void filterFunctions(const QString&);
+    void editFunctionName(QListWidgetItem* item);
+    void filterFunctions(const QString& filter);
     void selectFunction();
-    void sortFunctions(bool);
+    void sortFunctions(bool sort);
 
 private:
     Ui::LibraryDialog *mUi;
     CppcheckLibraryData mData;
     QString mFileName;
-    bool mIgnoreChanges;
+    bool mIgnoreChanges{};
 
     static QString getArgText(const CppcheckLibraryData::Function::Arg &arg);
     CppcheckLibraryData::Function *currentFunction();

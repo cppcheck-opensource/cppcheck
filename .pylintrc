@@ -1,0 +1,65 @@
+[MESSAGES CONTROL]
+disable=
+        # W start
+        redefined-builtin,
+        broad-exception-caught,
+        fixme,
+        bare-except,
+        redefined-outer-name,
+        attribute-defined-outside-init,
+        unspecified-encoding,
+        global-statement,
+        protected-access,
+        broad-exception-raised,
+        subprocess-popen-preexec-fn,
+        logging-not-lazy,
+        unknown-option-value,
+        unused-wildcard-import,
+        wildcard-import,
+        unused-argument,
+        pointless-string-statement,
+        arguments-renamed,
+        duplicate-string-formatting-argument,
+        # C start
+        consider-using-f-string,
+        invalid-name,
+        line-too-long,
+        missing-module-docstring,
+        missing-function-docstring,
+        import-outside-toplevel,
+        missing-class-docstring,
+        superfluous-parens,
+        too-many-lines,
+        trailing-newlines,
+        missing-final-newline,
+        use-implicit-booleaness-not-len,
+        wrong-import-order,
+        use-implicit-booleaness-not-comparison,
+        consider-using-enumerate,
+        unnecessary-lambda-assignment,
+        consider-using-dict-items,
+        consider-iterating-dictionary,
+        # R start
+        duplicate-code,
+        consider-using-with,
+        too-many-statements,
+        too-many-branches,
+        too-many-locals,
+        too-many-arguments,
+        too-few-public-methods,
+        too-many-return-statements,
+        consider-using-in,
+        too-many-nested-blocks,
+        too-many-public-methods,
+        chained-comparison,
+        too-many-instance-attributes,
+        too-many-boolean-expressions,
+        use-a-generator,
+        too-many-positional-arguments
+[REPORTS]
+reports=no
+[TYPECHECK]
+# See https://stackoverflow.com/questions/10300082/how-to-prevent-python-pylint-complaining-about-socket-class-sendall-method
+ignored-classes=SQLObject,_socketobject
+[MASTER]
+init-hook='import sys; sys.path.append("./addons")'

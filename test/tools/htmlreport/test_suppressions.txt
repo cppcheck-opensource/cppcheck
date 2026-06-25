@@ -1,0 +1,3 @@
+variableScope:*/samples/memleak/good.c
+*:*/samples/resourceLeak/notexisting.c*
+uninitstring:*

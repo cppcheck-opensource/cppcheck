@@ -23,7 +23,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>Cppcheck</string>
+   <string notr="true">Cppcheck</string>
   </property>
   <property name="iconSize">
    <size>
@@ -50,9 +50,71 @@
      <height>16777215</height>
     </size>
    </property>
-   <layout class="QHBoxLayout" name="horizontalLayout">
+   <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="ResultsView" name="mResults" native="true"/>
+     <widget class="ResultsView" name="mResults" native="true">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="mLayoutInformation">
+      <property name="sizeConstraint">
+       <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
+      </property>
+      <item>
+       <widget class="QLabel" name="mLabelInformation">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>25</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>Checking for updates</string>
+        </property>
+        <property name="textFormat">
+         <enum>Qt::TextFormat::RichText</enum>
+        </property>
+        <property name="openExternalLinks">
+         <bool>true</bool>
+        </property>
+        <property name="textInteractionFlags">
+         <set>Qt::TextInteractionFlag::TextBrowserInteraction</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="mButtonHideInformation">
+        <property name="text">
+         <string>Hide</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
     </item>
    </layout>
   </widget>
@@ -62,7 +124,7 @@
      <x>0</x>
      <y>0</y>
      <width>640</width>
-     <height>28</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="mMenuFile">
@@ -96,7 +158,21 @@
      <addaction name="mActionToolBarView"/>
      <addaction name="mActionToolBarFilter"/>
     </widget>
+    <widget class="QMenu" name="menuReport">
+     <property name="title">
+      <string>Report</string>
+     </property>
+     <addaction name="mActionReportNormal"/>
+     <addaction name="mActionReportAutosar"/>
+     <addaction name="mActionReportCertC"/>
+     <addaction name="mActionReportCertCpp"/>
+     <addaction name="mActionReportMisraC"/>
+     <addaction name="mActionReportMisraCpp2008"/>
+     <addaction name="mActionReportMisraCpp2023"/>
+    </widget>
     <addaction name="mMenuToolbars"/>
+    <addaction name="separator"/>
+    <addaction name="menuReport"/>
     <addaction name="separator"/>
     <addaction name="mActionShowErrors"/>
     <addaction name="mActionShowWarnings"/>
@@ -115,6 +191,7 @@
     <addaction name="mActionShowScratchpad"/>
     <addaction name="mActionViewStats"/>
     <addaction name="mActionLibraryEditor"/>
+    <addaction name="mActionShowThreadDetails"/>
    </widget>
    <widget class="QMenu" name="mMenuHelp">
     <property name="title">
@@ -123,6 +200,7 @@
     <addaction name="mActionHelpContents"/>
     <addaction name="mActionLicense"/>
     <addaction name="mActionAuthors"/>
+    <addaction name="mActionEULA"/>
     <addaction name="separator"/>
     <addaction name="mActionAbout"/>
    </widget>
@@ -140,6 +218,7 @@
      <addaction name="mActionCpp17"/>
      <addaction name="mActionCpp20"/>
      <!--addaction name="mActionCpp23"/-->
+     <!--addaction name="mActionCpp26"/-->
     </widget>
     <widget class="QMenu" name="menuC_standard">
      <property name="title">
@@ -148,6 +227,9 @@
      <addaction name="mActionC89"/>
      <addaction name="mActionC99"/>
      <addaction name="mActionC11"/>
+     <!--addaction name="mActionC17"/-->
+     <!--addaction name="mActionC23"/-->
+     <!--addaction name="mActionC2Y"/-->
     </widget>
     <addaction name="mActionAnalyzeFiles"/>
     <addaction name="mActionAnalyzeDirectory"/>
@@ -602,7 +684,7 @@
      <normaloff>:/cppcheck-gui.png</normaloff>:/cppcheck-gui.png</iconset>
    </property>
    <property name="text">
-    <string>Cppcheck</string>
+    <string notr="true">Cppcheck</string>
    </property>
    <property name="toolTip">
     <string>Show Cppcheck results</string>
@@ -731,6 +813,30 @@
     <string>C&amp;11</string>
    </property>
   </action>
+  <!--action name="mActionC17">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>C&amp;17</string>
+   </property>
+  </action-->
+  <!--action name="mActionC23">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>C&amp;23</string>
+   </property>
+  </action-->
+  <!--action name="mActionC2Y">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>C&amp;2y</string>
+   </property>
+  </action-->
   <action name="mActionC89">
    <property name="checkable">
     <bool>true</bool>
@@ -852,6 +958,96 @@
     <string>C++23</string>
    </property>
   </action-->
+  <!--action name="mActionCpp26">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>C++26</string>
+   </property>
+  </action-->
+  <action name="mActionComplianceReport">
+   <property name="text">
+    <string>Compliance report...</string>
+   </property>
+  </action>
+  <action name="actionReport">
+   <property name="text">
+    <string>Report</string>
+   </property>
+  </action>
+  <action name="mActionReportNormal">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Normal</string>
+   </property>
+  </action>
+  <action name="mActionReportMisraC">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string notr="true">Misra C</string>
+   </property>
+  </action>
+  <action name="mActionReportMisraCpp2008">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string notr="true">Misra C++ 2008</string>
+   </property>
+  </action>
+  <action name="mActionReportCertC">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string notr="true">Cert C</string>
+   </property>
+  </action>
+  <action name="mActionReportCertCpp">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string notr="true">Cert C++</string>
+   </property>
+  </action>
+  <action name="mActionReportMisraCpp2023">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string notr="true">Misra C++ 2023</string>
+   </property>
+  </action>
+  <action name="mActionReportAutosar">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Autosar</string>
+   </property>
+  </action>
+  <action name="mActionEULA">
+   <property name="text">
+    <string>EULA...</string>
+   </property>
+  </action>
+  <action name="mActionShowThreadDetails">
+   <property name="text">
+    <string>Thread Details</string>
+   </property>
+   <property name="toolTip">
+    <string>Show thread details</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>

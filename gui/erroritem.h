@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,9 +20,9 @@
 #define ERRORITEM_H
 
 #include "errorlogger.h"
+#include "errortypes.h"
 
 #include <QList>
-#include <QMetaType>
 #include <QString>
 
 /// @addtogroup GUI
@@ -36,12 +36,12 @@
  */
 class GuiSeverity {
 public:
-    static QString toString(Severity::SeverityType severity) {
-        return QString::fromStdString(Severity::toString(severity));
+    static QString toString(Severity severity) {
+        return QString::fromStdString(severityToString(severity));
     }
 
-    static Severity::SeverityType fromString(const QString &severity) {
-        return Severity::fromString(severity.toStdString());
+    static Severity fromString(const QString &severity) {
+        return severityFromString(severity.toStdString());
     }
 };
 
@@ -80,11 +80,23 @@ public:
     QString toString() const;
     QString tool() const;
 
+    int getMainLocIndex() const {
+        return isClangResult() ? 0 : errorPath.size() - 1;
+    }
+
+    QString getFile() const {
+        return errorPath.isEmpty() ? QString() : errorPath[getMainLocIndex()].file;
+    }
+
+    bool isClangResult() const {
+        return errorId.startsWith("clang");
+    }
+
+    bool filterMatch(const QString& filter) const;
+
     QString file0;
-    QString function;
     QString errorId;
-    Severity::SeverityType severity;
-    bool incomplete;
+    Severity severity;
     bool inconclusive;
     QString summary;
     QString message;
@@ -92,38 +104,18 @@ public:
     unsigned long long hash;
     QList<QErrorPathItem> errorPath;
     QString symbolNames;
+    QString remark;
+    QString classification; // misra/cert/etc: classification/level
+    QString guideline; // misra/cert/etc: guideline/rule
 
     // Special GUI properties
     QString sinceDate;
     QString tags;
 
     /**
-     * Compare "CID"
+     * Compare Hash and fields
      */
-    static bool sameCID(const ErrorItem &errorItem1, const ErrorItem &errorItem2);
+    static bool same(const ErrorItem &errorItem1, const ErrorItem &errorItem2);
 };
-
-Q_DECLARE_METATYPE(ErrorItem)
-
-/**
- * @brief A class containing error data for one shown error line.
- */
-class ErrorLine {
-public:
-    QString file;
-    int line;
-    QString file0;
-    QString errorId;
-    bool incomplete;
-    int cwe;
-    unsigned long long hash;
-    bool inconclusive;
-    Severity::SeverityType severity;
-    QString summary;
-    QString message;
-    QString sinceDate;
-    QString tags;
-};
-
 /// @}
 #endif // ERRORITEM_H

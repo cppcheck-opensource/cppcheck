@@ -27,6 +27,9 @@
             </element>
             <element name="alloc">
               <optional>
+                <attribute name="no-fail"><ref name="DATA-BOOL"/></attribute>
+              </optional>
+              <optional>
                 <attribute name="init"><ref name="DATA-BOOL"/></attribute>
               </optional>
               <optional>
@@ -35,9 +38,12 @@
               <optional>
                 <attribute name="buffer-size"><ref name="DATA-BUFFER-SIZE"/></attribute>
               </optional>
-              <ref name="DATA-EXTNAME-SINGLE"/>
+              <ref name="DATA-EXTNAME"/>
             </element>
             <element name="realloc">
+              <optional>
+                <attribute name="no-fail"><ref name="DATA-BOOL"/></attribute>
+              </optional>
               <optional>
                 <attribute name="init"><ref name="DATA-BOOL"/></attribute>
               </optional>
@@ -50,7 +56,7 @@
               <optional>
                 <attribute name="realloc-arg"><ref name="ARGNO"/></attribute>
               </optional>
-              <ref name="DATA-EXTNAME-SINGLE"/>
+              <ref name="DATA-EXTNAME"/>
             </element>
             <element name="use"><ref name="DATA-EXTNAME"/></element>
           </choice>
@@ -70,14 +76,20 @@
             </element>
             <element name="alloc">
               <optional>
+                <attribute name="no-fail"><ref name="DATA-BOOL"/></attribute>
+              </optional>
+              <optional>
                 <attribute name="init"><ref name="DATA-BOOL"/></attribute>
               </optional>
               <optional>
                 <attribute name="arg"><ref name="ARGNO"/></attribute>
               </optional>
-              <ref name="DATA-EXTNAME-SINGLE"/>
+              <ref name="DATA-EXTNAME"/>
             </element>
             <element name="realloc">
+              <optional>
+                <attribute name="no-fail"><ref name="DATA-BOOL"/></attribute>
+              </optional>
               <optional>
                 <attribute name="init"><ref name="DATA-BOOL"/></attribute>
               </optional>
@@ -87,7 +99,7 @@
               <optional>
                 <attribute name="realloc-arg"><ref name="ARGNO"/></attribute>
               </optional>
-              <ref name="DATA-EXTNAME-SINGLE"/>
+              <ref name="DATA-EXTNAME"/>
             </element>
             <element name="use"><ref name="DATA-EXTNAME"/></element>
           </choice>
@@ -122,7 +134,7 @@
                 </attribute>
               </optional>
               <empty/>
-            </element>            
+            </element>
           </optional>
           <optional>
             <element name="pure"><empty/></element>
@@ -194,6 +206,9 @@
               <optional>
                 <attribute name="strlen-arg"><data type="positiveInteger"/></attribute>
               </optional>
+              <optional>
+                <attribute name="count-arg"><data type="positiveInteger"/></attribute>
+              </optional>
               <empty/>
             </element>
           </optional>
@@ -249,6 +264,11 @@
                   <ref name="ARG-DIRECTION"/>
                 </attribute>
               </optional>
+              <optional>
+                <attribute name="indirect">
+                  <ref name="INDIRECT"/>
+                </attribute>
+              </optional>
 
               <interleave>
                 <optional>
@@ -283,7 +303,6 @@
                       <attribute name="type">
                         <choice>
                           <value>strlen</value>
-                          <value>argvalue</value>
                           <value>sizeof</value>
                           <value>mul</value>
                         </choice>
@@ -306,6 +325,24 @@
                       <attribute name="value">
                         <ref name="MINSIZE-VALUE"/>
                       </attribute>
+                      <optional>
+                        <attribute name="baseType"><text/></attribute>
+                      </optional>
+                    </element>
+                    <element name="minsize">
+                      <attribute name="type">
+                        <choice>
+                          <value>argvalue</value>
+                        </choice>
+                      </attribute>
+                      <attribute name="arg">
+                        <ref name="ARGNO"/>
+                      </attribute>
+                      <optional>
+                        <attribute name="arg2">
+                          <ref name="ARGNO"/>
+                        </attribute>
+                      </optional>
                       <optional>
                         <attribute name="baseType"><text/></attribute>
                       </optional>
@@ -481,6 +518,11 @@
                       <ref name="CONTAINER-YIELDS"/>
                     </attribute>
                   </optional>
+                  <optional>
+                    <attribute name="returnType">
+                      <data type="string"/>
+                    </attribute>
+                  </optional>
                   <empty/>
                 </element>
               </zeroOrMore>
@@ -534,6 +576,9 @@
                 <element name="suppress">
                   <ref name="DATA-EXTNAME"/>
                 </element>
+                <element name="checkFiniteLifetime">
+                  <ref name="DATA-EXTNAME"/>
+                </element>
               </choice>
             </zeroOrMore>
           </element>
@@ -548,7 +593,7 @@
                 </element>
               </choice>
             </zeroOrMore>
-          </element>          
+          </element>
         </optional>
       </element>
 
@@ -605,6 +650,9 @@
         </oneOrMore>
       </element>
 
+      <element name="entrypoint">
+        <attribute name="name"><text/></attribute>
+      </element>
     </choice>
   </zeroOrMore>
 </element>
@@ -623,7 +671,7 @@
       <param name="maxInclusive">2</param>
     </data>
   </define>
-  
+
   <define name="ARG-DIRECTION">
     <choice>
       <value>in</value>
@@ -670,8 +718,10 @@
       <value>push</value>
       <value>pop</value>
       <value>find</value>
+      <value>find-const</value>
       <value>insert</value>
       <value>erase</value>
+      <value>append</value>
       <value>change-content</value>
       <value>change-internal</value>
       <value>change</value>
@@ -691,7 +741,7 @@
       <value>empty</value>
     </choice>
   </define>
-  
+
   <define name="MINSIZE-VALUE">
     <data type="unsignedLong">
       <param name="minInclusive">1</param>

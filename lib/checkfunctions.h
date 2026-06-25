@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,18 +23,15 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
-#include "errortypes.h"
-#include "library.h"
-#include "settings.h"
 
-#include <map>
 #include <string>
-#include <utility>
 
 class Token;
-class Tokenizer;
 class ErrorLogger;
+class Tokenizer;
+class Settings;
 
 namespace ValueFlow {
     class Value;
@@ -51,29 +48,33 @@ namespace ValueFlow {
 class CPPCHECKLIB CheckFunctions : public Check {
 public:
     /** This constructor is used when registering the CheckFunctions */
-    CheckFunctions() : Check(myName()) {}
+    CheckFunctions() : Check("Check function usage") {}
 
-    /** This constructor is used when running checks. */
-    CheckFunctions(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
+private:
     /** @brief Run checks against the normal token list */
-    void runChecks(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger) override {
-        CheckFunctions checkFunctions(tokenizer, settings, errorLogger);
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
-        checkFunctions.checkIgnoredReturnValue();
-        checkFunctions.checkMissingReturn();  // Missing "return" in exit path
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
-        // --check-library : functions with nonmatching configuration
-        checkFunctions.checkLibraryMatchFunctions();
-
-        checkFunctions.checkProhibitedFunctions();
-        checkFunctions.invalidFunctionUsage();
-        checkFunctions.checkMathFunctions();
-        checkFunctions.memsetZeroBytes();
-        checkFunctions.memsetInvalid2ndParam();
-        checkFunctions.returnLocalStdMove();
+    std::string classInfo() const override {
+        return "Check function usage:\n"
+               "- missing 'return' in non-void function\n"
+               "- return value of certain functions not used\n"
+               "- invalid input values for functions\n"
+               "- Warn if a function is called whose usage is discouraged\n"
+               "- memset() third argument is zero\n"
+               "- memset() with a value out of range as the 2nd parameter\n"
+               "- memset() with a float as the 2nd parameter\n"
+               "- copy elision optimization for returning value affected by std::move\n"
+               "- use memcpy()/memset() instead of for loop\n";
     }
+};
+
+class CPPCHECKLIB CheckFunctionsImpl : public CheckImpl {
+public:
+    /** This constructor is used when running checks. */
+    CheckFunctionsImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** Check for functions that should not be used */
     void checkProhibitedFunctions();
@@ -103,10 +104,11 @@ public:
     /** @brief %Check for copy elision by RVO|NRVO */
     void returnLocalStdMove();
 
+    void useStandardLibrary();
+
     /** @brief --check-library: warn for unconfigured function calls */
     void checkLibraryMatchFunctions();
 
-private:
     /** @brief %Check for missing "return" */
     void checkMissingReturn();
 
@@ -115,49 +117,15 @@ private:
     void invalidFunctionArgStrError(const Token *tok, const std::string &functionName, nonneg int argnr);
     void ignoredReturnValueError(const Token* tok, const std::string& function);
     void ignoredReturnErrorCode(const Token* tok, const std::string& function);
-    void mathfunctionCallWarning(const Token *tok, const nonneg int numParam = 1);
+    void mathfunctionCallWarning(const Token *tok, nonneg int numParam = 1);
     void mathfunctionCallWarning(const Token *tok, const std::string& oldexp, const std::string& newexp);
     void memsetZeroBytesError(const Token *tok);
     void memsetFloatError(const Token *tok, const std::string &var_value);
     void memsetValueOutOfRangeError(const Token *tok, const std::string &value);
     void missingReturnError(const Token *tok);
     void copyElisionError(const Token *tok);
-
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override {
-        CheckFunctions c(nullptr, settings, errorLogger);
-
-        for (std::map<std::string, Library::WarnInfo>::const_iterator i = settings->library.functionwarn.cbegin(); i != settings->library.functionwarn.cend(); ++i) {
-            c.reportError(nullptr, Severity::style, i->first+"Called", i->second.message);
-        }
-
-        c.invalidFunctionArgError(nullptr, "func_name", 1, nullptr,"1:4");
-        c.invalidFunctionArgBoolError(nullptr, "func_name", 1);
-        c.invalidFunctionArgStrError(nullptr, "func_name", 1);
-        c.ignoredReturnValueError(nullptr, "malloc");
-        c.mathfunctionCallWarning(nullptr);
-        c.mathfunctionCallWarning(nullptr, "1 - erf(x)", "erfc(x)");
-        c.memsetZeroBytesError(nullptr);
-        c.memsetFloatError(nullptr,  "varname");
-        c.memsetValueOutOfRangeError(nullptr,  "varname");
-        c.missingReturnError(nullptr);
-        c.copyElisionError(nullptr);
-    }
-
-    static std::string myName() {
-        return "Check function usage";
-    }
-
-    std::string classInfo() const override {
-        return "Check function usage:\n"
-               "- missing 'return' in non-void function\n"
-               "- return value of certain functions not used\n"
-               "- invalid input values for functions\n"
-               "- Warn if a function is called whose usage is discouraged\n"
-               "- memset() third argument is zero\n"
-               "- memset() with a value out of range as the 2nd parameter\n"
-               "- memset() with a float as the 2nd parameter\n"
-               "- copy elision optimization for returning value affected by std::move\n";
-    }
+    void useStandardLibraryError(const Token *tok, const std::string& expected);
+    void functionCalledError(const Token* tok, Severity severity, const std::string& prefix, const std::string& msg);
 };
 /// @}
 //---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2024 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,9 @@
 
 #include "application.h"
 
+#include <QList>
 #include <QObject>
+#include <QString>
 
 /// @addtogroup GUI
 /// @{
@@ -63,8 +65,8 @@ public:
      * @param index Index of the application whose name to get
      * @return Name of the application
      */
-    const Application& getApplication(const int index) const;
-    Application& getApplication(const int index);
+    const Application& getApplication(int index) const;
+    Application& getApplication(int index);
 
     /**
      * @brief Return the default application.
@@ -86,13 +88,13 @@ public:
      *
      * @param index Index of the application to remove.
      */
-    void removeApplication(const int index);
+    void removeApplication(int index);
 
     /**
      * @brief Set application as default application.
      * @param index Index of the application to make the default one
      */
-    void setDefault(const int index);
+    void setDefault(int index);
 
     /**
      * @brief Remove all applications from this list and copy all applications from
@@ -131,7 +133,7 @@ private:
      * @brief Index of the default application.
      *
      */
-    int mDefaultApplicationIndex;
+    int mDefaultApplicationIndex = -1;
 };
 /// @}
 #endif // APPLICATIONLIST_H

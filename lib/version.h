@@ -1,17 +1,28 @@
-// For a release version x.y the MAJOR should be x and both MINOR and DEVMINOR should be y.
-// After a release the DEVMINOR is incremented. MAJOR=x MINOR=y, DEVMINOR=y+1
+/* -*- C++ -*-
+ * Cppcheck - A tool for static C/C++ code analysis
+ * Copyright (C) 2007-2026 Cppcheck team.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
-#define CPPCHECK_MAJOR 2
-#define CPPCHECK_MINOR 7
-#define CPPCHECK_DEVMINOR 7
 
-#define STRINGIFY(x) STRING(x)
-#define STRING(VER) #VER
-#if CPPCHECK_MINOR == CPPCHECK_DEVMINOR
-#define CPPCHECK_VERSION_STRING STRINGIFY(CPPCHECK_MAJOR) "." STRINGIFY(CPPCHECK_DEVMINOR)
-#define CPPCHECK_VERSION CPPCHECK_MAJOR,CPPCHECK_MINOR,0,0
-#else
-#define CPPCHECK_VERSION_STRING STRINGIFY(CPPCHECK_MAJOR) "." STRINGIFY(CPPCHECK_DEVMINOR) " dev"
-#define CPPCHECK_VERSION CPPCHECK_MAJOR,CPPCHECK_MINOR,99,0
+#ifndef versionH
+#define versionH
+
+#define CPPCHECK_VERSION_STRING "2.22 dev"
+#define CPPCHECK_VERSION 2,21,99,0
+
+#define LEGALCOPYRIGHT L"Copyright (C) 2007-2026 Cppcheck team."
+
 #endif
-#define LEGALCOPYRIGHT L"Copyright (C) 2007-2022 Cppcheck team."

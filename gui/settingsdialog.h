@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2024 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,9 @@
 #define SETTINGSDIALOG_H
 
 #include <QDialog>
+#include <QObject>
+#include <QString>
+#include <Qt>
 
 class QSettings;
 class QWidget;
@@ -28,7 +31,6 @@ class ApplicationList;
 class TranslationHandler;
 class CodeEditorStyle;
 class QCheckBox;
-class QObject;
 namespace Ui {
     class Settings;
 }
@@ -45,6 +47,7 @@ class SettingsDialog : public QDialog {
 public:
     SettingsDialog(ApplicationList *list,
                    TranslationHandler *translator,
+                   bool premium,
                    QWidget *parent = nullptr);
     SettingsDialog(const SettingsDialog &) = delete;
     ~SettingsDialog() override;
@@ -182,7 +185,7 @@ protected:
      * @param box checkbox to save
      * @param name name for QSettings to store the value
      */
-    static void saveCheckboxValue(QSettings *settings, QCheckBox *box, const QString &name);
+    static void saveCheckboxValue(QSettings *settings, const QCheckBox *box, const QString &name);
 
     /**
      * @brief Convert bool to Qt::CheckState
@@ -237,7 +240,9 @@ protected:
 private:
     void manageStyleControls();
 
-    static const int mLangCodeRole = Qt::UserRole;
+    static constexpr int mLangCodeRole = Qt::UserRole;
+
+    bool mPremium;
 };
 /// @}
 #endif // SETTINGSDIALOG_H

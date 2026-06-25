@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2025 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,8 +21,9 @@
 #define standardsH
 //---------------------------------------------------------------------------
 
-#include "utils.h"
+#include "config.h"
 
+#include <cstdint>
 #include <string>
 
 /// @addtogroup Core
@@ -33,105 +34,30 @@
  * @brief This is just a container for standards settings.
  * This struct contains all possible standards that cppcheck recognize.
  */
-struct Standards {
+struct CPPCHECKLIB Standards {
+    enum Language : std::uint8_t { None, C, CPP };
+
     /** C code standard */
-    enum cstd_t { C89, C99, C11, CLatest=C11 } c;
+    enum cstd_t : std::uint8_t { C89, C99, C11, C17, C23, C2Y, CLatest = C2Y } c = CLatest;
 
     /** C++ code standard */
-    enum cppstd_t { CPP03, CPP11, CPP14, CPP17, CPP20, CPP23, CPPLatest=CPP23 } cpp;
+    enum cppstd_t : std::uint8_t { CPP03, CPP11, CPP14, CPP17, CPP20, CPP23, CPP26, CPPLatest = CPP26 } cpp = CPPLatest;
 
     /** --std value given on command line */
-    std::string stdValue;
+    std::string stdValueC;
 
-    /** This constructor clear all the variables **/
-    Standards() : c(CLatest), cpp(CPPLatest) {}
+    /** --std value given on command line */
+    std::string stdValueCPP;
 
-    bool setC(const std::string& str) {
-        stdValue = str;
-        if (str == "c89" || str == "C89") {
-            c = C89;
-            return true;
-        }
-        if (str == "c99" || str == "C99") {
-            c = C99;
-            return true;
-        }
-        if (str == "c11" || str == "C11") {
-            c = C11;
-            return true;
-        }
-        return false;
-    }
-    const std::string getC() const {
-        switch (c) {
-        case C89:
-            return "c89";
-        case C99:
-            return "c99";
-        case C11:
-            return "c11";
-        }
-        return "";
-    }
-    static cstd_t getC(const std::string &std) {
-        if (std == "c89") {
-            return Standards::C89;
-        }
-        if (std == "c99") {
-            return Standards::C99;
-        }
-        if (std == "c11") {
-            return Standards::C11;
-        }
-        return Standards::CLatest;
-    }
-    bool setCPP(std::string str) {
-        stdValue = str;
-        strTolower(str);
-        cpp = getCPP(str);
-        return !stdValue.empty() && str == getCPP();
-    }
-    std::string getCPP() const {
-        return getCPP(cpp);
-    }
-    static std::string getCPP(cppstd_t std) {
-        switch (std) {
-        case CPP03:
-            return "c++03";
-        case CPP11:
-            return "c++11";
-        case CPP14:
-            return "c++14";
-        case CPP17:
-            return "c++17";
-        case CPP20:
-            return "c++20";
-        case CPP23:
-            return "c++23";
-        }
-        return "";
-    }
-    static cppstd_t getCPP(const std::string &std) {
-        if (std == "c++03") {
-            return Standards::CPP03;
-        }
-        if (std == "c++11") {
-            return Standards::CPP11;
-        }
-        if (std == "c++14") {
-            return Standards::CPP14;
-        }
-        if (std == "c++17") {
-            return Standards::CPP17;
-        }
-        if (std == "c++20") {
-            return Standards::CPP20;
-        }
-        if (std == "c++23") {
-            return Standards::CPP23;
-        }
-        return Standards::CPPLatest;
-    }
+    bool setC(std::string str);
+    std::string getC() const;
+    static std::string getC(cstd_t c_std);
+    static cstd_t getC(const std::string &std);
+    bool setCPP(std::string str);
+    std::string getCPP() const;
+    static std::string getCPP(cppstd_t std);
+    static cppstd_t getCPP(const std::string &std);
+    bool setStd(const std::string& str);
 };
 
 /// @}

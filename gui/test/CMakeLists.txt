@@ -1,7 +1,8 @@
-add_subdirectory(benchmark)
+add_custom_target(gui-tests)
+
 add_subdirectory(cppchecklibrarydata)
 add_subdirectory(filelist)
 add_subdirectory(projectfile)
+add_subdirectory(resultstree)
 add_subdirectory(translationhandler)
 add_subdirectory(xmlreportv2)
-# TODO: add all tests to CTest

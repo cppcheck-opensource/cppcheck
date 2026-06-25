@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,20 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "fixture.h"
+#include "helpers.h"
 #include "settings.h"
-#include "testsuite.h"
-#include "testutils.h"
+#include "standards.h"
 #include "token.h"
-#include "tokenize.h"
 #include "tokenlist.h"
-#include "valueflow.h"
+#include "vfvalue.h"
 
 #include <algorithm>
-#include <iosfwd>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
-
-struct InternalError;
 
 
 class TestToken : public TestFixture {
@@ -37,6 +36,13 @@ public:
     TestToken() : TestFixture("TestToken") {}
 
 private:
+    class TokenTest final : public Token
+    {
+        friend class TestToken;
+    };
+
+    const TokenList list{settingsDefault, Standards::Language::C};
+
     std::vector<std::string> arithmeticalOps;
     std::vector<std::string> logicalOps;
     std::vector<std::string> bitOps;
@@ -58,6 +64,7 @@ private:
         TEST_CASE(multiCompare3);                   // false positive for %or% on code using "|="
         TEST_CASE(multiCompare4);
         TEST_CASE(multiCompare5);
+        TEST_CASE(multiCompare6);
         TEST_CASE(charTypes);
         TEST_CASE(stringTypes);
         TEST_CASE(getStrLength);
@@ -107,27 +114,41 @@ private:
         TEST_CASE(canFindMatchingBracketsWithTooManyClosing);
         TEST_CASE(canFindMatchingBracketsWithTooManyOpening);
         TEST_CASE(findClosingBracket);
+        TEST_CASE(findClosingBracket2);
+        TEST_CASE(findClosingBracket3);
+        TEST_CASE(findClosingBracket4);
 
         TEST_CASE(expressionString);
 
         TEST_CASE(hasKnownIntValue);
+
+        TEST_CASE(update_property_info);
+        TEST_CASE(update_property_info_evariable);
+        TEST_CASE(update_property_info_ekeyword_c);
+        TEST_CASE(update_property_info_ekeyword_cpp);
+        TEST_CASE(update_property_info_ebracket_link);
+        TEST_CASE(update_property_info_ecomparisonop_link);
+        TEST_CASE(update_property_info_etype_c);
+        TEST_CASE(update_property_info_etype_cpp);
+        TEST_CASE(update_property_info_replace); // #13743
+
+        TEST_CASE(varid_reset);
     }
 
     void nextprevious() const {
-        Token *token = new Token();
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        auto *token = new Token(list, std::move(tokensFrontBack));
         token->str("1");
-        token->insertToken("2");
-        token->next()->insertToken("3");
+        (void)token->insertToken("2");
+        (void)token->next()->insertToken("3");
         Token *last = token->tokAt(2);
         ASSERT_EQUALS(token->str(), "1");
-        ASSERT_EQUALS(token->next()->str(), "2");
-        // cppcheck-suppress redundantNextPrevious - this is intentional
+        ASSERT_EQUALS(token->strAt(1), "2");
         ASSERT_EQUALS(token->tokAt(2)->str(), "3");
         ASSERT_EQUALS_MSG(true, last->next() == nullptr, "Null was expected");
 
         ASSERT_EQUALS(last->str(), "3");
-        ASSERT_EQUALS(last->previous()->str(), "2");
-        // cppcheck-suppress redundantNextPrevious - this is intentional
+        ASSERT_EQUALS(last->strAt(-1), "2");
         ASSERT_EQUALS(last->tokAt(-2)->str(), "1");
         ASSERT_EQUALS_MSG(true, token->previous() == nullptr, "Null was expected");
 
@@ -135,70 +156,100 @@ private:
     }
 
 #define MatchCheck(...) MatchCheck_(__FILE__, __LINE__, __VA_ARGS__)
-    bool MatchCheck_(const char* file, int line, const std::string& code, const std::string& pattern, unsigned int varid = 0) {
-        static const Settings settings;
-        Tokenizer tokenizer(&settings, this);
-        std::istringstream istr(";" + code + ";");
+    bool MatchCheck_(const char* file, int line, const std::string& code, const std::string& pattern) {
+        SimpleTokenizer tokenizer(settingsDefault, *this);
+        const std::string code2 = ";" + code + ";";
         try {
-            ASSERT_LOC(tokenizer.tokenize(istr, "test.cpp"), file, line);
+            ASSERT_LOC(tokenizer.tokenize(code2), file, line);
         } catch (...) {}
-        return Token::Match(tokenizer.tokens()->next(), pattern.c_str(), varid);
+        return Token::Match(tokenizer.tokens()->next(), pattern.c_str());
     }
 
     void multiCompare() const {
         // Test for found
-        Token one;
-        one.str("one");
-        ASSERT_EQUALS(1, Token::multiCompare(&one, "one|two", 0));
+        {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token one(list, std::move(tokensFrontBack));
+            one.str("one");
+            ASSERT_EQUALS(1, TokenTest::multiCompare(&one, "one|two", 0));
+        }
 
-        Token two;
-        two.str("two");
-        ASSERT_EQUALS(1, Token::multiCompare(&two, "one|two", 0));
-        ASSERT_EQUALS(1, Token::multiCompare(&two, "verybig|two|", 0));
+        {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token two(list, std::move(tokensFrontBack));
+            two.str("two");
+            ASSERT_EQUALS(1, TokenTest::multiCompare(&two, "one|two", 0));
+            ASSERT_EQUALS(1, TokenTest::multiCompare(&two, "verybig|two|", 0));
+        }
 
         // Test for empty string found
-        Token notfound;
-        notfound.str("notfound");
-        ASSERT_EQUALS(0, Token::multiCompare(&notfound, "one|two|", 0));
+        {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token notfound(list, std::move(tokensFrontBack));
+            notfound.str("notfound");
+            ASSERT_EQUALS(0, TokenTest::multiCompare(&notfound, "one|two|", 0));
 
-        // Test for not found
-        ASSERT_EQUALS(static_cast<unsigned int>(-1), static_cast<unsigned int>(Token::multiCompare(&notfound, "one|two", 0)));
+            // Test for not found
+            ASSERT_EQUALS(-1, TokenTest::multiCompare(&notfound, "one|two", 0));
+        }
 
-        Token s;
-        s.str("s");
-        ASSERT_EQUALS(static_cast<unsigned int>(-1), static_cast<unsigned int>(Token::multiCompare(&s, "verybig|two", 0)));
+        {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token s(list, std::move(tokensFrontBack));
+            s.str("s");
+            ASSERT_EQUALS(-1, TokenTest::multiCompare(&s, "verybig|two", 0));
+        }
 
-        Token ne;
-        ne.str("ne");
-        ASSERT_EQUALS(static_cast<unsigned int>(-1), static_cast<unsigned int>(Token::multiCompare(&ne, "one|two", 0)));
+        {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token ne(list, std::move(tokensFrontBack));
+            ne.str("ne");
+            ASSERT_EQUALS(-1, TokenTest::multiCompare(&ne, "one|two", 0));
+        }
 
-        Token a;
-        a.str("a");
-        ASSERT_EQUALS(static_cast<unsigned int>(-1), static_cast<unsigned int>(Token::multiCompare(&a, "abc|def", 0)));
+        {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token a(list, std::move(tokensFrontBack));
+            a.str("a");
+            ASSERT_EQUALS(-1, TokenTest::multiCompare(&a, "abc|def", 0));
+        }
 
-        Token abcd;
-        abcd.str("abcd");
-        ASSERT_EQUALS(static_cast<unsigned int>(-1), static_cast<unsigned int>(Token::multiCompare(&abcd, "abc|def", 0)));
+        {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token abcd(list, std::move(tokensFrontBack));
+            abcd.str("abcd");
+            ASSERT_EQUALS(-1, TokenTest::multiCompare(&abcd, "abc|def", 0));
+        }
 
-        Token def;
-        def.str("default");
-        ASSERT_EQUALS(static_cast<unsigned int>(-1), static_cast<unsigned int>(Token::multiCompare(&def, "abc|def", 0)));
+        {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token def(list, std::move(tokensFrontBack));
+            def.str("default");
+            ASSERT_EQUALS(-1, TokenTest::multiCompare(&def, "abc|def", 0));
+        }
 
         // %op%
-        Token plus;
-        plus.str("+");
-        ASSERT_EQUALS(1, Token::multiCompare(&plus, "one|%op%", 0));
-        ASSERT_EQUALS(1, Token::multiCompare(&plus, "%op%|two", 0));
-        Token x;
-        x.str("x");
-        ASSERT_EQUALS(-1, Token::multiCompare(&x, "one|%op%", 0));
-        ASSERT_EQUALS(-1, Token::multiCompare(&x, "%op%|two", 0));
+        {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token plus(list, std::move(tokensFrontBack));
+            plus.str("+");
+            ASSERT_EQUALS(1, TokenTest::multiCompare(&plus, "one|%op%", 0));
+            ASSERT_EQUALS(1, TokenTest::multiCompare(&plus, "%op%|two", 0));
+        }
+        {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token x(list, std::move(tokensFrontBack));
+            x.str("x");
+            ASSERT_EQUALS(-1, TokenTest::multiCompare(&x, "one|%op%", 0));
+            ASSERT_EQUALS(-1, TokenTest::multiCompare(&x, "%op%|two", 0));
+        }
+
     }
 
     void multiCompare2() const { // #3294
         // Original pattern that failed: [[,(=<>+-*|&^] %num% [+-*/] %num% ]|,|)|;|=|%op%
-        givenACodeSampleToTokenize toks("a == 1", true);
-        ASSERT_EQUALS(true, Token::Match(toks.tokens(), "a =|%op%"));
+        const SimpleTokenList toks("a == 1");
+        ASSERT_EQUALS(true, Token::Match(toks.front(), "a =|%op%"));
     }
 
     void multiCompare3() const {
@@ -206,55 +257,56 @@ private:
         // Code snippet that failed: "return lv@86 |= rv@87 ;"
 
         // Note: Also test "reverse" alternative pattern, two different code paths to handle it
-        givenACodeSampleToTokenize toks("return a |= b ;", true);
-        ASSERT_EQUALS(false, Token::Match(toks.tokens(), "return %name% xyz|%or% %name% ;"));
-        ASSERT_EQUALS(false, Token::Match(toks.tokens(), "return %name% %or%|xyz %name% ;"));
+        const SimpleTokenList toks("return a |= b ;");
+        ASSERT_EQUALS(false, Token::Match(toks.front(), "return %name% xyz|%or% %name% ;"));
+        ASSERT_EQUALS(false, Token::Match(toks.front(), "return %name% %or%|xyz %name% ;"));
 
-        givenACodeSampleToTokenize toks2("return a | b ;", true);
-        ASSERT_EQUALS(true, Token::Match(toks2.tokens(), "return %name% xyz|%or% %name% ;"));
-        ASSERT_EQUALS(true, Token::Match(toks2.tokens(), "return %name% %or%|xyz %name% ;"));
+        const SimpleTokenList toks2("return a | b ;");
+        ASSERT_EQUALS(true, Token::Match(toks2.front(), "return %name% xyz|%or% %name% ;"));
+        ASSERT_EQUALS(true, Token::Match(toks2.front(), "return %name% %or%|xyz %name% ;"));
 
-        givenACodeSampleToTokenize toks3("return a || b ;", true);
-        ASSERT_EQUALS(false, Token::Match(toks3.tokens(), "return %name% xyz|%or% %name% ;"));
-        ASSERT_EQUALS(false, Token::Match(toks3.tokens(), "return %name% %or%|xyz %name% ;"));
+        const SimpleTokenList toks3("return a || b ;");
+        ASSERT_EQUALS(false, Token::Match(toks3.front(), "return %name% xyz|%or% %name% ;"));
+        ASSERT_EQUALS(false, Token::Match(toks3.front(), "return %name% %or%|xyz %name% ;"));
 
-        ASSERT_EQUALS(true, Token::Match(toks3.tokens(), "return %name% xyz|%oror% %name% ;"));
-        ASSERT_EQUALS(true, Token::Match(toks3.tokens(), "return %name% %oror%|xyz %name% ;"));
+        ASSERT_EQUALS(true, Token::Match(toks3.front(), "return %name% xyz|%oror% %name% ;"));
+        ASSERT_EQUALS(true, Token::Match(toks3.front(), "return %name% %oror%|xyz %name% ;"));
 
-        givenACodeSampleToTokenize toks4("a % b ;", true);
-        ASSERT_EQUALS(true, Token::Match(toks4.tokens(), "%name% >>|<<|&|%or%|^|% %name% ;"));
-        ASSERT_EQUALS(true, Token::Match(toks4.tokens(), "%name% %|>>|<<|&|%or%|^ %name% ;"));
-        ASSERT_EQUALS(true, Token::Match(toks4.tokens(), "%name% >>|<<|&|%or%|%|^ %name% ;"));
+        const SimpleTokenList toks4("a % b ;");
+        ASSERT_EQUALS(true, Token::Match(toks4.front(), "%name% >>|<<|&|%or%|^|% %name% ;"));
+        ASSERT_EQUALS(true, Token::Match(toks4.front(), "%name% %|>>|<<|&|%or%|^ %name% ;"));
+        ASSERT_EQUALS(true, Token::Match(toks4.front(), "%name% >>|<<|&|%or%|%|^ %name% ;"));
 
         //%name%|%num% support
-        givenACodeSampleToTokenize num("100", true);
-        ASSERT_EQUALS(true, Token::Match(num.tokens(), "%num%|%name%"));
-        ASSERT_EQUALS(true, Token::Match(num.tokens(), "%name%|%num%"));
-        ASSERT_EQUALS(true, Token::Match(num.tokens(), "%name%|%num%|%bool%"));
-        ASSERT_EQUALS(true, Token::Match(num.tokens(), "%name%|%bool%|%num%"));
-        ASSERT_EQUALS(true, Token::Match(num.tokens(), "%name%|%bool%|%str%|%num%"));
-        ASSERT_EQUALS(false, Token::Match(num.tokens(), "%bool%|%name%"));
-        ASSERT_EQUALS(false, Token::Match(num.tokens(), "%type%|%bool%|%char%"));
-        ASSERT_EQUALS(true, Token::Match(num.tokens(), "%type%|%bool%|100"));
+        const SimpleTokenList num("100");
+        ASSERT_EQUALS(true, Token::Match(num.front(), "%num%|%name%"));
+        ASSERT_EQUALS(true, Token::Match(num.front(), "%name%|%num%"));
+        ASSERT_EQUALS(true, Token::Match(num.front(), "%name%|%num%|%bool%"));
+        ASSERT_EQUALS(true, Token::Match(num.front(), "%name%|%bool%|%num%"));
+        ASSERT_EQUALS(true, Token::Match(num.front(), "%name%|%bool%|%str%|%num%"));
+        ASSERT_EQUALS(false, Token::Match(num.front(), "%bool%|%name%"));
+        ASSERT_EQUALS(false, Token::Match(num.front(), "%type%|%bool%|%char%"));
+        ASSERT_EQUALS(true, Token::Match(num.front(), "%type%|%bool%|100"));
 
-        givenACodeSampleToTokenize numparen("( 100 )", true);
-        ASSERT_EQUALS(true, Token::Match(numparen.tokens(), "(| %num%|%name% )|"));
-        ASSERT_EQUALS(true, Token::Match(numparen.tokens(), "(| %name%|%num% )|"));
-        ASSERT_EQUALS(true, Token::Match(numparen.tokens(), "(| %name%|%num%|%bool% )|"));
-        ASSERT_EQUALS(true, Token::Match(numparen.tokens(), "(| %name%|%bool%|%num% )|"));
-        ASSERT_EQUALS(true, Token::Match(numparen.tokens(), "(| %name%|%bool%|%str%|%num% )|"));
-        ASSERT_EQUALS(false, Token::Match(numparen.tokens(), "(| %bool%|%name% )|"));
+        const SimpleTokenList numparen("( 100 )");
+        ASSERT_EQUALS(true, Token::Match(numparen.front(), "(| %num%|%name% )|"));
+        ASSERT_EQUALS(true, Token::Match(numparen.front(), "(| %name%|%num% )|"));
+        ASSERT_EQUALS(true, Token::Match(numparen.front(), "(| %name%|%num%|%bool% )|"));
+        ASSERT_EQUALS(true, Token::Match(numparen.front(), "(| %name%|%bool%|%num% )|"));
+        ASSERT_EQUALS(true, Token::Match(numparen.front(), "(| %name%|%bool%|%str%|%num% )|"));
+        ASSERT_EQUALS(false, Token::Match(numparen.front(), "(| %bool%|%name% )|"));
 
-        ASSERT_EQUALS(true, Token::Match(numparen.tokens(), "(| 100 %num%|%name%| )|"));
-        ASSERT_EQUALS(true, Token::Match(numparen.tokens(), "(| 100 %name%|%num%| )|"));
-        ASSERT_EQUALS(true, Token::Match(numparen.tokens(), "(| 100 %name%|%num%|%bool%| )|"));
-        ASSERT_EQUALS(true, Token::Match(numparen.tokens(), "(| 100 %name%|%bool%|%num%| )|"));
-        ASSERT_EQUALS(true, Token::Match(numparen.tokens(), "(| 100 %name%|%bool%|%str%|%num%| )|"));
-        ASSERT_EQUALS(true, Token::Match(numparen.tokens(), "(| 100 %bool%|%name%| )|"));
+        ASSERT_EQUALS(true, Token::Match(numparen.front(), "(| 100 %num%|%name%| )|"));
+        ASSERT_EQUALS(true, Token::Match(numparen.front(), "(| 100 %name%|%num%| )|"));
+        ASSERT_EQUALS(true, Token::Match(numparen.front(), "(| 100 %name%|%num%|%bool%| )|"));
+        ASSERT_EQUALS(true, Token::Match(numparen.front(), "(| 100 %name%|%bool%|%num%| )|"));
+        ASSERT_EQUALS(true, Token::Match(numparen.front(), "(| 100 %name%|%bool%|%str%|%num%| )|"));
+        ASSERT_EQUALS(true, Token::Match(numparen.front(), "(| 100 %bool%|%name%| )|"));
     }
 
-    void multiCompare4() const {
-        givenACodeSampleToTokenize var("std :: queue < int > foo ;");
+    void multiCompare4() {
+        SimpleTokenizer var(*this);
+        ASSERT(var.tokenize("std :: queue < int > foo ;"));
 
         ASSERT_EQUALS(Token::eBracket, var.tokens()->tokAt(3)->tokType());
         ASSERT_EQUALS(Token::eBracket, var.tokens()->tokAt(5)->tokType());
@@ -265,13 +317,26 @@ private:
     }
 
     void multiCompare5() const {
-        Token tok;
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list, std::move(tokensFrontBack));
         tok.str("||");
-        ASSERT_EQUALS(true, Token::multiCompare(&tok, "+|%or%|%oror%", 0) >= 0);
+        ASSERT_EQUALS(true, TokenTest::multiCompare(&tok, "+|%or%|%oror%", 0) >= 0);
+    }
+
+    void multiCompare6() const {
+        {
+            const SimpleTokenList stl("x %= y;");
+            ASSERT_EQUALS(true, Token::Match(stl.front(), "%name% %= %name%"));
+        }
+        {
+            const SimpleTokenList stl("x += y;");
+            ASSERT_EQUALS(false, Token::Match(stl.front(), "%name% %= %name%"));
+        }
     }
 
     void charTypes() const {
-        Token tok;
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list, std::move(tokensFrontBack));
 
         tok.str("'a'");
         ASSERT_EQUALS(true, tok.isCChar());
@@ -320,10 +385,35 @@ private:
         ASSERT_EQUALS(false, tok.isUtf32());
         ASSERT_EQUALS(false, tok.isLong());
         ASSERT_EQUALS(true, tok.isCMultiChar());
+
+        tok.str("'\\''");
+        ASSERT_EQUALS(true, tok.isCChar());
+        ASSERT_EQUALS(false, tok.isUtf8());
+        ASSERT_EQUALS(false, tok.isUtf16());
+        ASSERT_EQUALS(false, tok.isUtf32());
+        ASSERT_EQUALS(false, tok.isLong());
+        ASSERT_EQUALS(false, tok.isCMultiChar());
+
+        tok.str("'\\r\\n'");
+        ASSERT_EQUALS(false, tok.isCChar());
+        ASSERT_EQUALS(false, tok.isUtf8());
+        ASSERT_EQUALS(false, tok.isUtf16());
+        ASSERT_EQUALS(false, tok.isUtf32());
+        ASSERT_EQUALS(false, tok.isLong());
+        ASSERT_EQUALS(true, tok.isCMultiChar());
+
+        tok.str("'\\x10'");
+        ASSERT_EQUALS(true, tok.isCChar());
+        ASSERT_EQUALS(false, tok.isUtf8());
+        ASSERT_EQUALS(false, tok.isUtf16());
+        ASSERT_EQUALS(false, tok.isUtf32());
+        ASSERT_EQUALS(false, tok.isLong());
+        ASSERT_EQUALS(false, tok.isCMultiChar());
     }
 
     void stringTypes() const {
-        Token tok;
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list, std::move(tokensFrontBack));
 
         tok.str("\"a\"");
         ASSERT_EQUALS(true, tok.isCChar());
@@ -367,7 +457,8 @@ private:
     }
 
     void getStrLength() const {
-        Token tok;
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list, std::move(tokensFrontBack));
 
         tok.str("\"\"");
         ASSERT_EQUALS(0, Token::getStrLength(&tok));
@@ -395,24 +486,25 @@ private:
     }
 
     void getStrSize() const {
-        Token tok;
-        Settings settings;
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list, std::move(tokensFrontBack));
 
         tok.str("\"\"");
-        ASSERT_EQUALS(sizeof(""), Token::getStrSize(&tok, &settings));
+        ASSERT_EQUALS(sizeof(""), Token::getStrSize(&tok, settingsDefault));
 
         tok.str("\"abc\"");
-        ASSERT_EQUALS(sizeof("abc"), Token::getStrSize(&tok, &settings));
+        ASSERT_EQUALS(sizeof("abc"), Token::getStrSize(&tok, settingsDefault));
 
         tok.str("\"\\0abc\"");
-        ASSERT_EQUALS(sizeof("\0abc"), Token::getStrSize(&tok, &settings));
+        ASSERT_EQUALS(sizeof("\0abc"), Token::getStrSize(&tok, settingsDefault));
 
         tok.str("\"\\\\\"");
-        ASSERT_EQUALS(sizeof("\\"), Token::getStrSize(&tok, &settings));
+        ASSERT_EQUALS(sizeof("\\"), Token::getStrSize(&tok, settingsDefault));
     }
 
     void strValue() const {
-        Token tok;
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list, std::move(tokensFrontBack));
 
         tok.str("\"\"");
         ASSERT_EQUALS("", tok.strValue());
@@ -443,7 +535,8 @@ private:
     }
 
     void concatStr() const {
-        Token tok;
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list, std::move(tokensFrontBack));
 
         tok.str("\"\"");
         tok.concatStr("\"\"");
@@ -482,146 +575,154 @@ private:
     }
 
     void deleteLast() const {
-        TokensFrontBack listEnds{ nullptr };
-        Token ** const tokensBack = &(listEnds.back);
-        Token tok(&listEnds);
-        tok.insertToken("aba");
+        auto listEnds = std::make_shared<TokensFrontBack>();
+        Token ** const tokensBack = &(listEnds->back);
+        Token tok(list, listEnds);
+        (void)tok.insertToken("aba");
         ASSERT_EQUALS(true, *tokensBack == tok.next());
         tok.deleteNext();
         ASSERT_EQUALS(true, *tokensBack == &tok);
     }
 
     void deleteFirst() const {
-        TokensFrontBack listEnds{ nullptr };
-        Token ** const tokensFront = &(listEnds.front);
-        Token tok(&listEnds);
+        auto listEnds = std::make_shared<TokensFrontBack>();
+        Token ** const tokensFront = &(listEnds->front);
+        Token tok(list, listEnds);
 
-        tok.insertToken("aba");
+        (void)tok.insertToken("aba");
 
         ASSERT_EQUALS(true, *tokensFront == tok.previous());
         tok.deletePrevious();
         ASSERT_EQUALS(true, *tokensFront == &tok);
     }
 
-    void nextArgument() const {
-        givenACodeSampleToTokenize example1("foo(1, 2, 3, 4);");
+    void nextArgument() {
+        SimpleTokenizer example1(*this);
+        ASSERT(example1.tokenize("foo(1, 2, 3, 4);"));
         ASSERT_EQUALS(true, Token::simpleMatch(example1.tokens()->tokAt(2)->nextArgument(), "2 , 3"));
         ASSERT_EQUALS(true, Token::simpleMatch(example1.tokens()->tokAt(4)->nextArgument(), "3 , 4"));
 
-        givenACodeSampleToTokenize example2("foo();");
+        SimpleTokenizer example2(*this);
+        ASSERT(example2.tokenize("foo();"));
         ASSERT_EQUALS(true, example2.tokens()->tokAt(2)->nextArgument() == nullptr);
 
-        givenACodeSampleToTokenize example3("foo(bar(a, b), 2, 3);");
+        SimpleTokenizer example3(*this);
+        ASSERT(example3.tokenize("foo(bar(a, b), 2, 3);"));
         ASSERT_EQUALS(true, Token::simpleMatch(example3.tokens()->tokAt(2)->nextArgument(), "2 , 3"));
 
-        givenACodeSampleToTokenize example4("foo(x.i[1], \"\", 3);");
+        SimpleTokenizer example4(*this);
+        ASSERT(example4.tokenize("foo(x.i[1], \"\", 3);"));
         ASSERT_EQUALS(true, Token::simpleMatch(example4.tokens()->tokAt(2)->nextArgument(), "\"\" , 3"));
     }
 
     void eraseTokens() const {
-        givenACodeSampleToTokenize code("begin ; { this code will be removed } end", true);
-        Token::eraseTokens(code.tokens()->next(), code.tokens()->tokAt(9));
-        ASSERT_EQUALS("begin ; end", code.tokens()->stringifyList(nullptr, false));
+        SimpleTokenList code("begin ; { this code will be removed } end", Standards::Language::C);
+        Token::eraseTokens(code.front()->next(), code.front()->tokAt(9));
+        ASSERT_EQUALS("begin ; end", code.front()->stringifyList(nullptr, false));
     }
 
 
     void matchAny() const {
-        givenACodeSampleToTokenize varBitOrVar("abc|def", true);
-        ASSERT_EQUALS(true, Token::Match(varBitOrVar.tokens(), "%name% %or% %name%"));
+        const SimpleTokenList varBitOrVar("abc|def");
+        ASSERT_EQUALS(true, Token::Match(varBitOrVar.front(), "%name% %or% %name%"));
 
-        givenACodeSampleToTokenize varLogOrVar("abc||def", true);
-        ASSERT_EQUALS(true, Token::Match(varLogOrVar.tokens(), "%name% %oror% %name%"));
+        const SimpleTokenList varLogOrVar("abc||def");
+        ASSERT_EQUALS(true, Token::Match(varLogOrVar.front(), "%name% %oror% %name%"));
     }
 
     void matchSingleChar() const {
-        givenACodeSampleToTokenize singleChar("a", true);
-        ASSERT_EQUALS(true, Token::Match(singleChar.tokens(), "[a|bc]"));
-        ASSERT_EQUALS(false, Token::Match(singleChar.tokens(), "[d|ef]"));
+        const SimpleTokenList singleChar("a");
+        ASSERT_EQUALS(true, Token::Match(singleChar.front(), "[a|bc]"));
+        ASSERT_EQUALS(false, Token::Match(singleChar.front(), "[d|ef]"));
 
-        Token multiChar;
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token multiChar(list, std::move(tokensFrontBack));
         multiChar.str("[ab");
         ASSERT_EQUALS(false, Token::Match(&multiChar, "[ab|def]"));
     }
 
     void matchNothingOrAnyNotElse() const {
-        givenACodeSampleToTokenize empty_String("", true);
-        ASSERT_EQUALS(true, Token::Match(empty_String.tokens(), "!!else"));
-        ASSERT_EQUALS(false, Token::Match(empty_String.tokens(), "!!else something"));
+        const SimpleTokenList empty_String("");
+        ASSERT_EQUALS(true, Token::Match(empty_String.front(), "!!else"));
+        ASSERT_EQUALS(false, Token::Match(empty_String.front(), "!!else something"));
 
-        givenACodeSampleToTokenize ifSemicolon("if ;", true);
-        ASSERT_EQUALS(true, Token::Match(ifSemicolon.tokens(), "if ; !!else"));
+        const SimpleTokenList ifSemicolon("if ;");
+        ASSERT_EQUALS(true, Token::Match(ifSemicolon.front(), "if ; !!else"));
 
-        givenACodeSampleToTokenize ifSemicolonSomething("if ; something", true);
-        ASSERT_EQUALS(true, Token::Match(ifSemicolonSomething.tokens(), "if ; !!else"));
+        const SimpleTokenList ifSemicolonSomething("if ; something");
+        ASSERT_EQUALS(true, Token::Match(ifSemicolonSomething.front(), "if ; !!else"));
 
-        givenACodeSampleToTokenize justElse("else", true);
-        ASSERT_EQUALS(false, Token::Match(justElse.tokens(), "!!else"));
+        const SimpleTokenList justElse("else");
+        ASSERT_EQUALS(false, Token::Match(justElse.front(), "!!else"));
 
-        givenACodeSampleToTokenize ifSemicolonElse("if ; else", true);
-        ASSERT_EQUALS(false, Token::Match(ifSemicolonElse.tokens(), "if ; !!else"));
+        const SimpleTokenList ifSemicolonElse("if ; else");
+        ASSERT_EQUALS(false, Token::Match(ifSemicolonElse.front(), "if ; !!else"));
     }
 
-    void matchType() const {
-        givenACodeSampleToTokenize type("abc", true);
-        ASSERT_EQUALS(true, Token::Match(type.tokens(), "%type%"));
+    void matchType() {
+        const SimpleTokenList type("abc");
+        ASSERT_EQUALS(true, Token::Match(type.front(), "%type%"));
 
-        givenACodeSampleToTokenize isVar("int a = 3 ;");
+        SimpleTokenizer isVar(*this);
+        ASSERT(isVar.tokenize("int a = 3 ;"));
         ASSERT_EQUALS(true, Token::Match(isVar.tokens(), "%type%"));
         ASSERT_EQUALS(true, Token::Match(isVar.tokens(), "%type% %name%"));
         ASSERT_EQUALS(false, Token::Match(isVar.tokens(), "%type% %type%"));
 
-        givenACodeSampleToTokenize noType1_cpp("delete", true, true);
-        ASSERT_EQUALS(false, Token::Match(noType1_cpp.tokens(), "%type%"));
+        // TODO: %type% should not match keywords other than fundamental types
+        const SimpleTokenList noType1_cpp("delete");
+        ASSERT_EQUALS(true, Token::Match(noType1_cpp.front(), "%type%"));
 
-        givenACodeSampleToTokenize noType1_c("delete", true, false);
-        ASSERT_EQUALS(true, Token::Match(noType1_c.tokens(), "%type%"));
+        const SimpleTokenList noType1_c("delete", Standards::Language::C);
+        ASSERT_EQUALS(true, Token::Match(noType1_c.front(), "%type%"));
 
-        givenACodeSampleToTokenize noType2("void delete", true);
-        ASSERT_EQUALS(false, Token::Match(noType2.tokens(), "!!foo %type%"));
+        const SimpleTokenList noType2("void delete");
+        ASSERT_EQUALS(true, Token::Match(noType2.front(), "!!foo %type%"));
     }
 
     void matchChar() const {
-        givenACodeSampleToTokenize chr1("'a'", true);
-        ASSERT_EQUALS(true, Token::Match(chr1.tokens(), "%char%"));
+        const SimpleTokenList chr1("'a'");
+        ASSERT_EQUALS(true, Token::Match(chr1.front(), "%char%"));
 
-        givenACodeSampleToTokenize chr2("'1'", true);
-        ASSERT_EQUALS(true, Token::Match(chr2.tokens(), "%char%"));
+        const SimpleTokenList chr2("'1'");
+        ASSERT_EQUALS(true, Token::Match(chr2.front(), "%char%"));
 
-        givenACodeSampleToTokenize noChr("\"10\"", true);
-        ASSERT_EQUALS(false, Token::Match(noChr.tokens(), "%char%"));
+        const SimpleTokenList noChr("\"10\"");
+        ASSERT_EQUALS(false, Token::Match(noChr.front(), "%char%"));
     }
 
     void matchCompOp() const {
-        givenACodeSampleToTokenize comp1("<=", true);
-        ASSERT_EQUALS(true, Token::Match(comp1.tokens(), "%comp%"));
+        const SimpleTokenList comp1("<=");
+        ASSERT_EQUALS(true, Token::Match(comp1.front(), "%comp%"));
 
-        givenACodeSampleToTokenize comp2(">", true);
-        ASSERT_EQUALS(true, Token::Match(comp2.tokens(), "%comp%"));
+        const SimpleTokenList comp2(">");
+        ASSERT_EQUALS(true, Token::Match(comp2.front(), "%comp%"));
 
-        givenACodeSampleToTokenize noComp("=", true);
-        ASSERT_EQUALS(false, Token::Match(noComp.tokens(), "%comp%"));
+        const SimpleTokenList noComp("=");
+        ASSERT_EQUALS(false, Token::Match(noComp.front(), "%comp%"));
     }
 
     void matchStr() const {
-        givenACodeSampleToTokenize noStr1("abc", true);
-        ASSERT_EQUALS(false, Token::Match(noStr1.tokens(), "%str%"));
+        const SimpleTokenList noStr1("abc");
+        ASSERT_EQUALS(false, Token::Match(noStr1.front(), "%str%"));
 
-        givenACodeSampleToTokenize noStr2("'a'", true);
-        ASSERT_EQUALS(false, Token::Match(noStr2.tokens(), "%str%"));
+        const SimpleTokenList noStr2("'a'");
+        ASSERT_EQUALS(false, Token::Match(noStr2.front(), "%str%"));
 
-        givenACodeSampleToTokenize str("\"abc\"", true);
-        ASSERT_EQUALS(true, Token::Match(str.tokens(), "%str%"));
+        const SimpleTokenList str("\"abc\"");
+        ASSERT_EQUALS(true, Token::Match(str.front(), "%str%"));
 
         // Empty string
-        givenACodeSampleToTokenize emptyStr("\"\"", true);
-        ASSERT_EQUALS(true, Token::Match(emptyStr.tokens(), "%str%"));
+        const SimpleTokenList emptyStr("\"\"");
+        ASSERT_EQUALS(true, Token::Match(emptyStr.front(), "%str%"));
     }
 
-    void matchVarid() const {
-        givenACodeSampleToTokenize var("int a ; int b ;");
+    void matchVarid() {
+        SimpleTokenizer var(*this);
+        ASSERT(var.tokenize("int a ; int b ;"));
 
         // Varid == 0 should throw exception
-        ASSERT_THROW((void)Token::Match(var.tokens(), "%type% %varid% ; %type% %name%", 0),InternalError);
+        ASSERT_THROW_INTERNAL_EQUALS((void)Token::Match(var.tokens(), "%type% %varid% ; %type% %name%", 0),INTERNAL,"Internal error. Token::Match called with varid 0.");
 
         ASSERT_EQUALS(true, Token::Match(var.tokens(), "%type% %varid% ; %type% %name%", 1));
         ASSERT_EQUALS(true, Token::Match(var.tokens(), "%type% %name% ; %type% %varid%", 2));
@@ -635,102 +736,96 @@ private:
     }
 
     void matchNumeric() const {
-        givenACodeSampleToTokenize nonNumeric("abc", true);
-        ASSERT_EQUALS(false, Token::Match(nonNumeric.tokens(), "%num%"));
+        const SimpleTokenList nonNumeric("abc");
+        ASSERT_EQUALS(false, Token::Match(nonNumeric.front(), "%num%"));
 
-        givenACodeSampleToTokenize binary("101010b", true);
-        ASSERT_EQUALS(true, Token::Match(binary.tokens(), "%num%"));
+        const SimpleTokenList msLiteral("5ms"); // #11438
+        ASSERT_EQUALS(false, Token::Match(msLiteral.front(), "%num%"));
 
-        givenACodeSampleToTokenize octal("0123", true);
-        ASSERT_EQUALS(true, Token::Match(octal.tokens(), "%num%"));
+        const SimpleTokenList sLiteral("3s");
+        ASSERT_EQUALS(false, Token::Match(sLiteral.front(), "%num%"));
 
-        givenACodeSampleToTokenize decimal("4567", true);
-        ASSERT_EQUALS(true, Token::Match(decimal.tokens(), "%num%"));
+        const SimpleTokenList octal("0123");
+        ASSERT_EQUALS(true, Token::Match(octal.front(), "%num%"));
 
-        givenACodeSampleToTokenize hexadecimal("0xDEADBEEF", true);
-        ASSERT_EQUALS(true, Token::Match(hexadecimal.tokens(), "%num%"));
+        const SimpleTokenList decimal("4567");
+        ASSERT_EQUALS(true, Token::Match(decimal.front(), "%num%"));
 
-        givenACodeSampleToTokenize floatingPoint("0.0f", true);
-        ASSERT_EQUALS(true, Token::Match(floatingPoint.tokens(), "%num%"));
+        const SimpleTokenList hexadecimal("0xDEADBEEF");
+        ASSERT_EQUALS(true, Token::Match(hexadecimal.front(), "%num%"));
 
-        givenACodeSampleToTokenize doublePrecision("0.0d", true);
-        ASSERT_EQUALS(true, Token::Match(doublePrecision.tokens(), "%num%"));
+        const SimpleTokenList floatingPoint("0.0f");
+        ASSERT_EQUALS(true, Token::Match(floatingPoint.front(), "%num%"));
 
-        givenACodeSampleToTokenize signedLong("0L", true);
-        ASSERT_EQUALS(true, Token::Match(signedLong.tokens(), "%num%"));
+        const SimpleTokenList signedLong("0L");
+        ASSERT_EQUALS(true, Token::Match(signedLong.front(), "%num%"));
 
-        givenACodeSampleToTokenize negativeSignedLong("-0L", true);
-        ASSERT_EQUALS(true, Token::Match(negativeSignedLong.tokens(), "- %num%"));
+        const SimpleTokenList negativeSignedLong("-0L");
+        ASSERT_EQUALS(true, Token::Match(negativeSignedLong.front(), "- %num%"));
 
-        givenACodeSampleToTokenize positiveSignedLong("+0L", true);
-        ASSERT_EQUALS(true, Token::Match(positiveSignedLong.tokens(), "+ %num%"));
+        const SimpleTokenList positiveSignedLong("+0L");
+        ASSERT_EQUALS(true, Token::Match(positiveSignedLong.front(), "+ %num%"));
 
-        givenACodeSampleToTokenize unsignedInt("0U", true);
-        ASSERT_EQUALS(true, Token::Match(unsignedInt.tokens(), "%num%"));
+        const SimpleTokenList unsignedInt("0U");
+        ASSERT_EQUALS(true, Token::Match(unsignedInt.front(), "%num%"));
 
-        givenACodeSampleToTokenize unsignedLong("0UL", true);
-        ASSERT_EQUALS(true, Token::Match(unsignedLong.tokens(), "%num%"));
+        const SimpleTokenList unsignedLong("0UL");
+        ASSERT_EQUALS(true, Token::Match(unsignedLong.front(), "%num%"));
 
-        givenACodeSampleToTokenize unsignedLongLong("0ULL", true);
-        ASSERT_EQUALS(true, Token::Match(unsignedLongLong.tokens(), "%num%"));
+        const SimpleTokenList unsignedLongLong("0ULL");
+        ASSERT_EQUALS(true, Token::Match(unsignedLongLong.front(), "%num%"));
 
-        givenACodeSampleToTokenize positive("+666", true);
-        ASSERT_EQUALS(true, Token::Match(positive.tokens(), "+ %num%"));
+        const SimpleTokenList positive("+666");
+        ASSERT_EQUALS(true, Token::Match(positive.front(), "+ %num%"));
 
-        givenACodeSampleToTokenize negative("-42", true);
-        ASSERT_EQUALS(true, Token::Match(negative.tokens(), "- %num%"));
+        const SimpleTokenList negative("-42");
+        ASSERT_EQUALS(true, Token::Match(negative.front(), "- %num%"));
 
-        givenACodeSampleToTokenize negativeNull("-.0", true);
-        ASSERT_EQUALS(true, Token::Match(negativeNull.tokens(), "- %num%"));
+        const SimpleTokenList negativeNull("-.0");
+        ASSERT_EQUALS(true, Token::Match(negativeNull.front(), "- %num%"));
 
-        givenACodeSampleToTokenize positiveNull("+.0", true);
-        ASSERT_EQUALS(true, Token::Match(positiveNull.tokens(), "+ %num%"));
+        const SimpleTokenList positiveNull("+.0");
+        ASSERT_EQUALS(true, Token::Match(positiveNull.front(), "+ %num%"));
     }
 
 
     void matchBoolean() const {
-        givenACodeSampleToTokenize yes("YES", true);
-        ASSERT_EQUALS(false, Token::Match(yes.tokens(), "%bool%"));
+        const SimpleTokenList yes("YES");
+        ASSERT_EQUALS(false, Token::Match(yes.front(), "%bool%"));
 
-        givenACodeSampleToTokenize positive("true", true);
-        ASSERT_EQUALS(true, Token::Match(positive.tokens(), "%bool%"));
+        const SimpleTokenList positive("true");
+        ASSERT_EQUALS(true, Token::Match(positive.front(), "%bool%"));
 
-        givenACodeSampleToTokenize negative("false", true);
-        ASSERT_EQUALS(true, Token::Match(negative.tokens(), "%bool%"));
+        const SimpleTokenList negative("false");
+        ASSERT_EQUALS(true, Token::Match(negative.front(), "%bool%"));
     }
 
     void matchOr() const {
-        givenACodeSampleToTokenize bitwiseOr(";|;", true);
-        // cppcheck-suppress simplePatternError - this is intentional
-        ASSERT_EQUALS(true,  Token::Match(bitwiseOr.tokens(), "; %or%"));
-        ASSERT_EQUALS(true,  Token::Match(bitwiseOr.tokens(), "; %op%"));
-        // cppcheck-suppress simplePatternError - this is intentional
-        ASSERT_EQUALS(false, Token::Match(bitwiseOr.tokens(), "; %oror%"));
+        const SimpleTokenList bitwiseOr(";|;");
+        ASSERT_EQUALS(true,  Token::Match(bitwiseOr.front(), "; %or%"));
+        ASSERT_EQUALS(true,  Token::Match(bitwiseOr.front(), "; %op%"));
+        ASSERT_EQUALS(false, Token::Match(bitwiseOr.front(), "; %oror%"));
 
-        givenACodeSampleToTokenize bitwiseOrAssignment(";|=;");
-        // cppcheck-suppress simplePatternError - this is intentional
-        ASSERT_EQUALS(false,  Token::Match(bitwiseOrAssignment.tokens(), "; %or%"));
-        ASSERT_EQUALS(true,  Token::Match(bitwiseOrAssignment.tokens(), "; %op%"));
-        // cppcheck-suppress simplePatternError - this is intentional
-        ASSERT_EQUALS(false, Token::Match(bitwiseOrAssignment.tokens(), "; %oror%"));
+        const SimpleTokenList bitwiseOrAssignment(";|=;");
+        ASSERT_EQUALS(false,  Token::Match(bitwiseOrAssignment.front(), "; %or%"));
+        ASSERT_EQUALS(true,  Token::Match(bitwiseOrAssignment.front(), "; %op%"));
+        ASSERT_EQUALS(false, Token::Match(bitwiseOrAssignment.front(), "; %oror%"));
 
-        givenACodeSampleToTokenize logicalOr(";||;", true);
-        // cppcheck-suppress simplePatternError - this is intentional
-        ASSERT_EQUALS(false, Token::Match(logicalOr.tokens(), "; %or%"));
-        ASSERT_EQUALS(true,  Token::Match(logicalOr.tokens(), "; %op%"));
-        // cppcheck-suppress simplePatternError - this is intentional
-        ASSERT_EQUALS(true,  Token::Match(logicalOr.tokens(), "; %oror%"));
-        ASSERT_EQUALS(true,  Token::Match(logicalOr.tokens(), "; &&|%oror%"));
-        ASSERT_EQUALS(true,  Token::Match(logicalOr.tokens(), "; %oror%|&&"));
+        const SimpleTokenList logicalOr(";||;");
+        ASSERT_EQUALS(false, Token::Match(logicalOr.front(), "; %or%"));
+        ASSERT_EQUALS(true,  Token::Match(logicalOr.front(), "; %op%"));
+        ASSERT_EQUALS(true,  Token::Match(logicalOr.front(), "; %oror%"));
+        ASSERT_EQUALS(true,  Token::Match(logicalOr.front(), "; &&|%oror%"));
+        ASSERT_EQUALS(true,  Token::Match(logicalOr.front(), "; %oror%|&&"));
 
-        givenACodeSampleToTokenize logicalAnd(";&&;", true);
-        ASSERT_EQUALS(true, Token::simpleMatch(logicalAnd.tokens(), "; &&"));
-        ASSERT_EQUALS(true, Token::Match(logicalAnd.tokens(), "; &&|%oror%"));
-        ASSERT_EQUALS(true, Token::Match(logicalAnd.tokens(), "; %oror%|&&"));
+        const SimpleTokenList logicalAnd(";&&;");
+        ASSERT_EQUALS(true, Token::simpleMatch(logicalAnd.front(), "; &&"));
+        ASSERT_EQUALS(true, Token::Match(logicalAnd.front(), "; &&|%oror%"));
+        ASSERT_EQUALS(true, Token::Match(logicalAnd.front(), "; %oror%|&&"));
     }
 
     static void append_vector(std::vector<std::string> &dest, const std::vector<std::string> &src) {
-        dest.insert(dest.end(), src.begin(), src.end());
+        dest.insert(dest.end(), src.cbegin(), src.cend());
     }
 
     void matchOp() {
@@ -741,17 +836,15 @@ private:
         append_vector(test_ops, logicalOps);
         append_vector(test_ops, assignmentOps);
 
-        std::vector<std::string>::const_iterator test_op, test_ops_end = test_ops.end();
-        for (test_op = test_ops.begin(); test_op != test_ops_end; ++test_op) {
-            ASSERT_EQUALS(true, MatchCheck(*test_op, "%op%"));
-        }
+        ASSERT_EQUALS(true, std::all_of(test_ops.cbegin(), test_ops.cend(), [&](const std::string& s) {
+            return MatchCheck(s, "%op%");
+        }));
 
         // Negative test against other operators
         std::vector<std::string> other_ops;
         append_vector(other_ops, extendedOps);
 
-        std::vector<std::string>::const_iterator other_op, other_ops_end = other_ops.end();
-        for (other_op = other_ops.begin(); other_op != other_ops_end; ++other_op) {
+        for (auto other_op = other_ops.cbegin(); other_op != other_ops.cend(); ++other_op) {
             ASSERT_EQUALS_MSG(false, MatchCheck(*other_op, "%op%"), "Failing other operator: " + *other_op);
         }
     }
@@ -763,27 +856,25 @@ private:
         append_vector(test_ops, comparisonOps);
         append_vector(test_ops, logicalOps);
 
-        std::vector<std::string>::const_iterator test_op, test_ops_end = test_ops.end();
-        for (test_op = test_ops.begin(); test_op != test_ops_end; ++test_op) {
-            ASSERT_EQUALS(true, MatchCheck(*test_op, "%cop%"));
-        }
+        ASSERT_EQUALS(true, std::all_of(test_ops.cbegin(), test_ops.cend(), [&](const std::string& s) {
+            return MatchCheck(s, "%cop%");
+        }));
 
         // Negative test against other operators
         std::vector<std::string> other_ops;
         append_vector(other_ops, extendedOps);
         append_vector(other_ops, assignmentOps);
 
-        std::vector<std::string>::const_iterator other_op, other_ops_end = other_ops.end();
-        for (other_op = other_ops.begin(); other_op != other_ops_end; ++other_op) {
+        for (auto other_op = other_ops.cbegin(); other_op != other_ops.cend(); ++other_op) {
             ASSERT_EQUALS_MSG(false, MatchCheck(*other_op, "%cop%"), "Failing other operator: " + *other_op);
         }
     }
 
 
     void isArithmeticalOp() const {
-        std::vector<std::string>::const_iterator test_op, test_ops_end = arithmeticalOps.end();
-        for (test_op = arithmeticalOps.begin(); test_op != test_ops_end; ++test_op) {
-            Token tok;
+        for (auto test_op = arithmeticalOps.cbegin(); test_op != arithmeticalOps.cend(); ++test_op) {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, std::move(tokensFrontBack));
             tok.str(*test_op);
             ASSERT_EQUALS(true, tok.isArithmeticalOp());
         }
@@ -796,9 +887,9 @@ private:
         append_vector(other_ops, extendedOps);
         append_vector(other_ops, assignmentOps);
 
-        std::vector<std::string>::const_iterator other_op, other_ops_end = other_ops.end();
-        for (other_op = other_ops.begin(); other_op != other_ops_end; ++other_op) {
-            Token tok;
+        for (auto other_op = other_ops.cbegin(); other_op != other_ops.cend(); ++other_op) {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, std::move(tokensFrontBack));
             tok.str(*other_op);
             ASSERT_EQUALS_MSG(false, tok.isArithmeticalOp(), "Failing arithmetical operator: " + *other_op);
         }
@@ -812,9 +903,9 @@ private:
         append_vector(test_ops, logicalOps);
         append_vector(test_ops, assignmentOps);
 
-        std::vector<std::string>::const_iterator test_op, test_ops_end = test_ops.end();
-        for (test_op = test_ops.begin(); test_op != test_ops_end; ++test_op) {
-            Token tok;
+        for (auto test_op = test_ops.cbegin(); test_op != test_ops.cend(); ++test_op) {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, std::move(tokensFrontBack));
             tok.str(*test_op);
             ASSERT_EQUALS(true, tok.isOp());
         }
@@ -823,9 +914,9 @@ private:
         std::vector<std::string> other_ops;
         append_vector(other_ops, extendedOps);
 
-        std::vector<std::string>::const_iterator other_op, other_ops_end = other_ops.end();
-        for (other_op = other_ops.begin(); other_op != other_ops_end; ++other_op) {
-            Token tok;
+        for (auto other_op = other_ops.cbegin(); other_op != other_ops.cend(); ++other_op) {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, std::move(tokensFrontBack));
             tok.str(*other_op);
             ASSERT_EQUALS_MSG(false, tok.isOp(), "Failing normal operator: " + *other_op);
         }
@@ -838,9 +929,9 @@ private:
         append_vector(test_ops, comparisonOps);
         append_vector(test_ops, logicalOps);
 
-        std::vector<std::string>::const_iterator test_op, test_ops_end = test_ops.end();
-        for (test_op = test_ops.begin(); test_op != test_ops_end; ++test_op) {
-            Token tok;
+        for (auto test_op = test_ops.cbegin(); test_op != test_ops.cend(); ++test_op) {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, std::move(tokensFrontBack));
             tok.str(*test_op);
             ASSERT_EQUALS(true, tok.isConstOp());
         }
@@ -850,9 +941,9 @@ private:
         append_vector(other_ops, extendedOps);
         append_vector(other_ops, assignmentOps);
 
-        std::vector<std::string>::const_iterator other_op, other_ops_end = other_ops.end();
-        for (other_op = other_ops.begin(); other_op != other_ops_end; ++other_op) {
-            Token tok;
+        for (auto other_op = other_ops.cbegin(); other_op != other_ops.cend(); ++other_op) {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, std::move(tokensFrontBack));
             tok.str(*other_op);
             ASSERT_EQUALS_MSG(false, tok.isConstOp(), "Failing normal operator: " + *other_op);
         }
@@ -866,26 +957,26 @@ private:
         append_vector(test_ops, logicalOps);
         append_vector(test_ops, extendedOps);
 
-        std::vector<std::string>::const_iterator test_op, test_ops_end = test_ops.end();
-        for (test_op = test_ops.begin(); test_op != test_ops_end; ++test_op) {
-            Token tok;
+        for (auto test_op = test_ops.cbegin(); test_op != test_ops.cend(); ++test_op) {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, std::move(tokensFrontBack));
             tok.str(*test_op);
             ASSERT_EQUALS(true, tok.isExtendedOp());
         }
 
         // Negative test against assignment operators
-        std::vector<std::string>::const_iterator other_op, other_ops_end = assignmentOps.end();
-        for (other_op = assignmentOps.begin(); other_op != other_ops_end; ++other_op) {
-            Token tok;
+        for (auto other_op = assignmentOps.cbegin(); other_op != assignmentOps.cend(); ++other_op) {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, std::move(tokensFrontBack));
             tok.str(*other_op);
             ASSERT_EQUALS_MSG(false, tok.isExtendedOp(), "Failing assignment operator: " + *other_op);
         }
     }
 
     void isAssignmentOp() const {
-        std::vector<std::string>::const_iterator test_op, test_ops_end = assignmentOps.end();
-        for (test_op = assignmentOps.begin(); test_op != test_ops_end; ++test_op) {
-            Token tok;
+        for (auto test_op = assignmentOps.cbegin(); test_op != assignmentOps.cend(); ++test_op) {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, std::move(tokensFrontBack));
             tok.str(*test_op);
             ASSERT_EQUALS(true, tok.isAssignmentOp());
         }
@@ -898,37 +989,41 @@ private:
         append_vector(other_ops, logicalOps);
         append_vector(other_ops, extendedOps);
 
-        std::vector<std::string>::const_iterator other_op, other_ops_end = other_ops.end();
-        for (other_op = other_ops.begin(); other_op != other_ops_end; ++other_op) {
-            Token tok;
+        for (auto other_op = other_ops.cbegin(); other_op != other_ops.cend(); ++other_op) {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, std::move(tokensFrontBack));
             tok.str(*other_op);
             ASSERT_EQUALS_MSG(false, tok.isAssignmentOp(), "Failing assignment operator: " + *other_op);
         }
     }
 
     void operators() const {
-        std::vector<std::string>::const_iterator test_op;
-        for (test_op = extendedOps.begin(); test_op != extendedOps.end(); ++test_op) {
-            Token tok;
+        for (auto test_op = extendedOps.cbegin(); test_op != extendedOps.cend(); ++test_op) {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, std::move(tokensFrontBack));
             tok.str(*test_op);
             ASSERT_EQUALS(Token::eExtendedOp, tok.tokType());
         }
-        for (test_op = logicalOps.begin(); test_op != logicalOps.end(); ++test_op) {
-            Token tok;
+        for (auto test_op = logicalOps.cbegin(); test_op != logicalOps.cend(); ++test_op) {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, std::move(tokensFrontBack));
             tok.str(*test_op);
             ASSERT_EQUALS(Token::eLogicalOp, tok.tokType());
         }
-        for (test_op = bitOps.begin(); test_op != bitOps.end(); ++test_op) {
-            Token tok;
+        for (auto test_op = bitOps.cbegin(); test_op != bitOps.cend(); ++test_op) {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, std::move(tokensFrontBack));
             tok.str(*test_op);
             ASSERT_EQUALS(Token::eBitOp, tok.tokType());
         }
-        for (test_op = comparisonOps.begin(); test_op != comparisonOps.end(); ++test_op) {
-            Token tok;
+        for (auto test_op = comparisonOps.cbegin(); test_op != comparisonOps.cend(); ++test_op) {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, std::move(tokensFrontBack));
             tok.str(*test_op);
             ASSERT_EQUALS(Token::eComparisonOp, tok.tokType());
         }
-        Token tok;
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list, std::move(tokensFrontBack));
         tok.str("++");
         ASSERT_EQUALS(Token::eIncDecOp, tok.tokType());
         tok.str("--");
@@ -936,7 +1031,8 @@ private:
     }
 
     void literals() const {
-        Token tok;
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list, std::move(tokensFrontBack));
 
         tok.str("\"foo\"");
         ASSERT(tok.tokType() == Token::eString);
@@ -963,17 +1059,17 @@ private:
         standard_types.emplace_back("long");
         standard_types.emplace_back("float");
         standard_types.emplace_back("double");
-        standard_types.emplace_back("size_t");
 
-        std::vector<std::string>::const_iterator test_op, test_ops_end = standard_types.end();
-        for (test_op = standard_types.begin(); test_op != test_ops_end; ++test_op) {
-            Token tok;
+        for (auto test_op = standard_types.cbegin(); test_op != standard_types.cend(); ++test_op) {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, std::move(tokensFrontBack));
             tok.str(*test_op);
             ASSERT_EQUALS_MSG(true, tok.isStandardType(), "Failing standard type: " + *test_op);
         }
 
         // Negative test
-        Token tok;
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list, std::move(tokensFrontBack));
         tok.str("string");
         ASSERT_EQUALS(false, tok.isStandardType());
 
@@ -989,7 +1085,8 @@ private:
     }
 
     void updateProperties() const {
-        Token tok;
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list, std::move(tokensFrontBack));
         tok.str("foobar");
 
         ASSERT_EQUALS(true, tok.isName());
@@ -1002,76 +1099,87 @@ private:
     }
 
     void isNameGuarantees1() const {
-        Token tok;
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list, std::move(tokensFrontBack));
         tok.str("Name");
         ASSERT_EQUALS(true, tok.isName());
     }
 
     void isNameGuarantees2() const {
-        Token tok;
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list, std::move(tokensFrontBack));
         tok.str("_name");
         ASSERT_EQUALS(true, tok.isName());
     }
 
     void isNameGuarantees3() const {
-        Token tok;
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list, std::move(tokensFrontBack));
         tok.str("_123");
         ASSERT_EQUALS(true, tok.isName());
     }
 
     void isNameGuarantees4() const {
-        Token tok;
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list, std::move(tokensFrontBack));
         tok.str("123456");
         ASSERT_EQUALS(false, tok.isName());
         ASSERT_EQUALS(true, tok.isNumber());
     }
 
     void isNameGuarantees5() const {
-        Token tok;
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list, std::move(tokensFrontBack));
         tok.str("a123456");
         ASSERT_EQUALS(true, tok.isName());
         ASSERT_EQUALS(false, tok.isNumber());
     }
 
     void isNameGuarantees6() const {
-        Token tok;
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list, std::move(tokensFrontBack));
         tok.str("$f");
         ASSERT_EQUALS(true, tok.isName());
     }
 
-    void canFindMatchingBracketsNeedsOpen() const {
-        givenACodeSampleToTokenize var("std::deque<std::set<int> > intsets;");
+    void canFindMatchingBracketsNeedsOpen() {
+        SimpleTokenizer var(*this);
+        ASSERT(var.tokenize("std::deque<std::set<int> > intsets;"));
 
         const Token* const t = var.tokens()->findClosingBracket();
         ASSERT(t == nullptr);
     }
 
-    void canFindMatchingBracketsInnerPair() const {
-        givenACodeSampleToTokenize var("std::deque<std::set<int> > intsets;");
+    void canFindMatchingBracketsInnerPair() {
+        SimpleTokenizer var(*this);
+        ASSERT(var.tokenize("std::deque<std::set<int> > intsets;"));
 
         const Token * const t = var.tokens()->tokAt(7)->findClosingBracket();
         ASSERT_EQUALS(">", t->str());
         ASSERT(var.tokens()->tokAt(9) == t);
     }
 
-    void canFindMatchingBracketsOuterPair() const {
-        givenACodeSampleToTokenize var("std::deque<std::set<int> > intsets;");
+    void canFindMatchingBracketsOuterPair() {
+        SimpleTokenizer var(*this);
+        ASSERT(var.tokenize("std::deque<std::set<int> > intsets;"));
 
         const Token* const t = var.tokens()->tokAt(3)->findClosingBracket();
         ASSERT_EQUALS(">", t->str());
         ASSERT(var.tokens()->tokAt(10) == t);
     }
 
-    void canFindMatchingBracketsWithTooManyClosing() const {
-        givenACodeSampleToTokenize var("X< 1>2 > x1;");
+    void canFindMatchingBracketsWithTooManyClosing() {
+        SimpleTokenizer var(*this);
+        ASSERT(var.tokenize("X< 1>2 > x1;"));
 
         const Token* const t = var.tokens()->next()->findClosingBracket();
         ASSERT_EQUALS(">", t->str());
         ASSERT(var.tokens()->tokAt(3) == t);
     }
 
-    void canFindMatchingBracketsWithTooManyOpening() const {
-        givenACodeSampleToTokenize var("X < (2 < 1) > x1;");
+    void canFindMatchingBracketsWithTooManyOpening() {
+        SimpleTokenizer var(*this);
+        ASSERT(var.tokenize("X < (2 < 1) > x1;"));
 
         const Token* t = var.tokens()->next()->findClosingBracket();
         ASSERT(t != nullptr && t->str() == ">");
@@ -1080,32 +1188,65 @@ private:
         ASSERT(t == nullptr);
     }
 
-    void findClosingBracket() const {
-        givenACodeSampleToTokenize var("template<typename X, typename...Y> struct S : public Fred<Wilma<Y...>> {}");
+    void findClosingBracket() {
+        SimpleTokenizer var(*this);
+        ASSERT(var.tokenize("template<typename X, typename...Y> struct S : public Fred<Wilma<Y...>> {}"));
 
         const Token* const t = var.tokens()->next()->findClosingBracket();
         ASSERT(Token::simpleMatch(t, "> struct"));
     }
 
-    void expressionString() const {
-        givenACodeSampleToTokenize var1("void f() { *((unsigned long long *)x) = 0; }");
+    void findClosingBracket2() {
+        SimpleTokenizer var(*this); // #11275
+        ASSERT(var.tokenize("const auto g = []<typename T>() {};\n"));
+
+        const Token* const t = Token::findsimplematch(var.tokens(), "<");
+        ASSERT(t && Token::simpleMatch(t->findClosingBracket(), ">"));
+    }
+
+    void findClosingBracket3() {
+        SimpleTokenizer var(*this); // #12789
+        ASSERT(var.tokenize("template <size_t I = 0, typename... ArgsT, std::enable_if_t<I < sizeof...(ArgsT)>* = nullptr>\n"
+                            "void f();\n"));
+        const Token* const t = Token::findsimplematch(var.tokens(), "<");
+        ASSERT(t && Token::simpleMatch(t->findClosingBracket(), ">"));
+    }
+
+    void findClosingBracket4() {
+        SimpleTokenizer var(*this); // #12923
+        ASSERT(var.tokenize("template<template<class E> class T = std::vector, class U = std::vector<int>, class V = void>\n"
+                            "class C;\n"));
+        const Token *const t = Token::findsimplematch(var.tokens(), "<");
+        ASSERT(t);
+        const Token *const closing = t->findClosingBracket();
+        ASSERT(closing && closing == var.tokens()->tokAt(28));
+    }
+
+    void expressionString() {
+        SimpleTokenizer var1(*this);
+        ASSERT(var1.tokenize("void f() { *((unsigned long long *)x) = 0; }"));
         const Token *const tok1 = Token::findsimplematch(var1.tokens(), "*");
         ASSERT_EQUALS("*((unsigned long long*)x)", tok1->expressionString());
 
-        givenACodeSampleToTokenize var2("typedef unsigned long long u64; void f() { *((u64 *)x) = 0; }");
+        SimpleTokenizer var2(*this);
+        ASSERT(var2.tokenize("typedef unsigned long long u64; void f() { *((u64 *)x) = 0; }"));
         const Token *const tok2 = Token::findsimplematch(var2.tokens(), "*");
         ASSERT_EQUALS("*((unsigned long long*)x)", tok2->expressionString());
 
-        givenACodeSampleToTokenize data3("void f() { return (t){1,2}; }");
+        SimpleTokenizer data3(*this);
+        ASSERT(data3.tokenize("void f() { return (t){1,2}; }"));
         ASSERT_EQUALS("return(t){1,2}", data3.tokens()->tokAt(5)->expressionString());
 
-        givenACodeSampleToTokenize data4("void f() { return L\"a\"; }");
+        SimpleTokenizer data4(*this);
+        ASSERT(data4.tokenize("void f() { return L\"a\"; }"));
         ASSERT_EQUALS("returnL\"a\"", data4.tokens()->tokAt(5)->expressionString());
 
-        givenACodeSampleToTokenize data5("void f() { return U\"a\"; }");
+        SimpleTokenizer data5(*this);
+        ASSERT(data5.tokenize("void f() { return U\"a\"; }"));
         ASSERT_EQUALS("returnU\"a\"", data5.tokens()->tokAt(5)->expressionString());
 
-        givenACodeSampleToTokenize data6("x = \"\\0\\x1\\x2\\x3\\x4\\x5\\x6\\x7\";");
+        SimpleTokenizer data6(*this);
+        ASSERT(data6.tokenize("x = \"\\0\\x1\\x2\\x3\\x4\\x5\\x6\\x7\";"));
         ASSERT_EQUALS("x=\"\\x00\\x01\\x02\\x03\\x04\\x05\\x06\\x07\"", data6.tokens()->next()->expressionString());
     }
 
@@ -1118,11 +1259,262 @@ private:
         v2.valueType = ValueFlow::Value::ValueType::BUFFER_SIZE;
         v2.setKnown();
 
-        Token token;
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token token(list, std::move(tokensFrontBack));
         ASSERT_EQUALS(true, token.addValue(v1));
         ASSERT_EQUALS(true, token.addValue(v2));
         ASSERT_EQUALS(false, token.hasKnownIntValue());
     }
+
+#define assert_tok(...) _assert_tok(__FILE__, __LINE__, __VA_ARGS__)
+    void _assert_tok(const char* file, int line, const Token* tok, Token::Type t, bool l = false, bool std = false, bool ctrl = false) const
+    {
+        ASSERT_LOC_MSG(tok, "tok", file, line);
+        ASSERT_EQUALS_ENUM_LOC_MSG(t, tok->tokType(), "tokType", file, line);
+        ASSERT_EQUALS_LOC_MSG(l, tok->isLong(), "isLong", file, line);
+        ASSERT_EQUALS_LOC_MSG(std, tok->isStandardType(), "isStandardType", file, line);
+        ASSERT_EQUALS_LOC_MSG(ctrl, tok->isControlFlowKeyword(), "isControlFlowKeyword", file, line);
+    }
+
+    void _assert_tok(const char* file, int line, const std::string& s, Token::Type t, bool l = false, bool std = false, bool ctrl = false) const
+    {
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list, std::move(tokensFrontBack));
+        tok.str(s);
+        _assert_tok(file, line, &tok, t, l, std, ctrl);
+    }
+
+    void update_property_info() const
+    {
+        assert_tok("", Token::Type::eNone);
+        assert_tok("true", Token::Type::eBoolean);
+        assert_tok("false", Token::Type::eBoolean);
+        assert_tok("\"\"", Token::Type::eString);
+        assert_tok("L\"\"", Token::Type::eString, /*l=*/ true);
+        assert_tok("'a'", Token::Type::eChar);
+        assert_tok("L'a'", Token::Type::eChar, /*l=*/ true);
+        // eVariable has separate test
+        // eKeyword with specific languages and standards has separate tests
+        assert_tok("sizeof", Token::Type::eKeyword);
+        assert_tok("goto", Token::Type::eKeyword, /*l=*/ false, /*std=*/ false, /*ctrl=*/ true);
+        assert_tok("asm", Token::Type::eKeyword);
+        assert_tok("a", Token::Type::eName);
+        assert_tok("_a", Token::Type::eName);
+        assert_tok("$a", Token::Type::eName);
+        assert_tok("bool2", Token::Type::eName);
+        assert_tok("0", Token::Type::eNumber);
+        assert_tok("-0", Token::Type::eNumber);
+        assert_tok("+0", Token::Type::eNumber);
+        assert_tok("0xa", Token::Type::eNumber);
+        assert_tok("010", Token::Type::eNumber);
+        assert_tok("0b0", Token::Type::eNumber);
+        assert_tok("0.0", Token::Type::eNumber);
+        assert_tok("0x0.3p10", Token::Type::eNumber);
+        assert_tok("0z", Token::Type::eNumber); // TODO: not a valid number
+        assert_tok("0_km", Token::Type::eLiteral); // user literal
+        assert_tok("=", Token::Type::eAssignmentOp);
+        assert_tok("<<=", Token::Type::eAssignmentOp);
+        assert_tok(">>=", Token::Type::eAssignmentOp);
+        assert_tok("+=", Token::Type::eAssignmentOp);
+        assert_tok("-=", Token::Type::eAssignmentOp);
+        assert_tok("*=", Token::Type::eAssignmentOp);
+        assert_tok("/=", Token::Type::eAssignmentOp);
+        assert_tok("%=", Token::Type::eAssignmentOp);
+        assert_tok("&=", Token::Type::eAssignmentOp);
+        assert_tok("|=", Token::Type::eAssignmentOp);
+        assert_tok("^=", Token::Type::eAssignmentOp);
+        assert_tok(",", Token::Type::eExtendedOp);
+        assert_tok("[", Token::Type::eExtendedOp);
+        assert_tok("]", Token::Type::eExtendedOp);
+        assert_tok("(", Token::Type::eExtendedOp);
+        assert_tok(")", Token::Type::eExtendedOp);
+        assert_tok("?", Token::Type::eExtendedOp);
+        assert_tok(":", Token::Type::eExtendedOp);
+        assert_tok("<<", Token::Type::eArithmeticalOp);
+        assert_tok(">>", Token::Type::eArithmeticalOp);
+        assert_tok("+", Token::Type::eArithmeticalOp);
+        assert_tok("-", Token::Type::eArithmeticalOp);
+        assert_tok("*", Token::Type::eArithmeticalOp);
+        assert_tok("/", Token::Type::eArithmeticalOp);
+        assert_tok("%", Token::Type::eArithmeticalOp);
+        assert_tok("&", Token::Type::eBitOp);
+        assert_tok("|", Token::Type::eBitOp);
+        assert_tok("^", Token::Type::eBitOp);
+        assert_tok("~", Token::Type::eBitOp);
+        assert_tok("&&", Token::Type::eLogicalOp);
+        assert_tok("||", Token::Type::eLogicalOp);
+        assert_tok("!", Token::Type::eLogicalOp);
+        assert_tok("==", Token::Type::eComparisonOp);
+        assert_tok("!=", Token::Type::eComparisonOp);
+        assert_tok("<", Token::Type::eComparisonOp);
+        assert_tok("<=", Token::Type::eComparisonOp);
+        assert_tok(">", Token::Type::eComparisonOp);
+        assert_tok(">=", Token::Type::eComparisonOp);
+        // eComparisonOp with link has a separate test
+        assert_tok("<=>", Token::Type::eComparisonOp);
+        assert_tok("++", Token::Type::eIncDecOp);
+        assert_tok("--", Token::Type::eIncDecOp);
+        assert_tok("{", Token::Type::eBracket);
+        assert_tok("}", Token::Type::eBracket);
+        // < and > with link have a separate test
+        assert_tok("...", Token::Type::eEllipsis);
+        assert_tok(";", Token::Type::eOther);
+        // eType with specific languages and standards has separate tests
+        assert_tok("void", Token::Type::eType, /*l=*/ false, /*std=*/ true);
+    }
+
+    void update_property_info_evariable() const
+    {
+        {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, std::move(tokensFrontBack));
+            tok.str("var1");
+            tok.varId(17);
+            assert_tok(&tok, Token::Type::eVariable);
+        }
+    }
+
+    void update_property_info_ekeyword_c() const
+    {
+        {
+            const Settings s = settingsBuilder().c(Standards::cstd_t::C89).build();
+            TokenList list_c{s, Standards::Language::C};
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list_c, std::move(tokensFrontBack));
+            tok.str("alignas"); // not a C89 keyword
+            assert_tok(&tok, Token::Type::eName);
+        }
+        {
+            TokenList list_c{settingsDefault, Standards::Language::C};
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list_c, std::move(tokensFrontBack));
+            tok.str("alignas"); // a C23 keyword
+            assert_tok(&tok, Token::Type::eKeyword);
+        }
+        {
+            TokenList list_c{settingsDefault, Standards::Language::C};
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list_c, std::move(tokensFrontBack));
+            tok.str("and_eq"); // a C++ keyword
+            assert_tok(&tok, Token::Type::eName);
+        }
+    }
+
+    void update_property_info_ekeyword_cpp() const
+    {
+        {
+            const Settings s = settingsBuilder().cpp(Standards::cppstd_t::CPP03).build();
+            TokenList list_cpp{s, Standards::Language::CPP};
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list_cpp, std::move(tokensFrontBack));
+            tok.str("consteval"); // not a C++03 keyword
+            assert_tok(&tok, Token::Type::eName);
+        }
+        {
+            TokenList list_cpp{settingsDefault, Standards::Language::CPP};
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list_cpp, std::move(tokensFrontBack));
+            tok.str("consteval"); // a C++20 keyword
+            assert_tok(&tok, Token::Type::eKeyword);
+        }
+        {
+            TokenList list_cpp{settingsDefault, Standards::Language::CPP};
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list_cpp, std::move(tokensFrontBack));
+            tok.str("typeof_unqual"); // a C keyword
+            assert_tok(&tok, Token::Type::eName);
+        }
+    }
+
+    void update_property_info_ebracket_link() const
+    {
+        {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, tokensFrontBack);
+            tok.str("<");
+
+            Token tok2(list, std::move(tokensFrontBack));
+            tok.link(&tok2);
+            assert_tok(&tok, Token::Type::eBracket);
+        }
+
+        {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, tokensFrontBack);
+
+            Token tok2(list, std::move(tokensFrontBack));
+            tok.link(&tok2);
+
+            tok.str("<");
+            assert_tok(&tok, Token::Type::eBracket);
+        }
+    }
+
+    void update_property_info_ecomparisonop_link() const
+    {
+        {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, tokensFrontBack);
+            tok.str("==");
+
+            Token tok2(list, std::move(tokensFrontBack));
+            tok.link(&tok2); // TODO: does not (and probably should not) update
+            assert_tok(&tok, Token::Type::eComparisonOp);
+        }
+
+        {
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list, tokensFrontBack);
+
+            Token tok2(list, std::move(tokensFrontBack));
+            tok.link(&tok2);
+
+            tok.str("==");
+            assert_tok(&tok, Token::Type::eOther); // TODO: this looks wrong
+        }
+    }
+
+    void update_property_info_etype_c() const
+    {
+        {
+            TokenList list_c{settingsDefault, Standards::Language::C};
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list_c, std::move(tokensFrontBack));
+            tok.str("char"); // not treated as keyword in TokenList::isKeyword()
+            assert_tok(&tok, Token::Type::eType, /*l=*/ false, /*std=*/ true);
+        }
+    }
+
+    void update_property_info_etype_cpp() const
+    {
+        {
+            TokenList list_cpp{settingsDefault, Standards::Language::CPP};
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list_cpp, std::move(tokensFrontBack));
+            tok.str("bool"); // not treated as keyword in TokenList::isKeyword()
+            assert_tok(&tok, Token::Type::eType, /*l=*/ false, /*std=*/ true);
+        }
+    }
+
+    void update_property_info_replace() const // #13743
+    {
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list, std::move(tokensFrontBack));
+        tok.str("long");
+        assert_tok(&tok, Token::Type::eType, false, true);
+    }
+
+    void varid_reset() const
+    {
+        TokenList list_c{settingsDefault, Standards::Language::C};
+        auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+        Token tok(list_c, std::move(tokensFrontBack));
+        tok.str("int"); // not treated as keyword in TokenList::isKeyword()
+        assert_tok(&tok, Token::Type::eType, /*l=*/ false, /*std=*/ true);
+        tok.varId(0);
+        assert_tok(&tok, Token::Type::eType, /*l=*/ false, /*std=*/ true);
+    }
+#undef assert_tok
 };
 
 REGISTER_TEST(TestToken)

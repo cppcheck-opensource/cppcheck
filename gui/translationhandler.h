@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 
 #include <QList>
 #include <QObject>
+#include <QString>
 
 class QTranslator;
 
@@ -58,18 +59,17 @@ struct TranslationInfo {
  * track which translation is the currently active translation.
  *
  */
-class TranslationHandler : QObject {
+class TranslationHandler : public QObject {
     Q_OBJECT
 public:
     explicit TranslationHandler(QObject *parent = nullptr);
-    ~TranslationHandler() override;
 
     /**
      * @brief Get a list of available translations.
      * @return List of available translations.
      *
      */
-    QList<TranslationInfo> getTranslations() const {
+    const QList<TranslationInfo>& getTranslations() const {
         return mTranslations;
     }
 
@@ -86,7 +86,7 @@ public:
      * @return ISO 639 language code for current translation.
      *
      */
-    QString getCurrentLanguage() const;
+    const QString& getCurrentLanguage() const;
 
     /**
      * @brief Get translation suggestion for the system.
@@ -134,7 +134,7 @@ private:
      * @brief Translator class instance.
      *
      */
-    QTranslator *mTranslator;
+    QTranslator* mTranslator{};
 };
 
 /// @}

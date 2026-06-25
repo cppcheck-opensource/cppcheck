@@ -4,7 +4,6 @@
 #
 
 import cppcheck
-import sys
 
 @cppcheck.checker
 def cast(cfg, data):

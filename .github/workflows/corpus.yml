@@ -1,0 +1,58 @@
+# Syntax reference https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions
+# Environment reference https://help.github.com/en/actions/reference/virtual-environments-for-github-hosted-runners
+name: corpus
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  corpus:
+    runs-on: ubuntu-22.04
+    if: ${{ github.repository_owner == 'cppcheck-opensource' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ github.workflow }}-${{ runner.os }}
+
+      - name: Install missing software on ubuntu
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fdupes
+
+      - name: build testrunner
+        run: |
+          store_dir=$(pwd)/store
+          mkdir $store_dir
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          make -j$(nproc) CXXOPTS="-Werror" CPPOPTS="-DSTORE_INPUT_DIR=\"\\\"$store_dir\\\"\"" testrunner
+
+      - name: run testrunner
+        run: |
+          ./testrunner -q
+
+      - name: de-duplicate files
+        run: |
+          set -x
+          ls -l ./store | wc -l
+          echo "removing duplicates"
+          fdupes -qdN ./store > /dev/null
+          ls -l ./store | wc -l
+          # print largest size
+          ls -l ./store | cut -d' ' -f5 | sort -u -n -r | head -n1
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: corpus
+          path: ./store

@@ -2,7 +2,18 @@
 # Environment reference https://help.github.com/en/actions/reference/virtual-environments-for-github-hosted-runners
 name: Coverage
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - 'main'
+      - 'releases/**'
+      - '2.*'
+    tags:
+      - '2.*'
+  pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -10,39 +21,50 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ github.workflow }}-${{ runner.os }}
 
       - name: Install missing software on ubuntu
         run: |
           sudo apt-get update
-          sudo apt-get install libxml2-utils
-          sudo apt-get install lcov
-          sudo apt-get install libcppunit-dev
+          sudo apt-get install libxml2-utils lcov
+
+      - name: Install missing Python packages on ubuntu
+        run: |
           python -m pip install pip --upgrade
           python -m pip install lcov_cobertura
 
       - name: Compile instrumented
         run: |
-          make -j$(nproc) test CXXFLAGS="-g -fprofile-arcs -ftest-coverage" HAVE_RULES=yes
-          
-      - name: Generate coverage report
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          make -j$(nproc) CXXOPTS="-Werror -g -fprofile-arcs -ftest-coverage" HAVE_RULES=yes CPPCHK_GLIBCXX_DEBUG= all
+
+      - name: Run instrumented tests
         run: |
-          rm -rf coverage_report
           ./testrunner
           test/cfg/runtests.sh
+
+      - name: Generate coverage report
+        run: |
           gcov lib/*.cpp -o lib/
           lcov --directory ./ --capture --output-file lcov_tmp.info -b ./
           lcov --extract lcov_tmp.info "$(pwd)/*" --output-file lcov.info
           genhtml lcov.info -o coverage_report --frame --legend --demangle-cpp
           
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         with:
          name: Coverage results
          path: coverage_report
          
-      - uses: codecov/codecov-action@v1.2.1
+      - uses: codecov/codecov-action@v4
         with:
-          # token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+          token: ${{ secrets.CODECOV_TOKEN }}
           # file: ./coverage.xml # optional
           flags: unittests # optional
           name: ${{ github.repository }} # optional

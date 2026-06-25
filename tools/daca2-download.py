@@ -23,6 +23,7 @@ def wget(filepath):
     if '/' in filepath:
         filename = filename[filename.rfind('/') + 1:]
     for d in DEBIAN:
+        # TODO: handle exitcode?
         subprocess.call(
             ['nice', 'wget', '--tries=10', '--timeout=300', '-O', filename, d + filepath])
         if os.path.isfile(filename):
@@ -40,10 +41,11 @@ def latestvername(names):
 def getpackages():
     if not wget('ls-lR.gz'):
         return []
+    # TODO: handle exitcode?
     subprocess.call(['nice', 'gunzip', 'ls-lR.gz'])
-    f = open('ls-lR', 'rt')
-    lines = f.readlines()
-    f.close()
+    with open('ls-lR', 'rt') as f:
+        lines = f.readlines()
+    # TODO: handle exitcode?
     subprocess.call(['rm', 'ls-lR'])
 
     path = None
@@ -63,9 +65,6 @@ def getpackages():
         elif path and '.orig.tar.' in line:
             filename = line[1 + line.rfind(' '):]
             filenames.append(filename)
-
-    for a in archives:
-        print(a)
 
     return archives
 
@@ -90,6 +89,7 @@ def removeAll():
         try:
             for filename in filenames:
                 if os.path.isdir(filename):
+                    # pylint: disable=deprecated-argument - FIXME: onerror was deprecated in Python 3.12
                     shutil.rmtree(filename, onerror=handleRemoveReadonly)
                 else:
                     os.remove(filename)
@@ -111,6 +111,17 @@ def removeAll():
         count = 0
 
 
+def accept_filename(filename:str):
+    if '.' not in filename:
+        return False
+    ext = filename[filename.rfind('.'):]
+    if ext == '.proto' and ('--protobuf' in sys.argv):
+        print('accept_filename:' + filename)
+        return True
+    return ext in ('.C', '.c', '.H', '.h', '.cc',
+                   '.cpp', '.cxx', '.c++', '.hpp', '.tpp', '.t++')
+
+
 def removeLargeFiles(path):
     for g in glob.glob(path + '*'):
         if g == '.' or g == '..':
@@ -126,8 +137,7 @@ def removeLargeFiles(path):
                 os.remove(g)
 
             # remove non-source files
-            elif g[-2:] not in {'.C', '.c', '.H', '.h'} and g[-3:] != '.cc' and\
-                    g[-4:] not in {'.cpp', '.cxx', '.c++', '.hpp', '.tpp', '.t++'}:
+            elif not accept_filename(g):
                 os.remove(g)
 
 
@@ -141,11 +151,14 @@ def downloadpackage(filepath, outpath):
 
     filename = filepath[filepath.rfind('/') + 1:]
     if filename[-3:] == '.gz':
-        subprocess.call(['tar', 'xzvf', filename])
+        # TODO: handle exitcode?
+        subprocess.call(['tar', 'xzf', filename])
     elif filename[-3:] == '.xz':
-        subprocess.call(['tar', 'xJvf', filename])
+        # TODO: handle exitcode?
+        subprocess.call(['tar', 'xJf', filename])
     elif filename[-4:] == '.bz2':
-        subprocess.call(['tar', 'xjvf', filename])
+        # TODO: handle exitcode?
+        subprocess.call(['tar', 'xjf', filename])
     else:
         return
 
@@ -153,7 +166,8 @@ def downloadpackage(filepath, outpath):
 
     for g in glob.glob('[#_A-Za-z0-9]*'):
         if os.path.isdir(g):
-            subprocess.call(['tar', '-cJvf', outpath + filename[:filename.rfind('.')] + '.xz', g])
+            # TODO: handle exitcode?
+            subprocess.call(['tar', '-cJf', outpath + filename[:filename.rfind('.')] + '.xz', g])
             break
 
 workdir = os.path.expanduser('~/daca2-packages/tmp/')

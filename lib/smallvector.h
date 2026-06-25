@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2025 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,28 +21,50 @@
 
 #include <cstddef>
 
-static constexpr std::size_t DefaultSmallVectorSize = 0;
+static constexpr std::size_t DefaultSmallVectorSize = 3;
 
 #ifdef HAVE_BOOST
-#include <boost/container/small_vector.hpp>
+#include <boost/container/small_vector.hpp> // IWYU pragma: export
 
 template<typename T, std::size_t N = DefaultSmallVectorSize>
 using SmallVector = boost::container::small_vector<T, N>;
 #else
+#include <utility>
 #include <vector>
 
 template<class T, std::size_t N>
 struct TaggedAllocator : std::allocator<T>
 {
     template<class ... Ts>
-    // cppcheck-suppress noExplicitConstructor
-    TaggedAllocator(Ts&&... ts)
+    // NOLINTNEXTLINE(google-explicit-constructor)
+    TaggedAllocator(Ts && ... ts)
         : std::allocator<T>(std::forward<Ts>(ts)...)
     {}
+
+    template<class U>
+    // cppcheck-suppress noExplicitConstructor
+    // NOLINTNEXTLINE(google-explicit-constructor)
+    TaggedAllocator(const TaggedAllocator<U, N> /*unused*/) {}
+
+    template<class U>
+    struct rebind
+    {
+        using other = TaggedAllocator<U, N>;
+    };
 };
 
 template<typename T, std::size_t N = DefaultSmallVectorSize>
-using SmallVector = std::vector<T, TaggedAllocator<T, N>>;
+class SmallVector : public std::vector<T, TaggedAllocator<T, N>>
+{
+public:
+    template<class ... Ts>
+    // NOLINTNEXTLINE(google-explicit-constructor)
+    SmallVector(Ts&&... ts)
+        : std::vector<T, TaggedAllocator<T, N>>(std::forward<Ts>(ts)...)
+    {
+        this->reserve(N);
+    }
+};
 #endif
 
 #endif

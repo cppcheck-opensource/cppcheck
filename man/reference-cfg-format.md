@@ -1,6 +1,6 @@
 ---
 title: Cppcheck .cfg format
-subtitle: Version 2.8
+subtitle: Version 2.22 dev
 author: Cppcheck team
 lang: en
 documentclass: report
@@ -89,7 +89,7 @@ If instead `dostuff` takes care of the memory then this can be configured with:
       </memory>
     </def>
 
-The `<use>` configuration has no logical purpose. You will get the same warnings without it. Use it to silence --check-library information messages.
+The `<use>` configuration has no logical purpose. You will get the same warnings without it. Use it to silence `--check-library` information messages.
 
 # Function behavior
 
@@ -397,9 +397,9 @@ In theory, if ZeroMemory terminates the program then there is no bug. Cppcheck t
     $ cppcheck noreturn.c
     Checking noreturn.c...
 
-However if you use `--check-library` and `--enable=information` you'll get this:
+However if you use `--check-library` you'll get this:
 
-    $ cppcheck --check-library --enable=information noreturn.c
+    $ cppcheck --check-library noreturn.c
     Checking noreturn.c...
     [noreturn.c:7]: (information) --check-library: Function ZeroMemory() should have <noreturn> configuration
 

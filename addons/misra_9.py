@@ -30,7 +30,7 @@ class ElementDef:
 
         attrs = ["childIndex", "elementType", "valueType"]
         return "{}({}, {}, {})".format(
-            "ED",
+            "ElementDef",
             self.getLongName(),
             inits,
             ", ".join(("{}={}".format(a, repr(getattr(self, a))) for a in attrs))
@@ -138,8 +138,7 @@ class ElementDef:
     def getEffectiveLevel(self):
         if self.parent and self.parent.elementType == "array":
             return self.parent.getEffectiveLevel() + 1
-        else:
-            return 0
+        return 0
 
     def setInitialized(self, designated=False, positional=False):
         if designated:
@@ -201,11 +200,10 @@ class ElementDef:
                   self.isOnlyDesignated()) and
                  all([not (child.isDesignated or child.isPositional) or child.isMisra93Compliant() for child in self.children]))
             return result
-        elif self.elementType == 'record':
+        if self.elementType == 'record':
             result = all([child.isMisra93Compliant() for child in self.children])
             return result
-        else:
-            return True
+        return True
 
     def isMisra94Compliant(self):
         return self.numInits <= 1 and all([child.isMisra94Compliant() for child in self.children])
@@ -253,6 +251,16 @@ class InitializerParser:
                 isFirstElement = False
                 isDesignated = True
 
+            elif self.token.isString and self.ed and self.ed.isArray:
+                self.ed.setInitialized(isDesignated)
+                if self.token == self.token.astParent.astOperand1 and self.token.astParent.astOperand2:
+                    self.token = self.token.astParent.astOperand2
+                    self.ed.markAsCurrent()
+                    self.ed = self.root.getNextChild()
+                else:
+                    self.unwindAndContinue()
+                continue
+
             elif self.token.str == '{':
                 nextChild = self.root.getNextChild() if self.root is not None else None
 
@@ -281,7 +289,7 @@ class InitializerParser:
                         # Fake dummy as nextChild (of current root)
                         nextChild = dummyRoot
 
-                if self.token.astOperand1:
+                if nextChild and self.token.astOperand1:
                     self.root = nextChild
                     self.token = self.token.astOperand1
                     isFirstElement = True
@@ -299,7 +307,6 @@ class InitializerParser:
                 if self.ed and self.ed.isValue:
                     if not isDesignated and len(self.rootStack) > 0 and self.rootStack[-1][1] == self.root:
                         self.rootStack[-1][0].markStuctureViolation(self.token)
-
                     if isFirstElement and self.token.str == '0' and self.token.next.str == '}':
                         # Zero initializer causes recursive initialization
                         self.root.initializeChildren()
@@ -314,8 +321,9 @@ class InitializerParser:
                             else:
                                 self.ed.parent.setInitialized(isDesignated)
                             self.ed.parent.initializeChildren()
+
                     else:
-                        if self.ed.parent != self.root:
+                        if self.root is not None and self.ed.parent != self.root:
                             # Check if token is correct value type for self.root.children[?]
                             child = self.root.getChildByValueElement(self.ed)
                             if self.token.valueType:
@@ -333,6 +341,8 @@ class InitializerParser:
                         parent = parent.parent
                     isDesignated = False
 
+                    if self.token.isString and self.ed.parent.isArray:
+                        self.ed = self.ed.parent
                 self.unwindAndContinue()
 
     def pushToRootStackAndMarkAsDesignated(self):
@@ -358,29 +368,33 @@ class InitializerParser:
         while self.token:
             if self.token.astParent.astOperand1 == self.token and self.token.astParent.astOperand2:
                 if self.ed:
-                    self.ed.markAsCurrent()
-                    self.ed = self.ed.getNextValueElement(self.root)
+                    if self.token.astParent.astOperand2.str == "{" and self.ed.isDesignated:
+                        self.popFromStackIfExitElement()
+                    else:
+                        self.ed.markAsCurrent()
+                        self.ed = self.ed.getNextValueElement(self.root)
 
                 self.token = self.token.astParent.astOperand2
                 break
-            else:
-                self.token = self.token.astParent
-                if self.token.str == '{':
-                    if self.root:
-                        self.ed = self.root.getLastValueElement()
-                        self.ed.markAsCurrent()
 
-                        # Cleanup if root is dummy node representing excess levels in initializer
-                        if self.root.name == '<-':
-                            self.root.children[0].parent = self.root.parent
+            self.token = self.token.astParent
+            if self.token.str == '{':
+                if self.root:
+                    self.ed = self.root.getLastValueElement()
+                    self.ed.markAsCurrent()
 
-                        self.root = self.root.parent
+                    # Cleanup if root is dummy node representing excess levels in initializer
+                    if self.root.name == '<-':
+                        self.root.children[0].parent = self.root.parent
 
-                if self.token.astParent is None:
-                    self.token = None
-                    break
+                    self.root = self.root.parent
+
+            if self.token.astParent is None:
+                self.token = None
+                break
 
 def misra_9_x(self, data, rule, rawTokens = None):
+
     parser = InitializerParser()
 
     for variable in data.variables:
@@ -410,12 +424,18 @@ def misra_9_x(self, data, rule, rawTokens = None):
             # without it.
             if ed.valueType is None and not variable.isArray:
                 continue
-
             parser.parseInitializer(ed, eq.astOperand2)
             # print(rule, nameToken.str + '=', ed.getInitDump())
             if rule == 902 and not ed.isMisra92Compliant():
                 self.reportError(nameToken, 9, 2)
             if rule == 903 and not ed.isMisra93Compliant():
+                # Do not check when variable is pointer type
+                type_token = variable.nameToken
+                while type_token and type_token.isName:
+                    type_token = type_token.previous
+                if type_token and type_token.str == '*':
+                    continue
+
                 self.reportError(nameToken, 9, 3)
             if rule == 904 and not ed.isMisra94Compliant():
                 self.reportError(nameToken, 9, 4)
@@ -434,7 +454,7 @@ def getElementDef(nameToken, rawTokens = None):
     return ed
 
 def createArrayChildrenDefs(ed, token, var, rawTokens = None):
-    if token.str == '[':
+    if token and token.str == '[':
         if rawTokens is not None:
             foundToken = next((rawToken for rawToken in rawTokens
                                if rawToken.file == token.file
@@ -469,12 +489,38 @@ def createRecordChildrenDefs(ed, var):
     valueType = ed.valueType
     if not valueType or not valueType.typeScope:
         return
-
+    if var is None:
+        return
+    typeToken = var.typeEndToken
+    while typeToken and typeToken.isName:
+        typeToken = typeToken.previous
+    if typeToken and typeToken.str == '*':
+        child = ElementDef("pointer", var.nameToken, var.nameToken.valueType)
+        ed.addChild(child)
+        return
+    child_dict = {}
     for variable in valueType.typeScope.varlist:
         if variable is var:
             continue
         child = getElementDef(variable.nameToken)
-        ed.addChild(child)
+        child_dict[variable.nameToken] = child
+    for scopes in valueType.typeScope.nestedList:
+        varscope = False
+        if scopes.nestedIn == valueType.typeScope:
+            for variable in valueType.typeScope.varlist:
+                if variable.nameToken and variable.nameToken.valueType and variable.nameToken.valueType.typeScope == scopes:
+                    varscope = True
+                    break
+            if not varscope:
+                ed1 = ElementDef("record", scopes.Id, valueType)
+                for variable in scopes.varlist:
+                    child = getElementDef(variable.nameToken)
+                    ed1.addChild(child)
+                child_dict[scopes.bodyStart] = ed1
+    sorted_keys = sorted(list(child_dict.keys()), key=lambda k: (k.file, k.linenr, k.column))
+    for _key in sorted_keys:
+        ed.addChild(child_dict[_key])
+
 
 def getElementByDesignator(ed, token):
     if not token.str in [ '.', '[' ]:

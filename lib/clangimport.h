@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2025 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,12 +22,17 @@
 #define clangimportH
 //---------------------------------------------------------------------------
 
+#include "config.h"
+
 #include <istream>
 
 class Tokenizer;
 
 namespace clangimport {
-    void parseClangAstDump(Tokenizer *tokenizer, std::istream &f);
+    /**
+     * @throws InternalError thrown on incorrectly linked tokens
+     */
+    void CPPCHECKLIB parseClangAstDump(Tokenizer &tokenizer, std::istream &f);
 }
 
 #endif

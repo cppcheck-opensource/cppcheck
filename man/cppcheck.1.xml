@@ -106,6 +106,9 @@ man(1), man(7), http://www.tldp.org/HOWTO/Man-Page/
         <option>-U&lt;id&gt;</option>
       </arg>
       <arg choice="opt">
+        <option>--disable=&lt;id&gt;</option>
+      </arg>
+      <arg choice="opt">
         <option>--enable=&lt;id&gt;</option>
       </arg>
       <arg choice="opt">
@@ -115,13 +118,25 @@ man(1), man(7), http://www.tldp.org/HOWTO/Man-Page/
         <option>--errorlist</option>
       </arg>
       <arg choice="opt">
+        <option>--exitcode-suppress=&lt;spec&gt;</option>
+      </arg>
+      <arg choice="opt">
         <option>--exitcode-suppressions=&lt;file&gt;</option>
       </arg>
       <arg choice="opt">
         <option>--file-list=&lt;file&gt;</option>
       </arg>
       <arg choice="opt">
+        <option>--filesdir</option>
+      </arg>
+      <arg choice="opt">
         <option>--force</option>
+      </arg>
+      <arg choice="opt">
+        <option>--fsigned-char</option>
+      </arg>
+      <arg choice="opt">
+        <option>--funsigned-char</option>
       </arg>
       <arg choice="opt">
         <option>--help</option>
@@ -181,10 +196,16 @@ man(1), man(7), http://www.tldp.org/HOWTO/Man-Page/
         <option>--report-progress</option>
       </arg>
       <arg choice="opt">
+        <option>--report-type=&lt;type&gt;</option>
+      </arg>
+      <arg choice="opt">
         <option>--rule=&lt;rule&gt;</option>
       </arg>
       <arg choice="opt">
         <option>--rule-file=&lt;file&gt;</option>
+      </arg>
+      <arg choice="opt">
+        <option>--showtime=&lt;mode&gt;</option>
       </arg>
       <arg choice="opt">
         <option>--std=&lt;id&gt;</option>
@@ -274,16 +295,34 @@ Example: '-UDEBUG'</para>
       </varlistentry>
       <varlistentry>
         <term>
+          <option>--disable=&lt;id&gt;</option>
+        </term>
+        <listitem>
+          <para>Disable individual checks. Please refer to the documentation of --enable=&lt;id&gt; for further details.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
           <option>--enable=&lt;id&gt;</option>
         </term>
         <listitem>
           <para>Enable additional checks. The available ids are:
-            <glosslist><glossentry><glossterm>all</glossterm><glossdef><para>Enable all checks. It is recommended to only use
+            <glosslist>
+              <glossentry><glossterm>all</glossterm><glossdef><para>Enable all checks. It is recommended to only use
                   --enable=all when the whole program is scanned, because this
-                  enables unusedFunction.</para></glossdef></glossentry><glossentry><glossterm>warning</glossterm><glossdef><para>Enable warning messages</para></glossdef></glossentry><glossentry><glossterm>style</glossterm><glossdef><para>Enable all coding style checks. All messages with the
+                  enables unusedFunction.</para></glossdef></glossentry>
+              <glossentry><glossterm>warning</glossterm><glossdef><para>Enable warning messages</para></glossdef></glossentry>
+              <glossentry><glossterm>style</glossterm><glossdef><para>Enable all coding style checks. All messages with the
                   severities 'style', 'performance' and 'portability' are
-                  enabled.</para></glossdef></glossentry><glossentry><glossterm>performance</glossterm><glossdef><para>Enable performance messages</para></glossdef></glossentry><glossentry><glossterm>portability</glossterm><glossdef><para>Enable portability messages</para></glossdef></glossentry><glossentry><glossterm>information</glossterm><glossdef><para>Enable information messages</para></glossdef></glossentry><glossentry><glossterm>unusedFunction</glossterm><glossdef><para>Check for unused functions. It is recommend to only
-                  enable this when the whole program is scanned</para></glossdef></glossentry><glossentry><glossterm>missingInclude</glossterm><glossdef><para>Warn if there are missing includes. For detailed information use --check-config</para></glossdef></glossentry></glosslist>
+                  enabled.</para></glossdef></glossentry>
+              <glossentry><glossterm>performance</glossterm><glossdef><para>Enable performance messages</para></glossdef></glossentry>
+              <glossentry><glossterm>portability</glossterm><glossdef><para>Enable portability messages</para></glossdef></glossentry>
+              <glossentry><glossterm>information</glossterm><glossdef><para>Enable information messages</para></glossdef></glossentry>
+              <glossentry><glossterm>unusedFunction</glossterm><glossdef><para>Check for unused functions. It is recommend to only
+                  enable this when the whole program is scanned</para></glossdef></glossentry>
+              <glossentry><glossterm>missingInclude</glossterm><glossdef><para>Warn if there are missing includes</para></glossdef></glossentry>
+            </glosslist>
             By default none of the additional checks are enabled. Several ids can be given if you separate them with commas, e.g. --enable=style,unusedFunction. See also --std
           </para>
         </listitem>
@@ -309,6 +348,14 @@ Example: '-UDEBUG'</para>
       </varlistentry>
       <varlistentry>
         <term>
+          <option>--exitcode-suppress=&lt;spec&gt;</option>
+        </term>
+        <listitem>
+          <para>Used to specify an error ID which should not result in a non-zero exitcode.</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
           <option>--exitcode-suppressions=&lt;file&gt;</option>
         </term>
         <listitem>
@@ -325,6 +372,14 @@ Example: '-UDEBUG'</para>
       </varlistentry>
       <varlistentry>
         <term>
+          <option>--filesdir</option>
+        </term>
+        <listitem>
+          <para>Print the built-in FILESDIR.</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
           <option>-f</option>
         </term>
         <term>
@@ -333,6 +388,22 @@ Example: '-UDEBUG'</para>
         <listitem>
           <para>Force checking of files that have a lot of configurations. Error is printed if such a file is found so there is no reason to use this by
 default. If used together with --max-configs=, the last option is the one that is effective.</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+            <option>--fsigned-char</option>
+        </term>
+        <listitem>
+            <para>Treat char type as signed. This overrides previous --platform options and is overridden by following ones.</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          <option>--funsigned-char</option>
+        </term>
+        <listitem>
+          <para>Treat char type as unsigned. This overrides previous --platform options and is overridden by following ones.</para>
         </listitem>
       </varlistentry>
       <varlistentry>
@@ -474,7 +545,13 @@ There are false positives with this option. Each result must be carefully invest
         </term>
         <listitem>
           <para>Specifies platform specific types and sizes.The available platforms are:
-            <glosslist><glossentry><glossterm>unix32</glossterm><glossdef><para>32 bit unix variant</para></glossdef></glossentry><glossentry><glossterm>unix64</glossterm><glossdef><para>64 bit unix variant</para></glossdef></glossentry><glossentry><glossterm>win32A</glossterm><glossdef><para>32 bit Windows ASCII character encoding</para></glossdef></glossentry><glossentry><glossterm>win32W</glossterm><glossdef><para>32 bit Windows UNICODE character encoding</para></glossdef></glossentry><glossentry><glossterm>win64</glossterm><glossdef><para>64 bit Windows</para></glossdef></glossentry></glosslist>
+            <glosslist>
+              <glossentry><glossterm>unix32</glossterm><glossdef><para>32 bit unix variant</para></glossdef></glossentry>
+              <glossentry><glossterm>unix64</glossterm><glossdef><para>64 bit unix variant</para></glossdef></glossentry>
+              <glossentry><glossterm>win32A</glossterm><glossdef><para>32 bit Windows ASCII character encoding</para></glossdef></glossentry>
+              <glossentry><glossterm>win32W</glossterm><glossdef><para>32 bit Windows UNICODE character encoding</para></glossdef></glossentry>
+              <glossentry><glossterm>win64</glossterm><glossdef><para>64 bit Windows</para></glossdef></glossentry>
+            </glosslist>
             By default the platform which was used to compile Cppcheck is used.
           </para>
         </listitem>
@@ -517,6 +594,26 @@ There are false positives with this option. Each result must be carefully invest
       </varlistentry>
       <varlistentry>
         <term>
+          <option>--report-type=&lt;type&gt;</option>
+        </term>
+        <listitem>
+          <para>Add guideline and classification fields for specified coding standard. The available report types are:
+            <glosslist>
+              <glossentry><glossterm>normal</glossterm><glossdef><para>Default, only show cppcheck error ID and severity)</para></glossdef></glossentry>
+              <glossentry><glossterm>autosar</glossterm><glossdef><para>Autosar</para></glossdef></glossentry>
+              <glossentry><glossterm>cert-c-2016</glossterm><glossdef><para>Cert C 2016</para></glossdef></glossentry>
+              <glossentry><glossterm>cert-cpp-2016</glossterm><glossdef><para>Cert C++ 2016</para></glossdef></glossentry>
+              <glossentry><glossterm>misra-c-2012</glossterm><glossdef><para>Misra C 2012</para></glossdef></glossentry>
+              <glossentry><glossterm>misra-c-2023</glossterm><glossdef><para>Misra C 2023</para></glossdef></glossentry>
+              <glossentry><glossterm>misra-c-2025</glossterm><glossdef><para>Misra C 2025</para></glossdef></glossentry>
+              <glossentry><glossterm>misra-cpp-2008</glossterm><glossdef><para>Misra C++ 2008</para></glossdef></glossentry>
+              <glossentry><glossterm>misra-cpp-2023</glossterm><glossdef><para>Misra C++ 2023</para></glossdef></glossentry>
+            </glosslist>
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
           <option>--rule=&lt;rule&gt;</option>
         </term>
         <listitem>
@@ -533,11 +630,37 @@ There are false positives with this option. Each result must be carefully invest
       </varlistentry>
       <varlistentry>
         <term>
+          <option>--showtime=&lt;mode&gt;</option>
+        </term>
+        <listitem>
+          <para>Show timing information. The available mode are:
+            <glosslist>
+              <glossentry><glossterm>none</glossterm><glossdef><para>Show nothing (default)</para></glossdef></glossentry>
+              <glossentry><glossterm>file</glossterm><glossdef><para>Show for each processed file</para></glossdef></glossentry>
+              <glossentry><glossterm>file-total</glossterm><glossdef><para>Show total time only for each processed file</para></glossdef></glossentry>
+              <glossentry><glossterm>summary</glossterm><glossdef><para>Show a summary at the end</para></glossdef></glossentry>
+              <glossentry><glossterm>top5_file</glossterm><glossdef><para>Show the top 5 for each processed file</para></glossdef></glossentry>
+              <glossentry><glossterm>top5_summary</glossterm><glossdef><para>Show the top 5 summary at the end</para></glossdef></glossentry>
+            </glosslist>
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
           <option>--std=&lt;id&gt;</option>
         </term>
         <listitem>
           <para>Set standard. The available options are:
-            <glosslist><glossentry><glossterm>c89</glossterm><glossdef><para>C code is C89 compatible</para></glossdef></glossentry><glossentry><glossterm>c99</glossterm><glossdef><para>C code is C99 compatible</para></glossdef></glossentry><glossentry><glossterm>c11</glossterm><glossdef><para>C code is C11 compatible (default)</para></glossdef></glossentry><glossentry><glossterm>c++03</glossterm><glossdef><para>C++ code is C++03 compatible</para></glossdef></glossentry><glossentry><glossterm>c++11</glossterm><glossdef><para>C++ code is C++11 compatible (default)</para></glossdef></glossentry></glosslist>
+            <glosslist>
+              <glossentry><glossterm>c89</glossterm><glossdef><para>C code is C89 compatible</para></glossdef></glossentry>
+              <glossentry><glossterm>c99</glossterm><glossdef><para>C code is C99 compatible</para></glossdef></glossentry>
+              <glossentry><glossterm>c11</glossterm><glossdef><para>C code is C11 compatible (default)</para></glossdef></glossentry>
+              <glossentry><glossterm>c++03</glossterm><glossdef><para>C++ code is C++03 compatible</para></glossdef></glossentry>
+              <glossentry><glossterm>c++11</glossterm><glossdef><para>C++ code is C++11 compatible</para></glossdef></glossentry>
+              <glossentry><glossterm>c++14</glossterm><glossdef><para>C++ code is C++14 compatible</para></glossdef></glossentry>
+              <glossentry><glossterm>c++17</glossterm><glossdef><para>C++ code is C++17 compatible</para></glossdef></glossentry>
+              <glossentry><glossterm>c++20</glossterm><glossdef><para>C++ code is C++20 compatible (default)</para></glossdef></glossentry>
+            </glosslist>
           </para>
         </listitem>
       </varlistentry>

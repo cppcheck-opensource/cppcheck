@@ -1,5 +1,6 @@
 The cppcheck team, in alphabetical order:
 
+0x41head
 Abhijit Sawant
 Abhishek Bharadwaj
 Abigail Buccaneer
@@ -21,24 +22,35 @@ Alexey Eryomenko
 Alexey Zhikhartsev
 Alfi Maulana
 Ali Can Demiralp
+Alvin Che-Chia Chang
+Allen Winter
 Alon Alexander
 Alon Liberman
 Ameen Ali
 Andreas Bacher
 Andreas Bießmann
 Andreas Grob
+Andreas Lutsch
 Andreas Pokorny
 Andreas Rönnquist
 Andreas Vollenweider
+Andreas Wilhelm
 Andrei Karas
+Andrew C Aitchison
 Andrew C. Martin
+Andrew D. Bancroft
+Andy Holmes
 Andy Maloney
+Andy Mac Gregor
 Aneesh Azhakesan S
 Ankita Gupta
+anoymouserver
+Anton Lindqvist
 Antti Tuppurainen
 Anurag Garg
 Armin Müller
 Arpit Chaudhary
+Artemis Meursault Gerrard
 August Sodora
 Ayaz Salikhov
 Balázs Tóth
@@ -56,20 +68,27 @@ Ben T
 Bernd Buschinski
 Bill Egert
 Björge Dijkstra
+Björn Blissing
 booga
 Boris Barbulovski
 Boris Egorov
 Boussaffa Walid
 Bo Rydberg
+bzgec
 Carl Michael Grüner Monzón
+Carl Morgan
 Carlo Marcelo Arenas Belón
 Carlos Gomes Martinho
 Carl-Oskar Larsson
+Cary Converse
 Cary R
+Caspar Kielwein
 Changkyoon Kim
 Chris Lalancette
 Christian Ehrlicher
 Christian Franke
+Christian Göttsche
+Christoph Grüninger
 Christoph Schmidt
 Christoph Strehle
 Chuck Larson
@@ -79,23 +98,29 @@ Colomban Wendling
 Conrado Gouvea
 daisuke-chiba
 Daniel Friedrich
+David Korczynski
 Daniel Marjamäki
 David Hallas
 David Korth
 Dávid Slivka
 Debrard Sebastien
 Deepak Gupta
+Degen's Regens
 dencat
+Devansh Varshney
 Diego de las Heras
 Dirk Jagdmann
+Dirk Mueller
 Dmitriy
 Dmitry Marakasov
 Dmitry-Me
+dsamo
 Duraffort
 Edoardo Prezioso
 Eivind Tagseth
 Elbert Pol
 Emmanuel Blot
+Eric Lemanissier
 Eric Malenfant
 Eric Sesterhenn
 Erik Hovland
@@ -103,15 +128,22 @@ Erik Lax
 Ettl Martin
 Even Rouault
 Evgeny Mandrikov
+feelamee
 Felipe Pena
+Felix Faber
 Felix Geyer
 Felix Passenberg
 Felix Wolff
+Florian Mueller
 Florin Iucha
+flovent
 Francesc Elies
+François Berder
+Frank Winklmeier
 Frank Zingsheim
 Frederik Schwarzer
 fu7mu4
+Gaël Bonithon
 Galimov Albert
 Garrett Bodily
 Gary Leutheuser
@@ -119,17 +151,22 @@ gaurav kaushik
 Gennady Feldman
 Georgi D. Sotirov
 Georgy Komarov
+Gerbo Engels
 Gerhard Zlabinger
+Gerik Rhoden
 Gianfranco Costamagna
 Gianluca Scacco
 Gleydson Soares
+Goncalo Mao-Cheia
 Goran Džaferi
 Graham Whitted
 Greg Hewgill
 Guillaume A.
+Guillaume Chauvel
 Guillaume Miossec
 Gustav Palmqvist
 Günther Makulik
+Haowei Hsu
 Harald Scheidl
 Heiko Bauke
 Heiko Eißfeldt
@@ -139,6 +176,7 @@ He Yuqi
 Hoang Tuan Su
 Igor Rondarev
 Igor Zhukov
+Ilya Shipitsin
 Ivan Maidanski
 Iván Matellanes
 Ivan Ryabov
@@ -148,20 +186,27 @@ Jan Egil Ruud
 Jan Hellwig
 János Maros
 Jay Sigbrandt
+Jedrzej Klocek
 Jens Bäckman
 Jens Yllman
 Jérémy Lefaure
 Jes Ramsing
 Jesse Boswell
+Jim Kuhn
 Jim Zhou
 jlguardi
+Joel Johnson
+Johan Bertrand
+Johan Crone
 Johan Samuelson
 John Marshall
 John-Paul Ore
 John Smits
 Jonathan Clohessy
+Jonathan Haehne
 Jonathan Neuschäfer
 Jonathan Thackray
+Jonny Paton
 José Martins
 Jose Roquette
 Joshua Beck
@@ -174,41 +219,52 @@ Jussi Lehtola
 Jørgen Kvalsvik
 Kamil Dudka
 Kartik Bajaj
+Kefu Chai
 keinflue
 Ken-Patrick Lehrmann
 Ketil Skjerve
 Kevin Christian
 Kevin Kendzia
 Kimmo Varis
+Kitsios Konstantinos
 Kleber Tarcísio
 Konrad Grochowski
 Konrad Windszus
 Kumar Ashwani
+Kushal Chandar
 Kyle Chisholm
 Lars Even Almaas
 larudwer
 Lau bakman
 Lauri Nurmi
+Leander Schulten
 Leandro Lisboa Penz
+Leila F. Rahman
 Lena Herscheid
 Leon De Andrade
 Lieven de Cock
 lioncash
 Lionel Gimbert
 Lucas Manuel Rodriguez
+Ludvig Gunne Lindström
 Luis Díaz Más
+Luís Pereira
 Lukas Grützmacher
+Lukas Hiesmayr
 Lukasz Czajczyk
 Łukasz Jankowski
 Luxon Jean-Pierre
+Maarten van der Schrieck
 Maksim Derbasov
 Malcolm Parsons
 Marc-Antoine Perennou
+Marcel Petrick
 Marcel Raad
 Marco Trevisan
 Marek Zmysłowski
 Marian Klymov
 Mark de Wever
+Mark Hermeling
 Markus Elfring
 Martin Delille
 Martin Ettl
@@ -218,6 +274,8 @@ Martin Herren
 Márton Csordás
 Masafumi Koba
 Massimo Paladin
+Mateusz Michalak
+Mateusz Patyk
 Mateusz Pusz
 Mathias De Maré
 Mathias Schmid
@@ -227,6 +285,8 @@ Matthias Schmieder
 Matt Johnson
 Maurice Gilden
 Mavik
+Melroy van den Berg
+Michael Drake
 Michael Løiten
 Miika-Petteri Matikainen
 Mika Attila
@@ -248,12 +308,15 @@ Nicolás Alvarez
 Nicolas Le Cam
 Nilesh Kumar
 Ogawa KenIchi
+Ola Söder
+Oleksandr Labetskyi
 Oleksandr Redko
 Oliver Schode
 Oliver Stöneberg
 Olivier Croquette
 Patrick Oppenlander
 Paul Aitken
+Paul Bersee
 Paul Fultz II
 Pavel Bibergal
 Pavel Pimenov
@@ -264,13 +327,21 @@ Pavol Misik
 Pete Johns
 Peter Pentchev
 Peter Schops
+Philip Chimento
 Philipp Kloke
 Pierre Schweitzer
+Pieter Duchi
+Piotr Idzik
 Pino Toscano
 Pranav Khanna
+Radek Jarecki
+Rainer Wiesenfarth
 Ramzan Bekbulatov
 Raphael Geissert
+Razvan Ioan Alexe
 Reijo Tomperi
+Reshma V Kumar
+Rainer Wiesenfarth
 Riccardo Ghetta
 Richard A. Smith
 Richard Quirk
@@ -281,6 +352,7 @@ Robert Habrich
 Robert Morin
 Roberto Martelloni
 Robert Reif
+Robin Getz
 rofl0r
 Roman Zaytsev Borisovich
 Ronald Hiemstra
@@ -288,18 +360,25 @@ root
 Rosen Penev
 Rudi Danner
 Rudolf Grauberger
+Ryan M. Lederman
 Ryan Pavlik
 Samir Aguiar
 Sam Truscott
 Samuel Degrande
+Samuel Poláček
 Sandeep Dutta
 Savvas Etairidis
+Scott Ehlert
 Scott Furry
+Seafarix Ltd.
 Sebastian Held
 Sebastian Matuschka
 Sébastien Debrard
+Sergei Chernykh
+Sergei Trofimovich
 Sergey Burgsdorf
 Shane Tapp
+Shohei YOSHIDA
 Simon Cornell
 Simon Kagstrom
 Simon Large
@@ -308,6 +387,7 @@ Simon Shanks
 Slava Semushin
 Stas Cymbalov
 Stefan Beller
+Stefan Hagen
 Stefan Naewe
 Stefan van Kessel
 Stefan Weil
@@ -317,33 +397,49 @@ Steve Duan
 Steve Mokris
 Steven Cook
 Steven Myint
+Sune Stolborg Vuorela
 Susi Lehtola
+Sven Wienand
 Swasti Shrivastava
 Sylvain Joubert
 Tam Do Thanh
 Teddy Didé
+Temuri Doghonadze
 Thomas Arnhold
+Tomasz Edward Posluszny
 Thomas Jarosch
 Thomas Niederberger
 Thomas Otto
+Thomas P. K. Healy
 Thomas Sondergaard
 Thorsten Sick
+Tim Blume
 Tim Gerundt
 tititiou36
+Tobias Weber
 Tobias Weibel
 Tomasz Kłoczko
 Tom Pollok
+Tomo Dote
+Tommy Bergman
 Toralf Förster
 Troshin V.S.
 Tyson Nottingham
+Usman Majid
+Valentin Batz
 Valerii Lashmanov
 Vasily Maslyukov
 Veli-Matti Visuri
-WenChung Chiu
 Vesa Pikki
 Ville-Pekka Vahteala
 Ville Skyttä
 Vincent Le Garrec
+Vít Kučera
+Vladimir Petrigo
+Wang Haoyu
+Wang Yang
+WenChung Chiu
+William Jakobsson
 Wolfgang Stöggl
 x29a
 XhmikosR

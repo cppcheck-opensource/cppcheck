@@ -1,16 +1,17 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import unicode_literals
 
 from datetime import date
+import argparse
 import io
 import locale
 import operator
-import optparse
 import os
 import re
 import sys
 import subprocess
+import time
 
 from collections import Counter
 from pygments import highlight
@@ -138,7 +139,7 @@ label.checkBtn > input {
 
 table.summaryTable td { padding: 0 5px 0 5px; }
 
-.statHeader, .severityHeader {
+.statHeader, .severityHeader, .classificationHeader {
     font-weight: bold;
 }
 
@@ -200,7 +201,7 @@ table.summaryTable td { padding: 0 5px 0 5px; }
     padding-right: 6px;
 }
 
-.id-filtered, .severity-filtered, .file-filtered, .tool-filtered, .text-filtered {
+.id-filtered, .severity-filtered, .classification-filtered, .file-filtered, .tool-filtered, .text-filtered {
     visibility: collapse;
 }
 """
@@ -278,6 +279,17 @@ HTML_HEAD = """
         updateFileRows();
       }
 
+      function toggleClassification(cb) {
+        cb.parentElement.classList.toggle("unchecked", !cb.checked);
+        var elements = document.querySelectorAll(".class_" + cb.id);
+
+        for (var i = 0, len = elements.length; i < len; i++) {
+          elements[i].classList.toggle("classification-filtered", !cb.checked);
+        }
+
+        updateFileRows();
+      }
+
       function toggleTool(cb) {
         cb.parentElement.classList.toggle("unchecked", !cb.checked);
 
@@ -339,11 +351,62 @@ HTML_HEAD = """
         var elements = document.querySelectorAll(".fileEntry");
 
         for (var i = 0, len = elements.length; i < len; i++) {
-          var visible = elements[i].querySelector(".issue:not(.id-filtered):not(.severity-filtered):not(.tool-filtered):not(.text-filtered)");
+          var visible = elements[i].querySelector(".issue:not(.id-filtered):not(.severity-filtered):not(.classification-filtered):not(.tool-filtered):not(.text-filtered)");
           elements[i].classList.toggle("file-filtered", !visible);
         }
       }
 
+      function reapplyFilters() {
+        // Reapply ID filters
+        var idToggles = document.querySelectorAll(".idToggle");
+        for (var i = 1; i < idToggles.length; i++) {
+          var cb = idToggles[i];
+          var elements = document.querySelectorAll("." + cb.id);
+          for (var j = 0; j < elements.length; j++) {
+            elements[j].classList.toggle("id-filtered", !cb.checked);
+          }
+        }
+
+        // Reapply severity filters
+        var sevToggles = document.querySelectorAll(".sev_toggle");
+        for (var i = 0; i < sevToggles.length; i++) {
+          var cb = sevToggles[i];
+            var elements = document.querySelectorAll(".sev_" + cb.id);
+          for (var j = 0; j < elements.length; j++) {
+            elements[j].classList.toggle("severity-filtered", !cb.checked);
+          }
+        }
+
+        // Reapply classification filters
+        var classToggles = document.querySelectorAll(".class_toggle");
+        for (var i = 0; i < classToggles.length; i++) {
+          var cb = classToggles[i];
+          var elements = document.querySelectorAll(".class_" + cb.id);
+          for (var j = 0; j < elements.length; j++) {
+            elements[j].classList.toggle("classification-filtered", !cb.checked);
+          }
+        }
+
+        // Reapply tool filters
+        var toolToggles = document.querySelectorAll(".tool_toggle");
+        for (var i = 0; i < toolToggles.length; i++) {
+          var cb = toolToggles[i];
+          var elements;
+          if (cb.id == "clang-tidy")
+            elements = document.querySelectorAll("[class^=clang-tidy-]");
+          else
+            elements = document.querySelectorAll(".issue:not([class^=clang-tidy-])");
+
+          for (var j = 0; j < elements.length; j++) {
+            elements[j].classList.toggle("tool-filtered", !cb.checked);
+          }
+        }
+
+        // Update file rows
+        updateFileRows();
+      }
+
+      window.addEventListener("pageshow", reapplyFilters);
       window.addEventListener("load", initExpandables);
     </script>
   </head>
@@ -371,7 +434,7 @@ HTML_FOOTER = """
     </div>
     <div id="footer" class="footer">
       <p>
-        Created by Cppcheck %s (<a href="https://cppcheck.sourceforge.io">Sourceforge</a>, <a href="irc://irc.freenode.net/cppcheck">IRC</a>)
+        Created by Cppcheck %s (<a href="https://cppcheck.sourceforge.io">Sourceforge</a>, <a href="irc://irc.libera.chat/#cppcheck">IRC</a>)
       </p>
     </div>
     </div>
@@ -382,8 +445,8 @@ HTML_FOOTER = """
 HTML_ERROR = "<span class=\"error2\">&lt;--- %s</span>\n"
 HTML_INCONCLUSIVE = "<span class=\"inconclusive2\">&lt;--- %s</span>\n"
 
-HTML_EXPANDABLE_ERROR = "<div class=\"verbose expandable\"><span class=\"error2\">&lt;--- %s <span class=\"marker\">[+]</span></span><div class=\"content\">%s</div></div>\n"""
-HTML_EXPANDABLE_INCONCLUSIVE = "<div class=\"verbose expandable\"><span class=\"inconclusive2\">&lt;--- %s <span class=\"marker\">[+]</span></span><div class=\"content\">%s</div></div>\n"""
+HTML_EXPANDABLE_ERROR = "<div class=\"verbose expandable\"><span class=\"error2\">&lt;--- %s <span class=\"marker\">[+]</span></span><div class=\"content\">%s</div></div>\n"
+HTML_EXPANDABLE_INCONCLUSIVE = "<div class=\"verbose expandable\"><span class=\"inconclusive2\">&lt;--- %s <span class=\"marker\">[+]</span></span><div class=\"content\">%s</div></div>\n"
 
 # escape() and unescape() takes care of &, < and >.
 html_escape_table = {
@@ -398,20 +461,27 @@ def html_escape(text):
 
 def filter_button(enabled_filters, id, function):
     enabled = enabled_filters.get(id, False)
-    return '\n        <label class="checkBtn%s"><input type="checkbox" onclick="%s(this)" id="%s"%s/>%s</label>'\
+    if not id:
+        id = 'None'
+    return '\n        <label class="checkBtn%s"><input type="checkbox" onclick="%s(this)" id="%s" %s>%s</label>'\
           % (' disabled' if not enabled else '', function, id, 'checked' if enabled else 'disabled', id)
 
 def filter_bar(enabled):
+    severity_bar = ''.join([filter_button(enabled, severity, 'toggleSeverity') for severity in ['error', 'warning', 'portability', 'performance', 'style', 'information']]) + '\n        | '
+    classification_bar = ''.join([filter_button(enabled, _class, 'toggleClassification') for _class in ['Mandatory', 'Required', 'Advisory', 'Document', 'Disapplied', 'L1','L2','L3','']]) + '\n        | '
+    if "checked>" not in severity_bar:
+        severity_bar = ''
+    if "checked>" not in classification_bar:
+        classification_bar = ''
     return ''.join([
      '      <div id="filters">\n'
-    ,''.join([filter_button(enabled, severity, 'toggleSeverity') for severity in ['error', 'warning', 'portability', 'performance', 'style', 'information']])
-    ,'\n        | '
+    ,severity_bar
+    , classification_bar
     ,''.join([filter_button(enabled, tool, 'toggleTool') for tool in ['cppcheck', 'clang-tidy']])
     ,'\n        | '
-    ,'\n        <label class="severityHeader">File: <input type="text" oninput="filterFile(this.value)"/></label>'
-    ,'\n        <label class="severityHeader">Filter: <input type="text" oninput="filterText(this.value)"/></label>'
+    ,'\n        <label class="severityHeader">File: <input type="search" oninput="filterFile(this.value)"></label>'
+    ,'\n        <label class="severityHeader">Filter: <input type="search" oninput="filterText(this.value)"></label>'
     ,'\n      </div>\n'])
-
 def git_blame(errors, path, file, blame_options):
     last_line= errors[-1]['line']
     if last_line == 0:
@@ -422,8 +492,8 @@ def git_blame(errors, path, file, blame_options):
     full_path = os.path.join(path, file)
     path, filename = os.path.split(full_path)
 
-    if path:
-        os.chdir(path)
+    if not path:
+        path = None  # make sure this is None
 
     cmd_args = ['git', 'blame', '-L %d,%d' % (first_line, last_line)]
     if '-w' in blame_options:
@@ -433,12 +503,10 @@ def git_blame(errors, path, file, blame_options):
     cmd_args = cmd_args + ['--porcelain', '--incremental', '--', filename]
 
     try:
-        result = subprocess.check_output(cmd_args)
+        result = subprocess.check_output(cmd_args, cwd=path)
         result = result.decode(locale.getpreferredencoding())
     except:
         return []
-    finally:
-        os.chdir(cwd)
 
     if result.startswith('fatal'):
         return []
@@ -446,7 +514,7 @@ def git_blame(errors, path, file, blame_options):
     blame_data = []
     line_from = 0
     line_to = 0
-    blame_info = dict()
+    blame_info = {}
 
     for line_str in result.splitlines():
         field, _, value = line_str.partition(' ')
@@ -469,20 +537,40 @@ def blame_lookup(blame_data, line):
     return next((data for start, end, data in blame_data if line >= start and line < end), {})
 
 
-def tr_str(td_th, line, id, cwe, severity, message, author, author_mail, date, add_author, tr_class=None, htmlfile=None, message_class=None):
+def tr_str(td_th, line, id, cwe, severity, classification, guideline, message, timestamp, author, author_mail, date, add_author, tr_class=None, htmlfile=None, message_class=None):
     ret = ''
+    items = [id, cwe]
+    if severity:
+        items.append(severity)
+    if classification:
+        items.extend([classification, guideline])
     if htmlfile:
-        ret += '<%s><a href="%s#line-%d">%d</a></%s>' % (td_th, htmlfile, line, line, td_th)
-        for item in (id, cwe, severity):
-            ret += '<%s>%s</%s>' % (td_th, item, td_th)
+        if htmlfile.startswith("http://") or htmlfile.startswith("https://"):
+            # GitHub/GitLab style line anchor
+            href = f"{htmlfile.rstrip('#L1')}#L{line}"
+            # Emit **line number with link**
+            ret += f'<{td_th}><a href="{href}" target="_blank" rel="noopener noreferrer">{line}</a></{td_th}>'
+        else:
+            # local HTML annotated
+            href = f"{htmlfile}#line-{line}"
+            # Emit **line number with link**
+            ret += f'<{td_th}><a href="{href}">{line}</a></{td_th}>'
+
+        # Emit id, cwe, severity, classification, ...
+        for item in items:
+            ret += f'<{td_th}>{item}</{td_th}>'
     else:
-        for item in (line, id, cwe, severity):
+        items.insert(0,line)
+        for item in items:
             ret += '<%s>%s</%s>' % (td_th, item, td_th)
     if message_class:
         message_attribute = ' class="%s"' % message_class
     else:
         message_attribute = ''
     ret += '<%s%s>%s</%s>' % (td_th, message_attribute, html_escape(message), td_th)
+
+    if timestamp:
+        ret += '<%s>%s</%s>' % (td_th, timestamp, td_th)
 
     for field in  add_author:
         if field == 'name':
@@ -555,6 +643,8 @@ class CppCheckHandler(XmlContentHandler):
         self.errors = []
         self.version = '1'
         self.versionCppcheck = ''
+        self.timestamp = ''
+        self.report_type = False
 
     def startElement(self, name, attributes):
         if name == 'results':
@@ -568,7 +658,10 @@ class CppCheckHandler(XmlContentHandler):
     def handleVersion1(self, name, attributes):
         if name != 'error':
             return
-
+        att_class = attributes.get('classification', '')
+        att_guide = attributes.get('guideline', '')
+        if att_class and not self.report_type:
+            self.report_type = True
         self.errors.append({
             'file': attributes.get('file', ''),
             'line': int(attributes.get('line', 0)),
@@ -578,6 +671,9 @@ class CppCheckHandler(XmlContentHandler):
             }],
             'id': attributes['id'],
             'severity': attributes['severity'],
+            'classification': att_class,
+            'guideline': att_guide,
+            'timestamp': self.timestamp,
             'msg': attributes['msg']
         })
 
@@ -585,12 +681,19 @@ class CppCheckHandler(XmlContentHandler):
         if name == 'cppcheck':
             self.versionCppcheck = attributes['version']
         if name == 'error':
+            att_class = attributes.get('classification', '')
+            att_guide = attributes.get('guideline', '')
+            if att_class and not self.report_type:
+                self.report_type = True
             error = {
                 'locations': [],
                 'file': '',
                 'line': 0,
                 'id': attributes['id'],
+                'classification': att_class,
                 'severity': attributes['severity'],
+                'guideline': att_guide,
+                'timestamp': self.timestamp,
                 'msg': attributes['msg'],
                 'verbose': attributes.get('verbose')
             }
@@ -615,53 +718,60 @@ class CppCheckHandler(XmlContentHandler):
                 'line': line,
                 'info': attributes.get('info')
             })
-
-if __name__ == '__main__':
+def main() -> None:
     # Configure all the options this little utility is using.
-    parser = optparse.OptionParser()
-    parser.add_option('--title', dest='title',
-                      help='The title of the project.',
-                      default='[project name]')
-    parser.add_option('--file', dest='file', action="append",
-                      help='The cppcheck xml output file to read defects '
-                           'from. You can combine results from several '
-                           'xml reports i.e. "--file file1.xml --file file2.xml ..". '
-                           'Default is reading from stdin.')
-    parser.add_option('--report-dir', dest='report_dir',
-                      help='The directory where the HTML report content is '
-                           'written.')
-    parser.add_option('--source-dir', dest='source_dir',
-                      help='Base directory where source code files can be '
-                           'found.')
-    parser.add_option('--add-author-information', dest='add_author_information',
-                      help='Blame information to include. '
-                           'Adds specified author information. '
-                           'Specify as comma-separated list of either "name", "email", "date" or "n","e","d". '
-                           'Default: "n,e,d"')
-    parser.add_option('--source-encoding', dest='source_encoding',
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--title', dest='title',
+                        help='The title of the project.',
+                        default='[project name]')
+    parser.add_argument('--file', dest='file', action="append",
+                        help='The cppcheck xml output file to read defects '
+                             'from. You can combine results from several '
+                             'xml reports i.e. "--file file1.xml --file file2.xml ..". '
+                             'Default is reading from stdin.')
+    parser.add_argument('--checkers-report-file', dest='checkers_report',
+                      help='The cppcheck checkers report file as produced '
+                           'with the "--checkers-report" option of cppcheck.')
+    parser.add_argument('--report-dir', dest='report_dir',
+                         help='The directory where the HTML report content is '
+                              'written.')
+    parser.add_argument('--source-dir', dest='source_dir',
+                         help='Base directory where source code files can be '
+                              'found, or a URL to a remote GitHub/GitLab '
+                              'repository including a branch, e.g. '
+                              '--source-dir=https://github.com/<username>/<repo>/blob/<branch>/')
+    parser.add_argument('--add-author-information', dest='add_author_information',
+                        help='Blame information to include. '
+                             'Adds specified author information. '
+                             'Specify as comma-separated list of either "name", "email", "date" or "n","e","d". '
+                             'Default: "n,e,d"')
+    parser.add_argument('--source-encoding', dest='source_encoding',
                       help='Encoding of source code.', default='utf-8')
-    parser.add_option('--blame-options', dest='blame_options',
-                      help='[-w, -M] blame options which you can use to get author and author mail  '
-                           '-w --> not including white spaces and returns original author of the line  '
-                           '-M --> not including moving of lines and returns original author of the line')
+    parser.add_argument('--blame-options', dest='blame_options',
+                        help='[-w, -M] blame options which you can use to get author and author mail  '
+                             '-w --> not including white spaces and returns original author of the line  '
+                             '-M --> not including moving of lines and returns original author of the line')
 
     # Parse options and make sure that we have an output directory set.
-    options, args = parser.parse_args()
+    options = parser.parse_args()
 
     try:
         sys.argv[1]
     except IndexError:  # no arguments give, print --help
         parser.print_help()
-        quit()
+        sys.exit(0)
 
     if not options.report_dir:
         parser.error('No report directory set.')
 
     # Get the directory where source code files are located.
-    cwd = os.getcwd()
     source_dir = os.getcwd()
     if options.source_dir:
         source_dir = options.source_dir
+
+    is_remote = False
+    if source_dir.startswith("http://") or source_dir.startswith("https://"):
+        is_remote = True
 
     add_author_information = []
     if options.add_author_information:
@@ -690,6 +800,13 @@ if __name__ == '__main__':
     try:
         contentHandler = CppCheckHandler()
         for fname in options.file or [sys.stdin]:
+            if options.file is not None:
+                t = os.path.getmtime(fname)
+            else:
+                t = time.time()
+            t_s = time.ctime(t)
+            if t_s is not None:
+                contentHandler.timestamp = t_s
             xml_parse(fname, contentHandler)
     except (XmlParseException, ValueError) as msg:
         print('Failed to parse cppcheck xml file: %s' % msg)
@@ -704,9 +821,14 @@ if __name__ == '__main__':
     for error in contentHandler.errors:
         filename = error['file']
         if filename not in files:
-            files[filename] = {
-                'errors': [], 'htmlfile': str(file_no) + '.html'}
-            file_no = file_no + 1
+            if is_remote:
+                # Construct remote URL for GitHub/GitLab
+                # tr_str() will use the actual line number, so we can just start with line 1
+                remote_url = source_dir.rstrip('/') + '/' + filename + '#L1'
+                files[filename] = {'errors': [], 'htmlfile': remote_url}
+            else:
+                files[filename] = {'errors': [], 'htmlfile': str(file_no) + '.html'}
+                file_no += 1
         files[filename]['errors'].append(error)
 
     # Make sure that the report directory is created if it doesn't exist.
@@ -733,6 +855,8 @@ if __name__ == '__main__':
                     if location.get('info'):
                         newError['msg'] = location['info']
                         newError['severity'] = 'information'
+                        newError['classification'] = ''
+                        newError['guideline'] = ''
                         del newError['verbose']
 
                     errors.append(newError)
@@ -744,14 +868,17 @@ if __name__ == '__main__':
         if filename == '':
             continue
 
+        if is_remote:
+            # Remote source: do NOT generate local annotated HTML files.
+            # The index will still point directly to GitHub/GitLab URLs.
+            continue
+
         source_filename = os.path.join(source_dir, filename)
         try:
             with io.open(source_filename, 'r', encoding=options.source_encoding) as input_file:
                 content = input_file.read()
         except IOError:
-            if error['id'] == 'unmatchedSuppression':
-                continue  # file not found, bail out
-            else:
+            if error['id'] != 'unmatchedSuppression':
                 sys.stderr.write("ERROR: Source file '%s' not found.\n" %
                                  source_filename)
             continue
@@ -788,8 +915,8 @@ if __name__ == '__main__':
                     lexer = guess_lexer(content, stripnl=False)
                 except ClassNotFound:
                     sys.stderr.write("ERROR: Couldn't determine lexer for the file' " + source_filename + " '. Won't be able to syntax highlight this file.")
-                    output_file.write("\n <tr><td colspan=\"5\"> Could not generate content because pygments failed to determine the code type.</td></tr>")
-                    output_file.write("\n <tr><td colspan=\"5\"> Sorry about this.</td></tr>")
+                    output_file.write("\n <tr><td colspan=\"6\"> Could not generate content because pygments failed to determine the code type.</td></tr>")
+                    output_file.write("\n <tr><td colspan=\"6\"> Sorry about this.</td></tr>")
                     continue
 
             if options.source_encoding:
@@ -816,7 +943,12 @@ if __name__ == '__main__':
         for filename, data in sorted(files.items()):
             for error in data['errors']:
                 stats.append(error['id'])  # get the stats
-                filter_enabled[error['severity']] = True
+                if contentHandler.report_type:
+                    filter_enabled[error['severity']] = False
+                    filter_enabled[error['classification']] = True
+                else:
+                    filter_enabled[error['severity']] = True
+                    filter_enabled[error['classification']] = False
                 filter_enabled['clang-tidy' if error['id'].startswith('clang-tidy-') else 'cppcheck'] = True
                 stats_count += 1
 
@@ -856,12 +988,20 @@ if __name__ == '__main__':
         output_file.write('\n           <tr><td></td><td>' + str(stats_count) + '</td><td>total</td></tr>')
         output_file.write('\n       </table>')
         output_file.write('\n       <p><a href="stats.html">Statistics</a></p>')
+        if options.checkers_report:
+            output_file.write('\n       <p><a href="checkers.html">Checkers</a></p>')
         output_file.write(HTML_MENU_END.replace("content", "content_index", 1))
 
         output_file.write('\n       <table class=\"summaryTable\">')
-        output_file.write(
-            '\n       %s' %
-            tr_str('th', 'Line', 'Id', 'CWE', 'Severity', 'Message', 'Author', 'Author mail', 'Date (DD/MM/YYYY)', add_author=add_author_information))
+        if contentHandler.report_type:
+            output_file.write(
+                '\n       %s' %
+                tr_str('th', 'Line', 'Id', 'CWE', '', 'Classification', 'Guideline', 'Message', 'Timestamp',
+                       'Author', 'Author mail', 'Date (DD/MM/YYYY)', add_author=add_author_information))
+        else:
+            output_file.write(
+                '\n       %s' %
+                tr_str('th', 'Line', 'Id', 'CWE', 'Severity', '', '', 'Message', 'Timestamp', 'Author', 'Author mail', 'Date (DD/MM/YYYY)', add_author=add_author_information))
 
         for filename, data in sorted(files.items()):
             file_error = filename in decode_errors or filename.endswith('*')
@@ -870,10 +1010,10 @@ if __name__ == '__main__':
             htmlfile = data.get('htmlfile') if is_file else None
 
             output_file.write("\n      <tbody class=\"fileEntry\">")
-            output_file.write("\n       <tr><td colspan=\"5\">%s</td></tr>" % row_content)
+            output_file.write("\n       <tr><td colspan=\"6\">%s</td></tr>" % row_content)
 
             if filename in decode_errors:
-                output_file.write("\n       <tr><td colspan=\"5\">Could not generated due to UnicodeDecodeError</td></tr>")
+                output_file.write("\n       <tr><td colspan=\"6\">Could not generated due to UnicodeDecodeError</td></tr>")
 
             sorted_errors = sorted(data['errors'], key=lambda k: k['line'])
             blame_data = git_blame(sorted_errors, source_dir, filename, blame_options) if add_author_information else []
@@ -887,23 +1027,31 @@ if __name__ == '__main__':
                 except KeyError:
                     pass
 
+                cwe_url = ""
                 try:
                     if error['cwe']:
                         cwe_url = "<a href=\"https://cwe.mitre.org/data/definitions/" + error['cwe'] + ".html\">" + error['cwe'] + "</a>"
                 except KeyError:
-                    cwe_url = ""
+                    pass
 
                 if error['severity'] in ['error', 'warning']:
                     message_class = error['severity']
 
                 line = error["line"] if is_file else ""
-
+                _severity = error.get('severity', '')
+                _classification = error.get('classification', '')
+                _guideline = error.get('guideline', '')
+                if contentHandler.report_type:
+                    _severity = ''
+                    if not _classification:
+                        _classification = 'None'
+                        _guideline = 'None'
                 output_file.write(
                     '\n         %s' %
-                    tr_str('td', line, error["id"], cwe_url, error["severity"], error["msg"],
+                    tr_str('td', line, error["id"], cwe_url, _severity, _classification, _guideline, error["msg"], error["timestamp"],
                            git_blame_dict.get('author', 'Unknown'), git_blame_dict.get('author-mail', '---'),
                            git_blame_dict.get('author-time', '---'),
-                           tr_class=to_css_selector(error["id"]) + ' sev_' + error["severity"] + ' issue',
+                           tr_class=to_css_selector(error["id"]) + ' sev_' + _severity  +' class_' + _classification + ' issue',
                            message_class=message_class,
                            add_author=add_author_information,
                            htmlfile=htmlfile))
@@ -916,7 +1064,6 @@ if __name__ == '__main__':
         sys.stderr.write("\nConsider changing source-encoding (for example: \"htmlreport ... --source-encoding=\"iso8859-1\"\"\n")
 
     print('Creating style.css file')
-    os.chdir(cwd)       # going back to the cwd to find style.css
     with io.open(os.path.join(options.report_dir, 'style.css'), 'w') as css_file:
         css_file.write(STYLE_FILE)
 
@@ -983,4 +1130,28 @@ if __name__ == '__main__':
 
         stats_file.write(HTML_FOOTER % contentHandler.versionCppcheck)
 
+    if options.checkers_report:
+        print("Creating checkers.html (checkers report)\n")
+
+        with io.open(os.path.join(options.report_dir, 'checkers.html'), 'w') as checkers_file:
+
+            checkers_file.write(HTML_HEAD % (options.title, '', options.title, ': Checkers'))
+            checkers_file.write(HTML_HEAD_END)
+
+            checkers_file.write(HTML_MENU.replace('id="menu"', 'id="menu_index"', 1).replace("Defects:", "Back to summary", 1) % (''))
+            checkers_file.write(HTML_MENU_END.replace("content", "content_index", 1))
+
+            with io.open(options.checkers_report, 'r', encoding=options.source_encoding) as checkers_report:
+                content = checkers_report.read()
+
+                checkers_file.write("<pre>\n")
+                checkers_file.write(html_escape(content))
+                checkers_file.write("</pre>\n")
+
+            checkers_file.write(HTML_FOOTER % contentHandler.versionCppcheck)
+
     print("\nOpen '" + options.report_dir + "/index.html' to see the results.")
+
+
+if __name__ == "__main__":
+    main()

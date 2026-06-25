@@ -1,0 +1,9 @@
+samples\arrayIndexOutOfBounds_2\bad.c:6:10: error: Array 'a[2]' accessed at index 2, which is out of bounds. [arrayIndexOutOfBounds]
+        a[i] = 0;
+         ^
+samples\arrayIndexOutOfBounds_2\bad.c:5:19: note: Assuming that condition 'i<3' is not redundant
+    for (i = 0; i < 3; i++)
+                  ^
+samples\arrayIndexOutOfBounds_2\bad.c:6:10: note: Array index out of bounds
+        a[i] = 0;
+         ^

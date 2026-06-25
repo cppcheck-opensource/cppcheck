@@ -21,21 +21,22 @@ def find_cppcheck_binary():
 def dump_create(fpath, *argv):
     cppcheck_binary = find_cppcheck_binary()
     cmd = [cppcheck_binary, "--dump", "-DDUMMY", "--quiet", fpath] + list(argv)
-    p = subprocess.Popen(cmd)
-    p.communicate()
-    if p.returncode != 0:
-        raise OSError("cppcheck returns error code: %d" % p.returncode)
-    subprocess.Popen(["sync"])
+    with subprocess.Popen(cmd) as p:
+        p.communicate()
+        if p.returncode != 0:
+            raise OSError("cppcheck returns error code: %d" % p.returncode)
 
 
 def dump_remove(fpath):
-    subprocess.Popen(["rm", "-f", fpath + ".dump"])
+    os.remove(fpath + ".dump")
 
 
 def convert_json_output(raw_json_strings):
     """Convert raw stdout/stderr cppcheck JSON output to python dict."""
     json_output = {}
     for line in raw_json_strings:
+        if line.startswith('{"summary":'):
+            continue
         try:
             json_line = json.loads(line)
             #  json_output[json_line['errorId']] = json_line

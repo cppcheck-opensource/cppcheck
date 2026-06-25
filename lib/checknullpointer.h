@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,11 +23,11 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
-#include "ctu.h"
-#include "valueflow.h"
 
 #include <list>
+#include <set>
 #include <string>
 
 class ErrorLogger;
@@ -36,8 +36,9 @@ class Settings;
 class Token;
 class Tokenizer;
 
-namespace tinyxml2 {
-    class XMLElement;
+namespace ValueFlow
+{
+    class Value;
 }
 
 /// @addtogroup Checks
@@ -49,29 +50,36 @@ namespace tinyxml2 {
 class CPPCHECKLIB CheckNullPointer : public Check {
 public:
     /** @brief This constructor is used when registering the CheckNullPointer */
-    CheckNullPointer() : Check(myName()) {}
+    CheckNullPointer() : Check("Null pointer") {}
 
-    /** @brief This constructor is used when running checks. */
-    CheckNullPointer(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
+private:
     /** @brief Run checks against the normal token list */
-    void runChecks(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger) override {
-        CheckNullPointer checkNullPointer(tokenizer, settings, errorLogger);
-        checkNullPointer.nullPointer();
-        checkNullPointer.arithmetic();
-        checkNullPointer.nullConstantDereference();
-    }
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
-    /**
-     * @brief parse a function call and extract information about variable usage
-     * @param tok first token
-     * @param var variables that the function read / write.
-     * @param library --library files data
-     */
-    static void parseFunctionCall(const Token &tok,
-                                  std::list<const Token *> &var,
-                                  const Library *library);
+    /** @brief Parse current TU and extract file info */
+    const Check::FileInfo *getFileInfo(const Tokenizer &tokenizer, const Settings &settings, const std::string& currentConfig) const override;
+
+    const Check::FileInfo * loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement, const std::string& file0) const override;
+
+    /** @brief Analyse all file infos for all TU */
+    bool analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<const Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger) override;
+
+    /** Get error messages. Used by --errorlist */
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
+
+    /** class info in WIKI format. Used by --doc */
+    std::string classInfo() const override {
+        return "Null pointers\n"
+               "- null pointer dereferencing\n"
+               "- undefined null pointer arithmetic\n";
+    }
+};
+
+class CPPCHECKLIB CheckNullPointerImpl : public CheckImpl {
+public:
+    /** @brief This constructor is used when running checks. */
+    CheckNullPointerImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /**
      * Is there a pointer dereference? Everything that should result in
@@ -84,7 +92,16 @@ public:
      */
     bool isPointerDeRef(const Token *tok, bool &unknown) const;
 
-    static bool isPointerDeRef(const Token *tok, bool &unknown, const Settings *settings);
+    static bool isPointerDeRef(const Token *tok, bool &unknown, const Settings &settings, bool checkNullArg = true);
+
+    /**
+     * @brief parse a function call and extract information about variable usage
+     * @param tok first token
+     * @param library --library files data
+     * @param checkNullArg perform isnullargbad check for each argument?
+     * @return list of variables that the function reads / writes.
+     */
+    static std::list<const Token*> parseFunctionCall(const Token &tok, const Library &library, bool checkNullArg = true);
 
     /** @brief possible null pointer dereference */
     void nullPointer();
@@ -92,62 +109,25 @@ public:
     /** @brief dereferencing null constant (after Tokenizer::simplifyKnownVariables) */
     void nullConstantDereference();
 
-    void nullPointerError(const Token *tok) {
-        ValueFlow::Value v(0);
-        v.setKnown();
-        nullPointerError(tok, "", &v, false);
-    }
+    void nullPointerError(const Token *tok);
     void nullPointerError(const Token *tok, const std::string &varname, const ValueFlow::Value* value, bool inconclusive);
-
-    /* data for multifile checking */
-    class MyFileInfo : public Check::FileInfo {
-    public:
-        /** function arguments that are dereferenced without checking if they are null */
-        std::list<CTU::FileInfo::UnsafeUsage> unsafeUsage;
-
-        /** Convert MyFileInfo data into xml string */
-        std::string toString() const override;
-    };
-
-    /** @brief Parse current TU and extract file info */
-    Check::FileInfo *getFileInfo(const Tokenizer *tokenizer, const Settings *settings) const override;
-
-    Check::FileInfo * loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement) const override;
-
-    /** @brief Analyse all file infos for all TU */
-    bool analyseWholeProgram(const CTU::FileInfo *ctu, const std::list<Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger) override;
-
-private:
-    /** Get error messages. Used by --errorlist */
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override {
-        CheckNullPointer c(nullptr, settings, errorLogger);
-        c.nullPointerError(nullptr, "pointer", nullptr, false);
-        c.pointerArithmeticError(nullptr, nullptr, false);
-        c.redundantConditionWarning(nullptr, nullptr, nullptr, false);
-    }
-
-    /** Name of check */
-    static std::string myName() {
-        return "Null pointer";
-    }
-
-    /** class info in WIKI format. Used by --doc */
-    std::string classInfo() const override {
-        return "Null pointers\n"
-               "- null pointer dereferencing\n"
-               "- undefined null pointer arithmetic\n";
-    }
 
     /**
      * @brief Does one part of the check for nullPointer().
      * Dereferencing a pointer and then checking if it's NULL..
      */
-    void nullPointerByDeRefAndChec();
+    void nullPointerByDeRefAndCheck();
 
     /** undefined null pointer arithmetic */
     void arithmetic();
     void pointerArithmeticError(const Token* tok, const ValueFlow::Value *value, bool inconclusive);
     void redundantConditionWarning(const Token* tok, const ValueFlow::Value *value, const Token *condition, bool inconclusive);
+
+    bool diag(const Token* tok) {
+        return !mDiag.emplace(tok).second;
+    }
+
+    std::set<const Token*> mDiag;
 };
 /// @}
 //---------------------------------------------------------------------------

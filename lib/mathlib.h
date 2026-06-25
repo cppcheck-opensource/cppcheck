@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,8 +23,14 @@
 
 #include "config.h"
 
-#include <sstream>
+#include <cstdint>
 #include <string>
+
+#if defined(HAVE_BOOST) && defined(HAVE_BOOST_INT128)
+#include <boost/multiprecision/cpp_int.hpp>
+#endif
+
+class Token;
 
 /// @addtogroup Core
 /// @{
@@ -32,20 +38,29 @@
 /** @brief simple math functions that uses operands stored in std::string. useful when performing math on tokens. */
 
 class CPPCHECKLIB MathLib {
-    friend class TestMathLib;
-
 public:
+#if defined(HAVE_BOOST) && defined(HAVE_BOOST_INT128)
+    using bigint = boost::multiprecision::int128_t;
+    using biguint = boost::multiprecision::uint128_t;
+#else
+    using bigint = long long;
+    using biguint = unsigned long long;
+#endif
+
     /** @brief value class */
     class value {
     private:
-        long long mIntValue;
-        double mDoubleValue;
-        enum class Type { INT, LONG, LONGLONG, FLOAT } mType;
-        bool mIsUnsigned;
+        bigint mIntValue{};
+        double mDoubleValue{};
+        enum class Type : std::uint8_t { INT, LONG, LONGLONG, FLOAT } mType;
+        bool mIsUnsigned{};
 
         void promote(const value &v);
 
     public:
+        /**
+         * @throws InternalError thrown on invalid value
+         */
         explicit value(const std::string &s);
         std::string str() const;
         bool isInt() const {
@@ -56,29 +71,47 @@ public:
         }
 
         double getDoubleValue() const {
-            return isFloat() ? mDoubleValue : (double)mIntValue;
+            return isFloat() ? mDoubleValue : static_cast<double>(mIntValue);
         }
 
+        /**
+         * @throws InternalError thrown on invalid/unhandled calculation or division by zero
+         */
         static value calc(char op, const value &v1, const value &v2);
         int compare(const value &v) const;
         value add(int v) const;
+        /**
+         * @throws InternalError thrown if operand is not an integer
+         */
         value shiftLeft(const value &v) const;
+        /**
+         * @throws InternalError thrown if operand is not an integer
+         */
         value shiftRight(const value &v) const;
     };
 
-    typedef long long bigint;
-    typedef unsigned long long biguint;
     static const int bigint_bits;
 
-    static bigint toLongNumber(const std::string & str);
-    static biguint toULongNumber(const std::string & str);
+    /** @brief for conversion of numeric literals - for atoi-like conversions please use strToInt() */
+    static bigint toBigNumber(const Token * tok);
+    /** @brief for conversion of numeric literals - for atoi-like conversions please use strToInt()
+     * @throws InternalError thrown if conversion failed
+     */
+    static bigint toBigNumber(const std::string & str, const Token *tok = nullptr);
+    /** @brief for conversion of numeric literals - for atoi-like conversions please use strToInt() */
+    static biguint toBigUNumber(const Token * tok);
+    /** @brief for conversion of numeric literals - for atoi-like conversions please use strToInt()
+     * @throws InternalError thrown if conversion failed
+     */
+    static biguint toBigUNumber(const std::string & str, const Token *tok = nullptr);
 
-    template<class T> static std::string toString(T value) {
-        std::ostringstream result;
-        result << value;
-        return result.str();
-    }
-    static double toDoubleNumber(const std::string & str);
+    template<class T> static std::string toString(T value) = delete;
+    /** @brief for conversion of numeric literals */
+    static double toDoubleNumber(const Token * tok);
+    /** @brief for conversion of numeric literals
+     * @throws InternalError thrown if conversion failed
+     */
+    static double toDoubleNumber(const std::string & str, const Token * tok = nullptr);
 
     static bool isInt(const std::string & str);
     static bool isFloat(const std::string &str);
@@ -104,8 +137,17 @@ public:
     static std::string add(const std::string & first, const std::string & second);
     static std::string subtract(const std::string & first, const std::string & second);
     static std::string multiply(const std::string & first, const std::string & second);
+    /**
+     * @throws InternalError thrown on overflow or division by zero
+     */
     static std::string divide(const std::string & first, const std::string & second);
+    /**
+     * @throws InternalError thrown on division by zero
+     */
     static std::string mod(const std::string & first, const std::string & second);
+    /**
+     * @throws InternalError thrown on unexpected action
+     */
     static std::string calculate(const std::string & first, const std::string & second, char action);
 
     static std::string sin(const std::string & tok);
@@ -127,13 +169,6 @@ public:
     static bool isOctalDigit(char c);
 
     static unsigned int encodeMultiChar(const std::string& str);
-
-    /**
-     * \param[in] iCode Code being considered
-     * \param[in] iPos A posision within iCode
-     * \return Whether iCode[iPos] is a C++14 digit separator
-     */
-    static bool isDigitSeparator(const std::string& iCode, std::string::size_type iPos);
 };
 
 MathLib::value operator+(const MathLib::value &v1, const MathLib::value &v2);
@@ -147,7 +182,9 @@ MathLib::value operator^(const MathLib::value &v1, const MathLib::value &v2);
 MathLib::value operator<<(const MathLib::value &v1, const MathLib::value &v2);
 MathLib::value operator>>(const MathLib::value &v1, const MathLib::value &v2);
 
-template<> CPPCHECKLIB std::string MathLib::toString<double>(double value); // Declare specialization to avoid linker problems
+template<> CPPCHECKLIB std::string MathLib::toString<MathLib::bigint>(MathLib::bigint value);
+template<> CPPCHECKLIB std::string MathLib::toString<MathLib::biguint>(MathLib::biguint value);
+template<> CPPCHECKLIB std::string MathLib::toString<double>(double value);
 
 /// @}
 //---------------------------------------------------------------------------

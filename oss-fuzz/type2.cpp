@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2024 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,8 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <sstream>
 #include "type2.h"
+
+#include <cstring>
 
 static int getValue(const uint8_t *data, size_t dataSize, uint8_t maxValue, bool *done = nullptr)
 {
@@ -52,19 +53,20 @@ static std::string generateExpression2_lvalue(const uint8_t *data, size_t dataSi
 
 static std::string generateExpression2_Op(const uint8_t *data, size_t dataSize, uint8_t numberOfGlobalConstants)
 {
-    std::ostringstream code;
+    std::string code;
     switch (getValue(data, dataSize, 3)) {
     case 0:
-        code << generateExpression2_lvalue(data, dataSize);
+        code += generateExpression2_lvalue(data, dataSize);
         break;
     case 1:
-        code << "globalconstant" << (1 + getValue(data, dataSize, numberOfGlobalConstants));
+        code += "globalconstant";
+        code += (1 + getValue(data, dataSize, numberOfGlobalConstants));
         break;
     case 2:
-        code << (getValue(data, dataSize, 0x80) * 0x80 + getValue(data, dataSize, 0x80));
+        code += (getValue(data, dataSize, 0x80) * 0x80 + getValue(data, dataSize, 0x80));
         break;
     }
-    return code.str();
+    return code;
 }
 
 static std::string generateExpression2_Expr(const uint8_t *data, size_t dataSize, uint8_t numberOfGlobalConstants, int depth=0)
@@ -92,9 +94,9 @@ static std::string generateExpression2_Expr(const uint8_t *data, size_t dataSize
     }
     case 2: {
         const char *u = unop[getValue(data,dataSize,sizeof(unop)/sizeof(*unop))];
-        if (u == std::string("()"))
+        if (strcmp(u, "()") == 0)
             return "(" + generateExpression2_Expr(data, dataSize, numberOfGlobalConstants, depth) + ")";
-        else if (u == std::string("++") || u == std::string("--"))
+        else if (strcmp(u, "++") == 0 || strcmp(u, "--") == 0)
             return u + generateExpression2_lvalue(data, dataSize);
         return u + generateExpression2_Expr(data, dataSize, numberOfGlobalConstants, depth);
     }
@@ -128,12 +130,14 @@ static std::string generateExpression2_conditionalCode(const std::string &indent
                                                        size_t dataSize,
                                                        uint8_t numberOfGlobalConstants)
 {
-    std::ostringstream code;
+    std::string code;
 
     if (indent.empty())
-        code << functionStart();
-    else
-        code << indent << "{\n";
+        code += functionStart();
+    else {
+        code += indent;
+        code += "{\n";
+    }
 
     for (int line = 0; line < 4 || indent.empty(); ++line) {
         bool done = false;
@@ -148,37 +152,60 @@ static std::string generateExpression2_conditionalCode(const std::string &indent
                           ((type1 >= 5) ? mostLikelyType : type1);
 
         if (type2 == 0) {
-            code << indent << "    var" << getValue(data, dataSize, 5) << "=" << generateExpression2_Expr(data, dataSize, numberOfGlobalConstants) << ";\n";
+            code += indent;
+            code += "    var";
+            code += getValue(data, dataSize, 5);
+            code += "=";
+            code += generateExpression2_Expr(data, dataSize, numberOfGlobalConstants);
+            code += ";\n";
         } else if (type2 == 1) {
-            code << indent << "    if (" << generateExpression2_Cond(data, dataSize, numberOfGlobalConstants) << ")\n";
-            code << generateExpression2_conditionalCode(indent + "    ", data, dataSize, numberOfGlobalConstants);
+            code += indent;
+            code += "    if (";
+            code += generateExpression2_Cond(data, dataSize, numberOfGlobalConstants);
+            code += ")\n";
+            code += generateExpression2_conditionalCode(indent + "    ", data, dataSize, numberOfGlobalConstants);
         } else if (type2 == 2) {
-            code << indent << "    if (" << generateExpression2_Cond(data, dataSize, numberOfGlobalConstants) << ")\n";
-            code << generateExpression2_conditionalCode(indent + "    ", data, dataSize, numberOfGlobalConstants);
-            code << indent << "    else\n";
-            code << generateExpression2_conditionalCode(indent + "    ", data, dataSize, numberOfGlobalConstants);
+            code += indent;
+            code += "    if (";
+            code += generateExpression2_Cond(data, dataSize, numberOfGlobalConstants);
+            code += ")\n";
+            code += generateExpression2_conditionalCode(indent + "    ", data, dataSize, numberOfGlobalConstants);
+            code += indent;
+            code += "    else\n";
+            code += generateExpression2_conditionalCode(indent + "    ", data, dataSize, numberOfGlobalConstants);
         } else if (type2 == 3) {
-            code << indent << "    while (" << generateExpression2_Cond(data, dataSize, numberOfGlobalConstants) << ")\n";
-            code << generateExpression2_conditionalCode(indent + "    ", data, dataSize, numberOfGlobalConstants);
+            code += indent;
+            code += "    while (";
+            code += generateExpression2_Cond(data, dataSize, numberOfGlobalConstants);
+            code += ")\n";
+            code += generateExpression2_conditionalCode(indent + "    ", data, dataSize, numberOfGlobalConstants);
         } else if (type2 == 4) {
-            code << indent << "    return " << generateExpression2_Expr(data, dataSize, numberOfGlobalConstants) << ";\n";
-            if (indent.empty())
-                code << "}\n\n" << functionStart();
+            code += indent;
+            code += "    return ";
+            code += generateExpression2_Expr(data, dataSize, numberOfGlobalConstants);
+            code += ";\n";
+            if (indent.empty()) {
+                code += "}\n\n";
+                code += functionStart();
+            }
             else
                 break;
         }
     }
 
-    if (!indent.empty())
-        code << indent << "}\n";
-    else
-        code << "    return 0;\n}\n";
-    return code.str();
+    if (!indent.empty()) {
+        code += indent;
+        code += "}\n";
+    }
+    else {
+        code += "    return 0;\n}\n";
+    }
+    return code;
 }
 
 std::string generateCode2(const uint8_t *data, size_t dataSize)
 {
-    std::ostringstream code;
+    std::string code;
 
     // create global constants
     constexpr uint8_t numberOfGlobalConstants = 0;
@@ -190,15 +217,15 @@ std::string generateCode2(const uint8_t *data, size_t dataSize)
        }
      */
 
-    code << "int var1 = 1;\n"
-        "int var2 = 0;\n"
-        "int var3 = 1;\n"
-        "int var4 = 0;\n"
-        "int var5 = -1;\n\n";
+    code += "int var1 = 1;\n"
+            "int var2 = 0;\n"
+            "int var3 = 1;\n"
+            "int var4 = 0;\n"
+            "int var5 = -1;\n\n";
 
-    code << generateExpression2_conditionalCode("", data, dataSize, numberOfGlobalConstants);
+    code += generateExpression2_conditionalCode("", data, dataSize, numberOfGlobalConstants);
 
-    return code.str();
+    return code;
 }
 
 

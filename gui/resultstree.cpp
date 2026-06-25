@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,85 +20,127 @@
 
 #include "application.h"
 #include "applicationlist.h"
+#include "checkers.h"
 #include "common.h"
 #include "erroritem.h"
+#include "errorlogger.h"
+#include "errortypes.h"
 #include "path.h"
 #include "projectfile.h"
 #include "report.h"
+#include "resultitem.h"
 #include "showtypes.h"
 #include "suppressions.h"
 #include "threadhandler.h"
+#include "utils.h"
 #include "xmlreportv2.h"
 
-#include <string>
+#include <algorithm>
 #include <utility>
 
 #include <QAction>
 #include <QApplication>
 #include <QClipboard>
+#include <QContextMenuEvent>
 #include <QDebug>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFileInfo>
 #include <QFileDialog>
+#include <QIcon>
+#include <QItemSelectionModel>
 #include <QKeyEvent>
-#include <QList>
-#include <QMap>
+#include <QLocale>
 #include <QMenu>
 #include <QMessageBox>
+#include <QModelIndex>
+#include <QObject>
 #include <QProcess>
+#include <QSet>
 #include <QSettings>
 #include <QSignalMapper>
+#include <QStandardItemModel>
 #include <QUrl>
-#include <QVariant>
-
-static const char COLUMN[] = "column";
-static const char CWE[] = "cwe";
-static const char ERRORID[] = "id";
-static const char FILENAME[] = "file";
-static const char FILE0[] = "file0";
-static const char FUNCTION[] = "function";
-static const char HASH[] = "hash";
-static const char HIDE[] = "hide";
-static const char INCOMPLETE[] = "incomplete";
-static const char INCONCLUSIVE[] = "inconclusive";
-static const char LINE[] = "line";
-static const char MESSAGE[] = "message";
-static const char SEVERITY[] = "severity";
-static const char SINCEDATE[] = "sinceDate";
-static const char SYMBOLNAMES[] = "symbolNames";
-static const char SUMMARY[] = "summary";
-static const char TAGS[] = "tags";
+#include <Qt>
+#include <QHeaderView>
 
 // These must match column headers given in ResultsTree::translate()
-static const int COLUMN_SINCE_DATE = 6;
-static const int COLUMN_TAGS       = 7;
+static constexpr int COLUMN_FILE                  = 0;
+static constexpr int COLUMN_LINE                  = 1;
+static constexpr int COLUMN_SEVERITY              = 2;
+static constexpr int COLUMN_MISRA_CLASSIFICATION  = 3;
+static constexpr int COLUMN_CERT_LEVEL            = 4;
+static constexpr int COLUMN_INCONCLUSIVE          = 5;
+static constexpr int COLUMN_SUMMARY               = 6;
+static constexpr int COLUMN_ID                    = 7;
+static constexpr int COLUMN_MISRA_GUIDELINE       = 8;
+static constexpr int COLUMN_CERT_RULE             = 9;
+static constexpr int COLUMN_SINCE_DATE            = 10;
+static constexpr int COLUMN_TAGS                  = 11;
+static constexpr int COLUMN_CWE                   = 12;
+
+static QString getGuideline(ReportType reportType, const std::map<std::string, std::string> &guidelineMapping,
+                            const QString& errorId, Severity severity) {
+    return QString::fromStdString(getGuideline(errorId.toStdString(),
+                                               reportType, guidelineMapping,
+                                               severity));
+}
+
+static QString getClassification(ReportType reportType, const QString& guideline) {
+    return QString::fromStdString(getClassification(guideline.toStdString(), reportType));
+}
+
+static Severity getSeverityFromClassification(const QString &c) {
+    if (c == checkers::Man)
+        return Severity::error;
+    if (c == checkers::Req)
+        return Severity::warning;
+    if (c == checkers::Adv)
+        return Severity::style;
+    if (c == checkers::Doc)
+        return Severity::information;
+    if (c == "L1")
+        return Severity::error;
+    if (c == "L2")
+        return Severity::warning;
+    if (c == "L3")
+        return Severity::style;
+    return Severity::none;
+}
+
+static QStringList getLabels() {
+    return QStringList{
+        QObject::tr("File"),
+        QObject::tr("Line"),
+        QObject::tr("Severity"),
+        QObject::tr("Classification"),
+        QObject::tr("Level"),
+        QObject::tr("Inconclusive"),
+        QObject::tr("Summary"),
+        QObject::tr("Id"),
+        QObject::tr("Guideline"),
+        QObject::tr("Rule"),
+        QObject::tr("Since date"),
+        QObject::tr("Tags"),
+        "CWE"};
+}
+
+static Severity getSeverity(ReportType reportType, const ErrorItem& errorItem) {
+    return reportType == ReportType::normal ? errorItem.severity : getSeverityFromClassification(errorItem.classification);
+}
 
 ResultsTree::ResultsTree(QWidget * parent) :
     QTreeView(parent),
-    mSettings(nullptr),
-    mApplications(nullptr),
-    mContextItem(nullptr),
-    mShowFullPath(false),
-    mSaveFullPath(false),
-    mSaveAllErrors(true),
-    mShowErrorId(false),
-    mVisibleErrors(false),
-    mSelectionModel(nullptr),
-    mThread(nullptr),
-    mShowCppcheck(true),
-    mShowClang(true)
+    mModel(new QStandardItemModel)
 {
-    setModel(&mModel);
+    setModel(mModel);
     translate(); // Adds columns to grid
+    clear();
     setExpandsOnDoubleClick(false);
     setSortingEnabled(true);
 
     connect(this, &ResultsTree::doubleClicked, this, &ResultsTree::quickStartApplication);
 }
-
-ResultsTree::~ResultsTree()
-{}
 
 void ResultsTree::keyPressEvent(QKeyEvent *event)
 {
@@ -106,6 +148,52 @@ void ResultsTree::keyPressEvent(QKeyEvent *event)
         quickStartApplication(this->currentIndex());
     }
     QTreeView::keyPressEvent(event);
+}
+
+void ResultsTree::setReportType(ReportType reportType) {
+    mReportType = reportType;
+
+    mGuideline = createGuidelineMapping(reportType);
+
+    for (int i = 0; i < mModel->rowCount(); ++i) {
+        auto *fileItem = dynamic_cast<ResultItem*>(mModel->item(i, COLUMN_FILE));
+        if (!fileItem)
+            continue;
+        for (int j = 0; j < fileItem->rowCount(); ++j) {
+            QSharedPointer<ErrorItem>& errorItem = dynamic_cast<ResultItem*>(fileItem->child(j,0))->errorItem;
+            errorItem->guideline = getGuideline(mReportType, mGuideline, errorItem->errorId, errorItem->severity);
+            errorItem->classification = getClassification(mReportType, errorItem->guideline);
+            dynamic_cast<ResultItem*>(fileItem->child(j, COLUMN_FILE))->setIconFileName(severityToIcon(getSeverity(reportType, *errorItem)));
+            fileItem->child(j, COLUMN_CERT_LEVEL)->setText(errorItem->classification);
+            fileItem->child(j, COLUMN_CERT_RULE)->setText(errorItem->guideline);
+            fileItem->child(j, COLUMN_MISRA_CLASSIFICATION)->setText(errorItem->classification);
+            fileItem->child(j, COLUMN_MISRA_GUIDELINE)->setText(errorItem->guideline);
+        }
+    }
+
+    if (isAutosarMisraReport()) {
+        showColumn(COLUMN_MISRA_CLASSIFICATION);
+        showColumn(COLUMN_MISRA_GUIDELINE);
+    } else {
+        hideColumn(COLUMN_MISRA_CLASSIFICATION);
+        hideColumn(COLUMN_MISRA_GUIDELINE);
+    }
+
+    if (isCertReport()) {
+        showColumn(COLUMN_CERT_LEVEL);
+        showColumn(COLUMN_CERT_RULE);
+    } else {
+        hideColumn(COLUMN_CERT_LEVEL);
+        hideColumn(COLUMN_CERT_RULE);
+    }
+
+    if (mReportType == ReportType::normal) {
+        showColumn(COLUMN_SEVERITY);
+    } else {
+        hideColumn(COLUMN_SEVERITY);
+    }
+
+    refreshTree();
 }
 
 void ResultsTree::initialize(QSettings *settings, ApplicationList *list, ThreadHandler *checkThreadHandler)
@@ -116,212 +204,151 @@ void ResultsTree::initialize(QSettings *settings, ApplicationList *list, ThreadH
     loadSettings();
 }
 
-
-QStandardItem *ResultsTree::createNormalItem(const QString &name)
+ResultItem *ResultsTree::createNormalItem(const QString &text, QSharedPointer<ErrorItem> errorItem, ResultItem::Type type, int errorPathIndex)
 {
-    QStandardItem *item = new QStandardItem(name);
-    item->setData(name, Qt::ToolTipRole);
+    auto *item = new ResultItem(std::move(errorItem), type, errorPathIndex);
+    item->setText(text);
     item->setEditable(false);
     return item;
 }
 
-QStandardItem *ResultsTree::createCheckboxItem(bool checked)
+ResultItem *ResultsTree::createFilenameItem(const QSharedPointer<ErrorItem>& errorItem, ResultItem::Type type, int errorPathIndex)
 {
-    QStandardItem *item = new QStandardItem;
+    auto *item = new ResultItem(errorItem, type, errorPathIndex);
+    item->setText(QDir::toNativeSeparators(stripPath(errorItem->errorPath[errorPathIndex].file, false)));
+    item->setEditable(false);
+    return item;
+}
+
+ResultItem *ResultsTree::createCheckboxItem(bool checked, QSharedPointer<ErrorItem> errorItem, ResultItem::Type type, int errorPathIndex)
+{
+    auto *item = new ResultItem(std::move(errorItem), type, errorPathIndex);
     item->setCheckable(true);
     item->setCheckState(checked ? Qt::Checked : Qt::Unchecked);
     item->setEnabled(false);
     return item;
 }
 
-QStandardItem *ResultsTree::createLineNumberItem(const QString &linenumber)
+ResultItem *ResultsTree::createLineNumberItem(int linenumber, QSharedPointer<ErrorItem> errorItem, ResultItem::Type type, int errorPathIndex)
 {
-    QStandardItem *item = new QStandardItem();
-    item->setData(QVariant(linenumber.toInt()), Qt::DisplayRole);
-    item->setToolTip(linenumber);
+    auto *item = new ResultItem(std::move(errorItem), type, errorPathIndex);
+    item->setText(QString::number(linenumber));
     item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
     item->setEditable(false);
     return item;
 }
 
-bool ResultsTree::addErrorItem(const ErrorItem &item)
+bool ResultsTree::addErrorItem(const ErrorItem& errorItem)
 {
-    if (item.errorPath.isEmpty()) {
+    if (errorItem.errorPath.isEmpty())
         return false;
+
+    const QString s = errorItem.toString();
+    if (mErrorList.contains(s))
+        return false;
+    mErrorList.append(s);
+
+    QSharedPointer<ErrorItem> errorItemPtr{new ErrorItem(errorItem)};
+
+    if (mReportType != ReportType::normal) {
+        errorItemPtr->guideline = getGuideline(mReportType, mGuideline, errorItemPtr->errorId, errorItemPtr->severity);
+        errorItemPtr->classification = getClassification(mReportType, errorItemPtr->guideline);
     }
 
-    const QErrorPathItem &loc = item.errorId.startsWith("clang") ? item.errorPath.front() : item.errorPath.back();
-    QString realfile = stripPath(loc.file, false);
+    const bool showItem = !isErrorItemHidden(errorItemPtr);
 
-    if (realfile.isEmpty()) {
-        realfile = tr("Undefined file");
-    }
+    // if there is at least one error that is not hidden, we have a visible error
+    mVisibleErrors |= showItem;
 
-    bool hide = false;
-
-    // Ids that are temporarily hidden..
-    if (mHiddenMessageId.contains(item.errorId))
-        hide = true;
-
-    //If specified, filter on summary, message, filename, and id
-    if (!hide && !mFilter.isEmpty()) {
-        if (!item.summary.contains(mFilter, Qt::CaseInsensitive) &&
-            !item.message.contains(mFilter, Qt::CaseInsensitive) &&
-            !item.errorPath.back().file.contains(mFilter, Qt::CaseInsensitive) &&
-            !item.errorId.contains(mFilter, Qt::CaseInsensitive)) {
-            hide = true;
-        }
-    }
-
-    //if there is at least one error that is not hidden, we have a visible error
-    if (!hide) {
-        mVisibleErrors = true;
-    }
-
-    ErrorLine line;
-    line.file = realfile;
-    line.line = loc.line;
-    line.errorId = item.errorId;
-    line.incomplete = item.incomplete;
-    line.cwe = item.cwe;
-    line.hash = item.hash;
-    line.inconclusive = item.inconclusive;
-    line.summary = item.summary;
-    line.message = item.message;
-    line.severity = item.severity;
-    line.sinceDate = item.sinceDate;
-    if (const ProjectFile *activeProject = ProjectFile::getActiveProject()) {
-        line.tags = activeProject->getWarningTags(item.hash);
-    }
+    if (const ProjectFile *activeProject = ProjectFile::getActiveProject())
+        errorItemPtr->tags = activeProject->getWarningTags(errorItemPtr->hash);
     //Create the base item for the error and ensure it has a proper
     //file item as a parent
-    QStandardItem* fileItem = ensureFileItem(loc.file, item.file0, hide);
-    QStandardItem* stditem = addBacktraceFiles(fileItem,
-                                               line,
-                                               hide,
-                                               severityToIcon(line.severity),
-                                               false);
+    ResultItem* fileItem = ensureFileItem(errorItemPtr, !showItem);
+    ResultItem* stditem = addBacktraceFiles(fileItem,
+                                            errorItemPtr,
+                                            !showItem,
+                                            severityToIcon(getSeverity(mReportType, *errorItemPtr)),
+                                            ResultItem::Type::message,
+                                            errorItemPtr->getMainLocIndex());
 
     if (!stditem)
         return false;
 
-    //Add user data to that item
-    QMap<QString, QVariant> data;
-    data[SEVERITY]  = ShowTypes::SeverityToShowType(item.severity);
-    data[SUMMARY] = item.summary;
-    data[MESSAGE]  = item.message;
-    data[FILENAME]  = loc.file;
-    data[LINE]  = loc.line;
-    data[COLUMN] = loc.column;
-    data[ERRORID]  = item.errorId;
-    data[INCOMPLETE] = item.incomplete;
-    data[CWE] = item.cwe;
-    data[HASH] = item.hash;
-    data[INCONCLUSIVE] = item.inconclusive;
-    data[FILE0] = stripPath(item.file0, true);
-    data[FUNCTION] = item.function;
-    data[SINCEDATE] = item.sinceDate;
-    data[SYMBOLNAMES] = item.symbolNames;
-    data[TAGS] = line.tags;
-    data[HIDE] = hide;
-    stditem->setData(QVariant(data));
-
     //Add backtrace files as children
-    if (item.errorPath.size() > 1) {
-        for (int i = 0; i < item.errorPath.size(); i++) {
-            const QErrorPathItem &e = item.errorPath[i];
-            line.file = e.file;
-            line.line = e.line;
-            line.message = line.summary = e.info;
-            QStandardItem *child_item;
-            child_item = addBacktraceFiles(stditem,
-                                           line,
-                                           hide,
-                                           ":images/go-down.png",
-                                           true);
-            if (!child_item)
-                continue;
-
-            // Add user data to that item
-            QMap<QString, QVariant> child_data;
-            child_data[SEVERITY]  = ShowTypes::SeverityToShowType(line.severity);
-            child_data[SUMMARY] = line.summary;
-            child_data[MESSAGE]  = line.message;
-            child_data[FILENAME]  = e.file;
-            child_data[LINE]  = e.line;
-            child_data[COLUMN] = e.column;
-            child_data[ERRORID]  = line.errorId;
-            child_data[INCOMPLETE] = line.incomplete;
-            child_data[CWE] = line.cwe;
-            child_data[HASH] = line.hash;
-            child_data[INCONCLUSIVE] = line.inconclusive;
-            child_data[SYMBOLNAMES] = item.symbolNames;
-            child_item->setData(QVariant(child_data));
+    if (errorItemPtr->errorPath.size() > 1) {
+        for (int i = 0; i < errorItemPtr->errorPath.size(); i++) {
+            addBacktraceFiles(stditem,
+                              errorItemPtr,
+                              false,
+                              ":images/go-down.png",
+                              ResultItem::Type::note,
+                              i);
         }
     }
 
-    // Partially refresh the tree: Unhide file item if necessary
-    if (!hide) {
-        setRowHidden(fileItem->row(), QModelIndex(), !mShowSeverities.isShown(item.severity));
-    }
     return true;
 }
 
-QStandardItem *ResultsTree::addBacktraceFiles(QStandardItem *parent,
-                                              const ErrorLine &item,
-                                              const bool hide,
-                                              const QString &icon,
-                                              bool childOfMessage)
+ResultItem *ResultsTree::addBacktraceFiles(ResultItem *parent,
+                                           const QSharedPointer<ErrorItem>& errorItem,
+                                           const bool hide,
+                                           const QString &icon,
+                                           ResultItem::Type type,
+                                           int errorPathIndex)
 {
-    if (!parent) {
+    if (!parent)
         return nullptr;
-    }
-
-    QList<QStandardItem*> list;
-    // Ensure shown path is with native separators
-    list << createNormalItem(QDir::toNativeSeparators(item.file))
-         << createNormalItem(childOfMessage ? tr("note") : severityToTranslatedString(item.severity))
-         << createLineNumberItem(QString::number(item.line))
-         << createNormalItem(childOfMessage ? QString() : item.errorId)
-         << (childOfMessage ? createNormalItem(QString()) : createCheckboxItem(item.inconclusive))
-         << createNormalItem(item.summary)
-         << createNormalItem(item.sinceDate)
-         << createNormalItem(item.tags);
 
     //TODO message has parameter names so we'll need changes to the core
     //cppcheck so we can get proper translations
 
-    // Check for duplicate rows and don't add them if found
-    for (int i = 0; i < parent->rowCount(); i++) {
-        // The first column is the file name and is always the same
+    const bool childOfMessage = (type == ResultItem::Type::note);
+    const QString itemSeverity = childOfMessage ? tr("note") : severityToTranslatedString(errorItem->severity);
 
-        // the third column is the line number so check it first
-        if (parent->child(i, 2)->text() == list[2]->text()) {
-            // the second column is the severity so check it next
-            if (parent->child(i, 1)->text() == list[1]->text()) {
-                // the sixth column is the summary so check it last
-                if (parent->child(i, 5)->text() == list[5]->text()) {
-                    // this row matches so don't add it
-                    return nullptr;
-                }
-            }
-        }
+    const auto& loc = errorItem->errorPath[errorPathIndex];
+
+    // Check for duplicate rows and don't add them if found
+    for (int i = 0; i < errorPathIndex; i++) {
+        // The first column is the file name and is always the same
+        const auto& e = errorItem->errorPath[i];
+        if (loc.line == e.line && loc.info == e.info)
+            return nullptr;
     }
+
+    const QString text = childOfMessage ? loc.info : errorItem->summary;
+
+    const int numberOfColumns = getLabels().size();
+    QList<ResultItem*> columns(numberOfColumns);
+    columns[COLUMN_FILE] = createFilenameItem(errorItem, type, errorPathIndex);
+    columns[COLUMN_FILE]->setIconFileName(icon);
+    columns[COLUMN_LINE] = createLineNumberItem(loc.line, errorItem, type, errorPathIndex);
+    columns[COLUMN_SEVERITY] = createNormalItem(itemSeverity, errorItem, type, errorPathIndex);
+    columns[COLUMN_SUMMARY] = createNormalItem(text, errorItem, type, errorPathIndex);
+    if (type == ResultItem::Type::message) {
+        columns[COLUMN_CERT_LEVEL] = createNormalItem(errorItem->classification, errorItem, type, errorPathIndex);
+        columns[COLUMN_CERT_RULE] = createNormalItem(errorItem->guideline, errorItem, type, errorPathIndex);
+        columns[COLUMN_CWE] = createNormalItem(errorItem->cwe > 0 ? QString::number(errorItem->cwe) : QString(), errorItem, type, errorPathIndex);
+        columns[COLUMN_ID] = createNormalItem(errorItem->errorId, errorItem, type, errorPathIndex);
+        columns[COLUMN_INCONCLUSIVE] = createCheckboxItem(errorItem->inconclusive, errorItem, type, errorPathIndex);
+        columns[COLUMN_MISRA_CLASSIFICATION] = createNormalItem(errorItem->classification, errorItem, type, errorPathIndex);
+        columns[COLUMN_MISRA_GUIDELINE] = createNormalItem(errorItem->guideline, errorItem, type, errorPathIndex);
+        columns[COLUMN_SINCE_DATE] = createNormalItem(errorItem->sinceDate, errorItem, type, errorPathIndex);
+        columns[COLUMN_TAGS] = createNormalItem(errorItem->tags, errorItem, type, errorPathIndex);
+    }
+
+    QList<QStandardItem*> list;
+    for (int i = 0; i < numberOfColumns; ++i)
+        list << (columns[i] ? columns[i] : createNormalItem(QString(), errorItem, type, errorPathIndex));
 
     parent->appendRow(list);
 
     setRowHidden(parent->rowCount() - 1, parent->index(), hide);
 
-    if (!icon.isEmpty()) {
-        list[0]->setIcon(QIcon(icon));
-    }
-
-    //TODO Does this leak memory? Should items from list be deleted?
-
-    return list[0];
+    return columns[COLUMN_FILE];
 }
 
-QString ResultsTree::severityToTranslatedString(Severity::SeverityType severity)
+QString ResultsTree::severityToTranslatedString(Severity severity)
 {
     switch (severity) {
     case Severity::style:
@@ -345,46 +372,63 @@ QString ResultsTree::severityToTranslatedString(Severity::SeverityType severity)
     case Severity::debug:
         return tr("debug");
 
+    case Severity::internal:
+        return tr("internal");
+
     case Severity::none:
-    default:
         return QString();
     }
+
+    cppcheck::unreachable();
 }
 
-QStandardItem *ResultsTree::findFileItem(const QString &name) const
+ResultItem *ResultsTree::findFileItem(const QString &name) const
 {
     // The first column contains the file name. In Windows we can get filenames
     // "header.h" and "Header.h" and must compare them as identical.
 
-    for (int i = 0; i < mModel.rowCount(); i++) {
+    for (int i = 0; i < mModel->rowCount(); i++) {
 #ifdef _WIN32
-        if (QString::compare(mModel.item(i, 0)->text(), name, Qt::CaseInsensitive) == 0)
+        if (QString::compare(mModel->item(i, COLUMN_FILE)->text(), name, Qt::CaseInsensitive) == 0)
 #else
-        if (mModel.item(i, 0)->text() == name)
+        if (mModel->item(i, COLUMN_FILE)->text() == name)
 #endif
-            return mModel.item(i, 0);
+            return dynamic_cast<ResultItem*>(mModel->item(i, COLUMN_FILE));
     }
     return nullptr;
 }
 
 void ResultsTree::clear()
 {
-    mModel.removeRows(0, mModel.rowCount());
+    mErrorList.clear();
+
+    mModel->removeRows(0, mModel->rowCount());
+
+    if (const ProjectFile *activeProject = ProjectFile::getActiveProject()) {
+        hideColumn(COLUMN_SINCE_DATE);
+        if (activeProject->getTags().isEmpty())
+            hideColumn(COLUMN_TAGS);
+        else
+            showColumn(COLUMN_TAGS);
+    } else {
+        hideColumn(COLUMN_SINCE_DATE);
+        hideColumn(COLUMN_TAGS);
+    }
 }
 
 void ResultsTree::clear(const QString &filename)
 {
-    const QString stripped = stripPath(filename, false);
+    const QString stripped = QDir::toNativeSeparators(stripPath(filename, false));
 
-    for (int i = 0; i < mModel.rowCount(); ++i) {
-        const QStandardItem *fileItem = mModel.item(i, 0);
+    for (int i = 0; i < mModel->rowCount(); ++i) {
+        const auto *fileItem = dynamic_cast<ResultItem*>(mModel->item(i, COLUMN_FILE));
         if (!fileItem)
             continue;
 
-        QVariantMap data = fileItem->data().toMap();
-        if (stripped == data[FILENAME].toString() ||
-            filename == data[FILE0].toString()) {
-            mModel.removeRow(i);
+        if (stripped == fileItem->text() ||
+            filename == fileItem->errorItem->file0) {
+            mErrorList.removeAll(fileItem->errorItem->toString());
+            mModel->removeRow(i);
             break;
         }
     }
@@ -392,17 +436,17 @@ void ResultsTree::clear(const QString &filename)
 
 void ResultsTree::clearRecheckFile(const QString &filename)
 {
-    for (int i = 0; i < mModel.rowCount(); ++i) {
-        const QStandardItem *fileItem = mModel.item(i, 0);
+    for (int i = 0; i < mModel->rowCount(); ++i) {
+        const auto *fileItem = dynamic_cast<ResultItem*>(mModel->item(i, COLUMN_FILE));
         if (!fileItem)
             continue;
 
         QString actualfile((!mCheckPath.isEmpty() && filename.startsWith(mCheckPath)) ? filename.mid(mCheckPath.length() + 1) : filename);
-        QVariantMap data = fileItem->data().toMap();
-        QString storedfile = data[FILENAME].toString();
+        QString storedfile = fileItem->getErrorPathItem().file;
         storedfile = ((!mCheckPath.isEmpty() && storedfile.startsWith(mCheckPath)) ? storedfile.mid(mCheckPath.length() + 1) : storedfile);
         if (actualfile == storedfile) {
-            mModel.removeRow(i);
+            mErrorList.removeAll(fileItem->errorItem->toString());
+            mModel->removeRow(i);
             break;
         }
     }
@@ -411,22 +455,22 @@ void ResultsTree::clearRecheckFile(const QString &filename)
 
 void ResultsTree::loadSettings()
 {
-    for (int i = 0; i < mModel.columnCount(); i++) {
+    for (int i = 0; i < mModel->columnCount(); i++) {
         QString temp = QString(SETTINGS_RESULT_COLUMN_WIDTH).arg(i);
-        setColumnWidth(i, qMax(20, mSettings->value(temp, 800 / mModel.columnCount()).toInt()));
+        setColumnWidth(i, qMax(20, mSettings->value(temp, 800 / mModel->columnCount()).toInt()));
     }
 
     mSaveFullPath = mSettings->value(SETTINGS_SAVE_FULL_PATH, false).toBool();
     mSaveAllErrors = mSettings->value(SETTINGS_SAVE_ALL_ERRORS, false).toBool();
     mShowFullPath = mSettings->value(SETTINGS_SHOW_FULL_PATH, false).toBool();
 
-    showIdColumn(mSettings->value(SETTINGS_SHOW_ERROR_ID, false).toBool());
+    showIdColumn(mSettings->value(SETTINGS_SHOW_ERROR_ID, true).toBool());
     showInconclusiveColumn(mSettings->value(SETTINGS_INCONCLUSIVE_ERRORS, false).toBool());
 }
 
 void ResultsTree::saveSettings() const
 {
-    for (int i = 0; i < mModel.columnCount(); i++) {
+    for (int i = 0; i < mModel->columnCount(); i++) {
         QString temp = QString(SETTINGS_RESULT_COLUMN_WIDTH).arg(i);
         mSettings->setValue(temp, columnWidth(i));
     }
@@ -462,26 +506,6 @@ void ResultsTree::showHiddenResults()
 {
     //Clear the "hide" flag for each item
     mHiddenMessageId.clear();
-    int filecount = mModel.rowCount();
-    for (int i = 0; i < filecount; i++) {
-        QStandardItem *fileItem = mModel.item(i, 0);
-        if (!fileItem)
-            continue;
-
-        QVariantMap data = fileItem->data().toMap();
-        data[HIDE] = false;
-        fileItem->setData(QVariant(data));
-
-        int errorcount = fileItem->rowCount();
-        for (int j = 0; j < errorcount; j++) {
-            QStandardItem *child = fileItem->child(j, 0);
-            if (child) {
-                data = child->data().toMap();
-                data[HIDE] = false;
-                child->setData(QVariant(data));
-            }
-        }
-    }
     refreshTree();
     emit resultsHidden(false);
 }
@@ -491,103 +515,94 @@ void ResultsTree::refreshTree()
 {
     mVisibleErrors = false;
     //Get the amount of files in the tree
-    int filecount = mModel.rowCount();
+    const int filecount = mModel->rowCount();
 
     for (int i = 0; i < filecount; i++) {
         //Get file i
-        QStandardItem *fileItem = mModel.item(i, 0);
+        auto *fileItem = dynamic_cast<ResultItem*>(mModel->item(i, 0));
         if (!fileItem) {
             continue;
         }
 
         //Get the amount of errors this file contains
-        int errorcount = fileItem->rowCount();
+        const int errorcount = fileItem->rowCount();
 
         //By default it shouldn't be visible
-        bool show = false;
+        bool showFile = false;
 
         for (int j = 0; j < errorcount; j++) {
             //Get the error itself
-            QStandardItem *child = fileItem->child(j, 0);
+            const auto *child = dynamic_cast<ResultItem*>(fileItem->child(j, 0));
             if (!child) {
                 continue;
             }
 
-            //Get error's user data
-            QVariant userdata = child->data();
-            //Convert it to QVariantMap
-            QVariantMap data = userdata.toMap();
-
             //Check if this error should be hidden
-            bool hide = (data[HIDE].toBool() || !mShowSeverities.isShown(ShowTypes::VariantToShowType(data[SEVERITY])));
-
-            //If specified, filter on summary, message, filename, and id
-            if (!hide && !mFilter.isEmpty()) {
-                if (!data[SUMMARY].toString().contains(mFilter, Qt::CaseInsensitive) &&
-                    !data[MESSAGE].toString().contains(mFilter, Qt::CaseInsensitive) &&
-                    !data[FILENAME].toString().contains(mFilter, Qt::CaseInsensitive) &&
-                    !data[ERRORID].toString().contains(mFilter, Qt::CaseInsensitive)) {
-                    hide = true;
-                }
-            }
-
-            // Tool filter
-            if (!hide) {
-                if (data[ERRORID].toString().startsWith("clang"))
-                    hide = !mShowClang;
-                else
-                    hide = !mShowCppcheck;
-            }
+            const bool hide = child->hidden || isErrorItemHidden(child->errorItem);
 
             if (!hide) {
+                showFile = true;
                 mVisibleErrors = true;
             }
 
             //Hide/show accordingly
             setRowHidden(j, fileItem->index(), hide);
-
-            //If it was shown then the file itself has to be shown as well
-            if (!hide) {
-                show = true;
-            }
         }
 
-        //Hide the file if its "hide" attribute is set
-        if (fileItem->data().toMap()["hide"].toBool()) {
-            show = false;
-        }
-
-        //Show the file if any of it's errors are visible
-        setRowHidden(i, QModelIndex(), !show);
+        // Show the file if any of it's errors are visible
+        setRowHidden(i, QModelIndex(), !showFile);
     }
+    sortByColumn(header()->sortIndicatorSection(), header()->sortIndicatorOrder());
 }
 
-QStandardItem *ResultsTree::ensureFileItem(const QString &fullpath, const QString &file0, bool hide)
+bool ResultsTree::isErrorItemHidden(const QSharedPointer<ErrorItem>& errorItem) const {
+    //Check if this error should be hidden
+    if (mHiddenMessageId.contains(errorItem->errorId))
+        return true;
+
+    bool hide;
+    if (mReportType == ReportType::normal)
+        hide = !mShowSeverities.isShown(errorItem->severity);
+    else
+        hide = errorItem->classification.isEmpty() || !mShowSeverities.isShown(getSeverityFromClassification(errorItem->classification));
+
+    // If specified, filter on summary, message, filename, and id
+    if (!hide && !mFilter.isEmpty())
+        hide = !errorItem->filterMatch(mFilter);
+
+    // Tool filter
+    if (!hide) {
+        if (errorItem->isClangResult())
+            hide = !mShowClang;
+        else
+            hide = !mShowCppcheck;
+    }
+
+    return hide;
+}
+
+ResultItem *ResultsTree::ensureFileItem(const QSharedPointer<ErrorItem>& errorItem, bool hide)
 {
-    QString name = stripPath(fullpath, false);
+    QString name = QDir::toNativeSeparators(stripPath(errorItem->getFile(), false));
     // Since item has path with native separators we must use path with
     // native separators to find it.
-    QStandardItem *item = findFileItem(QDir::toNativeSeparators(name));
+    ResultItem *fileItem = findFileItem(name);
 
-    if (item) {
-        return item;
+    if (fileItem) {
+        if (!hide)
+            setRowHidden(fileItem->row(), QModelIndex(), hide);
+        return fileItem;
     }
 
     // Ensure shown path is with native separators
-    name = QDir::toNativeSeparators(name);
-    item = createNormalItem(name);
-    item->setIcon(QIcon(":images/text-x-generic.png"));
+    fileItem = createFilenameItem(errorItem, ResultItem::Type::file, errorItem->getMainLocIndex());
+    fileItem->setIcon(QIcon(":images/text-x-generic.png"));
 
-    //Add user data to that item
-    QMap<QString, QVariant> data;
-    data[FILENAME] = fullpath;
-    data[FILE0] = file0;
-    item->setData(QVariant(data));
-    mModel.appendRow(item);
+    mModel->appendRow(fileItem);
 
-    setRowHidden(mModel.rowCount() - 1, QModelIndex(), hide);
+    setRowHidden(fileItem->row(), QModelIndex(), hide);
 
-    return item;
+    return fileItem;
 }
 
 void ResultsTree::contextMenuEvent(QContextMenuEvent * e)
@@ -600,41 +615,34 @@ void ResultsTree::contextMenuEvent(QContextMenuEvent * e)
         if (mSelectionModel->selectedRows().count() > 1)
             multipleSelection = true;
 
-        mContextItem = mModel.itemFromIndex(index);
+        mContextItem = dynamic_cast<ResultItem*>(mModel->itemFromIndex(index));
 
         //Create a new context menu
         QMenu menu(this);
 
-        //Store all applications in a list
-        QList<QAction*> actions;
-
         //Create a signal mapper so we don't have to store data to class
         //member variables
-        QSignalMapper *signalMapper = new QSignalMapper(this);
+        QSignalMapper signalMapper;
 
         if (mContextItem && mApplications->getApplicationCount() > 0 && mContextItem->parent()) {
             //Create an action for the application
             int defaultApplicationIndex = mApplications->getDefaultApplication();
-            if (defaultApplicationIndex < 0)
-                defaultApplicationIndex = 0;
+            defaultApplicationIndex = std::max(defaultApplicationIndex, 0);
             const Application& app = mApplications->getApplication(defaultApplicationIndex);
-            QAction *start = new QAction(app.getName(), &menu);
+            auto *start = new QAction(app.getName(), &menu);
             if (multipleSelection)
                 start->setDisabled(true);
-
-            //Add it to our list so we can disconnect later on
-            actions << start;
 
             //Add it to context menu
             menu.addAction(start);
 
             //Connect the signal to signal mapper
-            connect(start, SIGNAL(triggered()), signalMapper, SLOT(map()));
+            connect(start, &QAction::triggered, &signalMapper, QOverload<>::of(&QSignalMapper::map));
 
             //Add a new mapping
-            signalMapper->setMapping(start, defaultApplicationIndex);
+            signalMapper.setMapping(start, defaultApplicationIndex);
 
-            connect(signalMapper, SIGNAL(mapped(int)),
+            connect(&signalMapper, SIGNAL(mappedInt(int)),
                     this, SLOT(context(int)));
         }
 
@@ -644,58 +652,76 @@ void ResultsTree::contextMenuEvent(QContextMenuEvent * e)
                 menu.addSeparator();
             }
 
-            //Create an action for the application
-            QAction *recheckSelectedFiles   = new QAction(tr("Recheck"), &menu);
-            QAction *copy                   = new QAction(tr("Copy"), &menu);
-            QAction *hide                   = new QAction(tr("Hide"), &menu);
-            QAction *hideallid              = new QAction(tr("Hide all with id"), &menu);
-            QAction *opencontainingfolder   = new QAction(tr("Open containing folder"), &menu);
+            int selectedFiles = 0;
+            int selectedResults = 0;
 
-            if (multipleSelection) {
-                hideallid->setDisabled(true);
-                opencontainingfolder->setDisabled(true);
+            for (auto row : mSelectionModel->selectedRows()) {
+                auto *item = mModel->itemFromIndex(row);
+                if (!item->parent())
+                    selectedFiles++;
+                else if (!item->parent()->parent())
+                    selectedResults++;
             }
-            if (mThread->isChecking())
-                recheckSelectedFiles->setDisabled(true);
-            else
-                recheckSelectedFiles->setDisabled(false);
 
-            menu.addAction(recheckSelectedFiles);
+            //Create an action for the application
+            auto *recheckAction          = new QAction(tr("Recheck %1 file(s)").arg(selectedFiles), &menu);
+            auto *copyAction             = new QAction(tr("Copy"), &menu);
+            auto *hide                   = new QAction(tr("Hide %1 result(s)").arg(selectedResults), &menu);
+            auto *hideallid              = new QAction(tr("Hide all with id"), &menu);
+            auto *opencontainingfolder   = new QAction(tr("Open containing folder"), &menu);
+
+            if (selectedFiles == 0 || mThread->isChecking() || mResultsSource == ResultsSource::Log)
+                recheckAction->setDisabled(true);
+
+            if (selectedResults == 0)
+                hide->setDisabled(true);
+
+            if (selectedResults == 0 || multipleSelection)
+                hideallid->setDisabled(true);
+
+            if (multipleSelection || mResultsSource == ResultsSource::Log)
+                opencontainingfolder->setDisabled(true);
+
+            menu.addAction(recheckAction);
             menu.addSeparator();
-            menu.addAction(copy);
+            menu.addAction(copyAction);
             menu.addSeparator();
             menu.addAction(hide);
             menu.addAction(hideallid);
 
-            QAction *suppress = new QAction(tr("Suppress selected id(s)"), &menu);
+            auto *suppress = new QAction(tr("Suppress selected id(s)"), &menu);
+            {
+                if (selectedResults == 0 || ErrorLogger::isCriticalErrorId(mContextItem->errorItem->errorId.toStdString()))
+                    suppress->setDisabled(true);
+            }
             menu.addAction(suppress);
             connect(suppress, &QAction::triggered, this, &ResultsTree::suppressSelectedIds);
 
             menu.addSeparator();
             menu.addAction(opencontainingfolder);
 
-            connect(recheckSelectedFiles, SIGNAL(triggered()), this, SLOT(recheckSelectedFiles()));
-            connect(copy, SIGNAL(triggered()), this, SLOT(copy()));
-            connect(hide, SIGNAL(triggered()), this, SLOT(hideResult()));
-            connect(hideallid, SIGNAL(triggered()), this, SLOT(hideAllIdResult()));
-            connect(opencontainingfolder, SIGNAL(triggered()), this, SLOT(openContainingFolder()));
+            connect(recheckAction, &QAction::triggered, this, &ResultsTree::recheckSelectedFiles);
+            connect(copyAction, &QAction::triggered, this, &ResultsTree::copy);
+            connect(hide, &QAction::triggered, this, &ResultsTree::hideResult);
+            connect(hideallid, &QAction::triggered, this, &ResultsTree::hideAllIdResult);
+            connect(opencontainingfolder, &QAction::triggered, this, &ResultsTree::openContainingFolder);
 
             const ProjectFile *currentProject = ProjectFile::getActiveProject();
             if (currentProject && !currentProject->getTags().isEmpty()) {
                 menu.addSeparator();
                 QMenu *tagMenu = menu.addMenu(tr("Tag"));
                 {
-                    QAction *action = new QAction(tr("No tag"), tagMenu);
+                    auto *action = new QAction(tr("No tag"), tagMenu);
                     tagMenu->addAction(action);
-                    connect(action, &QAction::triggered, [=]() {
+                    connect(action, &QAction::triggered, [this]() {
                         tagSelectedItems(QString());
                     });
                 }
 
                 for (const QString& tagstr : currentProject->getTags()) {
-                    QAction *action = new QAction(tagstr, tagMenu);
+                    auto *action = new QAction(tagstr, tagMenu);
                     tagMenu->addAction(action);
-                    connect(action, &QAction::triggered, [=]() {
+                    connect(action, &QAction::triggered, [tagstr, this]() {
                         tagSelectedItems(tagstr);
                     });
                 }
@@ -705,29 +731,17 @@ void ResultsTree::contextMenuEvent(QContextMenuEvent * e)
         //Start the menu
         menu.exec(e->globalPos());
         index = indexAt(e->pos());
-        if (index.isValid()) {
-            mContextItem = mModel.itemFromIndex(index);
-            if (mContextItem && mApplications->getApplicationCount() > 0 && mContextItem->parent()) {
-                //Disconnect all signals
-                for (QAction* action : actions) {
-                    disconnect(action, SIGNAL(triggered()), signalMapper, SLOT(map()));
-                }
-
-                disconnect(signalMapper, SIGNAL(mapped(int)),
-                           this, SLOT(context(int)));
-                //And remove the signal mapper
-                delete signalMapper;
-            }
-        }
+        if (index.isValid())
+            mContextItem = dynamic_cast<ResultItem*>(mModel->itemFromIndex(index));
     }
 }
 
-void ResultsTree::startApplication(QStandardItem *target, int application)
+void ResultsTree::startApplication(const ResultItem *target, int application)
 {
     //If there are no applications specified, tell the user about it
     if (mApplications->getApplicationCount() == 0) {
         QMessageBox msg(QMessageBox::Critical,
-                        tr("Cppcheck"),
+                        "Cppcheck",
                         tr("No editor application configured.\n\n"
                            "Configure the editor application for Cppcheck in preferences/Applications."),
                         QMessageBox::Ok,
@@ -741,29 +755,23 @@ void ResultsTree::startApplication(QStandardItem *target, int application)
 
     if (application == -1) {
         QMessageBox msg(QMessageBox::Critical,
-                        tr("Cppcheck"),
+                        "Cppcheck",
                         tr("No default editor application selected.\n\n"
                            "Please select the default editor application in preferences/Applications."),
                         QMessageBox::Ok,
                         this);
         msg.exec();
         return;
-
     }
 
     if (target && application >= 0 && application < mApplications->getApplicationCount() && target->parent()) {
-        // Make sure we are working with the first column
-        if (target->column() != 0)
-            target = target->parent()->child(target->row(), 0);
-
-        QVariantMap data = target->data().toMap();
+        const auto& errorPathItem = target->getErrorPathItem();
 
         //Replace (file) with filename
-        QString file = data[FILENAME].toString();
-        file = QDir::toNativeSeparators(file);
+        QString file = QDir::toNativeSeparators(errorPathItem.file);
         qDebug() << "Opening file: " << file;
 
-        QFileInfo info(file);
+        const QFileInfo info(file);
         if (!info.exists()) {
             if (info.isAbsolute()) {
                 QMessageBox msgbox(this);
@@ -792,11 +800,10 @@ void ResultsTree::startApplication(QStandardItem *target, int application)
         QString params = app.getParameters();
         params.replace("(file)", file, Qt::CaseInsensitive);
 
-        QVariant line = data[LINE];
-        params.replace("(line)", QString("%1").arg(line.toInt()), Qt::CaseInsensitive);
+        params.replace("(line)", QString::number(errorPathItem.line), Qt::CaseInsensitive);
 
-        params.replace("(message)", data[MESSAGE].toString(), Qt::CaseInsensitive);
-        params.replace("(severity)", data[SEVERITY].toString(), Qt::CaseInsensitive);
+        params.replace("(message)", target->errorItem->message, Qt::CaseInsensitive);
+        params.replace("(severity)", severityToTranslatedString(target->errorItem->severity), Qt::CaseInsensitive);
 
         QString program = app.getPath();
 
@@ -810,10 +817,7 @@ void ResultsTree::startApplication(QStandardItem *target, int application)
         }
 #endif // Q_OS_WIN
 
-        const QString cmdLine = QString("%1 %2").arg(program).arg(params);
-
-        // this is reported as deprecated in Qt 5.15.2 but no longer in Qt 6
-        bool success = SUPPRESS_DEPRECATED_WARNING(QProcess::startDetached(cmdLine));
+        const bool success = QProcess::startDetached(program, QProcess::splitCommand(params));
         if (!success) {
             QString text = tr("Could not start %1\n\nPlease check the application path and parameters are correct.").arg(program);
 
@@ -854,7 +858,7 @@ QString ResultsTree::askFileDir(const QString &file)
         return QString();
 
     // User selected root path
-    if (QFileInfo(dir + '/' + file).exists())
+    if (QFileInfo::exists(dir + '/' + file))
         mCheckPath = dir;
 
     // user selected checked folder
@@ -863,7 +867,7 @@ QString ResultsTree::askFileDir(const QString &file)
         QString folderName = file.mid(0, file.indexOf('/'));
         if (dir.indexOf('/' + folderName + '/'))
             dir = dir.mid(0, dir.lastIndexOf('/' + folderName + '/'));
-        if (QFileInfo(dir + '/' + file).exists())
+        if (QFileInfo::exists(dir + '/' + file))
             mCheckPath = dir;
     }
 
@@ -881,26 +885,18 @@ void ResultsTree::copy()
         return;
 
     QString text;
-    for (QModelIndex index : mSelectionModel->selectedRows()) {
-        QStandardItem *item = mModel.itemFromIndex(index);
-        if (!item->parent()) {
+    for (const QModelIndex& index : mSelectionModel->selectedRows()) {
+        const auto *item = dynamic_cast<ResultItem*>(mModel->itemFromIndex(index));
+        if (!item)
+            continue;
+        if (item->getType() == ResultItem::Type::file)
             text += item->text() + '\n';
-            continue;
+        else if (item->getType() == ResultItem::Type::message)
+            text += item->errorItem->toString() + '\n';
+        else if (item->getType() == ResultItem::Type::note) {
+            const auto e = item->getErrorPathItem();
+            text += e.file + ":" + QString::number(e.line) + ":" + QString::number(e.column) + ":note: " + e.info + '\n';
         }
-        if (item->parent()->parent())
-            item = item->parent();
-        QVariantMap data = item->data().toMap();
-        if (!data.contains("id"))
-            continue;
-        QString inconclusive = data[INCONCLUSIVE].toBool() ? ",inconclusive" : "";
-        text += '[' + data[FILENAME].toString() + ':' + QString::number(data[LINE].toInt())
-                + "] ("
-                + QString::fromStdString(Severity::toString(ShowTypes::ShowTypeToSeverity((ShowTypes::ShowType)data[SEVERITY].toInt()))) + inconclusive
-                + ") "
-                + data[MESSAGE].toString()
-                + " ["
-                + data[ERRORID].toString()
-                + "]\n";
     }
 
     QClipboard *clipboard = QApplication::clipboard();
@@ -911,14 +907,13 @@ void ResultsTree::hideResult()
 {
     if (!mSelectionModel)
         return;
-
-    for (QModelIndex index : mSelectionModel->selectedRows()) {
-        QStandardItem *item = mModel.itemFromIndex(index);
-        //Set the "hide" flag for this item
-        QVariantMap data = item->data().toMap();
-        data[HIDE] = true;
-        item->setData(QVariant(data));
-
+    bool hide = false;
+    for (const QModelIndex& index : mSelectionModel->selectedRows()) {
+        auto *item = dynamic_cast<ResultItem*>(mModel->itemFromIndex(index));
+        if (item && item->getType() == ResultItem::Type::message)
+            hide = item->hidden = true;
+    }
+    if (hide) {
         refreshTree();
         emit resultsHidden(true);
     }
@@ -930,15 +925,15 @@ void ResultsTree::recheckSelectedFiles()
         return;
 
     QStringList selectedItems;
-    for (QModelIndex index : mSelectionModel->selectedRows()) {
-        QStandardItem *item = mModel.itemFromIndex(index);
+    for (const QModelIndex& index : mSelectionModel->selectedRows()) {
+        const auto *item = dynamic_cast<ResultItem*>(mModel->itemFromIndex(index));
         while (item->parent())
-            item = item->parent();
-        QVariantMap data = item->data().toMap();
-        QString currentFile = data[FILENAME].toString();
+            item = dynamic_cast<const ResultItem*>(item->parent());
+        const auto e = item->getErrorPathItem();
+        const QString currentFile = e.file;
         if (!currentFile.isEmpty()) {
             QString fileNameWithCheckPath;
-            QFileInfo curfileInfo(currentFile);
+            const QFileInfo curfileInfo(currentFile);
             if (!curfileInfo.exists() && !mCheckPath.isEmpty() && currentFile.indexOf(mCheckPath) != 0)
                 fileNameWithCheckPath = mCheckPath + "/" + currentFile;
             else
@@ -949,58 +944,24 @@ void ResultsTree::recheckSelectedFiles()
                 return;
             }
             if (Path::isHeader(currentFile.toStdString())) {
-                if (!data[FILE0].toString().isEmpty() && !selectedItems.contains(data[FILE0].toString())) {
-                    selectedItems<<((!mCheckPath.isEmpty() && (data[FILE0].toString().indexOf(mCheckPath) != 0)) ? (mCheckPath + "/" + data[FILE0].toString()) : data[FILE0].toString());
+                if (!item->errorItem->file0.isEmpty() && !selectedItems.contains(item->errorItem->file0)) {
+                    selectedItems << ((!mCheckPath.isEmpty() && (item->errorItem->file0.indexOf(mCheckPath) != 0)) ? (mCheckPath + "/" + item->errorItem->file0) : item->errorItem->file0);
                     if (!selectedItems.contains(fileNameWithCheckPath))
-                        selectedItems<<fileNameWithCheckPath;
+                        selectedItems << fileNameWithCheckPath;
                 }
             } else if (!selectedItems.contains(fileNameWithCheckPath))
-                selectedItems<<fileNameWithCheckPath;
+                selectedItems << fileNameWithCheckPath;
         }
     }
-    emit checkSelected(selectedItems);
+    emit checkSelected(std::move(selectedItems));
 }
 
 void ResultsTree::hideAllIdResult()
 {
-    if (!mContextItem || !mContextItem->parent())
+    if (!mContextItem || mContextItem->getType() == ResultItem::Type::file)
         return;
 
-    // Make sure we are working with the first column
-    if (mContextItem->column() != 0)
-        mContextItem = mContextItem->parent()->child(mContextItem->row(), 0);
-    QVariantMap data = mContextItem->data().toMap();
-
-    QString messageId = data[ERRORID].toString();
-
-    mHiddenMessageId.append(messageId);
-
-    // hide all errors with that message Id
-    int filecount = mModel.rowCount();
-    for (int i = 0; i < filecount; i++) {
-        //Get file i
-        QStandardItem *file = mModel.item(i, 0);
-        if (!file) {
-            continue;
-        }
-
-        //Get the amount of errors this file contains
-        int errorcount = file->rowCount();
-
-        for (int j = 0; j < errorcount; j++) {
-            //Get the error itself
-            QStandardItem *child = file->child(j, 0);
-            if (!child) {
-                continue;
-            }
-
-            QVariantMap userdata = child->data().toMap();
-            if (userdata[ERRORID].toString() == messageId) {
-                userdata[HIDE] = true;
-                child->setData(QVariant(userdata));
-            }
-        }
-    }
+    mHiddenMessageId.append(mContextItem->errorItem->errorId);
 
     refreshTree();
     emit resultsHidden(true);
@@ -1011,38 +972,33 @@ void ResultsTree::suppressSelectedIds()
     if (!mSelectionModel)
         return;
 
-    QModelIndexList selectedRows = mSelectionModel->selectedRows();
     QSet<QString> selectedIds;
-    for (QModelIndex index : mSelectionModel->selectedRows()) {
-        QStandardItem *item = mModel.itemFromIndex(index);
-        if (!item->parent())
+    for (const QModelIndex& index : mSelectionModel->selectedRows()) {
+        const auto *item = dynamic_cast<ResultItem*>(mModel->itemFromIndex(index));
+        if (!item || item->getType() == ResultItem::Type::file || !item->errorItem)
             continue;
-        if (item->parent()->parent())
-            item = item->parent();
-        QVariantMap data = item->data().toMap();
-        if (!data.contains("id"))
-            continue;
-        selectedIds << data[ERRORID].toString();
+        selectedIds << item->errorItem->errorId;
     }
 
     // delete all errors with selected message Ids
-    for (int i = 0; i < mModel.rowCount(); i++) {
-        QStandardItem * const file = mModel.item(i, 0);
+    for (int i = 0; i < mModel->rowCount(); i++) {
+        QStandardItem * const file = mModel->item(i, 0);
         for (int j = 0; j < file->rowCount();) {
-            QStandardItem *errorItem = file->child(j, 0);
-            QVariantMap userdata = errorItem->data().toMap();
-            if (selectedIds.contains(userdata[ERRORID].toString())) {
+            const auto *errorItem = dynamic_cast<ResultItem*>(file->child(j, 0));
+            if (errorItem && errorItem->errorItem && selectedIds.contains(errorItem->errorItem->errorId)) {
                 file->removeRow(j);
             } else {
                 j++;
             }
         }
         if (file->rowCount() == 0)
-            mModel.removeRow(file->row());
+            mModel->removeRow(file->row());
     }
 
-
-    emit suppressIds(selectedIds.values());
+    if (!selectedIds.isEmpty()) {
+        refreshTree(); // If all visible warnings was suppressed then the file item should be hidden
+        emit suppressIds(selectedIds.values());
+    }
 }
 
 void ResultsTree::suppressHash()
@@ -1050,34 +1006,29 @@ void ResultsTree::suppressHash()
     if (!mSelectionModel)
         return;
 
-    // Extract selected warnings
-    QSet<QStandardItem *> selectedWarnings;
-    for (QModelIndex index : mSelectionModel->selectedRows()) {
-        QStandardItem *item = mModel.itemFromIndex(index);
-        if (!item->parent())
-            continue;
-        while (item->parent()->parent())
-            item = item->parent();
-        selectedWarnings.insert(item);
-    }
-
     bool changed = false;
     ProjectFile *projectFile = ProjectFile::getActiveProject();
-    for (QStandardItem *item: selectedWarnings) {
-        QStandardItem *fileItem = item->parent();
-        const QVariantMap data = item->data().toMap();
-        if (projectFile && data.contains(HASH)) {
-            Suppressions::Suppression suppression;
-            suppression.hash = data[HASH].toULongLong();
-            suppression.errorId = data[ERRORID].toString().toStdString();
-            suppression.fileName = data[FILENAME].toString().toStdString();
-            suppression.lineNumber = data[LINE].toInt();
+
+    for (QModelIndex index : mSelectionModel->selectedRows()) {
+        auto *item = dynamic_cast<ResultItem *>(mModel->itemFromIndex(index));
+        if (!item || item->getType() == ResultItem::Type::file)
+            continue;
+        if (item->getType() == ResultItem::Type::note)
+            item = dynamic_cast<ResultItem *>(item->parent());
+
+        // Suppress
+        if (projectFile && item->errorItem->hash > 0) {
+            SuppressionList::Suppression suppression;
+            suppression.hash = item->errorItem->hash;
             projectFile->addSuppression(suppression);
             changed = true;
         }
+
+        // Remove item
+        QStandardItem *fileItem = item->parent();
         fileItem->removeRow(item->row());
         if (fileItem->rowCount() == 0)
-            mModel.removeRow(fileItem->row());
+            mModel->removeRow(fileItem->row());
     }
 
     if (changed)
@@ -1086,7 +1037,9 @@ void ResultsTree::suppressHash()
 
 void ResultsTree::openContainingFolder()
 {
-    QString filePath = getFilePath(mContextItem, true);
+    if (!mContextItem)
+        return;
+    QString filePath = mContextItem->getErrorPathItem().file;
     if (!filePath.isEmpty()) {
         filePath = QFileInfo(filePath).absolutePath();
         QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));
@@ -1100,15 +1053,15 @@ void ResultsTree::tagSelectedItems(const QString &tag)
     bool isTagged = false;
     ProjectFile *currentProject = ProjectFile::getActiveProject();
     for (QModelIndex index : mSelectionModel->selectedRows()) {
-        QStandardItem *item = mModel.itemFromIndex(index);
-        QVariantMap data = item->data().toMap();
-        if (data.contains("tags")) {
-            data[TAGS] = tag;
-            item->setData(QVariant(data));
+        auto *item = dynamic_cast<ResultItem*>(mModel->itemFromIndex(index));
+        if (item && item->getType() != ResultItem::Type::file) {
+            if (item->getType() == ResultItem::Type::note)
+                item = dynamic_cast<ResultItem*>(item->parent());
+            item->errorItem->tags = tag;
             item->parent()->child(index.row(), COLUMN_TAGS)->setText(tag);
-            if (currentProject && data.contains(HASH)) {
+            if (currentProject && item->errorItem->hash > 0) {
                 isTagged = true;
-                currentProject->setWarningTags(data[HASH].toULongLong(), tag);
+                currentProject->setWarningTags(item->errorItem->hash, tag);
             }
         }
     }
@@ -1123,34 +1076,10 @@ void ResultsTree::context(int application)
 
 void ResultsTree::quickStartApplication(const QModelIndex &index)
 {
-    startApplication(mModel.itemFromIndex(index));
+    startApplication(dynamic_cast<ResultItem*>(mModel->itemFromIndex(index)));
 }
 
-QString ResultsTree::getFilePath(QStandardItem *target, bool fullPath)
-{
-    if (target) {
-        // Make sure we are working with the first column
-        if (target->column() != 0)
-            target = target->parent()->child(target->row(), 0);
-
-        QVariantMap data = target->data().toMap();
-        QString pathStr;
-
-        //Replace (file) with filename
-        QString file = data[FILENAME].toString();
-        pathStr = QDir::toNativeSeparators(file);
-        if (!fullPath) {
-            QFileInfo fi(pathStr);
-            pathStr = fi.fileName();
-        }
-
-        return pathStr;
-    }
-
-    return QString();
-}
-
-QString ResultsTree::severityToIcon(Severity::SeverityType severity) const
+QString ResultsTree::severityToIcon(Severity severity)
 {
     switch (severity) {
     case Severity::error:
@@ -1174,22 +1103,22 @@ void ResultsTree::saveResults(Report *report) const
 {
     report->writeHeader();
 
-    for (int i = 0; i < mModel.rowCount(); i++) {
+    for (int i = 0; i < mModel->rowCount(); i++) {
         if (mSaveAllErrors || !isRowHidden(i, QModelIndex()))
-            saveErrors(report, mModel.item(i, 0));
+            saveErrors(report, dynamic_cast<ResultItem*>(mModel->item(i, 0)));
     }
 
     report->writeFooter();
 }
 
-void ResultsTree::saveErrors(Report *report, const QStandardItem *fileItem) const
+void ResultsTree::saveErrors(Report *report, const ResultItem *fileItem) const
 {
     if (!fileItem) {
         return;
     }
 
     for (int i = 0; i < fileItem->rowCount(); i++) {
-        const QStandardItem *error = fileItem->child(i, 0);
+        const auto *error = dynamic_cast<ResultItem*>(fileItem->child(i, 0));
 
         if (!error) {
             continue;
@@ -1199,103 +1128,49 @@ void ResultsTree::saveErrors(Report *report, const QStandardItem *fileItem) cons
             continue;
         }
 
-        ErrorItem item;
-        readErrorItem(error, &item);
-
-        report->writeError(item);
+        report->writeError(*error->errorItem);
     }
-}
-
-static int indexOf(const QList<ErrorItem> &list, const ErrorItem &item)
-{
-    for (int i = 0; i < list.size(); i++) {
-        if (ErrorItem::sameCID(item, list[i])) {
-            return i;
-        }
-    }
-    return -1;
 }
 
 void ResultsTree::updateFromOldReport(const QString &filename)
 {
+    showColumn(COLUMN_SINCE_DATE);
+
     QList<ErrorItem> oldErrors;
-    XmlReportV2 oldReport(filename);
+    XmlReportV2 oldReport(filename, QString());
     if (oldReport.open()) {
         oldErrors = oldReport.read();
         oldReport.close();
     }
 
     // Read current results..
-    for (int i = 0; i < mModel.rowCount(); i++) {
-        QStandardItem *fileItem = mModel.item(i,0);
+    for (int i = 0; i < mModel->rowCount(); i++) {
+        auto *fileItem = dynamic_cast<ResultItem*>(mModel->item(i,COLUMN_FILE));
         for (int j = 0; j < fileItem->rowCount(); j++) {
-            QStandardItem *error = fileItem->child(j,0);
-            ErrorItem errorItem;
-            readErrorItem(error, &errorItem);
-            int oldErrorIndex = indexOf(oldErrors, errorItem);
-            QVariantMap data = error->data().toMap();
+            auto *error = dynamic_cast<ResultItem*>(fileItem->child(j,COLUMN_FILE));
+            if (!error)
+                // FIXME..
+                continue;
+            const auto it = std::find_if(oldErrors.cbegin(),
+                                         oldErrors.cend(),
+                                         [error](const ErrorItem& err) {
+                return ErrorItem::same(err, *error->errorItem);
+            });
+            const ErrorItem* oldError = (it == oldErrors.cend()) ? nullptr : &*it;
 
             // New error .. set the "sinceDate" property
-            if (oldErrorIndex >= 0 && !oldErrors[oldErrorIndex].sinceDate.isEmpty()) {
-                data[SINCEDATE] = oldErrors[oldErrorIndex].sinceDate;
-                error->setData(data);
-                fileItem->child(j, COLUMN_SINCE_DATE)->setText(oldErrors[oldErrorIndex].sinceDate);
-            } else if (oldErrorIndex < 0 || data[SINCEDATE].toString().isEmpty()) {
-                const QString sinceDate = QLocale::system().dateFormat(QLocale::ShortFormat);
-                data[SINCEDATE] = sinceDate;
-                error->setData(data);
+            if (oldError && !oldError->sinceDate.isEmpty()) {
+                error->errorItem->sinceDate = oldError->sinceDate;
+                fileItem->child(j, COLUMN_SINCE_DATE)->setText(error->errorItem->sinceDate);
+            } else if (oldError == nullptr || error->errorItem->sinceDate.isEmpty()) {
+                const QString sinceDate = QLocale::system().toString(QDate::currentDate(), QLocale::ShortFormat);
+                error->errorItem->sinceDate = sinceDate;
                 fileItem->child(j, COLUMN_SINCE_DATE)->setText(sinceDate);
-                if (oldErrorIndex < 0)
-                    continue;
             }
 
-            if (!errorItem.tags.isEmpty())
-                continue;
-
-            const ErrorItem &oldErrorItem = oldErrors[oldErrorIndex];
-            data[TAGS] = oldErrorItem.tags;
-            error->setData(data);
+            if (oldError && error->errorItem->tags.isEmpty())
+                error->errorItem->tags = oldError->tags;
         }
-    }
-}
-
-void ResultsTree::readErrorItem(const QStandardItem *error, ErrorItem *item) const
-{
-    // Get error's user data
-    QVariantMap data = error->data().toMap();
-
-    item->severity = ShowTypes::ShowTypeToSeverity(ShowTypes::VariantToShowType(data[SEVERITY]));
-    item->summary = data[SUMMARY].toString();
-    item->message = data[MESSAGE].toString();
-    item->errorId = data[ERRORID].toString();
-    item->incomplete = data[INCOMPLETE].toBool();
-    item->cwe = data[CWE].toInt();
-    item->hash = data[HASH].toULongLong();
-    item->inconclusive = data[INCONCLUSIVE].toBool();
-    item->file0 = data[FILE0].toString();
-    item->sinceDate = data[SINCEDATE].toString();
-    item->tags = data[TAGS].toString();
-
-    if (error->rowCount() == 0) {
-        QErrorPathItem e;
-        e.file = stripPath(data[FILENAME].toString(), true);
-        e.line = data[LINE].toInt();
-        e.info = data[MESSAGE].toString();
-        item->errorPath << e;
-    }
-
-    for (int j = 0; j < error->rowCount(); j++) {
-        const QStandardItem *child_error = error->child(j, 0);
-        //Get error's user data
-        QVariant child_userdata = child_error->data();
-        //Convert it to QVariantMap
-        QVariantMap child_data = child_userdata.toMap();
-
-        QErrorPathItem e;
-        e.file = stripPath(child_data[FILENAME].toString(), true);
-        e.line = child_data[LINE].toInt();
-        e.info = child_data[MESSAGE].toString();
-        item->errorPath << e;
     }
 }
 
@@ -1322,10 +1197,14 @@ void ResultsTree::setCheckDirectory(const QString &dir)
     mCheckPath = dir;
 }
 
-
-QString ResultsTree::getCheckDirectory()
+const QString& ResultsTree::getCheckDirectory() const
 {
     return mCheckPath;
+}
+
+void ResultsTree::setResultsSource(ResultsSource source)
+{
+    mResultsSource = source;
 }
 
 QString ResultsTree::stripPath(const QString &path, bool saving) const
@@ -1338,62 +1217,38 @@ QString ResultsTree::stripPath(const QString &path, bool saving) const
     return dir.relativeFilePath(path);
 }
 
-void ResultsTree::refreshFilePaths(QStandardItem *item)
+void ResultsTree::refreshFilePaths(ResultItem *fileItem)
 {
-    if (!item) {
+    if (!fileItem)
         return;
-    }
 
-    //Mark that this file's path hasn't been updated yet
-    bool updated = false;
+    auto refreshItem = [this](ResultItem* item) {
+        item->setText(QDir::toNativeSeparators(stripPath(item->getErrorPathItem().file, false)));
+    };
+
+    refreshItem(fileItem);
 
     //Loop through all errors within this file
-    for (int i = 0; i < item->rowCount(); i++) {
+    for (int i = 0; i < fileItem->rowCount(); i++) {
         //Get error i
-        QStandardItem *error = item->child(i, 0);
+        auto *error = dynamic_cast<ResultItem*>(fileItem->child(i, COLUMN_FILE));
 
         if (!error) {
             continue;
         }
 
-        //Get error's user data
-        QVariant userdata = error->data();
-        //Convert it to QVariantMap
-        QVariantMap data = userdata.toMap();
-
-        //Get list of files
-        QString file = data[FILENAME].toString();
-
         //Update this error's text
-        error->setText(stripPath(file, false));
+        refreshItem(error);
 
-        //If this error has backtraces make sure the files list has enough filenames
-        if (error->hasChildren()) {
-            //Loop through all files within the error
-            for (int j = 0; j < error->rowCount(); j++) {
-                //Get file
-                QStandardItem *child = error->child(j, 0);
-                if (!child) {
-                    continue;
-                }
-                //Get child's user data
-                QVariant child_userdata = child->data();
-                //Convert it to QVariantMap
-                QVariantMap child_data = child_userdata.toMap();
-
-                //Get list of files
-                QString child_files = child_data[FILENAME].toString();
+        //Loop through all files within the error
+        for (int j = 0; j < error->rowCount(); j++) {
+            //Get file
+            auto *child = dynamic_cast<ResultItem*>(error->child(j, COLUMN_FILE));
+            if (child) {
                 //Update file's path
-                child->setText(stripPath(child_files, false));
+                refreshItem(child);
             }
         }
-
-        //if the main file hasn't been updated yet, update it now
-        if (!updated) {
-            updated = true;
-            item->setText(error->text());
-        }
-
     }
 }
 
@@ -1402,8 +1257,8 @@ void ResultsTree::refreshFilePaths()
     qDebug("Refreshing file paths");
 
     //Go through all file items (these are parent items that contain the errors)
-    for (int i = 0; i < mModel.rowCount(); i++) {
-        refreshFilePaths(mModel.item(i, 0));
+    for (int row = 0; row < mModel->rowCount(); row++) {
+        refreshFilePaths(dynamic_cast<ResultItem*>(mModel->item(row, COLUMN_FILE)));
     }
 }
 
@@ -1414,14 +1269,12 @@ bool ResultsTree::hasVisibleResults() const
 
 bool ResultsTree::hasResults() const
 {
-    return mModel.rowCount() > 0;
+    return mModel->rowCount() > 0;
 }
 
 void ResultsTree::translate()
 {
-    QStringList labels;
-    labels << tr("File") << tr("Severity") << tr("Line") << tr("Id") << tr("Inconclusive") << tr("Summary") << tr("Since date") << tr("Tag");
-    mModel.setHorizontalHeaderLabels(labels);
+    mModel->setHorizontalHeaderLabels(getLabels());
     //TODO go through all the errors in the tree and translate severity and message
 }
 
@@ -1429,21 +1282,35 @@ void ResultsTree::showIdColumn(bool show)
 {
     mShowErrorId = show;
     if (show)
-        showColumn(3);
+        showColumn(COLUMN_ID);
     else
-        hideColumn(3);
+        hideColumn(COLUMN_ID);
 }
 
 void ResultsTree::showInconclusiveColumn(bool show)
 {
     if (show)
-        showColumn(4);
+        showColumn(COLUMN_INCONCLUSIVE);
     else
-        hideColumn(4);
+        hideColumn(COLUMN_INCONCLUSIVE);
 }
 
 void ResultsTree::currentChanged(const QModelIndex &current, const QModelIndex &previous)
 {
     QTreeView::currentChanged(current, previous);
-    emit treeSelectionChanged(current);
+    const auto *item = dynamic_cast<ResultItem*>(mModel->itemFromIndex(current));
+    emit treeSelectionChanged(item);
+}
+
+bool ResultsTree::isCertReport() const {
+    return mReportType == ReportType::certC || mReportType == ReportType::certCpp;
+}
+
+bool ResultsTree::isAutosarMisraReport() const {
+    return mReportType == ReportType::autosar ||
+           mReportType == ReportType::misraC2012 ||
+           mReportType == ReportType::misraC2023 ||
+           mReportType == ReportType::misraC2025 ||
+           mReportType == ReportType::misraCpp2008 ||
+           mReportType == ReportType::misraCpp2023;
 }

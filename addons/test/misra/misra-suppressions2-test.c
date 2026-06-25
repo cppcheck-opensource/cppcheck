@@ -2,6 +2,7 @@
 // ../../cppcheck --suppressions-list=suppressions.txt --dump misra-suppressions*-test.c && python ../misra.py misra-suppressions*-test.c.dump
 // There should be no violations reported
 
+// cppcheck-suppress-file misra-c2012-5.2
 union misra_5_2_field_hides_field__63x { //19.2
 int misra_5_2_field_hides_field__31x;
 int misra_5_2_field_hides_field__31y;//5.2

@@ -1,5 +1,5 @@
 // Cppcheck - A tool for static C/C++ code analysis
-// Copyright (C) 2007-2021 Cppcheck team.
+// Copyright (C) 2007-2026 Cppcheck team.
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,22 +16,50 @@
 
 #include "options.h"
 
-options::options(int argc, const char* const argv[])
-    : mWhichTests(argv + 1, argv + argc)
-    ,mQuiet(mWhichTests.count("-q") != 0)
-    ,mHelp(mWhichTests.count("-h") != 0 || mWhichTests.count("--help"))
-    ,mExe(argv[0])
-{
-    for (std::set<std::string>::const_iterator it = mWhichTests.begin(); it != mWhichTests.end();) {
-        if (!(*it).empty() && (((*it)[0] == '-') || ((*it).find("::") != std::string::npos && mWhichTests.count((*it).substr(0, (*it).find("::"))))))
-            it = mWhichTests.erase(it);
-        else
-            ++it;
-    }
+#include "timer.h"
 
-    if (mWhichTests.empty()) {
-        mWhichTests.insert("");
+options::options(int argc, const char* const argv[])
+    : mExe(argv[0])
+{
+    const std::set<std::string> args(argv + 1, argv + argc);
+    for (const auto& arg : args) {
+        if (arg.empty())
+            continue; // empty argument
+        if (arg[0] == '-') {
+            if (arg == "-q")
+                mQuiet = true;
+            else if (arg == "-h" || arg == "--help")
+                mHelp = true;
+            else if (arg == "-n")
+                mSummary = false;
+            else if (arg == "-d")
+                mDryRun = true;
+            else if (arg == "-x")
+                mExcludeTests = true;
+            else if (arg == "-t")
+                mTimerResults.reset(new TimerResults);
+            else
+                mErrors.emplace_back("unknown option '" + arg + "'");
+            continue; // command-line switch
+        }
+        const auto pos = arg.find("::");
+        if (pos == std::string::npos) {
+            mWhichTests[arg] = {}; // run whole fixture
+            continue;
+        }
+        const std::string fixture = arg.substr(0, pos);
+        const auto it = mWhichTests.find(fixture);
+        if (it != mWhichTests.cend() && it->second.empty())
+            continue; // whole fixture is already included
+        const std::string test = arg.substr(pos+2);
+        mWhichTests[fixture].emplace(test); // run individual test
     }
+}
+
+options::~options()
+{
+    if (mTimerResults)
+        mTimerResults->showResults(10, false);
 }
 
 bool options::quiet() const
@@ -44,7 +72,17 @@ bool options::help() const
     return mHelp;
 }
 
-const std::set<std::string>& options::which_test() const
+bool options::summary() const
+{
+    return mSummary;
+}
+
+bool options::dry_run() const
+{
+    return mDryRun;
+}
+
+const std::map<std::string, std::set<std::string>>& options::which_tests() const
 {
     return mWhichTests;
 }
@@ -52,4 +90,19 @@ const std::set<std::string>& options::which_test() const
 const std::string& options::exe() const
 {
     return mExe;
+}
+
+bool options::exclude_tests() const
+{
+    return mExcludeTests;
+}
+
+TimerResultsIntf* options::timer_results() const
+{
+    return mTimerResults.get();
+}
+
+const std::vector<std::string>& options::errors() const
+{
+    return mErrors;
 }

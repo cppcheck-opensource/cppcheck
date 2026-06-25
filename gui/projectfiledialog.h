@@ -1,6 +1,6 @@
-/*
+/* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2022 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,15 +22,25 @@
 #include "suppressions.h"
 
 #include <QDialog>
+#include <QList>
+#include <QObject>
 #include <QString>
 #include <QStringList>
 
 class QModelIndex;
-class QObject;
 class QWidget;
 namespace Ui {
     class ProjectFile;
 }
+
+extern const char ADDON_MISRA[];
+extern const char CODING_STANDARD_MISRA_C_2023[];
+extern const char CODING_STANDARD_MISRA_C_2025[];
+extern const char CODING_STANDARD_MISRA_CPP_2008[];
+extern const char CODING_STANDARD_MISRA_CPP_2023[];
+extern const char CODING_STANDARD_CERT_C[];
+extern const char CODING_STANDARD_CERT_CPP[];
+extern const char CODING_STANDARD_AUTOSAR[];
 
 /// @addtogroup GUI
 /// @{
@@ -44,7 +54,7 @@ class ProjectFile;
 class ProjectFileDialog : public QDialog {
     Q_OBJECT
 public:
-    explicit ProjectFileDialog(ProjectFile *projectFile, QWidget *parent = nullptr);
+    explicit ProjectFileDialog(ProjectFile *projectFile, bool premium, QWidget *parent = nullptr);
     ~ProjectFileDialog() override;
 
 private:
@@ -108,7 +118,7 @@ private:
      * @brief Return suppressions from the dialog control.
      * @return List of suppressions.
      */
-    QList<Suppressions::Suppression> getSuppressions() const {
+    const QList<SuppressionList::Suppression>& getSuppressions() const {
         return mSuppressions;
     }
 
@@ -163,15 +173,15 @@ private:
      * @brief Add a single suppression to dialog control.
      * @param suppression A suppressions to add to dialog control.
      */
-    void addSingleSuppression(const Suppressions::Suppression &suppression);
+    void addSingleSuppression(const SuppressionList::Suppression &suppression);
 
     /**
      * @brief Set suppressions to dialog control.
      * @param suppressions List of suppressions to set to dialog control.
      */
-    void setSuppressions(const QList<Suppressions::Suppression> &suppressions);
+    void setSuppressions(const QList<SuppressionList::Suppression> &suppressions);
 
-protected slots:
+private slots:
 
     /** ok button pressed, save changes and accept */
     void ok();
@@ -190,6 +200,11 @@ protected slots:
      * @brief Browse for solution / project / compile database.
      */
     void browseImportProject();
+
+    /**
+     * @brief Browse for include file
+     */
+    void browseUserInclude();
 
     /**
      * @brief Add new path to check.
@@ -265,7 +280,7 @@ protected slots:
     /**
      * @brief Edit suppression (double clicking on suppression)
      */
-    void editSuppression(const QModelIndex &index);
+    void editSuppression(const QModelIndex& /*index*/);
 
     /**
      * @brief Browse for misra file
@@ -316,18 +331,21 @@ protected:
     int getSuppressionIndex(const QString &shortText) const;
 
 private:
-    QStringList getProjectConfigs(const QString &fileName);
+    static QStringList getProjectConfigs(const QString &fileName);
 
-    Ui::ProjectFile *mUI;
+    Ui::ProjectFile * const mUI;
 
     /**
      * @brief Projectfile path.
      */
-    ProjectFile *mProjectFile;
+    ProjectFile * const mProjectFile;
+
+    /** Is this Cppcheck Premium? */
+    const bool mPremium;
 
     QString getExistingDirectory(const QString &caption, bool trailingSlash);
 
-    QList<Suppressions::Suppression> mSuppressions;
+    QList<SuppressionList::Suppression> mSuppressions;
 };
 
 /// @}
