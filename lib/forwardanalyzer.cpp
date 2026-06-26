@@ -773,14 +773,14 @@ namespace {
                         if (thenBranch.check) {
                             // The condition is only "known" because of an earlier assumption, so the
                             // skipped else block could still modify the value -> lower to possible
-                            if (analyzer->isConditional() && hasElse && analyzeScope(elseBranch.endBlock).isModified() &&
+                            if (!condTok->hasKnownIntValue() && hasElse && analyzeScope(elseBranch.endBlock).isModified() &&
                                 !analyzer->lowerToPossible())
                                 return Break(Analyzer::Terminate::Bail);
                             if (updateScope(thenBranch.endBlock, depth - 1) == Progress::Break)
                                 return Break();
                         } else if (elseBranch.check) {
                             // Likewise the skipped then block could still modify the value
-                            if (analyzer->isConditional() && analyzeScope(thenBranch.endBlock).isModified() &&
+                            if (!condTok->hasKnownIntValue() && analyzeScope(thenBranch.endBlock).isModified() &&
                                 !analyzer->lowerToPossible())
                                 return Break(Analyzer::Terminate::Bail);
                             if (elseBranch.endBlock && updateScope(elseBranch.endBlock, depth - 1) == Progress::Break)
