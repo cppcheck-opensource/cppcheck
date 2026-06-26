@@ -28,6 +28,7 @@
 #include <ctime>
 #include <list>
 #include <set>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -271,12 +272,19 @@ public:
      */
     static std::string toxml(const std::string &str);
 
-    static std::string plistHeader(const std::string &version, const std::vector<std::string> &files);
+    static std::string plistHeader(const std::string &version);
     static std::string plistData(const ErrorMessage &msg);
-    static const char *plistFooter() {
-        return " </array>\r\n"
-               "</dict>\r\n"
-               "</plist>";
+    static std::string plistFooter(const std::vector<std::string>& files) {
+        std::ostringstream ostr;
+        ostr << " </array>\r\n"
+             << " <key>files</key>\r\n"
+             << " <array>\r\n";
+        for (const std::string& file : files)
+            ostr << "  <string>" << ErrorLogger::toxml(file) << "</string>\r\n";
+        ostr << " </array>\r\n"
+             << "</dict>\r\n"
+             << "</plist>";
+        return ostr.str();
     }
 
     static bool isCriticalErrorId(const std::string& id) {

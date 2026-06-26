@@ -137,8 +137,11 @@ private:
         preprocessor.simplifyPragmaAsm();
 
         std::map<std::string, std::string> cfgcode;
-        if (cfgs.empty())
-            cfgs = preprocessor.getConfigs();
+        if (cfgs.empty()) {
+            cfgs.insert("");
+            std::set<std::string> configDefines = { "__cplusplus" };
+            preprocessor.getConfigs(configDefines, cfgs);
+        }
         for (const std::string & config : cfgs) {
             try {
                 const bool writeLocations = (strstr(code, "#include") != nullptr);
@@ -394,10 +397,24 @@ private:
         simplecpp::OutputList outputList;
         simplecpp::TokenList tokens(code,files,"test.c",&outputList);
         Preprocessor preprocessor(tokens, settings, *this, Standards::Language::C);
+        std::set<std::string> configs = { "" };
+        std::set<std::string> configDefines = { "__cplusplus" };
+        for (const auto &define : settings.library.defines()) {
+            const std::string::size_type paren = define.find("(");
+            const std::string::size_type space = define.find(" ");
+            std::string::size_type end = space;
+            if (paren != std::string::npos && paren < space)
+                end = paren;
+            configDefines.insert(define.substr(0, end));
+        }
+        preprocessor.setLoadCallback([&](simplecpp::FileData &data) {
+            Preprocessor::removeComments(data.tokens);
+            preprocessor.getConfigs(data.filename, data.tokens, configDefines, configs);
+        });
+        preprocessor.removeComments();
+        preprocessor.getConfigs(configDefines, configs);
         ASSERT(preprocessor.loadFiles(files));
         ASSERT(!preprocessor.reportOutput(outputList, true));
-        preprocessor.removeComments();
-        const std::set<std::string> configs = preprocessor.getConfigs();
         std::string ret;
         for (const std::string & config : configs)
             ret += config + '\n';
@@ -409,8 +426,11 @@ private:
         std::vector<std::string> files;
         simplecpp::TokenList tokens(code,files,"test.c");
         Preprocessor preprocessor(tokens, settingsDefault, *this, Standards::Language::C);
-        ASSERT(preprocessor.loadFiles(files));
+        preprocessor.setLoadCallback([](simplecpp::FileData &data) {
+            Preprocessor::removeComments(data.tokens);
+        });
         preprocessor.removeComments();
+        ASSERT(preprocessor.loadFiles(files));
         return preprocessor.calculateHash("");
     }
 

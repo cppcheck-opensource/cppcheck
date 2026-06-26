@@ -3,6 +3,7 @@
 
 import os
 import sys
+import time
 
 import pytest
 
@@ -413,3 +414,27 @@ def test_slow_bifurcate(tmpdir):
                 	}
                 }""")
     cppcheck([filename]) # should not take more than ~1 second
+
+
+@pytest.mark.timeout(60)
+def test_slow_many_headers(tmpdir):
+    # 14113
+    c_file = os.path.join(tmpdir, 'source.c')
+    h_file = os.path.join(tmpdir, 'header.h')
+    n_hdr = 128
+    with open(c_file, 'wt') as f:
+        f.write('#include "header.h"\n')
+    with open(h_file, 'wt') as f:
+        for i in range(n_hdr):
+            f.write(f'#ifdef CONFIG{i}\n#include "header{i}.h"\n#endif\n')
+    for i in range(n_hdr):
+        h_file_i = os.path.join(tmpdir, f"header{i}.h")
+        with open(h_file_i, 'wt') as f:
+            for j in range(2048):
+                f.write(f'#define MACRO{j}{(" "+str(j))*128}\n')
+            f.write(f'MACRO{i}\n')
+    # creating the files used for testing can be slow, so we use perf counter here instead
+    start = time.perf_counter_ns()
+    cppcheck(['-DCONFIG0', c_file])
+    end = time.perf_counter_ns()
+    assert end - start < 2 * 10**9 # max 2 sec

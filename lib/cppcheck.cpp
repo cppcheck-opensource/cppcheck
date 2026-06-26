@@ -100,9 +100,9 @@ public:
         closePlist();
     }
 
-    void setRemarkComments(std::vector<RemarkComment> remarkComments)
+    std::vector<RemarkComment>& remarkComments()
     {
-        mRemarkComments = std::move(remarkComments);
+        return mRemarkComments;
     }
 
     void setLocationMacros(const Token* startTok, const std::vector<std::string>& files)
@@ -124,17 +124,25 @@ public:
         mErrorList.clear();
     }
 
-    void openPlist(const std::string& filename, const std::vector<std::string>& files)
+    void openPlist(const std::string& filename)
     {
         mPlistFile.open(filename);
-        mPlistFile << ErrorLogger::plistHeader(version(), files);
+        mPlistFile << ErrorLogger::plistHeader(version());
+    }
+
+    void setPlistFilenames(std::vector<std::string> files)
+    {
+        if (mPlistFile.is_open()) {
+            mPlistFilenames = std::move(files);
+        }
     }
 
     void closePlist()
     {
         if (mPlistFile.is_open()) {
-            mPlistFile << ErrorLogger::plistFooter();
+            mPlistFile << ErrorLogger::plistFooter(mPlistFilenames);
             mPlistFile.close();
+            mPlistFilenames.clear();
         }
     }
 
@@ -282,6 +290,7 @@ private:
     std::map<Location, std::set<std::string>> mLocationMacros; // What macros are used on a location?
 
     std::ofstream mPlistFile;
+    std::vector<std::string> mPlistFilenames;
 
     unsigned int mExitCode{};
 
@@ -898,7 +907,7 @@ unsigned int CppCheck::checkFile(const FileWithDetails& file, const std::string 
     return checkInternal(file, cfgname, f);
 }
 
-void CppCheck::checkPlistOutput(const FileWithDetails& file, const std::vector<std::string>& files)
+void CppCheck::checkPlistOutput(const FileWithDetails& file)
 {
     if (!mSettings.plistOutput.empty()) {
         const bool slashFound = file.spath().find('/') != std::string::npos;
@@ -909,7 +918,7 @@ void CppCheck::checkPlistOutput(const FileWithDetails& file, const std::vector<s
         // the hash is added to handle when files in different folders have the same name
         const std::size_t fileNameHash = std::hash<std::string> {}(file.spath());
         filename = mSettings.plistOutput + noSuffixFilename + "_" + std::to_string(fileNameHash) + ".plist";
-        mLogger->openPlist(filename, files);
+        mLogger->openPlist(filename);
     }
 }
 
@@ -1000,24 +1009,16 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         if (preprocessor.reportOutput(outputList, true))
             return mLogger->exitcode();
 
-        if (!preprocessor.loadFiles(files))
-            return mLogger->exitcode();
+        checkPlistOutput(file);
 
-        checkPlistOutput(file, files);
-
-        std::string dumpProlog;
+        std::string dumpFooter;
         if (mSettings.dump || !mSettings.addons.empty()) {
-            dumpProlog += getDumpFileContentsRawTokens(files, tokens1);
+            dumpFooter += getDumpFileContentsRawTokensFooter(tokens1);
         }
 
         // Parse comments and then remove them
-        mLogger->setRemarkComments(preprocessor.getRemarkComments());
+        preprocessor.addRemarkComments(mLogger->remarkComments());
         preprocessor.inlineSuppressions(mSuppressions.nomsg);
-        if (mSettings.dump || !mSettings.addons.empty()) {
-            std::ostringstream oss;
-            mSuppressions.nomsg.dump(oss);
-            dumpProlog += oss.str();
-        }
         preprocessor.removeComments();
 
         if (!mSettings.buildDir.empty()) {
@@ -1040,19 +1041,48 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         }
 
         // Get directives
-        std::list<Directive> directives = preprocessor.createDirectives();
+        std::list<Directive> directives;
+        preprocessor.createDirectives(directives);
         preprocessor.simplifyPragmaAsm();
+
+        std::set<std::string> configurations;
+        std::set<std::string> configDefines = { "__cplusplus" };
+
+        // Insert library defines
+        for (const auto &define : mSettings.library.defines()) {
+            const std::string::size_type paren = define.find("(");
+            const std::string::size_type space = define.find(" ");
+            std::string::size_type end = space;
+
+            if (paren != std::string::npos && paren < space)
+                end = paren;
+
+            configDefines.insert(define.substr(0, end));
+        }
+
+        preprocessor.setLoadCallback([&](simplecpp::FileData &data) {
+            // Do preprocessing on included file
+            preprocessor.addRemarkComments(data.tokens, mLogger->remarkComments());
+            preprocessor.inlineSuppressions(data.tokens, mSuppressions.nomsg);
+            Preprocessor::removeComments(data.tokens);
+            Preprocessor::createDirectives(data.tokens, directives);
+            Preprocessor::simplifyPragmaAsm(data.tokens);
+            // Discover new configurations from included file
+            if (configurations.size() < maxConfigs)
+                preprocessor.getConfigs(data.filename, data.tokens, configDefines, configurations);
+        });
 
         preprocessor.setPlatformInfo();
 
         // Get configurations..
-        std::set<std::string> configurations;
         if (maxConfigs > 1) {
             Timer::run("Preprocessor::getConfigs", mTimerResults, [&]() {
-                configurations = preprocessor.getConfigs();
+                configurations = { "" };
+                preprocessor.getConfigs(configDefines, configurations);
+                preprocessor.loadFiles(files);
             });
         } else {
-            configurations.insert(mSettings.userDefines);
+            configurations = { mSettings.userDefines };
         }
 
         if (mSettings.checkConfiguration) {
@@ -1089,7 +1119,6 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         createDumpFile(mSettings, file, fdump, dumpFile);
         if (fdump.is_open()) {
             fdump << getLibraryDumpData();
-            fdump << dumpProlog;
             if (!mSettings.dump)
                 filesDeleter.addFile(dumpFile);
         }
@@ -1259,10 +1288,18 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         }
 
         // TODO: will not be closed if we encountered an exception
-        // dumped all configs, close root </dumps> element now
         if (fdump.is_open()) {
+            // dump all filenames, raw tokens, suppressions
+            std::string dumpHeader = getDumpFileContentsRawTokensHeader(files);
+            fdump << getDumpFileContentsRawTokens(dumpHeader, dumpFooter);
+            mSuppressions.nomsg.dump(fdump);
+            // dumped all configs, close root </dumps> element now
             fdump << "</dumps>" << std::endl;
             fdump.close();
+        }
+
+        if (!mSettings.plistOutput.empty()) {
+            mLogger->setPlistFilenames(std::move(files));
         }
 
         executeAddons(dumpFile, file);
@@ -1892,9 +1929,26 @@ bool CppCheck::isPremiumCodingStandardId(const std::string& id) const {
     return false;
 }
 
-std::string CppCheck::getDumpFileContentsRawTokens(const std::vector<std::string>& files, const simplecpp::TokenList& tokens1) const {
+std::string CppCheck::getDumpFileContentsRawTokens(const std::vector<std::string>& files, const simplecpp::TokenList& tokens1) const
+{
+    std::string header = getDumpFileContentsRawTokensHeader(files);
+    std::string footer = getDumpFileContentsRawTokensFooter(tokens1);
+    return getDumpFileContentsRawTokens(header, footer);
+}
+
+std::string CppCheck::getDumpFileContentsRawTokens(const std::string& header, const std::string& footer)
+{
     std::string dumpProlog;
     dumpProlog += "  <rawtokens>\n";
+    dumpProlog += header;
+    dumpProlog += footer;
+    dumpProlog += "  </rawtokens>\n";
+    return dumpProlog;
+}
+
+std::string CppCheck::getDumpFileContentsRawTokensHeader(const std::vector<std::string>& files) const
+{
+    std::string dumpProlog;
     for (unsigned int i = 0; i < files.size(); ++i) {
         dumpProlog += "    <file index=\"";
         dumpProlog += std::to_string(i);
@@ -1902,6 +1956,12 @@ std::string CppCheck::getDumpFileContentsRawTokens(const std::vector<std::string
         dumpProlog += ErrorLogger::toxml(Path::getRelativePath(files[i], mSettings.basePaths));
         dumpProlog += "\"/>\n";
     }
+    return dumpProlog;
+}
+
+std::string CppCheck::getDumpFileContentsRawTokensFooter(const simplecpp::TokenList& tokens1)
+{
+    std::string dumpProlog;
     for (const simplecpp::Token *tok = tokens1.cfront(); tok; tok = tok->next) {
         dumpProlog += "    <tok ";
 
@@ -1913,7 +1973,7 @@ std::string CppCheck::getDumpFileContentsRawTokens(const std::vector<std::string
         dumpProlog += std::to_string(tok->location.line);
         dumpProlog += "\" ";
 
-        dumpProlog +="column=\"";
+        dumpProlog += "column=\"";
         dumpProlog += std::to_string(tok->location.col);
         dumpProlog += "\" ";
 
@@ -1923,6 +1983,5 @@ std::string CppCheck::getDumpFileContentsRawTokens(const std::vector<std::string
 
         dumpProlog += "/>\n";
     }
-    dumpProlog += "  </rawtokens>\n";
     return dumpProlog;
 }
