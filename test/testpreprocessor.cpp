@@ -50,14 +50,12 @@ public:
     TestPreprocessor() : TestFixture("TestPreprocessor") {}
 
 private:
-    #define expandMacros(...) expandMacros_(__FILE__, __LINE__, __VA_ARGS__)
     template<size_t size>
-    std::string expandMacros_(const char* file, int line, const char (&code)[size], ErrorLogger &errorLogger) const {
+    std::string expandMacros(const char (&code)[size], ErrorLogger &errorLogger) const {
         simplecpp::OutputList outputList;
         std::vector<std::string> files;
         simplecpp::TokenList tokens1 = simplecpp::TokenList(code, files, "file.cpp", &outputList);
         Preprocessor p(tokens1, settingsDefault, errorLogger, Path::identify(tokens1.getFiles()[0], false));
-        ASSERT_LOC(p.loadFiles(files), file, line);
         simplecpp::TokenList tokens2 = p.preprocess("", files, outputList);
         (void)p.reportOutput(outputList, true);
         return tokens2.stringify();
@@ -98,7 +96,7 @@ private:
 
     static std::string getcodeforcfg(const Settings& settings, ErrorLogger& errorlogger, const char* code, std::size_t size, const std::string &cfg, const std::string &filename, SuppressionList *inlineSuppression = nullptr)
     {
-        std::map<std::string, std::string> cfgcode = getcode(settings, errorlogger, code, size, std::set<std::string>{cfg}, filename, inlineSuppression);
+        std::map<std::string, std::string> cfgcode = getcode(settings, errorlogger, code, size, std::list<std::string>{cfg}, filename, inlineSuppression);
         const auto it = cfgcode.find(cfg);
         if (it == cfgcode.end())
             return "";
@@ -117,7 +115,7 @@ private:
         return getcode(settings, errorlogger, code, size-1, {}, filename, nullptr);
     }
 
-    static std::map<std::string, std::string> getcode(const Settings& settings, ErrorLogger& errorlogger, const char* code, std::size_t size, std::set<std::string> cfgs, const std::string &filename, SuppressionList *inlineSuppression)
+    static std::map<std::string, std::string> getcode(const Settings& settings, ErrorLogger& errorlogger, const char* code, std::size_t size, std::list<std::string> cfgs, const std::string &filename, SuppressionList *inlineSuppression)
     {
         simplecpp::OutputList outputList;
         std::vector<std::string> files;
@@ -137,8 +135,11 @@ private:
         preprocessor.simplifyPragmaAsm();
 
         std::map<std::string, std::string> cfgcode;
-        if (cfgs.empty())
-            cfgs = preprocessor.getConfigs();
+        if (cfgs.empty()) {
+            cfgs.emplace_back("");
+            std::set<std::string> configDefines = { "__cplusplus" };
+            preprocessor.getConfigs(configDefines, cfgs);
+        }
         for (const std::string & config : cfgs) {
             try {
                 const bool writeLocations = (strstr(code, "#include") != nullptr);
@@ -394,10 +395,28 @@ private:
         simplecpp::OutputList outputList;
         simplecpp::TokenList tokens(code,files,"test.c",&outputList);
         Preprocessor preprocessor(tokens, settings, *this, Standards::Language::C);
-        ASSERT(preprocessor.loadFiles(files));
-        ASSERT(!preprocessor.reportOutput(outputList, true));
+        std::list<std::string> configs = { "" };
+        std::set<std::string> configDefines = { "__cplusplus" };
+        for (const auto &define : settings.library.defines()) {
+            const std::string::size_type paren = define.find("(");
+            const std::string::size_type space = define.find(" ");
+            std::string::size_type end = space;
+            if (paren != std::string::npos && paren < space)
+                end = paren;
+            configDefines.insert(define.substr(0, end));
+        }
+        preprocessor.setLoadCallback([&](simplecpp::FileData &data) {
+            Preprocessor::removeComments(data.tokens);
+            preprocessor.getConfigs(data.filename, data.tokens, configDefines, configs);
+        });
         preprocessor.removeComments();
-        const std::set<std::string> configs = preprocessor.getConfigs();
+        preprocessor.getConfigs(configDefines, configs);
+        for (const std::string &currCfg : configs) {
+            simplecpp::OutputList outputList_cfg;
+            preprocessor.preprocess(currCfg, files, outputList_cfg);
+        }
+        ASSERT(!preprocessor.reportOutput(outputList, true));
+        configs.sort();
         std::string ret;
         for (const std::string & config : configs)
             ret += config + '\n';
@@ -409,7 +428,6 @@ private:
         std::vector<std::string> files;
         simplecpp::TokenList tokens(code,files,"test.c");
         Preprocessor preprocessor(tokens, settingsDefault, *this, Standards::Language::C);
-        ASSERT(preprocessor.loadFiles(files));
         preprocessor.removeComments();
         return preprocessor.calculateHash("");
     }
