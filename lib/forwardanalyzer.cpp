@@ -789,7 +789,7 @@ namespace {
                             const bool conditional = stopOnCondition(condTok);
                             ForwardTraversal ft = fork();
                             ft.analyzer->assume(condTok, true);
-                            Progress p = ft.updateBranch(thenBranch, depth - 1);
+                            Progress pThen = ft.updateBranch(thenBranch, depth - 1);
 
                             // Only commit the condition as false on the main path when it actually
                             // matters
@@ -807,20 +807,20 @@ namespace {
                             }
                             if (thenBranch.isModified() || elseBranch.isModified()) {
                                 if (!ft.analyzer->lowerToPossible())
-                                    p = Progress::Break;
+                                    pThen = Progress::Break;
                                 if (pElse != Progress::Break && !analyzer->lowerToPossible())
                                     return Break(Analyzer::Terminate::Bail);
                             }
                             if (thenBranch.isInconclusive() || elseBranch.isInconclusive()) {
                                 if (!ft.analyzer->lowerToInconclusive())
-                                    p = Progress::Break;
+                                    pThen = Progress::Break;
                                 if (pElse != Progress::Break && !analyzer->lowerToInconclusive())
                                     return Break(Analyzer::Terminate::Bail);
                             }
                             if (thenBranch.hasGoto() || elseBranch.hasGoto()) {
                                 return Break(Analyzer::Terminate::Bail);
                             }
-                            if (p != Progress::Break && !thenBranch.isEscape())
+                            if (pThen != Progress::Break && !thenBranch.isEscape())
                                 ft.updateRange(thenBranch.endBlock, end, depth - 1);
                             if (pElse == Progress::Break)
                                 return Break();
