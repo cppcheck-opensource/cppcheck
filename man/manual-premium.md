@@ -1342,11 +1342,11 @@ Command to activate Misra C++ 2023 checkers:
 
 ## Suffixes
 
-Some rules can have a suffix appended to the rule id to mark a sub-category of the warning that Cppcheck considers safe to suppress. This gives the subset its own id, so you can suppress just those cases while keeping the rest of the rule active. Additional information is included in the warning notes if the suffix is present.
+Some rules can have a suffix appended to the rule id to mark a sub-category of the warning. This gives the subset its own id, so you can suppress just those cases while keeping the rest of the rule active. Additional information is included in the warning notes if the suffix is present.
 
 **-positive-constexpr**
 
-the value of the expression is a non-negative constant.
+the value of the expression is a non-negative constant. This suffix is considered safe to suppress by Cppcheck.
 
 ### Checking all C and C++ files
 
