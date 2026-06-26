@@ -4265,7 +4265,7 @@ private:
                         "    else {}\n"
                         "    return y;\n"
                         "}");
-        TODO_ASSERT_EQUALS("", "[test.cpp:5:9] -> [test.cpp:7:12]: (warning) Uninitialized variable: y [uninitvar]\n", errout_str());
+        ASSERT_EQUALS("", errout_str()); // #4560: escaping else keeps x known, so x is true and y is initialized
 
         valueFlowUninit("int f(int a) {\n" // #6583
                         "    int x;\n"

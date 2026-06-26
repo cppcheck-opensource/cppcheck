@@ -425,15 +425,12 @@ namespace {
             if (terminate == Analyzer::Terminate::Escape) {
                 branch.escape = true;
                 branch.escapeUnknown = false;
-            } else if (terminate != Analyzer::Terminate::None) {
-                if (terminate != Analyzer::Terminate::Escape) {
-                    bool unknown = false;
-                    if (isEscapeScope(branch.endBlock, unknown)) {
-                        branch.escape = true;
-                        branch.escapeUnknown = unknown;
-                    }
-                }
-                if (terminate != Analyzer::Terminate::Modified) {
+            } else {
+                // Detect an escape that the traversal did not flag (e.g. an unknown noreturn call);
+                // isEscapeScope also reports a possible (unknown) escape via escapeUnknown. Such a
+                // branch may not fall through, so the fork must not continue past it.
+                branch.escape = isEscapeScope(branch.endBlock, branch.escapeUnknown);
+                if (terminate != Analyzer::Terminate::None && terminate != Analyzer::Terminate::Modified) {
                     branch.action |= analyzeScope(branch.endBlock);
                 }
             }
@@ -678,11 +675,20 @@ namespace {
                         const bool inElse = scope->type == ScopeType::eElse;
                         const bool inDoWhile = scope->type == ScopeType::eDo;
                         const bool inLoop = contains({ScopeType::eDo, ScopeType::eFor, ScopeType::eWhile}, scope->type);
+                        const bool hasElse = Token::simpleMatch(tok, "} else {");
                         Token* condTok = getCondTokFromEnd(tok);
                         if (!condTok)
                             return Break();
+                        // When leaving the 'then' branch, control only reaches here when the
+                        // condition was true if the 'else' branch escapes (e.g. it returns). In that
+                        // case the value established in 'then' is still definite, so keep it known
+                        // instead of lowering it to possible.
+                        bool elseEscape = false;
+                        bool unknownEscape = false;
+                        if (!inLoop && !inElse && hasElse)
+                            elseEscape = isEscapeScope(tok->linkAt(2), unknownEscape);
                         if (!condTok->hasKnownIntValue() || inLoop) {
-                            if (!analyzer->lowerToPossible())
+                            if (!elseEscape && !analyzer->lowerToPossible())
                                 return Break(Analyzer::Terminate::Bail);
                         } else if (condTok->getKnownIntValue() == inElse) {
                             return Break();
@@ -707,7 +713,7 @@ namespace {
                         }
                         analyzer->assume(condTok, !inElse, Analyzer::Assume::Quiet);
                         assert(!inDoWhile || Token::simpleMatch(tok, "} while ("));
-                        if (Token::simpleMatch(tok, "} else {") || inDoWhile)
+                        if (hasElse || inDoWhile)
                             tok = tok->linkAt(2);
                     } else if (contains({ScopeType::eTry, ScopeType::eCatch}, scope->type)) {
                         if (!analyzer->lowerToPossible())
@@ -789,31 +795,35 @@ namespace {
                             // matters
                             if (thenBranch.isDead())
                                 analyzer->assume(condTok, false);
-                            if (hasElse) {
-                                if (updateBranch(elseBranch, depth - 1) == Progress::Break)
-                                    return Break();
-                            }
+                            // The else block is traversed on the main path. If it kills the value
+                            // (modified) the main path stops, but the then-fork may still carry the
+                            // value forward, so defer the break until after the fork continues.
+                            Progress pElse = Progress::Continue;
+                            if (hasElse)
+                                pElse = updateBranch(elseBranch, depth - 1);
                             if (thenBranch.isDead() || elseBranch.isDead()) {
                                 if (conditional && stopUpdates())
                                     return Break(Analyzer::Terminate::Conditional);
                             }
                             if (thenBranch.isModified() || elseBranch.isModified()) {
-                                if (!analyzer->lowerToPossible())
-                                    return Break(Analyzer::Terminate::Bail);
                                 if (!ft.analyzer->lowerToPossible())
                                     p = Progress::Break;
+                                if (pElse != Progress::Break && !analyzer->lowerToPossible())
+                                    return Break(Analyzer::Terminate::Bail);
                             }
                             if (thenBranch.isInconclusive() || elseBranch.isInconclusive()) {
-                                if (!analyzer->lowerToInconclusive())
-                                    return Break(Analyzer::Terminate::Bail);
                                 if (!ft.analyzer->lowerToInconclusive())
                                     p = Progress::Break;
+                                if (pElse != Progress::Break && !analyzer->lowerToInconclusive())
+                                    return Break(Analyzer::Terminate::Bail);
                             }
                             if (thenBranch.hasGoto() || elseBranch.hasGoto()) {
                                 return Break(Analyzer::Terminate::Bail);
                             }
-                            if (p != Progress::Break)
+                            if (p != Progress::Break && !thenBranch.isEscape())
                                 ft.updateRange(thenBranch.endBlock, end, depth - 1);
+                            if (pElse == Progress::Break)
+                                return Break();
                         }
                     }
                 } else if (Token::simpleMatch(tok, "try {")) {
