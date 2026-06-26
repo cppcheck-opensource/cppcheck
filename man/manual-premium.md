@@ -193,14 +193,6 @@ portability warnings. Implementation defined behavior. 64-bit portability. Some 
 configuration problems, which does not relate to the syntactical correctness, but the used Cppcheck configuration could
 be improved.
 
-## Suffixes
-
-Some rules can have a suffix appended to the rule id to mark a sub-category of the warning. This gives the subset its own id, so you can suppress just those cases while keeping the rest of the rule active. Additional information is included in the warning notes if the suffix is present.
-
-**-positive-constexpr**
-
-the value of the expression is a non-negative constant.
-
 ## Possible speedup analysis of template code
 
 Cppcheck instantiates the templates in your code.
@@ -1347,6 +1339,14 @@ Command to activate Misra C++ 2008 checkers:
 Command to activate Misra C++ 2023 checkers:
 
     cppcheck --premium=misra-c++-2023 ...
+
+## Suffixes
+
+Some rules can have a suffix appended to the rule id to mark a sub-category of the warning. This gives the subset its own id, so you can suppress just those cases while keeping the rest of the rule active. Additional information is included in the warning notes if the suffix is present.
+
+**-positive-constexpr**
+
+the value of the expression is a non-negative constant.
 
 ### Checking all C and C++ files
 
