@@ -785,7 +785,10 @@ namespace {
                             ft.analyzer->assume(condTok, true);
                             Progress p = ft.updateBranch(thenBranch, depth - 1);
 
-                            analyzer->assume(condTok, false);
+                            // Only commit the condition as false on the main path when it actually
+                            // matters
+                            if (thenBranch.isDead())
+                                analyzer->assume(condTok, false);
                             if (hasElse) {
                                 if (updateBranch(elseBranch, depth - 1) == Progress::Break)
                                     return Break();
