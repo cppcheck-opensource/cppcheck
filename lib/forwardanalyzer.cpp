@@ -803,19 +803,19 @@ namespace {
                                 pElse = updateBranch(elseBranch, depth - 1);
                             if (thenBranch.isDead() || elseBranch.isDead()) {
                                 if (conditional && stopUpdates())
-                                    return Break(Analyzer::Terminate::Conditional);
+                                    pElse = Break(Analyzer::Terminate::Conditional);
                             }
                             if (thenBranch.isModified() || elseBranch.isModified()) {
                                 if (!ft.analyzer->lowerToPossible())
                                     pThen = Progress::Break;
                                 if (pElse != Progress::Break && !analyzer->lowerToPossible())
-                                    return Break(Analyzer::Terminate::Bail);
+                                    pElse = Break(Analyzer::Terminate::Bail);
                             }
                             if (thenBranch.isInconclusive() || elseBranch.isInconclusive()) {
                                 if (!ft.analyzer->lowerToInconclusive())
                                     pThen = Progress::Break;
                                 if (pElse != Progress::Break && !analyzer->lowerToInconclusive())
-                                    return Break(Analyzer::Terminate::Bail);
+                                    pElse = Break(Analyzer::Terminate::Bail);
                             }
                             if (thenBranch.hasGoto() || elseBranch.hasGoto()) {
                                 return Break(Analyzer::Terminate::Bail);
