@@ -787,7 +787,11 @@ namespace {
                                 return Break();
                         } else {
                             const bool conditional = stopOnCondition(condTok);
-                            ForwardTraversal ft = fork();
+                            // The value only flows into the then-branch when the condition can split
+                            // it. For an opaque or correlated condition (e.g. 'if (f(x))' or
+                            // 'if (do_write)') it does not really reach there, so fork in analyze-only
+                            // mode: the branch's effect is still tracked but nothing is reported in it.
+                            ForwardTraversal ft = fork(!analyzer->updateScope(thenBranch.endBlock, false));
                             ft.analyzer->assume(condTok, true);
                             Progress pThen = ft.updateBranch(thenBranch, depth - 1);
 
