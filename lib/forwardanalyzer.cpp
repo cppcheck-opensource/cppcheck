@@ -792,13 +792,16 @@ namespace {
                             // 'if (do_write)') it does not really reach there, so fork in analyze-only
                             // mode: the branch's effect is still tracked but nothing is reported in it.
                             ForwardTraversal ft = fork(!analyzer->updateScope(thenBranch.endBlock, false));
-                            ft.analyzer->assume(condTok, true);
+                            // The branch is traversed below, so don't record its boundary state here.
+                            ft.analyzer->assume(condTok, true, Analyzer::Assume::NoState);
                             Progress pThen = ft.updateBranch(thenBranch, depth - 1);
 
                             // Only commit the condition as false on the main path when it actually
-                            // matters
+                            // matters. With an else the else block is traversed below (so suppress the
+                            // boundary state); without one the false path continues past the closing
+                            // brace and must record the assumed state there.
                             if (thenBranch.isDead())
-                                analyzer->assume(condTok, false);
+                                analyzer->assume(condTok, false, hasElse ? Analyzer::Assume::NoState : Analyzer::Assume::None);
                             // The else block is traversed on the main path. If it kills the value
                             // (modified) the main path stops, but the then-fork may still carry the
                             // value forward, so defer the break until after the fork continues.

@@ -735,7 +735,7 @@ private:
             isCondBlock = Token::Match(parent->previous(), "if|while (");
         }
 
-        if (isCondBlock) {
+        if (isCondBlock && !(flags & Assume::NoState)) {
             const Token* startBlock = parent->link()->next();
             if (Token::simpleMatch(startBlock, ";") && Token::simpleMatch(parent->tokAt(-2), "} while ("))
                 startBlock = parent->linkAt(-2);
@@ -746,6 +746,10 @@ private:
             } else {
                 if (Token::simpleMatch(endBlock, "} else {"))
                     pms.addState(endBlock->linkAt(2)->previous(), getProgramState());
+                else
+                    // No else: the false path continues past the closing brace, so record the
+                    // assumed state there so it is available to the rest of the enclosing scope.
+                    pms.addState(endBlock, getProgramState());
             }
         }
 

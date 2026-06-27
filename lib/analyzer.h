@@ -156,6 +156,9 @@ struct Analyzer {
             Quiet = (1 << 0),
             Absolute = (1 << 1),
             ContainerEmpty = (1 << 2),
+            // Do not record the program state at the branch boundaries. Used when assuming a
+            // condition before the branch is traversed, where those states would be premature.
+            NoState = (1 << 3),
         };
     };
 
