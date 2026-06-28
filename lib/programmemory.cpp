@@ -429,22 +429,12 @@ static void fillProgramMemoryFromAssignments(ProgramMemory& pm, const Token* tok
     for (const Token *tok2 = tok; tok2; tok2 = tok2->previous()) {
         if ((Token::simpleMatch(tok2, "=") || Token::Match(tok2->previous(), "%var% (|{")) && tok2->astOperand1() &&
             tok2->astOperand2()) {
-            bool setvar = false;
             const Token* vartok = tok2->astOperand1();
-            for (const auto& p:vars) {
-                if (p.first.getExpressionId() != vartok->exprId())
-                    continue;
-                if (vartok == tok)
-                    continue;
-                pm.setValue(vartok, p.second);
-                setvar = true;
-            }
-            if (!setvar) {
-                if (!pm.hasValue(vartok->exprId())) {
-                    const Token* valuetok = tok2->astOperand2();
-                    ProgramMemory local = state;
-                    pm.setValue(vartok, execute(valuetok, local, settings, vars));
-                }
+            if (!pm.hasValue(vartok->exprId())) {
+                const Token* valuetok = tok2->astOperand2();
+                ProgramMemory local = state;
+                // Tracked values are substituted by execute() when the expression is evaluated.
+                pm.setValue(vartok, execute(valuetok, local, settings, vars));
             }
         } else if (Token::simpleMatch(tok2, ")") && tok2->link() &&
                    Token::Match(tok2->link()->previous(), "assert|ASSERT ( !!)")) {
@@ -1647,9 +1637,14 @@ namespace {
                 }
                 return execute(expr->astOperand1());
             }
-            // A tracked value is the authoritative current value of its expression.
-            if (const ValueFlow::Value* tracked = getTrackedValue(expr))
+            // A tracked value is the authoritative current value of its expression. Write it back
+            // into the program memory when it differs from what is stored, so that later reads see
+            // the same value (matching the substitution done by fillProgramMemoryFromAssignments).
+            if (const ValueFlow::Value* tracked = getTrackedValue(expr)) {
+                if (!pm->hasValue(expr->exprId()) || utils::as_const(*pm).at(expr->exprId()) != *tracked)
+                    pm->setValue(expr, *tracked);
                 return *tracked;
+            }
             if (expr->exprId() > 0 && pm->hasValue(expr->exprId()) && !dependsOnTrackedValue(expr)) {
                 ValueFlow::Value result = utils::as_const(*pm).at(expr->exprId());
                 if (result.isImpossible() && result.isIntValue() && result.intvalue == 0 && isUsedAsBool(expr, settings)) {
