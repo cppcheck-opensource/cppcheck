@@ -678,10 +678,9 @@ private:
         if (const ValueFlow::Value* v = tok->getKnownValue(ValueFlow::Value::ValueType::INT))
             return {v->intvalue};
         std::vector<MathLib::bigint> result;
-        // The tracked values are authoritative: pass them so a value cached in the program memory
-        // that depends on a tracked value (e.g. 'h(p)' after 'p' was reassigned) is re-evaluated
-        // rather than served stale. The program memory is built from the same state, so compute it
-        // once here and hand it to the builder.
+        // Pass the tracked values so a cached program-memory value that depends on one (e.g. 'h(p)'
+        // after 'p' was reassigned) is re-evaluated rather than served stale. The memory is built
+        // from the same state, so compute it once and hand it to the builder.
         const ProgramState vars = getProgramState();
         ProgramMemory pm = getProgramMemoryFunc(vars);
         if (Token::Match(tok, "&&|%oror%")) {
@@ -743,11 +742,10 @@ private:
             endBlock = startBlock->link();
         }
 
-        // Pending is set only for the pre-traversal assume; without it the 'then' block has already
-        // been traversed and control is leaving it, so anchor the assumed state at the end of the
-        // block rather than at the condition. Assumptions about variables modified inside the block
-        // (e.g. an 'if' that narrows a value computed in the block) then survive past it, instead of
-        // being discarded because the variable was "modified" since the condition was evaluated.
+        // Without Pending the 'then' block has been traversed and control is leaving it, so anchor
+        // the assumed state at the block end instead of the condition. That keeps assumptions on
+        // variables modified inside the block (e.g. an 'if' narrowing a value computed there) from
+        // being discarded as "modified" once control leaves the block.
         const bool scopeEnd = !(flags & Assume::Pending) && state && endBlock;
         const Token* anchor = scopeEnd ? endBlock : tok;
         const Token* origin = scopeEnd ? endBlock : nullptr;
@@ -757,9 +755,9 @@ private:
         pms.addState(anchor, getProgramState());
         pms.assume(tok, state, flags & Assume::ContainerEmpty, origin);
 
-        // On the false path the block was already traversed (the true path is handled by scopeEnd
-        // above), so record the assumed state where control continues: past the else block, or past
-        // the closing brace when there is no else, so it is available to the enclosing scope.
+        // The false path (the true path uses scopeEnd above): record the assumed state where control
+        // continues - the end of the else block, or the closing brace when there is no else - so it
+        // reaches the enclosing scope.
         if (isCondBlock && !(flags & Assume::Pending) && !state) {
             if (Token::simpleMatch(endBlock, "} else {"))
                 pms.addState(endBlock->linkAt(2)->previous(), getProgramState());

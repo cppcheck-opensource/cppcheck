@@ -156,13 +156,9 @@ struct Analyzer {
             Quiet = (1 << 0),
             Absolute = (1 << 1),
             ContainerEmpty = (1 << 2),
-            // The branch this condition guards is still pending traversal (it is walked by a
-            // separate path), so this assume must not record the program state at the branch
-            // boundaries - those states would be premature. When this is not set the branch has
-            // already been traversed and control is continuing past it, so the assumed state is
-            // anchored at the block's end (see the analyzer's assume()): this keeps assumptions on
-            // variables modified inside the block from being discarded as "modified" once control
-            // leaves it.
+            // The branch this condition guards is not traversed yet (a separate path walks it), so
+            // the assume must not record the program state at the branch boundaries - they would be
+            // premature. When unset, the branch has been traversed and control is leaving it.
             Pending = (1 << 3),
         };
     };

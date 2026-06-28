@@ -426,9 +426,8 @@ namespace {
                 branch.escape = true;
                 branch.escapeUnknown = false;
             } else {
-                // Detect an escape that the traversal did not flag (e.g. an unknown noreturn call);
-                // isEscapeScope also reports a possible (unknown) escape via escapeUnknown. Such a
-                // branch may not fall through, so the fork must not continue past it.
+                // Detect an escape the traversal did not flag (e.g. an unknown noreturn call);
+                // escapeUnknown reports a possible (unknown) escape.
                 branch.escape = isEscapeScope(branch.endBlock, branch.escapeUnknown);
                 if (terminate != Analyzer::Terminate::None && terminate != Analyzer::Terminate::Modified) {
                     branch.action |= analyzeScope(branch.endBlock);
@@ -679,10 +678,9 @@ namespace {
                         Token* condTok = getCondTokFromEnd(tok);
                         if (!condTok)
                             return Break();
-                        // When leaving the 'then' branch, control only reaches here when the
-                        // condition was true if the 'else' branch escapes (e.g. it returns). In that
-                        // case the value established in 'then' is still definite, so keep it known
-                        // instead of lowering it to possible.
+                        // When the 'else' branch escapes (e.g. returns), control can only continue
+                        // here via the 'then' branch, so the value established there is still
+                        // definite - keep it known instead of lowering to possible.
                         bool elseEscape = false;
                         bool unknownEscape = false;
                         if (!inLoop && !inElse && hasElse)
@@ -788,18 +786,18 @@ namespace {
                         } else {
                             const bool conditional = stopOnCondition(condTok);
                             // The value only flows into the then-branch when the condition can split
-                            // it. For an opaque or correlated condition (e.g. 'if (f(x))' or
-                            // 'if (do_write)') it does not really reach there, so fork in analyze-only
-                            // mode: the branch's effect is still tracked but nothing is reported in it.
+                            // it; for an opaque or correlated condition (e.g. 'if (f(x))') it does
+                            // not, so fork in analyze-only mode: the branch's effect is still tracked
+                            // but nothing is reported in it.
                             ForwardTraversal ft = fork(!analyzer->updateScope(thenBranch.endBlock, false));
                             // The branch is traversed below, so don't record its boundary state here.
                             ft.analyzer->assume(condTok, true, Analyzer::Assume::Pending);
                             Progress pThen = ft.updateBranch(thenBranch, depth - 1);
 
-                            // Only commit the condition as false on the main path when it actually
-                            // matters. With an else the else block is traversed below (so suppress the
-                            // boundary state); without one the false path continues past the closing
-                            // brace and must record the assumed state there.
+                            // Commit the condition as false on the main path only when the then-branch
+                            // is dead. The else block, if any, is traversed separately (Pending); with
+                            // no else the false path continues past the closing brace, so record the
+                            // assumed state there (None).
                             if (thenBranch.isDead())
                                 analyzer->assume(condTok, false, hasElse ? Analyzer::Assume::Pending : Analyzer::Assume::None);
                             // The else block is traversed on the main path. If it kills the value

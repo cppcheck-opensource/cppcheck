@@ -1308,9 +1308,8 @@ namespace {
     struct Executor {
         ProgramMemory* pm;
         const Settings& settings;
-        // The values that are being tracked by the forward/reverse analysis. These take precedence
-        // over what is stored in the program memory: a tracked value is the authoritative current
-        // value of its expression, so any cached value that depends on it must be re-evaluated.
+        // Values tracked by the forward/reverse analysis. A tracked value is the authoritative
+        // current value of its expression and takes precedence over the program memory.
         const ProgramMemory::Map* vars = nullptr;
         int fdepth = 4;
         int depth = 10;
@@ -1328,9 +1327,8 @@ namespace {
             return it == vars->end() ? nullptr : &it->second;
         }
 
-        // Does the expression read a tracked value? If so, any value cached in the program memory
-        // for it may be stale (the tracked value may have changed since it was cached), so it must
-        // be re-evaluated rather than served from the cache.
+        // Does the expression read a tracked value? If so, any value cached for it may be stale
+        // (the tracked value may have changed since), so it must be re-evaluated, not served cached.
         bool dependsOnTrackedValue(const Token* expr) const {
             if (!vars || vars->empty())
                 return false;
@@ -1637,9 +1635,8 @@ namespace {
                 }
                 return execute(expr->astOperand1());
             }
-            // A tracked value is the authoritative current value of its expression. Write it back
-            // into the program memory when it differs from what is stored, so that later reads see
-            // the same value (matching the substitution done by fillProgramMemoryFromAssignments).
+            // Return the tracked value and write it back when it differs, so later reads see the
+            // same value (as fillProgramMemoryFromAssignments used to do).
             if (const ValueFlow::Value* tracked = getTrackedValue(expr)) {
                 const ValueFlow::Value* stored = pm->getValue(expr->exprId(), /*impossible*/ true);
                 if (!stored || *stored != *tracked)
