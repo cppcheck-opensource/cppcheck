@@ -1641,7 +1641,8 @@ namespace {
             // into the program memory when it differs from what is stored, so that later reads see
             // the same value (matching the substitution done by fillProgramMemoryFromAssignments).
             if (const ValueFlow::Value* tracked = getTrackedValue(expr)) {
-                if (!pm->hasValue(expr->exprId()) || utils::as_const(*pm).at(expr->exprId()) != *tracked)
+                const ValueFlow::Value* stored = pm->getValue(expr->exprId(), /*impossible*/ true);
+                if (!stored || *stored != *tracked)
                     pm->setValue(expr, *tracked);
                 return *tracked;
             }

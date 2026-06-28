@@ -678,11 +678,12 @@ private:
         if (const ValueFlow::Value* v = tok->getKnownValue(ValueFlow::Value::ValueType::INT))
             return {v->intvalue};
         std::vector<MathLib::bigint> result;
-        ProgramMemory pm = getProgramMemoryFunc();
         // The tracked values are authoritative: pass them so a value cached in the program memory
         // that depends on a tracked value (e.g. 'h(p)' after 'p' was reassigned) is re-evaluated
-        // rather than served stale.
+        // rather than served stale. The program memory is built from the same state, so compute it
+        // once here and hand it to the builder.
         const ProgramState vars = getProgramState();
+        ProgramMemory pm = getProgramMemoryFunc(vars);
         if (Token::Match(tok, "&&|%oror%")) {
             if (conditionIsTrue(tok, pm, getSettings(), vars))
                 result.push_back(1);
@@ -700,16 +701,16 @@ private:
 
     std::vector<MathLib::bigint> evaluateInt(const Token* tok) const
     {
-        return evaluateInt(tok, [&] {
-            return ProgramMemory{getProgramState()};
+        return evaluateInt(tok, [](const ProgramState& vars) {
+            return ProgramMemory{vars};
         });
     }
 
     std::vector<MathLib::bigint> evaluate(Evaluate e, const Token* tok, const Token* ctx = nullptr) const override
     {
         if (e == Evaluate::Integral) {
-            return evaluateInt(tok, [&] {
-                return pms.get(tok, ctx, getProgramState());
+            return evaluateInt(tok, [&](const ProgramState& vars) {
+                return pms.get(tok, ctx, vars);
             });
         }
         if (e == Evaluate::ContainerEmpty) {
@@ -734,10 +735,9 @@ private:
             isCondBlock = Token::Match(parent->previous(), "if|while (");
         }
 
-        const Token* startBlock = nullptr;
         const Token* endBlock = nullptr;
         if (isCondBlock) {
-            startBlock = parent->link()->next();
+            const Token* startBlock = parent->link()->next();
             if (Token::simpleMatch(startBlock, ";") && Token::simpleMatch(parent->tokAt(-2), "} while ("))
                 startBlock = parent->linkAt(-2);
             endBlock = startBlock->link();
@@ -757,18 +757,14 @@ private:
         pms.addState(anchor, getProgramState());
         pms.assume(tok, state, flags & Assume::ContainerEmpty, origin);
 
-        if (isCondBlock && !(flags & Assume::NoState) && !scopeEnd) {
-            if (state) {
-                pms.removeModifiedVars(endBlock);
-                pms.addState(endBlock->previous(), getProgramState());
-            } else {
-                if (Token::simpleMatch(endBlock, "} else {"))
-                    pms.addState(endBlock->linkAt(2)->previous(), getProgramState());
-                else
-                    // No else: the false path continues past the closing brace, so record the
-                    // assumed state there so it is available to the rest of the enclosing scope.
-                    pms.addState(endBlock, getProgramState());
-            }
+        // On the false path the block was already traversed (the true path is handled by scopeEnd
+        // above), so record the assumed state where control continues: past the else block, or past
+        // the closing brace when there is no else, so it is available to the enclosing scope.
+        if (isCondBlock && !(flags & Assume::NoState) && !state) {
+            if (Token::simpleMatch(endBlock, "} else {"))
+                pms.addState(endBlock->linkAt(2)->previous(), getProgramState());
+            else
+                pms.addState(endBlock, getProgramState());
         }
 
         if (!(flags & Assume::Quiet)) {
