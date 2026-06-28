@@ -743,12 +743,12 @@ private:
             endBlock = startBlock->link();
         }
 
-        // NoState is set only for the pre-traversal assume; without it the 'then' block has already
+        // Pending is set only for the pre-traversal assume; without it the 'then' block has already
         // been traversed and control is leaving it, so anchor the assumed state at the end of the
         // block rather than at the condition. Assumptions about variables modified inside the block
         // (e.g. an 'if' that narrows a value computed in the block) then survive past it, instead of
         // being discarded because the variable was "modified" since the condition was evaluated.
-        const bool scopeEnd = !(flags & Assume::NoState) && state && endBlock;
+        const bool scopeEnd = !(flags & Assume::Pending) && state && endBlock;
         const Token* anchor = scopeEnd ? endBlock : tok;
         const Token* origin = scopeEnd ? endBlock : nullptr;
 
@@ -760,7 +760,7 @@ private:
         // On the false path the block was already traversed (the true path is handled by scopeEnd
         // above), so record the assumed state where control continues: past the else block, or past
         // the closing brace when there is no else, so it is available to the enclosing scope.
-        if (isCondBlock && !(flags & Assume::NoState) && !state) {
+        if (isCondBlock && !(flags & Assume::Pending) && !state) {
             if (Token::simpleMatch(endBlock, "} else {"))
                 pms.addState(endBlock->linkAt(2)->previous(), getProgramState());
             else
