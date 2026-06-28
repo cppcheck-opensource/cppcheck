@@ -679,15 +679,19 @@ private:
             return {v->intvalue};
         std::vector<MathLib::bigint> result;
         ProgramMemory pm = getProgramMemoryFunc();
+        // The tracked values are authoritative: pass them so a value cached in the program memory
+        // that depends on a tracked value (e.g. 'h(p)' after 'p' was reassigned) is re-evaluated
+        // rather than served stale.
+        const ProgramState vars = getProgramState();
         if (Token::Match(tok, "&&|%oror%")) {
-            if (conditionIsTrue(tok, pm, getSettings()))
+            if (conditionIsTrue(tok, pm, getSettings(), vars))
                 result.push_back(1);
-            if (conditionIsFalse(tok, std::move(pm), getSettings()))
+            if (conditionIsFalse(tok, std::move(pm), getSettings(), vars))
                 result.push_back(0);
         } else {
             MathLib::bigint out = 0;
             bool error = false;
-            execute(tok, pm, &out, &error, getSettings());
+            execute(tok, pm, &out, &error, getSettings(), vars);
             if (!error)
                 result.push_back(out);
         }
@@ -724,22 +728,36 @@ private:
     }
 
     void assume(const Token* tok, bool state, unsigned int flags) override {
-        // Update program state
-        pms.removeModifiedVars(tok);
-        pms.addState(tok, getProgramState());
-        pms.assume(tok, state, flags & Assume::ContainerEmpty);
-
         bool isCondBlock = false;
         const Token* parent = tok->astParent();
         if (parent) {
             isCondBlock = Token::Match(parent->previous(), "if|while (");
         }
 
-        if (isCondBlock && !(flags & Assume::NoState)) {
-            const Token* startBlock = parent->link()->next();
+        const Token* startBlock = nullptr;
+        const Token* endBlock = nullptr;
+        if (isCondBlock) {
+            startBlock = parent->link()->next();
             if (Token::simpleMatch(startBlock, ";") && Token::simpleMatch(parent->tokAt(-2), "} while ("))
                 startBlock = parent->linkAt(-2);
-            const Token* endBlock = startBlock->link();
+            endBlock = startBlock->link();
+        }
+
+        // NoState is set only for the pre-traversal assume; without it the 'then' block has already
+        // been traversed and control is leaving it, so anchor the assumed state at the end of the
+        // block rather than at the condition. Assumptions about variables modified inside the block
+        // (e.g. an 'if' that narrows a value computed in the block) then survive past it, instead of
+        // being discarded because the variable was "modified" since the condition was evaluated.
+        const bool scopeEnd = !(flags & Assume::NoState) && state && endBlock;
+        const Token* anchor = scopeEnd ? endBlock : tok;
+        const Token* origin = scopeEnd ? endBlock : nullptr;
+
+        // Update program state
+        pms.removeModifiedVars(anchor);
+        pms.addState(anchor, getProgramState());
+        pms.assume(tok, state, flags & Assume::ContainerEmpty, origin);
+
+        if (isCondBlock && !(flags & Assume::NoState) && !scopeEnd) {
             if (state) {
                 pms.removeModifiedVars(endBlock);
                 pms.addState(endBlock->previous(), getProgramState());

@@ -171,7 +171,7 @@ struct ProgramMemoryState {
 
     void addState(const Token* tok, const ProgramMemory::Map& vars);
 
-    void assume(const Token* tok, bool b, bool isEmpty = false);
+    void assume(const Token* tok, bool b, bool isEmpty = false, const Token* origin = nullptr);
 
     void removeModifiedVars(const Token* tok);
 
@@ -184,21 +184,24 @@ void execute(const Token* expr,
              ProgramMemory& programMemory,
              MathLib::bigint* result,
              bool* error,
-             const Settings& settings);
+             const Settings& settings,
+             const ProgramMemory::Map& vars = {});
 
 /**
  * Is condition always false when variable has given value?
  * \param condition   top ast token in condition
  * \param pm   program memory
+ * \param vars  optional tracked values that take precedence over the program memory
  */
-bool conditionIsFalse(const Token* condition, ProgramMemory pm, const Settings& settings);
+bool conditionIsFalse(const Token* condition, ProgramMemory pm, const Settings& settings, const ProgramMemory::Map& vars = {});
 
 /**
  * Is condition always true when variable has given value?
  * \param condition   top ast token in condition
  * \param pm   program memory
+ * \param vars  optional tracked values that take precedence over the program memory
  */
-bool conditionIsTrue(const Token* condition, ProgramMemory pm, const Settings& settings);
+bool conditionIsTrue(const Token* condition, ProgramMemory pm, const Settings& settings, const ProgramMemory::Map& vars = {});
 
 /**
  * Get program memory by looking backwards from given token.

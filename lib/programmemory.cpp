@@ -262,26 +262,26 @@ ProgramMemory::Map::iterator ProgramMemory::find(nonneg int exprid)
     return mValues->find(ExprIdToken::create(exprid));
 }
 
-static ValueFlow::Value execute(const Token* expr, ProgramMemory& pm, const Settings& settings);
+static ValueFlow::Value execute(const Token* expr, ProgramMemory& pm, const Settings& settings, const ProgramMemory::Map& vars = {});
 
-static bool evaluateCondition(MathLib::bigint r, const Token* condition, ProgramMemory& pm, const Settings& settings)
+static bool evaluateCondition(MathLib::bigint r, const Token* condition, ProgramMemory& pm, const Settings& settings, const ProgramMemory::Map& vars = {})
 {
     if (!condition)
         return false;
     MathLib::bigint result = 0;
     bool error = false;
-    execute(condition, pm, &result, &error, settings);
+    execute(condition, pm, &result, &error, settings, vars);
     return !error && result == r;
 }
 
-bool conditionIsFalse(const Token* condition, ProgramMemory pm, const Settings& settings)
+bool conditionIsFalse(const Token* condition, ProgramMemory pm, const Settings& settings, const ProgramMemory::Map& vars)
 {
-    return evaluateCondition(0, condition, pm, settings);
+    return evaluateCondition(0, condition, pm, settings, vars);
 }
 
-bool conditionIsTrue(const Token* condition, ProgramMemory pm, const Settings& settings)
+bool conditionIsTrue(const Token* condition, ProgramMemory pm, const Settings& settings, const ProgramMemory::Map& vars)
 {
-    return evaluateCondition(1, condition, pm, settings);
+    return evaluateCondition(1, condition, pm, settings, vars);
 }
 
 static bool frontIs(const std::vector<MathLib::bigint>& v, bool i)
@@ -443,7 +443,7 @@ static void fillProgramMemoryFromAssignments(ProgramMemory& pm, const Token* tok
                 if (!pm.hasValue(vartok->exprId())) {
                     const Token* valuetok = tok2->astOperand2();
                     ProgramMemory local = state;
-                    pm.setValue(vartok, execute(valuetok, local, settings));
+                    pm.setValue(vartok, execute(valuetok, local, settings, vars));
                 }
             }
         } else if (Token::simpleMatch(tok2, ")") && tok2->link() &&
@@ -547,19 +547,21 @@ void ProgramMemoryState::addState(const Token* tok, const ProgramMemory::Map& va
     replace(std::move(local), tok);
 }
 
-void ProgramMemoryState::assume(const Token* tok, bool b, bool isEmpty)
+void ProgramMemoryState::assume(const Token* tok, bool b, bool isEmpty, const Token* origin)
 {
     ProgramMemory pm = state;
     if (isEmpty)
         pm.setContainerSizeValue(tok, 0, b);
     else
         programMemoryParseCondition(pm, tok, nullptr, settings, b);
-    const Token* origin = tok;
-    const Token* top = tok->astTop();
-    if (Token::Match(top->previous(), "for|while|if (") && !Token::simpleMatch(tok->astParent(), "?")) {
-        origin = top->link()->next();
-        if (!b && origin->link()) {
-            origin = origin->link();
+    if (!origin) {
+        origin = tok;
+        const Token* top = tok->astTop();
+        if (Token::Match(top->previous(), "for|while|if (") && !Token::simpleMatch(tok->astParent(), "?")) {
+            origin = top->link()->next();
+            if (!b && origin->link()) {
+                origin = origin->link();
+            }
         }
     }
     replace(std::move(pm), origin);
@@ -1316,12 +1318,35 @@ namespace {
     struct Executor {
         ProgramMemory* pm;
         const Settings& settings;
+        // The values that are being tracked by the forward/reverse analysis. These take precedence
+        // over what is stored in the program memory: a tracked value is the authoritative current
+        // value of its expression, so any cached value that depends on it must be re-evaluated.
+        const ProgramMemory::Map* vars = nullptr;
         int fdepth = 4;
         int depth = 10;
 
         Executor(ProgramMemory* pm, const Settings& settings) : pm(pm), settings(settings)
         {
             assert(pm != nullptr);
+        }
+
+        // Is the tracked value for this expression available?
+        const ValueFlow::Value* getTrackedValue(const Token* expr) const {
+            if (!vars || expr->exprId() == 0)
+                return nullptr;
+            const auto it = vars->find(ExprIdToken::create(expr->exprId()));
+            return it == vars->end() ? nullptr : &it->second;
+        }
+
+        // Does the expression read a tracked value? If so, any value cached in the program memory
+        // for it may be stale (the tracked value may have changed since it was cached), so it must
+        // be re-evaluated rather than served from the cache.
+        bool dependsOnTrackedValue(const Token* expr) const {
+            if (!vars || vars->empty())
+                return false;
+            return findAstNode(expr, [&](const Token* tok) {
+                return getTrackedValue(tok) != nullptr;
+            }) != nullptr;
         }
 
         static ValueFlow::Value unknown() {
@@ -1622,7 +1647,10 @@ namespace {
                 }
                 return execute(expr->astOperand1());
             }
-            if (expr->exprId() > 0 && pm->hasValue(expr->exprId())) {
+            // A tracked value is the authoritative current value of its expression.
+            if (const ValueFlow::Value* tracked = getTrackedValue(expr))
+                return *tracked;
+            if (expr->exprId() > 0 && pm->hasValue(expr->exprId()) && !dependsOnTrackedValue(expr)) {
                 ValueFlow::Value result = utils::as_const(*pm).at(expr->exprId());
                 if (result.isImpossible() && result.isIntValue() && result.intvalue == 0 && isUsedAsBool(expr, settings)) {
                     result.intvalue = !result.intvalue;
@@ -1815,9 +1843,10 @@ namespace {
     };
 }     // namespace
 
-static ValueFlow::Value execute(const Token* expr, ProgramMemory& pm, const Settings& settings)
+static ValueFlow::Value execute(const Token* expr, ProgramMemory& pm, const Settings& settings, const ProgramMemory::Map& vars)
 {
     Executor ex{&pm, settings};
+    ex.vars = &vars;
     return ex.execute(expr);
 }
 
@@ -1907,9 +1936,10 @@ void execute(const Token* expr,
              ProgramMemory& programMemory,
              MathLib::bigint* result,
              bool* error,
-             const Settings& settings)
+             const Settings& settings,
+             const ProgramMemory::Map& vars)
 {
-    ValueFlow::Value v = execute(expr, programMemory, settings);
+    ValueFlow::Value v = execute(expr, programMemory, settings, vars);
     if (!v.isIntValue() || v.isImpossible()) {
         if (error)
             *error = true;
