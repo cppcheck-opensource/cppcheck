@@ -351,18 +351,6 @@ namespace {
             return Token::findmatch(endBlock->link(), "goto|break", endBlock);
         }
 
-        bool hasInnerReturnScope(const Token* start, const Token* end) const {
-            for (const Token* tok=start; tok != end; tok = tok->previous()) {
-                if (Token::simpleMatch(tok, "}")) {
-                    const Token* ftok = nullptr;
-                    const bool r = isReturnScope(tok, settings.library, &ftok);
-                    if (r)
-                        return true;
-                }
-            }
-            return false;
-        }
-
         bool isEscapeScope(const Token* endBlock, bool& unknown) const {
             const Token* ftok = nullptr;
             const bool r = isReturnScope(endBlock, settings.library, &ftok);
