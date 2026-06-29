@@ -4922,6 +4922,19 @@ private:
               "    if (bits > 0) {}\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("int g();\n" // the modifying branch has an escaping sibling - still must be lowered
+              "void f(int t, int u) {\n"
+              "    int v = 0;\n"
+              "    if (t) {\n"
+              "        if (u == 2)\n"
+              "            v = g();\n"
+              "        else\n"
+              "            return;\n"
+              "    }\n"
+              "    if (v > 0) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void alwaysTrueSymbolic()

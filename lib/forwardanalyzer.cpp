@@ -424,7 +424,12 @@ namespace {
 
             if (terminate == Analyzer::Terminate::Escape) {
                 branch.escape = true;
-                branch.escapeUnknown = false;
+                // The traversal followed an escaping path, but if the scope does not structurally
+                // always escape then another path (e.g. a modified fork) falls through, so the escape
+                // is only conditional - keep isModified() meaningful by not treating it as conclusive.
+                bool structuralUnknown = false;
+                const bool structuralEscape = isEscapeScope(branch.endBlock, structuralUnknown);
+                branch.escapeUnknown = !structuralEscape || structuralUnknown;
             } else {
                 // Detect an escape the traversal did not flag (e.g. an unknown noreturn call);
                 // escapeUnknown reports a possible (unknown) escape.
@@ -557,7 +562,7 @@ namespace {
                         forkContinue = false;
                 }
 
-                if (allAnalysis.isModified() || !forkContinue) {
+                if (!forkContinue) {
                     // TODO: Don't bail on missing condition
                     if (!condTok)
                         return Break(Analyzer::Terminate::Bail);
