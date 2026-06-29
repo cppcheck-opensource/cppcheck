@@ -4911,6 +4911,17 @@ private:
         ASSERT_EQUALS("[test.cpp:3:10]: (style) Condition 'b()' is always false [knownConditionTrueFalse]\n"
                       "[test.cpp:4:9]: (style) Condition '!b()' is always true [knownConditionTrueFalse]\n",
                       errout_str());
+
+        check("int g();\n" // a value modified inside a nested branch must be lowered to possible
+              "void f(int outer, int inner) {\n"
+              "    int bits = 0;\n"
+              "    if (outer) {\n"
+              "        if (inner == 1)\n"
+              "            bits = g();\n"
+              "    }\n"
+              "    if (bits > 0) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void alwaysTrueSymbolic()

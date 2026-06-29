@@ -682,9 +682,10 @@ namespace {
                         // here via the 'then' branch, so the value established there is still
                         // definite - keep it known instead of lowering to possible.
                         bool elseEscape = false;
-                        bool unknownEscape = false;
-                        if (!inLoop && !inElse && hasElse)
+                        if (!inLoop && !inElse && hasElse) {
+                            bool unknownEscape = false;
                             elseEscape = isEscapeScope(tok->linkAt(2), unknownEscape);
+                        }
                         if (!condTok->hasKnownIntValue() || inLoop) {
                             if (!elseEscape && !analyzer->lowerToPossible())
                                 return Break(Analyzer::Terminate::Bail);
@@ -793,6 +794,9 @@ namespace {
                             // The branch is traversed below, so don't record its boundary state here.
                             ft.analyzer->assume(condTok, true, Analyzer::Assume::Pending);
                             Progress pThen = ft.updateBranch(thenBranch, depth - 1);
+                            // Merge the fork's actions so a modification in the then-branch bubbles up
+                            // to the enclosing branch's isModified().
+                            actions |= thenBranch.action;
 
                             // Commit the condition as false on the main path only when the then-branch
                             // is dead. The else block, if any, is traversed separately (Pending); with
