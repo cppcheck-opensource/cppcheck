@@ -2033,8 +2033,7 @@ static void valueFlowForwardLifetime(Token * tok, const TokenList &tokenlist, Er
                 if (val.lifetimeKind == ValueFlow::Value::LifetimeKind::Address)
                     val.lifetimeKind = ValueFlow::Value::LifetimeKind::SubObject;
             }
-            std::vector<const Token*> parents = getLhsLifetimeParents(parent->astOperand1(), settings.library);
-            for (const Token *p : parents)
+            for (const Token *p : getLhsLifetimeParents(parent->astOperand1(), settings.library))
                 valueFlowForward(nextExpression, endOfVarScope, p, values, tokenlist, errorLogger, settings);
         }
         // Constructor
