@@ -5857,7 +5857,9 @@ private:
               "    (void)y[1];\n"
               "    (void)y[2];\n"
               "}\n");
-        TODO_ASSERT_EQUALS("error", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:7:20] -> [test.cpp:9:12]: (error) The address of variable 's.a' is accessed at non-zero index. [objectIndex]\n"
+                      "[test.cpp:7:20] -> [test.cpp:10:12]: (error) The address of variable 's.a' is accessed at non-zero index. [objectIndex]\n",
+                      errout_str());
     }
 
     void checkPipeParameterSize() { // #3521
