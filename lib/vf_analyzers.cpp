@@ -727,7 +727,8 @@ private:
         return {};
     }
 
-    void assume(const Token* tok, bool state, unsigned int flags) override {
+    void assume(const Token* tok, bool state, unsigned int flags) override
+    {
         bool isCondBlock = false;
         const Token* parent = tok->astParent();
         if (parent) {

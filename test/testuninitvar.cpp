@@ -4284,7 +4284,8 @@ private:
                         "    else y = 123;\n" // <- y is always initialized
                         "    return y;\n"
                         "}");
-        ASSERT_EQUALS("", errout_str()); // #4560: fork-based condition analysis tracks x==0 -> else branch -> y initialized
+        ASSERT_EQUALS("",
+                      errout_str()); // #4560: fork-based condition analysis tracks x==0 -> else branch -> y initialized
 
         valueFlowUninit("void f(int x) {\n" // #3948
                         "  int value;\n"
@@ -5632,7 +5633,9 @@ private:
                         "        return;\n"
                         "    if (!mightBeLarger) {}\n"
                         "}");
-        ASSERT_EQUALS("[test.cpp:5:9] -> [test.cpp:7:24] -> [test.cpp:14:10]: (warning) Uninitialized variable: mightBeLarger [uninitvar]\n", errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:5:9] -> [test.cpp:7:24] -> [test.cpp:14:10]: (warning) Uninitialized variable: mightBeLarger [uninitvar]\n",
+            errout_str());
 
         // Same shape, but the later condition (dimensions == 0) is implied by the narrowing, so the
         // early return fires on the uninitialized path and there must be no warning.

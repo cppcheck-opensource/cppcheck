@@ -193,7 +193,10 @@ void execute(const Token* expr,
  * \param pm   program memory
  * \param vars  optional tracked values that take precedence over the program memory
  */
-bool conditionIsFalse(const Token* condition, ProgramMemory pm, const Settings& settings, const ProgramMemory::Map& vars = {});
+bool conditionIsFalse(const Token* condition,
+                      ProgramMemory pm,
+                      const Settings& settings,
+                      const ProgramMemory::Map& vars = {});
 
 /**
  * Is condition always true when variable has given value?
@@ -201,7 +204,10 @@ bool conditionIsFalse(const Token* condition, ProgramMemory pm, const Settings& 
  * \param pm   program memory
  * \param vars  optional tracked values that take precedence over the program memory
  */
-bool conditionIsTrue(const Token* condition, ProgramMemory pm, const Settings& settings, const ProgramMemory::Map& vars = {});
+bool conditionIsTrue(const Token* condition,
+                     ProgramMemory pm,
+                     const Settings& settings,
+                     const ProgramMemory::Map& vars = {});
 
 /**
  * Get program memory by looking backwards from given token.

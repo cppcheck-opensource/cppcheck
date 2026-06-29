@@ -262,9 +262,16 @@ ProgramMemory::Map::iterator ProgramMemory::find(nonneg int exprid)
     return mValues->find(ExprIdToken::create(exprid));
 }
 
-static ValueFlow::Value execute(const Token* expr, ProgramMemory& pm, const Settings& settings, const ProgramMemory::Map& vars = {});
+static ValueFlow::Value execute(const Token* expr,
+                                ProgramMemory& pm,
+                                const Settings& settings,
+                                const ProgramMemory::Map& vars = {});
 
-static bool evaluateCondition(MathLib::bigint r, const Token* condition, ProgramMemory& pm, const Settings& settings, const ProgramMemory::Map& vars = {})
+static bool evaluateCondition(MathLib::bigint r,
+                              const Token* condition,
+                              ProgramMemory& pm,
+                              const Settings& settings,
+                              const ProgramMemory::Map& vars = {})
 {
     if (!condition)
         return false;
@@ -1320,7 +1327,8 @@ namespace {
         }
 
         // Is the tracked value for this expression available?
-        const ValueFlow::Value* getTrackedValue(const Token* expr) const {
+        const ValueFlow::Value* getTrackedValue(const Token* expr) const
+        {
             if (!vars || expr->exprId() == 0)
                 return nullptr;
             const auto it = vars->find(ExprIdToken::create(expr->exprId()));
@@ -1329,7 +1337,8 @@ namespace {
 
         // Does the expression read a tracked value? If so, any value cached for it may be stale
         // (the tracked value may have changed since), so it must be re-evaluated, not served cached.
-        bool dependsOnTrackedValue(const Token* expr) const {
+        bool dependsOnTrackedValue(const Token* expr) const
+        {
             if (!vars || vars->empty())
                 return false;
             return findAstNode(expr, [&](const Token* tok) {
@@ -1836,7 +1845,10 @@ namespace {
     };
 }     // namespace
 
-static ValueFlow::Value execute(const Token* expr, ProgramMemory& pm, const Settings& settings, const ProgramMemory::Map& vars)
+static ValueFlow::Value execute(const Token* expr,
+                                ProgramMemory& pm,
+                                const Settings& settings,
+                                const ProgramMemory::Map& vars)
 {
     Executor ex{&pm, settings};
     ex.vars = &vars;

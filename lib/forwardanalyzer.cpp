@@ -777,8 +777,8 @@ namespace {
                         if (thenBranch.check) {
                             // The condition is only "known" because of an earlier assumption, so the
                             // skipped else block could still modify the value -> lower to possible
-                            if (!condTok->hasKnownIntValue() && hasElse && analyzeScope(elseBranch.endBlock).isModified() &&
-                                !analyzer->lowerToPossible())
+                            if (!condTok->hasKnownIntValue() && hasElse &&
+                                analyzeScope(elseBranch.endBlock).isModified() && !analyzer->lowerToPossible())
                                 return Break(Analyzer::Terminate::Bail);
                             if (updateScope(thenBranch.endBlock, depth - 1) == Progress::Break)
                                 return Break();
@@ -808,7 +808,9 @@ namespace {
                             // no else the false path continues past the closing brace, so record the
                             // assumed state there (None).
                             if (thenBranch.isDead())
-                                analyzer->assume(condTok, false, hasElse ? Analyzer::Assume::Pending : Analyzer::Assume::None);
+                                analyzer->assume(condTok,
+                                                 false,
+                                                 hasElse ? Analyzer::Assume::Pending : Analyzer::Assume::None);
                             // The else block is traversed on the main path. If it kills the value
                             // (modified) the main path stops, but the then-fork may still carry the
                             // value forward, so defer the break until after the fork continues.
