@@ -1346,12 +1346,11 @@ Some rules can have a suffix appended to the rule id to mark a sub-category of t
 
 **-positive-constexpr**
 
-the value of the expression is a non-negative constant. This suffix is considered safe to suppress by Cppcheck.
+the value of the expression is a non-negative constant expression. This suffix is considered safe to suppress by Cppcheck.
 
 **-nocode**
 
-**-char / -short / -long / -long-long**
-specifies the specific inappropriate type used in bit field decleration
+the line spliced into '//' comment contains no code, only whitespaces.
 
 ### Checking all C and C++ files
 
