@@ -1348,6 +1348,11 @@ Some rules can have a suffix appended to the rule id to mark a sub-category of t
 
 the value of the expression is a non-negative constant. This suffix is considered safe to suppress by Cppcheck.
 
+**-nocode**
+
+**-char / -short / -long / -long-long**
+specifies the specific inappropriate type used in bit field decleration
+
 ### Checking all C and C++ files
 
 The `cert-c` and `misra-c-*` coding standards target C and therefore the checkers only check C files by default.
