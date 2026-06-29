@@ -386,32 +386,6 @@ namespace {
             return a;
         }
 
-        bool checkBranch(Branch& branch) const {
-            Analyzer::Action a = analyzeScope(branch.endBlock);
-            branch.action = a;
-            std::vector<ForwardTraversal> ft1 = tryForkUpdateScope(branch.endBlock, a.isModified());
-            const bool bail = hasGoto(branch.endBlock);
-            if (!a.isModified() && !bail) {
-                if (ft1.empty()) {
-                    // Traverse into the branch to see if there is a conditional escape
-                    if (!branch.escape && hasInnerReturnScope(branch.endBlock->previous(), branch.endBlock->link())) {
-                        ForwardTraversal ft2 = fork(true);
-                        ft2.updateScope(branch.endBlock);
-                        if (ft2.terminate == Analyzer::Terminate::Escape) {
-                            branch.escape = true;
-                            branch.escapeUnknown = false;
-                        }
-                    }
-                } else {
-                    if (ft1.front().terminate == Analyzer::Terminate::Escape) {
-                        branch.escape = true;
-                        branch.escapeUnknown = false;
-                    }
-                }
-            }
-            return bail;
-        }
-
         Progress updateBranch(Branch& branch, int depth)
         {
             // Save and reset actions
