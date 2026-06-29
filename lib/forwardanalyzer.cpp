@@ -562,14 +562,12 @@ namespace {
                         forkContinue = false;
                 }
 
-                if (!forkContinue) {
-                    // TODO: Don't bail on missing condition
-                    if (!condTok)
-                        return Break(Analyzer::Terminate::Bail);
-                    if (analyzer->isConditional() && stopUpdates())
-                        return Break(Analyzer::Terminate::Conditional);
-                    analyzer->assume(condTok, false);
-                }
+                // TODO: Don't bail on missing condition
+                if (!condTok)
+                    return Break(Analyzer::Terminate::Bail);
+                if (analyzer->isConditional() && stopUpdates())
+                    return Break(Analyzer::Terminate::Conditional);
+                analyzer->assume(condTok, false);
                 if (forkContinue) {
                     for (ForwardTraversal& ft : ftv) {
                         if (!ft.actions.isIncremental())
