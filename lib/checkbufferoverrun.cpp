@@ -1086,9 +1086,11 @@ void CheckBufferOverrunImpl::objectIndex()
 
             std::vector<ValueFlow::Value> values = ValueFlow::getLifetimeObjValues(obj, false, -1);
             for (const ValueFlow::Value& v:values) {
-                if (v.lifetimeKind != ValueFlow::Value::LifetimeKind::Address)
+                if (v.lifetimeKind != ValueFlow::Value::LifetimeKind::Address && v.lifetimeKind != ValueFlow::Value::LifetimeKind::Object)
                     continue;
-                const Variable *var = v.tokvalue->variable();
+                const Token* varTok = nextAfterAstRightmostLeaf(v.tokvalue->astParent());
+                varTok = varTok ? varTok->previous() : nullptr;
+                const Variable *var = varTok ? varTok->variable() : nullptr;
                 if (!var)
                     continue;
                 if (var->isReference())
