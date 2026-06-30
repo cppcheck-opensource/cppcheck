@@ -262,6 +262,7 @@ private:
         TEST_CASE(premiumOptionsMetrics);
         TEST_CASE(premiumOptionsCertCIntPrecision);
         TEST_CASE(premiumOptionsLicenseFile);
+        TEST_CASE(premiumOptionsLicenseFilePathWithSpace);
         TEST_CASE(premiumOptionsInvalid1);
         TEST_CASE(premiumOptionsInvalid2);
         TEST_CASE(premiumSafety);
@@ -1640,6 +1641,14 @@ private:
         const char * const argv[] = {"cppcheck", "--premium-license-file=file.lic", "file.c"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS("--license-file=file.lic", settings->premiumArgs);
+    }
+
+    void premiumOptionsLicenseFilePathWithSpace() {
+        REDIRECT;
+        asPremium();
+        const char * const argv[] = {"cppcheck", "--premium-license-file=license folder/file.lic", "file.c"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
+        ASSERT_EQUALS("\"--license-file=license folder/file.lic\"", settings->premiumArgs);
     }
 
     void premiumOptionsInvalid1() {
