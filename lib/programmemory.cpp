@@ -513,7 +513,7 @@ static ProgramMemory getInitialProgramState(const Token* tok,
     return pm;
 }
 
-ProgramMemoryState::ProgramMemoryState(const Settings& s) : settings(s)
+ProgramMemoryState::ProgramMemoryState(const Settings& s) : settings(s), changedCache(std::make_shared<ChangedCache>())
 {}
 
 void ProgramMemoryState::replace(ProgramMemory pm, const Token* origin)
@@ -564,26 +564,36 @@ void ProgramMemoryState::assume(const Token* tok, bool b, bool isEmpty, const To
     replace(std::move(pm), origin);
 }
 
-void ProgramMemoryState::removeModifiedVars(const Token* tok)
+const Token* ProgramMemoryState::findExpressionChanged(const Token* expr, const Token* start, const Token* tok) const
 {
-    const ProgramMemory& pm = state;
+    // Memoized structural pre-filter (a superset) gates the expensive dead-code-aware walk.
+    const auto key = std::make_tuple(expr, start, tok);
+    auto it = changedCache->find(key);
+    if (it == changedCache->end())
+        it = changedCache->emplace(key, ::findExpressionChanged(expr, start, tok, settings)).first;
+    if (!it->second)
+        return nullptr;
     auto eval = [&](const Token* cond) -> std::vector<MathLib::bigint> {
-        ProgramMemory pm2 = pm;
-        auto result = execute(cond, pm2, settings);
+        ProgramMemory pm2 = state;
+        const auto result = execute(cond, pm2, settings);
         if (isTrue(result))
             return {1};
         if (isFalse(result))
             return {0};
         return {};
     };
+    return ::findExpressionChangedSkipDeadCode(expr, start, tok, settings, eval);
+}
+
+void ProgramMemoryState::removeModifiedVars(const Token* tok)
+{
     state.erase_if([&](const ExprIdToken& e) {
         const Token* start = origins[e.getExpressionId()];
         const Token* expr = e.tok;
-        if (!expr || findExpressionChangedSkipDeadCode(expr, start, tok, settings, eval)) {
+        const bool changed = !expr || findExpressionChanged(expr, start, tok);
+        if (changed)
             origins.erase(e.getExpressionId());
-            return true;
-        }
-        return false;
+        return changed;
     });
 }
 

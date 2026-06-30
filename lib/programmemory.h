@@ -28,6 +28,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -161,9 +162,13 @@ private:
 };
 
 struct ProgramMemoryState {
+    using ChangedCache = std::map<std::tuple<const Token*, const Token*, const Token*>, const Token*>;
+
     ProgramMemory state;
     std::map<nonneg int, const Token*> origins;
     const Settings& settings;
+    // Memoized findExpressionChanged() pre-filter; structural, so never invalidated.
+    std::shared_ptr<ChangedCache> changedCache;
 
     explicit ProgramMemoryState(const Settings& s);
 
@@ -174,6 +179,9 @@ struct ProgramMemoryState {
     void assume(const Token* tok, bool b, bool isEmpty = false, const Token* origin = nullptr);
 
     void removeModifiedVars(const Token* tok);
+
+    // Token modifying expr between start and tok, or nullptr.
+    const Token* findExpressionChanged(const Token* expr, const Token* start, const Token* tok) const;
 
     ProgramMemory get(const Token* tok, const Token* ctx, const ProgramMemory::Map& vars) const;
 };
