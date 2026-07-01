@@ -344,20 +344,8 @@ static bool isBasicForLoop(const Token* tok)
     return true;
 }
 
-// findExpressionChanged() is a pure structural query, so memoize it via the program-state cache,
-// keyed by (expr, start, end). This dominates the cost of building program memory from conditions.
-static const Token* cachedFindExpressionChanged(ProgramMemoryState::ChangedCache* cache, const Token* expr, const Token* start, const Token* end, const Settings& settings)
-{
-    if (!cache)
-        return findExpressionChanged(expr, start, end, settings);
-    const auto key = std::make_tuple(expr, start, end);
-    const auto it = cache->find(key);
-    if (it != cache->end())
-        return it->second;
-    return cache->emplace(key, findExpressionChanged(expr, start, end, settings)).first->second;
-}
-
-static void programMemoryParseCondition(ProgramMemory& pm, const Token* tok, const Token* endTok, const Settings& settings, bool then, ProgramMemoryState::ChangedCache* cache = nullptr)
+// findChanged: optional cached findExpressionChanged (see ProgramMemoryState::FindChangedFn).
+static void programMemoryParseCondition(ProgramMemory& pm, const Token* tok, const Token* endTok, const Settings& settings, bool then, const ProgramMemoryState::FindChangedFn& findChanged = {})
 {
     auto eval = [&](const Token* t) -> std::vector<MathLib::bigint> {
         if (!t)
@@ -371,6 +359,10 @@ static void programMemoryParseCondition(ProgramMemory& pm, const Token* tok, con
             return {result};
         return std::vector<MathLib::bigint>{};
     };
+    // Use the cached closure if given, else compute directly.
+    auto changed = [&](const Token* e, const Token* s, const Token* en) -> const Token* {
+        return findChanged ? findChanged(e, s, en) : findExpressionChanged(e, s, en, settings);
+    };
     if (Token::Match(tok, "==|>=|<=|<|>|!=")) {
         ValueFlow::Value truevalue;
         ValueFlow::Value falsevalue;
@@ -381,7 +373,7 @@ static void programMemoryParseCondition(ProgramMemory& pm, const Token* tok, con
             return;
         if (!truevalue.isIntValue())
             return;
-        if (endTok && cachedFindExpressionChanged(cache, vartok, tok->next(), endTok, settings))
+        if (endTok && changed(vartok, tok->next(), endTok))
             return;
         const bool impossible = (tok->str() == "==" && !then) || (tok->str() == "!=" && then);
         const ValueFlow::Value& v = then ? truevalue : falsevalue;
@@ -390,26 +382,26 @@ static void programMemoryParseCondition(ProgramMemory& pm, const Token* tok, con
         if (containerTok)
             pm.setContainerSizeValue(containerTok, v.intvalue, !impossible);
     } else if (Token::simpleMatch(tok, "!")) {
-        programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, !then, cache);
+        programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, !then, findChanged);
     } else if (then && Token::simpleMatch(tok, "&&")) {
-        programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, then, cache);
-        programMemoryParseCondition(pm, tok->astOperand2(), endTok, settings, then, cache);
+        programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, then, findChanged);
+        programMemoryParseCondition(pm, tok->astOperand2(), endTok, settings, then, findChanged);
     } else if (!then && Token::simpleMatch(tok, "||")) {
-        programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, then, cache);
-        programMemoryParseCondition(pm, tok->astOperand2(), endTok, settings, then, cache);
+        programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, then, findChanged);
+        programMemoryParseCondition(pm, tok->astOperand2(), endTok, settings, then, findChanged);
     } else if (Token::Match(tok, "&&|%oror%")) {
         std::vector<MathLib::bigint> lhs = eval(tok->astOperand1());
         std::vector<MathLib::bigint> rhs = eval(tok->astOperand2());
         if (lhs.empty() || rhs.empty()) {
             if (frontIs(lhs, !then))
-                programMemoryParseCondition(pm, tok->astOperand2(), endTok, settings, then, cache);
+                programMemoryParseCondition(pm, tok->astOperand2(), endTok, settings, then, findChanged);
             else if (frontIs(rhs, !then))
-                programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, then, cache);
+                programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, then, findChanged);
             else
                 pm.setIntValue(tok, 0, then);
         }
     } else if (tok && tok->exprId() > 0) {
-        if (endTok && cachedFindExpressionChanged(cache, tok, tok->next(), endTok, settings))
+        if (endTok && changed(tok, tok->next(), endTok))
             return;
         pm.setIntValue(tok, 0, then);
         const Token* containerTok = settings.library.getContainerFromYield(tok, Library::Container::Yield::EMPTY);
@@ -418,14 +410,14 @@ static void programMemoryParseCondition(ProgramMemory& pm, const Token* tok, con
     }
 }
 
-static void fillProgramMemoryFromConditions(ProgramMemory& pm, const Scope* scope, const Token* endTok, const Settings& settings, ProgramMemoryState::ChangedCache* cache)
+static void fillProgramMemoryFromConditions(ProgramMemory& pm, const Scope* scope, const Token* endTok, const Settings& settings, const ProgramMemoryState::FindChangedFn& findChanged)
 {
     if (!scope)
         return;
     if (!scope->isLocal())
         return;
     assert(scope != scope->nestedIn);
-    fillProgramMemoryFromConditions(pm, scope->nestedIn, endTok, settings, cache);
+    fillProgramMemoryFromConditions(pm, scope->nestedIn, endTok, settings, findChanged);
     if (scope->type == ScopeType::eIf || scope->type == ScopeType::eWhile || scope->type == ScopeType::eElse || scope->type == ScopeType::eFor) {
         const Token* condTok = getCondTokFromEnd(scope->bodyEnd);
         if (!condTok)
@@ -434,13 +426,13 @@ static void fillProgramMemoryFromConditions(ProgramMemory& pm, const Scope* scop
         bool error = false;
         execute(condTok, pm, &result, &error, settings);
         if (error)
-            programMemoryParseCondition(pm, condTok, endTok, settings, scope->type != ScopeType::eElse, cache);
+            programMemoryParseCondition(pm, condTok, endTok, settings, scope->type != ScopeType::eElse, findChanged);
     }
 }
 
-static void fillProgramMemoryFromConditions(ProgramMemory& pm, const Token* tok, const Settings& settings, ProgramMemoryState::ChangedCache* cache = nullptr)
+static void fillProgramMemoryFromConditions(ProgramMemory& pm, const Token* tok, const Settings& settings, const ProgramMemoryState::FindChangedFn& findChanged = {})
 {
-    fillProgramMemoryFromConditions(pm, tok->scope(), tok, settings, cache);
+    fillProgramMemoryFromConditions(pm, tok->scope(), tok, settings, findChanged);
 }
 
 static void fillProgramMemoryFromAssignments(ProgramMemory& pm, const Token* tok, const Settings& settings, const ProgramMemory& state, const ProgramMemory::Map& vars)
@@ -549,7 +541,7 @@ void ProgramMemoryState::addState(const Token* tok, const ProgramMemory::Map& va
 {
     ProgramMemory local = state;
     addVars(local, vars);
-    fillProgramMemoryFromConditions(local, tok, settings, changedCache.get());
+    fillProgramMemoryFromConditions(local, tok, settings, getCachedFindExpressionChanged(/*skipDeadCode*/ false));
     ProgramMemory pm;
     fillProgramMemoryFromAssignments(pm, tok, settings, local, vars);
     local.replace(std::move(pm));
@@ -577,29 +569,38 @@ void ProgramMemoryState::assume(const Token* tok, bool b, bool isEmpty, const To
     replace(std::move(pm), origin);
 }
 
-const Token* ProgramMemoryState::findExpressionChanged(const Token* expr, const Token* start, const Token* tok) const
+ProgramMemoryState::FindChangedFn ProgramMemoryState::getCachedFindExpressionChanged(bool skipDeadCode) const
 {
-    // Memoized structural pre-filter (a superset) gates the expensive dead-code-aware walk.
-    if (!cachedFindExpressionChanged(changedCache.get(), expr, start, tok, settings))
-        return nullptr;
-    auto eval = [&](const Token* cond) -> std::vector<MathLib::bigint> {
-        ProgramMemory pm2 = state;
-        const auto result = execute(cond, pm2, settings);
-        if (isTrue(result))
-            return {1};
-        if (isFalse(result))
-            return {0};
-        return {};
+    // The structural findExpressionChanged() is pure, so memoize it in changedCache (never
+    // invalidated). skipDeadCode gates it as a pre-filter for the dead-code walk, which needs state.
+    return [cache = changedCache, sp = &settings, statePtr = &state, skipDeadCode](const Token* expr, const Token* start, const Token* end) -> const Token* {
+        const auto key = std::make_tuple(expr, start, end);
+        const auto it = cache->find(key);
+        const Token* modified = (it != cache->end())
+                                ? it->second
+                                : cache->emplace(key, findExpressionChanged(expr, start, end, *sp)).first->second;
+        if (!skipDeadCode || !modified)
+            return modified;
+        auto eval = [&](const Token* cond) -> std::vector<MathLib::bigint> {
+            ProgramMemory pm2 = *statePtr;
+            const auto result = execute(cond, pm2, *sp);
+            if (isTrue(result))
+                return {1};
+            if (isFalse(result))
+                return {0};
+            return {};
+        };
+        return findExpressionChangedSkipDeadCode(expr, start, end, *sp, eval);
     };
-    return ::findExpressionChangedSkipDeadCode(expr, start, tok, settings, eval);
 }
 
 void ProgramMemoryState::removeModifiedVars(const Token* tok)
 {
+    const auto findChanged = getCachedFindExpressionChanged(/*skipDeadCode*/ true);
     state.erase_if([&](const ExprIdToken& e) {
         const Token* start = origins[e.getExpressionId()];
         const Token* expr = e.tok;
-        const bool changed = !expr || findExpressionChanged(expr, start, tok);
+        const bool changed = !expr || findChanged(expr, start, tok);
         if (changed)
             origins.erase(e.getExpressionId());
         return changed;

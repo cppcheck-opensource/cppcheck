@@ -163,6 +163,8 @@ private:
 
 struct ProgramMemoryState {
     using ChangedCache = std::map<std::tuple<const Token*, const Token*, const Token*>, const Token*>;
+    // The token modifying expr between start and end, or nullptr.
+    using FindChangedFn = std::function<const Token*(const Token* expr, const Token* start, const Token* end)>;
 
     ProgramMemory state;
     std::map<nonneg int, const Token*> origins;
@@ -180,8 +182,8 @@ struct ProgramMemoryState {
 
     void removeModifiedVars(const Token* tok);
 
-    // Token modifying expr between start and tok, or nullptr.
-    const Token* findExpressionChanged(const Token* expr, const Token* start, const Token* tok) const;
+    // A findExpressionChanged() closure memoized in changedCache
+    FindChangedFn getCachedFindExpressionChanged(bool skipDeadCode) const;
 
     ProgramMemory get(const Token* tok, const Token* ctx, const ProgramMemory::Map& vars) const;
 };
