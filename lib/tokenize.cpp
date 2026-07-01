@@ -2720,6 +2720,9 @@ namespace {
             return false;
         }
 
+        if (!tok->tokAt(-1))
+            return false;
+
         // skip other using with this name
         if (tok1->strAt(-1) == "using") {
             // fixme: this is wrong

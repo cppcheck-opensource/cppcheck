@@ -77,6 +77,7 @@ private:
         TEST_CASE(simplifyUsing37);
         TEST_CASE(simplifyUsing38);
         TEST_CASE(simplifyUsing39);
+        TEST_CASE(simplifyUsing40);
 
         TEST_CASE(simplifyUsing8970);
         TEST_CASE(simplifyUsing8971);
@@ -938,6 +939,13 @@ private:
         ASSERT_EQUALS("", errout_str());
         ASSERT_EQUALS(expected, tok(code, dinit(TokOptions, $.cppstd = Standards::CPP03)));
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void simplifyUsing40() {
+        const char code[] = "uint8_t f();\n" // #14876
+                            "using ::std::uint8_t;";
+        const char expected[] = "uint8_t f ( ) ;";
+        ASSERT_EQUALS(expected, tok(code));
     }
 
     void simplifyUsing8970() {
