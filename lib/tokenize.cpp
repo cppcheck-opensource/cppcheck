@@ -3470,6 +3470,8 @@ bool Tokenizer::simplifyUsing()
                 skip = true;
                 simplifyUsingError(usingStart, usingEnd);
             }
+            if (!after)
+                syntaxError(tok1);
             tok1 = after->previous();
         }
 
