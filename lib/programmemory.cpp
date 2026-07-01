@@ -345,7 +345,12 @@ static bool isBasicForLoop(const Token* tok)
 }
 
 // findChanged: optional cached findExpressionChanged (see ProgramMemoryState::FindChangedFn).
-static void programMemoryParseCondition(ProgramMemory& pm, const Token* tok, const Token* endTok, const Settings& settings, bool then, const ProgramMemoryState::FindChangedFn& findChanged = {})
+static void programMemoryParseCondition(ProgramMemory& pm,
+                                        const Token* tok,
+                                        const Token* endTok,
+                                        const Settings& settings,
+                                        bool then,
+                                        const ProgramMemoryState::FindChangedFn& findChanged = {})
 {
     auto eval = [&](const Token* t) -> std::vector<MathLib::bigint> {
         if (!t)
@@ -410,7 +415,11 @@ static void programMemoryParseCondition(ProgramMemory& pm, const Token* tok, con
     }
 }
 
-static void fillProgramMemoryFromConditions(ProgramMemory& pm, const Scope* scope, const Token* endTok, const Settings& settings, const ProgramMemoryState::FindChangedFn& findChanged)
+static void fillProgramMemoryFromConditions(ProgramMemory& pm,
+                                            const Scope* scope,
+                                            const Token* endTok,
+                                            const Settings& settings,
+                                            const ProgramMemoryState::FindChangedFn& findChanged)
 {
     if (!scope)
         return;
@@ -430,7 +439,10 @@ static void fillProgramMemoryFromConditions(ProgramMemory& pm, const Scope* scop
     }
 }
 
-static void fillProgramMemoryFromConditions(ProgramMemory& pm, const Token* tok, const Settings& settings, const ProgramMemoryState::FindChangedFn& findChanged = {})
+static void fillProgramMemoryFromConditions(ProgramMemory& pm,
+                                            const Token* tok,
+                                            const Settings& settings,
+                                            const ProgramMemoryState::FindChangedFn& findChanged = {})
 {
     fillProgramMemoryFromConditions(pm, tok->scope(), tok, settings, findChanged);
 }
@@ -579,12 +591,14 @@ ProgramMemoryState::FindChangedFn ProgramMemoryState::getCachedFindExpressionCha
     const Settings* const sp = &settings;
     ProgramMemory snapshot = skipDeadCode ? state : ProgramMemory{};
     const std::shared_ptr<EvalCache> evalCache = std::make_shared<EvalCache>();
-    return [cache, sp, snapshot, skipDeadCode, evalCache](const Token* expr, const Token* start, const Token* end) -> const Token* {
+    return [cache, sp, snapshot, skipDeadCode, evalCache](const Token* expr,
+                                                          const Token* start,
+                                                          const Token* end) -> const Token* {
         const auto key = std::make_tuple(expr, start, end);
         const auto it = cache->find(key);
         const Token* modified = (it != cache->end())
-                                ? it->second
-                                : cache->emplace(key, findExpressionChanged(expr, start, end, *sp)).first->second;
+                                    ? it->second
+                                    : cache->emplace(key, findExpressionChanged(expr, start, end, *sp)).first->second;
         if (!skipDeadCode || !modified)
             return modified;
         auto eval = [&](const Token* cond) -> std::vector<MathLib::bigint> {

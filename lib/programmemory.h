@@ -163,7 +163,8 @@ private:
 
 struct ProgramMemoryState {
     struct ChangedKeyHash {
-        std::size_t operator()(const std::tuple<const Token*, const Token*, const Token*>& t) const {
+        std::size_t operator()(const std::tuple<const Token*, const Token*, const Token*>& t) const
+        {
             const std::hash<const Token*> h;
             std::size_t seed = h(std::get<0>(t));
             seed ^= h(std::get<1>(t)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
@@ -171,7 +172,8 @@ struct ProgramMemoryState {
             return seed;
         }
     };
-    using ChangedCache = std::unordered_map<std::tuple<const Token*, const Token*, const Token*>, const Token*, ChangedKeyHash>;
+    using ChangedCache =
+        std::unordered_map<std::tuple<const Token*, const Token*, const Token*>, const Token*, ChangedKeyHash>;
     // The token modifying expr between start and end, or nullptr.
     using FindChangedFn = std::function<const Token*(const Token* expr, const Token* start, const Token* end)>;
 
