@@ -172,7 +172,7 @@ public:
     private:
         bool isFileNameMatch(const std::string &errorFileName) const;
 
-        static constexpr std::size_t FileNameMatchCacheMaxEntries = 256;
+        static constexpr std::size_t mFileNameMatchCacheMaxEntries = 256;
         mutable std::map<std::string, bool> mFileNameMatchCache;
     };
 

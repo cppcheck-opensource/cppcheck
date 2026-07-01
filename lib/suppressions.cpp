@@ -461,7 +461,7 @@ bool SuppressionList::Suppression::isFileNameMatch(const std::string &errorFileN
 
     const bool isMatch = PathMatch::match(fileName, errorFileName);
 
-    if (mFileNameMatchCache.size() >= FileNameMatchCacheMaxEntries)
+    if (mFileNameMatchCache.size() >= mFileNameMatchCacheMaxEntries)
         mFileNameMatchCache.clear();
 
     mFileNameMatchCache.emplace(errorFileName, isMatch);
