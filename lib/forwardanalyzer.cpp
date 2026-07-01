@@ -61,6 +61,8 @@ namespace {
         int branchCount = 0;
         // Nested condition-fork depth on this lineage (copied by fork()); bounds the fan-out.
         int forkDepth = 0;
+        // Total forks of the traversal (shared via the fork() copy); backstop past the depth bound.
+        std::shared_ptr<int> forkBudget = std::make_shared<int>(0);
 
         Progress Break(Analyzer::Terminate t = Analyzer::Terminate::None) {
             if ((!analyzeOnly || analyzeTerminate) && t != Analyzer::Terminate::None)
@@ -798,11 +800,15 @@ namespace {
                             if (thenBranch.hasGoto() || elseBranch.hasGoto()) {
                                 return Break(Analyzer::Terminate::Bail);
                             }
-                            // Carry the then-fork forward; past the limit only the linear main path
-                            // continues (no branch skipped). Negative == unlimited.
+                            // Carry the then-fork forward, unless a limit is hit - then only the linear main
+                            // path continues (no bail). forkDepth bounds nesting, forkBudget total. <0 = off.
                             const int forkDepthLimit = settings.vfOptions.maxForwardConditionForkDepth;
-                            if (pThen != Progress::Break && !thenBranch.isEscape() &&
-                                (forkDepthLimit < 0 || forkDepth < forkDepthLimit)) {
+                            const int forkBudgetLimit = settings.vfOptions.maxForwardConditionForks;
+                            const bool depthOk = forkDepthLimit < 0 || forkDepth < forkDepthLimit;
+                            const bool budgetOk = forkBudgetLimit < 0 || !forkBudget || *forkBudget < forkBudgetLimit;
+                            if (pThen != Progress::Break && !thenBranch.isEscape() && depthOk && budgetOk) {
+                                if (forkBudget)
+                                    ++(*forkBudget);
                                 ft.forkDepth = forkDepth + 1;
                                 ft.updateRange(thenBranch.endBlock, end, depth - 1);
                             }

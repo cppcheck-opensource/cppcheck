@@ -355,6 +355,7 @@ void Settings::setCheckLevel(CheckLevel level)
         vfOptions.doConditionExpressionAnalysis = true;
         vfOptions.maxForwardBranches = -1;
         vfOptions.maxForwardConditionForkDepth = 4;
+        vfOptions.maxForwardConditionForks = 256;
     }
 }
 

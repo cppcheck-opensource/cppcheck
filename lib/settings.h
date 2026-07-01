@@ -518,6 +518,9 @@ public:
             without skipping any branch. 0 disables forking (linear); a negative value means unlimited. */
         int maxForwardConditionForkDepth = 4;
 
+        /** @brief Maximum total condition-fork continuations in one forward traversal. */
+        int maxForwardConditionForks = 256;
+
         /** @brief Maximum performed alignof recursion */
         int maxAlignOfRecursion = 100;
 
