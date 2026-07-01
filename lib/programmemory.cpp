@@ -589,8 +589,8 @@ ProgramMemoryState::FindChangedFn ProgramMemoryState::getCachedFindExpressionCha
     using EvalCache = std::map<const Token*, std::vector<MathLib::bigint>>;
     const std::shared_ptr<ChangedCache> cache = changedCache;
     const Settings* const sp = &settings;
-    ProgramMemory snapshot = skipDeadCode ? state : ProgramMemory{};
-    const std::shared_ptr<EvalCache> evalCache = std::make_shared<EvalCache>();
+    ProgramMemory snapshot = state;
+    const std::shared_ptr<EvalCache> evalCache = skipDeadCode ? std::make_shared<EvalCache>() : nullptr;
     return [cache, sp, snapshot, skipDeadCode, evalCache](const Token* expr,
                                                           const Token* start,
                                                           const Token* end) -> const Token* {

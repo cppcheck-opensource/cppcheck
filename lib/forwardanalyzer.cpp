@@ -77,7 +77,6 @@ namespace {
             bool check = false;
             bool escape = false;
             bool escapeUnknown = false;
-            bool active = false;
             bool isEscape() const {
                 return escape || escapeUnknown;
             }
@@ -802,14 +801,14 @@ namespace {
                             }
                             // Carry the then-fork forward, unless a limit is hit - then only the linear main
                             // path continues (no bail). forkDepth bounds nesting, forkBudget total. <0 = off.
+                            assert(forkBudget != nullptr);
                             const int forkDepthLimit = settings.vfOptions.maxForwardConditionForkDepth;
                             const int forkBudgetLimit = settings.vfOptions.maxForwardConditionForks;
                             const bool depthOk = forkDepthLimit < 0 || forkDepth < forkDepthLimit;
-                            const bool budgetOk = forkBudgetLimit < 0 || !forkBudget || *forkBudget < forkBudgetLimit;
+                            const bool budgetOk = forkBudgetLimit < 0 || *forkBudget < forkBudgetLimit;
                             if (pThen != Progress::Break && !thenBranch.isEscape() && depthOk && budgetOk) {
-                                if (forkBudget)
-                                    ++(*forkBudget);
-                                ft.forkDepth = forkDepth + 1;
+                                ++(*forkBudget);
+                                ++ft.forkDepth;
                                 ft.updateRange(thenBranch.endBlock, end, depth - 1);
                             }
                             if (pElse == Progress::Break)
