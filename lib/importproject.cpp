@@ -543,13 +543,13 @@ bool ImportProject::importSlnx(const std::string& filename, const std::vector<st
     auto processProject = [&](const tinyxml2::XMLElement* projectNode) {
         const char* pathAttribute = projectNode->Attribute("Path");
         if (pathAttribute == nullptr)
-            return;
+            return true;
 
         std::string vcxproj(pathAttribute);
         vcxproj = Path::toNativeSeparators(std::move(vcxproj));
 
         if (Path::getFilenameExtensionInLowerCase(vcxproj) != ".vcxproj")
-            return; // skip other project types
+            return true; // skip other project types
 
         if (!Path::isAbsolute(vcxproj))
             vcxproj = variables["SolutionDir"] + vcxproj;
@@ -557,19 +557,22 @@ bool ImportProject::importSlnx(const std::string& filename, const std::vector<st
         vcxproj = Path::fromNativeSeparators(std::move(vcxproj));
         if (!importVcxproj(vcxproj, variables, "", fileFilters, sharedItemsProjects)) {
             errors.emplace_back("failed to load '" + vcxproj + "' from Visual Studio solution");
-            return;
+            return false;
         }
         found = true;
+        return true;
     };
 
     for (const tinyxml2::XMLElement* node = rootnode->FirstChildElement(); node; node = node->NextSiblingElement()) {
         const char* name = node->Name();
         if (std::strcmp(name, "Project") == 0) {
-            processProject(node);
+            if (!processProject(node))
+                return false;
         } else if (std::strcmp(name, "Folder") == 0) {
             for (const tinyxml2::XMLElement* childNode = node->FirstChildElement(); childNode; childNode = childNode->NextSiblingElement()) {
                 if (std::strcmp(childNode->Name(), "Project") == 0) {
-                    processProject(childNode);
+                    if (!processProject(childNode))
+                        return false;
                 }
             }
         }
