@@ -571,9 +571,11 @@ void ProgramMemoryState::assume(const Token* tok, bool b, bool isEmpty, const To
 
 ProgramMemoryState::FindChangedFn ProgramMemoryState::getCachedFindExpressionChanged(bool skipDeadCode) const
 {
-    // The structural findExpressionChanged() is pure, so memoize it in changedCache (never
-    // invalidated). skipDeadCode gates it as a pre-filter for the dead-code walk, which needs state.
-    return [cache = changedCache, sp = &settings, statePtr = &state, skipDeadCode](const Token* expr, const Token* start, const Token* end) -> const Token* {
+    // Structural findExpressionChanged() is pure, so memoize it in changedCache (never invalidated).
+    // skipDeadCode adds the dead-code walk; it evaluates guards against a fixed state snapshot (so every
+    // variable follows the same path) and memoizes those evals in evalCache for the closure's lifetime.
+    using EvalCache = std::map<const Token*, std::vector<MathLib::bigint>>;
+    return [cache = changedCache, sp = &settings, snapshot = (skipDeadCode ? state : ProgramMemory{}), skipDeadCode, evalCache = std::make_shared<EvalCache>()](const Token* expr, const Token* start, const Token* end) -> const Token* {
         const auto key = std::make_tuple(expr, start, end);
         const auto it = cache->find(key);
         const Token* modified = (it != cache->end())
@@ -582,13 +584,17 @@ ProgramMemoryState::FindChangedFn ProgramMemoryState::getCachedFindExpressionCha
         if (!skipDeadCode || !modified)
             return modified;
         auto eval = [&](const Token* cond) -> std::vector<MathLib::bigint> {
-            ProgramMemory pm2 = *statePtr;
+            const auto cit = evalCache->find(cond);
+            if (cit != evalCache->end())
+                return cit->second;
+            ProgramMemory pm2 = snapshot;
             const auto result = execute(cond, pm2, *sp);
+            std::vector<MathLib::bigint> r;
             if (isTrue(result))
-                return {1};
-            if (isFalse(result))
-                return {0};
-            return {};
+                r = {1};
+            else if (isFalse(result))
+                r = {0};
+            return evalCache->emplace(cond, std::move(r)).first->second;
         };
         return findExpressionChangedSkipDeadCode(expr, start, end, *sp, eval);
     };
