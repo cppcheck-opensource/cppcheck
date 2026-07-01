@@ -59,6 +59,8 @@ namespace {
         Analyzer::Terminate terminate = Analyzer::Terminate::None;
         std::vector<Token*> loopEnds;
         int branchCount = 0;
+        // Nested condition-fork depth on this lineage (copied by fork()); bounds the fan-out.
+        int forkDepth = 0;
 
         Progress Break(Analyzer::Terminate t = Analyzer::Terminate::None) {
             if ((!analyzeOnly || analyzeTerminate) && t != Analyzer::Terminate::None)
@@ -796,8 +798,14 @@ namespace {
                             if (thenBranch.hasGoto() || elseBranch.hasGoto()) {
                                 return Break(Analyzer::Terminate::Bail);
                             }
-                            if (pThen != Progress::Break && !thenBranch.isEscape())
+                            // Carry the then-fork forward; past the limit only the linear main path
+                            // continues (no branch skipped). Negative == unlimited.
+                            const int forkDepthLimit = settings.vfOptions.maxForwardConditionForkDepth;
+                            if (pThen != Progress::Break && !thenBranch.isEscape() &&
+                                (forkDepthLimit < 0 || forkDepth < forkDepthLimit)) {
+                                ft.forkDepth = forkDepth + 1;
                                 ft.updateRange(thenBranch.endBlock, end, depth - 1);
+                            }
                             if (pElse == Progress::Break)
                                 return Break();
                         }
