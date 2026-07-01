@@ -161,6 +161,22 @@ def test_slnx_no_projects(tmpdir):
     __test_project_error(tmpdir, "slnx", content, expected)
 
 
+def test_slnx_no_projects_in_folder(tmpdir):
+    content = '<?xml version="1.0" encoding="UTF-8"?>\r\n' \
+              "<Solution>\r\n" \
+              "  <Configurations>\r\n" \
+              '    <Platform Name="x64" />\r\n' \
+              '    <Platform Name="x86" />\r\n' \
+              "  </Configurations>\r\n" \
+              '  <Folder Name="/common/">\r\n' \
+              '  </Folder>\r\n' \
+          "</Solution>\r\n"
+
+    expected = "no projects found in Visual Studio solution file"
+
+    __test_project_error(tmpdir, "slnx", content, expected)
+
+
 def test_slnx_project_file_not_found(tmpdir):
     content = '<?xml version="1.0" encoding="UTF-8"?>\r\n' \
               "<Solution>\r\n" \
