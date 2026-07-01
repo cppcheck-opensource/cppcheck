@@ -344,7 +344,20 @@ static bool isBasicForLoop(const Token* tok)
     return true;
 }
 
-static void programMemoryParseCondition(ProgramMemory& pm, const Token* tok, const Token* endTok, const Settings& settings, bool then)
+// findExpressionChanged() is a pure structural query, so memoize it via the program-state cache,
+// keyed by (expr, start, end). This dominates the cost of building program memory from conditions.
+static const Token* cachedFindExpressionChanged(ProgramMemoryState::ChangedCache* cache, const Token* expr, const Token* start, const Token* end, const Settings& settings)
+{
+    if (!cache)
+        return findExpressionChanged(expr, start, end, settings);
+    const auto key = std::make_tuple(expr, start, end);
+    const auto it = cache->find(key);
+    if (it != cache->end())
+        return it->second;
+    return cache->emplace(key, findExpressionChanged(expr, start, end, settings)).first->second;
+}
+
+static void programMemoryParseCondition(ProgramMemory& pm, const Token* tok, const Token* endTok, const Settings& settings, bool then, ProgramMemoryState::ChangedCache* cache = nullptr)
 {
     auto eval = [&](const Token* t) -> std::vector<MathLib::bigint> {
         if (!t)
@@ -368,7 +381,7 @@ static void programMemoryParseCondition(ProgramMemory& pm, const Token* tok, con
             return;
         if (!truevalue.isIntValue())
             return;
-        if (endTok && findExpressionChanged(vartok, tok->next(), endTok, settings))
+        if (endTok && cachedFindExpressionChanged(cache, vartok, tok->next(), endTok, settings))
             return;
         const bool impossible = (tok->str() == "==" && !then) || (tok->str() == "!=" && then);
         const ValueFlow::Value& v = then ? truevalue : falsevalue;
@@ -377,26 +390,26 @@ static void programMemoryParseCondition(ProgramMemory& pm, const Token* tok, con
         if (containerTok)
             pm.setContainerSizeValue(containerTok, v.intvalue, !impossible);
     } else if (Token::simpleMatch(tok, "!")) {
-        programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, !then);
+        programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, !then, cache);
     } else if (then && Token::simpleMatch(tok, "&&")) {
-        programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, then);
-        programMemoryParseCondition(pm, tok->astOperand2(), endTok, settings, then);
+        programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, then, cache);
+        programMemoryParseCondition(pm, tok->astOperand2(), endTok, settings, then, cache);
     } else if (!then && Token::simpleMatch(tok, "||")) {
-        programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, then);
-        programMemoryParseCondition(pm, tok->astOperand2(), endTok, settings, then);
+        programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, then, cache);
+        programMemoryParseCondition(pm, tok->astOperand2(), endTok, settings, then, cache);
     } else if (Token::Match(tok, "&&|%oror%")) {
         std::vector<MathLib::bigint> lhs = eval(tok->astOperand1());
         std::vector<MathLib::bigint> rhs = eval(tok->astOperand2());
         if (lhs.empty() || rhs.empty()) {
             if (frontIs(lhs, !then))
-                programMemoryParseCondition(pm, tok->astOperand2(), endTok, settings, then);
+                programMemoryParseCondition(pm, tok->astOperand2(), endTok, settings, then, cache);
             else if (frontIs(rhs, !then))
-                programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, then);
+                programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, then, cache);
             else
                 pm.setIntValue(tok, 0, then);
         }
     } else if (tok && tok->exprId() > 0) {
-        if (endTok && findExpressionChanged(tok, tok->next(), endTok, settings))
+        if (endTok && cachedFindExpressionChanged(cache, tok, tok->next(), endTok, settings))
             return;
         pm.setIntValue(tok, 0, then);
         const Token* containerTok = settings.library.getContainerFromYield(tok, Library::Container::Yield::EMPTY);
@@ -405,14 +418,14 @@ static void programMemoryParseCondition(ProgramMemory& pm, const Token* tok, con
     }
 }
 
-static void fillProgramMemoryFromConditions(ProgramMemory& pm, const Scope* scope, const Token* endTok, const Settings& settings)
+static void fillProgramMemoryFromConditions(ProgramMemory& pm, const Scope* scope, const Token* endTok, const Settings& settings, ProgramMemoryState::ChangedCache* cache)
 {
     if (!scope)
         return;
     if (!scope->isLocal())
         return;
     assert(scope != scope->nestedIn);
-    fillProgramMemoryFromConditions(pm, scope->nestedIn, endTok, settings);
+    fillProgramMemoryFromConditions(pm, scope->nestedIn, endTok, settings, cache);
     if (scope->type == ScopeType::eIf || scope->type == ScopeType::eWhile || scope->type == ScopeType::eElse || scope->type == ScopeType::eFor) {
         const Token* condTok = getCondTokFromEnd(scope->bodyEnd);
         if (!condTok)
@@ -421,13 +434,13 @@ static void fillProgramMemoryFromConditions(ProgramMemory& pm, const Scope* scop
         bool error = false;
         execute(condTok, pm, &result, &error, settings);
         if (error)
-            programMemoryParseCondition(pm, condTok, endTok, settings, scope->type != ScopeType::eElse);
+            programMemoryParseCondition(pm, condTok, endTok, settings, scope->type != ScopeType::eElse, cache);
     }
 }
 
-static void fillProgramMemoryFromConditions(ProgramMemory& pm, const Token* tok, const Settings& settings)
+static void fillProgramMemoryFromConditions(ProgramMemory& pm, const Token* tok, const Settings& settings, ProgramMemoryState::ChangedCache* cache = nullptr)
 {
-    fillProgramMemoryFromConditions(pm, tok->scope(), tok, settings);
+    fillProgramMemoryFromConditions(pm, tok->scope(), tok, settings, cache);
 }
 
 static void fillProgramMemoryFromAssignments(ProgramMemory& pm, const Token* tok, const Settings& settings, const ProgramMemory& state, const ProgramMemory::Map& vars)
@@ -536,7 +549,7 @@ void ProgramMemoryState::addState(const Token* tok, const ProgramMemory::Map& va
 {
     ProgramMemory local = state;
     addVars(local, vars);
-    fillProgramMemoryFromConditions(local, tok, settings);
+    fillProgramMemoryFromConditions(local, tok, settings, changedCache.get());
     ProgramMemory pm;
     fillProgramMemoryFromAssignments(pm, tok, settings, local, vars);
     local.replace(std::move(pm));
@@ -567,11 +580,7 @@ void ProgramMemoryState::assume(const Token* tok, bool b, bool isEmpty, const To
 const Token* ProgramMemoryState::findExpressionChanged(const Token* expr, const Token* start, const Token* tok) const
 {
     // Memoized structural pre-filter (a superset) gates the expensive dead-code-aware walk.
-    const auto key = std::make_tuple(expr, start, tok);
-    auto it = changedCache->find(key);
-    if (it == changedCache->end())
-        it = changedCache->emplace(key, ::findExpressionChanged(expr, start, tok, settings)).first;
-    if (!it->second)
+    if (!cachedFindExpressionChanged(changedCache.get(), expr, start, tok, settings))
         return nullptr;
     auto eval = [&](const Token* cond) -> std::vector<MathLib::bigint> {
         ProgramMemory pm2 = state;
