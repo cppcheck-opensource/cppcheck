@@ -147,6 +147,16 @@ def test_slnx_no_xml_root(tmpdir):
     __test_project_error(tmpdir, "slnx", content, expected)
 
 
+def test_slnx_invalid_xml_root(tmpdir):
+    content = '<?xml version="1.0" encoding="UTF-8"?>\r\n' \
+              "<Invalid>\r\n" \
+              "</Invalid>\r\n"
+
+    expected = "Invalid Visual Studio solution file format"
+
+    __test_project_error(tmpdir, "slnx", content, expected)
+
+
 def test_slnx_no_projects(tmpdir):
     content = '<?xml version="1.0" encoding="UTF-8"?>\r\n' \
               "<Solution>\r\n" \
