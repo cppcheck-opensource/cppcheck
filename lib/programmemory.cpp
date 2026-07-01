@@ -575,7 +575,11 @@ ProgramMemoryState::FindChangedFn ProgramMemoryState::getCachedFindExpressionCha
     // skipDeadCode adds the dead-code walk; it evaluates guards against a fixed state snapshot (so every
     // variable follows the same path) and memoizes those evals in evalCache for the closure's lifetime.
     using EvalCache = std::map<const Token*, std::vector<MathLib::bigint>>;
-    return [cache = changedCache, sp = &settings, snapshot = (skipDeadCode ? state : ProgramMemory{}), skipDeadCode, evalCache = std::make_shared<EvalCache>()](const Token* expr, const Token* start, const Token* end) -> const Token* {
+    const std::shared_ptr<ChangedCache> cache = changedCache;
+    const Settings* const sp = &settings;
+    ProgramMemory snapshot = skipDeadCode ? state : ProgramMemory{};
+    const std::shared_ptr<EvalCache> evalCache = std::make_shared<EvalCache>();
+    return [cache, sp, snapshot, skipDeadCode, evalCache](const Token* expr, const Token* start, const Token* end) -> const Token* {
         const auto key = std::make_tuple(expr, start, end);
         const auto it = cache->find(key);
         const Token* modified = (it != cache->end())
