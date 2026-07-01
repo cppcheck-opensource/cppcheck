@@ -179,6 +179,26 @@ def test_slnx_project_file_not_found(tmpdir):
     __test_project_error(tmpdir, "slnx", content, expected)
 
 
+def test_slnx_project_file_in_folder_not_found(tmpdir):
+    content = '<?xml version="1.0" encoding="UTF-8"?>\r\n' \
+              "<Solution>\r\n" \
+              "  <Configurations>\r\n" \
+              '    <Platform Name="x64" />\r\n' \
+              '    <Platform Name="x86" />\r\n' \
+              "  </Configurations>\r\n" \
+              '  <Folder Name="/common/">\r\n' \
+              '    <Project Path="common/test.vcxproj" />\r\n' \
+              '  </Folder>\r\n' \
+              "</Solution>\r\n"
+
+    expected = "Visual Studio project file is not a valid XML - XML_ERROR_FILE_NOT_FOUND\n" \
+               "cppcheck: error: failed to load '{}' from Visual Studio solution".format(os.path.join(tmpdir, "common/test.vcxproj"))
+    if sys.platform == "win32":
+        expected = expected.replace('\\', '/')
+
+    __test_project_error(tmpdir, "slnx", content, expected)
+
+
 def test_vcxproj_no_xml_root(tmpdir):
     content = '<?xml version="1.0" encoding="utf-8"?>'
 
