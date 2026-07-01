@@ -459,13 +459,13 @@ bool SuppressionList::Suppression::isFileNameMatch(const std::string &errorFileN
     if (it != mFileNameMatchCache.end())
         return it->second;
 
-    const bool isMatch = PathMatch::match(fileName, errorFileName);
+    const bool result = PathMatch::match(fileName, errorFileName);
 
     if (mFileNameMatchCache.size() >= mFileNameMatchCacheMaxEntries)
         mFileNameMatchCache.clear();
 
-    mFileNameMatchCache.emplace(errorFileName, isMatch);
-    return isMatch;
+    mFileNameMatchCache.emplace(errorFileName, result);
+    return result;
 }
 
 bool SuppressionList::Suppression::isMatch(const SuppressionList::ErrorMessage &errmsg)
