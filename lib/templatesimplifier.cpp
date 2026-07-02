@@ -788,6 +788,1013 @@ static bool isTemplateInstantion(const Token* tok)
     return Token::Match(tok->tokAt(-2), "(|{|}|;|=|<<|:|.|*|&|return|<|,|!|[ :: %name% ::|<|(");
 }
 
+// ---------------------------------------------------------------------------
+// Deduction of function template arguments from a call.
+//
+// Templates are simplified early in the tokenizer pipeline - before
+// setVarId(), before the SymbolDatabase is created and before any ValueType
+// information exists. The types of the call arguments are therefore
+// determined with the deliberately conservative token based evaluation
+// below. Whenever something is not fully understood, no deduction is
+// performed at all.
+// ---------------------------------------------------------------------------
+
+namespace {
+    // arithmetic type categories, ordered by conversion rank
+    enum class ArithCat : std::uint8_t { None, Bool, Char, WChar, Short, Int, Long, LongLong, Float, Double, LongDouble };
+
+    // a token of a deduced template argument
+    struct DeducedToken {
+        explicit DeducedToken(std::string s, bool unsignedFlag = false, bool longFlag = false, bool signedFlag = false)
+            : str(std::move(s)), isUnsigned(unsignedFlag), isLong(longFlag), isSigned(signedFlag) {}
+        std::string str;
+        bool isUnsigned;
+        bool isLong;
+        bool isSigned;
+
+        bool operator==(const DeducedToken &rhs) const {
+            return str == rhs.str && isUnsigned == rhs.isUnsigned && isLong == rhs.isLong && isSigned == rhs.isSigned;
+        }
+    };
+
+    // the type of an expression, a declared variable or a function parameter
+    struct ExprType {
+        bool valid = false;
+        ArithCat arith = ArithCat::None;  // arithmetic base type..
+        bool isUnsigned = false;
+        bool isSigned = false;            // explicitly 'signed' (needed for "signed char")
+        const Token *nameStart = nullptr; // ..or named base type [nameStart..nameEnd]
+        const Token *nameEnd = nullptr;
+        int pointer = 0;                  // pointer depth on top of the base type
+        bool baseConst = false;           // const qualifies the pointed to base type ("const char *")
+        bool topConst = false;            // const qualifies the outermost level ("const int", "char * const")
+        bool fromArray = false;           // pointer comes from array-to-pointer decay
+
+        bool isArithmetic() const {
+            return valid && pointer == 0 && arith != ArithCat::None;
+        }
+        bool isIntegral() const {
+            return isArithmetic() && arith < ArithCat::Float;
+        }
+    };
+
+    // a parsed declaration type
+    struct ParsedType {
+        ExprType type;
+        bool isReference = false;
+        int templateParamIndex = -1;      // base type is this template parameter
+    };
+
+    // Token keyword flags are not set yet when templates are simplified so
+    // keywords are recognized by their string.
+    struct DeductionContext {
+        const Settings &settings;
+        const TokenList &tokenList;
+
+        // is |tok| a name that can be a user defined identifier?
+        bool isIdentifier(const Token *tok) const {
+            return tok->isName() && !tok->isStandardType() && tok->tokType() != Token::eBoolean &&
+                   !tokenList.isKeyword(tok->str());
+        }
+    };
+}
+
+static std::size_t arithSize(const Settings &settings, ArithCat cat)
+{
+    switch (cat) {
+    case ArithCat::Bool:
+        return settings.platform.sizeof_bool;
+    case ArithCat::Char:
+        return 1;
+    case ArithCat::WChar:
+        return settings.platform.sizeof_wchar_t;
+    case ArithCat::Short:
+        return settings.platform.sizeof_short;
+    case ArithCat::Int:
+        return settings.platform.sizeof_int;
+    case ArithCat::Long:
+        return settings.platform.sizeof_long;
+    case ArithCat::LongLong:
+        return settings.platform.sizeof_long_long;
+    default:
+        return 0;
+    }
+}
+
+// integral promotion; other types are returned unchanged
+static ExprType promoteType(const Settings &settings, const ExprType &type)
+{
+    ExprType result = type;
+    result.topConst = false;
+    result.fromArray = false;
+    if (!result.isIntegral() || result.arith >= ArithCat::Int)
+        return result;
+    const std::size_t size = arithSize(settings, result.arith);
+    const std::size_t intSize = settings.platform.sizeof_int;
+    if (size == 0 || intSize == 0) {
+        result.valid = false;
+        return result;
+    }
+    result.isUnsigned = result.isUnsigned && size >= intSize;
+    result.isSigned = false;
+    result.arith = ArithCat::Int;
+    return result;
+}
+
+// usual arithmetic conversions for binary operators
+static ExprType usualArithmeticConversion(const Settings &settings, const ExprType &lhs, const ExprType &rhs)
+{
+    if (!lhs.isArithmetic() || !rhs.isArithmetic())
+        return ExprType();
+    if (lhs.arith >= ArithCat::Float || rhs.arith >= ArithCat::Float) {
+        ExprType result = (lhs.arith >= rhs.arith) ? lhs : rhs;
+        result.isUnsigned = false;
+        result.isSigned = false;
+        result.topConst = false;
+        result.fromArray = false;
+        return result;
+    }
+    ExprType a = promoteType(settings, lhs);
+    ExprType b = promoteType(settings, rhs);
+    if (!a.valid || !b.valid)
+        return ExprType();
+    if (a.arith < b.arith)
+        std::swap(a, b);
+    if (a.isUnsigned || a.isUnsigned == b.isUnsigned)
+        return a;
+    // the lower ranked operand is unsigned, the higher ranked operand is signed
+    const std::size_t sizeA = arithSize(settings, a.arith);
+    const std::size_t sizeB = arithSize(settings, b.arith);
+    if (sizeA == 0 || sizeB == 0)
+        return ExprType();
+    if (sizeA <= sizeB)
+        a.isUnsigned = true;
+    return a;
+}
+
+// the type of a literal token
+static ExprType literalType(const Token *tok)
+{
+    ExprType result;
+    switch (tok->tokType()) {
+    case Token::eBoolean:
+        result.arith = ArithCat::Bool;
+        result.valid = true;
+        break;
+    case Token::eChar:
+        if (tok->isUtf8() || tok->isUtf16() || tok->isUtf32())
+            break;
+        result.arith = tok->isLong() ? ArithCat::WChar : ArithCat::Char;
+        result.valid = true;
+        break;
+    case Token::eString:
+        if (tok->isUtf8() || tok->isUtf16() || tok->isUtf32())
+            break;
+        result.arith = tok->isLong() ? ArithCat::WChar : ArithCat::Char;
+        result.pointer = 1;
+        result.baseConst = true;
+        result.valid = true;
+        break;
+    case Token::eNumber: {
+        const MathLib::value num(tok->str());
+        if (num.isFloat()) {
+            // MathLib::getSuffix doesn't work for floating point numbers
+            const char suffix = tok->str().back();
+            if (suffix == 'f' || suffix == 'F')
+                result.arith = ArithCat::Float;
+            else if (suffix == 'l' || suffix == 'L')
+                result.arith = ArithCat::LongDouble;
+            else
+                result.arith = ArithCat::Double;
+            result.valid = true;
+        } else if (num.isInt()) {
+            const std::string suffix = MathLib::getSuffix(tok->str());
+            if (suffix.find("LL") != std::string::npos)
+                result.arith = ArithCat::LongLong;
+            else if (suffix.find('L') != std::string::npos)
+                result.arith = ArithCat::Long;
+            else
+                result.arith = ArithCat::Int;
+            result.isUnsigned = suffix.find('U') != std::string::npos;
+            result.valid = true;
+        }
+        break;
+    }
+    default:
+        break;
+    }
+    return result;
+}
+
+// Locate the first token of the type of a possible declaration whose name is
+// |nameTok|. The type tokens are scanned backwards until a statement
+// boundary. Returns nullptr when the preceding tokens cannot be a
+// declaration type.
+static const Token *findDeclarationTypeStart(const DeductionContext &ctx, const Token *nameTok)
+{
+    const Token *start = nullptr;
+    for (const Token *tok = nameTok->previous(); tok; tok = tok->previous()) {
+        if (Token::Match(tok, "[;{}(,:]"))
+            break;
+        if (Token::Match(tok, ">|>>")) {
+            // jump to the matching '<'
+            int depth = 0;
+            while (tok) {
+                if (tok->str() == ">")
+                    ++depth;
+                else if (tok->str() == ">>")
+                    depth += 2;
+                else if (tok->str() == "<") {
+                    --depth;
+                    if (depth <= 0)
+                        break;
+                } else if (Token::Match(tok, "[;{}()]") || tok->str() == "<<")
+                    return nullptr;
+                tok = tok->previous();
+            }
+            if (!tok || depth < 0)
+                return nullptr;
+            start = tok;
+        } else if (Token::Match(tok, "*|&|::") || tok->isName()) {
+            if (tok->isName() && !tok->isStandardType() && !ctx.isIdentifier(tok) &&
+                !Token::Match(tok, "const|static|extern|constexpr|mutable"))
+                return nullptr;
+            start = tok;
+        } else
+            return nullptr;
+    }
+    return start;
+}
+
+// Parse a type in [tok, end). Returns the token following the type or
+// nullptr. When |builtinOnly|, only arithmetic types are accepted (used for
+// C style casts where a name would be ambiguous). When |templateParams| is
+// given, a base type matching one of the template parameter names is
+// reported through |result.templateParamIndex|.
+//
+// Compound standard types were already collapsed into a single token with
+// type flags by TokenList::simplifyStdType() ("unsigned long long" is a
+// 'long' token with the isUnsigned and isLong flags set).
+static const Token *parseType(const DeductionContext &ctx, const Token *tok, const Token *end, ParsedType &result,
+                              bool builtinOnly = false,
+                              const std::vector<const Token *> *templateParams = nullptr)
+{
+    result = ParsedType();
+    ExprType &type = result.type;
+
+    while (tok && tok != end && Token::Match(tok, "static|extern|constexpr|mutable"))
+        tok = tok->next();
+
+    bool constFlag = false;
+    while (tok && tok != end && tok->str() == "const") {
+        constFlag = true;
+        tok = tok->next();
+    }
+    if (!tok || tok == end)
+        return nullptr;
+
+    if (Token::Match(tok, "bool|char|short|int|long|float|double|wchar_t")) {
+        if (tok->str() == "bool")
+            type.arith = ArithCat::Bool;
+        else if (tok->str() == "char")
+            type.arith = ArithCat::Char;
+        else if (tok->str() == "short")
+            type.arith = ArithCat::Short;
+        else if (tok->str() == "int")
+            type.arith = ArithCat::Int;
+        else if (tok->str() == "long")
+            type.arith = tok->isLong() ? ArithCat::LongLong : ArithCat::Long;
+        else if (tok->str() == "float")
+            type.arith = ArithCat::Float;
+        else if (tok->str() == "double")
+            type.arith = tok->isLong() ? ArithCat::LongDouble : ArithCat::Double;
+        else
+            type.arith = ArithCat::WChar;
+        type.isUnsigned = tok->isUnsigned();
+        type.isSigned = tok->isSigned() && type.arith == ArithCat::Char;
+        tok = tok->next();
+    } else if (!builtinOnly && ctx.isIdentifier(tok)) {
+        const Token *start = tok;
+        while (tok && tok != end && ctx.isIdentifier(tok) &&
+               tok->next() != end && Token::simpleMatch(tok->next(), "::"))
+            tok = tok->tokAt(2);
+        if (!tok || tok == end || !ctx.isIdentifier(tok))
+            return nullptr;
+        const Token *last = tok;
+        tok = tok->next();
+        if (tok && tok != end && tok->str() == "<") {
+            const Token *closing = tok->findClosingBracket();
+            if (!closing)
+                return nullptr;
+            // the closing bracket must be inside [start, end)
+            const Token *tok2 = tok;
+            while (tok2 && tok2 != end && tok2 != closing)
+                tok2 = tok2->next();
+            if (tok2 != closing)
+                return nullptr;
+            last = closing;
+            tok = closing->next();
+        }
+        type.nameStart = start;
+        type.nameEnd = last;
+        if (templateParams && start == last) {
+            for (std::size_t i = 0; i < templateParams->size(); ++i) {
+                if ((*templateParams)[i]->str() == start->str()) {
+                    result.templateParamIndex = (int)i;
+                    break;
+                }
+            }
+        }
+    } else
+        return nullptr;
+
+    // trailing const of the base type ("char const")
+    while (tok && tok != end && tok->str() == "const") {
+        constFlag = true;
+        tok = tok->next();
+    }
+
+    // pointers
+    while (tok && tok != end && tok->str() == "*") {
+        if (type.pointer == 0)
+            type.baseConst = constFlag;
+        else if (constFlag)
+            return nullptr; // const between two '*' is not supported
+        constFlag = false;
+        ++type.pointer;
+        tok = tok->next();
+        while (tok && tok != end && tok->str() == "const") {
+            constFlag = true;
+            tok = tok->next();
+        }
+    }
+    type.topConst = constFlag;
+
+    if (tok && tok != end && tok->str() == "&") {
+        result.isReference = true;
+        tok = tok->next();
+    }
+    if (tok && tok != end && tok->str() == "&&")
+        return nullptr;
+
+    type.valid = true;
+    return tok ? tok : end;
+}
+
+// Check whether |nameTok| is the name of a variable declaration (looking at
+// the tokens before and after it) and parse the declared type.
+static bool parseVariableDeclaration(const DeductionContext &ctx, const Token *nameTok, ParsedType &result)
+{
+    if (!ctx.isIdentifier(nameTok))
+        return false;
+    if (!Token::Match(nameTok->next(), ";|=|,|)|[|{|:"))
+        return false;
+
+    const Token *start = findDeclarationTypeStart(ctx, nameTok);
+    if (!start)
+        return false;
+    ParsedType parsed;
+    if (parseType(ctx, start, nameTok, parsed) != nameTok || !parsed.type.valid)
+        return false;
+    if (nameTok->strAt(1) == "[") {
+        // an array decays to a pointer
+        if (parsed.isReference)
+            return false;
+        const Token *rbracket = nameTok->next()->link();
+        if (!rbracket || Token::simpleMatch(rbracket->next(), "["))
+            return false;
+        if (parsed.type.pointer > 0 && parsed.type.topConst)
+            return false;
+        if (parsed.type.pointer == 0) {
+            parsed.type.baseConst = parsed.type.topConst;
+            parsed.type.topConst = false;
+        }
+        ++parsed.type.pointer;
+        parsed.type.fromArray = true;
+    }
+    result = parsed;
+    return true;
+}
+
+// Search backwards from |useTok| (which names a variable) for its
+// declaration, honoring scopes. Variable ids are not set yet when templates
+// are simplified so the search is name based and deliberately conservative.
+static bool findVariableType(const DeductionContext &ctx, const Token *useTok, ParsedType &result)
+{
+    int count = 0;
+    for (const Token *tok = useTok->previous(); tok; tok = tok->previous()) {
+        if (++count > 10000)
+            return false;
+        if (Token::Match(tok, ")|}|]")) {
+            // a complete group before the current position: skip over it
+            if (!tok->link())
+                return false;
+            tok = tok->link();
+        } else if (tok->str() == "{") {
+            // leaving a scope: declarations in the condition or parameter
+            // list of the enclosing construct are visible
+            const Token *rpar = tok->previous();
+            if (Token::simpleMatch(rpar, ")") && rpar->link()) {
+                for (const Token *tok2 = rpar->link()->next(); tok2 && tok2 != rpar; tok2 = tok2->next()) {
+                    if (tok2->link() && Token::Match(tok2, "(|[|{"))
+                        tok2 = tok2->link();
+                    else if (tok2->str() == useTok->str() && parseVariableDeclaration(ctx, tok2, result))
+                        return true;
+                }
+                tok = rpar->link();
+            }
+        } else if (tok->str() == useTok->str() && parseVariableDeclaration(ctx, tok, result))
+            return true;
+    }
+    return false;
+}
+
+// render the tokens of an arithmetic type; the "unsigned"/"signed"/"long
+// long" parts are represented with token flags like the tokenizer does
+static void renderArithType(const ExprType &type, std::vector<DeducedToken> &tokens)
+{
+    switch (type.arith) {
+    case ArithCat::Bool:
+        tokens.emplace_back("bool");
+        break;
+    case ArithCat::Char:
+        tokens.emplace_back("char", type.isUnsigned, false, type.isSigned);
+        break;
+    case ArithCat::WChar:
+        tokens.emplace_back("wchar_t");
+        break;
+    case ArithCat::Short:
+        tokens.emplace_back("short", type.isUnsigned);
+        break;
+    case ArithCat::Int:
+        tokens.emplace_back("int", type.isUnsigned);
+        break;
+    case ArithCat::Long:
+        tokens.emplace_back("long", type.isUnsigned);
+        break;
+    case ArithCat::LongLong:
+        tokens.emplace_back("long", type.isUnsigned, true);
+        break;
+    case ArithCat::Float:
+        tokens.emplace_back("float");
+        break;
+    case ArithCat::Double:
+        tokens.emplace_back("double");
+        break;
+    case ArithCat::LongDouble:
+        tokens.emplace_back("double", false, true);
+        break;
+    default:
+        break;
+    }
+}
+
+// Render the tokens of a deduced template argument. The top level const is
+// stripped (deduction by value) unless |keepTopConst|.
+static bool renderDeducedType(const ExprType &type, bool keepTopConst, std::vector<DeducedToken> &tokens)
+{
+    if (!type.valid)
+        return false;
+    if ((type.pointer > 0) ? type.baseConst : (keepTopConst && type.topConst))
+        tokens.emplace_back("const");
+    if (type.arith != ArithCat::None)
+        renderArithType(type, tokens);
+    else if (type.nameStart) {
+        for (const Token *tok = type.nameStart; tok; tok = tok->next()) {
+            tokens.emplace_back(tok->str(), tok->isUnsigned(), tok->isLong(), tok->isSigned());
+            if (tok == type.nameEnd)
+                break;
+        }
+    } else
+        return false;
+    for (int i = 0; i < type.pointer; ++i)
+        tokens.emplace_back("*");
+    if (type.pointer > 0 && keepTopConst && type.topConst)
+        tokens.emplace_back("const");
+    return true;
+}
+
+static bool sameDeducedType(const ExprType &type1, const ExprType &type2)
+{
+    std::vector<DeducedToken> tokens1;
+    std::vector<DeducedToken> tokens2;
+    return renderDeducedType(type1, true, tokens1) && renderDeducedType(type2, true, tokens2) && tokens1 == tokens2;
+}
+
+// Search backwards from |callTok| for function declarations with that name
+// to determine the return type. All found declarations must agree on the
+// type.
+static bool findFunctionReturnType(const DeductionContext &ctx, const Token *callTok, ParsedType &result)
+{
+    bool found = false;
+    ParsedType common;
+    int count = 0;
+    for (const Token *tok = callTok->previous(); tok; tok = tok->previous()) {
+        if (++count > 10000)
+            return false;
+        if (Token::Match(tok, ")|}|]")) {
+            if (!tok->link())
+                return false;
+            tok = tok->link();
+        } else if (tok->str() == callTok->str() && tok->isName() && Token::simpleMatch(tok->next(), "(") &&
+                   !Token::Match(tok->previous(), ".|::|->|new")) {
+            const Token *rpar = tok->next()->link();
+            if (!rpar || !Token::Match(rpar->next(), ";|{|const|noexcept"))
+                continue;
+            const Token *start = findDeclarationTypeStart(ctx, tok);
+            if (!start)
+                continue;
+            ParsedType parsed;
+            if (parseType(ctx, start, tok, parsed) != tok || !parsed.type.valid)
+                continue;
+            if (found && !sameDeducedType(common.type, parsed.type))
+                return false; // overloads with different return types
+            common = parsed;
+            found = true;
+        }
+    }
+    if (found)
+        result = common;
+    return found;
+}
+
+static ExprType evalExpressionType(const DeductionContext &ctx, const Token *start, const Token *end);
+
+// Parse one operand (including unary operators and casts); advances |tok|.
+static ExprType parseOperandType(const DeductionContext &ctx, const Token *&tok, const Token *end)
+{
+    std::vector<std::string> prefixOps;
+    while (tok && tok != end && Token::Match(tok, "!|~|+|-|*|&")) {
+        prefixOps.push_back(tok->str());
+        tok = tok->next();
+    }
+    if (!tok || tok == end)
+        return ExprType();
+
+    ExprType type;
+
+    if (tok->str() == "(") {
+        const Token *rpar = tok->link();
+        if (!rpar)
+            return ExprType();
+        ParsedType castType;
+        if (parseType(ctx, tok->next(), rpar, castType, true) == rpar && castType.type.valid && !castType.isReference) {
+            // C style cast with a builtin type: (unsigned char)x
+            tok = rpar->next();
+            if (!parseOperandType(ctx, tok, end).valid)
+                return ExprType();
+            type = castType.type;
+        } else {
+            // parenthesized subexpression
+            type = evalExpressionType(ctx, tok->next(), rpar);
+            if (!type.valid)
+                return ExprType();
+            tok = rpar->next();
+            if (tok && tok != end && Token::Match(tok, "(|[|.|->|++|--"))
+                return ExprType();
+        }
+    } else if (Token::Match(tok, "static_cast|const_cast|reinterpret_cast|dynamic_cast <")) {
+        const Token *closing = tok->next()->findClosingBracket();
+        if (!closing)
+            return ExprType();
+        ParsedType castType;
+        if (parseType(ctx, tok->tokAt(2), closing, castType) != closing || !castType.type.valid)
+            return ExprType();
+        if (!Token::simpleMatch(closing->next(), "(") || !closing->next()->link())
+            return ExprType();
+        tok = closing->next()->link()->next();
+        type = castType.type;
+        if (tok && tok != end && Token::Match(tok, "(|[|.|->|++|--"))
+            return ExprType();
+    } else if (tok->str() == "sizeof") {
+        if (!Token::simpleMatch(tok->next(), "(") || !tok->next()->link())
+            return ExprType();
+        tok = tok->next()->link()->next();
+        // sizeof yields std::size_t
+        const std::size_t size = ctx.settings.platform.sizeof_size_t;
+        if (size == 0)
+            return ExprType();
+        if (size == ctx.settings.platform.sizeof_int)
+            type.arith = ArithCat::Int;
+        else if (size == ctx.settings.platform.sizeof_long)
+            type.arith = ArithCat::Long;
+        else if (size == ctx.settings.platform.sizeof_long_long)
+            type.arith = ArithCat::LongLong;
+        else
+            return ExprType();
+        type.isUnsigned = true;
+        type.valid = true;
+    } else if (Token::Match(tok, "%num%|%str%|%char%|%bool%")) {
+        type = literalType(tok);
+        if (!type.valid)
+            return ExprType();
+        tok = tok->next();
+        if (tok && tok != end && Token::Match(tok, "(|[|.|->|++|--"))
+            return ExprType();
+    } else if (Token::Match(tok, "bool|char|short|int|long|float|double|wchar_t (")) {
+        // functional cast: int(x)
+        ParsedType castType;
+        if (parseType(ctx, tok, tok->next(), castType, true) != tok->next() || !castType.type.valid)
+            return ExprType();
+        if (!tok->next()->link())
+            return ExprType();
+        tok = tok->next()->link()->next();
+        type = castType.type;
+        if (tok && tok != end && Token::Match(tok, "(|[|.|->|++|--"))
+            return ExprType();
+    } else if (ctx.isIdentifier(tok)) {
+        if (tok->next() != end && Token::simpleMatch(tok->next(), "(")) {
+            // function call
+            ParsedType returnType;
+            if (!findFunctionReturnType(ctx, tok, returnType))
+                return ExprType();
+            if (!tok->next()->link())
+                return ExprType();
+            tok = tok->next()->link()->next();
+            type = returnType.type;
+            if (tok && tok != end && Token::Match(tok, "(|[|.|->|++|--"))
+                return ExprType();
+        } else {
+            // variable
+            ParsedType variableType;
+            if (!findVariableType(ctx, tok, variableType))
+                return ExprType();
+            type = variableType.type;
+            tok = tok->next();
+            if (tok && tok != end && Token::Match(tok, "(|[|.|->|++|--|::|<"))
+                return ExprType();
+        }
+    } else
+        return ExprType();
+
+    // apply the unary operators right to left
+    for (auto it = prefixOps.crbegin(); it != prefixOps.crend(); ++it) {
+        if (*it == "!") {
+            if (!type.isArithmetic() && type.pointer == 0)
+                return ExprType();
+            ExprType boolType;
+            boolType.valid = true;
+            boolType.arith = ArithCat::Bool;
+            type = boolType;
+        } else if (*it == "-" || *it == "+") {
+            if (!type.isArithmetic())
+                return ExprType();
+            type = promoteType(ctx.settings, type);
+        } else if (*it == "~") {
+            if (!type.isIntegral())
+                return ExprType();
+            type = promoteType(ctx.settings, type);
+        } else if (*it == "*") {
+            if (type.pointer < 1)
+                return ExprType();
+            --type.pointer;
+            if (type.pointer == 0) {
+                type.topConst = type.baseConst;
+                type.baseConst = false;
+            }
+            type.fromArray = false;
+        } else { // "&"
+            if (type.pointer > 0 && type.topConst)
+                return ExprType(); // would need a "* const *" type
+            if (type.pointer == 0) {
+                type.baseConst = type.topConst;
+                type.topConst = false;
+            }
+            ++type.pointer;
+            type.fromArray = false;
+        }
+        if (!type.valid)
+            return ExprType();
+    }
+    return type;
+}
+
+static bool isSupportedBinaryOp(const std::string &s)
+{
+    return s == "+" || s == "-" || s == "*" || s == "/" || s == "%" ||
+           s == "&" || s == "|" || s == "^" || s == "<<" || s == ">>" ||
+           s == "==" || s == "!=" || s == "<=" || s == ">=" || s == "&&" || s == "||";
+}
+
+// Determine the type of the expression [start, end). This is a flat scan:
+// only expressions whose type does not depend on the grouping of the
+// operators are evaluated - anything else is rejected.
+static ExprType evalExpressionType(const DeductionContext &ctx, const Token *start, const Token *end)
+{
+    const Token *tok = start;
+    if (!tok || tok == end)
+        return ExprType();
+
+    std::vector<ExprType> operands;
+    std::vector<std::string> ops;
+
+    const ExprType first = parseOperandType(ctx, tok, end);
+    if (!first.valid)
+        return ExprType();
+    operands.push_back(first);
+
+    while (tok && tok != end) {
+        if (!isSupportedBinaryOp(tok->str()))
+            return ExprType();
+        ops.push_back(tok->str());
+        tok = tok->next();
+        const ExprType operand = parseOperandType(ctx, tok, end);
+        if (!operand.valid)
+            return ExprType();
+        operands.push_back(operand);
+    }
+    if (ops.empty())
+        return operands[0];
+
+    bool hasCmp = false;
+    bool hasBit = false;
+    bool hasShift = false;
+    std::size_t firstShift = ops.size();
+    for (std::size_t i = 0; i < ops.size(); ++i) {
+        const std::string &s = ops[i];
+        if (s == "==" || s == "!=" || s == "<=" || s == ">=" || s == "&&" || s == "||")
+            hasCmp = true;
+        else if (s == "&" || s == "|" || s == "^")
+            hasBit = true;
+        else if (s == "<<" || s == ">>") {
+            hasShift = true;
+            if (firstShift == ops.size())
+                firstShift = i;
+        }
+    }
+    // the grouping of the operators must not influence the result type
+    if (hasCmp && (hasBit || hasShift))
+        return ExprType();
+    if (hasCmp) {
+        ExprType result;
+        result.valid = true;
+        result.arith = ArithCat::Bool;
+        return result;
+    }
+
+    // pointer arithmetic
+    std::size_t pointerCount = 0;
+    std::size_t pointerIndex = 0;
+    for (std::size_t i = 0; i < operands.size(); ++i) {
+        if (operands[i].pointer > 0) {
+            ++pointerCount;
+            pointerIndex = i;
+        } else if (!operands[i].isArithmetic())
+            return ExprType(); // class types (operator overloads) are not supported
+    }
+    if (pointerCount > 1)
+        return ExprType();
+    if (pointerCount == 1) {
+        if (std::any_of(ops.cbegin(), ops.cend(), [](const std::string &s) {
+            return s != "+" && s != "-";
+        }))
+            return ExprType();
+        for (std::size_t i = 0; i < operands.size(); ++i) {
+            if (i != pointerIndex && !operands[i].isIntegral())
+                return ExprType();
+        }
+        ExprType result = operands[pointerIndex];
+        result.topConst = false;
+        result.fromArray = false;
+        return result;
+    }
+
+    const auto isIntegral = [](const ExprType &operand) {
+        return operand.isIntegral();
+    };
+
+    if (hasShift) {
+        if (!std::all_of(operands.cbegin(), operands.cend(), isIntegral))
+            return ExprType();
+        // the result is the promoted type of the sub expression left of the
+        // first shift operator
+        ExprType result = operands[0];
+        for (std::size_t i = 1; i <= firstShift; ++i) {
+            result = usualArithmeticConversion(ctx.settings, result, operands[i]);
+            if (!result.valid)
+                return ExprType();
+        }
+        return promoteType(ctx.settings, result);
+    }
+
+    if (hasBit && !std::all_of(operands.cbegin(), operands.cend(), isIntegral))
+        return ExprType();
+
+    ExprType result = operands[0];
+    for (std::size_t i = 1; i < operands.size(); ++i) {
+        result = usualArithmeticConversion(ctx.settings, result, operands[i]);
+        if (!result.valid)
+            return ExprType();
+    }
+    result.fromArray = false;
+    return result;
+}
+
+// Apply the parameter form (T / const T& / T* ...) to the argument type and
+// render the resulting template argument tokens.
+static bool deduceTemplateArgumentFromParam(const ParsedType &param, const ExprType &argType, std::vector<DeducedToken> &tokens)
+{
+    if (!argType.valid)
+        return false;
+    ExprType type = argType;
+    if (param.isReference && type.fromArray)
+        return false; // T& does not decay
+    if (param.type.pointer > 0) {
+        if (param.isReference)
+            return false; // T*& etc is not supported
+        type.topConst = false; // the pointer itself is passed by value
+        for (int i = 0; i < param.type.pointer; ++i) {
+            if (type.pointer < 1)
+                return false;
+            --type.pointer;
+            if (type.pointer == 0) {
+                type.topConst = type.baseConst;
+                type.baseConst = false;
+            }
+        }
+    }
+    const bool paramConst = (param.type.pointer > 0) ? param.type.baseConst : param.type.topConst;
+    const bool keepTopConst = !paramConst && (param.type.pointer > 0 || param.isReference);
+    return renderDeducedType(type, keepTopConst, tokens);
+}
+
+void TemplateSimplifier::deduceFunctionTemplateArguments(Token *tok, const std::vector<const TokenAndName *> &candidates) const
+{
+    std::vector<const Token *> instantiationArgs;
+    getFunctionArguments(tok, instantiationArgs);
+    if (instantiationArgs.empty())
+        return;
+
+    const Token *callLpar = getFunctionToken(tok);
+    if (!callLpar || !callLpar->link())
+        return;
+
+    // the token following the last token of each argument
+    std::vector<const Token *> argEnds(instantiationArgs.size());
+    for (std::size_t i = 0; i < instantiationArgs.size(); ++i)
+        argEnds[i] = (i + 1 < instantiationArgs.size()) ? instantiationArgs[i + 1]->previous() : callLpar->link();
+
+    const DeductionContext ctx = { mSettings, mTokenList };
+
+    // lazily evaluated argument types
+    std::vector<ExprType> argTypes(instantiationArgs.size());
+    std::vector<bool> argEvaluated(instantiationArgs.size(), false);
+
+    struct Candidate {
+        std::vector<std::vector<DeducedToken>> deduced;
+        int exactMatches;
+    };
+    std::vector<Candidate> matches;
+
+    for (const TokenAndName *declaration : candidates) {
+        std::vector<const Token *> templateParams;
+        getTemplateParametersInDeclaration(declaration->token()->tokAt(2), templateParams);
+        if (templateParams.empty() || !areAllParamsTypes(templateParams))
+            continue;
+
+        std::vector<const Token *> declParams;
+        getFunctionArguments(declaration->nameToken(), declParams);
+        if (declParams.size() != instantiationArgs.size())
+            continue;
+
+        const Token *declLpar = getFunctionToken(declaration->nameToken());
+        if (!declLpar || !declLpar->link())
+            continue;
+
+        bool failed = false;
+        std::vector<std::vector<DeducedToken>> deduced(templateParams.size());
+        int exactMatches = 0;
+
+        for (std::size_t i = 0; i < declParams.size() && !failed; ++i) {
+            const Token *paramEnd = (i + 1 < declParams.size()) ? declParams[i + 1]->previous() : declLpar->link();
+
+            ParsedType param;
+            const Token *afterType = parseType(ctx, declParams[i], paramEnd, param, false, &templateParams);
+            bool parseable = afterType && param.type.valid;
+            if (parseable && afterType != paramEnd) {
+                // optional parameter name, array brackets and default value
+                if (ctx.isIdentifier(afterType))
+                    afterType = afterType->next();
+                if (afterType != paramEnd && Token::simpleMatch(afterType, "[")) {
+                    // an array parameter is a pointer
+                    const Token *rbracket = afterType->link();
+                    if (rbracket && !Token::simpleMatch(rbracket->next(), "[") && !param.isReference &&
+                        !(param.type.pointer > 0 && param.type.topConst)) {
+                        if (param.type.pointer == 0) {
+                            param.type.baseConst = param.type.topConst;
+                            param.type.topConst = false;
+                        }
+                        ++param.type.pointer;
+                        afterType = rbracket->next();
+                    } else
+                        parseable = false;
+                }
+                if (parseable && afterType != paramEnd && !Token::simpleMatch(afterType, "="))
+                    parseable = false;
+            }
+
+            if (!parseable) {
+                // deduction from this parameter is not possible; that is fine
+                // as long as it does not reference a template parameter
+                // (calls in compilable code deduce identical types from every
+                // parameter that references the template parameter)
+                for (const Token *tok2 = declParams[i]; tok2 && tok2 != paramEnd && !failed; tok2 = tok2->next()) {
+                    failed = std::any_of(templateParams.cbegin(), templateParams.cend(), [&](const Token *templateParam) {
+                        return tok2->str() == templateParam->str();
+                    });
+                }
+                continue;
+            }
+
+            if (!argEvaluated[i]) {
+                argTypes[i] = evalExpressionType(ctx, instantiationArgs[i], argEnds[i]);
+                argEvaluated[i] = true;
+            }
+
+            if (param.templateParamIndex >= 0) {
+                if (!argTypes[i].valid)
+                    continue; // maybe deducible from another argument
+                std::vector<DeducedToken> tokens;
+                if (!deduceTemplateArgumentFromParam(param, argTypes[i], tokens)) {
+                    failed = true; // the argument doesn't fit the parameter form
+                    break;
+                }
+                std::vector<DeducedToken> &slot = deduced[param.templateParamIndex];
+                if (slot.empty())
+                    slot = tokens;
+                else if (slot != tokens)
+                    failed = true; // inconsistent deduction
+            } else if (argTypes[i].valid) {
+                // concrete parameter: count exact type matches to
+                // disambiguate overloads
+                std::vector<DeducedToken> argTokens;
+                std::vector<DeducedToken> paramTokens;
+                if (renderDeducedType(argTypes[i], false, argTokens) &&
+                    renderDeducedType(param.type, false, paramTokens) &&
+                    argTokens == paramTokens)
+                    ++exactMatches;
+            }
+        }
+        if (failed)
+            continue;
+
+        // all template parameters must be deduced
+        const bool complete = std::none_of(deduced.cbegin(), deduced.cend(), [](const std::vector<DeducedToken> &d) {
+            return d.empty();
+        });
+        if (!complete)
+            continue;
+
+        Candidate candidate;
+        candidate.deduced = std::move(deduced);
+        candidate.exactMatches = exactMatches;
+        matches.push_back(std::move(candidate));
+    }
+
+    if (matches.empty())
+        return;
+
+    std::size_t winner = 0;
+    if (matches.size() > 1) {
+        // if all candidates deduce the same arguments any of them will do,
+        // otherwise prefer the unique candidate whose concrete parameters
+        // match the argument types exactly - when ambiguous nothing is
+        // deduced
+        bool identical = true;
+        for (std::size_t i = 1; i < matches.size() && identical; ++i)
+            identical = (matches[i].deduced == matches[0].deduced);
+        if (!identical) {
+            const int maxExact = std::max_element(matches.cbegin(), matches.cend(), [](const Candidate &lhs, const Candidate &rhs) {
+                return lhs.exactMatches < rhs.exactMatches;
+            })->exactMatches;
+            std::size_t numberOfBest = 0;
+            for (std::size_t i = 0; i < matches.size(); ++i) {
+                if (matches[i].exactMatches == maxExact) {
+                    ++numberOfBest;
+                    winner = i;
+                }
+            }
+            if (numberOfBest != 1)
+                return;
+        }
+    }
+
+    // insert the deduced template arguments: "f (" => "f < int > ("
+    Token *insertPos = tok;
+    insertPos = insertPos->insertToken("<");
+    for (std::size_t i = 0; i < matches[winner].deduced.size(); ++i) {
+        if (i > 0)
+            insertPos = insertPos->insertToken(",");
+        for (const DeducedToken &deducedTok : matches[winner].deduced[i]) {
+            insertPos = insertPos->insertToken(deducedTok.str);
+            insertPos->isUnsigned(deducedTok.isUnsigned);
+            insertPos->isLong(deducedTok.isLong);
+            insertPos->isSigned(deducedTok.isSigned);
+        }
+    }
+    insertPos->insertToken(">");
+}
+
 void TemplateSimplifier::getTemplateInstantiations()
 {
     std::multimap<std::string, const TokenAndName *> functionNameMap;
@@ -863,9 +1870,6 @@ void TemplateSimplifier::getTemplateInstantiations()
 
             // look for function instantiation with type deduction
             if (tok->strAt(1) == "(") {
-                std::vector<const Token *> instantiationArgs;
-                getFunctionArguments(tok, instantiationArgs);
-
                 std::string fullName;
                 if (!qualification.empty())
                     fullName = qualification + " :: " + tok->str();
@@ -875,97 +1879,17 @@ void TemplateSimplifier::getTemplateInstantiations()
                     fullName = tok->str();
 
                 // get all declarations with this name
-                auto range = functionNameMap.equal_range(tok->str());
+                std::vector<const TokenAndName *> candidates;
+                const auto range = functionNameMap.equal_range(tok->str());
                 for (auto pos = range.first; pos != range.second; ++pos) {
                     // look for declaration with same qualification or constructor with same qualification
                     if (pos->second->fullName() == fullName ||
-                        (pos->second->scope() == fullName && tok->str() == pos->second->name())) {
-                        std::vector<const Token *> templateParams;
-                        getTemplateParametersInDeclaration(pos->second->token()->tokAt(2), templateParams);
-
-                        // todo: handle more than one template parameter
-                        if (templateParams.size() != 1 || !areAllParamsTypes(templateParams))
-                            continue;
-
-                        std::vector<const Token *> declarationParams;
-                        getFunctionArguments(pos->second->nameToken(), declarationParams);
-
-                        // function argument counts must match
-                        if (instantiationArgs.empty() || instantiationArgs.size() != declarationParams.size())
-                            continue;
-
-                        size_t match = 0;
-                        size_t argMatch = 0;
-                        for (size_t i = 0; i < declarationParams.size(); ++i) {
-                            // fixme: only type deduction from literals is supported
-                            const bool isArgLiteral = Token::Match(instantiationArgs[i], "%num%|%str%|%char%|%bool% ,|)");
-                            if (isArgLiteral && Token::Match(declarationParams[i], "const| %type% &| %name%| ,|)")) {
-                                match++;
-
-                                // check if parameter types match
-                                if (templateParams[0]->str() == declarationParams[i]->str())
-                                    argMatch = i;
-                                else {
-                                    // todo: check if non-template args match for function overloads
-                                }
-                            }
-                        }
-
-                        if (match == declarationParams.size()) {
-                            const Token *arg = instantiationArgs[argMatch];
-                            tok->insertToken(">");
-                            switch (arg->tokType()) {
-                            case Token::eBoolean:
-                                tok->insertToken("bool");
-                                break;
-                            case Token::eChar:
-                                if (arg->isLong())
-                                    tok->insertToken("wchar_t");
-                                else
-                                    tok->insertToken("char");
-                                break;
-                            case Token::eString:
-                                tok->insertToken("*");
-                                if (arg->isLong())
-                                    tok->insertToken("wchar_t");
-                                else
-                                    tok->insertToken("char");
-                                tok->insertToken("const");
-                                break;
-                            case Token::eNumber: {
-                                MathLib::value num(arg->str());
-                                if (num.isFloat()) {
-                                    // MathLib::getSuffix doesn't work for floating point numbers
-                                    const char suffix = arg->str().back();
-                                    if (suffix == 'f' || suffix == 'F')
-                                        tok->insertToken("float");
-                                    else if (suffix == 'l' || suffix == 'L') {
-                                        tok->insertToken("double");
-                                        tok->next()->isLong(true);
-                                    } else
-                                        tok->insertToken("double");
-                                } else if (num.isInt()) {
-                                    std::string suffix = MathLib::getSuffix(tok->strAt(3));
-                                    if (suffix.find("LL") != std::string::npos) {
-                                        tok->insertToken("long");
-                                        tok->next()->isLong(true);
-                                    } else if (suffix.find('L') != std::string::npos)
-                                        tok->insertToken("long");
-                                    else
-                                        tok->insertToken("int");
-                                    if (suffix.find('U') != std::string::npos)
-                                        tok->next()->isUnsigned(true);
-                                }
-                                break;
-                            }
-                            default:
-                                break;
-                            }
-                            tok->insertToken("<");
-                            break;
-                        }
-                    }
+                        (pos->second->scope() == fullName && tok->str() == pos->second->name()))
+                        candidates.push_back(pos->second);
                 }
+
+                if (!candidates.empty())
+                    deduceFunctionTemplateArguments(tok, candidates);
             }
 
             if (!Token::Match(tok, "%name% <") ||

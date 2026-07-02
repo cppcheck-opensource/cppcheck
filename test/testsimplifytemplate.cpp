@@ -284,6 +284,10 @@ private:
         TEST_CASE(templateTypeDeduction3);
         TEST_CASE(templateTypeDeduction4); // #9983
         TEST_CASE(templateTypeDeduction5);
+        TEST_CASE(templateTypeDeduction6); // deduction from variables
+        TEST_CASE(templateTypeDeduction7); // parameter forms: T, T&, const T&, T*
+        TEST_CASE(templateTypeDeduction8); // deduction from expressions
+        TEST_CASE(templateTypeDeduction9); // multiple parameters, scopes, bailouts
 
         TEST_CASE(simplifyTemplateArgs1);
         TEST_CASE(simplifyTemplateArgs2);
@@ -4713,16 +4717,16 @@ private:
                             "  g(1.0f);\n"
                             "}\n";
         const char exp[] = "float g<float> ( float x ) ; "
-                           "template < typename T > "
-                           "T g ( T x ) { return x ; } "
+                           "int g<int> ( int x ) ; "
                            "float g<float> ( float x ) {"
                            " return x + 1.0f ; "
                            "} "
                            "void f ( int i ) {"
-                           " g ( i ) ;"
+                           " g<int> ( i ) ;"
                            " g<float> ( 1.0f ) ; "
-                           "}";
-        ASSERT_EQUALS(exp, tok(code)); // TODO: instantiate g<int>(int)
+                           "} "
+                           "int g<int> ( int x ) { return x ; }";
+        ASSERT_EQUALS(exp, tok(code));
     }
 
     void template_specialization_1() {  // #7868 - template specialization template <typename T> struct S<C<T>> {..};
@@ -6124,18 +6128,12 @@ private:
                                 "void f<double,int> ( double t , int u ) ; "
                                 "static void func ( ) { "
                                 "f<int,double> ( 0 , 0.0 ) ; "
-                                "f<double,int> ( 0.0, 0 ) ; "
+                                "f<double,int> ( 0.0 , 0 ) ; "
+                                "} "
                                 "void f<int,double> ( int t , double u ) { } "
-                                "void f<double,int> ( double t , int u ) { } ";
+                                "void f<double,int> ( double t , int u ) { }";
 
-        const char actual[] = "template < typename T , typename U > "
-                              "void f ( T t , U u ) { } "
-                              "static void func ( ) { "
-                              "f ( 0 , 0.0 ) ; "
-                              "f ( 0.0 , 0 ) ; "
-                              "}";
-
-        TODO_ASSERT_EQUALS(expected, actual, tok(code));
+        ASSERT_EQUALS(expected, tok(code));
     }
 
     void templateTypeDeduction3() {  // #9975
@@ -6239,10 +6237,7 @@ private:
                                 "void f<int,double> ( int x , double y ) ; "
                                 "void test ( ) { f<int,double> ( 0 , 0.0 ) ; } "
                                 "void f<int,double> ( int x , double y ) { a = x + y ; }";
-            const char act[]  = "int a ; a = 1 ; "
-                                "template < typename T , typename U > void f ( T x , U y ) { a = x + y ; } "
-                                "void test ( ) { f ( 0 , 0.0 ) ; }";
-            TODO_ASSERT_EQUALS(exp, act, tok(code));
+            ASSERT_EQUALS(exp, tok(code));
         }
     }
 
@@ -6309,6 +6304,212 @@ private:
                                 "NS :: Fred :: Fred<double> ( double t ) { } "
                                 "NS :: Fred :: Fred<constchar*> ( const char * t ) { } "
                                 "NS :: Fred :: Fred<bool> ( bool t ) { }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+    }
+
+    void templateTypeDeduction6() { // type deduction from variables
+        const char code[] = "template <typename T> void f(T n) { (void)n; }\n"
+                            "struct MyClass { int m; };\n"
+                            "void func() {\n"
+                            "    unsigned long long ull = 0;\n"
+                            "    const char* p = \"abc\";\n"
+                            "    double d = 1.0;\n"
+                            "    int arr[3];\n"
+                            "    MyClass mc;\n"
+                            "    f(ull);\n"
+                            "    f(p);\n"
+                            "    f(d);\n"
+                            "    f(arr);\n"
+                            "    f(mc);\n"
+                            "}";
+        const char exp[]  = "void f<unsignedlonglong> ( unsigned long long n ) ; "
+                            "void f<constchar*> ( const char * n ) ; "
+                            "void f<double> ( double n ) ; "
+                            "void f<int*> ( int * n ) ; "
+                            "void f<MyClass> ( MyClass n ) ; "
+                            "struct MyClass { int m ; } ; "
+                            "void func ( ) { "
+                            "unsigned long long ull ; ull = 0 ; "
+                            "const char * p ; p = \"abc\" ; "
+                            "double d ; d = 1.0 ; "
+                            "int arr [ 3 ] ; "
+                            "MyClass mc ; "
+                            "f<unsignedlonglong> ( ull ) ; "
+                            "f<constchar*> ( p ) ; "
+                            "f<double> ( d ) ; "
+                            "f<int*> ( arr ) ; "
+                            "f<MyClass> ( mc ) ; "
+                            "} "
+                            "void f<unsignedlonglong> ( unsigned long long n ) { ( void ) n ; } "
+                            "void f<constchar*> ( const char * n ) { ( void ) n ; } "
+                            "void f<double> ( double n ) { ( void ) n ; } "
+                            "void f<int*> ( int * n ) { ( void ) n ; } "
+                            "void f<MyClass> ( MyClass n ) { ( void ) n ; }";
+        ASSERT_EQUALS(exp, tok(code));
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void templateTypeDeduction7() { // parameter forms: T, T&, const T&, T*
+        const char code[] = "template <typename T> void byval(T x) { (void)x; }\n"
+                            "template <typename T> void byref(T& x) { (void)x; }\n"
+                            "template <typename T> void bycref(const T& x) { (void)x; }\n"
+                            "template <typename T> void byptr(T* x) { (void)x; }\n"
+                            "void func() {\n"
+                            "    const int ci = 1;\n"
+                            "    int i = 2;\n"
+                            "    int& r = i;\n"
+                            "    const char* s = \"x\";\n"
+                            "    byval(ci);\n"
+                            "    byref(ci);\n"
+                            "    bycref(ci);\n"
+                            "    byptr(s);\n"
+                            "    byval(r);\n"
+                            "}";
+        const char exp[]  = "void byval<int> ( int x ) ; "
+                            "void byref<constint> ( const int & x ) ; "
+                            "void bycref<int> ( const int & x ) ; "
+                            "void byptr<constchar> ( const char * x ) ; "
+                            "void func ( ) { "
+                            "const int ci = 1 ; "
+                            "int i ; i = 2 ; "
+                            "int & r = i ; "
+                            "const char * s ; s = \"x\" ; "
+                            "byval<int> ( ci ) ; "
+                            "byref<constint> ( ci ) ; "
+                            "bycref<int> ( ci ) ; "
+                            "byptr<constchar> ( s ) ; "
+                            "byval<int> ( r ) ; "
+                            "} "
+                            "void byptr<constchar> ( const char * x ) { ( void ) x ; } "
+                            "void bycref<int> ( const int & x ) { ( void ) x ; } "
+                            "void byref<constint> ( const int & x ) { ( void ) x ; } "
+                            "void byval<int> ( int x ) { ( void ) x ; }";
+        ASSERT_EQUALS(exp, tok(code));
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void templateTypeDeduction8() { // type deduction from expressions
+        const char code[] = "template <typename T> void f(T n) { (void)n; }\n"
+                            "int geti();\n"
+                            "void func() {\n"
+                            "    short s = 2;\n"
+                            "    double d = 1.0;\n"
+                            "    const char* p = \"abc\";\n"
+                            "    f(s + 1);\n"
+                            "    f(&d);\n"
+                            "    f(*p);\n"
+                            "    f((unsigned char)s);\n"
+                            "    f(static_cast<float>(d));\n"
+                            "    f(geti());\n"
+                            "    f(s == 1);\n"
+                            "}";
+        const char exp[]  = "void f<int> ( int n ) ; "
+                            "void f<double*> ( double * n ) ; "
+                            "void f<char> ( char n ) ; "
+                            "void f<unsignedchar> ( unsigned char n ) ; "
+                            "void f<float> ( float n ) ; "
+                            "void f<bool> ( bool n ) ; "
+                            "int geti ( ) ; "
+                            "void func ( ) { "
+                            "short s ; s = 2 ; "
+                            "double d ; d = 1.0 ; "
+                            "const char * p ; p = \"abc\" ; "
+                            "f<int> ( s + 1 ) ; "
+                            "f<double*> ( & d ) ; "
+                            "f<char> ( * p ) ; "
+                            "f<unsignedchar> ( ( unsigned char ) s ) ; "
+                            "f<float> ( static_cast < float > ( d ) ) ; "
+                            "f<int> ( geti ( ) ) ; "
+                            "f<bool> ( s == 1 ) ; "
+                            "} "
+                            "void f<int> ( int n ) { ( void ) n ; } "
+                            "void f<double*> ( double * n ) { ( void ) n ; } "
+                            "void f<char> ( char n ) { ( void ) n ; } "
+                            "void f<unsignedchar> ( unsigned char n ) { ( void ) n ; } "
+                            "void f<float> ( float n ) { ( void ) n ; } "
+                            "void f<bool> ( bool n ) { ( void ) n ; }";
+        ASSERT_EQUALS(exp, tok(code));
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void templateTypeDeduction9() { // multiple parameters, scopes, bailouts
+        {
+            // multiple template parameters, deduction from variables
+            const char code[] = "template <typename T, typename U> void f(T t, U u) { }\n"
+                                "void func() {\n"
+                                "    int i = 1;\n"
+                                "    double d = 2.0;\n"
+                                "    f(i, d);\n"
+                                "}";
+            const char exp[]  = "void f<int,double> ( int t , double u ) ; "
+                                "void func ( ) { "
+                                "int i ; i = 1 ; "
+                                "double d ; d = 2.0 ; "
+                                "f<int,double> ( i , d ) ; "
+                                "} "
+                                "void f<int,double> ( int t , double u ) { }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // inconsistent deduction => don't deduce
+            const char code[] = "template <typename T> void f(T a, T b) { }\n"
+                                "void func() {\n"
+                                "    int i = 1;\n"
+                                "    long l0 = 2;\n"
+                                "    f(i, l0);\n"
+                                "}";
+            const char exp[]  = "template < typename T > void f ( T a , T b ) { } "
+                                "void func ( ) { "
+                                "int i ; i = 1 ; "
+                                "long l0 ; l0 = 2 ; "
+                                "f ( i , l0 ) ; "
+                                "}";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // unknown variable => don't deduce
+            const char code[] = "template <typename T> void f(T n) { }\n"
+                                "void func() {\n"
+                                "    f(unknown);\n"
+                                "}";
+            const char exp[]  = "template < typename T > void f ( T n ) { } "
+                                "void func ( ) { "
+                                "f ( unknown ) ; "
+                                "}";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // the innermost declaration shadows outer scopes
+            const char code[] = "template <typename T> void f(T n) { }\n"
+                                "int x;\n"
+                                "void func1() {\n"
+                                "    double x = 1.0;\n"
+                                "    f(x);\n"
+                                "}\n"
+                                "void func2(float x) {\n"
+                                "    f(x);\n"
+                                "}\n"
+                                "void func3() {\n"
+                                "    f(x);\n"
+                                "}";
+            const char exp[]  = "void f<double> ( double n ) ; "
+                                "void f<float> ( float n ) ; "
+                                "void f<int> ( int n ) ; "
+                                "int x ; "
+                                "void func1 ( ) { "
+                                "double x ; x = 1.0 ; "
+                                "f<double> ( x ) ; "
+                                "} "
+                                "void func2 ( float x ) { "
+                                "f<float> ( x ) ; "
+                                "} "
+                                "void func3 ( ) { "
+                                "f<int> ( x ) ; "
+                                "} "
+                                "void f<double> ( double n ) { } "
+                                "void f<float> ( float n ) { } "
+                                "void f<int> ( int n ) { }";
             ASSERT_EQUALS(exp, tok(code));
         }
     }

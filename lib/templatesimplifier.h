@@ -359,6 +359,14 @@ private:
     void getTemplateInstantiations();
 
     /**
+     * Deduce the template arguments of a function template call and insert
+     * the explicit "< ... >" tokens after the function name when successful.
+     * @param tok        name token of the function call
+     * @param candidates matching function template declarations
+     */
+    void deduceFunctionTemplateArguments(Token *tok, const std::vector<const TokenAndName *> &candidates) const;
+
+    /**
      * Fix forward declared default argument values by copying them
      * when they are not present in the declaration.
      */
