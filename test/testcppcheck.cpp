@@ -531,7 +531,7 @@ private:
 
         {
             const auto s = dinit(Settings, $.templateFormat = templateFormat, $.plistOutput = "output");
-            const ScopedFile file("file", "");
+            const ScopedFile file("file_plist", "");
             CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, {});
             const FileWithDetails fileWithDetails {file.path(), Path::identify(file.path(), false), 0};
 
@@ -543,7 +543,7 @@ private:
 
         {
             const auto s = dinit(Settings, $.plistOutput = "output");
-            const ScopedFile file("file.c", "");
+            const ScopedFile file("file_plist_output.c", "");
             CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, {});
             const FileWithDetails fileWithDetails {file.path(), Path::identify(file.path(), false), 0};
 
@@ -555,7 +555,7 @@ private:
 
         {
             Settings s;
-            const ScopedFile file("file.c", "");
+            const ScopedFile file("file_plist.c", "");
             CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, {});
             cppcheck.checkPlistOutput(FileWithDetails(file.path(), Path::identify(file.path(), false), 0), files);
         }
