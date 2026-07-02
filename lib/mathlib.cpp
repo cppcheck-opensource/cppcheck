@@ -266,7 +266,7 @@ MathLib::value MathLib::value::shiftLeft(const MathLib::value &v) const
     if (!isInt() || !v.isInt())
         throw InternalError(nullptr, "Shift operand is not integer");
     MathLib::value ret(*this);
-    if (v.mIntValue >= MathLib::bigint_bits) {
+    if (v.mIntValue < 0 || v.mIntValue >= MathLib::bigint_bits || ret.mIntValue < 0) {
         return ret;
     }
     ret.mIntValue <<= v.mIntValue;
@@ -278,7 +278,7 @@ MathLib::value MathLib::value::shiftRight(const MathLib::value &v) const
     if (!isInt() || !v.isInt())
         throw InternalError(nullptr, "Shift operand is not integer");
     MathLib::value ret(*this);
-    if (v.mIntValue >= MathLib::bigint_bits) {
+    if (v.mIntValue < 0 || v.mIntValue >= MathLib::bigint_bits) {
         return ret;
     }
     ret.mIntValue >>= v.mIntValue;
