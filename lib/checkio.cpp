@@ -855,7 +855,7 @@ void CheckIOImpl::checkFormatString(const Token * const tok,
                 // Perform type checks
                 ArgumentInfo argInfo(argListTok, mSettings, mTokenizer->isCPP());
 
-                if ((argInfo.typeToken && !argInfo.isLibraryType(mSettings)) || *i == ']') {
+                if ((argInfo.typeToken && !argInfo.isLibraryType(mSettings.library)) || *i == ']') {
                     if (scan) {
                         std::string specifier;
                         bool done = false;
@@ -1857,9 +1857,9 @@ bool CheckIOImpl::ArgumentInfo::isKnownType() const
     return typeToken->isStandardType() || Token::Match(typeToken, "std :: string|wstring");
 }
 
-bool CheckIOImpl::ArgumentInfo::isLibraryType(const Settings &settings) const
+bool CheckIOImpl::ArgumentInfo::isLibraryType(const Library &library) const
 {
-    return typeToken && typeToken->isStandardType() && settings.library.podtype(typeToken->str());
+    return typeToken && typeToken->isStandardType() && library.podtype(typeToken->str());
 }
 
 void CheckIOImpl::wrongPrintfScanfArgumentsError(const Token* tok,

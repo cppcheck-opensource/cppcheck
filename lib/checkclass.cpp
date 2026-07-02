@@ -1059,7 +1059,7 @@ void CheckClassImpl::initializeVarList(const Function &func, std::list<const Fun
                             tok2 = tok2->next();
                             if (tok2->str() == "&")
                                 tok2 = tok2->next();
-                            if (isVariableChangedByFunctionCall(tok2, tok2->strAt(-1) == "&", tok2->varId(), mSettings, nullptr))
+                            if (isVariableChangedByFunctionCall(tok2, tok2->strAt(-1) == "&", tok2->varId(), mSettings.library, nullptr))
                                 assignVar(usage, tok2->varId());
                         }
                     }

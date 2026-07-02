@@ -111,8 +111,8 @@ private:
 
         // Check for unused functions..
         CheckUnusedFunctions checkUnusedFunctions;
-        checkUnusedFunctions.parseTokens(tokenizer, settings1);
-        (checkUnusedFunctions.check)(settings1, *this); // TODO: check result
+        checkUnusedFunctions.parseTokens(tokenizer, settings1.library);
+        (checkUnusedFunctions.check)(settings1.library, *this); // TODO: check result
     }
 
     // TODO: get rid of this
@@ -123,8 +123,8 @@ private:
 
         // Check for unused functions..
         CheckUnusedFunctions checkUnusedFunctions;
-        checkUnusedFunctions.parseTokens(tokenizer, settings);
-        (checkUnusedFunctions.check)(settings, *this); // TODO: check result
+        checkUnusedFunctions.parseTokens(tokenizer, settings.library);
+        (checkUnusedFunctions.check)(settings.library, *this); // TODO: check result
     }
 
     void incondition() {
@@ -602,11 +602,11 @@ private:
             SimpleTokenizer tokenizer{settings, *this, fname};
             ASSERT(tokenizer.tokenize(code));
 
-            c.parseTokens(tokenizer, settings);
+            c.parseTokens(tokenizer, settings.library);
         }
 
         // Check for unused functions..
-        (c.check)(settings, *this); // TODO: check result
+        (c.check)(settings.library, *this); // TODO: check result
 
         ASSERT_EQUALS("[test1.cpp:1:13]: (style) The function 'f' is never used. [unusedFunction]\n", errout_str());
     }
