@@ -792,12 +792,9 @@ static bool isTemplateInstantion(const Token* tok)
 // ---------------------------------------------------------------------------
 // Deduction of function template arguments from a call.
 //
-// Templates are simplified early in the tokenizer pipeline - before
-// setVarId(), before the SymbolDatabase is created and before any ValueType
-// information exists. The types of the call arguments are therefore
-// determined with the deliberately conservative token based evaluation
-// below. Whenever something is not fully understood, no deduction is
-// performed at all.
+// No varid/SymbolDatabase/ValueType information exists yet, so argument
+// types are determined by a conservative token based evaluation: whenever
+// something is not fully understood, nothing is deduced.
 // ---------------------------------------------------------------------------
 
 namespace {
@@ -839,7 +836,6 @@ namespace {
         }
     };
 
-    // a parsed declaration type
     struct ParsedType {
         ExprType type;
         bool isReference = false;
@@ -848,17 +844,12 @@ namespace {
 
     class DeductionSymbolTable;
 
-    // a function parameter of a function template declaration, parsed once
-    // when the declaration is added as a deduction candidate
     struct DeductionCandidateParam {
         ParsedType form;
         bool parseable = false;
         bool referencesTemplateParam = false;
     };
 
-    // a function template declaration that a call could instantiate,
-    // together with its template type parameters and its parsed function
-    // parameters
     struct DeductionCandidate {
         const TemplateSimplifier::TokenAndName *declaration;
         std::vector<const Token *> templateParams;
@@ -866,14 +857,12 @@ namespace {
     };
 
     struct DeductionContext {
-        const Settings &settings;
-        const DeductionSymbolTable &symbols;
-        // the function templates, by name
-        const std::multimap<std::string, DeductionCandidate> &templateFunctions;
+        const Settings *settings;
+        const DeductionSymbolTable *symbols;
+        const std::multimap<std::string, DeductionCandidate> *templateFunctions; // by name
     };
 }
 
-// is |tok| a name that can be a user defined identifier?
 static bool isIdentifierToken(const Token *tok)
 {
     return tok->isName() && !tok->isKeyword() && !tok->isStandardType() && tok->tokType() != Token::eBoolean;
@@ -959,7 +948,6 @@ static ExprType usualArithmeticConversion(const Settings &settings, const ExprTy
     return a;
 }
 
-// the type of a literal token
 static ExprType literalType(const Token *tok)
 {
     ExprType result;
@@ -1013,10 +1001,8 @@ static ExprType literalType(const Token *tok)
     return result;
 }
 
-// Locate the first token of the type of a possible declaration whose name is
-// |nameTok|. The type tokens are scanned backwards until a statement
-// boundary. Returns nullptr when the preceding tokens cannot be a
-// declaration type.
+// Locate the start of the type of a possible declaration of |nameTok| by
+// scanning backwards to a statement boundary; nullptr if it cannot be one.
 static const Token *findDeclarationTypeStart(const Token *nameTok)
 {
     const Token *start = nullptr;
@@ -1053,8 +1039,6 @@ static const Token *findDeclarationTypeStart(const Token *nameTok)
     return start;
 }
 
-// Consume any run of 'const' tokens in [tok, end), advancing tok. Returns
-// whether at least one 'const' was seen.
 static bool skipConst(const Token *&tok, const Token *end)
 {
     bool seen = false;
@@ -1066,14 +1050,11 @@ static bool skipConst(const Token *&tok, const Token *end)
 }
 
 // Parse a type in [tok, end). Returns the token following the type or
-// nullptr. When |builtinOnly|, only arithmetic types are accepted (used for
-// C style casts where a name would be ambiguous). When |templateParams| is
-// given, a base type matching one of the template parameter names is
-// reported through |result.templateParamIndex|.
-//
-// Compound standard types were already collapsed into a single token with
-// type flags by TokenList::simplifyStdType() ("unsigned long long" is a
-// 'long' token with the isUnsigned and isLong flags set).
+// nullptr. With |builtinOnly| only arithmetic types are accepted (for C
+// style casts, where a name would be ambiguous). A base type matching one
+// of the |templateParams| is reported through |result.templateParamIndex|.
+// Compound standard types are single tokens with type flags ("unsigned long
+// long" is a 'long' token with the isUnsigned and isLong flags set).
 static const Token *parseType(const Token *tok, const Token *end, ParsedType &result,
                               bool builtinOnly = false,
                               const std::vector<const Token *> *templateParams = nullptr)
@@ -1121,7 +1102,7 @@ static const Token *parseType(const Token *tok, const Token *end, ParsedType &re
             const Token *closing = tok->findClosingBracket();
             if (!closing)
                 return nullptr;
-            // the closing bracket must be inside [start, end)
+            // the closing bracket must be before |end|
             const Token *tok2 = tok;
             while (tok2 && tok2 != end && tok2 != closing)
                 tok2 = tok2->next();
@@ -1147,7 +1128,6 @@ static const Token *parseType(const Token *tok, const Token *end, ParsedType &re
     if (skipConst(tok, end))
         constFlag = true;
 
-    // pointers
     while (tok && tok != end && tok->str() == "*") {
         if (type.pointer == 0)
             type.baseConst = constFlag;
@@ -1170,8 +1150,8 @@ static const Token *parseType(const Token *tok, const Token *end, ParsedType &re
     return tok ? tok : end;
 }
 
-// Apply array-to-pointer decay to |type| in place. Returns false when the
-// result cannot be represented (a const-qualified pointer array element).
+// apply array-to-pointer decay to |type|; false when the result cannot be
+// represented
 static bool decayArrayToPointer(ExprType &type)
 {
     if (type.pointer > 0 && type.topConst)
@@ -1188,7 +1168,6 @@ static bool decayArrayToPointer(ExprType &type)
 // the tokens before and after it) and parse the declared type.
 static bool parseVariableDeclaration(const Token *nameTok, ParsedType &result)
 {
-    // cheap checks first: this is called for most name tokens
     if (!Token::Match(nameTok->next(), ";|=|,|)|[|{|:"))
         return false;
     if (!isIdentifierToken(nameTok))
@@ -1201,7 +1180,6 @@ static bool parseVariableDeclaration(const Token *nameTok, ParsedType &result)
     if (parseType(start, nameTok, parsed) != nameTok || !parsed.type.valid)
         return false;
     if (nameTok->strAt(1) == "[") {
-        // an array decays to a pointer
         if (parsed.isReference)
             return false;
         const Token *rbracket = nameTok->next()->link();
@@ -1215,9 +1193,8 @@ static bool parseVariableDeclaration(const Token *nameTok, ParsedType &result)
     return true;
 }
 
-// render the tokens of an arithmetic type; the "unsigned"/"signed"/"long
-// long" parts are represented with token flags like the tokenizer does.
-// (isSigned is only ever set for Char, so it can be passed through uniformly.)
+// render an arithmetic type; the "unsigned"/"signed"/"long long" parts are
+// encoded as token flags (isSigned is only ever set for Char)
 static void renderArithType(const ExprType &type, std::vector<DeducedToken> &tokens)
 {
     // indexed by ArithCat: token string, isLong flag, whether it may be unsigned
@@ -1272,18 +1249,15 @@ static bool sameDeducedType(const ExprType &type1, const ExprType &type2)
 }
 
 namespace {
-    // Scope aware symbol table used for function template argument
-    // deduction. It is filled during a single forward pass over the token
-    // list; at any point during that pass it contains exactly the
-    // declarations that are visible at the current position. The member
-    // declarations of a class are kept when its scope ends so that they stay
-    // visible in out of class member function bodies and in classes that
-    // derive from it.
+    // Scope aware symbol table, filled during a single forward pass over
+    // the token list; it contains the declarations that are visible at the
+    // current position. Class members are kept after the class scope ends:
+    // they stay visible in out of class member function bodies and in
+    // derived classes.
     class DeductionSymbolTable {
     public:
         DeductionSymbolTable() : mScopes(1) {} // global scope
 
-        // enter a scope that ends at |endTok|
         void enterScope(const Token *endTok) {
             mScopes.emplace_back();
             mScopes.back().endTok = endTok;
@@ -1296,16 +1270,13 @@ namespace {
             mScopes.back().isClassBody = true;
         }
 
-        // record that the class |className| (a full name) has the given
-        // base classes (names as written in the code)
+        // record the base classes (as written) of |className| (a full name)
         void addBaseClasses(const std::string &className, std::vector<std::string> baseClasses) {
             mBaseClasses[className] = std::move(baseClasses);
         }
 
-        // Called when the forward pass reaches |tok| (a ')' or '}'): leave
-        // the scopes that end here. A parenthesized group that is directly
-        // attached to a body - a function parameter list or a for/if/while
-        // condition - keeps its declarations visible until the body ends.
+        // Leave the scopes ending at |tok| (a ')' or '}'). A parameter list
+        // or condition attached to a body stays visible until the body ends.
         void leaveScopesEndingAt(const Token *tok) {
             while (mScopes.size() > 1 && mScopes.back().endTok == tok) {
                 if (tok->str() == ")") {
@@ -1319,7 +1290,6 @@ namespace {
                         continue; // re-check: the end token changed
                     }
                 }
-                // keep the members of a class when its scope ends
                 if (mScopes.back().isClassBody)
                     mClassMembers[mScopes.back().memberClass] = std::move(mScopes.back().members);
                 mScopes.pop_back();
@@ -1334,8 +1304,6 @@ namespace {
             mScopes.back().members.functions[name].push_back(returnType);
         }
 
-        // is the innermost scope a class body? (its members were already
-        // recorded up front when the scope was entered)
         bool currentScopeIsClassBody() const {
             return mScopes.back().isClassBody;
         }
@@ -1367,14 +1335,12 @@ namespace {
             return found && !conflict;
         }
 
-        // does the class have (known) base classes?
         bool hasBaseClasses(const std::string &className) const {
             return mBaseClasses.find(className) != mBaseClasses.cend();
         }
 
-        // The class |scope| followed by its transitive base classes; used to
-        // search a class scope the way unqualified lookup does. For a name
-        // that is not a known class only the scope itself is returned.
+        // the class |scope| followed by its transitive base classes; for an
+        // unknown class only |scope| itself
         std::vector<std::string> withBaseClasses(const std::string &scope) const {
             std::vector<std::string> result;
             result.push_back(scope);
@@ -1400,10 +1366,9 @@ namespace {
             std::unordered_map<std::string, std::vector<ParsedType>> functions;
         };
 
-        // Visit the members that are visible from the innermost scope
-        // outwards - each scope, then the class (and its transitive base
-        // classes) whose members are visible in that scope - until the
-        // visitor returns true.
+        // Visit the visible members from the innermost scope outwards -
+        // each scope, then the class (and transitive base classes) whose
+        // members are visible there - until the visitor returns true.
         template<class Visitor>
         bool visitVisibleMembers(Visitor visit) const {
             for (auto scope = mScopes.crbegin(); scope != mScopes.crend(); ++scope) {
@@ -1546,7 +1511,6 @@ static ExprType parseOperandType(const DeductionContext &ctx, const Token *&tok,
                 return ExprType();
             type = castType.type;
         } else {
-            // parenthesized subexpression
             type = evalExpressionType(ctx, tok->next(), rpar);
             if (!type.valid)
                 return ExprType();
@@ -1572,14 +1536,14 @@ static ExprType parseOperandType(const DeductionContext &ctx, const Token *&tok,
             return ExprType();
         tok = tok->next()->link()->next();
         // sizeof yields std::size_t
-        const std::size_t size = ctx.settings.platform.sizeof_size_t;
+        const std::size_t size = ctx.settings->platform.sizeof_size_t;
         if (size == 0)
             return ExprType();
-        if (size == ctx.settings.platform.sizeof_int)
+        if (size == ctx.settings->platform.sizeof_int)
             type.arith = ArithCat::Int;
-        else if (size == ctx.settings.platform.sizeof_long)
+        else if (size == ctx.settings->platform.sizeof_long)
             type.arith = ArithCat::Long;
-        else if (size == ctx.settings.platform.sizeof_long_long)
+        else if (size == ctx.settings->platform.sizeof_long_long)
             type.arith = ArithCat::LongLong;
         else
             return ExprType();
@@ -1605,13 +1569,12 @@ static ExprType parseOperandType(const DeductionContext &ctx, const Token *&tok,
             return ExprType();
     } else if (isIdentifierToken(tok)) {
         if (tok->next() != end && Token::simpleMatch(tok->next(), "(")) {
-            // function call: the return type of the visible declarations.
-            // When the name is also a function template the call could
-            // resolve to an instantiation with another return type.
+            // when the name is also a function template the call could
+            // resolve to an instantiation with another return type
             ParsedType returnType;
-            if (ctx.templateFunctions.find(tok->str()) != ctx.templateFunctions.cend())
+            if (ctx.templateFunctions->find(tok->str()) != ctx.templateFunctions->cend())
                 return ExprType();
-            if (!ctx.symbols.lookupFunctionReturnType(tok->str(), returnType))
+            if (!ctx.symbols->lookupFunctionReturnType(tok->str(), returnType))
                 return ExprType();
             if (!tok->next()->link())
                 return ExprType();
@@ -1620,9 +1583,8 @@ static ExprType parseOperandType(const DeductionContext &ctx, const Token *&tok,
             if (stopsAtPostfix(tok, end))
                 return ExprType();
         } else {
-            // variable
             ParsedType variableType;
-            if (!ctx.symbols.lookupVariable(tok->str(), variableType))
+            if (!ctx.symbols->lookupVariable(tok->str(), variableType))
                 return ExprType();
             type = variableType.type;
             tok = tok->next();
@@ -1632,7 +1594,6 @@ static ExprType parseOperandType(const DeductionContext &ctx, const Token *&tok,
     } else
         return ExprType();
 
-    // apply the unary operators right to left
     for (auto it = prefixOps.crbegin(); it != prefixOps.crend(); ++it) {
         if (*it == "!") {
             if (!type.isArithmetic() && type.pointer == 0)
@@ -1644,11 +1605,11 @@ static ExprType parseOperandType(const DeductionContext &ctx, const Token *&tok,
         } else if (*it == "-" || *it == "+") {
             if (!type.isArithmetic())
                 return ExprType();
-            type = promoteType(ctx.settings, type);
+            type = promoteType(*ctx.settings, type);
         } else if (*it == "~") {
             if (!type.isIntegral())
                 return ExprType();
-            type = promoteType(ctx.settings, type);
+            type = promoteType(*ctx.settings, type);
         } else if (*it == "*") {
             if (type.pointer < 1)
                 return ExprType();
@@ -1771,11 +1732,11 @@ static ExprType evalExpressionType(const DeductionContext &ctx, const Token *sta
         // first shift operator
         ExprType result = operands[0];
         for (std::size_t i = 1; i <= firstShift; ++i) {
-            result = usualArithmeticConversion(ctx.settings, result, operands[i]);
+            result = usualArithmeticConversion(*ctx.settings, result, operands[i]);
             if (!result.valid)
                 return ExprType();
         }
-        return promoteType(ctx.settings, result);
+        return promoteType(*ctx.settings, result);
     }
 
     if (hasBit && !std::all_of(operands.cbegin(), operands.cend(), isIntegralType))
@@ -1783,7 +1744,7 @@ static ExprType evalExpressionType(const DeductionContext &ctx, const Token *sta
 
     ExprType result = operands[0];
     for (std::size_t i = 1; i < operands.size(); ++i) {
-        result = usualArithmeticConversion(ctx.settings, result, operands[i]);
+        result = usualArithmeticConversion(*ctx.settings, result, operands[i]);
         if (!result.valid)
             return ExprType();
     }
@@ -1819,8 +1780,7 @@ static bool deduceTemplateArgumentFromParam(const ParsedType &param, const ExprT
     return renderDeducedType(type, keepTopConst, tokens);
 }
 
-// Parse the function parameters of a candidate declaration into the forms
-// the deduction needs; done once per declaration instead of at every call.
+// parse the function parameters of a candidate declaration into deduction forms
 static void parseDeductionCandidateParams(DeductionCandidate &candidate)
 {
     std::vector<const Token *> declParams;
@@ -1910,10 +1870,8 @@ static void deduceTemplateArgumentsAtFunctionCall(const DeductionContext &ctx, T
             const DeductionCandidateParam &param = candidate->params[i];
 
             if (!param.parseable) {
-                // deduction from this parameter is not possible; that is fine
-                // as long as it does not reference a template parameter
-                // (calls in compilable code deduce identical types from every
-                // parameter that references the template parameter)
+                // an unparseable parameter only matters when it references a
+                // template parameter
                 if (param.referencesTemplateParam)
                     failed = true;
                 continue;
@@ -1939,9 +1897,7 @@ static void deduceTemplateArgumentsAtFunctionCall(const DeductionContext &ctx, T
                 else if (slot != tokens)
                     failed = true; // inconsistent deduction
             } else if (candidates.size() > 1 && arg.type.valid) {
-                // concrete parameter: count exact type matches to
-                // disambiguate overloads (only needed when there is more than
-                // one candidate to choose between)
+                // count exact matches to disambiguate overloads
                 std::vector<DeducedToken> argTokens;
                 std::vector<DeducedToken> paramTokens;
                 if (renderDeducedType(arg.type, false, argTokens) &&
@@ -1971,10 +1927,8 @@ static void deduceTemplateArgumentsAtFunctionCall(const DeductionContext &ctx, T
 
     std::size_t winner = 0;
     if (matches.size() > 1) {
-        // if all candidates deduce the same arguments any of them will do,
-        // otherwise prefer the unique candidate whose concrete parameters
-        // match the argument types exactly - when ambiguous nothing is
-        // deduced
+        // identical deductions are interchangeable; otherwise the unique
+        // candidate with the most exact matches wins, or nothing is deduced
         bool identical = true;
         for (std::size_t i = 1; i < matches.size() && identical; ++i)
             identical = (matches[i].deduced == matches[0].deduced);
@@ -2018,28 +1972,24 @@ static void recordDeclaration(DeductionSymbolTable &symbols, const Token *tok)
         symbols.addVariable(tok->str(), parsed);
     } else if (Token::simpleMatch(tok->next(), "(") && tok->next()->link() &&
                !Token::simpleMatch(tok->previous(), "::")) {
-        // function declaration (qualified names such as out of class
-        // definitions "void A::g()" are not visible under their plain name);
-        // other non-declarations are rejected by findDeclarationTypeStart
+        // function declaration; a qualified name ("void A::g()") is not
+        // visible under its plain name
         if (TokenList::isFunctionHead(tok->next(), ";{")) {
             const Token *start = findDeclarationTypeStart(tok);
             if (start) {
                 if (parseType(start, tok, parsed) == tok && parsed.type.valid)
                     symbols.addFunction(tok->str(), parsed);
                 else
-                    // unsupported return type ("void" etc): record that the
-                    // function exists but that its type is not known
+                    // unsupported return type ("void" etc): record existence only
                     symbols.addFunction(tok->str(), ParsedType());
             }
         }
     }
 }
 
-// Record the member declarations of the class body starting at |bodyStart|
-// before it is walked: in a complete-class context (member function bodies,
-// default arguments, constructor initializer lists) the members that are
-// declared later in the class are visible too. The scan is shallow - nested
-// bodies contain locals and nested class members, not members of this class.
+// Record all member declarations of the class body at |bodyStart|: members
+// declared later in the class are also visible in member function bodies.
+// Nested bodies are skipped - they contain no members of this class.
 static void recordClassMembers(DeductionSymbolTable &symbols, const Token *bodyStart)
 {
     const Token *const bodyEnd = bodyStart->link();
@@ -2058,8 +2008,8 @@ static void recordClassMembers(DeductionSymbolTable &symbols, const Token *bodyS
 
 // Parse a class head "class|struct|union Name [final] [: bases] {". Returns
 // the "{" of the class body (nullptr when there is none or the head is not
-// understood) and fills the class name token and the base class names as
-// written; template base classes are not supported and are left out.
+// understood) and fills |nameTok| and the base class names as written;
+// template base classes are left out.
 static Token *parseClassHead(Token *tok, const Token *&nameTok, std::vector<std::string> &baseClasses)
 {
     Token *name = tok->next();
@@ -2121,17 +2071,15 @@ static void collectDeductionCandidates(const DeductionCandidateRange &range, con
 }
 
 // Collect the function template declarations that the call at |tok| could
-// instantiate. The name is looked up like the compiler does: in the
-// enclosing scopes from the innermost outwards (searching the base classes
-// of a class scope), where a match in an inner scope shadows declarations in
-// outer scopes. |matchedInBase| tells whether the match was found in a base
-// class of |matchedScope|.
+// instantiate: the name is looked up in the enclosing scopes from the
+// innermost outwards (including base classes, reported via |matchedInBase|),
+// and a match in an inner scope shadows outer scopes.
 static std::vector<const DeductionCandidate *> findDeductionCandidates(const DeductionContext &ctx, const Token *tok,
                                                                        const std::string &scopeName, const std::string &qualification,
                                                                        std::string &matchedScope, bool &matchedInBase)
 {
     std::vector<const DeductionCandidate *> candidates;
-    const DeductionCandidateRange range = ctx.templateFunctions.equal_range(tok->str());
+    const DeductionCandidateRange range = ctx.templateFunctions->equal_range(tok->str());
     std::string scopePath = scopeName;
     for (;;) {
         std::string levelScope = scopePath;
@@ -2143,8 +2091,8 @@ static std::vector<const DeductionCandidate *> findDeductionCandidates(const Ded
             matchedScope = std::move(levelScope);
             return candidates;
         }
-        if (ctx.symbols.hasBaseClasses(levelScope)) {
-            const std::vector<std::string> classes = ctx.symbols.withBaseClasses(levelScope);
+        if (ctx.symbols->hasBaseClasses(levelScope)) {
+            const std::vector<std::string> classes = ctx.symbols->withBaseClasses(levelScope);
             for (std::size_t i = 1; i < classes.size(); ++i) {
                 collectDeductionCandidates(range, tok, classes[i], candidates);
                 if (!candidates.empty()) {
@@ -2155,7 +2103,7 @@ static std::vector<const DeductionCandidate *> findDeductionCandidates(const Ded
             }
         }
         if (scopePath.empty())
-            return candidates; // not found
+            return candidates;
         scopePath = outerScope(scopePath);
     }
 }
@@ -2170,7 +2118,6 @@ static void insertQualification(Token *tok, const std::string &scope)
 
 void TemplateSimplifier::deduceFunctionTemplateArguments()
 {
-    // map from name to the function template declarations a call could instantiate
     std::multimap<std::string, DeductionCandidate> functionNameMap;
 
     for (const std::list<TokenAndName> *declarationList : { &mTemplateDeclarations, &mTemplateForwardDeclarations }) {
@@ -2191,11 +2138,10 @@ void TemplateSimplifier::deduceFunctionTemplateArguments()
     if (functionNameMap.empty())
         return;
 
-    // Walk the token list once. A scope aware symbol table is maintained
-    // during the walk so that at every call site the declarations that are
-    // visible there - and only those - can be looked up by name.
+    // Walk the token list once, maintaining the declarations that are
+    // visible at each position in a scope aware symbol table.
     DeductionSymbolTable symbols;
-    const DeductionContext ctx = { mSettings, symbols, functionNameMap };
+    const DeductionContext ctx = { &mSettings, &symbols, &functionNameMap };
 
     for (Token *tok = mTokenList.front(); tok; tok = tok->next()) {
         if (!tok->isName()) {
@@ -2209,10 +2155,9 @@ void TemplateSimplifier::deduceFunctionTemplateArguments()
             continue;
         }
 
-        // Skip template declarations: the declarations inside them are not
-        // visible outside and calls inside them are only deduced when the
-        // template is instantiated. User specializations (template <>)
-        // contain concrete code and are walked.
+        // Skip template declarations - calls inside them can only be
+        // deduced after instantiation. Specializations (template <>) are
+        // concrete code and are walked.
         if (Token::simpleMatch(tok, "template <")) {
             Token *closing = tok->next()->findClosingBracket();
             if (!closing)
@@ -2226,9 +2171,7 @@ void TemplateSimplifier::deduceFunctionTemplateArguments()
             continue;
         }
 
-        // class definition: enter the class body and record the base classes
-        // and all members up front - members declared later in the class are
-        // visible in the member function bodies
+        // class definition: record the base classes and all members up front
         if (Token::Match(tok, "class|struct|union %name%") && !Token::simpleMatch(tok->previous(), "enum")) {
             const Token *nameTok = nullptr;
             std::vector<std::string> baseClasses;
@@ -2245,8 +2188,7 @@ void TemplateSimplifier::deduceFunctionTemplateArguments()
             continue;
         }
 
-        // function template call with type deduction? (a deducible call is
-        // "name (" or "name :: name (" - anything else can be skipped cheaply)
+        // function template call? (only "name (" or "name :: name (" can be one)
         if (Token::Match(tok->next(), "(|::") && isTemplateInstantion(tok)) {
             const auto scopeInfo = tok->scopeInfo();
             if (scopeInfo) {
@@ -2257,10 +2199,9 @@ void TemplateSimplifier::deduceFunctionTemplateArguments()
                     tok = tok->tokAt(2);
                 }
                 if (tok->strAt(1) == "(") {
-                    // A visible variable with the same name hides the function
-                    // templates. A visible non template function with the same
-                    // name might be a better match than the templates (overload
-                    // resolution is not supported). Bail out in both cases.
+                    // A visible variable with the same name hides the
+                    // templates; a non template function might be a better
+                    // match. Bail out either way.
                     if (functionNameMap.find(tok->str()) == functionNameMap.cend() ||
                         symbols.hasShadowingSymbol(tok->str()))
                         continue;
@@ -2271,10 +2212,8 @@ void TemplateSimplifier::deduceFunctionTemplateArguments()
                         findDeductionCandidates(ctx, tok, scopeInfo->name, qualification, matchedScope, matchedInBase);
                     if (!candidates.empty()) {
                         deduceTemplateArgumentsAtFunctionCall(ctx, tok, candidates);
-                        // When the declaration was found in a base class,
-                        // qualify the call so that the downstream (scope name
-                        // based) instantiation matching pairs it with the
-                        // declaration.
+                        // the declaration is in a base class: qualify the
+                        // call so it refers to that class
                         if (matchedInBase && tok->strAt(1) == "<")
                             insertQualification(tok, matchedScope);
                     }
@@ -2283,8 +2222,7 @@ void TemplateSimplifier::deduceFunctionTemplateArguments()
             }
         }
 
-        // record variable and function declarations (the members of a class
-        // body were already recorded when the class scope was entered)
+        // record declarations (class body members were recorded up front)
         if (!symbols.currentScopeIsClassBody())
             recordDeclaration(symbols, tok);
     }
