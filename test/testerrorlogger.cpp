@@ -336,6 +336,32 @@ private:
             ASSERT_EQUALS("[file.cpp:0]: (error) msg: message", msg.toString(false, templateFormat, ""));
             ASSERT_EQUALS("[file.cpp:0]: (error) msg: message: details", msg.toString(true, templateFormat, ""));
         }
+        {
+            InternalError internalError(nullptr, "message","details1\ndetails2");
+            const auto msg = ErrorMessage::fromInternalError(internalError, nullptr, "file.cpp", "msg");
+            ASSERT_EQUALS(1, msg.callStack.size());
+            const auto &loc = *msg.callStack.cbegin();
+            ASSERT_EQUALS(0, loc.fileIndex);
+            ASSERT_EQUALS(0, loc.line);
+            ASSERT_EQUALS(0, loc.column);
+            ASSERT_EQUALS("msg: message", msg.shortMessage());
+            ASSERT_EQUALS("msg: message: details1\ndetails2", msg.verboseMessage());
+            ASSERT_EQUALS("[file.cpp:0]: (error) msg: message", msg.toString(false));
+            ASSERT_EQUALS("[file.cpp:0]: (error) msg: message: details1\ndetails2", msg.toString(true));
+        }
+        {
+            InternalError internalError(nullptr, "message\nunintended newline","details");
+            const auto msg = ErrorMessage::fromInternalError(internalError, nullptr, "file.cpp", "msg");
+            ASSERT_EQUALS(1, msg.callStack.size());
+            const auto &loc = *msg.callStack.cbegin();
+            ASSERT_EQUALS(0, loc.fileIndex);
+            ASSERT_EQUALS(0, loc.line);
+            ASSERT_EQUALS(0, loc.column);
+            ASSERT_EQUALS("msg: message", msg.shortMessage());
+            ASSERT_EQUALS("msg: message\nunintended newline: details", msg.verboseMessage());
+            ASSERT_EQUALS("[file.cpp:0]: (error) msg: message", msg.toString(false));
+            ASSERT_EQUALS("[file.cpp:0]: (error) msg: message\nunintended newline: details", msg.toString(true));
+        }
     }
 
     #define testReportType(...) testReportType_(__FILE__, __LINE__, __VA_ARGS__)
