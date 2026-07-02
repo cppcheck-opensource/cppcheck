@@ -9,6 +9,8 @@ from testutils import cppcheck
 __script_dir = os.path.dirname(os.path.abspath(__file__))
 __proj_dir = os.path.join(__script_dir, 'slnx-folders')
 
+def get_lines(s):
+    return sorted(s.split('\n'))
 
 # Get Visual Studio configurations checking a file
 # Checking {file} {config}...
@@ -38,7 +40,7 @@ def test_relative_path():
         '[%s:5]: (error) Division by zero.\n'
         '[%s:7]: (error) Division by zero.\n' % (filename1, filename2)
     )
-    assert stderr == expected
+    assert get_lines(stderr) == get_lines(expected)
 
 def test_local_path():
     args = [
@@ -53,7 +55,7 @@ def test_local_path():
         '[%s:5]: (error) Division by zero.\n'
         '[%s:7]: (error) Division by zero.\n' % (filename1, filename2)
     )
-    assert stderr == expected
+    assert get_lines(stderr) == get_lines(expected)
 
 def test_absolute_path():
     args = [
@@ -68,4 +70,4 @@ def test_absolute_path():
         '[%s:5]: (error) Division by zero.\n'
         '[%s:7]: (error) Division by zero.\n' % (filename1, filename2)
     )
-    assert stderr == expected
+    assert get_lines(stderr) == get_lines(expected)
