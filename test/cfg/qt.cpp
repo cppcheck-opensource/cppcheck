@@ -896,6 +896,7 @@ int qdateIsValid()
 
 struct S_QTimer_connect : QObject { // #13846
     S_QTimer_connect() {
+        // cppcheck-suppress checkLibraryFunction - timeout() is a signal from QTimer
         QObject::connect(&timer, SIGNAL(timeout()), this, SLOT(update()));
     }
     QTimer timer;
