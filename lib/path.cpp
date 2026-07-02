@@ -162,16 +162,16 @@ std::string Path::getCurrentExecutablePath(const char* fallback)
     uint32_t size = sizeof(buf);
     success = (_NSGetExecutablePath(buf, &size) == 0);
 #elif defined(__HAIKU__)
-	int32 cookie = 0;
-	image_info info;
-	while (get_next_image_info(B_CURRENT_TEAM, &cookie, &info) == B_OK)
-	{
-		if (info.type == B_APP_IMAGE)
-		{
-			break;
-		}
-	}
-	return std::string(info.name);
+    int32 cookie = 0;
+    image_info info;
+    while (get_next_image_info(B_CURRENT_TEAM, &cookie, &info) == B_OK)
+    {
+        if (info.type == B_APP_IMAGE)
+        {
+            break;
+        }
+    }
+    return std::string(info.name);
 #else
     const char* procPath =
 #ifdef __SVR4 // Solaris
