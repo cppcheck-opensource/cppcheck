@@ -3,14 +3,8 @@
 
 import os
 import re
-import glob
-import json
-import shutil
-import xml.etree.ElementTree as ET
 
-import pytest
-
-from testutils import create_gui_project_file, cppcheck
+from testutils import cppcheck
 
 __script_dir = os.path.dirname(os.path.abspath(__file__))
 __proj_dir = os.path.join(__script_dir, 'slnx-folders')
