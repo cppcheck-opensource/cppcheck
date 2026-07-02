@@ -34,6 +34,7 @@
 #include <map>
 #include <memory>
 #include <stack>
+#include <numeric>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
@@ -1117,12 +1118,11 @@ static ParsedType parseType(const Token* tok,
         type.nameStart = start;
         type.nameEnd = last;
         if (templateParams && start == last) {
-            for (std::size_t i = 0; i < templateParams->size(); ++i) {
-                if ((*templateParams)[i]->str() == start->str()) {
-                    result.templateParamIndex = static_cast<int>(i);
-                    break;
-                }
-            }
+            const auto it = std::find_if(templateParams->cbegin(), templateParams->cend(), [&](const Token* templateParam) {
+                return templateParam->str() == start->str();
+            });
+            if (it != templateParams->cend())
+                result.templateParamIndex = static_cast<int>(it - templateParams->cbegin());
         }
     } else
         return ParsedType();
@@ -1241,8 +1241,7 @@ static std::vector<DeducedToken> renderDeducedType(const ExprType& type, bool ke
                 break;
         }
     }
-    for (int i = 0; i < type.pointer; ++i)
-        tokens.emplace_back("*");
+    tokens.insert(tokens.end(), type.pointer, DeducedToken("*"));
     if (type.pointer > 0 && keepTopConst && type.topConst)
         tokens.emplace_back("const");
     return tokens;
@@ -1660,10 +1659,43 @@ static ExprType parseOperandType(const DeductionContext& ctx, const Token*& tok,
     return type;
 }
 
+static bool isArithmeticOp(const std::string& s)
+{
+    return s == "+" || s == "-" || s == "*" || s == "/" || s == "%";
+}
+
+static bool isComparisonOp(const std::string& s)
+{
+    return s == "==" || s == "!=" || s == "<=" || s == ">=" || s == "&&" || s == "||";
+}
+
+static bool isBitOp(const std::string& s)
+{
+    return s == "&" || s == "|" || s == "^";
+}
+
+static bool isShiftOp(const std::string& s)
+{
+    return s == "<<" || s == ">>";
+}
+
 static bool isSupportedBinaryOp(const std::string& s)
 {
-    return s == "+" || s == "-" || s == "*" || s == "/" || s == "%" || s == "&" || s == "|" || s == "^" || s == "<<" ||
-           s == ">>" || s == "==" || s == "!=" || s == "<=" || s == ">=" || s == "&&" || s == "||";
+    return isArithmeticOp(s) || isComparisonOp(s) || isBitOp(s) || isShiftOp(s);
+}
+
+static bool isPointerType(const ExprType& type)
+{
+    return type.pointer > 0;
+}
+
+// fold |operands| with the usual arithmetic conversions
+static ExprType convertArithmeticTypes(const Settings& settings, std::vector<ExprType>::const_iterator begin,
+                                       std::vector<ExprType>::const_iterator end, const ExprType& first)
+{
+    return std::accumulate(begin, end, first, [&](const ExprType& lhs, const ExprType& rhs) {
+        return usualArithmeticConversion(settings, lhs, rhs);
+    });
 }
 
 // Determine the type of the expression [start, end). This is a flat scan:
@@ -1696,22 +1728,10 @@ static ExprType evalExpressionType(const DeductionContext& ctx, const Token* sta
     if (ops.empty())
         return operands[0];
 
-    bool hasCmp = false;
-    bool hasBit = false;
-    bool hasShift = false;
-    std::size_t firstShift = ops.size();
-    for (std::size_t i = 0; i < ops.size(); ++i) {
-        const std::string& s = ops[i];
-        if (s == "==" || s == "!=" || s == "<=" || s == ">=" || s == "&&" || s == "||")
-            hasCmp = true;
-        else if (s == "&" || s == "|" || s == "^")
-            hasBit = true;
-        else if (s == "<<" || s == ">>") {
-            hasShift = true;
-            if (firstShift == ops.size())
-                firstShift = i;
-        }
-    }
+    const bool hasCmp = std::any_of(ops.cbegin(), ops.cend(), isComparisonOp);
+    const bool hasBit = std::any_of(ops.cbegin(), ops.cend(), isBitOp);
+    const auto firstShift = std::find_if(ops.cbegin(), ops.cend(), isShiftOp);
+    const bool hasShift = firstShift != ops.cend();
     // the grouping of the operators must not influence the result type
     if (hasCmp && (hasBit || hasShift))
         return ExprType();
@@ -1722,16 +1742,14 @@ static ExprType evalExpressionType(const DeductionContext& ctx, const Token* sta
         return result;
     }
 
+    // class types (operator overloads) are not supported
+    if (std::any_of(operands.cbegin(), operands.cend(), [](const ExprType& operand) {
+        return operand.pointer == 0 && !operand.isArithmetic();
+    }))
+        return ExprType();
+
     // pointer arithmetic
-    std::size_t pointerCount = 0;
-    std::size_t pointerIndex = 0;
-    for (std::size_t i = 0; i < operands.size(); ++i) {
-        if (operands[i].pointer > 0) {
-            ++pointerCount;
-            pointerIndex = i;
-        } else if (!operands[i].isArithmetic())
-            return ExprType(); // class types (operator overloads) are not supported
-    }
+    const std::size_t pointerCount = std::count_if(operands.cbegin(), operands.cend(), isPointerType);
     if (pointerCount > 1)
         return ExprType();
     if (pointerCount == 1) {
@@ -1739,11 +1757,11 @@ static ExprType evalExpressionType(const DeductionContext& ctx, const Token* sta
             return s != "+" && s != "-";
         }))
             return ExprType();
-        for (std::size_t i = 0; i < operands.size(); ++i) {
-            if (i != pointerIndex && !operands[i].isIntegral())
-                return ExprType();
-        }
-        ExprType result = operands[pointerIndex];
+        if (!std::all_of(operands.cbegin(), operands.cend(), [](const ExprType& operand) {
+            return operand.pointer > 0 || operand.isIntegral();
+        }))
+            return ExprType();
+        ExprType result = *std::find_if(operands.cbegin(), operands.cend(), isPointerType);
         result.topConst = false;
         result.fromArray = false;
         return result;
@@ -1754,24 +1772,16 @@ static ExprType evalExpressionType(const DeductionContext& ctx, const Token* sta
             return ExprType();
         // the result is the promoted type of the sub expression left of the
         // first shift operator
-        ExprType result = operands[0];
-        for (std::size_t i = 1; i <= firstShift; ++i) {
-            result = usualArithmeticConversion(*ctx.settings, result, operands[i]);
-            if (!result.valid)
-                return ExprType();
-        }
-        return promoteType(*ctx.settings, result);
+        const std::size_t leftOfShift = firstShift - ops.cbegin();
+        const ExprType result = convertArithmeticTypes(*ctx.settings, operands.cbegin() + 1,
+                                                       operands.cbegin() + 1 + leftOfShift, operands[0]);
+        return result.valid ? promoteType(*ctx.settings, result) : ExprType();
     }
 
     if (hasBit && !std::all_of(operands.cbegin(), operands.cend(), isIntegralType))
         return ExprType();
 
-    ExprType result = operands[0];
-    for (std::size_t i = 1; i < operands.size(); ++i) {
-        result = usualArithmeticConversion(*ctx.settings, result, operands[i]);
-        if (!result.valid)
-            return ExprType();
-    }
+    ExprType result = convertArithmeticTypes(*ctx.settings, operands.cbegin() + 1, operands.cend(), operands[0]);
     result.fromArray = false;
     return result;
 }
@@ -1959,23 +1969,21 @@ static void deduceTemplateArgumentsAtFunctionCall(const DeductionContext& ctx,
     if (matches.size() > 1) {
         // identical deductions are interchangeable; otherwise the unique
         // candidate with the most exact matches wins, or nothing is deduced
-        bool identical = true;
-        for (std::size_t i = 1; i < matches.size() && identical; ++i)
-            identical = (matches[i].deduced == matches[0].deduced);
+        const bool identical = std::all_of(matches.cbegin() + 1, matches.cend(), [&](const Candidate& match) {
+            return match.deduced == matches[0].deduced;
+        });
         if (!identical) {
             const int maxExact =
                 std::max_element(matches.cbegin(), matches.cend(), [](const Candidate& lhs, const Candidate& rhs) {
                 return lhs.exactMatches < rhs.exactMatches;
             })->exactMatches;
-            std::size_t numberOfBest = 0;
-            for (std::size_t i = 0; i < matches.size(); ++i) {
-                if (matches[i].exactMatches == maxExact) {
-                    ++numberOfBest;
-                    winner = i;
-                }
-            }
-            if (numberOfBest != 1)
+            if (std::count_if(matches.cbegin(), matches.cend(), [&](const Candidate& match) {
+                return match.exactMatches == maxExact;
+            }) != 1)
                 return;
+            winner = std::find_if(matches.cbegin(), matches.cend(), [&](const Candidate& match) {
+                return match.exactMatches == maxExact;
+            }) - matches.cbegin();
         }
     }
 
