@@ -165,7 +165,7 @@ struct ProgramMemoryState {
     std::map<nonneg int, const Token*> origins;
     const Settings& settings;
 
-    explicit ProgramMemoryState(const Settings& s);
+    explicit ProgramMemoryState(const Settings& s LIFETIMEBOUND);
 
     void replace(ProgramMemory pm, const Token* origin = nullptr);
 
