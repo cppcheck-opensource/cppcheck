@@ -293,6 +293,7 @@ private:
         TEST_CASE(templateTypeDeduction12); // base class member templates, out of class method bodies
         TEST_CASE(templateTypeDeduction13); // members declared after the member function are visible
         TEST_CASE(templateTypeDeduction14); // a non template overload might be a better match
+        TEST_CASE(templateTypeDeduction15); // final classes
 
         TEST_CASE(simplifyTemplateArgs1);
         TEST_CASE(simplifyTemplateArgs2);
@@ -6796,6 +6797,62 @@ private:
                                 "template < class T > T h ( T t ) { return t ; } "
                                 "long h ( char ) ; "
                                 "void use ( ) { g ( h ( 'a' ) ) ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+    }
+
+    void templateTypeDeduction15() { // deduction is not affected by "final" on the class
+        {
+            // members are visible in the out of class member function bodies
+            const char code[] = "struct A final {\n"
+                                "    template<class T> void tf(T t) { (void)t; }\n"
+                                "    int m;\n"
+                                "    void g();\n"
+                                "};\n"
+                                "void A::g() { tf(m); }";
+            const char exp[]  = "struct A { "
+                                "void tf<int> ( int t ) ; "
+                                "int m ; "
+                                "void g ( ) ; "
+                                "} ; "
+                                "void A :: g ( ) { tf<int> ( m ) ; } "
+                                "void A :: tf<int> ( int t ) { ( void ) t ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // the base classes of a final class are searched
+            const char code[] = "struct Base {\n"
+                                "    template<class T> void btf(T t) { (void)t; }\n"
+                                "    long bm;\n"
+                                "};\n"
+                                "struct D final : public Base {\n"
+                                "    void use();\n"
+                                "};\n"
+                                "void D::use() { btf(bm); }";
+            const char exp[]  = "struct Base { "
+                                "void btf<long> ( long t ) ; "
+                                "long bm ; "
+                                "} ; "
+                                "struct D : public Base { "
+                                "void use ( ) ; "
+                                "} ; "
+                                "void D :: use ( ) { Base :: btf<long> ( bm ) ; } "
+                                "void Base :: btf<long> ( long t ) { ( void ) t ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // inline member function body of a final class
+            const char code[] = "struct E final {\n"
+                                "    template<class T> void etf(T t) { (void)t; }\n"
+                                "    void m() { etf(later); }\n"
+                                "    double later;\n"
+                                "};";
+            const char exp[]  = "struct E { "
+                                "void etf<double> ( double t ) ; "
+                                "void m ( ) { etf<double> ( later ) ; } "
+                                "double later ; "
+                                "} ; "
+                                "void E :: etf<double> ( double t ) { ( void ) t ; }";
             ASSERT_EQUALS(exp, tok(code));
         }
     }
