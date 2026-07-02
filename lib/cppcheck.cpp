@@ -1814,7 +1814,7 @@ bool CppCheck::analyseWholeProgram()
     if (!Settings::unusedFunctionOnly()) {
         // Analyse the tokens
         CTU::FileInfo ctu;
-        if (mSettings.useSingleJob() || !mSettings.buildDir.empty())
+        if (mSettings.wholeProgram)
         {
             for (const Check::FileInfo *fi : mFileInfo) {
                 const auto *fi2 = dynamic_cast<const CTU::FileInfo *>(fi);
@@ -1837,6 +1837,10 @@ bool CppCheck::analyseWholeProgram()
 
 unsigned int CppCheck::analyseWholeProgram(const std::string &buildDir, const std::list<FileWithDetails> &files, const std::list<FileSettings>& fileSettings, const std::string& ctuInfo)
 {
+    // TODO: is this bailout correct? what happened when builddir was empty?
+    if (!mSettings.wholeProgram)
+        return mLogger->exitcode();
+
     if (mSettings.checks.isEnabled(Checks::unusedFunction))
         CheckUnusedFunctions::analyseWholeProgram(mSettings, mErrorLogger, buildDir);
 

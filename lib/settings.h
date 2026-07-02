@@ -528,6 +528,9 @@ public:
     /** @brief Is --verbose given? */
     bool verbose{};
 
+    /** @brief Is the whole program analysis enabled? */
+    bool wholeProgram{true};
+
     /** @brief XML version (--xml-version=..) */
     int xml_version = 2; // TODO: integrate into outputFormat enum?
 
