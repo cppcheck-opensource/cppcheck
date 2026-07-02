@@ -1491,7 +1491,7 @@ void SymbolDatabase::createSymbolDatabaseEnums()
 
 void SymbolDatabase::createSymbolDatabaseIncompleteVars()
 {
-    for (Token* tok = mTokenizer.list.front(); tok != mTokenizer.list.back(); tok = tok->next()) {
+    for (Token* tok = mTokenizer.list.front(); precedes(tok, mTokenizer.list.back()); tok = tok->next()) {
         const Scope * scope = tok->scope();
         if (!scope)
             continue;
