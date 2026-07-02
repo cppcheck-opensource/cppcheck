@@ -25,6 +25,7 @@
 #include "standards.h"
 
 #include <cstddef>
+#include <ostream>
 #include <sstream>
 #include <string>
 

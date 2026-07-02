@@ -46,6 +46,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <ostream>
 #include <sstream>
 #include <sys/select.h>
 #include <sys/types.h>

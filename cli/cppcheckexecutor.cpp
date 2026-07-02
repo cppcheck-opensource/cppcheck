@@ -54,9 +54,11 @@
 #include <ctime>
 #include <fstream>
 #include <iostream>
+#include <istream>
 #include <list>
 #include <map>
 #include <memory>
+#include <ostream>
 #include <set>
 #include <sstream>
 #include <unordered_set>

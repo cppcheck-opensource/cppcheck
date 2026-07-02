@@ -34,11 +34,13 @@
 #include <cstring>
 #include <ctime>
 #include <fstream>
+#include <ios>
 #include <iostream>
 #include <istream>
 #include <limits>
 #include <list>
 #include <map>
+#include <ostream>
 #include <set>
 #include <sstream>
 #include <stack>

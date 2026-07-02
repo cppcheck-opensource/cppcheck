@@ -38,6 +38,7 @@
 #include <iomanip>
 #include <list>
 #include <map>
+#include <ostream>
 #include <sstream>
 #include <unordered_map>
 #include <vector>

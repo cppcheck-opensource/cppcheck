@@ -38,6 +38,7 @@
 #include <cstdint>
 #include <iterator>
 #include <list>
+#include <ostream>
 #include <sstream>
 #include <utility>
 #include <vector>

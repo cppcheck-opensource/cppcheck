@@ -35,6 +35,7 @@
 #include <iostream>
 #include <list>
 #include <memory>
+#include <ostream>
 #include <stdexcept>
 #include <string>
 #include <unordered_set>

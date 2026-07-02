@@ -33,6 +33,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <ostream>
 #include <stack>
 #include <type_traits>
 #include <utility>

@@ -30,6 +30,7 @@
 #include <cctype>
 #include <exception>
 #include <iostream>
+#include <ostream>
 #include <set>
 #include <sstream>
 #include <string>

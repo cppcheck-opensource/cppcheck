@@ -61,8 +61,10 @@
 #include <exception> // IWYU pragma: keep
 #include <fstream>
 #include <iostream>
+#include <istream>
 #include <map>
 #include <new>
+#include <ostream>
 #include <set>
 #include <sstream>
 #include <stdexcept>

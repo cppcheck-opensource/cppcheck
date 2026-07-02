@@ -27,6 +27,7 @@
 #include "tokenlist.h"
 
 #include <cstddef>
+#include <istream>
 #include <stdexcept>
 #include <sstream>
 #include <string>

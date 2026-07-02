@@ -28,6 +28,7 @@
 #include <QMessageBox>
 #else
 #include <iostream>
+#include <ostream>
 #endif
 #include <algorithm>
 #include <string>

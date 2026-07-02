@@ -24,6 +24,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <iosfwd>
 #include <istream>
 #include <list>
 #include <mutex>

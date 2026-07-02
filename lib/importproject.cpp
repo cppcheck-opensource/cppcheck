@@ -33,7 +33,9 @@
 #include <fstream>
 #include <initializer_list>
 #include <iostream>
+#include <istream>
 #include <iterator>
+#include <ostream>
 #include <stack>
 #include <stdexcept>
 #include <unordered_set>

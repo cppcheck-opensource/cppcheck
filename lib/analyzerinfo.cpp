@@ -26,8 +26,11 @@
 #include <array>
 #include <cstring>
 #include <exception>
+#include <ios>
 #include <iostream>
+#include <istream>
 #include <map>
+#include <ostream>
 #include <sstream>
 #include <stdexcept>
 #include <utility>

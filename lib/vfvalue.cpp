@@ -22,6 +22,7 @@
 #include "token.h"
 #include "utils.h"
 
+#include <ostream>
 #include <sstream>
 #include <string>
 

@@ -33,6 +33,7 @@
 #include <cstring>
 #include <exception>
 #include <functional> // std::bind, std::placeholders
+#include <ostream>
 #include <sstream>
 #include <stdexcept>
 #include <utility>

@@ -34,6 +34,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <ostream>
 #include <utility>
 
 #include "json.h"

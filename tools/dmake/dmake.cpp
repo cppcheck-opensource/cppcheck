@@ -24,9 +24,13 @@
 #include <cstdlib>
 #include <fstream>
 #include <functional>
+#include <ios>
+#include <iosfwd>
 #include <iostream>
+#include <istream>
 #include <list>
 #include <map>
+#include <ostream>
 #include <set>
 #include <string>
 #include <vector>
