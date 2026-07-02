@@ -33,8 +33,8 @@
 #include <iostream>
 #include <map>
 #include <memory>
-#include <stack>
 #include <numeric>
+#include <stack>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
@@ -826,10 +826,10 @@ namespace {
         bool isSigned = false;        // explicitly 'signed' (needed for "signed char")
         const Token* nameStart = nullptr; // ..or named base type [nameStart..nameEnd]
         const Token* nameEnd = nullptr;
-        int pointer = 0;    // pointer depth on top of the base type
-        bool baseConst = false; // const qualifies the pointed to base type ("const char *")
-        bool topConst = false; // const qualifies the outermost level ("const int", "char * const")
-        bool fromArray = false; // pointer comes from array-to-pointer decay
+        int pointer = 0;              // pointer depth on top of the base type
+        bool baseConst = false;       // const qualifies the pointed to base type ("const char *")
+        bool topConst = false;        // const qualifies the outermost level ("const int", "char * const")
+        bool fromArray = false;       // pointer comes from array-to-pointer decay
 
         bool isArithmetic() const {
             return valid && pointer == 0 && arith != ArithCat::None;
@@ -1118,7 +1118,8 @@ static ParsedType parseType(const Token* tok,
         type.nameStart = start;
         type.nameEnd = last;
         if (templateParams && start == last) {
-            const auto it = std::find_if(templateParams->cbegin(), templateParams->cend(), [&](const Token* templateParam) {
+            const auto it =
+                std::find_if(templateParams->cbegin(), templateParams->cend(), [&](const Token* templateParam) {
                 return templateParam->str() == start->str();
             });
             if (it != templateParams->cend())
@@ -1213,7 +1214,7 @@ static DeducedToken arithToken(const ExprType& type)
         {"short", false, true},
         {"int", false, true},
         {"long", false, true},
-        {"long", true, true}, // LongLong
+        {"long", true, true},    // LongLong
         {"float", false, false},
         {"double", false, false},
         {"double", true, false}, // LongDouble
@@ -1643,7 +1644,7 @@ static ExprType parseOperandType(const DeductionContext& ctx, const Token*& tok,
                 type.baseConst = false;
             }
             type.fromArray = false;
-        } else { // "&"
+        } else {                   // "&"
             if (type.pointer > 0 && type.topConst)
                 return ExprType(); // would need a "* const *" type
             if (type.pointer == 0) {
@@ -1659,8 +1660,7 @@ static ExprType parseOperandType(const DeductionContext& ctx, const Token*& tok,
     return type;
 }
 
-static bool isArithmeticOp(const std::string& s)
-{
+static bool isArithmeticOp(const std::string& s) {
     return s == "+" || s == "-" || s == "*" || s == "/" || s == "%";
 }
 
@@ -1669,13 +1669,11 @@ static bool isComparisonOp(const std::string& s)
     return s == "==" || s == "!=" || s == "<=" || s == ">=" || s == "&&" || s == "||";
 }
 
-static bool isBitOp(const std::string& s)
-{
+static bool isBitOp(const std::string& s) {
     return s == "&" || s == "|" || s == "^";
 }
 
-static bool isShiftOp(const std::string& s)
-{
+static bool isShiftOp(const std::string& s) {
     return s == "<<" || s == ">>";
 }
 
@@ -1684,14 +1682,15 @@ static bool isSupportedBinaryOp(const std::string& s)
     return isArithmeticOp(s) || isComparisonOp(s) || isBitOp(s) || isShiftOp(s);
 }
 
-static bool isPointerType(const ExprType& type)
-{
+static bool isPointerType(const ExprType& type) {
     return type.pointer > 0;
 }
 
 // fold |operands| with the usual arithmetic conversions
-static ExprType convertArithmeticTypes(const Settings& settings, std::vector<ExprType>::const_iterator begin,
-                                       std::vector<ExprType>::const_iterator end, const ExprType& first)
+static ExprType convertArithmeticTypes(const Settings& settings,
+                                       std::vector<ExprType>::const_iterator begin,
+                                       std::vector<ExprType>::const_iterator end,
+                                       const ExprType& first)
 {
     return std::accumulate(begin, end, first, [&](const ExprType& lhs, const ExprType& rhs) {
         return usualArithmeticConversion(settings, lhs, rhs);
@@ -1773,8 +1772,8 @@ static ExprType evalExpressionType(const DeductionContext& ctx, const Token* sta
         // the result is the promoted type of the sub expression left of the
         // first shift operator
         const std::size_t leftOfShift = firstShift - ops.cbegin();
-        const ExprType result = convertArithmeticTypes(*ctx.settings, operands.cbegin() + 1,
-                                                       operands.cbegin() + 1 + leftOfShift, operands[0]);
+        const ExprType result =
+            convertArithmeticTypes(*ctx.settings, operands.cbegin() + 1, operands.cbegin() + 1 + leftOfShift, operands[0]);
         return result.valid ? promoteType(*ctx.settings, result) : ExprType();
     }
 
@@ -1795,7 +1794,7 @@ static std::vector<DeducedToken> deduceTemplateArgumentFromParam(const ParsedTyp
         return {};
     ExprType type = argType;
     if (param.isReference && type.fromArray)
-        return {}; // T& does not decay
+        return {};             // T& does not decay
     if (param.type.pointer > 0) {
         if (param.isReference)
             return {};         // T*& etc is not supported
@@ -1927,7 +1926,7 @@ static void deduceTemplateArgumentsAtFunctionCall(const DeductionContext& ctx,
 
             if (param.form.templateParamIndex >= 0) {
                 if (!arg.type.valid)
-                    continue; // maybe deducible from another argument
+                    continue;      // maybe deducible from another argument
                 std::vector<DeducedToken> tokens = deduceTemplateArgumentFromParam(param.form, arg.type);
                 if (tokens.empty()) {
                     failed = true; // the argument doesn't fit the parameter form
@@ -1981,9 +1980,12 @@ static void deduceTemplateArgumentsAtFunctionCall(const DeductionContext& ctx,
                 return match.exactMatches == maxExact;
             }) != 1)
                 return;
-            winner = std::find_if(matches.cbegin(), matches.cend(), [&](const Candidate& match) {
+            winner = std::find_if(matches.cbegin(),
+                                  matches.cend(),
+                                  [&](const Candidate& match) {
                 return match.exactMatches == maxExact;
-            }) - matches.cbegin();
+            }) -
+                     matches.cbegin();
         }
     }
 
@@ -2047,7 +2049,7 @@ static void recordClassMembers(DeductionSymbolTable& symbols, const Token* bodyS
 
 namespace {
     struct ClassHead {
-        Token* body = nullptr; // the "{" of the class body
+        Token* body = nullptr;            // the "{" of the class body
         const Token* nameTok = nullptr;
         std::vector<std::string> baseClasses; // as written; template bases are left out
     };

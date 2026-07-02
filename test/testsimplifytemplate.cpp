@@ -284,10 +284,10 @@ private:
         TEST_CASE(templateTypeDeduction3);
         TEST_CASE(templateTypeDeduction4); // #9983
         TEST_CASE(templateTypeDeduction5);
-        TEST_CASE(templateTypeDeduction6);  // deduction from variables
-        TEST_CASE(templateTypeDeduction7);  // parameter forms: T, T&, const T&, T*
-        TEST_CASE(templateTypeDeduction8);  // deduction from expressions
-        TEST_CASE(templateTypeDeduction9);  // multiple parameters, scopes, bailouts
+        TEST_CASE(templateTypeDeduction6); // deduction from variables
+        TEST_CASE(templateTypeDeduction7); // parameter forms: T, T&, const T&, T*
+        TEST_CASE(templateTypeDeduction8); // deduction from expressions
+        TEST_CASE(templateTypeDeduction9); // multiple parameters, scopes, bailouts
         TEST_CASE(templateTypeDeduction10); // parameter visibility: init list, const method
         TEST_CASE(templateTypeDeduction11); // unqualified lookup: enclosing scopes, shadowing
         TEST_CASE(templateTypeDeduction12); // base class member templates, out of class method bodies
