@@ -494,7 +494,7 @@ std::string clangimport::AstNode::getTemplateParameters() const
             if (templateParameters.empty())
                 templateParameters = "<";
             else
-                templateParameters += ",";
+                templateParameters += ',';
             templateParameters += unquote(child->mExtTokens.back());
         }
     }
@@ -617,7 +617,7 @@ const ::Type * clangimport::AstNode::addTypeTokens(TokenList &tokenList, const s
 
     if (type.find("(*)(") != std::string::npos) {
         type.erase(type.find("(*)("));
-        type += "*";
+        type += '*';
     }
     if (type.find('(') != std::string::npos)
         type.erase(type.find('('));

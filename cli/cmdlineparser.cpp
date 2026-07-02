@@ -451,7 +451,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                 define += "=1";
 
             if (!mSettings.userDefines.empty())
-                mSettings.userDefines += ";";
+                mSettings.userDefines += ';';
             mSettings.userDefines += define;
         }
 
@@ -1145,7 +1145,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
             if (std::strcmp(argv[i], "--premium=safety") == 0)
                 mSettings.safety = true;
             if (!mSettings.premiumArgs.empty())
-                mSettings.premiumArgs += " ";
+                mSettings.premiumArgs += ' ';
             const std::string p(argv[i] + 10);
             const std::string p2(p.find('=') != std::string::npos ? p.substr(0, p.find('=')) : "");
             const bool isCodingStandard = startsWith(p, "autosar") || startsWith(p,"cert-") || startsWith(p,"misra-") || p == "safety-profiles";

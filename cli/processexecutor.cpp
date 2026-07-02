@@ -125,13 +125,13 @@ namespace {
         static std::string suppressionToString(const SuppressionList::Suppression &suppr)
         {
             std::string suppr_str = suppr.toString();
-            suppr_str += ";";
+            suppr_str += ';';
             suppr_str += std::to_string(suppr.column);
-            suppr_str += ";";
+            suppr_str += ';';
             suppr_str += suppr.checked ? "1" : "0";
-            suppr_str += ";";
+            suppr_str += ';';
             suppr_str += suppr.matched ? "1" : "0";
-            suppr_str += ";";
+            suppr_str += ';';
             suppr_str += suppr.extraComment;
             return suppr_str;
         }

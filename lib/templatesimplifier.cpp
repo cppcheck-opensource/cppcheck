@@ -207,7 +207,7 @@ TemplateSimplifier::TokenAndName::TokenAndName(Token *token, std::string scope, 
                         start = start->findClosingBracket();
                     else {
                         if (!mScope.empty())
-                            mScope += " ";
+                            mScope += ' ';
                         mScope += start->str();
                     }
                     start = start->next();
@@ -1830,7 +1830,7 @@ void TemplateSimplifier::expandTemplate(
                             const Token * type = start;
                             while (type && type != closing->next()) {
                                 if (!name.empty())
-                                    name += " ";
+                                    name += ' ';
                                 name += type->str();
                                 type = type->next();
                             }

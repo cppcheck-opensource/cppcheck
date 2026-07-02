@@ -10,7 +10,6 @@ Checks: >
         -darwin-*,
         -fuchsia-*,
         -google-*,
-        -hicpp-*,
         -linuxkernel-*,
         -llvm-*,
         -llvmlibc-*,
@@ -75,6 +74,7 @@ Checks: >
         -readability-magic-numbers,
         -readability-redundant-parentheses,
         -readability-suspicious-call-argument,
+        -readability-trailing-comma,
         -readability-uppercase-literal-suffix,
         -readability-use-concise-preprocessor-directives,
         -misc-unconventional-assign-operator

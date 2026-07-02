@@ -247,7 +247,7 @@ void ErrorMessage::setmsg(const std::string &msg)
 static void serializeString(std::string &oss, const std::string & str)
 {
     oss += std::to_string(str.length());
-    oss += " ";
+    oss += ' ';
     oss += str;
 }
 
@@ -296,7 +296,7 @@ std::string ErrorMessage::serialize() const
     serializeString(oss, saneVerboseMessage);
     serializeString(oss, mSymbolNames);
     oss += std::to_string(callStack.size());
-    oss += " ";
+    oss += ' ';
 
     for (auto loc = callStack.cbegin(); loc != callStack.cend(); ++loc) {
         std::string frame;

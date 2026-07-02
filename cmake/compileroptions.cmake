@@ -175,6 +175,10 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     # |          ^
     add_compile_options_safe(-Wno-shadow-header)
 
+    # TODO: enable these
+    add_compile_options_safe(-Wno-lifetime-safety-intra-tu-suggestions)
+    add_compile_options_safe(-Wno-lifetime-safety-cross-tu-suggestions)
+
     if(ENABLE_COVERAGE OR ENABLE_COVERAGE_XML)
       message(FATAL_ERROR "Do not use clang to generate code coverage. Use GCC instead.")
     endif()

@@ -655,8 +655,7 @@ bool MathLib::isDecimalFloat(const std::string &str)
         case State::MANTISSA_PLUSMINUS:
             if (!std::isdigit(static_cast<unsigned char>(*it)))
                 return false;
-            else
-                state = State::MANTISSA_DIGITS;
+            state = State::MANTISSA_DIGITS;
             break;
         case State::MANTISSA_DIGITS:
             if (*it=='f' || *it=='F')

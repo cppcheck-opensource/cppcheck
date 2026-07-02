@@ -1423,7 +1423,7 @@ void CppCheck::executeRules(const std::string &tokenlist, const TokenList &list)
     // Write all tokens in a string that can be parsed by pcre
     std::string str;
     for (const Token *tok = list.front(); tok; tok = tok->next()) {
-        str += " ";
+        str += ' ';
         str += tok->str();
     }
 
@@ -1919,7 +1919,7 @@ std::string CppCheck::getDumpFileContentsRawTokens(const std::vector<std::string
 
         dumpProlog += "str=\"";
         dumpProlog += ErrorLogger::toxml(tok->str());
-        dumpProlog += "\"";
+        dumpProlog += '"';
 
         dumpProlog += "/>\n";
     }

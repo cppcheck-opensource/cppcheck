@@ -4138,7 +4138,7 @@ void CheckOtherImpl::funcArgOrderDifferent(const std::string & functionName,
         if (definitions[i])
             msg += definitions[i]->str();
     }
-    msg += "'";
+    msg += '\'';
     reportError(tokens, Severity::warning, "funcArgOrderDifferent", msg, CWE683, Certainty::normal);
 }
 

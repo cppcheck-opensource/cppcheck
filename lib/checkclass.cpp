@@ -2297,9 +2297,9 @@ void CheckClassImpl::checkConst()
             std::string functionName = (func.tokenDef->isName() ? "" : "operator") + func.tokenDef->str();
 
             if (func.tokenDef->str() == "(")
-                functionName += ")";
+                functionName += ')';
             else if (func.tokenDef->str() == "[")
-                functionName += "]";
+                functionName += ']';
 
             if (func.isInline())
                 checkConstError(func.token, classname, functionName, suggestStatic, foundAllBaseClasses);

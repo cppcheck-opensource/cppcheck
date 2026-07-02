@@ -695,7 +695,7 @@ int CppCheckExecutor::executeCommand(std::string exe, std::vector<std::string> a
     std::string joinedArgs;
     for (const std::string &arg : args) {
         if (!joinedArgs.empty())
-            joinedArgs += " ";
+            joinedArgs += ' ';
         if (arg.find(' ') != std::string::npos)
             joinedArgs += '"' + arg + '"';
         else
