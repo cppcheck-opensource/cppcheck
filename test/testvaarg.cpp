@@ -310,6 +310,22 @@ private:
               "format_err:\n"
               "}");
         ASSERT_EQUALS("", errout_str());
+
+        // #9657
+        check("static void __attribute__((__noreturn__)) __attribute__((__format__(__printf__, 1, 0)))\n"
+              "    notreturning(const char* fmt, va_list args) {\n"
+              "    va_list args_copy;\n"
+              "    va_copy(args_copy, args);\n"
+              "    vprintf(fmt, args_copy);\n"
+              "    va_end(args_copy);\n"
+              "    exit(1);\n"
+              "}\n"
+              "static void check_noret_va_end(const char* fmt, ...) {\n"
+              "    va_list args;\n"
+              "    va_start(args, fmt);\n"
+              "    notreturning(fmt, args);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void va_start_subsequentCalls() {
