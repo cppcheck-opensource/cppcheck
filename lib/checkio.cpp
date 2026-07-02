@@ -2095,6 +2095,7 @@ void CheckIOImpl::invalidPrintfArgTypeError_float(const Token* tok, nonneg int n
 
 Severity CheckIOImpl::getSeverity(const ArgumentInfo *argInfo)
 {
+    //TODO: It causes issues if we use fixed range types like int32_t etc so we should rewrite this to handle those types properly
     return (argInfo && argInfo->typeToken && !argInfo->typeToken->originalName().empty()) ? Severity::portability : Severity::warning;
 }
 
