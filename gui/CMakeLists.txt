@@ -13,11 +13,10 @@ CheckOptions:
     file(GLOB srcs "*.cpp")
     file(GLOB uis  "*.ui")
     file(GLOB tss  "*.ts")
-    QT_WRAP_UI(uis_hdrs ${uis})
     QT_ADD_RESOURCES(resources "gui.qrc")
     # TODO: passing "-no-obsolete" here breaks the translations
     QT_CREATE_TRANSLATION(qms ${CMAKE_CURRENT_SOURCE_DIR} ${tss})
-    list(APPEND cppcheck-gui-deps ${hdrs} ${uis_hdrs} ${resources} ${qms})
+    list(APPEND cppcheck-gui-deps ${hdrs} ${uis} ${resources} ${qms})
     add_custom_target(gui-build-deps SOURCES ${cppcheck-gui-deps})
 
     list(APPEND cppcheck-gui_SOURCES ${srcs})
@@ -26,9 +25,13 @@ CheckOptions:
     endif()
 
     add_executable(cppcheck-gui ${cppcheck-gui-deps} ${cppcheck-gui_SOURCES})
+    qt_add_ui(cppcheck-gui SOURCES ${uis})
+    # the GUI include is needed so the includes are found from the generated headers - TODO: is it possible to get rid of this?
+    target_include_directories(cppcheck-gui PRIVATE ${PROJECT_SOURCE_DIR}/gui/)
     target_link_libraries(cppcheck-gui cppcheck-core simplecpp tinyxml2 picojson frontend)
 
     set_target_properties(cppcheck-gui PROPERTIES AUTOMOC ON)
+    #set_target_properties(cppcheck-gui PROPERTIES AUTOUIC ON)
     set_target_properties(cppcheck-gui PROPERTIES WIN32_EXECUTABLE ON)
     if (NOT CMAKE_DISABLE_PRECOMPILE_HEADERS)
         target_precompile_headers(cppcheck-gui PRIVATE precompiled.h)
