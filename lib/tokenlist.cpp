@@ -1839,8 +1839,11 @@ static Token * createAstAtToken(Token *tok)
             }
             typetok = typetok->next();
         }
-        if (Token::Match(typetok, "%var% [={]"))
+        if (Token::Match(typetok, "%var% =|{|[")) {
             tok = typetok;
+            while (Token::Match(tok->tokAt(-2), "%name% ::"))
+                tok = tok->tokAt(-2);
+        }
 
         // Do not create AST for function declaration
         if (typetok &&
