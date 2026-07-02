@@ -1854,7 +1854,7 @@ void CheckConditionImpl::checkPointerAdditionResultNotNull()
             if (!calcToken)
                 continue;
 
-            if (tok->isComparisonOp() && tok->astOperand1() && tok->astOperand2()) {
+            if (tok->isComparisonOp() && tok->isBinaryOp()) {
                 const Token *exprToken = tok->astOperand1() == calcToken ? tok->astOperand2() : tok->astOperand1();
 
                 if (!exprToken->hasKnownIntValue() || !exprToken->getValue(0))
