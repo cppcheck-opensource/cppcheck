@@ -671,8 +671,7 @@ void CheckOtherImpl::checkRedundantAssignment()
                 if (inconclusive && !mSettings.certainty.isEnabled(Certainty::inconclusive))
                     continue;
 
-                FwdAnalysis fwdAnalysis(mSettings);
-                if (fwdAnalysis.hasOperand(tok->astOperand2(), tok->astOperand1()))
+                if (FwdAnalysis::hasOperand(tok->astOperand2(), tok->astOperand1(), mSettings))
                     continue;
 
                 // Is there a redundant assignment?
@@ -698,10 +697,10 @@ void CheckOtherImpl::checkRedundantAssignment()
                 }
 
                 // Get next assignment..
-                const Token *nextAssign = fwdAnalysis.reassign(tokenToCheck, start, scope->bodyEnd);
+                const Token *nextAssign = FwdAnalysis::reassign(tokenToCheck, start, scope->bodyEnd, mSettings);
                 // extra check for union
                 if (nextAssign && tokenToCheck != tok->astOperand1())
-                    nextAssign = fwdAnalysis.reassign(tok->astOperand1(), start, scope->bodyEnd);
+                    nextAssign = FwdAnalysis::reassign(tok->astOperand1(), start, scope->bodyEnd, mSettings);
 
                 if (!nextAssign)
                     continue;

@@ -21,11 +21,6 @@
 #define fwdanalysisH
 //---------------------------------------------------------------------------
 
-#include "config.h"
-
-#include <cstdint>
-#include <set>
-
 class Token;
 class Settings;
 
@@ -33,52 +28,29 @@ class Settings;
  * Forward data flow analysis for checks
  *  - unused value
  *  - redundant assignment
- *  - valueflow analysis
  */
-class FwdAnalysis {
-public:
-    explicit FwdAnalysis(const Settings &settings) : mSettings(settings) {}
-
-    bool hasOperand(const Token *tok, const Token *lhs) const;
+struct FwdAnalysis {
+    static bool hasOperand(const Token *tok, const Token *lhs, const Settings& settings);
 
     /**
      * Check if "expr" is reassigned. The "expr" can be a tree (x.y[12]).
      * @param expr Symbolic expression to perform forward analysis for
      * @param startToken First token in forward analysis
      * @param endToken Last token in forward analysis
+     * @param settings the settings to use
      * @return Token where expr is reassigned. If it's not reassigned then nullptr is returned.
      */
-    const Token *reassign(const Token *expr, const Token *startToken, const Token *endToken);
+    static const Token *reassign(const Token *expr, const Token *startToken, const Token *endToken, const Settings& settings);
 
     /**
      * Check if "expr" is used. The "expr" can be a tree (x.y[12]).
      * @param expr Symbolic expression to perform forward analysis for
      * @param startToken First token in forward analysis
      * @param endToken Last token in forward analysis
+     * @param settings the settings to use
      * @return true if expr is used.
      */
-    bool unusedValue(const Token *expr, const Token *startToken, const Token *endToken);
-
-    /** Is there some possible alias for given expression */
-    bool possiblyAliased(const Token *expr, const Token *startToken) const;
-
-    std::set<nonneg int> getExprVarIds(const Token* expr, bool* localOut = nullptr, bool* unknownVarIdOut = nullptr) const;
-private:
-    static bool isEscapedAlias(const Token* expr);
-
-    /** Result of forward analysis */
-    struct Result {
-        enum class Type : std::uint8_t { NONE, READ, WRITE, BREAK, RETURN, BAILOUT } type;
-        explicit Result(Type type) : type(type) {}
-        Result(Type type, const Token *token) : type(type), token(token) {}
-        const Token* token{};
-    };
-
-    Result check(const Token *expr, const Token *startToken, const Token *endToken) const;
-    Result checkRecursive(const Token *expr, const Token *startToken, const Token *endToken, const std::set<nonneg int> &exprVarIds, bool local, bool inInnerClass, int depth=0) const;
-
-    const Settings &mSettings;
-    enum class What : std::uint8_t { Reassign, UnusedValue } mWhat = What::Reassign;
+    static bool unusedValue(const Token *expr, const Token *startToken, const Token *endToken, const Settings& settings);
 };
 
 #endif // fwdanalysisH
