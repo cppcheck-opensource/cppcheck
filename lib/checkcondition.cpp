@@ -1687,6 +1687,63 @@ void CheckConditionImpl::alwaysTrueFalseError(const Token* tok, const Token* con
                 (alwaysTrue ? CWE571 : CWE570), Certainty::normal);
 }
 
+// Strip enclosing casts so that `(char *)p` and `p` compare equal.
+static const Token* skipPointerCast(const Token* tok)
+{
+    while (tok && tok->isCast() && tok->astOperand1())
+        tok = tok->astOperand1();
+    return tok;
+}
+
+// Does `cmp` compare the same two pointers as p1/p2 (cast-stripped, either order)?
+static bool comparesSamePointers(const Token* cmp, const Token* p1, const Token* p2, const Settings& settings)
+{
+    if (!cmp || !cmp->isComparisonOp() || !cmp->isBinaryOp())
+        return false;
+    const Token* a = skipPointerCast(cmp->astOperand1());
+    const Token* b = skipPointerCast(cmp->astOperand2());
+    if (!a || !b)
+        return false;
+    return (isSameExpression(true, a, p1, settings, true, false) &&
+            isSameExpression(true, b, p2, settings, true, false)) ||
+           (isSameExpression(true, a, p2, settings, true, false) &&
+            isSameExpression(true, b, p1, settings, true, false));
+}
+
+// Search a condition subtree for a comparison of the same two pointers p1/p2.
+static bool hasPairedPointerCompare(const Token* tok, const Token* p1, const Token* p2, const Settings& settings)
+{
+    if (!tok)
+        return false;
+    if (comparesSamePointers(tok, p1, p2, settings))
+        return true;
+    return hasPairedPointerCompare(tok->astOperand1(), p1, p2, settings) ||
+           hasPairedPointerCompare(tok->astOperand2(), p1, p2, settings);
+}
+
+// Recognize the pointer overlap idiom:  p1 >= p2 && p1 < p2 + n  (or mirror).
+// `cmpTok` is the `p1 < p2 + n` comparison, `p1` the bare pointer operand and
+// `p2` the pointer inside the `+`. We require a sibling comparison (under &&) of
+// the *same two distinct pointers*; a plain bounds check `p < buf + len` has no
+// such sibling and is therefore not flagged.
+static bool isOverlapIdiom(const Token* cmpTok, const Token* p1, const Token* p2, const Settings& settings)
+{
+    const Token* p1base = skipPointerCast(p1);
+    const Token* p2base = skipPointerCast(p2);
+    if (!p1base || !p2base)
+        return false;
+    // distinct pointers only (the p<p+n case is handled by invalidTestForOverflow)
+    if (isSameExpression(true, p1base, p2base, settings, true, false))
+        return false;
+    const Token* child = cmpTok;
+    for (const Token* parent = cmpTok->astParent(); parent && parent->str() == "&&"; child = parent, parent = parent->astParent()) {
+        const Token* other = (parent->astOperand1() == child) ? parent->astOperand2() : parent->astOperand1();
+        if (hasPairedPointerCompare(other, p1base, p2base, settings))
+            return true;
+    }
+    return false;
+}
+
 void CheckConditionImpl::checkInvalidTestForOverflow()
 {
     // Interesting blogs:
@@ -1771,8 +1828,48 @@ void CheckConditionImpl::checkInvalidTestForOverflow()
                     continue;
                 }
             }
+
+            // Pointer overlap idiom:  p1 >= p2 && p1 < p2 + n   (or the mirror)
+            // Example (memcpy_s): (dest >= src && dest < src + count) || ...
+            // The `p1 < p2 + n` clause assumes `p2 + n` does not overflow past
+            // the end of the object. If `n` is large enough that `p2 + n` wraps
+            // (UB), compilers may fold the comparison and drop the check.
+            // We only warn when the comparison is paired (via &&) with another
+            // comparison of the *same two pointers*, which identifies the overlap
+            // idiom and avoids flagging plain bounds checks like `p < buf + len`.
+            if (isPointer && lhs->str() == "+" && mSettings.certainty.isEnabled(Certainty::inconclusive)) {
+                const Token *sibling = lhs->astSibling();
+                if (sibling && sibling->valueType() && sibling->valueType()->pointer > 0) {
+                    const Token *ptrOp = nullptr;
+                    const Token *idxOp = nullptr;
+                    for (const Token *op : exprTokens) {
+                        if (!op || !op->valueType())
+                            continue;
+                        if (op->valueType()->pointer > 0 && ptrOp == nullptr)
+                            ptrOp = op;
+                        else if (op->valueType()->pointer == 0 &&
+                                 op->valueType()->isIntegral() &&
+                                 op->valueType()->sign == ValueType::Sign::UNSIGNED &&
+                                 idxOp == nullptr)
+                            idxOp = op;
+                    }
+                    if (ptrOp && idxOp && isOverlapIdiom(tok, sibling, ptrOp, mSettings))
+                        invalidPointerOverlapTestError(tok);
+                }
+            }
         }
     }
+}
+
+void CheckConditionImpl::invalidPointerOverlapTestError(const Token *tok)
+{
+    const std::string expr = (tok ? tok->expressionString() : std::string("p1 < p2 + n"));
+    const std::string errmsg =
+        "Invalid test for overflow '" + expr + "'; pointer overflow is undefined behavior. "
+        "The offset added to the pointer may be large enough to overflow, and some mainstream "
+        "compilers assume such overflow cannot happen and fold the comparison. Cast the pointers "
+        "to uintptr_t and compare in integer space instead.";
+    reportError(tok, Severity::warning, "invalidPointerOverlapTest", errmsg, uncheckedErrorConditionCWE, Certainty::inconclusive);
 }
 
 void CheckConditionImpl::invalidTestForOverflow(const Token* tok, const ValueType *valueType, const std::string &replace)
@@ -2135,6 +2232,7 @@ void CheckCondition::getErrorMessages(ErrorLogger& errorLogger, const Settings &
     c.clarifyConditionError(nullptr, true, false);
     c.alwaysTrueFalseError(nullptr, nullptr, nullptr);
     c.invalidTestForOverflow(nullptr, nullptr, "false");
+    c.invalidPointerOverlapTestError(nullptr);
     c.pointerAdditionResultNotNullError(nullptr, nullptr);
     c.duplicateConditionalAssignError(nullptr, nullptr);
     c.assignmentInCondition(nullptr);
