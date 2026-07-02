@@ -458,9 +458,9 @@ def test_addon_threadsafety(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
     with open(test_file, 'wt') as f:
         f.write("""
-extern const char* f()
+extern void f()
 {
-    return strerror(1);
+    elf_fill(1);
 }
         """)
 
@@ -472,7 +472,7 @@ extern const char* f()
     assert lines == [
         'Checking {} ...'.format(test_file)
     ]
-    assert stderr == '{}:4:12: warning: strerror is MT-unsafe [threadsafety-unsafe-call]\n'.format(test_file)
+    assert stderr == '{}:4:5: warning: elf_fill is MT-unsafe [threadsafety-unsafe-call]\n'.format(test_file)
 
 
 def test_addon_naming(tmpdir):
