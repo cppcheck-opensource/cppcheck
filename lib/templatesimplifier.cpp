@@ -1252,7 +1252,10 @@ namespace {
     // Scope aware symbol table used for function template argument
     // deduction. It is filled during a single forward pass over the token
     // list; at any point during that pass it contains exactly the
-    // declarations that are visible at the current position.
+    // declarations that are visible at the current position. The member
+    // declarations of a class are kept when its scope ends so that they stay
+    // visible in out of class member function bodies and in classes that
+    // derive from it.
     class DeductionSymbolTable {
     public:
         DeductionSymbolTable() : mScopes(1) {} // global scope
@@ -1261,6 +1264,19 @@ namespace {
         void enterScope(const Token *endTok) {
             mScopes.emplace_back();
             mScopes.back().endTok = endTok;
+        }
+
+        // enter the body of the class |className| (a full name)
+        void enterClassScope(const Token *endTok, std::string className) {
+            enterScope(endTok);
+            mScopes.back().memberClass = std::move(className);
+            mScopes.back().isClassBody = true;
+        }
+
+        // record that the class |className| (a full name) has the given
+        // base classes (names as written in the code)
+        void addBaseClasses(const std::string &className, std::vector<std::string> baseClasses) {
+            mBaseClasses[className] = std::move(baseClasses);
         }
 
         // Called when the forward pass reaches |tok| (a ')' or '}'): leave
@@ -1273,27 +1289,47 @@ namespace {
                     const Token *bodyStart = findAttachedBody(tok);
                     if (bodyStart && bodyStart->link()) {
                         mScopes.back().endTok = bodyStart->link();
+                        // in an out of class member function body the class
+                        // members are visible
+                        if (mScopes.back().memberClass.empty())
+                            mScopes.back().memberClass = memberFunctionClass(tok);
                         continue; // re-check: the end token changed
                     }
                 }
+                // keep the members of a class when its scope ends
+                if (mScopes.back().isClassBody)
+                    mClassMembers[mScopes.back().memberClass] = std::move(mScopes.back().members);
                 mScopes.pop_back();
             }
         }
 
         void addVariable(const std::string &name, const ParsedType &type) {
-            mScopes.back().variables[name] = type;
+            mScopes.back().members.variables[name] = type;
         }
 
         void addFunction(const std::string &name, const ParsedType &returnType) {
-            mScopes.back().functions[name].push_back(returnType);
+            mScopes.back().members.functions[name].push_back(returnType);
         }
 
         bool lookupVariable(const std::string &name, ParsedType &result) const {
             for (auto scope = mScopes.crbegin(); scope != mScopes.crend(); ++scope) {
-                const auto it = scope->variables.find(name);
-                if (it != scope->variables.cend()) {
+                const auto it = scope->members.variables.find(name);
+                if (it != scope->members.variables.cend()) {
                     result = it->second;
                     return true;
+                }
+                if (scope->memberClass.empty())
+                    continue;
+                // class members (and inherited members) are visible here
+                for (const std::string &className : withBaseClasses(scope->memberClass)) {
+                    const auto classIt = mClassMembers.find(className);
+                    if (classIt == mClassMembers.cend())
+                        continue;
+                    const auto varIt = classIt->second.variables.find(name);
+                    if (varIt != classIt->second.variables.cend()) {
+                        result = varIt->second;
+                        return true;
+                    }
                 }
             }
             return false;
@@ -1303,20 +1339,79 @@ namespace {
         bool lookupFunctionReturnType(const std::string &name, ParsedType &result) const {
             bool found = false;
             for (auto scope = mScopes.crbegin(); scope != mScopes.crend(); ++scope) {
-                const auto it = scope->functions.find(name);
-                if (it == scope->functions.cend())
+                if (!collectFunctionReturnType(scope->members, name, result, found))
+                    return false;
+                if (scope->memberClass.empty())
                     continue;
-                for (const ParsedType &declaration : it->second) {
-                    if (found && !sameDeducedType(result.type, declaration.type))
-                        return false; // overloads with different return types
-                    result = declaration;
-                    found = true;
+                for (const std::string &className : withBaseClasses(scope->memberClass)) {
+                    const auto classIt = mClassMembers.find(className);
+                    if (classIt != mClassMembers.cend() &&
+                        !collectFunctionReturnType(classIt->second, name, result, found))
+                        return false;
                 }
             }
             return found;
         }
 
+        // The class |scope| followed by its transitive base classes; used to
+        // search a class scope the way unqualified lookup does. For a name
+        // that is not a known class only the scope itself is returned.
+        std::vector<std::string> withBaseClasses(const std::string &scope) const {
+            std::vector<std::string> result;
+            result.push_back(scope);
+            if (scope.empty())
+                return result;
+            for (std::size_t i = 0; i < result.size() && result.size() < 20; ++i) {
+                const auto it = mBaseClasses.find(result[i]);
+                if (it == mBaseClasses.cend())
+                    continue;
+                const std::string::size_type separator = result[i].rfind(" :: ");
+                const std::string enclosing = (separator == std::string::npos) ? "" : result[i].substr(0, separator);
+                for (const std::string &base : it->second) {
+                    const std::string resolved = resolveClassName(enclosing, base);
+                    if (std::find(result.cbegin(), result.cend(), resolved) == result.cend())
+                        result.push_back(resolved);
+                }
+            }
+            return result;
+        }
+
     private:
+        struct Members {
+            std::unordered_map<std::string, ParsedType> variables;
+            std::unordered_map<std::string, std::vector<ParsedType>> functions;
+        };
+
+        // add the return types of the declarations of |name| in |members|;
+        // returns false when the declarations do not agree on the type
+        static bool collectFunctionReturnType(const Members &members, const std::string &name, ParsedType &result, bool &found) {
+            const auto it = members.functions.find(name);
+            if (it == members.functions.cend())
+                return true;
+            for (const ParsedType &declaration : it->second) {
+                if (found && !sameDeducedType(result.type, declaration.type))
+                    return false; // overloads with different return types
+                result = declaration;
+                found = true;
+            }
+            return true;
+        }
+
+        // Resolve the class name |name| as it would be looked up from
+        // |enclosingScope|: the innermost enclosing scope wins.
+        std::string resolveClassName(std::string enclosingScope, const std::string &name) const {
+            for (;;) {
+                const std::string candidate = enclosingScope.empty() ? name : enclosingScope + " :: " + name;
+                if (mClassMembers.find(candidate) != mClassMembers.cend() ||
+                    mBaseClasses.find(candidate) != mBaseClasses.cend())
+                    return candidate;
+                if (enclosingScope.empty())
+                    return name;
+                const std::string::size_type separator = enclosingScope.rfind(" :: ");
+                enclosingScope = (separator == std::string::npos) ? "" : enclosingScope.substr(0, separator);
+            }
+        }
+
         // If the parenthesized group ending at |rpar| is directly attached to
         // a body ("...) {", "...) const {", "...) : init(x) {") return the
         // "{" of that body, otherwise nullptr.
@@ -1341,12 +1436,37 @@ namespace {
             return Token::simpleMatch(tok, "{") ? tok : nullptr;
         }
 
+        // For the parameter list of an out of class member function
+        // definition ("void A::g(..)") return the full name of the class,
+        // otherwise an empty string.
+        std::string memberFunctionClass(const Token *rpar) const {
+            const Token *lpar = rpar->link();
+            if (!lpar)
+                return "";
+            const Token *nameTok = lpar->previous();
+            if (!nameTok || !nameTok->isName())
+                return "";
+            std::string qualifier;
+            const Token *tok = nameTok;
+            while (Token::Match(tok->tokAt(-2), "%name% ::")) {
+                qualifier = qualifier.empty() ? tok->strAt(-2) : tok->strAt(-2) + " :: " + qualifier;
+                tok = tok->tokAt(-2);
+            }
+            if (qualifier.empty())
+                return "";
+            const std::string enclosingScope = nameTok->scopeInfo() ? nameTok->scopeInfo()->name : std::string();
+            return resolveClassName(enclosingScope, qualifier);
+        }
+
         struct Scope {
             const Token *endTok = nullptr;
-            std::unordered_map<std::string, ParsedType> variables;
-            std::unordered_map<std::string, std::vector<ParsedType>> functions;
+            std::string memberClass; // class whose members are visible in this scope
+            bool isClassBody = false;
+            Members members;
         };
         std::vector<Scope> mScopes;
+        std::unordered_map<std::string, Members> mClassMembers;
+        std::unordered_map<std::string, std::vector<std::string>> mBaseClasses;
     };
 }
 
@@ -1867,22 +1987,29 @@ void TemplateSimplifier::deduceFunctionTemplateArguments()
     DeductionSymbolTable symbols;
     const DeductionContext ctx = { mSettings, mTokenList, symbols };
 
+    // the body of the class definition that is about to start
+    const Token *classBodyStart = nullptr;
+    std::string className;
+
     for (Token *tok = mTokenList.front(); tok; tok = tok->next()) {
-        // Skip template declarations: the declarations inside them are not
-        // visible outside and calls inside them are only deduced when the
-        // template is instantiated. User specializations (template <>)
-        // contain concrete code and are walked.
         if (!tok->isName()) {
             // scope begin/end (only "(){}[]" have links; "[]" is not a scope)
             if (tok->link()) {
                 if (Token::Match(tok, ")|}"))
                     symbols.leaveScopesEndingAt(tok);
-                else if (Token::Match(tok, "(|{"))
+                else if (tok == classBodyStart) {
+                    symbols.enterClassScope(tok->link(), std::move(className));
+                    classBodyStart = nullptr;
+                } else if (Token::Match(tok, "(|{"))
                     symbols.enterScope(tok->link());
             }
             continue;
         }
 
+        // Skip template declarations: the declarations inside them are not
+        // visible outside and calls inside them are only deduced when the
+        // template is instantiated. User specializations (template <>)
+        // contain concrete code and are walked.
         if (Token::simpleMatch(tok, "template <")) {
             Token *closing = tok->next()->findClosingBracket();
             if (!closing)
@@ -1892,6 +2019,60 @@ void TemplateSimplifier::deduceFunctionTemplateArguments()
                 Token *end = findTemplateDeclarationEnd(tok->next());
                 if (end)
                     tok = end;
+            }
+            continue;
+        }
+
+        // class definition: record the base classes and remember the body
+        // so that the member declarations can be associated with the class
+        if (Token::Match(tok, "class|struct|union %name%") && !Token::simpleMatch(tok->previous(), "enum")) {
+            Token *nameTok = tok->next();
+            while (Token::Match(nameTok, "%name% %name%")) // skip attribute macros
+                nameTok = nameTok->next();
+            Token *after = nameTok->next();
+            if (Token::simpleMatch(after, "final"))
+                after = after->next();
+            std::vector<std::string> baseClasses;
+            if (Token::simpleMatch(after, ":")) {
+                Token *base = after->next();
+                after = nullptr;
+                while (base) {
+                    while (Token::Match(base, "public|protected|private|virtual"))
+                        base = base->next();
+                    if (!base || !base->isName())
+                        break;
+                    std::string baseName = base->str();
+                    while (Token::Match(base->next(), ":: %name%")) {
+                        baseName += " :: " + base->strAt(2);
+                        base = base->tokAt(2);
+                    }
+                    base = base->next();
+                    if (base && base->str() == "<") {
+                        // template base classes are not supported
+                        base = base->findClosingBracket();
+                        if (base)
+                            base = base->next();
+                        baseName.clear();
+                    }
+                    if (!baseName.empty())
+                        baseClasses.push_back(std::move(baseName));
+                    if (Token::simpleMatch(base, ","))
+                        base = base->next();
+                    else
+                        break;
+                }
+                if (Token::simpleMatch(base, "{"))
+                    after = base;
+                else
+                    baseClasses.clear();
+            }
+            if (Token::simpleMatch(after, "{") && after->link()) {
+                const std::string &enclosingScope = tok->scopeInfo() ? tok->scopeInfo()->name : std::string();
+                className = enclosingScope.empty() ? nameTok->str() : (enclosingScope + " :: " + nameTok->str());
+                if (!baseClasses.empty())
+                    symbols.addBaseClasses(className, std::move(baseClasses));
+                classBodyStart = after;
+                tok = after->previous(); // continue at the "{"
             }
             continue;
         }
@@ -1914,23 +2095,30 @@ void TemplateSimplifier::deduceFunctionTemplateArguments()
                     continue;
 
                 // The name is looked up like the compiler does: in the
-                // enclosing scopes from the innermost outwards, where a match
-                // in an inner scope shadows declarations in outer scopes.
+                // enclosing scopes from the innermost outwards (searching the
+                // base classes of a class scope), where a match in an inner
+                // scope shadows declarations in outer scopes.
                 std::vector<const DeductionCandidate *> candidates;
+                std::string matchedScope;
+                std::string levelScope;
                 std::string scopePath = scopeName;
                 for (;;) {
-                    std::string fullName;
-                    if (!scopePath.empty())
-                        fullName = scopePath + " :: ";
+                    levelScope = scopePath;
                     if (!qualification.empty())
-                        fullName += qualification + " :: ";
-                    fullName += tok->str();
+                        levelScope += (levelScope.empty() ? "" : " :: ") + qualification;
 
-                    for (auto pos = range.first; pos != range.second; ++pos) {
-                        // look for declaration with same qualification or constructor with same qualification
-                        if (pos->second.declaration->fullName() == fullName ||
-                            (pos->second.declaration->scope() == fullName && tok->str() == pos->second.declaration->name()))
-                            candidates.push_back(&pos->second);
+                    for (const std::string &scope : symbols.withBaseClasses(levelScope)) {
+                        const std::string fullName = scope.empty() ? tok->str() : (scope + " :: " + tok->str());
+                        for (auto pos = range.first; pos != range.second; ++pos) {
+                            // look for declaration with same qualification or constructor with same qualification
+                            if (pos->second.declaration->fullName() == fullName ||
+                                (pos->second.declaration->scope() == fullName && tok->str() == pos->second.declaration->name()))
+                                candidates.push_back(&pos->second);
+                        }
+                        if (!candidates.empty()) {
+                            matchedScope = scope;
+                            break; // a match shadows the base classes
+                        }
                     }
                     if (!candidates.empty() || scopePath.empty())
                         break;
@@ -1939,8 +2127,23 @@ void TemplateSimplifier::deduceFunctionTemplateArguments()
                     scopePath = (separator == std::string::npos) ? "" : scopePath.substr(0, separator);
                 }
 
-                if (!candidates.empty())
+                if (!candidates.empty()) {
                     deduceTemplateArgumentsAtFunctionCall(ctx, tok, candidates);
+                    if (matchedScope != levelScope && tok->strAt(1) == "<") {
+                        // The declaration was found in a base class: qualify
+                        // the call so that the instantiation is matched to
+                        // the declaration.
+                        std::string::size_type start = 0;
+                        for (;;) {
+                            const std::string::size_type separator = matchedScope.find(" :: ", start);
+                            tok->insertTokenBefore(matchedScope.substr(start, separator == std::string::npos ? separator : separator - start));
+                            tok->insertTokenBefore("::");
+                            if (separator == std::string::npos)
+                                break;
+                            start = separator + 4;
+                        }
+                    }
+                }
                 continue;
             }
         }

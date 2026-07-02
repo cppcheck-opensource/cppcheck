@@ -290,6 +290,7 @@ private:
         TEST_CASE(templateTypeDeduction9); // multiple parameters, scopes, bailouts
         TEST_CASE(templateTypeDeduction10); // parameter visibility: init list, const method
         TEST_CASE(templateTypeDeduction11); // unqualified lookup: enclosing scopes, shadowing
+        TEST_CASE(templateTypeDeduction12); // base class member templates, out of class method bodies
 
         TEST_CASE(simplifyTemplateArgs1);
         TEST_CASE(simplifyTemplateArgs2);
@@ -6577,15 +6578,15 @@ private:
         {
             // a variable with the same name hides the function template
             const char code[] = "template<typename T> void call(T v) { (void)v; }\n"
-                                "struct Functor { void operator()(int) const {} };\n"
+                                "struct FunctionObject { void operator()(int) const {} };\n"
                                 "void g() {\n"
-                                "    Functor call;\n"
+                                "    FunctionObject call;\n"
                                 "    call(5);\n"
                                 "}";
             const char exp[]  = "template < typename T > void call ( T v ) { ( void ) v ; } "
-                                "struct Functor { void operator() ( int ) const { } } ; "
+                                "struct FunctionObject { void operator() ( int ) const { } } ; "
                                 "void g ( ) { "
-                                "Functor call ; "
+                                "FunctionObject call ; "
                                 "call . operator() ( 5 ) ; "
                                 "}";
             ASSERT_EQUALS(exp, tok(code));
@@ -6603,6 +6604,96 @@ private:
                                 "void m ( ) { dup<long> ( 1L ) ; } "
                                 "} ; "
                                 "void B :: dup<long> ( long t ) { ( void ) t ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+    }
+
+    void templateTypeDeduction12() { // base class member templates, out of class method bodies
+        {
+            // class members are visible in out of class member function bodies
+            const char code[] = "struct A {\n"
+                                "    int m;\n"
+                                "    template<class T> void tf(T t) { (void)t; }\n"
+                                "    void g();\n"
+                                "    long getl();\n"
+                                "};\n"
+                                "void A::g() {\n"
+                                "    tf(m);\n"
+                                "    tf(getl());\n"
+                                "}";
+            const char exp[]  = "struct A { "
+                                "int m ; "
+                                "void tf<int> ( int t ) ; "
+                                "void tf<long> ( long t ) ; "
+                                "void g ( ) ; "
+                                "long getl ( ) ; "
+                                "} ; "
+                                "void A :: g ( ) { "
+                                "tf<int> ( m ) ; "
+                                "tf<long> ( getl ( ) ) ; "
+                                "} "
+                                "void A :: tf<int> ( int t ) { ( void ) t ; } "
+                                "void A :: tf<long> ( long t ) { ( void ) t ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // a member template of a base class is called with an inherited
+            // member variable as the argument
+            const char code[] = "struct Base {\n"
+                                "    template<class T> void btf(T t) { (void)t; }\n"
+                                "    int bm;\n"
+                                "};\n"
+                                "struct Derived : public Base {\n"
+                                "    void use() { btf(bm); }\n"
+                                "};";
+            const char exp[]  = "struct Base { "
+                                "void btf<int> ( int t ) ; "
+                                "int bm ; "
+                                "} ; "
+                                "struct Derived : public Base { "
+                                "void use ( ) { Base :: btf<int> ( bm ) ; } "
+                                "} ; "
+                                "void Base :: btf<int> ( int t ) { ( void ) t ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // transitive base classes across namespaces, in inline and in
+            // out of class member function bodies; a derived class member
+            // template shadows the base class one
+            const char code[] = "namespace N {\n"
+                                "    struct GrandBase {\n"
+                                "        template<class T> void gtf(T t) { (void)t; }\n"
+                                "        double gm;\n"
+                                "    };\n"
+                                "    struct Mid : public GrandBase {};\n"
+                                "}\n"
+                                "struct Leaf : N::Mid {\n"
+                                "    void inlineUse() { gtf(gm); }\n"
+                                "    void outOfClassUse();\n"
+                                "};\n"
+                                "void Leaf::outOfClassUse() { gtf(gm); }\n"
+                                "struct Shadowing : N::GrandBase {\n"
+                                "    template<class T> void gtf(T t) { (void)t; }\n"
+                                "    void s() { gtf(1); }\n"
+                                "};";
+            const char exp[]  = "namespace N { "
+                                "struct GrandBase { "
+                                "void gtf<double> ( double t ) ; "
+                                "double gm ; "
+                                "} ; "
+                                "struct Mid : public GrandBase { } ; "
+                                "} "
+                                "struct Leaf : N :: Mid { "
+                                "void inlineUse ( ) { N :: GrandBase :: gtf<double> ( gm ) ; } "
+                                "void outOfClassUse ( ) ; "
+                                "} ; "
+                                "void Leaf :: outOfClassUse ( ) { N :: GrandBase :: gtf<double> ( gm ) ; } "
+                                "struct Shadowing : N :: GrandBase { "
+                                "void gtf<int> ( int t ) ; "
+                                "void s ( ) { gtf<int> ( 1 ) ; } "
+                                "} ; "
+                                "void Shadowing :: gtf<int> ( int t ) { ( void ) t ; } "
+                                "void N :: GrandBase :: gtf<double> ( double t ) { ( void ) t ; }";
             ASSERT_EQUALS(exp, tok(code));
         }
     }
