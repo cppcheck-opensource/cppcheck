@@ -175,18 +175,7 @@ std::string Path::getCurrentExecutablePath(const char* fallback)
 
 bool Path::isAbsolute(const std::string& path)
 {
-#ifdef _WIN32
-    if (path.length() < 2)
-        return false;
-
-    if ((path[0] == '\\' || path[0] == '/') && (path[1] == '\\' || path[1] == '/'))
-        return true;
-
-    // On Windows, 'C:\foo\bar' is an absolute path, while 'C:foo\bar' is not
-    return std::isalpha(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/');
-#else
-    return !path.empty() && path[0] == '/';
-#endif
+    return simplecpp::isAbsolutePath(path);
 }
 
 bool Path::isRelative(const std::string& path)
