@@ -1906,22 +1906,37 @@ void TemplateSimplifier::deduceFunctionTemplateArguments()
                 tok = tok->tokAt(2);
             }
             if (tok->strAt(1) == "(") {
-                std::string fullName;
-                if (!qualification.empty())
-                    fullName = qualification + " :: " + tok->str();
-                else if (!scopeName.empty())
-                    fullName = scopeName + " :: " + tok->str();
-                else
-                    fullName = tok->str();
-
-                // get all declarations with this name
-                std::vector<const DeductionCandidate *> candidates;
                 const auto range = functionNameMap.equal_range(tok->str());
-                for (auto pos = range.first; pos != range.second; ++pos) {
-                    // look for declaration with same qualification or constructor with same qualification
-                    if (pos->second.declaration->fullName() == fullName ||
-                        (pos->second.declaration->scope() == fullName && tok->str() == pos->second.declaration->name()))
-                        candidates.push_back(&pos->second);
+
+                // a visible variable with the same name hides the function templates
+                ParsedType shadowingVariable;
+                if (range.first == range.second || ctx.symbols.lookupVariable(tok->str(), shadowingVariable))
+                    continue;
+
+                // The name is looked up like the compiler does: in the
+                // enclosing scopes from the innermost outwards, where a match
+                // in an inner scope shadows declarations in outer scopes.
+                std::vector<const DeductionCandidate *> candidates;
+                std::string scopePath = scopeName;
+                for (;;) {
+                    std::string fullName;
+                    if (!scopePath.empty())
+                        fullName = scopePath + " :: ";
+                    if (!qualification.empty())
+                        fullName += qualification + " :: ";
+                    fullName += tok->str();
+
+                    for (auto pos = range.first; pos != range.second; ++pos) {
+                        // look for declaration with same qualification or constructor with same qualification
+                        if (pos->second.declaration->fullName() == fullName ||
+                            (pos->second.declaration->scope() == fullName && tok->str() == pos->second.declaration->name()))
+                            candidates.push_back(&pos->second);
+                    }
+                    if (!candidates.empty() || scopePath.empty())
+                        break;
+                    // no match: retry in the next outer scope
+                    const std::string::size_type separator = scopePath.rfind(" :: ");
+                    scopePath = (separator == std::string::npos) ? "" : scopePath.substr(0, separator);
                 }
 
                 if (!candidates.empty())

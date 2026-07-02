@@ -289,6 +289,7 @@ private:
         TEST_CASE(templateTypeDeduction8); // deduction from expressions
         TEST_CASE(templateTypeDeduction9); // multiple parameters, scopes, bailouts
         TEST_CASE(templateTypeDeduction10); // parameter visibility: init list, const method
+        TEST_CASE(templateTypeDeduction11); // unqualified lookup: enclosing scopes, shadowing
 
         TEST_CASE(simplifyTemplateArgs1);
         TEST_CASE(simplifyTemplateArgs2);
@@ -6534,6 +6535,76 @@ private:
                             "void A :: tf<float> ( float t ) { ( void ) t ; }";
         ASSERT_EQUALS(exp, tok(code));
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void templateTypeDeduction11() { // unqualified lookup: enclosing scopes, shadowing
+        {
+            // global function template called from a class scope
+            const char code[] = "template<typename T> void f(T n) { (void)n; }\n"
+                                "struct A {\n"
+                                "    int m;\n"
+                                "    A(long n) : m(0) { f(n); }\n"
+                                "    void g(float v) const { f(v); }\n"
+                                "};";
+            const char exp[]  = "void f<long> ( long n ) ; "
+                                "void f<float> ( float n ) ; "
+                                "struct A { "
+                                "int m ; "
+                                "A ( long n ) : m ( 0 ) { f<long> ( n ) ; } "
+                                "void g ( float v ) const { f<float> ( v ) ; } "
+                                "} ; "
+                                "void f<long> ( long n ) { ( void ) n ; } "
+                                "void f<float> ( float n ) { ( void ) n ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // global function template called from a class nested in a namespace
+            const char code[] = "template<typename T> T twice(T v) { return v + v; }\n"
+                                "namespace N {\n"
+                                "    struct Inner {\n"
+                                "        long go(int a) { return twice(a); }\n"
+                                "    };\n"
+                                "}";
+            const char exp[]  = "int twice<int> ( int v ) ; "
+                                "namespace N { "
+                                "struct Inner { "
+                                "long go ( int a ) { return twice<int> ( a ) ; } "
+                                "} ; "
+                                "} "
+                                "int twice<int> ( int v ) { return v + v ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // a variable with the same name hides the function template
+            const char code[] = "template<typename T> void call(T v) { (void)v; }\n"
+                                "struct Functor { void operator()(int) const {} };\n"
+                                "void g() {\n"
+                                "    Functor call;\n"
+                                "    call(5);\n"
+                                "}";
+            const char exp[]  = "template < typename T > void call ( T v ) { ( void ) v ; } "
+                                "struct Functor { void operator() ( int ) const { } } ; "
+                                "void g ( ) { "
+                                "Functor call ; "
+                                "call . operator() ( 5 ) ; "
+                                "}";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // a member function template shadows a global function template
+            const char code[] = "template<typename T> void dup(T t) { (void)t; }\n"
+                                "struct B {\n"
+                                "    template<typename T> void dup(T t) { (void)t; }\n"
+                                "    void m() { dup(1L); }\n"
+                                "};";
+            const char exp[]  = "template < typename T > void dup ( T t ) { ( void ) t ; } "
+                                "struct B { "
+                                "void dup<long> ( long t ) ; "
+                                "void m ( ) { dup<long> ( 1L ) ; } "
+                                "} ; "
+                                "void B :: dup<long> ( long t ) { ( void ) t ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
     }
 
     void simplifyTemplateArgs1() {
