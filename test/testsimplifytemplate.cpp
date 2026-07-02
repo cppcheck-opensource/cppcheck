@@ -288,6 +288,7 @@ private:
         TEST_CASE(templateTypeDeduction7); // parameter forms: T, T&, const T&, T*
         TEST_CASE(templateTypeDeduction8); // deduction from expressions
         TEST_CASE(templateTypeDeduction9); // multiple parameters, scopes, bailouts
+        TEST_CASE(templateTypeDeduction10); // parameter visibility: init list, const method
 
         TEST_CASE(simplifyTemplateArgs1);
         TEST_CASE(simplifyTemplateArgs2);
@@ -6512,6 +6513,27 @@ private:
                                 "void f<int> ( int n ) { }";
             ASSERT_EQUALS(exp, tok(code));
         }
+    }
+
+    void templateTypeDeduction10() { // parameters are visible in constructor
+                                     // initializer lists and const methods
+        const char code[] = "struct A {\n"
+                            "    template<class T> void tf(T t) { (void)t; }\n"
+                            "    int m;\n"
+                            "    A(long n) : m(0) { tf(n); }\n"
+                            "    void g(float v) const { tf(v); }\n"
+                            "};";
+        const char exp[]  = "struct A { "
+                            "void tf<long> ( long t ) ; "
+                            "void tf<float> ( float t ) ; "
+                            "int m ; "
+                            "A ( long n ) : m ( 0 ) { tf<long> ( n ) ; } "
+                            "void g ( float v ) const { tf<float> ( v ) ; } "
+                            "} ; "
+                            "void A :: tf<long> ( long t ) { ( void ) t ; } "
+                            "void A :: tf<float> ( float t ) { ( void ) t ; }";
+        ASSERT_EQUALS(exp, tok(code));
+        ASSERT_EQUALS("", errout_str());
     }
 
     void simplifyTemplateArgs1() {
