@@ -1026,6 +1026,18 @@ static const Token *findDeclarationTypeStart(const DeductionContext &ctx, const 
     return start;
 }
 
+// Consume any run of 'const' tokens in [tok, end), advancing tok. Returns
+// whether at least one 'const' was seen.
+static bool skipConst(const Token *&tok, const Token *end)
+{
+    bool seen = false;
+    while (tok && tok != end && tok->str() == "const") {
+        seen = true;
+        tok = tok->next();
+    }
+    return seen;
+}
+
 // Parse a type in [tok, end). Returns the token following the type or
 // nullptr. When |builtinOnly|, only arithmetic types are accepted (used for
 // C style casts where a name would be ambiguous). When |templateParams| is
@@ -1045,11 +1057,7 @@ static const Token *parseType(const DeductionContext &ctx, const Token *tok, con
     while (tok && tok != end && Token::Match(tok, "static|extern|constexpr|mutable"))
         tok = tok->next();
 
-    bool constFlag = false;
-    while (tok && tok != end && tok->str() == "const") {
-        constFlag = true;
-        tok = tok->next();
-    }
+    bool constFlag = skipConst(tok, end);
     if (!tok || tok == end)
         return nullptr;
 
@@ -1109,10 +1117,8 @@ static const Token *parseType(const DeductionContext &ctx, const Token *tok, con
         return nullptr;
 
     // trailing const of the base type ("char const")
-    while (tok && tok != end && tok->str() == "const") {
+    if (skipConst(tok, end))
         constFlag = true;
-        tok = tok->next();
-    }
 
     // pointers
     while (tok && tok != end && tok->str() == "*") {
@@ -1120,13 +1126,9 @@ static const Token *parseType(const DeductionContext &ctx, const Token *tok, con
             type.baseConst = constFlag;
         else if (constFlag)
             return nullptr; // const between two '*' is not supported
-        constFlag = false;
         ++type.pointer;
         tok = tok->next();
-        while (tok && tok != end && tok->str() == "const") {
-            constFlag = true;
-            tok = tok->next();
-        }
+        constFlag = skipConst(tok, end);
     }
     type.topConst = constFlag;
 
@@ -1139,6 +1141,20 @@ static const Token *parseType(const DeductionContext &ctx, const Token *tok, con
 
     type.valid = true;
     return tok ? tok : end;
+}
+
+// Apply array-to-pointer decay to |type| in place. Returns false when the
+// result cannot be represented (a const-qualified pointer array element).
+static bool decayArrayToPointer(ExprType &type)
+{
+    if (type.pointer > 0 && type.topConst)
+        return false;
+    if (type.pointer == 0) {
+        type.baseConst = type.topConst;
+        type.topConst = false;
+    }
+    ++type.pointer;
+    return true;
 }
 
 // Check whether |nameTok| is the name of a variable declaration (looking at
@@ -1163,18 +1179,18 @@ static bool parseVariableDeclaration(const DeductionContext &ctx, const Token *n
         const Token *rbracket = nameTok->next()->link();
         if (!rbracket || Token::simpleMatch(rbracket->next(), "["))
             return false;
-        if (parsed.type.pointer > 0 && parsed.type.topConst)
+        if (!decayArrayToPointer(parsed.type))
             return false;
-        if (parsed.type.pointer == 0) {
-            parsed.type.baseConst = parsed.type.topConst;
-            parsed.type.topConst = false;
-        }
-        ++parsed.type.pointer;
         parsed.type.fromArray = true;
     }
     result = parsed;
     return true;
 }
+
+// Upper bound on how far the backward declaration/return-type search walks.
+// This is a safety valve against pathological inputs, not a semantic limit: a
+// declaration farther back than this is conservatively treated as not found.
+constexpr int maxBackwardScanTokens = 10000;
 
 // Search backwards from |useTok| (which names a variable) for its
 // declaration, honoring scopes. Variable ids are not set yet when templates
@@ -1183,7 +1199,7 @@ static bool findVariableType(const DeductionContext &ctx, const Token *useTok, P
 {
     int count = 0;
     for (const Token *tok = useTok->previous(); tok; tok = tok->previous()) {
-        if (++count > 10000)
+        if (++count > maxBackwardScanTokens)
             return false;
         if (Token::Match(tok, ")|}|]")) {
             // a complete group before the current position: skip over it
@@ -1210,43 +1226,27 @@ static bool findVariableType(const DeductionContext &ctx, const Token *useTok, P
 }
 
 // render the tokens of an arithmetic type; the "unsigned"/"signed"/"long
-// long" parts are represented with token flags like the tokenizer does
+// long" parts are represented with token flags like the tokenizer does.
+// (isSigned is only ever set for Char, so it can be passed through uniformly.)
 static void renderArithType(const ExprType &type, std::vector<DeducedToken> &tokens)
 {
-    switch (type.arith) {
-    case ArithCat::Bool:
-        tokens.emplace_back("bool");
-        break;
-    case ArithCat::Char:
-        tokens.emplace_back("char", type.isUnsigned, false, type.isSigned);
-        break;
-    case ArithCat::WChar:
-        tokens.emplace_back("wchar_t");
-        break;
-    case ArithCat::Short:
-        tokens.emplace_back("short", type.isUnsigned);
-        break;
-    case ArithCat::Int:
-        tokens.emplace_back("int", type.isUnsigned);
-        break;
-    case ArithCat::Long:
-        tokens.emplace_back("long", type.isUnsigned);
-        break;
-    case ArithCat::LongLong:
-        tokens.emplace_back("long", type.isUnsigned, true);
-        break;
-    case ArithCat::Float:
-        tokens.emplace_back("float");
-        break;
-    case ArithCat::Double:
-        tokens.emplace_back("double");
-        break;
-    case ArithCat::LongDouble:
-        tokens.emplace_back("double", false, true);
-        break;
-    default:
-        break;
-    }
+    // indexed by ArithCat: token string, isLong flag, whether it may be unsigned
+    static const struct { const char *name; bool longFlag; bool canUnsigned; } info[] = {
+        { nullptr,   false, false }, // None
+        { "bool",    false, false },
+        { "char",    false, true  },
+        { "wchar_t", false, false },
+        { "short",   false, true  },
+        { "int",     false, true  },
+        { "long",    false, true  },
+        { "long",    true,  true  }, // LongLong
+        { "float",   false, false },
+        { "double",  false, false },
+        { "double",  true,  false }, // LongDouble
+    };
+    const auto &e = info[static_cast<int>(type.arith)];
+    if (e.name)
+        tokens.emplace_back(e.name, e.canUnsigned && type.isUnsigned, e.longFlag, type.isSigned);
 }
 
 // Render the tokens of a deduced template argument. The top level const is
@@ -1290,7 +1290,7 @@ static bool findFunctionReturnType(const DeductionContext &ctx, const Token *cal
     ParsedType common;
     int count = 0;
     for (const Token *tok = callTok->previous(); tok; tok = tok->previous()) {
-        if (++count > 10000)
+        if (++count > maxBackwardScanTokens)
             return false;
         if (Token::Match(tok, ")|}|]")) {
             if (!tok->link())
@@ -1319,6 +1319,18 @@ static bool findFunctionReturnType(const DeductionContext &ctx, const Token *cal
 }
 
 static ExprType evalExpressionType(const DeductionContext &ctx, const Token *start, const Token *end);
+
+static bool isIntegralType(const ExprType &type)
+{
+    return type.isIntegral();
+}
+
+// An operand in [.., end) followed by one of these is a postfix/member/call
+// expression that the flat evaluator does not model, so it bails out.
+static bool stopsAtPostfix(const Token *tok, const Token *end)
+{
+    return tok && tok != end && Token::Match(tok, "(|[|.|->|++|--");
+}
 
 // Parse one operand (including unary operators and casts); advances |tok|.
 static ExprType parseOperandType(const DeductionContext &ctx, const Token *&tok, const Token *end)
@@ -1350,7 +1362,7 @@ static ExprType parseOperandType(const DeductionContext &ctx, const Token *&tok,
             if (!type.valid)
                 return ExprType();
             tok = rpar->next();
-            if (tok && tok != end && Token::Match(tok, "(|[|.|->|++|--"))
+            if (stopsAtPostfix(tok, end))
                 return ExprType();
         }
     } else if (Token::Match(tok, "static_cast|const_cast|reinterpret_cast|dynamic_cast <")) {
@@ -1364,7 +1376,7 @@ static ExprType parseOperandType(const DeductionContext &ctx, const Token *&tok,
             return ExprType();
         tok = closing->next()->link()->next();
         type = castType.type;
-        if (tok && tok != end && Token::Match(tok, "(|[|.|->|++|--"))
+        if (stopsAtPostfix(tok, end))
             return ExprType();
     } else if (tok->str() == "sizeof") {
         if (!Token::simpleMatch(tok->next(), "(") || !tok->next()->link())
@@ -1389,7 +1401,7 @@ static ExprType parseOperandType(const DeductionContext &ctx, const Token *&tok,
         if (!type.valid)
             return ExprType();
         tok = tok->next();
-        if (tok && tok != end && Token::Match(tok, "(|[|.|->|++|--"))
+        if (stopsAtPostfix(tok, end))
             return ExprType();
     } else if (Token::Match(tok, "bool|char|short|int|long|float|double|wchar_t (")) {
         // functional cast: int(x)
@@ -1400,7 +1412,7 @@ static ExprType parseOperandType(const DeductionContext &ctx, const Token *&tok,
             return ExprType();
         tok = tok->next()->link()->next();
         type = castType.type;
-        if (tok && tok != end && Token::Match(tok, "(|[|.|->|++|--"))
+        if (stopsAtPostfix(tok, end))
             return ExprType();
     } else if (ctx.isIdentifier(tok)) {
         if (tok->next() != end && Token::simpleMatch(tok->next(), "(")) {
@@ -1412,7 +1424,7 @@ static ExprType parseOperandType(const DeductionContext &ctx, const Token *&tok,
                 return ExprType();
             tok = tok->next()->link()->next();
             type = returnType.type;
-            if (tok && tok != end && Token::Match(tok, "(|[|.|->|++|--"))
+            if (stopsAtPostfix(tok, end))
                 return ExprType();
         } else {
             // variable
@@ -1421,7 +1433,7 @@ static ExprType parseOperandType(const DeductionContext &ctx, const Token *&tok,
                 return ExprType();
             type = variableType.type;
             tok = tok->next();
-            if (tok && tok != end && Token::Match(tok, "(|[|.|->|++|--|::|<"))
+            if (stopsAtPostfix(tok, end) || (tok && tok != end && Token::Match(tok, "::|<")))
                 return ExprType();
         }
     } else
@@ -1559,12 +1571,8 @@ static ExprType evalExpressionType(const DeductionContext &ctx, const Token *sta
         return result;
     }
 
-    const auto isIntegral = [](const ExprType &operand) {
-        return operand.isIntegral();
-    };
-
     if (hasShift) {
-        if (!std::all_of(operands.cbegin(), operands.cend(), isIntegral))
+        if (!std::all_of(operands.cbegin(), operands.cend(), isIntegralType))
             return ExprType();
         // the result is the promoted type of the sub expression left of the
         // first shift operator
@@ -1577,7 +1585,7 @@ static ExprType evalExpressionType(const DeductionContext &ctx, const Token *sta
         return promoteType(ctx.settings, result);
     }
 
-    if (hasBit && !std::all_of(operands.cbegin(), operands.cend(), isIntegral))
+    if (hasBit && !std::all_of(operands.cbegin(), operands.cend(), isIntegralType))
         return ExprType();
 
     ExprType result = operands[0];
@@ -1679,12 +1687,7 @@ void TemplateSimplifier::deduceFunctionTemplateArguments(Token *tok, const std::
                     // an array parameter is a pointer
                     const Token *rbracket = afterType->link();
                     if (rbracket && !Token::simpleMatch(rbracket->next(), "[") && !param.isReference &&
-                        !(param.type.pointer > 0 && param.type.topConst)) {
-                        if (param.type.pointer == 0) {
-                            param.type.baseConst = param.type.topConst;
-                            param.type.topConst = false;
-                        }
-                        ++param.type.pointer;
+                        decayArrayToPointer(param.type)) {
                         afterType = rbracket->next();
                     } else
                         parseable = false;
@@ -1724,9 +1727,10 @@ void TemplateSimplifier::deduceFunctionTemplateArguments(Token *tok, const std::
                     slot = tokens;
                 else if (slot != tokens)
                     failed = true; // inconsistent deduction
-            } else if (argTypes[i].valid) {
+            } else if (candidates.size() > 1 && argTypes[i].valid) {
                 // concrete parameter: count exact type matches to
-                // disambiguate overloads
+                // disambiguate overloads (only needed when there is more than
+                // one candidate to choose between)
                 std::vector<DeducedToken> argTokens;
                 std::vector<DeducedToken> paramTokens;
                 if (renderDeducedType(argTypes[i], false, argTokens) &&
