@@ -1308,7 +1308,13 @@ namespace {
         }
 
         void addFunction(const std::string &name, const ParsedType &returnType) {
-            mScopes.back().members.functions[name].push_back(returnType);
+            std::vector<ParsedType> &declarations = mScopes.back().members.functions[name];
+            // the walk can record a declaration twice (class members are
+            // recorded up front and again when the body is walked)
+            if (std::none_of(declarations.cbegin(), declarations.cend(), [&](const ParsedType &declaration) {
+                return sameDeducedType(declaration.type, returnType.type);
+            }))
+                declarations.push_back(returnType);
         }
 
         bool lookupVariable(const std::string &name, ParsedType &result) const {
@@ -1959,6 +1965,46 @@ static void deduceTemplateArgumentsAtFunctionCall(const DeductionContext &ctx, T
     insertPos->insertToken(">");
 }
 
+// Record |tok| in the symbol table when it is the name of a variable or
+// function declaration.
+static void recordDeclaration(const DeductionContext &ctx, DeductionSymbolTable &symbols, const Token *tok)
+{
+    ParsedType parsed;
+    if (parseVariableDeclaration(ctx, tok, parsed)) {
+        symbols.addVariable(tok->str(), parsed);
+    } else if (Token::simpleMatch(tok->next(), "(") && tok->next()->link() &&
+               !Token::Match(tok->previous(), ".|::|->|new")) {
+        // function declaration: record the return type
+        const Token *rpar = tok->next()->link();
+        if (Token::Match(rpar->next(), ";|{|const|noexcept")) {
+            const Token *start = findDeclarationTypeStart(ctx, tok);
+            if (start && parseType(ctx, start, tok, parsed) == tok && parsed.type.valid)
+                symbols.addFunction(tok->str(), parsed);
+        }
+    }
+}
+
+// Record the member declarations of the class body starting at |bodyStart|
+// before it is walked: in a complete-class context (member function bodies,
+// default arguments, constructor initializer lists) the members that are
+// declared later in the class are visible too. The scan is shallow - nested
+// bodies contain locals and nested class members, not members of this class.
+static void recordClassMembers(const DeductionContext &ctx, DeductionSymbolTable &symbols, const Token *bodyStart)
+{
+    const Token *const bodyEnd = bodyStart->link();
+    for (const Token *tok = bodyStart->next(); tok && tok != bodyEnd; tok = tok->next()) {
+        if (tok->link() && Token::Match(tok, "(|{|["))
+            tok = tok->link();
+        else if (Token::simpleMatch(tok, "template <")) {
+            const Token *closing = tok->next()->findClosingBracket();
+            if (!closing)
+                return;
+            tok = closing;
+        } else if (tok->isName())
+            recordDeclaration(ctx, symbols, tok);
+    }
+}
+
 void TemplateSimplifier::deduceFunctionTemplateArguments()
 {
     // map from name to the function template declarations a call could instantiate
@@ -1999,6 +2045,9 @@ void TemplateSimplifier::deduceFunctionTemplateArguments()
                     symbols.leaveScopesEndingAt(tok);
                 else if (tok == classBodyStart) {
                     symbols.enterClassScope(tok->link(), std::move(className));
+                    // members declared later in the class are visible in the
+                    // member function bodies: record them all up front
+                    recordClassMembers(ctx, symbols, tok);
                     classBodyStart = nullptr;
                 } else if (Token::Match(tok, "(|{"))
                     symbols.enterScope(tok->link());
@@ -2149,19 +2198,7 @@ void TemplateSimplifier::deduceFunctionTemplateArguments()
         }
 
         // record variable and function declarations
-        ParsedType parsed;
-        if (parseVariableDeclaration(ctx, tok, parsed)) {
-            symbols.addVariable(tok->str(), parsed);
-        } else if (Token::simpleMatch(tok->next(), "(") && tok->next()->link() &&
-                   !Token::Match(tok->previous(), ".|::|->|new")) {
-            // function declaration: record the return type
-            const Token *rpar = tok->next()->link();
-            if (Token::Match(rpar->next(), ";|{|const|noexcept")) {
-                const Token *start = findDeclarationTypeStart(ctx, tok);
-                if (start && parseType(ctx, start, tok, parsed) == tok && parsed.type.valid)
-                    symbols.addFunction(tok->str(), parsed);
-            }
-        }
+        recordDeclaration(ctx, symbols, tok);
     }
 }
 

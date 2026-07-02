@@ -291,6 +291,7 @@ private:
         TEST_CASE(templateTypeDeduction10); // parameter visibility: init list, const method
         TEST_CASE(templateTypeDeduction11); // unqualified lookup: enclosing scopes, shadowing
         TEST_CASE(templateTypeDeduction12); // base class member templates, out of class method bodies
+        TEST_CASE(templateTypeDeduction13); // members declared after the member function are visible
 
         TEST_CASE(simplifyTemplateArgs1);
         TEST_CASE(simplifyTemplateArgs2);
@@ -6694,6 +6695,63 @@ private:
                                 "} ; "
                                 "void Shadowing :: gtf<int> ( int t ) { ( void ) t ; } "
                                 "void N :: GrandBase :: gtf<double> ( double t ) { ( void ) t ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+    }
+
+    void templateTypeDeduction13() { // members declared after the member function are visible
+        {
+            const char code[] = "struct A {\n"
+                                "    template<class T> void tf(T t) { (void)t; }\n"
+                                "    void m() { tf(later); tf(getl()); }\n"
+                                "    int later;\n"
+                                "    long getl();\n"
+                                "};";
+            const char exp[]  = "struct A { "
+                                "void tf<int> ( int t ) ; "
+                                "void tf<long> ( long t ) ; "
+                                "void m ( ) { tf<int> ( later ) ; tf<long> ( getl ( ) ) ; } "
+                                "int later ; "
+                                "long getl ( ) ; "
+                                "} ; "
+                                "void A :: tf<int> ( int t ) { ( void ) t ; } "
+                                "void A :: tf<long> ( long t ) { ( void ) t ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // constructor body; the member template is also declared later
+            const char code[] = "struct B {\n"
+                                "    B() : v(1.0f) { tf(later); }\n"
+                                "    template<class T> void tf(T t) { (void)t; }\n"
+                                "    float v;\n"
+                                "    double later;\n"
+                                "};";
+            const char exp[]  = "struct B { "
+                                "B ( ) : v ( 1.0f ) { tf<double> ( later ) ; } "
+                                "void tf<double> ( double t ) ; "
+                                "float v ; "
+                                "double later ; "
+                                "} ; "
+                                "void B :: tf<double> ( double t ) { ( void ) t ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // a parameter shadows a member that is declared later
+            const char code[] = "struct C {\n"
+                                "    template<class T> void tf(T t) { (void)t; }\n"
+                                "    void n(short x) { tf(x); }\n"
+                                "    void o() { tf(x); }\n"
+                                "    long x;\n"
+                                "};";
+            const char exp[]  = "struct C { "
+                                "void tf<short> ( short t ) ; "
+                                "void tf<long> ( long t ) ; "
+                                "void n ( short x ) { tf<short> ( x ) ; } "
+                                "void o ( ) { tf<long> ( x ) ; } "
+                                "long x ; "
+                                "} ; "
+                                "void C :: tf<short> ( short t ) { ( void ) t ; } "
+                                "void C :: tf<long> ( long t ) { ( void ) t ; }";
             ASSERT_EQUALS(exp, tok(code));
         }
     }
