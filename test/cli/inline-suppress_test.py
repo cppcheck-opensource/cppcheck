@@ -36,7 +36,9 @@ def test_1():
         'proj-inline-suppress'
     ]
     ret, stdout, stderr = cppcheck(args, cwd=__script_dir)
-    assert stderr == ''
+    assert stderr.splitlines() == [
+        "{}duplicate.cpp:3:5: error: suppression 'unreadVariable:proj-inline-suppress/duplicate.cpp:3' already exists [invalidSuppression]".format(__proj_inline_suppres_path)
+    ]
     assert stdout == ''
     assert ret == 0, stdout
 
@@ -558,3 +560,56 @@ def test_premium_disabled_unmatched():  #13663
     ]
     assert stdout == ''
     assert ret == 0, stdout
+
+@pytest.mark.xfail(strict=True)
+def test_duplicate_include(tmp_path):
+    test_file_1 = tmp_path / 'test_1.c'
+    with open(test_file_1, "w") as f:
+        f.write('#include "test.h"')
+
+    test_file_2 = tmp_path / 'test_2.c'
+    with open(test_file_2, "w") as f:
+        f.write('#include "test.h"')
+
+    test_header = tmp_path / 'test.h'
+    with open(test_header, "w") as f:
+        f.write('// cppcheck-suppress id')
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--emit-duplicates',
+        '--inline-suppr',
+        str(test_file_1),
+        str(test_file_2)
+    ]
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0, stdout
+    assert stdout.splitlines() == []
+    assert stderr.splitlines() == []
+
+
+def test_duplicate_header(tmp_path):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, "w") as f:
+        f.write('#include "test.h"')
+
+    test_header = tmp_path / 'test.h'
+    with open(test_header, "w") as f:
+        f.write('// cppcheck-suppress [id,id]')
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--emit-duplicates',
+        '--inline-suppr',
+        str(test_file)
+    ]
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0, stdout
+    assert stdout.splitlines() == []
+    assert stderr.splitlines() == [
+        "{}:1:1: error: suppression 'id:{}:1' already exists [invalidSuppression]".format(test_header,test_header)
+    ]
