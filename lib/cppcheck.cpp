@@ -923,6 +923,9 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
 
     mLogger->resetExitCode();
 
+    std::string str;
+    str[0] = 'x';
+
     if (Settings::terminated())
         return mLogger->exitcode();
 
