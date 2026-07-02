@@ -385,33 +385,14 @@ bool CppCheckExecutor::reportUnmatchedSuppressions(const Settings &settings, con
 
     bool err = false;
 
-    for (auto i = files.cbegin(); i != files.cend(); ++i) {
-        const std::vector<ErrorMessage> errors = getUnmatchedSuppressions(supprlist.getUnmatchedLocalSuppressions(*i), settings.unmatchedSuppressionFilters);
-        err |= reportErrorsFn(i->spath(), i->fsFileId(), errors);
-    }
-
-    for (auto i = fileSettings.cbegin(); i != fileSettings.cend(); ++i) {
-        const std::vector<ErrorMessage> errors = getUnmatchedSuppressions(supprlist.getUnmatchedLocalSuppressions(i->file), settings.unmatchedSuppressionFilters);
-        err |= reportErrorsFn(i->file.spath(), i->file.fsFileId(), errors);
-    }
-
-    if (settings.inlineSuppressions) {
-        const std::vector<ErrorMessage> errors = getUnmatchedSuppressions(supprlist.getUnmatchedInlineSuppressions(), settings.unmatchedSuppressionFilters);
-        for (const auto& errmsg : errors) {
-            std::string sourcefile;
-            if (!errmsg.callStack.empty())
-                sourcefile = errmsg.callStack.cbegin()->getfile(false); // TODO: simplify path?
-            err |= reportErrorsFn(sourcefile, 0, {errmsg});
-        }
-    }
-
-    const std::vector<ErrorMessage> errors = getUnmatchedSuppressions(supprlist.getUnmatchedGlobalSuppressions(), settings.unmatchedSuppressionFilters);
+    const std::vector<ErrorMessage> errors = getUnmatchedSuppressions(supprlist.getUnmatchedSuppressions(), settings.unmatchedSuppressionFilters);
     for (const auto& errmsg : errors) {
         std::string sourcefile;
         if (!errmsg.callStack.empty())
             sourcefile = errmsg.callStack.cbegin()->getfile(false); // TODO: simplify path?
         err |= reportErrorsFn(sourcefile, 0, {errmsg});
     }
+
     return err;
 }
 

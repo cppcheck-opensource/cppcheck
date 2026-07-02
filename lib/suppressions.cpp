@@ -556,32 +556,7 @@ void SuppressionList::dump(std::ostream & out, const std::string& filePath) cons
     out << "  </suppressions>" << std::endl;
 }
 
-std::list<SuppressionList::Suppression> SuppressionList::getUnmatchedLocalSuppressions(const FileWithDetails &file) const
-{
-    std::lock_guard<std::mutex> lg(mSuppressionsSync);
-
-    std::list<Suppression> result;
-    for (const Suppression &s : mSuppressions) {
-        if (s.isInline)
-            continue;
-        if (s.matched)
-            continue;
-        if ((s.lineNumber != Suppression::NO_LINE) && !s.checked)
-            continue;
-        if (s.type == SuppressionList::Type::macro)
-            continue;
-        if (s.hash > 0)
-            continue;
-        if (s.errorId == ID_CHECKERSREPORT)
-            continue;
-        if (!s.isLocal() || !PathMatch::match(s.fileName, file.spath()))
-            continue;
-        result.push_back(s);
-    }
-    return result;
-}
-
-std::list<SuppressionList::Suppression> SuppressionList::getUnmatchedGlobalSuppressions() const
+std::list<SuppressionList::Suppression> SuppressionList::getUnmatchedSuppressions() const
 {
     std::lock_guard<std::mutex> lg(mSuppressionsSync);
 
@@ -598,24 +573,6 @@ std::list<SuppressionList::Suppression> SuppressionList::getUnmatchedGlobalSuppr
         if (s.errorId == ID_CHECKERSREPORT)
             continue;
         if (s.isLocal())
-            continue;
-        result.push_back(s);
-    }
-    return result;
-}
-
-std::list<SuppressionList::Suppression> SuppressionList::getUnmatchedInlineSuppressions() const
-{
-    std::list<SuppressionList::Suppression> result;
-    for (const SuppressionList::Suppression &s : SuppressionList::mSuppressions) {
-        if (!s.isInline)
-            continue;
-        // TODO: remove this and markUnmatchedInlineSuppressionsAsChecked()?
-        if (!s.checked)
-            continue;
-        if (s.matched)
-            continue;
-        if (s.hash > 0)
             continue;
         result.push_back(s);
     }

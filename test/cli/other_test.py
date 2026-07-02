@@ -4861,3 +4861,26 @@ def test_ipc_inline_suppressions(tmp_path):
     stdout_lines.sort()
     assert stdout_lines == stdout_exp
     assert stderr.splitlines() == []
+
+
+def test_suppression_unmatched_header(tmp_path):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, "w") as f:
+        f.write('#include "inc.h"')
+
+    inc_file = tmp_path / 'inc.h'
+    with open(inc_file, "w") as f:
+        f.write('')
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--enabled=information',
+        '--suppress=id:inc.h',
+        str(test_file)
+    ]
+
+    exitcode, stdout, stderr = cppcheck(args,)
+    assert exitcode == 0
+    assert stdout == ''
+    assert stderr.splitlines() == []
