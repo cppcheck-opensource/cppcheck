@@ -1676,6 +1676,27 @@ void CheckUnusedVarImpl::checkStructMemberUsage()
                     if (use)
                         break;
                 }
+                // Class used in template with unknown definition
+                if (Token::Match(tok, "%name% <") && tok->linkAt(1)) {
+                    if (tok->function())
+                        continue;
+                    if (tok->type() && tok->type()->classScope)
+                        continue;
+                    const Token *start = tok;
+                    while (Token::Match(start->previous(), "%name%|::"))
+                        start = start->previous();
+                    if (mSettings.library.detectContainer(start))
+                        continue;
+                    const Token *end = tok->linkAt(1);
+                    for (; tok != end; tok = tok->next()) {
+                        if (tok->type() && tok->type()->classScope == &scope) {
+                            use = true;
+                            break;
+                        }
+                    }
+                    if (use)
+                        break;
+                }
                 if (tok->variable() != &var)
                     continue;
                 if (tok != var.nameToken()) {
