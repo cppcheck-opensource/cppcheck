@@ -265,7 +265,6 @@ function sqlite3_fn {
 
 # openmp.c
 function openmp_fn {
-    # TODO: omp.h not found with IWYU
     # MacOS compiler has no OpenMP by default
     if ! command -v sw_vers; then
       echo "OpenMP assumed to be present, checking syntax with ${CC} now."
