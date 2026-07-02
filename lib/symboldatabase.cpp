@@ -7817,7 +7817,7 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
 
                 setValueType(tok, ValueType(sign, type, 0U));
             }
-        } else if (tok->isComparisonOp() || tok->tokType() == Token::eLogicalOp) {
+        } else if ((tok->isComparisonOp() || tok->tokType() == Token::eLogicalOp) && tok->astOperand1()) {
             if (tok->isCpp() && tok->isComparisonOp() && (getClassScope(tok->astOperand1()) || getClassScope(tok->astOperand2()))) {
                 const Function *function = getOperatorFunction(tok);
                 if (function) {

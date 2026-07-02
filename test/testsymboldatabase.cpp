@@ -10192,6 +10192,15 @@ private:
             ASSERT(tok);
             TODO_ASSERT(tok->valueType() && "container(std :: string|wstring|u16string|u32string)" == tok->valueType()->str());
         }
+        {
+            GET_SYMBOL_DB("void f() {\n"
+                          "    int &&x = 0;\n"
+                          "}\n");
+
+            const Token* tok = Token::findsimplematch(tokenizer.tokens(), "&&");
+            ASSERT(tok);
+            ASSERT_EQUALS(static_cast<const ValueType*>(nullptr), tok->valueType());
+        }
     }
 
     void valueTypeThis() {
