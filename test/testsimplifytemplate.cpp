@@ -292,6 +292,7 @@ private:
         TEST_CASE(templateTypeDeduction11); // unqualified lookup: enclosing scopes, shadowing
         TEST_CASE(templateTypeDeduction12); // base class member templates, out of class method bodies
         TEST_CASE(templateTypeDeduction13); // members declared after the member function are visible
+        TEST_CASE(templateTypeDeduction14); // a non template overload might be a better match
 
         TEST_CASE(simplifyTemplateArgs1);
         TEST_CASE(simplifyTemplateArgs2);
@@ -6752,6 +6753,49 @@ private:
                                 "} ; "
                                 "void C :: tf<short> ( short t ) { ( void ) t ; } "
                                 "void C :: tf<long> ( long t ) { ( void ) t ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+    }
+
+    void templateTypeDeduction14() { // a non template overload might be a better match: don't deduce
+        {
+            // the non template f(int) wins the overload resolution (and the
+            // template would fail the substitution of int::type)
+            const char code[] = "template<class T>\n"
+                                "typename T::type f(T);\n"
+                                "int f(int);\n"
+                                "void use() { f(1); }";
+            const char exp[]  = "template < class T > "
+                                "T :: type f ( T ) ; "
+                                "int f ( int ) ; "
+                                "void use ( ) { f ( 1 ) ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // member function overload set
+            const char code[] = "struct M {\n"
+                                "    template<class T> void mf(T t) { (void)t; }\n"
+                                "    void mf(int);\n"
+                                "    void go() { mf(1); }\n"
+                                "};";
+            const char exp[]  = "struct M { "
+                                "template < class T > void mf ( T t ) { ( void ) t ; } "
+                                "void mf ( int ) ; "
+                                "void go ( ) { mf ( 1 ) ; } "
+                                "} ;";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // mixed overload set as a nested call: the return type is not
+            // known so the outer call is not deduced either
+            const char code[] = "template<class T> void g(T t) { (void)t; }\n"
+                                "template<class T> T h(T t) { return t; }\n"
+                                "long h(char);\n"
+                                "void use() { g(h('a')); }";
+            const char exp[]  = "template < class T > void g ( T t ) { ( void ) t ; } "
+                                "template < class T > T h ( T t ) { return t ; } "
+                                "long h ( char ) ; "
+                                "void use ( ) { g ( h ( 'a' ) ) ; }";
             ASSERT_EQUALS(exp, tok(code));
         }
     }

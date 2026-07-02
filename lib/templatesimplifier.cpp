@@ -848,12 +848,21 @@ namespace {
 
     class DeductionSymbolTable;
 
+    // a function template declaration that a call could instantiate,
+    // together with its template type parameters
+    struct DeductionCandidate {
+        const TemplateSimplifier::TokenAndName *declaration;
+        std::vector<const Token *> templateParams;
+    };
+
     // Token keyword flags are not set yet when templates are simplified so
     // keywords are recognized by their string.
     struct DeductionContext {
         const Settings &settings;
         const TokenList &tokenList;
         const DeductionSymbolTable &symbols;
+        // the function templates, by name
+        const std::multimap<std::string, DeductionCandidate> &templateFunctions;
 
         // is |tok| a name that can be a user defined identifier?
         bool isIdentifier(const Token *tok) const {
@@ -1312,7 +1321,8 @@ namespace {
             // the walk can record a declaration twice (class members are
             // recorded up front and again when the body is walked)
             if (std::none_of(declarations.cbegin(), declarations.cend(), [&](const ParsedType &declaration) {
-                return sameDeducedType(declaration.type, returnType.type);
+                return (!declaration.type.valid && !returnType.type.valid) ||
+                       sameDeducedType(declaration.type, returnType.type);
             }))
                 declarations.push_back(returnType);
         }
@@ -1336,6 +1346,23 @@ namespace {
                         result = varIt->second;
                         return true;
                     }
+                }
+            }
+            return false;
+        }
+
+        // is a (non template) function with this name visible?
+        bool hasFunction(const std::string &name) const {
+            for (auto scope = mScopes.crbegin(); scope != mScopes.crend(); ++scope) {
+                if (scope->members.functions.find(name) != scope->members.functions.cend())
+                    return true;
+                if (scope->memberClass.empty())
+                    continue;
+                for (const std::string &className : withBaseClasses(scope->memberClass)) {
+                    const auto classIt = mClassMembers.find(className);
+                    if (classIt != mClassMembers.cend() &&
+                        classIt->second.functions.find(name) != classIt->second.functions.cend())
+                        return true;
                 }
             }
             return false;
@@ -1574,8 +1601,12 @@ static ExprType parseOperandType(const DeductionContext &ctx, const Token *&tok,
             return ExprType();
     } else if (ctx.isIdentifier(tok)) {
         if (tok->next() != end && Token::simpleMatch(tok->next(), "(")) {
-            // function call
+            // function call: the return type of the visible declarations.
+            // When the name is also a function template the call could
+            // resolve to an instantiation with another return type.
             ParsedType returnType;
+            if (ctx.templateFunctions.count(tok->str()) != 0)
+                return ExprType();
             if (!ctx.symbols.lookupFunctionReturnType(tok->str(), returnType))
                 return ExprType();
             if (!tok->next()->link())
@@ -1784,15 +1815,6 @@ static bool deduceTemplateArgumentFromParam(const ParsedType &param, const ExprT
     return renderDeducedType(type, keepTopConst, tokens);
 }
 
-namespace {
-    // a function template declaration that a call could instantiate,
-    // together with its template type parameters
-    struct DeductionCandidate {
-        const TemplateSimplifier::TokenAndName *declaration;
-        std::vector<const Token *> templateParams;
-    };
-}
-
 // Deduce the template arguments of the function template call at |tok| from
 // the argument types and insert the explicit "< ... >" tokens after the
 // function name when the deduction succeeds.
@@ -1978,8 +2000,14 @@ static void recordDeclaration(const DeductionContext &ctx, DeductionSymbolTable 
         const Token *rpar = tok->next()->link();
         if (Token::Match(rpar->next(), ";|{|const|noexcept")) {
             const Token *start = findDeclarationTypeStart(ctx, tok);
-            if (start && parseType(ctx, start, tok, parsed) == tok && parsed.type.valid)
-                symbols.addFunction(tok->str(), parsed);
+            if (start) {
+                if (parseType(ctx, start, tok, parsed) == tok && parsed.type.valid)
+                    symbols.addFunction(tok->str(), parsed);
+                else
+                    // unsupported return type ("void" etc): record that the
+                    // function exists but that its type is not known
+                    symbols.addFunction(tok->str(), ParsedType());
+            }
         }
     }
 }
@@ -2031,7 +2059,7 @@ void TemplateSimplifier::deduceFunctionTemplateArguments()
     // during the walk so that at every call site the declarations that are
     // visible there - and only those - can be looked up by name.
     DeductionSymbolTable symbols;
-    const DeductionContext ctx = { mSettings, mTokenList, symbols };
+    const DeductionContext ctx = { mSettings, mTokenList, symbols, functionNameMap };
 
     // the body of the class definition that is about to start
     const Token *classBodyStart = nullptr;
@@ -2138,9 +2166,13 @@ void TemplateSimplifier::deduceFunctionTemplateArguments()
             if (tok->strAt(1) == "(") {
                 const auto range = functionNameMap.equal_range(tok->str());
 
-                // a visible variable with the same name hides the function templates
+                // A visible variable with the same name hides the function
+                // templates. A visible non template function with the same
+                // name might be a better match than the templates (overload
+                // resolution is not supported). Bail out in both cases.
                 ParsedType shadowingVariable;
-                if (range.first == range.second || ctx.symbols.lookupVariable(tok->str(), shadowingVariable))
+                if (range.first == range.second || ctx.symbols.lookupVariable(tok->str(), shadowingVariable) ||
+                    ctx.symbols.hasFunction(tok->str()))
                     continue;
 
                 // The name is looked up like the compiler does: in the
