@@ -678,16 +678,20 @@ private:
         if (const ValueFlow::Value* v = tok->getKnownValue(ValueFlow::Value::ValueType::INT))
             return {v->intvalue};
         std::vector<MathLib::bigint> result;
-        ProgramMemory pm = getProgramMemoryFunc();
+        // Pass the tracked values so a cached program-memory value that depends on one (e.g. 'h(p)'
+        // after 'p' was reassigned) is re-evaluated rather than served stale. The memory is built
+        // from the same state, so compute it once and hand it to the builder.
+        const ProgramState vars = getProgramState();
+        ProgramMemory pm = getProgramMemoryFunc(vars);
         if (Token::Match(tok, "&&|%oror%")) {
-            if (conditionIsTrue(tok, pm, getSettings()))
+            if (conditionIsTrue(tok, pm, getSettings(), vars))
                 result.push_back(1);
-            if (conditionIsFalse(tok, std::move(pm), getSettings()))
+            if (conditionIsFalse(tok, std::move(pm), getSettings(), vars))
                 result.push_back(0);
         } else {
             MathLib::bigint out = 0;
             bool error = false;
-            execute(tok, pm, &out, &error, getSettings());
+            execute(tok, pm, &out, &error, getSettings(), vars);
             if (!error)
                 result.push_back(out);
         }
@@ -696,16 +700,16 @@ private:
 
     std::vector<MathLib::bigint> evaluateInt(const Token* tok) const
     {
-        return evaluateInt(tok, [&] {
-            return ProgramMemory{getProgramState()};
+        return evaluateInt(tok, [](const ProgramState& vars) {
+            return ProgramMemory{vars};
         });
     }
 
     std::vector<MathLib::bigint> evaluate(Evaluate e, const Token* tok, const Token* ctx = nullptr) const override
     {
         if (e == Evaluate::Integral) {
-            return evaluateInt(tok, [&] {
-                return pms.get(tok, ctx, getProgramState());
+            return evaluateInt(tok, [&](const ProgramState& vars) {
+                return pms.get(tok, ctx, vars);
             });
         }
         if (e == Evaluate::ContainerEmpty) {
@@ -723,30 +727,43 @@ private:
         return {};
     }
 
-    void assume(const Token* tok, bool state, unsigned int flags) override {
-        // Update program state
-        pms.removeModifiedVars(tok);
-        pms.addState(tok, getProgramState());
-        pms.assume(tok, state, flags & Assume::ContainerEmpty);
-
+    void assume(const Token* tok, bool state, unsigned int flags) override
+    {
         bool isCondBlock = false;
         const Token* parent = tok->astParent();
         if (parent) {
             isCondBlock = Token::Match(parent->previous(), "if|while (");
         }
 
+        const Token* endBlock = nullptr;
         if (isCondBlock) {
             const Token* startBlock = parent->link()->next();
             if (Token::simpleMatch(startBlock, ";") && Token::simpleMatch(parent->tokAt(-2), "} while ("))
                 startBlock = parent->linkAt(-2);
-            const Token* endBlock = startBlock->link();
-            if (state) {
-                pms.removeModifiedVars(endBlock);
-                pms.addState(endBlock->previous(), getProgramState());
-            } else {
-                if (Token::simpleMatch(endBlock, "} else {"))
-                    pms.addState(endBlock->linkAt(2)->previous(), getProgramState());
-            }
+            endBlock = startBlock->link();
+        }
+
+        // Without Pending the 'then' block has been traversed and control is leaving it, so anchor
+        // the assumed state at the block end instead of the condition. That keeps assumptions on
+        // variables modified inside the block (e.g. an 'if' narrowing a value computed there) from
+        // being discarded as "modified" once control leaves the block.
+        const bool scopeEnd = !(flags & Assume::Pending) && state && endBlock;
+        const Token* anchor = scopeEnd ? endBlock : tok;
+        const Token* origin = scopeEnd ? endBlock : nullptr;
+
+        // Update program state
+        pms.removeModifiedVars(anchor);
+        pms.addState(anchor, getProgramState());
+        pms.assume(tok, state, flags & Assume::ContainerEmpty, origin);
+
+        // The false path (the true path uses scopeEnd above): record the assumed state where control
+        // continues - the end of the else block, or the closing brace when there is no else - so it
+        // reaches the enclosing scope.
+        if (isCondBlock && !(flags & Assume::Pending) && !state) {
+            if (Token::simpleMatch(endBlock, "} else {"))
+                pms.addState(endBlock->linkAt(2)->previous(), getProgramState());
+            else
+                pms.addState(endBlock, getProgramState());
         }
 
         if (!(flags & Assume::Quiet)) {

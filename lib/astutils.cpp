@@ -2230,6 +2230,8 @@ bool isEscapeFunction(const Token* ftok, const Library& library)
 {
     if (!Token::Match(ftok, "%name% ("))
         return false;
+    if (Token::Match(ftok, "exit|abort"))
+        return true;
     const Function* function = ftok->function();
     if (function) {
         if (function->isEscapeFunction())
