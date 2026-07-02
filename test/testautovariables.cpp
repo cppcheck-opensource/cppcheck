@@ -4452,6 +4452,99 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:5:14] -> [test.cpp:5:18] -> [test.cpp:6:7]: (error) Using pointer that is a temporary. [danglingTemporaryLifetime]\n",
                       errout_str());
+
+        check("struct A { const int* data[2]; };\n"
+              "A g() {\n"
+              "    int x = 0;\n"
+              "    A a;\n"
+              "    a.data[0] = &x;\n"
+              "    return a;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:17] -> [test.cpp:3:9] -> [test.cpp:6:12]: (error) Returning object that points to local variable 'x' that will be invalid when returning. [returnDanglingLifetime]\n",
+                      errout_str());
+
+        check("struct A { const int* data[2]; };\n"
+              "A g() {\n"
+              "    int x = 0;\n"
+              "    A a[2];\n"
+              "    a[0].data[0] = &x;\n"
+              "    return a[0];\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:20] -> [test.cpp:3:9] -> [test.cpp:6:13]: (error) Returning object that points to local variable 'x' that will be invalid when returning. [returnDanglingLifetime]\n",
+                      errout_str());
+
+        check("struct A { const int* data[2]; };\n"
+              "A* g() {\n"
+              "    int x = 0;\n"
+              "    static A arr[2];\n"
+              "    arr[0].data[0] = &x;\n"
+              "    return arr;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:22] -> [test.cpp:3:9] -> [test.cpp:6:12]: (error) Returning pointer to local variable 'x' that will be invalid when returning. [returnDanglingLifetime]\n",
+                      errout_str());
+
+        check("struct A { const int* p; };\n"
+              "A g(int i) {\n"
+              "    int x = 0;\n"
+              "    A arr[2];\n"
+              "    arr[i].p = &x;\n"
+              "    return arr[i];\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:16] -> [test.cpp:3:9] -> [test.cpp:6:15]: (error) Returning object that points to local variable 'x' that will be invalid when returning. [returnDanglingLifetime]\n",
+                      errout_str());
+
+        check("struct A { const int* p; };\n"
+              "A* g(int i) {\n"
+              "    int x = 0;\n"
+              "    static A arr[2];\n"
+              "    arr[i].p = &x;\n"
+              "    return arr;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:16] -> [test.cpp:3:9] -> [test.cpp:6:12]: (error) Returning pointer to local variable 'x' that will be invalid when returning. [returnDanglingLifetime]\n",
+                      errout_str());
+
+        check("struct A { const int* p; };\n"
+              "struct B { A arr[2]; };\n"
+              "B g(int i) {\n"
+              "    int x = 0;\n"
+              "    B b;\n"
+              "    b.arr[i].p = &x;\n"
+              "    return b;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:6:18] -> [test.cpp:4:9] -> [test.cpp:7:12]: (error) Returning object that points to local variable 'x' that will be invalid when returning. [returnDanglingLifetime]\n",
+                      errout_str());
+
+        check("struct A { const int* p; };\n"
+              "A* g() {\n"
+              "    int x = 0;\n"
+              "    static A a;\n"
+              "    A* ap = &a;\n"
+              "    ap->p = &x;\n"
+              "    (*ap).p = &x;\n"
+              "    return ap;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct A { int* a; int* b; };\n"
+              "static A g;\n"
+              "int* f() {\n"
+              "    int x = 0;\n"
+              "    g.a = &x;\n"
+              "    return g.b;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:11] -> [test.cpp:4:9] -> [test.cpp:5:6]: (error) Non-local variable 'g.a' will use pointer to local variable 'x'. [danglingLifetime]\n",
+                      errout_str());
+
+        check("struct A { int* a; int* b; };\n"
+              "static A g;\n"
+              "int* f() {\n"
+              "    int x = 0;\n"
+              "    g.a = &x;\n"
+              "    return g.a;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:11] -> [test.cpp:4:9] -> [test.cpp:5:6]: (error) Non-local variable 'g.a' will use pointer to local variable 'x'. [danglingLifetime]\n"
+                      "[test.cpp:5:11] -> [test.cpp:4:9] -> [test.cpp:6:13]: (error) Returning pointer to local variable 'x' that will be invalid when returning. [returnDanglingLifetime]\n",
+                      errout_str());
     }
 
     void danglingLifetimeClassMemberFunctions()
