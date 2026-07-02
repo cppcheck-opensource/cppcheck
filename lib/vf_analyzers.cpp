@@ -604,7 +604,7 @@ private:
         } else if (isDereferenceOp(ref) && !match(ref->astOperand1())) {
             const Token* lifeTok = nullptr;
             for (const ValueFlow::Value& v:ref->astOperand1()->values()) {
-                if (!v.isLocalLifetimeValue())
+                if (!v.isLocalLifetimeValue() && !v.isSubFunctionLifetimeValue())
                     continue;
                 if (v.conditional)
                     continue;
@@ -1072,7 +1072,12 @@ struct MultiValueFlowAnalyzer : ValueFlowAnalyzer {
     }
 
     bool match(const Token* tok) const override {
-        return values.count(tok->varId()) > 0;
+        if (tok->varId() == 0)
+            return false;
+        return values.count(tok->varId()) > 0 ||
+               std::any_of(values.begin(), values.end(), [&](const std::pair<nonneg int, ValueFlow::Value>& p) {
+            return p.second.isUninitValue() && p.second.tokvalue->varId() == tok->varId();
+        });
     }
 
     ProgramState getProgramState() const override {
