@@ -1088,8 +1088,12 @@ void CheckBufferOverrunImpl::objectIndex()
             for (const ValueFlow::Value& v:values) {
                 if (v.lifetimeKind != ValueFlow::Value::LifetimeKind::Address && v.lifetimeKind != ValueFlow::Value::LifetimeKind::Object)
                     continue;
-                const Token* varTok = nextAfterAstRightmostLeaf(v.tokvalue->astParent());
-                varTok = varTok ? varTok->previous() : nullptr;
+                const Token* varTok = v.tokvalue;
+                if (Token::simpleMatch(varTok->astParent(), ".")) {
+                    varTok = varTok->astParent();
+                    while (Token::simpleMatch(varTok, "."))
+                        varTok = varTok->astOperand2();
+                }
                 const Variable *var = varTok ? varTok->variable() : nullptr;
                 if (!var)
                     continue;
