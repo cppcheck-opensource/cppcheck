@@ -4922,8 +4922,9 @@ private:
               "    char c = 'A';\n"
               "    f0(c);\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:3:11] -> [test.cpp:4:11]: (style) Condition 'c>=1' is always true [knownConditionTrueFalse]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:3:11] -> [test.cpp:4:11]: (style) Condition 'c>=1' is always true [knownConditionTrueFalse]\n",
+            errout_str());
     }
 
     void alwaysTrueSymbolic()
