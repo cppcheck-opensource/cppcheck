@@ -52,7 +52,7 @@
 #if defined(__APPLE__)
 #include <mach-o/dyld.h>
 #endif
-#if defined(__HAIKU__)
+#elif defined(__HAIKU__)
 #include <image.h>
 #endif
 
