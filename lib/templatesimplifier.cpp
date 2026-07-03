@@ -1187,7 +1187,7 @@ static ParsedType parseVariableDeclaration(const Token* nameTok)
     if (nameTok->strAt(1) == "[") {
         if (parsed.isReference)
             return ParsedType();
-        const Token* rbracket = nameTok->next()->link();
+        const Token* rbracket = nameTok->linkAt(1);
         if (!rbracket || Token::simpleMatch(rbracket->next(), "["))
             return ParsedType();
         if (!decayArrayToPointer(parsed.type))
@@ -1453,8 +1453,8 @@ namespace {
             // constructor initializer list
             if (Token::simpleMatch(tok, ":")) {
                 tok = tok->next();
-                while (Token::Match(tok, "%name% (|{") && tok->next()->link()) {
-                    tok = tok->next()->link()->next();
+                while (Token::Match(tok, "%name% (|{") && tok->linkAt(1)) {
+                    tok = tok->linkAt(1)->next();
                     if (!Token::simpleMatch(tok, ","))
                         break;
                     tok = tok->next();
@@ -1550,16 +1550,16 @@ static ExprType parseOperandType(const DeductionContext& ctx, const Token*& tok,
         const ParsedType castType = parseType(tok->tokAt(2), closing);
         if (castType.after != closing || !castType.type.valid)
             return ExprType();
-        if (!Token::simpleMatch(closing->next(), "(") || !closing->next()->link())
+        if (!Token::simpleMatch(closing->next(), "(") || !closing->linkAt(1))
             return ExprType();
-        tok = closing->next()->link()->next();
+        tok = closing->linkAt(1)->next();
         type = castType.type;
         if (stopsAtPostfix(tok, end))
             return ExprType();
     } else if (tok->str() == "sizeof") {
-        if (!Token::simpleMatch(tok->next(), "(") || !tok->next()->link())
+        if (!Token::simpleMatch(tok->next(), "(") || !tok->linkAt(1))
             return ExprType();
-        tok = tok->next()->link()->next();
+        tok = tok->linkAt(1)->next();
         // sizeof yields std::size_t
         const std::size_t size = ctx.settings->platform.sizeof_size_t;
         if (size == 0)
@@ -1586,9 +1586,9 @@ static ExprType parseOperandType(const DeductionContext& ctx, const Token*& tok,
         const ParsedType castType = parseType(tok, tok->next(), true);
         if (castType.after != tok->next() || !castType.type.valid)
             return ExprType();
-        if (!tok->next()->link())
+        if (!tok->linkAt(1))
             return ExprType();
-        tok = tok->next()->link()->next();
+        tok = tok->linkAt(1)->next();
         type = castType.type;
         if (stopsAtPostfix(tok, end))
             return ExprType();
@@ -1601,9 +1601,9 @@ static ExprType parseOperandType(const DeductionContext& ctx, const Token*& tok,
             const ParsedType returnType = ctx.symbols->lookupFunctionReturnType(tok->str());
             if (!returnType.type.valid)
                 return ExprType();
-            if (!tok->next()->link())
+            if (!tok->linkAt(1))
                 return ExprType();
-            tok = tok->next()->link()->next();
+            tok = tok->linkAt(1)->next();
             type = returnType.type;
             if (stopsAtPostfix(tok, end))
                 return ExprType();
@@ -2011,7 +2011,7 @@ static void recordDeclaration(DeductionSymbolTable& symbols, const Token* tok)
     const ParsedType variable = parseVariableDeclaration(tok);
     if (variable.type.valid) {
         symbols.addVariable(tok->str(), variable);
-    } else if (Token::simpleMatch(tok->next(), "(") && tok->next()->link() && !Token::simpleMatch(tok->previous(), "::")) {
+    } else if (Token::simpleMatch(tok->next(), "(") && tok->linkAt(1) && !Token::simpleMatch(tok->previous(), "::")) {
         // function declaration; a qualified name ("void A::g()") is not
         // visible under its plain name
         if (TokenList::isFunctionHead(tok->next(), ";{")) {
