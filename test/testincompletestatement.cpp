@@ -180,8 +180,24 @@ private:
     }
 
     void void0() { // #6327
-        check("void f() { (void*)0; }");
+        check("#define assert(x) ((void)0)\n"
+              "void f(int* p) {\n"
+              "    assert(p);\n"
+              "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("void f() { (void*)0; }");
+        ASSERT_EQUALS("[test.cpp:1:12]: (warning) Redundant code: Found a statement that begins with numeric constant. [constStatement]\n", errout_str());
+
+        check("void f() {\n" // #13148
+              "    static_cast<void>(1);\n"
+              "    static_cast<void>(nullptr);\n"
+              "    (void)NULL;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:22]: (warning) Redundant code: Found a statement that begins with numeric constant. [constStatement]\n"
+                      "[test.cpp:3:22]: (warning) Redundant code: Found a statement that begins with NULL constant. [constStatement]\n"
+                      "[test.cpp:4:5]: (warning) Redundant code: Found a statement that begins with NULL constant. [constStatement]\n",
+                      errout_str());
 
         check("#define X  0\n"
               "void f() { X; }");
