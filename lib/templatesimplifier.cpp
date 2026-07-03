@@ -1859,7 +1859,7 @@ static std::vector<DeductionCandidateParam> parseDeductionCandidateParams(const 
                 });
             }
         }
-        params.push_back(std::move(param));
+        params.push_back(param);
     }
     return params;
 }
