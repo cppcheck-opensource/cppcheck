@@ -2323,18 +2323,12 @@ static bool isConstStatement(const Token *tok, const Library& library, bool plat
 
 static bool isVoidStmt(const Token *tok)
 {
-    if (Token::simpleMatch(tok, "( void"))
+    if (Token::simpleMatch(tok, "( void") && !(tok->astOperand1() && (tok->astOperand1()->isLiteral() || isNullOperand(tok->astOperand1()))))
         return true;
-    if (isCPPCast(tok) && tok->astOperand1() && Token::Match(tok->astOperand1()->next(), "< void *| >"))
+    if (isCPPCast(tok) && tok->astOperand1() && Token::Match(tok->astOperand1()->next(), "< void *| >") &&
+        !(tok->astOperand2() && (tok->astOperand2()->isLiteral() || isNullOperand(tok->astOperand2()))))
         return true;
-    const Token *tok2 = tok;
-    while (tok2->astOperand1())
-        tok2 = tok2->astOperand1();
-    if (Token::simpleMatch(tok2->previous(), ")") && Token::simpleMatch(tok2->linkAt(-1), "( void"))
-        return true;
-    if (Token::simpleMatch(tok2, "( void"))
-        return true;
-    return Token::Match(tok2->previous(), "delete|throw|return");
+    return false;
 }
 
 static bool isConstTop(const Token *tok)
