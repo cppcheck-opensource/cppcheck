@@ -51,7 +51,6 @@
 #endif
 #if defined(__APPLE__)
 #include <mach-o/dyld.h>
-#endif
 #elif defined(__HAIKU__)
 #include <image.h>
 #endif
