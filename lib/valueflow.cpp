@@ -3844,14 +3844,17 @@ static void valueFlowForwardConst(Token* start,
 {
     if (!precedes(start, end))
         throw InternalError(var->nameToken(), "valueFlowForwardConst: start token does not precede the end token.");
+    const bool hasContainerSizeValue = std::any_of(values.begin(), values.end(), [](const ValueFlow::Value& value) {
+        return value.isContainerSizeValue();
+    });
     for (Token* tok = start; tok != end; tok = tok->next()) {
         if (tok->varId() == var->declarationId()) {
             for (const ValueFlow::Value& value : values)
                 setTokenValue(tok, value, settings);
         } else {
             [&] {
-                // Add the container size to iterators of the container
-                if (astIsIterator(tok) && isAliasOf(tok, var->declarationId())) {
+                // Add the container size to iterators of the container (mirrors ContainerExpressionAnalyzer::match)
+                if (hasContainerSizeValue && astIsIterator(tok) && isAliasOf(tok, var->declarationId())) {
                     for (const ValueFlow::Value& value : values) {
                         if (!value.isContainerSizeValue())
                             continue;

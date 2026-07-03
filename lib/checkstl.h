@@ -245,7 +245,6 @@ public:
 
     void algorithmOutOfBoundsError(const Token* tok,
                                    const std::string& algoName,
-                                   const std::string& iterExpr,
                                    MathLib::bigint accessed,
                                    MathLib::bigint available,
                                    const ValueFlow::Value* value,

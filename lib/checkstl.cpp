@@ -3411,6 +3411,21 @@ static bool isUsableValue(const ValueFlow::Value& value, const Settings& setting
     return true;
 }
 
+// Get the first ValueFlow value of a token matching the predicate, preferring known values
+template<class Predicate>
+static const ValueFlow::Value* selectPreferredValue(const Token* tok, const Predicate& pred)
+{
+    const ValueFlow::Value* result = nullptr;
+    for (const ValueFlow::Value& value : tok->values()) {
+        if (!pred(value))
+            continue;
+        if (result && !(value.isKnown() && !result->isKnown()))
+            continue;
+        result = &value;
+    }
+    return result;
+}
+
 // Get the iterator value of an iterator expression together with the container size value that
 // ValueFlow has added to the iterator
 static IteratorPosition getIteratorPosition(const Token* tok, const Settings& settings)
@@ -3418,22 +3433,14 @@ static IteratorPosition getIteratorPosition(const Token* tok, const Settings& se
     IteratorPosition position;
     if (!tok)
         return position;
-    for (const ValueFlow::Value& value : tok->values()) {
-        if (!isUsableValue(value, settings) || !value.isIteratorValue())
-            continue;
-        if (position.value && !(value.isKnown() && !position.value->isKnown()))
-            continue;
-        position.value = &value;
-    }
+    position.value = selectPreferredValue(tok, [&](const ValueFlow::Value& value) {
+        return isUsableValue(value, settings) && value.isIteratorValue();
+    });
     if (!position.value)
         return position;
-    for (const ValueFlow::Value& value : tok->values()) {
-        if (!isUsableValue(value, settings) || !value.isContainerSizeValue() || value.path != position.value->path)
-            continue;
-        if (position.sizeValue && !(value.isKnown() && !position.sizeValue->isKnown()))
-            continue;
-        position.sizeValue = &value;
-    }
+    position.sizeValue = selectPreferredValue(tok, [&](const ValueFlow::Value& value) {
+        return isUsableValue(value, settings) && value.isContainerSizeValue() && value.path == position.value->path;
+    });
     return position;
 }
 
@@ -3485,18 +3492,10 @@ static const ValueFlow::Value* getCountValue(const Token* tok, const Settings& s
 {
     if (!tok)
         return nullptr;
-    const ValueFlow::Value* countValue = nullptr;
-    for (const ValueFlow::Value& value : tok->values()) {
-        if (!isUsableValue(value, settings) || !value.isIntValue())
-            continue;
-        // the count could be smaller, which would make fewer elements accessed
-        if (value.bound == ValueFlow::Value::Bound::Upper)
-            continue;
-        if (countValue && !(value.isKnown() && !countValue->isKnown()))
-            continue;
-        countValue = &value;
-    }
-    return countValue;
+    return selectPreferredValue(tok, [&](const ValueFlow::Value& value) {
+        // a count with an upper bound could be smaller, which would make fewer elements accessed
+        return isUsableValue(value, settings) && value.isIntValue() && value.bound != ValueFlow::Value::Bound::Upper;
+    });
 }
 
 void CheckStlImpl::algorithmOutOfBounds()
@@ -3548,7 +3547,8 @@ void CheckStlImpl::algorithmOutOfBounds()
                 const ValueFlow::Value lastLifetime = getLifetimeIteratorValue(args[1]);
                 if (!firstLifetime.tokvalue || !lastLifetime.tokvalue)
                     continue;
-                if (!isSameExpression(false, firstLifetime.tokvalue, lastLifetime.tokvalue, mSettings, false, false))
+                if (!isSameIteratorContainerExpression(
+                        firstLifetime.tokvalue, lastLifetime.tokvalue, mSettings, firstLifetime.lifetimeKind))
                     continue;
                 accessed = getIteratorDistance(first, last);
                 if (!accessed)
@@ -3593,7 +3593,6 @@ void CheckStlImpl::algorithmOutOfBounds()
                     conditionValue ? conditionValue : (dest.sizeValue ? dest.sizeValue : dest.value);
                 algorithmOutOfBoundsError(args[argnr],
                                           "std::" + nameTok->str(),
-                                          args[argnr]->expressionString(),
                                           accessed.count,
                                           available.count,
                                           pathValue,
@@ -3607,7 +3606,6 @@ void CheckStlImpl::algorithmOutOfBounds()
 
 void CheckStlImpl::algorithmOutOfBoundsError(const Token* tok,
                                              const std::string& algoName,
-                                             const std::string& iterExpr,
                                              MathLib::bigint accessed,
                                              MathLib::bigint available,
                                              const ValueFlow::Value* value,
@@ -3615,6 +3613,7 @@ void CheckStlImpl::algorithmOutOfBoundsError(const Token* tok,
                                              bool mayAccessFewer,
                                              bool inconclusive)
 {
+    const std::string iterExpr = tok ? tok->expressionString() : "it";
     const std::string accessedStr = MathLib::toString(accessed) + (accessed == 1 ? " element" : " elements");
     const std::string availableStr = MathLib::toString(available) + (available == 1 ? " element is" : " elements are");
     const std::string body = "algorithm '" + algoName + "' " + (mayAccessFewer ? "may access up to " : "accesses ") +
@@ -3782,7 +3781,7 @@ void CheckStl::getErrorMessages(ErrorLogger& errorLogger, const Settings& settin
     c.dereferenceInvalidIteratorError(nullptr, "i");
     // TODO: derefInvalidIteratorRedundantCheck
     c.eraseIteratorOutOfBoundsError(nullptr, nullptr);
-    c.algorithmOutOfBoundsError(nullptr, "std::copy", "it", 10, 6, nullptr, nullptr, false, false);
+    c.algorithmOutOfBoundsError(nullptr, "std::copy", 10, 6, nullptr, nullptr, false, false);
     c.useStlAlgorithmError(nullptr, "");
     c.knownEmptyContainerError(nullptr, "");
     c.globalLockGuardError(nullptr);
