@@ -1951,8 +1951,11 @@ void TokenList::validateAst(bool print) const
         if (tok->str() == "?") {
             if (!tok->astOperand1() || !tok->astOperand2())
                 throw InternalError(tok, "AST broken, ternary operator missing operand(s)", InternalError::AST);
-            if (tok->astOperand2()->str() != ":")
+            const Token* colon = tok->astOperand2();
+            if (colon->str() != ":")
                 throw InternalError(tok, "Syntax Error: AST broken, ternary operator lacks ':'.", InternalError::AST);
+            if ((colon->astOperand1() && !precedes(colon->astOperand1(), colon)) || !succeeds(colon->astOperand2(), colon))
+                throw InternalError(tok, "AST broken, ternary operator has bad operand(s)", InternalError::AST);
         }
 
         // Check for endless recursion
