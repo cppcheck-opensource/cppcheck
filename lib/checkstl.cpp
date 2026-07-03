@@ -3379,6 +3379,258 @@ void CheckStlImpl::eraseIteratorOutOfBounds()
     }
 }
 
+namespace {
+    // An iterator position described by the ValueFlow values attached to the iterator expression
+    struct IteratorPosition {
+        const ValueFlow::Value* value = nullptr;     // ITERATOR_START or ITERATOR_END value
+        const ValueFlow::Value* sizeValue = nullptr; // container size value with the same path, if available
+        bool fromEnd() const {
+            return value->isIteratorEndValue();
+        }
+        explicit operator bool() const {
+            return value != nullptr;
+        }
+    };
+
+    // A number of elements together with the ValueFlow values it was derived from
+    struct ElementCount {
+        MathLib::bigint count = 0;
+        std::vector<const ValueFlow::Value*> values;
+        explicit operator bool() const {
+            return !values.empty();
+        }
+    };
+}
+
+static bool isUsableValue(const ValueFlow::Value& value, const Settings& settings)
+{
+    if (value.isImpossible())
+        return false;
+    if (value.isInconclusive() && !settings.certainty.isEnabled(Certainty::inconclusive))
+        return false;
+    return true;
+}
+
+// Get the iterator value of an iterator expression together with the container size value that
+// ValueFlow has added to the iterator
+static IteratorPosition getIteratorPosition(const Token* tok, const Settings& settings)
+{
+    IteratorPosition position;
+    if (!tok)
+        return position;
+    for (const ValueFlow::Value& value : tok->values()) {
+        if (!isUsableValue(value, settings) || !value.isIteratorValue())
+            continue;
+        if (position.value && !(value.isKnown() && !position.value->isKnown()))
+            continue;
+        position.value = &value;
+    }
+    if (!position.value)
+        return position;
+    for (const ValueFlow::Value& value : tok->values()) {
+        if (!isUsableValue(value, settings) || !value.isContainerSizeValue() || value.path != position.value->path)
+            continue;
+        if (position.sizeValue && !(value.isKnown() && !position.sizeValue->isKnown()))
+            continue;
+        position.sizeValue = &value;
+    }
+    return position;
+}
+
+// Compute the distance last-first between two iterators into the same container
+static ElementCount getIteratorDistance(const IteratorPosition& first, const IteratorPosition& last)
+{
+    ElementCount distance;
+    if (first.value->path != last.value->path)
+        return distance;
+    // bounded values could make the distance an overestimate
+    if (first.value->bound != ValueFlow::Value::Bound::Point || last.value->bound != ValueFlow::Value::Bound::Point)
+        return distance;
+    if (first.fromEnd() == last.fromEnd()) { // the container size cancels out
+        distance.count = last.value->intvalue - first.value->intvalue;
+        distance.values = { first.value, last.value };
+        return distance;
+    }
+    const IteratorPosition& endPosition = first.fromEnd() ? first : last;
+    if (!endPosition.sizeValue || endPosition.sizeValue->bound != ValueFlow::Value::Bound::Point)
+        return distance;
+    const MathLib::bigint endIndex = endPosition.sizeValue->intvalue + endPosition.value->intvalue;
+    distance.count = last.fromEnd() ? endIndex - first.value->intvalue : last.value->intvalue - endIndex;
+    distance.values = { first.value, last.value, endPosition.sizeValue };
+    return distance;
+}
+
+// Compute the number of elements available in the container behind the iterator position
+static ElementCount getAvailableSpace(const IteratorPosition& position)
+{
+    ElementCount available;
+    // the position could be smaller, which would make more elements available
+    if (position.value->bound == ValueFlow::Value::Bound::Upper)
+        return available;
+    if (position.fromEnd()) { // the container size cancels out
+        available.count = -position.value->intvalue;
+        available.values = { position.value };
+        return available;
+    }
+    // the container size could be larger, which would make more elements available
+    if (!position.sizeValue || position.sizeValue->bound == ValueFlow::Value::Bound::Lower)
+        return available;
+    available.count = position.sizeValue->intvalue - position.value->intvalue;
+    available.values = { position.value, position.sizeValue };
+    return available;
+}
+
+// Get the number of accessed elements of a count-based algorithm such as std::fill_n
+static const ValueFlow::Value* getCountValue(const Token* tok, const Settings& settings)
+{
+    if (!tok)
+        return nullptr;
+    const ValueFlow::Value* countValue = nullptr;
+    for (const ValueFlow::Value& value : tok->values()) {
+        if (!isUsableValue(value, settings) || !value.isIntValue())
+            continue;
+        // the count could be smaller, which would make fewer elements accessed
+        if (value.bound == ValueFlow::Value::Bound::Upper)
+            continue;
+        if (countValue && !(value.isKnown() && !countValue->isKnown()))
+            continue;
+        countValue = &value;
+    }
+    return countValue;
+}
+
+void CheckStlImpl::algorithmOutOfBounds()
+{
+    logChecker("CheckStl::algorithmOutOfBounds");
+    for (const Scope *function : mTokenizer->getSymbolDatabase()->functionScopes) {
+        for (const Token *tok = function->bodyStart; tok != function->bodyEnd; tok = tok->next()) {
+            if (!Token::Match(tok, "std :: %name% ("))
+                continue;
+            const Token* const nameTok = tok->tokAt(2);
+            // algorithms accessing the range denoted by the third argument exactly last1-first1 times..
+            const bool exact = Token::Match(
+                nameTok,
+                "copy|move|swap_ranges|transform|replace_copy|replace_copy_if|reverse_copy|equal|mismatch|is_permutation|partial_sum|adjacent_difference|inner_product (");
+            // ..or at most last1-first1 times, depending on the values in the input range..
+            const bool atMost = Token::Match(nameTok, "copy_if|remove_copy|remove_copy_if|unique_copy (");
+            // ..or accessing their iterator arguments as many times as the count argument says
+            const bool countBased = Token::Match(nameTok, "copy_n|fill_n|generate_n (");
+            if (!exact && !atMost && !countBased)
+                continue;
+            if (atMost && !mSettings.certainty.isEnabled(Certainty::inconclusive))
+                continue;
+            const std::vector<const Token*> args = getArguments(nameTok);
+            if (args.size() < 3)
+                continue;
+            ElementCount accessed;
+            std::vector<std::size_t> iterArgs;
+            if (countBased) {
+                const ValueFlow::Value* countValue = getCountValue(args[1], mSettings);
+                if (!countValue)
+                    continue;
+                accessed.count = countValue->intvalue;
+                accessed.values.push_back(countValue);
+                iterArgs.push_back(0);
+                if (Token::simpleMatch(nameTok, "copy_n"))
+                    iterArgs.push_back(2); // copy_n also writes through the third argument
+            } else {
+                // two-range overloads taking a last2 iterator do not access the second range out of bounds
+                if (Token::Match(nameTok, "equal|mismatch|is_permutation") && args.size() >= 4 && astIsIterator(args[3]))
+                    continue;
+                const IteratorPosition first = getIteratorPosition(args[0], mSettings);
+                if (!first)
+                    continue;
+                const IteratorPosition last = getIteratorPosition(args[1], mSettings);
+                if (!last)
+                    continue;
+                // both iterators must refer to the same container
+                const ValueFlow::Value firstLifetime = getLifetimeIteratorValue(args[0]);
+                const ValueFlow::Value lastLifetime = getLifetimeIteratorValue(args[1]);
+                if (!firstLifetime.tokvalue || !lastLifetime.tokvalue)
+                    continue;
+                if (!isSameExpression(false, firstLifetime.tokvalue, lastLifetime.tokvalue, mSettings, false, false))
+                    continue;
+                accessed = getIteratorDistance(first, last);
+                if (!accessed)
+                    continue;
+                iterArgs.push_back(2);
+                if (Token::simpleMatch(nameTok, "transform") && args.size() == 5)
+                    iterArgs.push_back(3); // binary transform also writes through the fourth argument
+            }
+            if (accessed.count <= 0)
+                continue;
+            for (const std::size_t argnr : iterArgs) {
+                const IteratorPosition dest = getIteratorPosition(args[argnr], mSettings);
+                if (!dest)
+                    continue;
+                const MathLib::bigint sourcePath = accessed.values.front()->path;
+                if (dest.value->path != 0 && sourcePath != 0 && dest.value->path != sourcePath)
+                    continue;
+                const ElementCount available = getAvailableSpace(dest);
+                if (!available)
+                    continue;
+                if (available.count < 0 || accessed.count <= available.count)
+                    continue;
+                const auto isPossible = [](const ValueFlow::Value* value) {
+                    return value->isPossible();
+                };
+                // do not warn when the values on both sides are only possible
+                if (std::any_of(accessed.values.cbegin(), accessed.values.cend(), isPossible) &&
+                    std::any_of(available.values.cbegin(), available.values.cend(), isPossible))
+                    continue;
+                const ValueFlow::Value* conditionValue = nullptr;
+                bool inconclusiveValues = false;
+                std::vector<const ValueFlow::Value*> usedValues = accessed.values;
+                usedValues.insert(usedValues.end(), available.values.cbegin(), available.values.cend());
+                for (const ValueFlow::Value* value : usedValues) {
+                    if (!conditionValue && value->condition)
+                        conditionValue = value;
+                    inconclusiveValues |= value->isInconclusive();
+                }
+                if (conditionValue && !mSettings.severity.isEnabled(Severity::warning))
+                    continue;
+                const ValueFlow::Value* pathValue =
+                    conditionValue ? conditionValue : (dest.sizeValue ? dest.sizeValue : dest.value);
+                algorithmOutOfBoundsError(args[argnr],
+                                          "std::" + nameTok->str(),
+                                          args[argnr]->expressionString(),
+                                          accessed.count,
+                                          available.count,
+                                          pathValue,
+                                          conditionValue ? conditionValue->condition : nullptr,
+                                          atMost,
+                                          atMost || inconclusiveValues);
+            }
+        }
+    }
+}
+
+void CheckStlImpl::algorithmOutOfBoundsError(const Token* tok,
+                                             const std::string& algoName,
+                                             const std::string& iterExpr,
+                                             MathLib::bigint accessed,
+                                             MathLib::bigint available,
+                                             const ValueFlow::Value* value,
+                                             const Token* condition,
+                                             bool mayAccessFewer,
+                                             bool inconclusive)
+{
+    const std::string accessedStr = MathLib::toString(accessed) + (accessed == 1 ? " element" : " elements");
+    const std::string availableStr = MathLib::toString(available) + (available == 1 ? " element is" : " elements are");
+    const std::string body = "algorithm '" + algoName + "' " + (mayAccessFewer ? "may access up to " : "accesses ") +
+                             accessedStr + " through the iterator '" + iterExpr + "' but only " + availableStr +
+                             " available.";
+    const std::string msg =
+        condition ? (ValueFlow::eitherTheConditionIsRedundant(condition) + " or the " + body) : ("The " + body);
+    ErrorPath errorPath = getErrorPath(tok, value, "Access out of bounds");
+    reportError(std::move(errorPath),
+                (condition || mayAccessFewer) ? Severity::warning : Severity::error,
+                "algorithmOutOfBounds",
+                msg,
+                CWE788,
+                inconclusive ? Certainty::inconclusive : Certainty::normal);
+}
+
 static bool isMutex(const Variable* var)
 {
     const Token* tok = Token::typeDecl(var->nameToken()).first;
@@ -3478,6 +3730,7 @@ void CheckStl::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
     checkStl.mismatchingContainerIterator();
     checkStl.knownEmptyContainer();
     checkStl.eraseIteratorOutOfBounds();
+    checkStl.algorithmOutOfBounds();
 
     checkStl.stlBoundaries();
     checkStl.checkDereferenceInvalidIterator();
@@ -3529,6 +3782,7 @@ void CheckStl::getErrorMessages(ErrorLogger& errorLogger, const Settings& settin
     c.dereferenceInvalidIteratorError(nullptr, "i");
     // TODO: derefInvalidIteratorRedundantCheck
     c.eraseIteratorOutOfBoundsError(nullptr, nullptr);
+    c.algorithmOutOfBoundsError(nullptr, "std::copy", "it", 10, 6, nullptr, nullptr, false, false);
     c.useStlAlgorithmError(nullptr, "");
     c.knownEmptyContainerError(nullptr, "");
     c.globalLockGuardError(nullptr);

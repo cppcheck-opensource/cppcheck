@@ -3850,6 +3850,15 @@ static void valueFlowForwardConst(Token* start,
                 setTokenValue(tok, value, settings);
         } else {
             [&] {
+                // Add the container size to iterators of the container
+                if (astIsIterator(tok) && isAliasOf(tok, var->declarationId())) {
+                    for (const ValueFlow::Value& value : values) {
+                        if (!value.isContainerSizeValue())
+                            continue;
+                        setTokenValue(tok, value, settings);
+                    }
+                    return;
+                }
                 // Follow references
                 const auto& refs = tok->refs();
                 auto it = std::find_if(refs.cbegin(), refs.cend(), [&](const ReferenceToken& ref) {
