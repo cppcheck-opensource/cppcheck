@@ -5860,6 +5860,26 @@ private:
         ASSERT_EQUALS("[test.cpp:7:20] -> [test.cpp:9:12]: (error) The address of variable 's.a' is accessed at non-zero index. [objectIndex]\n"
                       "[test.cpp:7:20] -> [test.cpp:10:12]: (error) The address of variable 's.a' is accessed at non-zero index. [objectIndex]\n",
                       errout_str());
+
+        check("const int N = 12;\n" // #14887
+              "struct S {\n"
+              "    void f() const;\n"
+              "    int a[N];\n"
+              "};\n"
+              "struct T {\n"
+              "    void f() const;\n"
+              "    S s;\n"
+              "};\n"
+              "int g(const int* p) { return p[5]; }\n"
+              "void S::f() const {\n"
+              "    const int* q = a;\n"
+              "    g(q);\n"
+              "}\n"
+              "void T::f() const {\n"
+              "    const int* q = s.a;\n"
+              "    g(q);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void checkPipeParameterSize() { // #3521
