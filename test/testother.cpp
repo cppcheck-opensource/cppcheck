@@ -3914,7 +3914,9 @@ private:
               "    (void)(true);\n"
               "    if (r) {}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:1:13]: (style) Parameter 'r' can be declared as reference to const [constParameterReference]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:5]: (warning) Redundant code: Found a statement that begins with bool constant. [constStatement]\n"
+                      "[test.cpp:1:13]: (style) Parameter 'r' can be declared as reference to const [constParameterReference]\n",
+                      errout_str());
 
         check("struct S { void f(int&); };\n" // #12216
               "void g(S& s, int& r, void (S::* p2m)(int&)) {\n"
@@ -7012,7 +7014,8 @@ private:
               "    std::pair<int, int>(1, 2);\n"
               "    (void)0;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:10]: (style) Instance of 'std::string' object is destroyed immediately. [unusedScopedObject]\n"
+        ASSERT_EQUALS("[test.cpp:5:5]: (warning) Redundant code: Found a statement that begins with numeric constant. [constStatement]\n"
+                      "[test.cpp:2:10]: (style) Instance of 'std::string' object is destroyed immediately. [unusedScopedObject]\n"
                       "[test.cpp:3:10]: (style) Instance of 'std::string' object is destroyed immediately. [unusedScopedObject]\n"
                       "[test.cpp:4:10]: (style) Instance of 'std::pair' object is destroyed immediately. [unusedScopedObject]\n",
                       errout_str());
