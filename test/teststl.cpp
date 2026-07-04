@@ -2674,6 +2674,48 @@ private:
               "    std::fill_n(v.begin(), n, 0);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        // all container size values are checked, not only the first one
+        check("void f(bool b) {\n"
+              "    const std::vector<int> v0{1,2,3,4,5};\n"
+              "    std::vector<int> v1;\n"
+              "    if (b)\n"
+              "        v1.resize(3);\n"
+              "    else\n"
+              "        v1.resize(10);\n"
+              "    std::copy(v0.begin(), v0.end(), v1.begin());\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:8:45]: (error) The algorithm 'std::copy' accesses 5 elements through the iterator 'v1.begin()' but only 3 elements are available. [algorithmOutOfBounds]\n",
+                      errout_str());
+
+        check("void f(bool b) {\n"
+              "    const std::vector<int> v0{1,2,3,4,5};\n"
+              "    std::vector<int> v1;\n"
+              "    if (b)\n"
+              "        v1.resize(5);\n"
+              "    else\n"
+              "        v1.resize(10);\n"
+              "    std::copy(v0.begin(), v0.end(), v1.begin());\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // all iterator position values are checked as well
+        check("void f(bool b) {\n"
+              "    const std::vector<int> v0{1,2,3,4};\n"
+              "    std::vector<int> v1(5);\n"
+              "    auto it = b ? v1.begin() : v1.begin() + 3;\n"
+              "    std::copy(v0.begin(), v0.end(), it);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:37]: (error) The algorithm 'std::copy' accesses 4 elements through the iterator 'it' but only 2 elements are available. [algorithmOutOfBounds]\n",
+                      errout_str());
+
+        // do not combine possible values on both sides
+        check("void f(bool b, std::vector<int>& v0, std::vector<int>& v1) {\n"
+              "    if (b) v0.resize(5); else v0.resize(2);\n"
+              "    if (b) v1.resize(3); else v1.resize(10);\n"
+              "    std::copy(v0.begin(), v0.end(), v1.begin());\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     // Dereferencing invalid pointer

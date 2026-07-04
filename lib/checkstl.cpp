@@ -3478,6 +3478,54 @@ static ElementCount getAvailableSpace(const IteratorPosition& position)
     return available;
 }
 
+static bool isPossibleValue(const ValueFlow::Value* value)
+{
+    return value->isPossible();
+}
+
+// Find iterator values and paired container sizes of the iterator that prove accessing <accessed>
+// elements to be out of bounds, preferring a proof that does not rely on possible values
+static ElementCount findInsufficientSpace(const Token* tok,
+                                          MathLib::bigint accessed,
+                                          MathLib::bigint sourcePath,
+                                          const Settings& settings)
+{
+    ElementCount best;
+    bool bestIsCertain = false;
+    if (!tok)
+        return best;
+    const auto consider = [&](const ElementCount& candidate) {
+        if (!candidate)
+            return;
+        if (candidate.count < 0 || accessed <= candidate.count)
+            return; // the space is sufficient
+        const bool certain = std::none_of(candidate.values.cbegin(), candidate.values.cend(), isPossibleValue);
+        if (best && (bestIsCertain || !certain))
+            return;
+        best = candidate;
+        bestIsCertain = certain;
+    };
+    for (const ValueFlow::Value& value : tok->values()) {
+        if (!isUsableValue(value, settings) || !value.isIteratorValue())
+            continue;
+        if (value.path != 0 && sourcePath != 0 && value.path != sourcePath)
+            continue;
+        IteratorPosition position;
+        position.value = &value;
+        if (position.fromEnd()) { // the available space does not depend on the container size
+            consider(getAvailableSpace(position));
+            continue;
+        }
+        for (const ValueFlow::Value& sizeValue : tok->values()) {
+            if (!isUsableValue(sizeValue, settings) || !sizeValue.isContainerSizeValue() || sizeValue.path != value.path)
+                continue;
+            position.sizeValue = &sizeValue;
+            consider(getAvailableSpace(position));
+        }
+    }
+    return best;
+}
+
 // Get the number of accessed elements of a count-based algorithm such as std::fill_n
 static const ValueFlow::Value* getCountValue(const Token* tok, const Settings& settings)
 {
@@ -3550,24 +3598,14 @@ void CheckStlImpl::algorithmOutOfBounds()
             }
             if (accessed.count <= 0)
                 continue;
+            const MathLib::bigint sourcePath = accessed.values.front()->path;
             for (const std::size_t argnr : iterArgs) {
-                const IteratorPosition dest = getIteratorPosition(args[argnr], mSettings);
-                if (!dest)
-                    continue;
-                const MathLib::bigint sourcePath = accessed.values.front()->path;
-                if (dest.value->path != 0 && sourcePath != 0 && dest.value->path != sourcePath)
-                    continue;
-                const ElementCount available = getAvailableSpace(dest);
+                const ElementCount available = findInsufficientSpace(args[argnr], accessed.count, sourcePath, mSettings);
                 if (!available)
                     continue;
-                if (available.count < 0 || accessed.count <= available.count)
-                    continue;
-                const auto isPossible = [](const ValueFlow::Value* value) {
-                    return value->isPossible();
-                };
                 // do not warn when the values on both sides are only possible
-                if (std::any_of(accessed.values.cbegin(), accessed.values.cend(), isPossible) &&
-                    std::any_of(available.values.cbegin(), available.values.cend(), isPossible))
+                if (std::any_of(accessed.values.cbegin(), accessed.values.cend(), isPossibleValue) &&
+                    std::any_of(available.values.cbegin(), available.values.cend(), isPossibleValue))
                     continue;
                 const ValueFlow::Value* conditionValue = nullptr;
                 bool inconclusiveValues = false;
@@ -3580,8 +3618,7 @@ void CheckStlImpl::algorithmOutOfBounds()
                 }
                 if (conditionValue && !mSettings.severity.isEnabled(Severity::warning))
                     continue;
-                const ValueFlow::Value* pathValue =
-                    conditionValue ? conditionValue : (dest.sizeValue ? dest.sizeValue : dest.value);
+                const ValueFlow::Value* pathValue = conditionValue ? conditionValue : available.values.back();
                 algorithmOutOfBoundsError(args[argnr],
                                           "std::" + nameTok->str(),
                                           accessed.count,
