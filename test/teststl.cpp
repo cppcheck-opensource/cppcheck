@@ -2420,14 +2420,16 @@ private:
                       errout_str());
     }
 
-    void algorithmOutOfBounds() {
+    void algorithmOutOfBounds()
+    {
         check("void f() {\n"
               "    const std::deque<int> d0{1,2,3,4,5,6,7,8,9,10};\n"
               "    const std::deque<int> d1{1,2,3,4,5,6};\n"
               "    if(std::equal(d0.cbegin(), d0.cend(), d1.cbegin())) {}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:4:52]: (error) The algorithm 'std::equal' accesses 10 elements through the iterator 'd1.cbegin()' but only 6 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:4:52]: (error) The algorithm 'std::equal' accesses 10 elements through the iterator 'd1.cbegin()' but only 6 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         check("void f() {\n"
               "    const std::deque<int> d0{1,2,3,4,5,6};\n"
@@ -2449,8 +2451,9 @@ private:
               "    std::vector<int> v1(3);\n"
               "    std::copy(v0.begin(), v0.end(), v1.begin());\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:4:45]: (error) The algorithm 'std::copy' accesses 5 elements through the iterator 'v1.begin()' but only 3 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:4:45]: (error) The algorithm 'std::copy' accesses 5 elements through the iterator 'v1.begin()' but only 3 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         check("void f() {\n"
               "    const std::vector<int> v0{1,2,3,4,5};\n"
@@ -2466,8 +2469,9 @@ private:
               "    std::copy(v0.begin(), v0.end(), v1.begin() + 3);\n"
               "    std::copy(v0.begin() + 3, v0.end(), v1.begin());\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:4:48]: (error) The algorithm 'std::copy' accesses 5 elements through the iterator 'v1.begin()+3' but only 3 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:4:48]: (error) The algorithm 'std::copy' accesses 5 elements through the iterator 'v1.begin()+3' but only 3 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         // don't warn when using iterator adaptors
         check("void f() {\n"
@@ -2492,16 +2496,18 @@ private:
               "    std::copy_if(v0.begin(), v0.end(), v1.begin(), [](int i) { return i != 3; });\n"
               "}\n",
               dinit(CheckOptions, $.inconclusive = true));
-        ASSERT_EQUALS("[test.cpp:4:48]: (warning, inconclusive) The algorithm 'std::copy_if' may access up to 5 elements through the iterator 'v1.begin()' but only 3 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:4:48]: (warning, inconclusive) The algorithm 'std::copy_if' may access up to 5 elements through the iterator 'v1.begin()' but only 3 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         check("void f() {\n"
               "    const std::vector<int> v0{1,2,3,4,5};\n"
               "    std::vector<int> v1(3);\n"
               "    std::transform(v0.begin(), v0.end(), v1.begin(), [](int i) { return i * 2; });\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:4:50]: (error) The algorithm 'std::transform' accesses 5 elements through the iterator 'v1.begin()' but only 3 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:4:50]: (error) The algorithm 'std::transform' accesses 5 elements through the iterator 'v1.begin()' but only 3 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         // binary transform reads the third argument and writes the fourth argument
         check("void f() {\n"
@@ -2510,8 +2516,9 @@ private:
               "    std::vector<int> v2(5);\n"
               "    std::transform(v0.begin(), v0.end(), v1.begin(), v2.begin(), [](int a, int b) { return a + b; });\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:5:50]: (error) The algorithm 'std::transform' accesses 5 elements through the iterator 'v1.begin()' but only 3 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:5:50]: (error) The algorithm 'std::transform' accesses 5 elements through the iterator 'v1.begin()' but only 3 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         check("void f() {\n"
               "    const std::vector<int> v0{1,2,3,4,5};\n"
@@ -2519,8 +2526,9 @@ private:
               "    std::vector<int> v2(3);\n"
               "    std::transform(v0.begin(), v0.end(), v1.begin(), v2.begin(), [](int a, int b) { return a + b; });\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:5:62]: (error) The algorithm 'std::transform' accesses 5 elements through the iterator 'v2.begin()' but only 3 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:5:62]: (error) The algorithm 'std::transform' accesses 5 elements through the iterator 'v2.begin()' but only 3 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         // copying a range within the same container
         check("void f() {\n"
@@ -2528,8 +2536,9 @@ private:
               "    std::copy(v.begin(), v.begin() + 3, v.begin() + 7);\n"
               "    std::copy(v.begin(), v.begin() + 4, v.begin() + 7);\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:4:51]: (error) The algorithm 'std::copy' accesses 4 elements through the iterator 'v.begin()+7' but only 3 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:4:51]: (error) The algorithm 'std::copy' accesses 4 elements through the iterator 'v.begin()+7' but only 3 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         // unknown container sizes
         check("void f(const std::vector<int>& v0, std::vector<int>& v1) {\n"
@@ -2554,8 +2563,9 @@ private:
               "    auto it = v1.begin();\n"
               "    std::copy(v0.begin(), v0.end(), it);\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:5:37]: (error) The algorithm 'std::copy' accesses 5 elements through the iterator 'it' but only 3 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:5:37]: (error) The algorithm 'std::copy' accesses 5 elements through the iterator 'it' but only 3 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         // ..and the size is the size at the call, not at the creation of the iterator
         check("void f() {\n"
@@ -2565,8 +2575,9 @@ private:
               "    l1.resize(3);\n"
               "    std::copy(v0.begin(), v0.end(), it);\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:6:37]: (error) The algorithm 'std::copy' accesses 5 elements through the iterator 'it' but only 3 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:6:37]: (error) The algorithm 'std::copy' accesses 5 elements through the iterator 'it' but only 3 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         // conditional container size
         check("void f(std::vector<int>& v) {\n"
@@ -2574,16 +2585,18 @@ private:
               "    if (v.size() == 3)\n"
               "        std::copy(v0.begin(), v0.end(), v.begin());\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:3:18] -> [test.cpp:4:48]: (warning) Either the condition 'v.size()==3' is redundant or the algorithm 'std::copy' accesses 5 elements through the iterator 'v.begin()' but only 3 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:3:18] -> [test.cpp:4:48]: (warning) Either the condition 'v.size()==3' is redundant or the algorithm 'std::copy' accesses 5 elements through the iterator 'v.begin()' but only 3 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         check("void f(std::vector<int>& v) {\n"
               "    const std::vector<int> v0{1,2,3,4,5};\n"
               "    if (v.size() < 5)\n"
               "        std::copy(v0.begin(), v0.end(), v.begin());\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:3:18] -> [test.cpp:4:48]: (warning) Either the condition 'v.size()<5' is redundant or the algorithm 'std::copy' accesses 5 elements through the iterator 'v.begin()' but only 4 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:3:18] -> [test.cpp:4:48]: (warning) Either the condition 'v.size()<5' is redundant or the algorithm 'std::copy' accesses 5 elements through the iterator 'v.begin()' but only 4 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         check("void f(std::vector<int>& v) {\n"
               "    const std::vector<int> v0{1,2,3,4,5};\n"
@@ -2598,16 +2611,18 @@ private:
               "    std::vector<int> v1(10);\n"
               "    std::copy(v0.begin(), v0.end(), v1.end());\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:4:43]: (error) The algorithm 'std::copy' accesses 3 elements through the iterator 'v1.end()' but only 0 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:4:43]: (error) The algorithm 'std::copy' accesses 3 elements through the iterator 'v1.end()' but only 0 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         // the source range is known even when the container size is not
         check("void f(const std::vector<int>& v) {\n"
               "    std::vector<int> v1(3);\n"
               "    std::copy(v.begin(), v.begin() + 5, v1.begin());\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:3:49]: (error) The algorithm 'std::copy' accesses 5 elements through the iterator 'v1.begin()' but only 3 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:3:49]: (error) The algorithm 'std::copy' accesses 5 elements through the iterator 'v1.begin()' but only 3 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         // count-based algorithms access both iterator arguments <count> times
         check("void f() {\n"
@@ -2615,16 +2630,18 @@ private:
               "    std::vector<int> v1(3);\n"
               "    std::copy_n(v0.begin(), 5, v1.begin());\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:4:40]: (error) The algorithm 'std::copy_n' accesses 5 elements through the iterator 'v1.begin()' but only 3 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:4:40]: (error) The algorithm 'std::copy_n' accesses 5 elements through the iterator 'v1.begin()' but only 3 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         check("void f() {\n"
               "    const std::vector<int> v0{1,2,3,4,5};\n"
               "    std::vector<int> v1(10);\n"
               "    std::copy_n(v0.begin(), 10, v1.begin());\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:4:25]: (error) The algorithm 'std::copy_n' accesses 10 elements through the iterator 'v0.begin()' but only 5 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:4:25]: (error) The algorithm 'std::copy_n' accesses 10 elements through the iterator 'v0.begin()' but only 5 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         check("void f() {\n"
               "    const std::vector<int> v0{1,2,3,4,5};\n"
@@ -2639,9 +2656,10 @@ private:
               "    std::fill_n(v.begin() + 3, 3, 0);\n"
               "    std::fill_n(v.begin(), 5, 0);\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:3:24]: (error) The algorithm 'std::fill_n' accesses 10 elements through the iterator 'v.begin()' but only 5 elements are available. [algorithmOutOfBounds]\n"
-                      "[test.cpp:4:27]: (error) The algorithm 'std::fill_n' accesses 3 elements through the iterator 'v.begin()+3' but only 2 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:3:24]: (error) The algorithm 'std::fill_n' accesses 10 elements through the iterator 'v.begin()' but only 5 elements are available. [algorithmOutOfBounds]\n"
+            "[test.cpp:4:27]: (error) The algorithm 'std::fill_n' accesses 3 elements through the iterator 'v.begin()+3' but only 2 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         check("void f() {\n"
               "    std::vector<int> v;\n"
@@ -2653,16 +2671,18 @@ private:
               "    std::vector<int> v(5);\n"
               "    std::generate_n(v.begin(), 6, [] { return 1; });\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:3:28]: (error) The algorithm 'std::generate_n' accesses 6 elements through the iterator 'v.begin()' but only 5 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:3:28]: (error) The algorithm 'std::generate_n' accesses 6 elements through the iterator 'v.begin()' but only 5 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         // conditional count
         check("void f(std::vector<int>& v, int n) {\n"
               "    if (v.size() == 5 && n > 5)\n"
               "        std::fill_n(v.begin(), n, 0);\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:28] -> [test.cpp:3:28]: (warning) Either the condition 'n>5' is redundant or the algorithm 'std::fill_n' accesses 6 elements through the iterator 'v.begin()' but only 5 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:2:28] -> [test.cpp:3:28]: (warning) Either the condition 'n>5' is redundant or the algorithm 'std::fill_n' accesses 6 elements through the iterator 'v.begin()' but only 5 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         // an upper bound of the count cannot tell whether the access is out of bounds
         check("void f(int n) {\n"
@@ -2696,8 +2716,9 @@ private:
               "        v1.resize(10);\n"
               "    std::copy(v0.begin(), v0.end(), v1.begin());\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:8:45]: (error) The algorithm 'std::copy' accesses 5 elements through the iterator 'v1.begin()' but only 3 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:8:45]: (error) The algorithm 'std::copy' accesses 5 elements through the iterator 'v1.begin()' but only 3 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         check("void f(bool b) {\n"
               "    const std::vector<int> v0{1,2,3,4,5};\n"
@@ -2717,8 +2738,9 @@ private:
               "    auto it = b ? v1.begin() : v1.begin() + 3;\n"
               "    std::copy(v0.begin(), v0.end(), it);\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:5:37]: (error) The algorithm 'std::copy' accesses 4 elements through the iterator 'it' but only 2 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:5:37]: (error) The algorithm 'std::copy' accesses 4 elements through the iterator 'it' but only 2 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         // do not combine possible values on both sides
         check("void f(bool b, std::vector<int>& v0, std::vector<int>& v1) {\n"
@@ -2738,8 +2760,9 @@ private:
               "    std::vector<int> v1(5);\n"
               "    std::copy(v0.begin(), v0.end(), v1.begin());\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:8:45]: (error) The algorithm 'std::copy' accesses 10 elements through the iterator 'v1.begin()' but only 5 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:8:45]: (error) The algorithm 'std::copy' accesses 10 elements through the iterator 'v1.begin()' but only 5 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         check("void f(bool b) {\n"
               "    std::vector<int> v0;\n"
@@ -2758,8 +2781,9 @@ private:
               "    const int n = b ? 3 : 10;\n"
               "    std::fill_n(v.begin(), n, 0);\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:4:24]: (error) The algorithm 'std::fill_n' accesses 10 elements through the iterator 'v.begin()' but only 5 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:4:24]: (error) The algorithm 'std::fill_n' accesses 10 elements through the iterator 'v.begin()' but only 5 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
     }
 
     // Dereferencing invalid pointer
@@ -7388,9 +7412,10 @@ private:
               "    std::copy(v1.begin(), v1.end(), v2.begin());\n"
               "}\n",
               dinit(CheckOptions, $.inconclusive = true));
-        ASSERT_EQUALS("[test.cpp:4:45]: (style) Using copy with iterator 'v2.begin()' that is always empty. [knownEmptyContainer]\n"
-                      "[test.cpp:4:45]: (error) The algorithm 'std::copy' accesses 2 elements through the iterator 'v2.begin()' but only 0 elements are available. [algorithmOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:4:45]: (style) Using copy with iterator 'v2.begin()' that is always empty. [knownEmptyContainer]\n"
+            "[test.cpp:4:45]: (error) The algorithm 'std::copy' accesses 2 elements through the iterator 'v2.begin()' but only 0 elements are available. [algorithmOutOfBounds]\n",
+            errout_str());
 
         check("void f() {\n"
               "    std::vector<int> v;\n"

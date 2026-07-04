@@ -2503,10 +2503,12 @@ void CheckStlImpl::checkDereferenceInvalidIterator2()
             continue;
 
         std::vector<ValueFlow::Value> contValues;
-        std::copy_if(tok->values().cbegin(), tok->values().cend(), std::back_inserter(contValues), [&](const ValueFlow::Value& value) {
+        std::copy_if(tok->values().cbegin(),
+                     tok->values().cend(),
+                     std::back_inserter(contValues),
+                     [&](const ValueFlow::Value& value) {
             return isUsableValue(value, mSettings) && value.isContainerSizeValue();
         });
-
 
         // Can iterator point to END or before START?
         for (const ValueFlow::Value& value:tok->values()) {
@@ -3381,9 +3383,9 @@ void CheckStlImpl::eraseIteratorOutOfBounds()
 }
 
 namespace {
-    // An iterator position described by the ValueFlow values attached to the iterator expression
+// An iterator position described by the ValueFlow values attached to the iterator expression
     struct IteratorPosition {
-        const ValueFlow::Value* value = nullptr;     // ITERATOR_START or ITERATOR_END value
+        const ValueFlow::Value* value = nullptr; // ITERATOR_START or ITERATOR_END value
         const ValueFlow::Value* sizeValue = nullptr; // container size value with the same path, if available
         bool fromEnd() const {
             return value->isIteratorEndValue();
@@ -3393,7 +3395,7 @@ namespace {
         }
     };
 
-    // A number of elements together with the ValueFlow values it was derived from
+// A number of elements together with the ValueFlow values it was derived from
     struct ElementCount {
         MathLib::bigint count = 0;
         std::vector<const ValueFlow::Value*> values;
@@ -3402,21 +3404,21 @@ namespace {
         }
     };
 
-    // The best candidate proving an out of bounds access, preferring proofs without possible values
+// The best candidate proving an out of bounds access, preferring proofs without possible values
     struct BestCandidate {
         ElementCount best;
         bool certain = false;
-        void consider(const ElementCount& candidate) {
-            const bool candidateCertain = std::none_of(candidate.values.cbegin(),
-                                                       candidate.values.cend(),
-                                                       std::mem_fn(&ValueFlow::Value::isPossible));
+        void consider(const ElementCount& candidate)
+        {
+            const bool candidateCertain =
+                std::none_of(candidate.values.cbegin(), candidate.values.cend(), std::mem_fn(&ValueFlow::Value::isPossible));
             if (best && (certain || !candidateCertain))
                 return;
             best = candidate;
             certain = candidateCertain;
         }
     };
-}
+} // namespace
 
 // Get the first ValueFlow value of a token matching the predicate, preferring known values
 template<class Predicate>
@@ -3462,7 +3464,7 @@ static ElementCount getIteratorDistance(const IteratorPosition& first, const Ite
         return distance;
     if (first.fromEnd() == last.fromEnd()) { // the container size cancels out
         distance.count = last.value->intvalue - first.value->intvalue;
-        distance.values = { first.value, last.value };
+        distance.values = {first.value, last.value};
         return distance;
     }
     const IteratorPosition& endPosition = first.fromEnd() ? first : last;
@@ -3470,7 +3472,7 @@ static ElementCount getIteratorDistance(const IteratorPosition& first, const Ite
         return distance;
     const MathLib::bigint endIndex = endPosition.sizeValue->intvalue + endPosition.value->intvalue;
     distance.count = last.fromEnd() ? endIndex - first.value->intvalue : last.value->intvalue - endIndex;
-    distance.values = { first.value, last.value, endPosition.sizeValue };
+    distance.values = {first.value, last.value, endPosition.sizeValue};
     return distance;
 }
 
@@ -3483,14 +3485,14 @@ static ElementCount getAvailableSpace(const IteratorPosition& position)
         return available;
     if (position.fromEnd()) { // the container size cancels out
         available.count = -position.value->intvalue;
-        available.values = { position.value };
+        available.values = {position.value};
         return available;
     }
     // the container size could be larger, which would make more elements available
     if (!position.sizeValue || position.sizeValue->bound == ValueFlow::Value::Bound::Lower)
         return available;
     available.count = position.sizeValue->intvalue - position.value->intvalue;
-    available.values = { position.value, position.sizeValue };
+    available.values = {position.value, position.sizeValue};
     return available;
 }
 
@@ -3626,8 +3628,8 @@ static const ValueFlow::Value* getCountValue(const Token* tok, const Settings& s
 void CheckStlImpl::algorithmOutOfBounds()
 {
     logChecker("CheckStl::algorithmOutOfBounds");
-    for (const Scope *function : mTokenizer->getSymbolDatabase()->functionScopes) {
-        for (const Token *tok = function->bodyStart; tok != function->bodyEnd; tok = tok->next()) {
+    for (const Scope* function : mTokenizer->getSymbolDatabase()->functionScopes) {
+        for (const Token* tok = function->bodyStart; tok != function->bodyEnd; tok = tok->next()) {
             if (!Token::Match(tok, "std :: %name% ("))
                 continue;
             const Token* const nameTok = tok->tokAt(2);
@@ -3665,8 +3667,10 @@ void CheckStlImpl::algorithmOutOfBounds()
                 const ValueFlow::Value lastLifetime = getLifetimeIteratorValue(args[1]);
                 if (!firstLifetime.tokvalue || !lastLifetime.tokvalue)
                     continue;
-                if (!isSameIteratorContainerExpression(
-                        firstLifetime.tokvalue, lastLifetime.tokvalue, mSettings, firstLifetime.lifetimeKind))
+                if (!isSameIteratorContainerExpression(firstLifetime.tokvalue,
+                                                       lastLifetime.tokvalue,
+                                                       mSettings,
+                                                       firstLifetime.lifetimeKind))
                     continue;
                 const IteratorPosition first = getIteratorPosition(args[0], mSettings);
                 const IteratorPosition last = getIteratorPosition(args[1], mSettings);
@@ -3677,7 +3681,7 @@ void CheckStlImpl::algorithmOutOfBounds()
                     iterArgs.push_back(args[3]); // binary transform also writes through the fourth argument
             }
             if (accessed.count <= 0)
-                accessed = ElementCount(); // there is no preferred source access count
+                accessed = ElementCount();       // there is no preferred source access count
             for (const Token* const iterArg : iterArgs) {
                 // check the preferred source access count against all destination values..
                 ElementCount sourceCount = accessed;
@@ -3693,9 +3697,10 @@ void CheckStlImpl::algorithmOutOfBounds()
                     available = getAvailableSpace(dest);
                     if (!available || available.count < 0)
                         continue;
-                    sourceCount = countBased
-                                  ? findExcessiveCount(args[1], available.count, dest.value->path, mSettings)
-                                  : findExcessiveDistance(args[0], args[1], available.count, dest.value->path, mSettings);
+                    sourceCount =
+                        countBased
+                            ? findExcessiveCount(args[1], available.count, dest.value->path, mSettings)
+                            : findExcessiveDistance(args[0], args[1], available.count, dest.value->path, mSettings);
                     if (!sourceCount || bothSidesPossible(sourceCount, available))
                         continue;
                 }
