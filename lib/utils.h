@@ -437,7 +437,7 @@ namespace utils {
      * @param t  The function forms the lvalue reference to const type of this argument.
      */
     template<class T>
-// cppcheck-suppress constParameterReference
+// cppcheck-suppress [constParameterReference, unmatchedSuppression]
     constexpr typename std::add_const<T>::type& as_const(T& t) noexcept
     {
         static_assert(!std::is_const<T>::value, "object is already const");
