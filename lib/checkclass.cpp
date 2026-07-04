@@ -2611,7 +2611,7 @@ bool CheckClassImpl::checkConstFunc(const Scope *scope, const Function *func, Me
                     if (const Variable* lhsVar = lhs->previous()->variable()) {
                         if (!lhsVar->isConst() && lhsVar->isReference() && lhs == lhsVar->nameToken()->next())
                             return false;
-                        if (lhsVar->isPointer() && v->isArray() && !(lhsVar->valueType() && lhsVar->valueType()->isConst(/*indirect*/ 1)))
+                        if (lhsVar->isPointer() && (v && v->isArray()) && !(lhsVar->valueType() && lhsVar->valueType()->isConst(/*indirect*/ 1)))
                             return false;
                     }
                 }
