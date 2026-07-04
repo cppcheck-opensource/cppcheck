@@ -248,7 +248,6 @@ public:
                                    MathLib::bigint accessed,
                                    MathLib::bigint available,
                                    const ValueFlow::Value* value,
-                                   const Token* condition,
                                    bool mayAccessFewer,
                                    bool inconclusive);
 

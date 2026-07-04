@@ -3544,7 +3544,7 @@ static ElementCount findExcessiveDistance(const Token* firstTok,
     const auto consider = [&](const ElementCount& candidate) {
         if (!candidate)
             return;
-        if (candidate.count <= 0 || candidate.count <= available)
+        if (candidate.count <= available)
             return; // the access is within bounds
         excessive.consider(candidate);
     };
@@ -3636,9 +3636,9 @@ void CheckStlImpl::algorithmOutOfBounds()
                 nameTok,
                 "copy|move|swap_ranges|transform|replace_copy|replace_copy_if|reverse_copy|equal|mismatch|is_permutation|partial_sum|adjacent_difference|inner_product (");
             // ..or at most last1-first1 times, depending on the values in the input range..
-            const bool atMost = Token::Match(nameTok, "copy_if|remove_copy|remove_copy_if|unique_copy (");
+            const bool atMost = !exact && Token::Match(nameTok, "copy_if|remove_copy|remove_copy_if|unique_copy (");
             // ..or accessing their iterator arguments as many times as the count argument says
-            const bool countBased = Token::Match(nameTok, "copy_n|fill_n|generate_n (");
+            const bool countBased = !exact && !atMost && Token::Match(nameTok, "copy_n|fill_n|generate_n (");
             if (!exact && !atMost && !countBased)
                 continue;
             if (atMost && !mSettings.certainty.isEnabled(Certainty::inconclusive))
@@ -3716,7 +3716,6 @@ void CheckStlImpl::algorithmOutOfBounds()
                                           sourceCount.count,
                                           available.count,
                                           pathValue,
-                                          conditionValue ? conditionValue->condition : nullptr,
                                           atMost,
                                           atMost || inconclusiveValues);
             }
@@ -3729,10 +3728,10 @@ void CheckStlImpl::algorithmOutOfBoundsError(const Token* tok,
                                              MathLib::bigint accessed,
                                              MathLib::bigint available,
                                              const ValueFlow::Value* value,
-                                             const Token* condition,
                                              bool mayAccessFewer,
                                              bool inconclusive)
 {
+    const Token* const condition = value ? value->condition : nullptr;
     const std::string iterExpr = tok ? tok->expressionString() : "it";
     const std::string accessedStr = MathLib::toString(accessed) + (accessed == 1 ? " element" : " elements");
     const std::string availableStr = MathLib::toString(available) + (available == 1 ? " element is" : " elements are");
@@ -3901,7 +3900,7 @@ void CheckStl::getErrorMessages(ErrorLogger& errorLogger, const Settings& settin
     c.dereferenceInvalidIteratorError(nullptr, "i");
     // TODO: derefInvalidIteratorRedundantCheck
     c.eraseIteratorOutOfBoundsError(nullptr, nullptr);
-    c.algorithmOutOfBoundsError(nullptr, "std::copy", 10, 6, nullptr, nullptr, false, false);
+    c.algorithmOutOfBoundsError(nullptr, "std::copy", 10, 6, nullptr, false, false);
     c.useStlAlgorithmError(nullptr, "");
     c.knownEmptyContainerError(nullptr, "");
     c.globalLockGuardError(nullptr);
