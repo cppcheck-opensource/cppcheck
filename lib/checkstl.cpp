@@ -35,6 +35,7 @@
 #include "checknullpointer.h"
 
 #include <algorithm>
+#include <functional>
 #include <initializer_list>
 #include <iterator>
 #include <list>
@@ -3478,11 +3479,6 @@ static ElementCount getAvailableSpace(const IteratorPosition& position)
     return available;
 }
 
-static bool isPossibleValue(const ValueFlow::Value* value)
-{
-    return value->isPossible();
-}
-
 // Find iterator values and paired container sizes of the iterator that prove accessing <accessed>
 // elements to be out of bounds, preferring a proof that does not rely on possible values
 static ElementCount findInsufficientSpace(const Token* tok,
@@ -3499,7 +3495,8 @@ static ElementCount findInsufficientSpace(const Token* tok,
             return;
         if (candidate.count < 0 || accessed <= candidate.count)
             return; // the space is sufficient
-        const bool certain = std::none_of(candidate.values.cbegin(), candidate.values.cend(), isPossibleValue);
+        const bool certain =
+            std::none_of(candidate.values.cbegin(), candidate.values.cend(), std::mem_fn(&ValueFlow::Value::isPossible));
         if (best && (bestIsCertain || !certain))
             return;
         best = candidate;
@@ -3561,16 +3558,16 @@ void CheckStlImpl::algorithmOutOfBounds()
             if (args.size() < 3)
                 continue;
             ElementCount accessed;
-            std::vector<std::size_t> iterArgs;
+            std::vector<const Token*> iterArgs;
             if (countBased) {
                 const ValueFlow::Value* countValue = getCountValue(args[1], mSettings);
                 if (!countValue)
                     continue;
                 accessed.count = countValue->intvalue;
                 accessed.values.push_back(countValue);
-                iterArgs.push_back(0);
+                iterArgs.push_back(args[0]);
                 if (Token::simpleMatch(nameTok, "copy_n"))
-                    iterArgs.push_back(2); // copy_n also writes through the third argument
+                    iterArgs.push_back(args[2]); // copy_n also writes through the third argument
             } else {
                 // two-range overloads taking a last2 iterator do not access the second range out of bounds
                 if (Token::Match(nameTok, "equal|mismatch|is_permutation") && args.size() >= 4 && astIsIterator(args[3]))
@@ -3592,20 +3589,21 @@ void CheckStlImpl::algorithmOutOfBounds()
                 accessed = getIteratorDistance(first, last);
                 if (!accessed)
                     continue;
-                iterArgs.push_back(2);
+                iterArgs.push_back(args[2]);
                 if (Token::simpleMatch(nameTok, "transform") && args.size() == 5)
-                    iterArgs.push_back(3); // binary transform also writes through the fourth argument
+                    iterArgs.push_back(args[3]); // binary transform also writes through the fourth argument
             }
             if (accessed.count <= 0)
                 continue;
             const MathLib::bigint sourcePath = accessed.values.front()->path;
-            for (const std::size_t argnr : iterArgs) {
-                const ElementCount available = findInsufficientSpace(args[argnr], accessed.count, sourcePath, mSettings);
+            for (const Token* const iterArg : iterArgs) {
+                const ElementCount available = findInsufficientSpace(iterArg, accessed.count, sourcePath, mSettings);
                 if (!available)
                     continue;
                 // do not warn when the values on both sides are only possible
-                if (std::any_of(accessed.values.cbegin(), accessed.values.cend(), isPossibleValue) &&
-                    std::any_of(available.values.cbegin(), available.values.cend(), isPossibleValue))
+                const auto isPossible = std::mem_fn(&ValueFlow::Value::isPossible);
+                if (std::any_of(accessed.values.cbegin(), accessed.values.cend(), isPossible) &&
+                    std::any_of(available.values.cbegin(), available.values.cend(), isPossible))
                     continue;
                 const ValueFlow::Value* conditionValue = nullptr;
                 bool inconclusiveValues = false;
@@ -3619,7 +3617,7 @@ void CheckStlImpl::algorithmOutOfBounds()
                 if (conditionValue && !mSettings.severity.isEnabled(Severity::warning))
                     continue;
                 const ValueFlow::Value* pathValue = conditionValue ? conditionValue : available.values.back();
-                algorithmOutOfBoundsError(args[argnr],
+                algorithmOutOfBoundsError(iterArg,
                                           "std::" + nameTok->str(),
                                           accessed.count,
                                           available.count,
