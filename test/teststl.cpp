@@ -2557,6 +2557,17 @@ private:
         ASSERT_EQUALS("[test.cpp:5:37]: (error) The algorithm 'std::copy' accesses 5 elements through the iterator 'it' but only 3 elements are available. [algorithmOutOfBounds]\n",
                       errout_str());
 
+        // ..and the size is the size at the call, not at the creation of the iterator
+        check("void f() {\n"
+              "    const std::vector<int> v0{1,2,3,4,5};\n"
+              "    std::list<int> l1(10);\n"
+              "    auto it = l1.begin();\n"
+              "    l1.resize(3);\n"
+              "    std::copy(v0.begin(), v0.end(), it);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:6:37]: (error) The algorithm 'std::copy' accesses 5 elements through the iterator 'it' but only 3 elements are available. [algorithmOutOfBounds]\n",
+                      errout_str());
+
         // conditional container size
         check("void f(std::vector<int>& v) {\n"
               "    const std::vector<int> v0{1,2,3,4,5};\n"
