@@ -2727,6 +2727,39 @@ private:
               "    std::copy(v0.begin(), v0.end(), v1.begin());\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        // all source range values are checked against the preferred destination values
+        check("void f(bool b) {\n"
+              "    std::vector<int> v0;\n"
+              "    if (b)\n"
+              "        v0.resize(3);\n"
+              "    else\n"
+              "        v0.resize(10);\n"
+              "    std::vector<int> v1(5);\n"
+              "    std::copy(v0.begin(), v0.end(), v1.begin());\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:8:45]: (error) The algorithm 'std::copy' accesses 10 elements through the iterator 'v1.begin()' but only 5 elements are available. [algorithmOutOfBounds]\n",
+                      errout_str());
+
+        check("void f(bool b) {\n"
+              "    std::vector<int> v0;\n"
+              "    if (b)\n"
+              "        v0.resize(3);\n"
+              "    else\n"
+              "        v0.resize(5);\n"
+              "    std::vector<int> v1(5);\n"
+              "    std::copy(v0.begin(), v0.end(), v1.begin());\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // all count values are checked as well
+        check("void f(bool b) {\n"
+              "    std::vector<int> v(5);\n"
+              "    const int n = b ? 3 : 10;\n"
+              "    std::fill_n(v.begin(), n, 0);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:24]: (error) The algorithm 'std::fill_n' accesses 10 elements through the iterator 'v.begin()' but only 5 elements are available. [algorithmOutOfBounds]\n",
+                      errout_str());
     }
 
     // Dereferencing invalid pointer

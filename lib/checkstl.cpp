@@ -3401,6 +3401,21 @@ namespace {
             return !values.empty();
         }
     };
+
+    // The best candidate proving an out of bounds access, preferring proofs without possible values
+    struct BestCandidate {
+        ElementCount best;
+        bool certain = false;
+        void consider(const ElementCount& candidate) {
+            const bool candidateCertain = std::none_of(candidate.values.cbegin(),
+                                                       candidate.values.cend(),
+                                                       std::mem_fn(&ValueFlow::Value::isPossible));
+            if (best && (certain || !candidateCertain))
+                return;
+            best = candidate;
+            certain = candidateCertain;
+        }
+    };
 }
 
 // Get the first ValueFlow value of a token matching the predicate, preferring known values
@@ -3486,21 +3501,15 @@ static ElementCount findInsufficientSpace(const Token* tok,
                                           MathLib::bigint sourcePath,
                                           const Settings& settings)
 {
-    ElementCount best;
-    bool bestIsCertain = false;
+    BestCandidate insufficient;
     if (!tok)
-        return best;
+        return insufficient.best;
     const auto consider = [&](const ElementCount& candidate) {
         if (!candidate)
             return;
         if (candidate.count < 0 || accessed <= candidate.count)
             return; // the space is sufficient
-        const bool certain =
-            std::none_of(candidate.values.cbegin(), candidate.values.cend(), std::mem_fn(&ValueFlow::Value::isPossible));
-        if (best && (bestIsCertain || !certain))
-            return;
-        best = candidate;
-        bestIsCertain = certain;
+        insufficient.consider(candidate);
     };
     for (const ValueFlow::Value& value : tok->values()) {
         if (!isUsableValue(value, settings) || !value.isIteratorValue())
@@ -3520,7 +3529,87 @@ static ElementCount findInsufficientSpace(const Token* tok,
             consider(getAvailableSpace(position));
         }
     }
-    return best;
+    return insufficient.best;
+}
+
+// Find iterator values and paired container sizes of the source range that prove more than
+// <available> elements to be accessed, preferring a proof that does not rely on possible values
+static ElementCount findExcessiveDistance(const Token* firstTok,
+                                          const Token* lastTok,
+                                          MathLib::bigint available,
+                                          MathLib::bigint destPath,
+                                          const Settings& settings)
+{
+    BestCandidate excessive;
+    const auto consider = [&](const ElementCount& candidate) {
+        if (!candidate)
+            return;
+        if (candidate.count <= 0 || candidate.count <= available)
+            return; // the access is within bounds
+        excessive.consider(candidate);
+    };
+    for (const ValueFlow::Value& firstValue : firstTok->values()) {
+        if (!isUsableValue(firstValue, settings) || !firstValue.isIteratorValue())
+            continue;
+        if (firstValue.path != 0 && destPath != 0 && firstValue.path != destPath)
+            continue;
+        for (const ValueFlow::Value& lastValue : lastTok->values()) {
+            if (!isUsableValue(lastValue, settings) || !lastValue.isIteratorValue())
+                continue;
+            IteratorPosition first, last;
+            first.value = &firstValue;
+            last.value = &lastValue;
+            if (first.fromEnd() == last.fromEnd()) { // the distance does not depend on the container size
+                consider(getIteratorDistance(first, last));
+                continue;
+            }
+            IteratorPosition& endPosition = first.fromEnd() ? first : last;
+            const Token* const endTok = first.fromEnd() ? firstTok : lastTok;
+            for (const ValueFlow::Value& sizeValue : endTok->values()) {
+                if (!isUsableValue(sizeValue, settings) || !sizeValue.isContainerSizeValue() ||
+                    sizeValue.path != endPosition.value->path)
+                    continue;
+                endPosition.sizeValue = &sizeValue;
+                consider(getIteratorDistance(first, last));
+            }
+        }
+    }
+    return excessive.best;
+}
+
+// Find count values of a count-based algorithm that prove more than <available> elements to be accessed
+static ElementCount findExcessiveCount(const Token* tok,
+                                       MathLib::bigint available,
+                                       MathLib::bigint destPath,
+                                       const Settings& settings)
+{
+    BestCandidate excessive;
+    if (!tok)
+        return excessive.best;
+    for (const ValueFlow::Value& value : tok->values()) {
+        if (!isUsableValue(value, settings) || !value.isIntValue())
+            continue;
+        // a count with an upper bound could be smaller, which would make fewer elements accessed
+        if (value.bound == ValueFlow::Value::Bound::Upper)
+            continue;
+        if (value.path != 0 && destPath != 0 && value.path != destPath)
+            continue;
+        if (value.intvalue <= available)
+            continue; // the access is within bounds
+        ElementCount candidate;
+        candidate.count = value.intvalue;
+        candidate.values.push_back(&value);
+        excessive.consider(candidate);
+    }
+    return excessive.best;
+}
+
+// Do not warn when the proof relies on possible values on both sides
+static bool bothSidesPossible(const ElementCount& accessed, const ElementCount& available)
+{
+    const auto isPossible = std::mem_fn(&ValueFlow::Value::isPossible);
+    return std::any_of(accessed.values.cbegin(), accessed.values.cend(), isPossible) &&
+           std::any_of(available.values.cbegin(), available.values.cend(), isPossible);
 }
 
 // Get the number of accessed elements of a count-based algorithm such as std::fill_n
@@ -3557,26 +3646,19 @@ void CheckStlImpl::algorithmOutOfBounds()
             const std::vector<const Token*> args = getArguments(nameTok);
             if (args.size() < 3)
                 continue;
-            ElementCount accessed;
+            ElementCount accessed; // source access count using the preferred values
             std::vector<const Token*> iterArgs;
             if (countBased) {
-                const ValueFlow::Value* countValue = getCountValue(args[1], mSettings);
-                if (!countValue)
-                    continue;
-                accessed.count = countValue->intvalue;
-                accessed.values.push_back(countValue);
+                if (const ValueFlow::Value* countValue = getCountValue(args[1], mSettings)) {
+                    accessed.count = countValue->intvalue;
+                    accessed.values.push_back(countValue);
+                }
                 iterArgs.push_back(args[0]);
                 if (Token::simpleMatch(nameTok, "copy_n"))
                     iterArgs.push_back(args[2]); // copy_n also writes through the third argument
             } else {
                 // two-range overloads taking a last2 iterator do not access the second range out of bounds
                 if (Token::Match(nameTok, "equal|mismatch|is_permutation") && args.size() >= 4 && astIsIterator(args[3]))
-                    continue;
-                const IteratorPosition first = getIteratorPosition(args[0], mSettings);
-                if (!first)
-                    continue;
-                const IteratorPosition last = getIteratorPosition(args[1], mSettings);
-                if (!last)
                     continue;
                 // both iterators must refer to the same container
                 const ValueFlow::Value firstLifetime = getLifetimeIteratorValue(args[0]);
@@ -3586,28 +3668,40 @@ void CheckStlImpl::algorithmOutOfBounds()
                 if (!isSameIteratorContainerExpression(
                         firstLifetime.tokvalue, lastLifetime.tokvalue, mSettings, firstLifetime.lifetimeKind))
                     continue;
-                accessed = getIteratorDistance(first, last);
-                if (!accessed)
-                    continue;
+                const IteratorPosition first = getIteratorPosition(args[0], mSettings);
+                const IteratorPosition last = getIteratorPosition(args[1], mSettings);
+                if (first && last)
+                    accessed = getIteratorDistance(first, last);
                 iterArgs.push_back(args[2]);
                 if (Token::simpleMatch(nameTok, "transform") && args.size() == 5)
                     iterArgs.push_back(args[3]); // binary transform also writes through the fourth argument
             }
             if (accessed.count <= 0)
-                continue;
-            const MathLib::bigint sourcePath = accessed.values.front()->path;
+                accessed = ElementCount(); // there is no preferred source access count
             for (const Token* const iterArg : iterArgs) {
-                const ElementCount available = findInsufficientSpace(iterArg, accessed.count, sourcePath, mSettings);
-                if (!available)
-                    continue;
-                // do not warn when the values on both sides are only possible
-                const auto isPossible = std::mem_fn(&ValueFlow::Value::isPossible);
-                if (std::any_of(accessed.values.cbegin(), accessed.values.cend(), isPossible) &&
-                    std::any_of(available.values.cbegin(), available.values.cend(), isPossible))
-                    continue;
+                // check the preferred source access count against all destination values..
+                ElementCount sourceCount = accessed;
+                ElementCount available;
+                if (sourceCount)
+                    available =
+                        findInsufficientSpace(iterArg, sourceCount.count, sourceCount.values.front()->path, mSettings);
+                if (!available || bothSidesPossible(sourceCount, available)) {
+                    // ..or all source access counts against the preferred destination values
+                    const IteratorPosition dest = getIteratorPosition(iterArg, mSettings);
+                    if (!dest)
+                        continue;
+                    available = getAvailableSpace(dest);
+                    if (!available || available.count < 0)
+                        continue;
+                    sourceCount = countBased
+                                  ? findExcessiveCount(args[1], available.count, dest.value->path, mSettings)
+                                  : findExcessiveDistance(args[0], args[1], available.count, dest.value->path, mSettings);
+                    if (!sourceCount || bothSidesPossible(sourceCount, available))
+                        continue;
+                }
                 const ValueFlow::Value* conditionValue = nullptr;
                 bool inconclusiveValues = false;
-                std::vector<const ValueFlow::Value*> usedValues = accessed.values;
+                std::vector<const ValueFlow::Value*> usedValues = sourceCount.values;
                 usedValues.insert(usedValues.end(), available.values.cbegin(), available.values.cend());
                 for (const ValueFlow::Value* value : usedValues) {
                     if (!conditionValue && value->condition)
@@ -3619,7 +3713,7 @@ void CheckStlImpl::algorithmOutOfBounds()
                 const ValueFlow::Value* pathValue = conditionValue ? conditionValue : available.values.back();
                 algorithmOutOfBoundsError(iterArg,
                                           "std::" + nameTok->str(),
-                                          accessed.count,
+                                          sourceCount.count,
                                           available.count,
                                           pathValue,
                                           conditionValue ? conditionValue->condition : nullptr,
