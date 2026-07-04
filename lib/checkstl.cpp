@@ -127,6 +127,16 @@ static const Token* getContainerFromSize(const Library::Container* container, co
     return nullptr;
 }
 
+// A value that out of bounds analysis can use: not impossible, and inconclusive only when enabled
+static bool isUsableValue(const ValueFlow::Value& value, const Settings& settings)
+{
+    if (value.isImpossible())
+        return false;
+    if (value.isInconclusive() && !settings.certainty.isEnabled(Certainty::inconclusive))
+        return false;
+    return true;
+}
+
 void CheckStlImpl::outOfBounds()
 {
     logChecker("CheckStl::outOfBounds");
@@ -148,9 +158,7 @@ void CheckStlImpl::outOfBounds()
             for (const ValueFlow::Value &value : tok->values()) {
                 if (!value.isContainerSizeValue())
                     continue;
-                if (value.isImpossible())
-                    continue;
-                if (value.isInconclusive() && !mSettings.certainty.isEnabled(Certainty::inconclusive))
+                if (!isUsableValue(value, mSettings))
                     continue;
                 if (!value.errorSeverity() && !mSettings.severity.isEnabled(Severity::warning))
                     continue;
@@ -2482,8 +2490,6 @@ void CheckStlImpl::checkDereferenceInvalidIterator()
 
 void CheckStlImpl::checkDereferenceInvalidIterator2()
 {
-    const bool printInconclusive = (mSettings.certainty.isEnabled(Certainty::inconclusive));
-
     logChecker("CheckStl::checkDereferenceInvalidIterator2");
 
     for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
@@ -2497,19 +2503,13 @@ void CheckStlImpl::checkDereferenceInvalidIterator2()
 
         std::vector<ValueFlow::Value> contValues;
         std::copy_if(tok->values().cbegin(), tok->values().cend(), std::back_inserter(contValues), [&](const ValueFlow::Value& value) {
-            if (value.isImpossible())
-                return false;
-            if (!printInconclusive && value.isInconclusive())
-                return false;
-            return value.isContainerSizeValue();
+            return isUsableValue(value, mSettings) && value.isContainerSizeValue();
         });
 
 
         // Can iterator point to END or before START?
         for (const ValueFlow::Value& value:tok->values()) {
-            if (value.isImpossible())
-                continue;
-            if (!printInconclusive && value.isInconclusive())
+            if (!isUsableValue(value, mSettings))
                 continue;
             if (!value.isIteratorValue())
                 continue;
@@ -3400,15 +3400,6 @@ namespace {
             return !values.empty();
         }
     };
-}
-
-static bool isUsableValue(const ValueFlow::Value& value, const Settings& settings)
-{
-    if (value.isImpossible())
-        return false;
-    if (value.isInconclusive() && !settings.certainty.isEnabled(Certainty::inconclusive))
-        return false;
-    return true;
 }
 
 // Get the first ValueFlow value of a token matching the predicate, preferring known values
