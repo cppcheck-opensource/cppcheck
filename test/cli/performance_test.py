@@ -415,6 +415,7 @@ def test_slow_bifurcate(tmpdir):
     cppcheck([filename]) # should not take more than ~1 second
 
 
+@pytest.mark.skipif(sys.platform == 'darwin', reason='GitHub macOS runners are too slow')
 @pytest.mark.timeout(5)
 def test_large_number_of_violations_and_suppressions(tmpdir):
     filename_main = os.path.join(tmpdir, 'main.c')
