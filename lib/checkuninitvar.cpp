@@ -1664,7 +1664,7 @@ void CheckUninitVarImpl::valueFlowUninit()
                         if (yield != Library::Container::Yield::AT_INDEX && yield != Library::Container::Yield::ITEM)
                             continue;
                     }
-                    const bool deref = CheckNullPointerImpl::isPointerDeRef(tok, unknown, mSettings);
+                    const bool deref = CheckNullPointerImpl::isPointerDeRef(tok, unknown, mSettings.library);
                     uninitderef = deref && v->indirect == 0;
                     const bool isleaf = isLeafDot(tok) || uninitderef;
                     if (!isleaf && Token::Match(tok->astParent(), ". %name%") &&
@@ -1681,7 +1681,7 @@ void CheckUninitVarImpl::valueFlowUninit()
                         isVariableChanged(tok, v->indirect, mSettings))
                         continue;
                     bool inconclusive = false;
-                    if (isVariableChangedByFunctionCall(tok, v->indirect, mSettings, &inconclusive) || inconclusive)
+                    if (isVariableChangedByFunctionCall(tok, v->indirect, mSettings.library, &inconclusive) || inconclusive)
                         continue;
                 }
                 uninitvarError(tok, *v);

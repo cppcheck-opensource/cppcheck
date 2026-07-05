@@ -327,20 +327,20 @@ bool isMutableExpression(const Token* tok);
  *
  * @param tok           ast tree
  * @param varid         Variable Id
- * @param settings      program settings
+ * @param library       library configurations
  * @param inconclusive  pointer to output variable which indicates that the answer of the question is inconclusive
  */
-bool isVariableChangedByFunctionCall(const Token *tok, int indirect, nonneg int varid, const Settings &settings, bool *inconclusive);
+bool isVariableChangedByFunctionCall(const Token *tok, int indirect, nonneg int varid, const Library &library, bool *inconclusive);
 
 /** Is variable changed by function call?
  * In case the answer of the question is inconclusive, e.g. because the function declaration is not known
  * the return value is false and the output parameter inconclusive is set to true
  *
- * @param tok           token of variable in function call
- * @param settings      program settings
+ * @param tok          token of variable in function call
+ * @param library      library configurations
  * @param inconclusive pointer to output variable which indicates that the answer of the question is inconclusive
  */
-CPPCHECKLIB bool isVariableChangedByFunctionCall(const Token *tok, int indirect, const Settings &settings, bool *inconclusive);
+CPPCHECKLIB bool isVariableChangedByFunctionCall(const Token *tok, int indirect, const Library &library, bool *inconclusive);
 
 /** Is variable changed in block of code? */
 CPPCHECKLIB bool isVariableChanged(const Token *start, const Token *end, nonneg int exprid, bool globalvar, const Settings &settings, int depth = 20);

@@ -1793,7 +1793,7 @@ void CheckOtherImpl::checkConstVariable()
                             continue;
                     } else if (const Token* ftok = getTokenArgumentFunction(tok, argn)) {
                         bool inconclusive{};
-                        if (var->valueType() && !isVariableChangedByFunctionCall(ftok, var->valueType()->pointer, var->declarationId(), mSettings, &inconclusive) && !inconclusive)
+                        if (var->valueType() && !isVariableChangedByFunctionCall(ftok, var->valueType()->pointer, var->declarationId(), mSettings.library, &inconclusive) && !inconclusive)
                             continue;
                     }
                     usedInAssignment = true;
@@ -1989,7 +1989,7 @@ void CheckOtherImpl::checkConstPointer()
                 continue;
             else if (const Token* ftok = getTokenArgumentFunction(parent, argn)) {
                 bool inconclusive{};
-                if (!isVariableChangedByFunctionCall(ftok->next(), vt->pointer, var->declarationId(), mSettings, &inconclusive) && !inconclusive)
+                if (!isVariableChangedByFunctionCall(ftok->next(), vt->pointer, var->declarationId(), mSettings.library, &inconclusive) && !inconclusive)
                     continue;
             }
         } else {
@@ -2014,7 +2014,7 @@ void CheckOtherImpl::checkConstPointer()
                         const Variable* argVar = ftok->function()->getArgumentVar(argn);
                         if (argVar && argVar->valueType() && argVar->valueType()->isConst(vt->pointer)) {
                             bool inconclusive{};
-                            if (!isVariableChangedByFunctionCall(ftok, vt->pointer, var->declarationId(), mSettings, &inconclusive) && !inconclusive)
+                            if (!isVariableChangedByFunctionCall(ftok, vt->pointer, var->declarationId(), mSettings.library, &inconclusive) && !inconclusive)
                                 continue;
                         }
                     }
@@ -2033,8 +2033,11 @@ void CheckOtherImpl::checkConstPointer()
             nonConstPointers.emplace(var);
     }
     for (const Variable *p: pointers) {
+        bool foundAllBaseClasses = true;
         if (p->isArgument()) {
-            if (!p->scope() || !p->scope()->function || p->scope()->function->isImplicitlyVirtual(true) || p->scope()->function->hasVirtualSpecifier())
+            if (!p->scope() || !p->scope()->function || p->scope()->function->hasVirtualSpecifier())
+                continue;
+            if (p->scope()->function->isImplicitlyVirtual(true, &foundAllBaseClasses) && foundAllBaseClasses)
                 continue;
             if (p->isMaybeUnused())
                 continue;
@@ -2051,12 +2054,12 @@ void CheckOtherImpl::checkConstPointer()
                 continue;
             if (p->typeStartToken() && p->typeStartToken()->isSimplifiedTypedef() && !(Token::simpleMatch(p->typeEndToken(), "*") && !p->typeEndToken()->isSimplifiedTypedef()))
                 continue;
-            constVariableError(p, p->isArgument() ? p->scope()->function : nullptr);
+            constVariableError(p, p->isArgument() ? p->scope()->function : nullptr, foundAllBaseClasses);
         }
     }
 }
 
-void CheckOtherImpl::constVariableError(const Variable *var, const Function *function)
+void CheckOtherImpl::constVariableError(const Variable *var, const Function *function, bool foundAllBaseClasses)
 {
     if (!var) {
         reportError(nullptr, Severity::style, "constParameter", "Parameter 'x' can be declared with const");
@@ -2069,13 +2072,18 @@ void CheckOtherImpl::constVariableError(const Variable *var, const Function *fun
         return;
     }
 
-    const std::string vartype(var->isArgument() ? "Parameter" : "Variable");
+    std::string vartype(var->isArgument() ? "Parameter" : "Variable");
     const std::string& varname(var->name());
     const std::string ptrRefArray = var->isArray() ? "const array" : (var->isPointer() ? "pointer to const" : "reference to const");
 
     ErrorPath errorPath;
     std::string id = "const" + vartype;
-    std::string message = "$symbol:" + varname + "\n" + vartype + " '$symbol' can be declared as " + ptrRefArray;
+    std::string message = "$symbol:" + varname + "\n";
+    if (!foundAllBaseClasses) {
+        message += "Either there is a missing override/final keyword, or the ";
+        vartype[0] = std::tolower(vartype[0]);
+    }
+    message += vartype + " '$symbol' can be declared as " + ptrRefArray;
     errorPath.emplace_back(var->nameToken(), message);
     if (var->isArgument() && function && function->functionPointerUsage) {
         errorPath.emplace_front(function->functionPointerUsage, "You might need to cast the function pointer here");
@@ -3973,7 +3981,7 @@ void CheckOtherImpl::checkAccessOfMovedVariable()
                 if (usage == ExprUsage::Used)
                     accessOfMoved = true;
                 if (usage == ExprUsage::PassedByReference)
-                    accessOfMoved = !isVariableChangedByFunctionCall(tok, 0, mSettings, &inconclusive);
+                    accessOfMoved = !isVariableChangedByFunctionCall(tok, 0, mSettings.library, &inconclusive);
                 else if (usage == ExprUsage::Inconclusive)
                     inconclusive = true;
             }

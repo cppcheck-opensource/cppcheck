@@ -6123,9 +6123,9 @@ private:
                "  c++;\n"
                "}\n";
         values = tokenValues(code, "c ++ ; }");
-        TODO_ASSERT_EQUALS(true, false, values.size() == 2);
-        // ASSERT_EQUALS(true, values.front().isUninitValue() || values.back().isUninitValue());
-        // ASSERT_EQUALS(true, values.front().isPossible() || values.back().isPossible());
+        ASSERT_EQUALS(true, values.size() == 2);
+        ASSERT_EQUALS(true, values.front().isUninitValue() || values.back().isUninitValue());
+        ASSERT_EQUALS(true, values.front().isPossible() || values.back().isPossible());
         // ASSERT_EQUALS(true, values.front().intvalue == 0 || values.back().intvalue == 0);
 
         code = "void b(bool d, bool e) {\n"
@@ -8446,6 +8446,75 @@ private:
                "    static T f[64];\n"
                "};\n";
         (void)valueOfTok(code, "(");
+
+        // fork explosion on many opaque conditions; bounded by maxForwardConditionForks
+        code = "int g(int);\n"
+               "bool h(int);\n"
+               "void f() {\n"
+               "    int x = 0;\n"
+               "    if (h(0)) g(x);\n"
+               "    if (h(1)) g(x);\n"
+               "    if (h(2)) g(x);\n"
+               "    if (h(3)) g(x);\n"
+               "    if (h(4)) g(x);\n"
+               "    if (h(5)) g(x);\n"
+               "    if (h(6)) g(x);\n"
+               "    if (h(7)) g(x);\n"
+               "    if (h(8)) g(x);\n"
+               "    if (h(9)) g(x);\n"
+               "    if (h(10)) g(x);\n"
+               "    if (h(11)) g(x);\n"
+               "    if (h(12)) g(x);\n"
+               "    if (h(13)) g(x);\n"
+               "    if (h(14)) g(x);\n"
+               "    if (h(15)) g(x);\n"
+               "    if (h(16)) g(x);\n"
+               "    if (h(17)) g(x);\n"
+               "    if (h(18)) g(x);\n"
+               "    if (h(19)) g(x);\n"
+               "    if (h(20)) g(x);\n"
+               "    if (h(21)) g(x);\n"
+               "    if (h(22)) g(x);\n"
+               "    if (h(23)) g(x);\n"
+               "    if (h(24)) g(x);\n"
+               "    if (h(25)) g(x);\n"
+               "    if (h(26)) g(x);\n"
+               "    if (h(27)) g(x);\n"
+               "    if (h(28)) g(x);\n"
+               "    if (h(29)) g(x);\n"
+               "    if (h(30)) g(x);\n"
+               "    if (h(31)) g(x);\n"
+               "    if (h(32)) g(x);\n"
+               "    if (h(33)) g(x);\n"
+               "    if (h(34)) g(x);\n"
+               "    if (h(35)) g(x);\n"
+               "    if (h(36)) g(x);\n"
+               "    if (h(37)) g(x);\n"
+               "    if (h(38)) g(x);\n"
+               "    if (h(39)) g(x);\n"
+               "    if (h(40)) g(x);\n"
+               "    if (h(41)) g(x);\n"
+               "    if (h(42)) g(x);\n"
+               "    if (h(43)) g(x);\n"
+               "    if (h(44)) g(x);\n"
+               "    if (h(45)) g(x);\n"
+               "    if (h(46)) g(x);\n"
+               "    if (h(47)) g(x);\n"
+               "    if (h(48)) g(x);\n"
+               "    if (h(49)) g(x);\n"
+               "    if (h(50)) g(x);\n"
+               "    if (h(51)) g(x);\n"
+               "    if (h(52)) g(x);\n"
+               "    if (h(53)) g(x);\n"
+               "    if (h(54)) g(x);\n"
+               "    if (h(55)) g(x);\n"
+               "    if (h(56)) g(x);\n"
+               "    if (h(57)) g(x);\n"
+               "    if (h(58)) g(x);\n"
+               "    if (h(59)) g(x);\n"
+               "    (void)x;\n"
+               "}\n";
+        (void)valueOfTok(code, "x");
     }
 
     void valueFlowCrashConstructorInitialization() { // #9577

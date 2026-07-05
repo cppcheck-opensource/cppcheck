@@ -977,7 +977,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
                 tokenlist.createTokens(std::move(tokens));
                 // this is not a real source file - we just want to tokenize it. treat it as C anyways as the language needs to be determined.
                 Tokenizer tokenizer(std::move(tokenlist), mErrorLogger);
-                mUnusedFunctionsCheck->parseTokens(tokenizer, mSettings);
+                mUnusedFunctionsCheck->parseTokens(tokenizer, mSettings.library);
 
                 if (analyzerInformation) {
                     mLogger->setAnalyzerInfo(nullptr);
@@ -1358,10 +1358,10 @@ void CppCheck::checkNormalTokens(const Tokenizer &tokenizer, AnalyzerInformation
     }
 
     if (mSettings.checks.isEnabled(Checks::unusedFunction) && !mSettings.buildDir.empty()) {
-        unusedFunctionsChecker.parseTokens(tokenizer, mSettings);
+        unusedFunctionsChecker.parseTokens(tokenizer, mSettings.library);
     }
     if (mUnusedFunctionsCheck && mSettings.useSingleJob() && mSettings.buildDir.empty()) {
-        mUnusedFunctionsCheck->parseTokens(tokenizer, mSettings);
+        mUnusedFunctionsCheck->parseTokens(tokenizer, mSettings.library);
     }
 
     if (mSettings.clang) {
@@ -1830,7 +1830,7 @@ bool CppCheck::analyseWholeProgram()
     }
 
     if (mUnusedFunctionsCheck)
-        errors |= mUnusedFunctionsCheck->check(mSettings, mErrorLogger);
+        errors |= mUnusedFunctionsCheck->check(mSettings.library, mErrorLogger);
 
     return errors && (mLogger->exitcode() > 0);
 }
@@ -1841,7 +1841,7 @@ unsigned int CppCheck::analyseWholeProgram(const std::string &buildDir, const st
         CheckUnusedFunctions::analyseWholeProgram(mSettings, mErrorLogger, buildDir);
 
     if (mUnusedFunctionsCheck)
-        mUnusedFunctionsCheck->check(mSettings, mErrorLogger);
+        mUnusedFunctionsCheck->check(mSettings.library, mErrorLogger);
 
     if (Settings::unusedFunctionOnly())
         return mLogger->exitcode();
