@@ -11511,8 +11511,9 @@ private:
               "        x = a + b;\n"
               "    return x;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:11] -> [test.cpp:4:9]: (style) Variable 'x' is assigned an expression that holds the same value. [redundantAssignment]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:2:11] -> [test.cpp:3:9] -> [test.cpp:4:9]: (style) Variable 'x' is assigned an expression that holds the same value. [redundantAssignment]\n",
+            errout_str());
     }
 
     void varFuncNullUB() { // #4482

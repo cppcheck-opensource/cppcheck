@@ -59,6 +59,10 @@ namespace {
         Analyzer::Terminate terminate = Analyzer::Terminate::None;
         std::vector<Token*> loopEnds;
         int branchCount = 0;
+        // Nested condition-fork depth on this lineage (copied by fork()); bounds the fan-out.
+        int forkDepth = 0;
+        // Total forks of the traversal (shared via the fork() copy); backstop past the depth bound.
+        std::shared_ptr<int> forkBudget = std::make_shared<int>(0);
 
         Progress Break(Analyzer::Terminate t = Analyzer::Terminate::None) {
             if ((!analyzeOnly || analyzeTerminate) && t != Analyzer::Terminate::None)
@@ -73,7 +77,6 @@ namespace {
             bool check = false;
             bool escape = false;
             bool escapeUnknown = false;
-            bool active = false;
             bool isEscape() const {
                 return escape || escapeUnknown;
             }
@@ -88,6 +91,9 @@ namespace {
             }
             bool isDead() const {
                 return action.isModified() || action.isInconclusive() || isEscape();
+            }
+            bool hasGoto() const {
+                return endBlock ? ForwardTraversal::hasGoto(endBlock) : false;
             }
         };
 
@@ -348,18 +354,6 @@ namespace {
             return Token::findmatch(endBlock->link(), "goto|break", endBlock);
         }
 
-        bool hasInnerReturnScope(const Token* start, const Token* end) const {
-            for (const Token* tok=start; tok != end; tok = tok->previous()) {
-                if (Token::simpleMatch(tok, "}")) {
-                    const Token* ftok = nullptr;
-                    const bool r = isReturnScope(tok, settings.library, &ftok);
-                    if (r)
-                        return true;
-                }
-            }
-            return false;
-        }
-
         bool isEscapeScope(const Token* endBlock, bool& unknown) const {
             const Token* ftok = nullptr;
             const bool r = isReturnScope(endBlock, settings.library, &ftok);
@@ -383,30 +377,34 @@ namespace {
             return a;
         }
 
-        bool checkBranch(Branch& branch) const {
-            Analyzer::Action a = analyzeScope(branch.endBlock);
-            branch.action = a;
-            std::vector<ForwardTraversal> ft1 = tryForkUpdateScope(branch.endBlock, a.isModified());
-            const bool bail = hasGoto(branch.endBlock);
-            if (!a.isModified() && !bail) {
-                if (ft1.empty()) {
-                    // Traverse into the branch to see if there is a conditional escape
-                    if (!branch.escape && hasInnerReturnScope(branch.endBlock->previous(), branch.endBlock->link())) {
-                        ForwardTraversal ft2 = fork(true);
-                        ft2.updateScope(branch.endBlock);
-                        if (ft2.terminate == Analyzer::Terminate::Escape) {
-                            branch.escape = true;
-                            branch.escapeUnknown = false;
-                        }
-                    }
-                } else {
-                    if (ft1.front().terminate == Analyzer::Terminate::Escape) {
-                        branch.escape = true;
-                        branch.escapeUnknown = false;
-                    }
+        Progress updateBranch(Branch& branch, int depth)
+        {
+            // Save and reset actions
+            Analyzer::Action prevActions = actions;
+            actions = Analyzer::Action::None;
+            Progress p = updateRange(branch.endBlock->link(), branch.endBlock, depth);
+            branch.action |= actions;
+            // Restore actions
+            actions |= prevActions;
+
+            if (terminate == Analyzer::Terminate::Escape) {
+                branch.escape = true;
+                // The traversal followed an escaping path, but if the scope does not structurally
+                // always escape then another path (e.g. a modified fork) falls through, so the escape
+                // is only conditional - keep isModified() meaningful by not treating it as conclusive.
+                bool structuralUnknown = false;
+                const bool structuralEscape = isEscapeScope(branch.endBlock, structuralUnknown);
+                branch.escapeUnknown = !structuralEscape || structuralUnknown;
+            } else {
+                // Detect an escape the traversal did not flag (e.g. an unknown noreturn call);
+                // escapeUnknown reports a possible (unknown) escape.
+                branch.escape = isEscapeScope(branch.endBlock, branch.escapeUnknown);
+                if (terminate != Analyzer::Terminate::None && terminate != Analyzer::Terminate::Modified) {
+                    branch.action |= analyzeScope(branch.endBlock);
                 }
             }
-            return bail;
+
+            return p;
         }
 
         bool reentersLoop(Token* endBlock, const Token* condTok, const Token* stepTok) const {
@@ -529,14 +527,12 @@ namespace {
                         forkContinue = false;
                 }
 
-                if (allAnalysis.isModified() || !forkContinue) {
-                    // TODO: Don't bail on missing condition
-                    if (!condTok)
-                        return Break(Analyzer::Terminate::Bail);
-                    if (analyzer->isConditional() && stopUpdates())
-                        return Break(Analyzer::Terminate::Conditional);
-                    analyzer->assume(condTok, false);
-                }
+                // TODO: Don't bail on missing condition
+                if (!condTok)
+                    return Break(Analyzer::Terminate::Bail);
+                if (analyzer->isConditional() && stopUpdates())
+                    return Break(Analyzer::Terminate::Conditional);
+                analyzer->assume(condTok, false);
                 if (forkContinue) {
                     for (ForwardTraversal& ft : ftv) {
                         if (!ft.actions.isIncremental())
@@ -646,11 +642,20 @@ namespace {
                         const bool inElse = scope->type == ScopeType::eElse;
                         const bool inDoWhile = scope->type == ScopeType::eDo;
                         const bool inLoop = contains({ScopeType::eDo, ScopeType::eFor, ScopeType::eWhile}, scope->type);
+                        const bool hasElse = Token::simpleMatch(tok, "} else {");
                         Token* condTok = getCondTokFromEnd(tok);
                         if (!condTok)
                             return Break();
+                        // When the 'else' branch escapes (e.g. returns), control can only continue
+                        // here via the 'then' branch, so the value established there is still
+                        // definite - keep it known instead of lowering to possible.
+                        bool elseEscape = false;
+                        if (!inLoop && !inElse && hasElse) {
+                            bool unknownEscape = false;
+                            elseEscape = isEscapeScope(tok->linkAt(2), unknownEscape);
+                        }
                         if (!condTok->hasKnownIntValue() || inLoop) {
-                            if (!analyzer->lowerToPossible())
+                            if (!elseEscape && !analyzer->lowerToPossible())
                                 return Break(Analyzer::Terminate::Bail);
                         } else if (condTok->getKnownIntValue() == inElse) {
                             return Break();
@@ -675,7 +680,7 @@ namespace {
                         }
                         analyzer->assume(condTok, !inElse, Analyzer::Assume::Quiet);
                         assert(!inDoWhile || Token::simpleMatch(tok, "} while ("));
-                        if (Token::simpleMatch(tok, "} else {") || inDoWhile)
+                        if (hasElse || inDoWhile)
                             tok = tok->linkAt(2);
                     } else if (contains({ScopeType::eTry, ScopeType::eCatch}, scope->type)) {
                         if (!analyzer->lowerToPossible())
@@ -731,71 +736,83 @@ namespace {
                         if (!thenBranch.check && !elseBranch.check && stopOnCondition(condTok) && stopUpdates())
                             return Break(Analyzer::Terminate::Conditional);
                         const bool hasElse = Token::simpleMatch(endBlock, "} else {");
-                        bool bail = false;
-
-                        // Traverse then block
-                        thenBranch.escape = isEscapeScope(endBlock, thenBranch.escapeUnknown);
+                        tok = hasElse ? endBlock->linkAt(2) : endBlock;
                         if (thenBranch.check) {
-                            thenBranch.active = true;
-                            if (updateScope(endBlock, depth - 1) == Progress::Break)
+                            // The condition is only "known" because of an earlier assumption, so the
+                            // skipped else block could still modify the value -> lower to possible
+                            if (!condTok->hasKnownIntValue() && hasElse &&
+                                analyzeScope(elseBranch.endBlock).isModified() && !analyzer->lowerToPossible())
+                                return Break(Analyzer::Terminate::Bail);
+                            if (updateScope(thenBranch.endBlock, depth - 1) == Progress::Break)
                                 return Break();
-                        } else if (!elseBranch.check) {
-                            thenBranch.active = true;
-                            if (checkBranch(thenBranch))
-                                bail = true;
-                        }
-                        // Traverse else block
-                        if (hasElse) {
-                            elseBranch.escape = isEscapeScope(endBlock->linkAt(2), elseBranch.escapeUnknown);
-                            if (elseBranch.check) {
-                                elseBranch.active = true;
-                                const Progress result = updateScope(endBlock->linkAt(2), depth - 1);
-                                if (result == Progress::Break)
-                                    return Break();
-                            } else if (!thenBranch.check) {
-                                elseBranch.active = true;
-                                if (checkBranch(elseBranch))
-                                    bail = true;
-                            }
-                            tok = endBlock->linkAt(2);
+                        } else if (elseBranch.check) {
+                            // Likewise the skipped then block could still modify the value
+                            if (!condTok->hasKnownIntValue() && analyzeScope(thenBranch.endBlock).isModified() &&
+                                !analyzer->lowerToPossible())
+                                return Break(Analyzer::Terminate::Bail);
+                            if (elseBranch.endBlock && updateScope(elseBranch.endBlock, depth - 1) == Progress::Break)
+                                return Break();
                         } else {
-                            tok = endBlock;
-                        }
-                        if (thenBranch.active)
+                            const bool conditional = stopOnCondition(condTok);
+                            // The value only flows into the then-branch when the condition can split
+                            // it; for an opaque or correlated condition (e.g. 'if (f(x))') it does
+                            // not, so fork in analyze-only mode: the branch's effect is still tracked
+                            // but nothing is reported in it.
+                            ForwardTraversal ft = fork(!analyzer->updateScope(thenBranch.endBlock, false));
+                            // The branch is traversed below, so don't record its boundary state here.
+                            ft.analyzer->assume(condTok, true, Analyzer::Assume::Pending);
+                            Progress pThen = ft.updateBranch(thenBranch, depth - 1);
+                            // Merge the fork's actions so a modification in the then-branch bubbles up
+                            // to the enclosing branch's isModified().
                             actions |= thenBranch.action;
-                        if (elseBranch.active)
-                            actions |= elseBranch.action;
-                        if (bail)
-                            return Break(Analyzer::Terminate::Bail);
-                        if (thenBranch.isDead() && elseBranch.isDead()) {
-                            if (thenBranch.isModified() && elseBranch.isModified())
-                                return Break(Analyzer::Terminate::Modified);
-                            if (thenBranch.isConclusiveEscape() && elseBranch.isConclusiveEscape())
-                                return Break(Analyzer::Terminate::Escape);
-                            return Break(Analyzer::Terminate::Bail);
-                        }
-                        // Conditional return
-                        if (thenBranch.active && thenBranch.isEscape() && !hasElse) {
-                            if (!thenBranch.isConclusiveEscape()) {
-                                if (!analyzer->lowerToInconclusive())
-                                    return Break(Analyzer::Terminate::Bail);
-                            } else if (thenBranch.check) {
-                                return Break();
-                            } else {
-                                if (stopOnCondition(condTok) && stopUpdates())
-                                    return Break(Analyzer::Terminate::Conditional);
-                                analyzer->assume(condTok, false);
+
+                            // Commit the condition as false on the main path only when the then-branch
+                            // is dead. The else block, if any, is traversed separately (Pending); with
+                            // no else the false path continues past the closing brace, so record the
+                            // assumed state there (None).
+                            if (thenBranch.isDead())
+                                analyzer->assume(condTok,
+                                                 false,
+                                                 hasElse ? Analyzer::Assume::Pending : Analyzer::Assume::None);
+                            // The else block is traversed on the main path. If it kills the value
+                            // (modified) the main path stops, but the then-fork may still carry the
+                            // value forward, so defer the break until after the fork continues.
+                            Progress pElse = Progress::Continue;
+                            if (hasElse)
+                                pElse = updateBranch(elseBranch, depth - 1);
+                            if (thenBranch.isDead() || elseBranch.isDead()) {
+                                if (conditional && stopUpdates())
+                                    pElse = Break(Analyzer::Terminate::Conditional);
                             }
-                        }
-                        if (thenBranch.isInconclusive() || elseBranch.isInconclusive()) {
-                            if (!analyzer->lowerToInconclusive())
+                            if (thenBranch.isModified() || elseBranch.isModified()) {
+                                if (!ft.analyzer->lowerToPossible())
+                                    pThen = Progress::Break;
+                                if (pElse != Progress::Break && !analyzer->lowerToPossible())
+                                    pElse = Break(Analyzer::Terminate::Bail);
+                            }
+                            if (thenBranch.isInconclusive() || elseBranch.isInconclusive()) {
+                                if (!ft.analyzer->lowerToInconclusive())
+                                    pThen = Progress::Break;
+                                if (pElse != Progress::Break && !analyzer->lowerToInconclusive())
+                                    pElse = Break(Analyzer::Terminate::Bail);
+                            }
+                            if (thenBranch.hasGoto() || elseBranch.hasGoto()) {
                                 return Break(Analyzer::Terminate::Bail);
-                        } else if (thenBranch.isModified() || elseBranch.isModified()) {
-                            if (!hasElse && analyzer->isConditional() && stopUpdates())
-                                return Break(Analyzer::Terminate::Conditional);
-                            if (!analyzer->lowerToPossible())
-                                return Break(Analyzer::Terminate::Bail);
-                            analyzer->assume(condTok, elseBranch.isModified());
+                            }
+                            // Carry the then-fork forward, unless a limit is hit - then only the linear main
+                            // path continues (no bail). forkDepth bounds nesting, forkBudget total. <0 = off.
+                            assert(forkBudget != nullptr);
+                            const int forkDepthLimit = settings.vfOptions.maxForwardConditionForkDepth;
+                            const int forkBudgetLimit = settings.vfOptions.maxForwardConditionForks;
+                            const bool depthOk = forkDepthLimit < 0 || forkDepth < forkDepthLimit;
+                            const bool budgetOk = forkBudgetLimit < 0 || *forkBudget < forkBudgetLimit;
+                            if (pThen != Progress::Break && !thenBranch.isEscape() && depthOk && budgetOk) {
+                                ++(*forkBudget);
+                                ++ft.forkDepth;
+                                ft.updateRange(thenBranch.endBlock, end, depth - 1);
+                            }
+                            if (pElse == Progress::Break)
+                                return Break();
                         }
                     }
                 } else if (Token::simpleMatch(tok, "try {")) {

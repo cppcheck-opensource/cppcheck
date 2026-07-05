@@ -4941,7 +4941,9 @@ private:
               "        return *iPtr;\n"
               "    return 0;\n"
               "}");
-        ASSERT_EQUALS("[test.cpp:5:16] -> [test.cpp:4:13] -> [test.cpp:8:17]: (error) Using pointer to local variable 'x' that is out of scope. [invalidLifetime]\n", errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:5:16] -> [test.cpp:7:10] -> [test.cpp:4:13] -> [test.cpp:8:17]: (error) Using pointer to local variable 'x' that is out of scope. [invalidLifetime]\n",
+            errout_str());
 
         // #11753
         check("int main(int argc, const char *argv[]) {\n"
