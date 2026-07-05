@@ -137,6 +137,7 @@ private:
         TEST_CASE(valueFlowConditionExpressions);
 
         TEST_CASE(valueFlowContainerSize);
+        TEST_CASE(valueFlowContainerSizeIterator);
         TEST_CASE(valueFlowContainerElement);
 
         TEST_CASE(valueFlowDynamicBufferSize);
@@ -7590,6 +7591,47 @@ private:
                "    if (m.empty()) {}\n"
                "}\n";
         ASSERT(!isKnownContainerSizeValue(tokenValues(code, "m ."), 0).empty());
+    }
+
+    void valueFlowContainerSizeIterator() {
+        const char* code;
+
+        // valueFlowForwardConst: the container size is added to iterators of a const container
+        code = "void f() {\n"
+               "    const std::vector<int> v{1, 2, 3};\n"
+               "    auto it = v.begin();\n"
+               "    if (it != v.end()) {}\n"
+               "}";
+        ASSERT_EQUALS(
+            "",
+            isKnownContainerSizeValue(tokenValues(code, "it !=", ValueFlow::Value::ValueType::CONTAINER_SIZE), 3));
+
+        // ..also to iterators created in place
+        code = "void f() {\n"
+               "    const std::deque<int> d{1, 2, 3, 4, 5, 6};\n"
+               "    if (std::equal(d.cbegin(), d.cend(), d.cbegin())) {}\n"
+               "}";
+        ASSERT_EQUALS(
+            "",
+            isKnownContainerSizeValue(tokenValues(code, "( ) ,", ValueFlow::Value::ValueType::CONTAINER_SIZE), 6));
+
+        // ..and to iterators of containers with a static size
+        code = "void f() {\n"
+               "    std::array<int, 5> a;\n"
+               "    auto it = a.begin();\n"
+               "    if (it != a.end()) {}\n"
+               "}";
+        ASSERT_EQUALS(
+            "",
+            isKnownContainerSizeValue(tokenValues(code, "it !=", ValueFlow::Value::ValueType::CONTAINER_SIZE), 5));
+
+        // the size of another container is not added to the iterator
+        code = "void f(std::vector<int>& w) {\n"
+               "    const std::vector<int> v{1, 2, 3};\n"
+               "    auto it = w.begin();\n"
+               "    if (it != w.end()) {}\n"
+               "}";
+        ASSERT(tokenValues(code, "it !=", ValueFlow::Value::ValueType::CONTAINER_SIZE).empty());
     }
 
     void valueFlowContainerElement()
