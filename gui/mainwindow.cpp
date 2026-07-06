@@ -619,7 +619,7 @@ void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLib, const bo
     if (!checkSettings.buildDir.empty()) {
         checkSettings.loadSummaries();
         std::list<std::string> sourcefiles;
-        AnalyzerInformation::writeFilesTxt(checkSettings.buildDir, sourcefiles, p.fileSettings, !recheckFiles.isEmpty());
+        AnalyzerInformation::writeFilesTxt(checkSettings.buildDir, sourcefiles, p.fileSettings);
     }
 
     //mThread->SetanalyzeProject(true);
@@ -700,7 +700,7 @@ void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLib, c
         std::transform(fileNames.cbegin(), fileNames.cend(), std::back_inserter(sourcefiles), [](const QString& s) {
             return s.toStdString();
         });
-        AnalyzerInformation::writeFilesTxt(checkSettings.buildDir, sourcefiles, {}, partialRecheck);
+        AnalyzerInformation::writeFilesTxt(checkSettings.buildDir, sourcefiles, {});
     }
 
     mThread->setCheckFiles(true);
@@ -1448,7 +1448,7 @@ void MainWindow::clearResults(const QStringList& selectedFiles)
 {
     if (!selectedFiles.isEmpty()) {
         mUI->mResults->clear(false);
-        for (QString f : selectedFiles)
+        for (const QString& f : selectedFiles)
             mUI->mResults->clearRecheckFile(f);
         return;
     }
