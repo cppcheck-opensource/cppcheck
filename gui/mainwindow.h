@@ -110,7 +110,7 @@ public slots:
     /**
      * @brief Slot to clear all search results or selected
      * @param selectedFiles list to clear, leave empty for all
-    */
+     */
     void clearResults(const QStringList& selectedFiles = QStringList());
 
     /** @brief Slot to open XML report file */
