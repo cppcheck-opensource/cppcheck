@@ -407,6 +407,28 @@ namespace {
             return p;
         }
 
+        // Update the branch that the evaluated condition takes
+        Progress updateTakenBranch(Branch& branch, const Token* skippedBlock, const Token* condTok, int depth)
+        {
+            // The condition is only "known" because of an earlier assumption, so the
+            // skipped block could still modify the value -> lower to possible
+            if (!condTok->hasKnownIntValue() && skippedBlock && analyzeScope(skippedBlock).isModified() &&
+                !analyzer->lowerToPossible())
+                return Break(Analyzer::Terminate::Bail);
+            if (!branch.endBlock)
+                return Progress::Continue;
+            updateScopeState(branch.endBlock);
+            if (updateBranch(branch, depth - 1) == Progress::Break)
+                return Progress::Break;
+            // The branch was entered because of the tracked value; if it might not
+            // return (it ends in a call to an unknown, possibly noreturn function)
+            // then the value might not flow past the branch.
+            if (!condTok->hasKnownIntValue() && !branch.escape && branch.escapeUnknown &&
+                !analyzer->lowerToInconclusive())
+                return Break(Analyzer::Terminate::Bail);
+            return Progress::Continue;
+        }
+
         bool reentersLoop(Token* endBlock, const Token* condTok, const Token* stepTok) const {
             if (!condTok)
                 return true;
@@ -558,16 +580,21 @@ namespace {
             return updateLoop(endToken, endBlock, condTok, initTok, stepTok, true);
         }
 
-        Progress updateScope(Token* endBlock, int depth = 20)
+        void updateScopeState(const Token* endBlock)
         {
-            if (!endBlock)
-                return Break();
             assert(endBlock->link());
-            Token* ctx = endBlock->link()->previous();
+            const Token* ctx = endBlock->link()->previous();
             if (Token::simpleMatch(ctx, ")"))
                 ctx = ctx->link()->previous();
             if (ctx)
                 analyzer->updateState(ctx);
+        }
+
+        Progress updateScope(Token* endBlock, int depth = 20)
+        {
+            if (!endBlock)
+                return Break();
+            updateScopeState(endBlock);
             return updateRange(endBlock->link(), endBlock, depth);
         }
 
@@ -738,32 +765,12 @@ namespace {
                         const bool hasElse = Token::simpleMatch(endBlock, "} else {");
                         tok = hasElse ? endBlock->linkAt(2) : endBlock;
                         if (thenBranch.check) {
-                            // The condition is only "known" because of an earlier assumption, so the
-                            // skipped else block could still modify the value -> lower to possible
-                            if (!condTok->hasKnownIntValue() && hasElse &&
-                                analyzeScope(elseBranch.endBlock).isModified() && !analyzer->lowerToPossible())
-                                return Break(Analyzer::Terminate::Bail);
-                            if (updateScope(thenBranch.endBlock, depth - 1) == Progress::Break)
+                            if (updateTakenBranch(thenBranch, hasElse ? elseBranch.endBlock : nullptr, condTok, depth) ==
+                                Progress::Break)
                                 return Break();
-                            // The branch was entered because of the tracked value; if it might not
-                            // return (it ends in a call to an unknown, possibly noreturn function)
-                            // then the value might not flow past the branch.
-                            if (!condTok->hasKnownIntValue() &&
-                                !isEscapeScope(thenBranch.endBlock, thenBranch.escapeUnknown) &&
-                                thenBranch.escapeUnknown && !analyzer->lowerToInconclusive())
-                                return Break(Analyzer::Terminate::Bail);
                         } else if (elseBranch.check) {
-                            // Likewise the skipped then block could still modify the value
-                            if (!condTok->hasKnownIntValue() && analyzeScope(thenBranch.endBlock).isModified() &&
-                                !analyzer->lowerToPossible())
-                                return Break(Analyzer::Terminate::Bail);
-                            if (elseBranch.endBlock && updateScope(elseBranch.endBlock, depth - 1) == Progress::Break)
+                            if (updateTakenBranch(elseBranch, thenBranch.endBlock, condTok, depth) == Progress::Break)
                                 return Break();
-                            // Same as above: an else branch that might not return
-                            if (elseBranch.endBlock && !condTok->hasKnownIntValue() &&
-                                !isEscapeScope(elseBranch.endBlock, elseBranch.escapeUnknown) &&
-                                elseBranch.escapeUnknown && !analyzer->lowerToInconclusive())
-                                return Break(Analyzer::Terminate::Bail);
                         } else {
                             const bool conditional = stopOnCondition(condTok);
                             // The value only flows into the then-branch when the condition can split
