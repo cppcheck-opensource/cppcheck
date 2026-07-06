@@ -24,7 +24,6 @@
 #include "utils.h"
 
 #include <array>
-#include <cstdlib>
 #include <cstring>
 #include <exception>
 #include <iostream>
@@ -80,9 +79,11 @@ void AnalyzerInformation::writeFilesTxt(const std::string &buildDir, const std::
             const std::string::size_type dotA = info.afile.rfind(".a");
             if (dotA != std::string::npos) {
                 const std::string base = info.afile.substr(0, dotA);
-                const unsigned int n = std::strtoul(info.afile.c_str() + dotA + 2, nullptr, 10);
-                unsigned int &count = fileCount[base];
-                count = std::max(count, n);
+                unsigned int n = 0;
+                if (strToInt(info.afile.substr(dotA + 2), n)) {
+                    unsigned int &count = fileCount[base];
+                    count = std::max(count, n);
+                }
             }
         }
     }
