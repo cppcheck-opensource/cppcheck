@@ -162,7 +162,9 @@ MainWindow::MainWindow(TranslationHandler* th, QSettings* settings) :
     connect(mUI->mActionAnalyzeFiles, &QAction::triggered, this, &MainWindow::analyzeFiles);
     connect(mUI->mActionAnalyzeDirectory, &QAction::triggered, this, &MainWindow::analyzeDirectory);
     connect(mUI->mActionSettings, &QAction::triggered, this, &MainWindow::programSettings);
-    connect(mUI->mActionClearResults, &QAction::triggered, this, [this]() { clearResults(); });
+    connect(mUI->mActionClearResults, &QAction::triggered, this, [this]() {
+        clearResults();
+    });
     connect(mUI->mActionOpenXML, &QAction::triggered, this, &MainWindow::openResults);
 
     connect(mUI->mActionShowStyle, &QAction::toggled, this, &MainWindow::showStyle);
