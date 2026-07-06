@@ -4650,6 +4650,13 @@ struct ConditionHandler {
         });
     }
 
+    static void lowerToInconclusive(std::list<ValueFlow::Value>& values) {
+        for (ValueFlow::Value& v : values) {
+            if (!v.isImpossible())
+                v.setInconclusive();
+        }
+    }
+
     void afterCondition(TokenList& tokenlist,
                         const SymbolDatabase& symboldatabase,
                         ErrorLogger& errorLogger,
@@ -4882,10 +4889,13 @@ struct ConditionHandler {
                 else if (!dead_if)
                     dead_if = isReturnScope(after, settings.library, &unknownFunction);
 
+                // If the taken branch might not return (it ends in a call to an unknown,
+                // possibly noreturn function) then its values might not flow past the
+                // conditional code -> lower them to inconclusive.
                 if (!dead_if && unknownFunction) {
                     if (settings.debugwarnings)
                         bailout(tokenlist, errorLogger, unknownFunction, "possible noreturn scope");
-                    return;
+                    lowerToInconclusive(thenValues);
                 }
 
                 if (Token::simpleMatch(after, "} else {")) {
@@ -4896,7 +4906,7 @@ struct ConditionHandler {
                     if (!dead_else && unknownFunction) {
                         if (settings.debugwarnings)
                             bailout(tokenlist, errorLogger, unknownFunction, "possible noreturn scope");
-                        return;
+                        lowerToInconclusive(elseValues);
                     }
                 }
 
@@ -4912,11 +4922,15 @@ struct ConditionHandler {
                     std::copy_if(thenValues.cbegin(),
                                  thenValues.cend(),
                                  std::back_inserter(values),
-                                 std::mem_fn(&ValueFlow::Value::isPossible));
+                                 [](const ValueFlow::Value& v) {
+                        return v.isPossible() || v.isInconclusive();
+                    });
                     std::copy_if(elseValues.cbegin(),
                                  elseValues.cend(),
                                  std::back_inserter(values),
-                                 std::mem_fn(&ValueFlow::Value::isPossible));
+                                 [](const ValueFlow::Value& v) {
+                        return v.isPossible() || v.isInconclusive();
+                    });
                 }
 
                 if (values.empty())

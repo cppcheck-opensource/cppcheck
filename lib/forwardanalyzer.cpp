@@ -745,6 +745,13 @@ namespace {
                                 return Break(Analyzer::Terminate::Bail);
                             if (updateScope(thenBranch.endBlock, depth - 1) == Progress::Break)
                                 return Break();
+                            // The branch was entered because of the tracked value; if it might not
+                            // return (it ends in a call to an unknown, possibly noreturn function)
+                            // then the value might not flow past the branch.
+                            if (!condTok->hasKnownIntValue() &&
+                                !isEscapeScope(thenBranch.endBlock, thenBranch.escapeUnknown) &&
+                                thenBranch.escapeUnknown && !analyzer->lowerToInconclusive())
+                                return Break(Analyzer::Terminate::Bail);
                         } else if (elseBranch.check) {
                             // Likewise the skipped then block could still modify the value
                             if (!condTok->hasKnownIntValue() && analyzeScope(thenBranch.endBlock).isModified() &&
@@ -752,6 +759,11 @@ namespace {
                                 return Break(Analyzer::Terminate::Bail);
                             if (elseBranch.endBlock && updateScope(elseBranch.endBlock, depth - 1) == Progress::Break)
                                 return Break();
+                            // Same as above: an else branch that might not return
+                            if (elseBranch.endBlock && !condTok->hasKnownIntValue() &&
+                                !isEscapeScope(elseBranch.endBlock, elseBranch.escapeUnknown) &&
+                                elseBranch.escapeUnknown && !analyzer->lowerToInconclusive())
+                                return Break(Analyzer::Terminate::Bail);
                         } else {
                             const bool conditional = stopOnCondition(condTok);
                             // The value only flows into the then-branch when the condition can split

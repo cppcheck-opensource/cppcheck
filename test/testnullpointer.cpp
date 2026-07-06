@@ -4468,6 +4468,59 @@ private:
             "[test.cpp:3:13]: (warning) If resource allocation fails, then there is a possible null pointer dereference: fid [nullPointerOutOfResources]\n"
             "[test.cpp:4:12]: (warning) If resource allocation fails, then there is a possible null pointer dereference: fid [nullPointerOutOfResources]\n",
             errout_str());
+
+        // the guard might call an unknown, possibly noreturn function -> no warning
+        check("void f() {\n"
+              "    FILE* fid = fopen(\"x.txt\", \"w\");\n"
+              "    if (fid == NULL)\n"
+              "        g();\n"
+              "    fclose(fid);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // .. but an inconclusive warning is reported with --inconclusive
+        check("void f() {\n"
+              "    FILE* fid = fopen(\"x.txt\", \"w\");\n"
+              "    if (fid == NULL)\n"
+              "        g();\n"
+              "    fclose(fid);\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS(
+            "[test.cpp:5:12]: (warning, inconclusive) If resource allocation fails, then there is a possible null pointer dereference: fid [nullPointerOutOfResources]\n",
+            errout_str());
+
+        check("int f(const int* p) {\n"
+              "    if (p == nullptr)\n"
+              "        g();\n"
+              "    return *p;\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS(
+            "[test.cpp:2:11] -> [test.cpp:4:13]: (warning, inconclusive) Either the condition 'p==nullptr' is redundant or there is possible null pointer dereference: p. [nullPointerRedundantCheck]\n",
+            errout_str());
+
+        check("void f() {\n"
+              "    FILE* fid = fopen(\"x.txt\", \"w\");\n"
+              "    if (fid != NULL)\n"
+              "        ;\n"
+              "    else\n"
+              "        g();\n"
+              "    fclose(fid);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // guard function is known to return -> warning
+        check("void g() {}\n"
+              "void f() {\n"
+              "    FILE* fid = fopen(\"x.txt\", \"w\");\n"
+              "    if (fid == NULL)\n"
+              "        g();\n"
+              "    fclose(fid);\n"
+              "}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:6:12]: (warning) If resource allocation fails, then there is a possible null pointer dereference: fid [nullPointerOutOfResources]\n",
+            errout_str());
     }
 
     void functioncalllibrary() {
