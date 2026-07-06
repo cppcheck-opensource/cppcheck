@@ -24,12 +24,10 @@
 #include "utils.h"
 
 #include <array>
-#include <cstdlib>
 #include <cstring>
 #include <exception>
 #include <iostream>
 #include <map>
-#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
@@ -53,47 +51,17 @@ static std::string getFilename(const std::string &fullpath)
     return fullpath.substr(pos1,pos2);
 }
 
-void AnalyzerInformation::writeFilesTxt(const std::string &buildDir, const std::list<std::string> &sourcefiles, const std::list<FileSettings> &fileSettings, bool merge)
+void AnalyzerInformation::writeFilesTxt(const std::string &buildDir, const std::list<std::string> &sourcefiles, const std::list<FileSettings> &fileSettings)
 {
     const std::string filesTxt(buildDir + "/files.txt");
-
-    std::string keptLines;
-    std::map<std::string, unsigned int> fileCount;
-
-    if (merge) {
-        std::set<std::string> current;
-        for (const std::string &f : sourcefiles)
-            current.insert(Path::simplifyPath(f));
-        for (const FileSettings &fs : fileSettings)
-            current.insert(Path::simplifyPath(fs.filename()));
-
-        std::ifstream fin(filesTxt);
-        std::string line;
-        while (std::getline(fin, line)) {
-            Info info;
-            if (!info.parse(line))
-                continue;
-            if (current.count(info.sourceFile))
-                continue;
-            keptLines += line + '\n';
-
-            const std::string::size_type dotA = info.afile.rfind(".a");
-            if (dotA != std::string::npos) {
-                const std::string base = info.afile.substr(0, dotA);
-                const unsigned int n = std::strtoul(info.afile.c_str() + dotA + 2, nullptr, 10);
-                unsigned int &count = fileCount[base];
-                count = std::max(count, n);
-            }
-        }
-    }
-
     std::ofstream fout(filesTxt);
-    fout << keptLines;
-    fout << getFilesTxt(sourcefiles, fileSettings, fileCount);
+    fout << getFilesTxt(sourcefiles, fileSettings);
 }
 
-std::string AnalyzerInformation::getFilesTxt(const std::list<std::string> &sourcefiles, const std::list<FileSettings> &fileSettings, std::map<std::string, unsigned int> fileCount) {
+std::string AnalyzerInformation::getFilesTxt(const std::list<std::string> &sourcefiles, const std::list<FileSettings> &fileSettings) {
     std::ostringstream ret;
+
+    std::map<std::string, unsigned int> fileCount;
 
     for (const std::string &f : sourcefiles) {
         const std::string afile = getFilename(f);
