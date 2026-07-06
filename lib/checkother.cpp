@@ -2408,7 +2408,7 @@ void CheckOtherImpl::checkIncompleteStatement()
             !(tok->str() == "," && tok->astParent() && tok->astParent()->isAssignmentOp()))
             continue;
         // Skip statement expressions
-        if (Token::simpleMatch(rtok, "; } )"))
+        if (Token::simpleMatch(rtok, "; } )") || Token::simpleMatch(tok->next(), "; } )"))
             continue;
         if (!isConstStatement(tok, mSettings.library, false))
             continue;
