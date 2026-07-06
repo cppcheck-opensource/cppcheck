@@ -423,8 +423,7 @@ namespace {
             // The branch was entered because of the tracked value; if it might not
             // return (it ends in a call to an unknown, possibly noreturn function)
             // then the value might not flow past the branch.
-            if (!condTok->hasKnownIntValue() && !branch.escape && branch.escapeUnknown &&
-                !analyzer->lowerToInconclusive())
+            if (!condTok->hasKnownIntValue() && !branch.escape && branch.escapeUnknown && !analyzer->lowerToInconclusive())
                 return Break(Analyzer::Terminate::Bail);
             return Progress::Continue;
         }
