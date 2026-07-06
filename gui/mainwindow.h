@@ -322,7 +322,7 @@ private:
      * @param checkConfig Flag to indicate if the configuration should be checked.
      * @param partialRecheck Flag to indicate a partial recheck.
      */
-    void doAnalyzeFiles(const QStringList &files, bool checkLib = false, bool checkConfig = false, const bool partialRecheck = false);
+    void doAnalyzeFiles(const QStringList &files, bool checkLib = false, bool checkConfig = false, bool partialRecheck = false);
 
     /**
      * @brief Get our default cppcheck settings and read project file.
