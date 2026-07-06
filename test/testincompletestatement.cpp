@@ -758,6 +758,11 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:4:6]: (warning) Redundant code: Found unused array access. [constStatement]\n",
                       errout_str());
+
+        check("int f(int i) {\n" // #14889
+              "    return i ? 8 : ({ int x = 2; x; });\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void vardecl() {
