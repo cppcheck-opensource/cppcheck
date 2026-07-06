@@ -4935,37 +4935,6 @@ private:
               "    if (v > 0) {}\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
-
-        check("bool f();\n" // a modification after a conditional escape must still be seen
-              "int main() {\n"
-              "    bool datumAdded = false;\n"
-              "    if (f()) {\n"
-              "        if (f()) return 1;\n"
-              "        if (f()) datumAdded = true;\n"
-              "    }\n"
-              "    if (datumAdded) {}\n"
-              "}\n");
-        ASSERT_EQUALS("", errout_str());
-
-        check("bool f();\n"
-              "int main() {\n"
-              "    bool b = false;\n"
-              "    if (f()) {\n"
-              "        if (f()) return 1;\n"
-              "        b = true;\n"
-              "    }\n"
-              "    if (b) {}\n"
-              "}\n");
-        ASSERT_EQUALS("", errout_str());
-
-        check("bool f();\n" // the branch always escapes - keep the known value
-              "int main() {\n"
-              "    bool b = false;\n"
-              "    if (f()) { b = true; return 1; }\n"
-              "    if (b) {}\n"
-              "}\n");
-        ASSERT_EQUALS("[test.cpp:5:9]: (style) Condition 'b' is always false [knownConditionTrueFalse]\n",
-                      errout_str());
     }
 
     void alwaysTrueSymbolic()

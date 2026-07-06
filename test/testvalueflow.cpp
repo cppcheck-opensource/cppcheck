@@ -3214,6 +3214,38 @@ private:
                "    return x;\n"
                "}\n";
         ASSERT_EQUALS(true, testValueOfXKnown(code, 3U, 0));
+
+        code = "bool f();\n" // a modification after a conditional escape must still be seen
+               "void g() {\n"
+               "    bool x = false;\n"
+               "    if (f()) {\n"
+               "        if (f()) return;\n"
+               "        if (f()) x = true;\n"
+               "    }\n"
+               "    if (x) {}\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 8U, 0));
+        ASSERT_EQUALS(false, testValueOfXKnown(code, 8U, 0));
+
+        code = "bool f();\n"
+               "void g() {\n"
+               "    bool x = false;\n"
+               "    if (f()) {\n"
+               "        if (f()) return;\n"
+               "        x = true;\n"
+               "    }\n"
+               "    if (x) {}\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 8U, 0));
+        ASSERT_EQUALS(false, testValueOfXKnown(code, 8U, 0));
+
+        code = "bool f();\n" // the branch always escapes - keep the known value
+               "void g() {\n"
+               "    bool x = false;\n"
+               "    if (f()) { x = true; return; }\n"
+               "    if (x) {}\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXKnown(code, 5U, 0));
     }
 
     void valueFlowAfterSwap()
