@@ -1139,7 +1139,6 @@ void ResultsTree::removeFileErrorsFromErrorList(const ResultItem *fileItem)
         if (errorItem && errorItem->errorItem)
             mErrorList.removeAll(errorItem->errorItem->toString());
     }
-    mErrorList.removeAll(fileItem->errorItem->toString());
 }
 
 void ResultsTree::updateFromOldReport(const QString &filename)
