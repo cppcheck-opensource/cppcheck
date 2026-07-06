@@ -3834,6 +3834,44 @@ private:
                "    return x;\n"
                "}\n";
         ASSERT_EQUALS(true, testValueOfX(code, 4U, 0));
+
+        // if the guarded block calls an unknown, possibly noreturn function
+        // then the condition value is lowered to inconclusive after the block
+        code = "int f(int x) {\n"
+               "    if (x == 0)\n"
+               "        g();\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXInconclusive(code, 4U, 0));
+
+        // .. also when the guard is in the else branch
+        code = "int f(int x) {\n"
+               "    if (x != 0)\n"
+               "        ;\n"
+               "    else\n"
+               "        g();\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXInconclusive(code, 6U, 0));
+
+        // a declared function is assumed to return
+        code = "void g();\n"
+               "int f(int x) {\n"
+               "    if (x == 0)\n"
+               "        g();\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 5U, 0));
+        ASSERT_EQUALS(false, testValueOfXInconclusive(code, 5U, 0));
+
+        // a noreturn function conclusively escapes
+        code = "int f(int x) {\n"
+               "    if (x == 0)\n"
+               "        abort();\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(false, testValueOfX(code, 4U, 0));
+        ASSERT_EQUALS(true, testValueOfXImpossible(code, 4U, 0));
     }
 
     void valueFlowAfterConditionTernary()

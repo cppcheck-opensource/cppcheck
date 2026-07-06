@@ -4650,7 +4650,8 @@ struct ConditionHandler {
         });
     }
 
-    static void lowerToInconclusive(std::list<ValueFlow::Value>& values) {
+    static void lowerToInconclusive(std::list<ValueFlow::Value>& values)
+    {
         for (ValueFlow::Value& v : values) {
             if (!v.isImpossible())
                 v.setInconclusive();
