@@ -395,6 +395,11 @@ namespace {
                 bool structuralUnknown = false;
                 const bool structuralEscape = isEscapeScope(branch.endBlock, structuralUnknown);
                 branch.escapeUnknown = !structuralEscape || structuralUnknown;
+                // The traversal stopped at the escape, so the rest of the scope was not walked; a
+                // fall-through path could still modify the value there - include the whole scope's
+                // actions so isModified() sees it.
+                if (branch.escapeUnknown)
+                    branch.action |= analyzeScope(branch.endBlock);
             } else {
                 // Detect an escape the traversal did not flag (e.g. an unknown noreturn call);
                 // escapeUnknown reports a possible (unknown) escape.
