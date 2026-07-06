@@ -27,7 +27,6 @@
 #include <fstream>
 #include <functional>
 #include <list>
-#include <map>
 #include <string>
 
 class ErrorMessage;
@@ -58,7 +57,7 @@ class CPPCHECKLIB AnalyzerInformation {
 public:
     ~AnalyzerInformation();
 
-    static void writeFilesTxt(const std::string &buildDir, const std::list<std::string> &sourcefiles, const std::list<FileSettings> &fileSettings, bool merge = false);
+    static void writeFilesTxt(const std::string &buildDir, const std::list<std::string> &sourcefiles, const std::list<FileSettings> &fileSettings);
 
     /** Close current TU.analyzerinfo file */
     void close();
@@ -86,7 +85,7 @@ public:
     static std::string processFilesTxt(const std::string& buildDir, const std::function<void(const char* checkattr, const tinyxml2::XMLElement* e, const Info& filesTxtInfo)>& handler, bool debug = false);
 
 protected:
-    static std::string getFilesTxt(const std::list<std::string> &sourcefiles, const std::list<FileSettings> &fileSettings, std::map<std::string, unsigned int> fileCount = {});
+    static std::string getFilesTxt(const std::list<std::string> &sourcefiles, const std::list<FileSettings> &fileSettings);
 
     static std::string getAnalyzerInfoFileFromFilesTxt(std::istream& filesTxt, const std::string &sourcefile, const std::string &cfg, size_t fsFileId);
 
