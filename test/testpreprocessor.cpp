@@ -371,6 +371,8 @@ private:
         TEST_CASE(testMissingIncludeMixed);
         TEST_CASE(testMissingIncludeCheckConfig);
 
+        TEST_CASE(testLazyInclude);
+
         TEST_CASE(hasInclude);
 
         TEST_CASE(limitsDefines);
@@ -3051,6 +3053,36 @@ private:
                       "test.c:6:2: information: Include file: \"header4.h\" not found. [missingInclude]\n"
                       "test.c:9:2: information: Include file: \"" + missing3 + "\" not found. [missingInclude]\n"
                       "test.c:11:2: information: Include file: <" + missing4 + "> not found. Please note: Standard library headers do not need to be provided to get proper results. [missingIncludeSystem]\n", errout_str());
+    }
+
+    void testLazyInclude() {
+        const char *code = "#ifdef CONFIG1\n"
+                           "#include \"header1.h\"\n"
+                           "#include \"missing1.h\"\n"
+                           "#else\n"
+                           "#include \"header2.h\"\n"
+                           "#include \"missing2.h\"\n"
+                           "#endif\n";
+
+        std::vector<std::string> files;
+        simplecpp::TokenList tokens(code, files, "test.c");
+
+        ScopedFile header1("header1.h", "1");
+        ScopedFile header2("header2.h", "2");
+
+        Settings settings;
+        Preprocessor preprocessor(tokens, settings, *this, Standards::Language::CPP);
+
+        simplecpp::OutputList outputList;
+        simplecpp::TokenList tokens2 = preprocessor.preprocess("CONFIG1", files, outputList);
+        std::string out = tokens2.stringify();
+
+        simplecpp::FileDataCache &cache = preprocessor.mFileCache;
+
+        ASSERT_EQUALS("\n#line 1 \"header1.h\"\n1", out);
+        ASSERT_EQUALS(1, outputList.size());
+        ASSERT_EQUALS("Header not found: \"missing1.h\"", outputList.begin()->msg);
+        ASSERT_EQUALS(1, cache.size());
     }
 
     void hasInclude() {

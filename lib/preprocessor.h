@@ -98,6 +98,8 @@ public:
  * configurations that exist in a source file.
  */
 class CPPCHECKLIB WARN_UNUSED Preprocessor {
+    friend class TestPreprocessor;
+
 public:
     /** character that is inserted in expanded macros */
     static char macroChar;
