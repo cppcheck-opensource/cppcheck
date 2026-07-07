@@ -22,6 +22,7 @@
 //---------------------------------------------------------------------------
 
 #include "config.h"
+#include "nonnullptr.h"
 #include "standards.h"
 
 #include <cstddef>
@@ -162,10 +163,10 @@ private:
 
     void addRemarkComments(const simplecpp::TokenList &tokens, std::vector<RemarkComment> &remarkComments) const;
 
-    simplecpp::TokenList& mTokens;
+    NonNullPtr<simplecpp::TokenList> mTokens;
 
-    const Settings& mSettings;
-    ErrorLogger &mErrorLogger;
+    NonNullPtr<const Settings> mSettings;
+    NonNullPtr<ErrorLogger> mErrorLogger;
 
     /** list of all directives met while preprocessing file */
 

@@ -25,6 +25,7 @@
 #include "config.h"
 #include "errorlogger.h"
 #include "errortypes.h"
+#include "nonnullptr.h"
 #include "platform.h"
 #include "settings.h"
 #include "standards.h"
@@ -239,7 +240,7 @@ protected:
     private:
         SettingsBuilder& libraryxml(const char xmldata[], std::size_t len);
 
-        const TestFixture &fixture;
+        NonNullPtr<const TestFixture> fixture;
         Settings settings;
 
         static constexpr bool REDUNDANT_CHECK = false;

@@ -20,6 +20,7 @@
 #define checkersReportH
 
 #include "config.h"
+#include "nonnullptr.h"
 
 #include <set>
 #include <string>
@@ -37,8 +38,8 @@ public:
     std::string getXmlReport(const std::string& criticalErrors) const;
 
 private:
-    const Settings& mSettings;
-    const std::set<std::string>& mActiveCheckers;
+    NonNullPtr<const Settings> mSettings;
+    NonNullPtr<const std::set<std::string>> mActiveCheckers;
 
     void countCheckers();
 

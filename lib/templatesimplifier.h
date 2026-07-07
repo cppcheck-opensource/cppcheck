@@ -23,6 +23,7 @@
 //---------------------------------------------------------------------------
 
 #include "config.h"
+#include "nonnullptr.h"
 
 #include <cstdint>
 #include <ctime>
@@ -504,10 +505,10 @@ private:
         const std::string &indent = "    ") const;
     void printOut(const std::string &text = "") const;
 
-    Tokenizer &mTokenizer;
-    TokenList &mTokenList;
-    const Settings &mSettings;
-    ErrorLogger &mErrorLogger;
+    NonNullPtr<Tokenizer> mTokenizer;
+    NonNullPtr<TokenList> mTokenList;
+    NonNullPtr<const Settings> mSettings;
+    NonNullPtr<ErrorLogger> mErrorLogger;
     bool mChanged{};
 
     std::list<TokenAndName> mTemplateDeclarations;

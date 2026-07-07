@@ -23,6 +23,7 @@
 
 #include "config.h"
 #include "errortypes.h"
+#include "nonnullptr.h"
 
 #include <cstdint>
 #include <ctime>
@@ -301,7 +302,7 @@ public:
     ~ProgressReporter() {
         if (mReportProgressInterval < 0)
             return;
-        mErrorLogger.reportProgress(mFilename, mStage.c_str(), 100);
+        mErrorLogger->reportProgress(mFilename, mStage.c_str(), 100);
     }
 
     void report(int value) {
@@ -309,17 +310,17 @@ public:
             return;
         const std::time_t t = std::time(nullptr);
         if (t >= mLastTime + mReportProgressInterval) {
-            mErrorLogger.reportProgress(mFilename, mStage.c_str(), value);
+            mErrorLogger->reportProgress(mFilename, mStage.c_str(), value);
             mLastTime = t;
             mLastValue = value;
         }
     }
 
 private:
-    ErrorLogger& mErrorLogger;
-    const int mReportProgressInterval;
-    const std::string mFilename;
-    const std::string mStage;
+    NonNullPtr<ErrorLogger> mErrorLogger;
+    int mReportProgressInterval;
+    std::string mFilename;
+    std::string mStage;
     std::time_t mLastTime{0};
     int mLastValue{-1};
 };

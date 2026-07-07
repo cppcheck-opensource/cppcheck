@@ -644,7 +644,7 @@ const ::Type * clangimport::AstNode::addTypeTokens(TokenList &tokenList, const s
     for (const Token *typeToken = tokenList.back(); Token::Match(typeToken, "&|*|%name%"); typeToken = typeToken->previous()) {
         if (!typeToken->isName())
             continue;
-        const ::Type *recordType = scope->symdb.findVariableType(scope, typeToken);
+        const ::Type *recordType = scope->symdb->findVariableType(scope, typeToken);
         if (recordType) {
             const_cast<Token*>(typeToken)->type(recordType);
             return recordType;

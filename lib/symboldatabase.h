@@ -25,6 +25,7 @@
 #include "errortypes.h"
 #include "library.h"
 #include "mathlib.h"
+#include "nonnullptr.h"
 #include "sourcelocation.h"
 #include "token.h"
 #include "utils.h"
@@ -1044,7 +1045,7 @@ public:
     Scope(const SymbolDatabase &symdb_, const Token *classDef_, const Scope *nestedIn_);
     Scope(const SymbolDatabase &symdb_, const Token *classDef_, const Scope *nestedIn_, ScopeType type_, const Token *start_);
 
-    const SymbolDatabase& symdb;
+    NonNullPtr<const SymbolDatabase> symdb;
     std::string className;
     const Token* classDef{};   ///< class/struct/union/namespace token
     const Token* bodyStart{};  ///< '{' token
@@ -1502,9 +1503,9 @@ private:
     bool isFunctionWithoutSideEffects(const Function& func, const Token* functionUsageToken,
                                       std::list<const Function*> checkedFuncs) const;
 
-    Tokenizer& mTokenizer;
-    const Settings &mSettings;
-    ErrorLogger &mErrorLogger;
+    NonNullPtr<Tokenizer> mTokenizer;
+    NonNullPtr<const Settings> mSettings;
+    NonNullPtr<ErrorLogger> mErrorLogger;
 
     /** variable symbol table */
     std::vector<const Variable *> mVariableList;

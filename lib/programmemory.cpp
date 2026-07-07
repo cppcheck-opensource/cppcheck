@@ -589,7 +589,7 @@ ProgramMemoryState::FindChangedFn ProgramMemoryState::getCachedFindExpressionCha
     // variable follows the same path) and memoizes those evals in evalCache for the closure's lifetime.
     using EvalCache = std::map<const Token*, std::vector<MathLib::bigint>>;
     const std::shared_ptr<ChangedCache> cache = changedCache;
-    const Settings* const sp = &settings;
+    const Settings* const sp = settings.get();
     ProgramMemory snapshot = state;
     const std::shared_ptr<EvalCache> evalCache = skipDeadCode ? std::make_shared<EvalCache>() : nullptr;
     return [cache, sp, snapshot, skipDeadCode, evalCache](const Token* expr,
