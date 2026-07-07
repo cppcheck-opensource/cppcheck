@@ -159,6 +159,7 @@
     <ClInclude Include="library.h" />
     <ClInclude Include="matchcompiler.h" />
     <ClInclude Include="mathlib.h" />
+    <ClInclude Include="nonnullptr.h" />
     <ClInclude Include="path.h" />
     <ClInclude Include="pathanalysis.h" />
     <ClInclude Include="pathmatch.h" />

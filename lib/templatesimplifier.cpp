@@ -71,7 +71,7 @@ namespace {
             return tokenAndName.token() == mToken;
         }
     private:
-        const Token * const mToken;
+        const Token * mToken;
     };
 
     class FindName {
@@ -81,7 +81,7 @@ namespace {
             return tokenAndName.name() == mName;
         }
     private:
-        const std::string mName;
+        std::string mName;
     };
 
     class FindFullName {
@@ -91,7 +91,7 @@ namespace {
             return tokenAndName.fullName() == mFullName;
         }
     private:
-        const std::string mFullName;
+        std::string mFullName;
     };
 }
 

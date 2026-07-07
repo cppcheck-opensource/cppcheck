@@ -502,6 +502,7 @@ int main(int argc, char **argv)
     libfiles_h.emplace("findtoken.h");
     libfiles_h.emplace("json.h");
     libfiles_h.emplace("matchcompiler.h");
+    libfiles_h.emplace("nonnullptr.h");
     libfiles_h.emplace("precompiled.h");
     libfiles_h.emplace("rule.h");
     libfiles_h.emplace("smallvector.h");

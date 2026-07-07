@@ -23,6 +23,7 @@
 #include "infer.h"
 #include "library.h"
 #include "mathlib.h"
+#include "nonnullptr.h"
 #include "settings.h"
 #include "standards.h"
 #include "symboldatabase.h"
@@ -1358,7 +1359,7 @@ static void pruneConditions(std::vector<const Token*>& conds,
 namespace {
     struct Executor {
         ProgramMemory* pm;
-        const Settings& settings;
+        NonNullPtr<const Settings> settings;
         // Values tracked by the forward/reverse analysis. A tracked value is the authoritative
         // current value of its expression and takes precedence over the program memory.
         const ProgramMemory::Map* vars = nullptr;
@@ -1737,7 +1738,7 @@ namespace {
                         BuiltinLibraryFunction lf = getBuiltinLibraryFunction(ftok->str());
                         if (lf)
                             return lf(args);
-                        const std::string& returnValue = settings.library.returnValue(ftok);
+                        const std::string& returnValue = settings->library.returnValue(ftok);
                         if (!returnValue.empty()) {
                             std::unordered_map<nonneg int, ValueFlow::Value> arg_map;
                             int argn = 0;

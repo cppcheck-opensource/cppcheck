@@ -20,6 +20,7 @@
 
 #include "errortypes.h"
 #include "mathlib.h"
+#include "nonnullptr.h"
 #include "standards.h"
 #include "symboldatabase.h"
 #include "token.h"
@@ -233,8 +234,8 @@ namespace clangimport {
             , mSymbolDatabase(symbolDatabase)
         {}
 
-        const Settings &mSettings;
-        SymbolDatabase &mSymbolDatabase;
+        NonNullPtr<const Settings> mSettings;
+        NonNullPtr<SymbolDatabase> mSymbolDatabase;
 
         int enumValue = 0;
 
@@ -672,7 +673,7 @@ void clangimport::AstNode::addFullScopeNameTokens(TokenList &tokenList, const Sc
 const Scope *clangimport::AstNode::getNestedInScope(TokenList &tokenList)
 {
     if (!tokenList.back())
-        return &mData->mSymbolDatabase.scopeList.front();
+        return &mData->mSymbolDatabase->scopeList.front();
     if (tokenList.back()->str() == "}" && mData->mNotScope.find(tokenList.back()) == mData->mNotScope.end())
         return tokenList.back()->scope()->nestedIn;
     return tokenList.back()->scope();
@@ -1071,8 +1072,8 @@ Token *clangimport::AstNode::createTokens(TokenList &tokenList)
             const_cast<Token *>(enumscope->bodyEnd)->deletePrevious();
 
         // Create enum type
-        mData->mSymbolDatabase.typeList.emplace_back(enumtok, enumscope, enumtok->scope());
-        enumscope->definedType = &mData->mSymbolDatabase.typeList.back();
+        mData->mSymbolDatabase->typeList.emplace_back(enumtok, enumscope, enumtok->scope());
+        enumscope->definedType = &mData->mSymbolDatabase->typeList.back();
         if (nametok)
             const_cast<Scope *>(enumtok->scope())->definedTypesMap[nametok->str()] = enumscope->definedType;
 
@@ -1238,8 +1239,8 @@ Token *clangimport::AstNode::createTokens(TokenList &tokenList)
         }
 
         Scope *recordScope = createScope(tokenList, ScopeType::eStruct, children, classDef);
-        mData->mSymbolDatabase.typeList.emplace_back(classDef, recordScope, classDef->scope());
-        recordScope->definedType = &mData->mSymbolDatabase.typeList.back();
+        mData->mSymbolDatabase->typeList.emplace_back(classDef, recordScope, classDef->scope());
+        recordScope->definedType = &mData->mSymbolDatabase->typeList.back();
         if (!recordName.empty()) {
             recordScope->className = recordName;
             const_cast<Scope *>(classDef->scope())->definedTypesMap[recordName] = recordScope->definedType;
@@ -1520,8 +1521,8 @@ void clangimport::AstNode::createTokensForCXXRecord(TokenList &tokenList)
         const std::string addr = mExtTokens[0];
         mData->scopeDecl(addr, scope);
         scope->className = className;
-        mData->mSymbolDatabase.typeList.emplace_back(classToken, scope, classToken->scope());
-        scope->definedType = &mData->mSymbolDatabase.typeList.back();
+        mData->mSymbolDatabase->typeList.emplace_back(classToken, scope, classToken->scope());
+        scope->definedType = &mData->mSymbolDatabase->typeList.back();
         const_cast<Scope *>(classToken->scope())->definedTypesMap[className] = scope->definedType;
     }
     addtoken(tokenList, ";");
