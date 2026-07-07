@@ -401,14 +401,8 @@ private:
         Preprocessor preprocessor(tokens, settings, *this, Standards::Language::C);
         std::set<std::string> configs = { "" };
         std::set<std::string> configDefines = { "__cplusplus" };
-        for (const auto &define : settings.library.defines()) {
-            const std::string::size_type paren = define.find("(");
-            const std::string::size_type space = define.find(" ");
-            std::string::size_type end = space;
-            if (paren != std::string::npos && paren < space)
-                end = paren;
-            configDefines.insert(define.substr(0, end));
-        }
+        for (const auto &define : settings.library.defines())
+            configDefines.insert(define.substr(0, define.find_first_of("( ")));
         preprocessor.setLoadCallback([&](simplecpp::FileData &data) {
             Preprocessor::removeComments(data.tokens);
             preprocessor.getConfigs(data.filename, data.tokens, configDefines, configs);

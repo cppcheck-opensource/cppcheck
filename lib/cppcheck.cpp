@@ -1049,16 +1049,8 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         std::set<std::string> configDefines = { "__cplusplus" };
 
         // Insert library defines
-        for (const auto &define : mSettings.library.defines()) {
-            const std::string::size_type paren = define.find("(");
-            const std::string::size_type space = define.find(" ");
-            std::string::size_type end = space;
-
-            if (paren != std::string::npos && paren < space)
-                end = paren;
-
-            configDefines.insert(define.substr(0, end));
-        }
+        for (const auto &define : mSettings.library.defines())
+            configDefines.insert(define.substr(0, define.find_first_of("( ")));
 
         preprocessor.setLoadCallback([&](simplecpp::FileData &data) {
             // Do preprocessing on included file
