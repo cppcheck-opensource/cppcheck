@@ -100,7 +100,7 @@ public:
         closePlist();
     }
 
-    void addRemarkComments(std::vector<RemarkComment> remarkComments)
+    void addRemarkComments(const std::vector<RemarkComment> &remarkComments)
     {
         mRemarkComments.insert(mRemarkComments.end(), remarkComments.begin(), remarkComments.end());
     }
