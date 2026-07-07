@@ -228,6 +228,7 @@ private:
         TEST_CASE(constRefQualified);
         TEST_CASE(staticArrayPtrOverload);
         TEST_CASE(qualifiedNameMember); // #10872
+        TEST_CASE(memberVarCallChain);
 
         TEST_CASE(initializerListOrder);
         TEST_CASE(initializerListArgument);
@@ -7852,6 +7853,19 @@ private:
                    "};\n"
                    "void S::f() {\n"
                    "    std::vector<data>::const_iterator end = std.end();\n"
+                   "}\n", s);
+        ASSERT_EQUALS("[test.cpp:4:10] -> [test.cpp:6:9]: (style, inconclusive) Technically the member function 'S::f' can be const. [functionConst]\n", errout_str());
+    }
+
+    void memberVarCallChain() { // member variable accessed through a function call chain
+        const Settings s = settingsBuilder().severity(Severity::style).debugwarnings().library("std.cfg").certainty(Certainty::inconclusive).build();
+        checkConst("struct S {\n"
+                   "    std::string nodeType;\n"
+                   "    std::vector<std::shared_ptr<S>> children;\n"
+                   "    bool f();\n"
+                   "};\n"
+                   "bool S::f() {\n"
+                   "    return !children.empty() && children.back()->nodeType == \"Foo\";\n"
                    "}\n", s);
         ASSERT_EQUALS("[test.cpp:4:10] -> [test.cpp:6:9]: (style, inconclusive) Technically the member function 'S::f' can be const. [functionConst]\n", errout_str());
     }

@@ -2334,6 +2334,10 @@ bool CheckClassImpl::isMemberVar(const Scope *scope, const Token *tok) const
         if (Token::Match(tok->tokAt(-3), "%name% ) . %name%")) {
             tok = tok->tokAt(-3);
             again = true;
+        } else if (Token::Match(tok->tokAt(-2), ") . %name%")) {
+            // function call chain: the member is accessed through the return value
+            tok = tok->linkAt(-2)->previous();
+            again = true;
         } else if (Token::Match(tok->tokAt(-2), "%name% . %name%")) {
             tok = tok->tokAt(-2);
             again = true;
