@@ -413,3 +413,43 @@ def test_slow_bifurcate(tmpdir):
                 	}
                 }""")
     cppcheck([filename]) # should not take more than ~1 second
+
+
+@pytest.mark.skipif(sys.platform == 'darwin', reason='GitHub macOS runners are too slow')
+@pytest.mark.timeout(10)
+def test_large_number_of_violations_and_suppressions(tmpdir):
+    filename_main = os.path.join(tmpdir, 'main.c')
+    # This name causes the PathMatch::match() to iterate ~70 times, which is not unrealistic for a header file placed in subdirs.
+    # The number of iterations also depends on how the suppressions are written.
+    header_name = 'long_filename_to_simulate_a_more_realistic_header_placed_in_subdirs.h'
+    header_file = os.path.join(tmpdir, header_name)
+    suppressions_file = os.path.join(tmpdir, 'suppressions.txt')
+
+    # Create a main file that includes a header and returns 0.
+    with open(filename_main, "w") as f:
+        f.write(f'#include "{header_name}"\n\n')
+        f.write('int main() \n')
+        f.write('{\n')
+        f.write('    return 0;\n')
+        f.write('}\n')
+
+    # Create a header file with macro definitions that violates misra because they start with an underscore.
+    with open(header_file, "w") as f:
+        f.write(f'#ifndef {header_name.upper().replace(".", "_")}\n')
+        f.write(f'#define {header_name.upper().replace(".", "_")}\n')
+        f.write('\n')
+        for i in range(5000):
+            f.write(f'#define _FOO{i} {i}\n')
+        f.write('\n')
+        f.write(f'#endif // {header_name.upper().replace(".", "_")}\n')
+
+    # Create a suppressions file that suppresses the misra violation for the macros in the header file
+    with open(suppressions_file, "w") as f:
+        f.write(f'misra-c2012-2.5:{header_name}\n')
+        f.write(f'misra-c2012-21.1:{header_name}\n')
+        # Create other suppressions that don't match the file name to test that iterating the suppressions are faster with cache
+        for i in range(300):
+            f.write(f'misra-c2012-2.5:**/{i}/{header_name}\n')
+            f.write(f'misra-c2012-21.1:**/{i}/{header_name}\n')
+
+    cppcheck([filename_main] + ['--addon=misra.py', '--check-level=exhaustive', '--enable=all', f'--suppressions-list={suppressions_file}'])

@@ -420,7 +420,7 @@ SuppressionList::Suppression::Result SuppressionList::Suppression::isSuppressed(
             if (!thisAndNextLine || lineNumber + 1 != errmsg.lineNumber)
                 return Result::None;
         }
-        if (!fileName.empty() && !PathMatch::match(fileName, errmsg.getFileName()))
+        if (!fileName.empty() && !isFileNameMatch(errmsg.getFileName()))
             return Result::None;
         if (hash > 0 && hash != errmsg.hash)
             return Result::Checked;
@@ -451,6 +451,21 @@ SuppressionList::Suppression::Result SuppressionList::Suppression::isSuppressed(
             return Result::Checked;
     }
     return Result::Matched;
+}
+
+bool SuppressionList::Suppression::isFileNameMatch(const std::string &errorFileName) const
+{
+    const auto it = mFileNameMatchCache.find(errorFileName);
+    if (it != mFileNameMatchCache.end())
+        return it->second;
+
+    const bool result = PathMatch::match(fileName, errorFileName);
+
+    if (mFileNameMatchCache.size() >= mFileNameMatchCacheMaxEntries)
+        mFileNameMatchCache.clear();
+
+    mFileNameMatchCache.emplace(errorFileName, result);
+    return result;
 }
 
 bool SuppressionList::Suppression::isMatch(const SuppressionList::ErrorMessage &errmsg)
