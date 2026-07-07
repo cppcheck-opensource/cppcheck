@@ -3077,7 +3077,7 @@ private:
         simplecpp::TokenList tokens2 = preprocessor.preprocess("CONFIG1", files, outputList);
         std::string out = tokens2.stringify();
 
-        simplecpp::FileDataCache &cache = preprocessor.mFileCache;
+        const simplecpp::FileDataCache &cache = preprocessor.mFileCache;
 
         ASSERT_EQUALS("\n#line 1 \"header1.h\"\n1", out);
         ASSERT_EQUALS(1, outputList.size());
