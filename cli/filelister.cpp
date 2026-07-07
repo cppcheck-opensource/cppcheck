@@ -32,6 +32,7 @@
 #include <iostream>
 #include <iterator>
 #include <memory>
+#include <ostream>
 
 #ifdef _WIN32
 

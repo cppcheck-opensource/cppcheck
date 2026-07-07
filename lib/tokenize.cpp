@@ -45,10 +45,13 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <ios>
 #include <iostream>
+#include <istream>
 #include <iterator>
 #include <limits>
 #include <memory>
+#include <ostream>
 #include <set>
 #include <sstream>
 #include <stack>

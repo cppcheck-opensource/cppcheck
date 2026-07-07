@@ -23,6 +23,7 @@
 #include <cstring>
 #include <iostream>
 #include <limits>
+#include <ostream>
 #include <utility>
 #include <vector>
 

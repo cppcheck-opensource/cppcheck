@@ -28,7 +28,9 @@
 
 #include <algorithm>
 #include <fstream>
+#include <istream>
 #include <map>
+#include <ostream>
 #include <sstream>
 #include <utility>
 #include <vector>

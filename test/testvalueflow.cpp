@@ -33,6 +33,7 @@
 #include <cstring>
 #include <functional>
 #include <list>
+#include <ostream>
 #include <set>
 #include <sstream>
 #include <string>

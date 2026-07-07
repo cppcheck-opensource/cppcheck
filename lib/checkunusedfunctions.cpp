@@ -37,6 +37,7 @@
 #include <cstring>
 #include <functional>
 #include <map>
+#include <ostream>
 #include <sstream>
 #include <tuple>
 #include <utility>

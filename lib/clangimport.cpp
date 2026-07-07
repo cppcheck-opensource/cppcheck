@@ -31,11 +31,13 @@
 #include <algorithm>
 #include <cctype>
 #include <cstring>
+#include <ios>
 #include <iostream>
 #include <iterator>
 #include <list>
 #include <map>
 #include <memory>
+#include <ostream>
 #include <set>
 #include <sstream>
 #include <stack>

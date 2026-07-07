@@ -37,6 +37,7 @@
 #include <cstdio>
 #include <cstring>
 #include <functional>
+#include <ios>
 #include <iostream>
 #include <iterator>
 #include <map>

@@ -30,6 +30,7 @@
 #include <iostream>
 #include <fstream>
 #include <list>
+#include <ostream>
 #include <stdexcept>
 #include <utility>
 #include <vector>

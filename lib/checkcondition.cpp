@@ -37,8 +37,10 @@
 #include <algorithm>
 #include <cstdint>
 #include <initializer_list>
+#include <ios>
 #include <limits>
 #include <list>
+#include <ostream>
 #include <set>
 #include <sstream>
 #include <utility>

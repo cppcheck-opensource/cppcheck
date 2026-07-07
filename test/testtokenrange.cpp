@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <iterator>
 #include <list>
+#include <ostream>
 #include <sstream>
 #include <string>
 

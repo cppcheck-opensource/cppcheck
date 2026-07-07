@@ -25,6 +25,7 @@
 #include "suppressions.h"
 
 #include <cassert>
+#include <ostream>
 #include <sstream>
 #include <utility>
 

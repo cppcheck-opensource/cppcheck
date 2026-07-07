@@ -32,6 +32,7 @@
 #include <cstring>
 #include <iterator>
 #include <list>
+#include <ostream>
 #include <set>
 #include <sstream>
 #include <stdexcept>

@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <iostream>
 #include <numeric>
+#include <ostream>
 #include <utility>
 #include <vector>
 

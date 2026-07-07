@@ -43,6 +43,7 @@
 #include <functional>
 #include <iterator>
 #include <numeric> // std::accumulate
+#include <ostream>
 #include <sstream>
 #include <utility>
 
