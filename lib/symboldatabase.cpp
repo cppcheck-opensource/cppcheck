@@ -138,8 +138,13 @@ const Token* SymbolDatabase::isEnumDefinition(const Token* tok)
     if (tok->str() == "{")
         return tok;
     tok = tok->next(); // skip ':'
-    while (Token::Match(tok, "%name%|::"))
+    bool hasType = false;
+    while (Token::Match(tok, "%name%|::")) {
+        hasType = true;
         tok = tok->next();
+    }
+    if (!hasType)
+        throw InternalError(tok, "SymbolDatabase bailout; invalid enum", InternalError::SYNTAX);
     return Token::simpleMatch(tok, "{") ? tok : nullptr;
 }
 
