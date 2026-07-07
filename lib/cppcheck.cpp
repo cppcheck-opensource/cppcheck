@@ -100,9 +100,9 @@ public:
         closePlist();
     }
 
-    std::vector<RemarkComment>& remarkComments()
+    void addRemarkComments(std::vector<RemarkComment> remarkComments)
     {
-        return mRemarkComments;
+        mRemarkComments.insert(mRemarkComments.end(), remarkComments.begin(), remarkComments.end());
     }
 
     void setLocationMacros(const Token* startTok, const std::vector<std::string>& files)
@@ -1017,7 +1017,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         }
 
         // Parse comments and then remove them
-        preprocessor.addRemarkComments(mLogger->remarkComments());
+        mLogger->addRemarkComments(preprocessor.getRemarkComments());
         preprocessor.inlineSuppressions(mSuppressions.nomsg);
         preprocessor.removeComments();
 
@@ -1062,7 +1062,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
 
         preprocessor.setLoadCallback([&](simplecpp::FileData &data) {
             // Do preprocessing on included file
-            preprocessor.addRemarkComments(data.tokens, mLogger->remarkComments());
+            mLogger->addRemarkComments(preprocessor.getRemarkComments(data.tokens));
             preprocessor.inlineSuppressions(data.tokens, mSuppressions.nomsg);
             Preprocessor::removeComments(data.tokens);
             Preprocessor::createDirectives(data.tokens, directives);

@@ -352,17 +352,6 @@ void Preprocessor::inlineSuppressions(const simplecpp::TokenList &tokens, Suppre
     }
 }
 
-// cppcheck-suppress unusedFunction - only used in tests
-std::vector<RemarkComment> Preprocessor::getRemarkComments() const
-{
-    std::vector<RemarkComment> ret;
-    addRemarkComments(mTokens, ret);
-    for (const auto &filedata : mFileCache) {
-        addRemarkComments(filedata->tokens, ret);
-    }
-    return ret;
-}
-
 void Preprocessor::createDirectives(std::list<Directive> &directives) const
 {
     createDirectives(mTokens, directives);
@@ -1173,13 +1162,15 @@ void Preprocessor::simplifyPragmaAsm(simplecpp::TokenList &tokenList)
     }
 }
 
-void Preprocessor::addRemarkComments(std::vector<RemarkComment>& remarkComments) const
+std::vector<RemarkComment> Preprocessor::getRemarkComments() const
 {
-    addRemarkComments(mTokens, remarkComments);
+    return getRemarkComments(mTokens);
 }
 
-void Preprocessor::addRemarkComments(const simplecpp::TokenList &tokens, std::vector<RemarkComment> &remarkComments) const
+std::vector<RemarkComment> Preprocessor::getRemarkComments(const simplecpp::TokenList &tokens) const
 {
+    std::vector<RemarkComment> remarkComments;
+
     for (const simplecpp::Token *tok = tokens.cfront(); tok; tok = tok->next) {
         if (!tok->comment)
             continue;
@@ -1226,4 +1217,6 @@ void Preprocessor::addRemarkComments(const simplecpp::TokenList &tokens, std::ve
         // Add the suppressions.
         remarkComments.emplace_back(relativeFilename, remarkedToken->location.line, remarkText);
     }
+
+    return remarkComments;
 }

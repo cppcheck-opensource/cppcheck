@@ -120,9 +120,7 @@ public:
 
     std::vector<RemarkComment> getRemarkComments() const;
 
-    void addRemarkComments(std::vector<RemarkComment> &remarkComments) const;
-
-    void addRemarkComments(const simplecpp::TokenList &tokens, std::vector<RemarkComment> &remarkComments) const;
+    std::vector<RemarkComment> getRemarkComments(const simplecpp::TokenList &tokens) const;
 
     bool loadFiles(std::vector<std::string> &files);
 
