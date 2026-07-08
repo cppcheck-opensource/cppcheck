@@ -1053,7 +1053,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         std::transform(mSettings.library.defines().begin(),
                        mSettings.library.defines().end(),
                        std::inserter(configDefines, configDefines.end()),
-                       [](const auto &define) { return define.substr(0, define.find_first_of("( ")); });
+                       [](const std::string &define) { return define.substr(0, define.find_first_of("( ")); });
 
         preprocessor.setLoadCallback([&](simplecpp::FileData &data) {
             // Do preprocessing on included file
