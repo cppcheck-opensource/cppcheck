@@ -1050,10 +1050,13 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         std::set<std::string> configDefines = { "__cplusplus" };
 
         // Insert library defines
+        const auto getDefineName = [](const std::string &defineString) {
+            return defineString.substr(0, defineString.find_first_of("( "));
+        };
         std::transform(mSettings.library.defines().begin(),
                        mSettings.library.defines().end(),
                        std::inserter(configDefines, configDefines.end()),
-                       [](const std::string &define) { return define.substr(0, define.find_first_of("( ")); });
+                       getDefineName);
 
         preprocessor.setLoadCallback([&](simplecpp::FileData &data) {
             // Do preprocessing on included file

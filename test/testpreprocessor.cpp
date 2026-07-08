@@ -32,6 +32,7 @@
 #include "fixture.h"
 #include "helpers.h"
 
+#include <algorithm>
 #include <cstring>
 #include <iterator>
 #include <list>
@@ -402,10 +403,13 @@ private:
         Preprocessor preprocessor(tokens, settings, *this, Standards::Language::C);
         std::set<std::string> configs = { "" };
         std::set<std::string> configDefines = { "__cplusplus" };
+        const auto getDefineName = [](const std::string &defineString) {
+            return defineString.substr(0, defineString.find_first_of("( "));
+        };
         std::transform(settings.library.defines().begin(),
                        settings.library.defines().end(),
                        std::inserter(configDefines, configDefines.end()),
-                       [](const std::string &define) { return define.substr(0, define.find_first_of("( ")); });
+                       getDefineName);
         preprocessor.setLoadCallback([&](simplecpp::FileData &data) {
             Preprocessor::removeComments(data.tokens);
             preprocessor.getConfigs(data.filename, data.tokens, configDefines, configs);
