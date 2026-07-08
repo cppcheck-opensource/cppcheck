@@ -405,7 +405,7 @@ private:
         std::transform(settings.library.defines().begin(),
                        settings.library.defines().end(),
                        std::inserter(configDefines, configDefines.end()),
-                       [](const auto &define) { return define.substr(0, define.find_first_of("( ")); });
+                       [](const std::string &define) { return define.substr(0, define.find_first_of("( ")); });
         preprocessor.setLoadCallback([&](simplecpp::FileData &data) {
             Preprocessor::removeComments(data.tokens);
             preprocessor.getConfigs(data.filename, data.tokens, configDefines, configs);
