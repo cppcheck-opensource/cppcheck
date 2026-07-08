@@ -122,6 +122,39 @@ int foo(void) { return 1; }
 myint bar(void) { myint y = 3; return y; }
 """
 
+MATCH_C = """struct Point {
+    int x;
+    int y;
+};
+
+int calc(int a, int b)
+{
+    int bit_or = a | b;
+    int log_or = a || b;
+    int mod = a % b;
+    int mul = a * b;
+    int not_a = !a;
+    int neq = a != b;
+    int arr[3];
+    arr[0] = a;
+    a += 1;
+    if (a > b) {
+        return a;
+    }
+    return calc(a, b);
+}
+"""
+
+MATCH_CPP = """class Widget {};
+
+bool use(int i, int j)
+{
+    std::vector<int> v;
+    bool less = i < j;
+    return less && v.empty();
+}
+"""
+
 
 @pytest.fixture(scope='session')
 def sample_data(dump_factory):
@@ -153,3 +186,15 @@ def sample_cpp_cfg(sample_cpp_data):
 def multi_cfg_data(dump_factory):
     """Parsed dump of a file with two preprocessor configurations."""
     return dump_factory.parse(MULTI_CFG_C, filename='multi.c')
+
+
+@pytest.fixture(scope='session')
+def match_cfg(dump_factory):
+    """Configuration of a C sample covering the match() pattern syntax."""
+    return dump_factory.parse(MATCH_C, filename='match.c').configurations[0]
+
+
+@pytest.fixture(scope='session')
+def match_cpp_cfg(dump_factory):
+    """Configuration of a C++ sample with linked '<' tokens for match()."""
+    return dump_factory.parse(MATCH_CPP, filename='match.cpp').configurations[0]

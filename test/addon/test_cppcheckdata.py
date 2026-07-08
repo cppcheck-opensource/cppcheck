@@ -484,58 +484,263 @@ class TestHelperFunctions:
 
 
 class TestMatch:
-    def test_simpleMatch(self, sample_cfg):
-        add_def = find_token(sample_cfg, 'add')
-        assert cppcheckdata.simpleMatch(add_def, 'add ( int a , int b )')
-        assert not cppcheckdata.simpleMatch(add_def, 'add ( int b')
-        assert not cppcheckdata.simpleMatch(None, 'add')
+    """Tests for the cppcheckdata.match()/simpleMatch() pattern matching."""
 
-    def test_match_plain(self, sample_cfg):
-        add_def = find_token(sample_cfg, 'add')
-        res = cppcheckdata.match(add_def, 'add ( int')
-        assert res
+    def test_simpleMatch(self, match_cfg):
+        calc_def = find_token(match_cfg, 'calc')
+        assert cppcheckdata.simpleMatch(calc_def, 'calc')
+        assert cppcheckdata.simpleMatch(calc_def, 'calc ( int a , int b )')
+        assert not cppcheckdata.simpleMatch(calc_def, 'calc ( int b')
+        assert not cppcheckdata.simpleMatch(None, 'calc')
+
+    def test_literal_sequence(self, match_cfg):
+        calc_def = find_token(match_cfg, 'calc')
+        assert cppcheckdata.match(calc_def, 'calc ( int')
+        assert cppcheckdata.match(calc_def, 'calc ( int a , int b )')
+        assert not cppcheckdata.match(calc_def, 'calc ( char')
+        # the match is anchored at the given token
+        assert not cppcheckdata.match(calc_def, 'int calc')
+
+    def test_empty_pattern_and_no_token(self, match_cfg):
+        calc_def = find_token(match_cfg, 'calc')
+        assert not cppcheckdata.match(calc_def, '')
+        assert not cppcheckdata.match(None, 'calc')
+
+    def test_end(self, match_cfg):
+        calc_def = find_token(match_cfg, 'calc')
+        res = cppcheckdata.match(calc_def, 'calc')
+        assert res.end is calc_def
+        res = cppcheckdata.match(calc_def, 'calc ( int')
         assert res.end.str == 'int'
-        assert not cppcheckdata.match(add_def, 'sub (')
-        assert not cppcheckdata.match(add_def, '')
-        assert not cppcheckdata.match(None, 'add')
 
-    def test_match_patterns(self, sample_cfg):
-        x_assign = find_token(sample_cfg, 'x', skip=1)  # the 'x' in 'x = 42 ;'
-        assert cppcheckdata.match(x_assign, '%name% %assign% %any% ;')
-        assert cppcheckdata.match(x_assign, '%var% = 42')
-        assert not cppcheckdata.match(x_assign, '%op%')
-        plus = find_token(sample_cfg, '+')
-        assert cppcheckdata.match(plus, '%op%')
-        comparison = find_token(sample_cfg, '+')
-        assert not cppcheckdata.match(comparison, '%comp%')
+    # ---- literal operator tokens ----
 
-    def test_match_bindings(self, sample_cfg):
-        x_assign = find_token(sample_cfg, 'x', skip=1)
-        res = cppcheckdata.match(x_assign, '%var%@lhs = %any%@rhs ;')
-        assert res
-        assert res.lhs.str == 'x'
-        assert res.rhs.str == '42'
-        # bindings are None on a failed match
-        res = cppcheckdata.match(x_assign, '%var%@lhs + %any%@rhs')
-        assert not res
-        assert res.lhs is None
-        assert res.rhs is None
+    def test_literal_bitwise_or(self, match_cfg):
+        # a literal '|' in the pattern matches a '|' token ...
+        bit_or = find_token(match_cfg, '|')
+        assert cppcheckdata.match(bit_or, '|')
+        assert cppcheckdata.match(bit_or.previous, '%var% | %var% ;')
+        # ... but not a '||' token, and it is not an either-or alternation
+        log_or = find_token(match_cfg, '||')
+        assert not cppcheckdata.match(log_or, '|')
 
-    def test_match_alternatives(self, sample_cfg):
-        x_assign = find_token(sample_cfg, 'x', skip=1)
-        assert cppcheckdata.match(x_assign, 'y|x =')
-        assert not cppcheckdata.match(x_assign, 'y|z =')
+    def test_literal_logical_or(self, match_cfg):
+        log_or = find_token(match_cfg, '||')
+        assert cppcheckdata.match(log_or, '||')
+        assert cppcheckdata.match(log_or.previous, '%var% || %var% ;')
+        bit_or = find_token(match_cfg, '|')
+        assert not cppcheckdata.match(bit_or, '||')
 
-    def test_match_negation(self, sample_cfg):
-        x_assign = find_token(sample_cfg, 'x', skip=1)
-        assert cppcheckdata.match(x_assign, 'x !!+')
-        assert not cppcheckdata.match(x_assign, 'x !!=')
+    def test_literal_not(self, match_cfg):
+        not_tok = find_token(match_cfg, '!')
+        assert cppcheckdata.match(not_tok, '! %var% ;')
+        assert not cppcheckdata.match(find_token(match_cfg, '!='), '!')
 
-    def test_match_link(self, sample_cfg):
-        add_def = find_token(sample_cfg, 'add')
-        res = cppcheckdata.match(add_def.next, '(*)')
+    def test_literal_not_equal(self, match_cfg):
+        neq = find_token(match_cfg, '!=')
+        assert cppcheckdata.match(neq, '!=')
+        assert cppcheckdata.match(neq.previous, '%var% != %var% ;')
+        assert not cppcheckdata.match(find_token(match_cfg, '='), '!=')
+        assert not cppcheckdata.match(neq, '=')
+
+    def test_literal_star(self, match_cfg):
+        mul = find_token(match_cfg, '*')
+        assert cppcheckdata.match(mul, '*')
+        assert cppcheckdata.match(mul.previous, '%var% * %var% ;')
+
+    def test_literal_percent(self, match_cfg):
+        mod = find_token(match_cfg, '%')
+        assert cppcheckdata.match(mod, '%')
+        assert cppcheckdata.match(mod.previous, '%var% % %var% ;')
+
+    def test_literal_parentheses(self, match_cfg):
+        calc_call = find_token(match_cfg, 'calc', skip=1)
+        assert cppcheckdata.match(calc_call, 'calc ( %var% , %var% ) ;')
+
+    # ---- %keyword% patterns ----
+
+    def test_any(self, match_cfg):
+        for token_str in ('calc', '(', '3', ';', '|', '{'):
+            assert cppcheckdata.match(find_token(match_cfg, token_str), '%any%')
+        plus_assign = find_token(match_cfg, '+=')
+        assert cppcheckdata.match(plus_assign, '%assign% %any% ;')
+
+    def test_assign(self, match_cfg):
+        assert cppcheckdata.match(find_token(match_cfg, '='), '%assign%')
+        assert cppcheckdata.match(find_token(match_cfg, '+='), '%assign%')
+        assert not cppcheckdata.match(find_token(match_cfg, '!='), '%assign%')
+        assert not cppcheckdata.match(find_token(match_cfg, '|'), '%assign%')
+
+    def test_comp(self, match_cfg):
+        assert cppcheckdata.match(find_token(match_cfg, '>'), '%comp%')
+        assert cppcheckdata.match(find_token(match_cfg, '!='), '%comp%')
+        assert not cppcheckdata.match(find_token(match_cfg, '='), '%comp%')
+        assert not cppcheckdata.match(find_token(match_cfg, '|'), '%comp%')
+
+    def test_name(self, match_cfg):
+        assert cppcheckdata.match(find_token(match_cfg, 'calc'), '%name%')
+        assert cppcheckdata.match(find_token(match_cfg, 'int'), '%name%')
+        assert not cppcheckdata.match(find_token(match_cfg, '3'), '%name%')
+        assert not cppcheckdata.match(find_token(match_cfg, '('), '%name%')
+
+    def test_op(self, match_cfg):
+        for op in ('|', '||', '*', '%', '!=', '>', '=', '+='):
+            assert cppcheckdata.match(find_token(match_cfg, op), '%op%'), op
+        assert not cppcheckdata.match(find_token(match_cfg, ';'), '%op%')
+        assert not cppcheckdata.match(find_token(match_cfg, 'calc'), '%op%')
+
+    def test_or(self, match_cfg):
+        assert cppcheckdata.match(find_token(match_cfg, '|'), '%or%')
+        assert not cppcheckdata.match(find_token(match_cfg, '||'), '%or%')
+
+    def test_oror(self, match_cfg):
+        assert cppcheckdata.match(find_token(match_cfg, '||'), '%oror%')
+        assert not cppcheckdata.match(find_token(match_cfg, '|'), '%oror%')
+
+    def test_var(self, match_cfg):
+        a_use = find_token(match_cfg, 'a', skip=1)
+        assert cppcheckdata.match(a_use, '%var%')
+        # a function name is a %name% but not a %var%
+        assert not cppcheckdata.match(find_token(match_cfg, 'calc'), '%var%')
+        assert not cppcheckdata.match(find_token(match_cfg, '3'), '%var%')
+
+    # ---- link patterns ----
+
+    def test_link_parentheses(self, match_cfg):
+        calc_call = find_token(match_cfg, 'calc', skip=1)
+        res = cppcheckdata.match(calc_call.next, '(*)')
         assert res
         assert res.end.str == ')'
+        assert res.end is calc_call.next.link
+        # the pattern continues after the linked token
+        assert cppcheckdata.match(calc_call, '%name% (*) ;')
+        # '(*)' only matches at a '(' token
+        assert not cppcheckdata.match(calc_call, '(*)')
+
+    def test_link_brackets(self, match_cfg):
+        arr_decl = find_token(match_cfg, 'arr')
+        assert cppcheckdata.match(arr_decl, 'arr [*] ;')
+        arr_use = find_token(match_cfg, 'arr', skip=1)
+        res = cppcheckdata.match(arr_use, '%name% [*] %assign% %var% ;')
+        assert res
+
+    def test_link_braces(self, match_cfg):
+        if_scope = find_scope(match_cfg, 'If')
+        res = cppcheckdata.match(if_scope.bodyStart, '{*}')
+        assert res
+        assert res.end is if_scope.bodyEnd
+
+    def test_link_combined(self, match_cfg):
+        if_tok = find_token(match_cfg, 'if')
+        res = cppcheckdata.match(if_tok, 'if (*) {*}')
+        assert res
+        assert res.end.str == '}'
+
+    def test_link_angle_brackets(self, match_cpp_cfg):
+        # the '<' of 'std::vector<int>' is linked to the '>'
+        template_lt = find_token(match_cpp_cfg, '<')
+        assert template_lt.link
+        res = cppcheckdata.match(template_lt, '<*>')
+        assert res
+        assert res.end.str == '>'
+        assert cppcheckdata.match(template_lt.previous, 'vector <*> %var%')
+        # the '<' in 'i < j' is a comparison without a link
+        comparison_lt = find_token(match_cpp_cfg, '<', skip=1)
+        assert comparison_lt.link is None
+        assert not cppcheckdata.match(comparison_lt, '<*>')
+
+    # ---- either-or alternation ----
+
+    def test_alternatives(self, match_cfg):
+        struct_tok = find_token(match_cfg, 'struct')
+        assert cppcheckdata.match(struct_tok, 'struct|class %name% {')
+        assert not cppcheckdata.match(struct_tok, 'union|enum %name% {')
+
+    def test_alternatives_cpp(self, match_cpp_cfg):
+        class_tok = find_token(match_cpp_cfg, 'class')
+        assert cppcheckdata.match(class_tok, 'struct|class %name% {')
+
+    def test_alternatives_with_keyword(self, match_cfg):
+        struct_tok = find_token(match_cfg, 'struct')
+        assert cppcheckdata.match(struct_tok, '%op%|struct')
+        assert not cppcheckdata.match(struct_tok, '%op%|%comp%')
+
+    # ---- negation ----
+
+    def test_negation(self, match_cfg):
+        struct_tok = find_token(match_cfg, 'struct')
+        assert cppcheckdata.match(struct_tok, 'struct !!;')
+        assert not cppcheckdata.match(struct_tok, 'struct !!Point')
+
+    def test_negation_keyword(self, match_cfg):
+        calc_call = find_token(match_cfg, 'calc', skip=1)
+        assert cppcheckdata.match(calc_call, '%name% !!%op%')
+        assert not cppcheckdata.match(calc_call, '%name% !!(')
+
+    @pytest.mark.xfail(strict=False,
+                       reason='in the C++ Token::Match a negation also matches when there is no token, '
+                              'in match() it does not')
+    def test_negation_no_token(self, match_cfg):
+        last = match_cfg.tokenlist[-1]
+        assert last.str == '}'
+        assert cppcheckdata.match(last, '} !!x')
+
+    # ---- bindings ----
+
+    def test_bindings(self, match_cfg):
+        calc_call = find_token(match_cfg, 'calc', skip=1)
+        res = cppcheckdata.match(calc_call, '%name%@ftok (*)')
+        assert res
+        assert res.ftok is calc_call
+        assert res.ftok.str == 'calc'
+        assert res.end.str == ')'
+
+    def test_multiple_bindings(self, match_cfg):
+        bit_or_lhs = find_token(match_cfg, 'bit_or', skip=1)
+        res = cppcheckdata.match(bit_or_lhs, '%var%@lhs = %var%@op1 | %var%@op2 ;')
+        assert res
+        assert res.lhs.str == 'bit_or'
+        assert res.op1.str == 'a'
+        assert res.op2.str == 'b'
+
+    def test_binding_on_link_pattern(self, match_cfg):
+        calc_call = find_token(match_cfg, 'calc', skip=1)
+        # the binding is the '(' token, end is behind the linked ')'
+        res = cppcheckdata.match(calc_call, '%name% (*)@paren')
+        assert res
+        assert res.paren.str == '('
+        assert res.paren.link is res.end
+
+    def test_bindings_on_failure(self, match_cfg):
+        calc_call = find_token(match_cfg, 'calc', skip=1)
+        res = cppcheckdata.match(calc_call, '%name%@ftok [*]@brackets')
+        assert not res
+        # all bindings (including 'end') read as None on a failed match
+        assert res.ftok is None
+        assert res.brackets is None
+        assert res.end is None
+
+    def test_unknown_binding_raises(self, match_cfg):
+        calc_call = find_token(match_cfg, 'calc', skip=1)
+        res = cppcheckdata.match(calc_call, '%name%@ftok (*)')
+        assert res
+        with pytest.raises(AttributeError):
+            res.nosuchbinding
+        res = cppcheckdata.match(calc_call, '%name%@ftok [*]')
+        assert not res
+        with pytest.raises(AttributeError):
+            res.nosuchbinding
+
+    # ---- '**' forward search ----
+
+    def test_find_forward(self, match_cfg):
+        calc_def = find_token(match_cfg, 'calc')
+        # '**' searches forward, skipping linked groups: the '{' found here
+        # is the function body, not a '{' inside the parameter list
+        res = cppcheckdata.match(calc_def, 'calc **{')
+        assert res
+        assert res.end.str == '{'
+        assert not cppcheckdata.match(calc_def, 'calc **nosuchtoken')
 
 
 class TestSuppressions:
