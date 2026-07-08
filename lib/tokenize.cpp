@@ -9146,8 +9146,6 @@ void Tokenizer::findGarbageCode() const
                 if (!tok2->next() || tok2->isControlFlowKeyword() || Token::Match(tok2, "typedef|static|."))
                     syntaxError(tok);
                 if (Token::Match(tok2, "%name% %name%")) {
-                    if (Token::Match(tok2->tokAt(2), "%name%") && !(tok2->isKeyword() || tok2->tokAt(1)->isKeyword() || tok2->tokAt(2)->isKeyword()))
-                       syntaxError(tok2);
                     if (tok2->str() == tok2->strAt(1)) {
                         if (Token::simpleMatch(tok2->tokAt(2), ";"))
                             continue;
@@ -9157,6 +9155,8 @@ void Tokenizer::findGarbageCode() const
                             continue;
                         syntaxError(tok2);
                     }
+                    if (Token::Match(tok2->tokAt(2), "%name%") && !(tok2->isKeyword() || tok2->tokAt(1)->isKeyword() || tok2->tokAt(2)->isKeyword()))
+                       syntaxError(tok2);
                 }
             }
         }
