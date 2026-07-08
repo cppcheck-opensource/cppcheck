@@ -821,7 +821,7 @@ std::string ErrorLogger::toxml(const std::string &str)
     return xml;
 }
 
-std::string ErrorLogger::plistHeader(const std::string &version, const std::vector<std::string> &files)
+std::string ErrorLogger::plistHeader(const std::string &version)
 {
     std::ostringstream ostr;
     ostr << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"
@@ -829,12 +829,7 @@ std::string ErrorLogger::plistHeader(const std::string &version, const std::vect
          << "<plist version=\"1.0\">\r\n"
          << "<dict>\r\n"
          << " <key>clang_version</key>\r\n"
-         << "<string>cppcheck version " << version << "</string>\r\n"
-         << " <key>files</key>\r\n"
-         << " <array>\r\n";
-    for (const std::string & file : files)
-        ostr << "  <string>" << ErrorLogger::toxml(file) << "</string>\r\n";
-    ostr << " </array>\r\n"
+         << " <string>cppcheck version " << version << "</string>\r\n"
          << " <key>diagnostics</key>\r\n"
          << " <array>\r\n";
     return ostr.str();

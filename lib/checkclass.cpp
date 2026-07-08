@@ -2608,9 +2608,12 @@ bool CheckClassImpl::checkConstFunc(const Scope *scope, const Function *func, Me
                     return false;
             } else {
                 if (lhs->isAssignmentOp()) {
-                    const Variable* lhsVar = lhs->previous()->variable();
-                    if (lhsVar && !lhsVar->isConst() && lhsVar->isReference() && lhs == lhsVar->nameToken()->next())
-                        return false;
+                    if (const Variable* lhsVar = lhs->previous()->variable()) {
+                        if (!lhsVar->isConst() && lhsVar->isReference() && lhs == lhsVar->nameToken()->next())
+                            return false;
+                        if (lhsVar->isPointer() && v && v->isArray() && !(lhsVar->valueType() && lhsVar->valueType()->isConst(/*indirect*/ 1)))
+                            return false;
+                    }
                 }
             }
 
