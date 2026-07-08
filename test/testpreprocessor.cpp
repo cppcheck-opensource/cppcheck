@@ -33,6 +33,7 @@
 #include "helpers.h"
 
 #include <cstring>
+#include <iterator>
 #include <list>
 #include <map>
 #include <set>
@@ -401,8 +402,10 @@ private:
         Preprocessor preprocessor(tokens, settings, *this, Standards::Language::C);
         std::set<std::string> configs = { "" };
         std::set<std::string> configDefines = { "__cplusplus" };
-        for (const auto &define : settings.library.defines())
-            configDefines.insert(define.substr(0, define.find_first_of("( ")));
+        std::transform(settings.library.defines().begin(),
+                       settings.library.defines().end(),
+                       std::inserter(configDefines, configDefines.end()),
+                       [](const auto &define) { return define.substr(0, define.find_first_of("( ")); });
         preprocessor.setLoadCallback([&](simplecpp::FileData &data) {
             Preprocessor::removeComments(data.tokens);
             preprocessor.getConfigs(data.filename, data.tokens, configDefines, configs);

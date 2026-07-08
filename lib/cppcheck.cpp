@@ -61,6 +61,7 @@
 #include <exception> // IWYU pragma: keep
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <map>
 #include <new>
 #include <set>
@@ -1049,8 +1050,10 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         std::set<std::string> configDefines = { "__cplusplus" };
 
         // Insert library defines
-        for (const auto &define : mSettings.library.defines())
-            configDefines.insert(define.substr(0, define.find_first_of("( ")));
+        std::transform(mSettings.library.defines().begin(),
+                       mSettings.library.defines().end(),
+                       std::inserter(configDefines, configDefines.end()),
+                       [](const auto &define) { return define.substr(0, define.find_first_of("( ")); });
 
         preprocessor.setLoadCallback([&](simplecpp::FileData &data) {
             // Do preprocessing on included file
