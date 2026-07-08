@@ -52,6 +52,8 @@ private:
         const NonNullPtr<int> p(x);
         int* raw = p;
         ASSERT(raw == &x);
+        *raw = 2;
+        ASSERT_EQUALS(2, x);
     }
 
     void referenceConversion() const {
@@ -59,6 +61,8 @@ private:
         const NonNullPtr<int> p(x);
         int& ref = p;
         ASSERT(&ref == &x);
+        ref = 2;
+        ASSERT_EQUALS(2, x);
     }
 
     void dereference() const {
