@@ -9155,7 +9155,7 @@ void Tokenizer::findGarbageCode() const
                             continue;
                         syntaxError(tok2);
                     }
-                    if (Token::Match(tok2->tokAt(2), "%name%") && !(tok2->isKeyword() || tok2->tokAt(1)->isKeyword() || tok2->tokAt(2)->isKeyword()))
+                    if (Token::Match(tok2->tokAt(2), "%name%") && tok2->isNameOnly() && tok2->tokAt(1)->isNameOnly() && tok2->tokAt(2)->isNameOnly())
                        syntaxError(tok2);
                 }
             }
