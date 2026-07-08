@@ -1653,7 +1653,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         mSettings.unmatchedSuppressionFilters.emplace_back("misra-*");
     if (!mSettings.premium)
         mSettings.unmatchedSuppressionFilters.emplace_back("premium-*");
-    if (!mSettings.debugwarnings)
+    if (mSettings.debugwarnings)
         mSettings.unmatchedSuppressionFilters.emplace_back("templateInstantiation");
 
     if (inputAsFilter) {
