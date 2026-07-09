@@ -48,6 +48,7 @@ class DumpFactory:
         proc = subprocess.run(cmd,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE,
+                              check=True,
                               universal_newlines=True)
         assert proc.returncode == 0, \
             'cppcheck failed with exit code %d:\n%s\n%s' % (proc.returncode, proc.stdout, proc.stderr)

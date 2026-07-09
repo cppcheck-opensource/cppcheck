@@ -725,11 +725,11 @@ class TestMatch:
         res = cppcheckdata.match(calc_call, '%name%@ftok (*)')
         assert res
         with pytest.raises(AttributeError):
-            res.nosuchbinding
+            res.nosuchbinding # pylint: disable=W0104
         res = cppcheckdata.match(calc_call, '%name%@ftok [*]')
         assert not res
         with pytest.raises(AttributeError):
-            res.nosuchbinding
+            res.nosuchbinding # pylint: disable=W0104
 
     # ---- '**' forward search ----
 
