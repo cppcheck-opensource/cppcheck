@@ -4287,8 +4287,7 @@ void Tokenizer::simplifyTemplatesUsingTypeInformation()
 
     // for testing and debugging: recreate the symbol database etc. from scratch after
     // each deduction round instead of updating them incrementally
-    const char* fullRebuildEnv = std::getenv("CPPCHECK_TEMPLATE_FULL_REBUILD");
-    const bool allowIncremental = !fullRebuildEnv || (std::strcmp(fullRebuildEnv, "1") != 0);
+    const bool allowIncremental = !mSettings.templateFullRebuild;
 
     bool finalized = false;
 

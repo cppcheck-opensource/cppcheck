@@ -383,6 +383,7 @@ private:
         TEST_CASE(performanceValueflowMaxTimeInvalid);
         TEST_CASE(performanceValueFlowMaxIfCount);
         TEST_CASE(performanceValueFlowMaxIfCountInvalid);
+        TEST_CASE(templateFullRebuild);
         TEST_CASE(templateMaxTime);
         TEST_CASE(templateMaxTimeInvalid);
         TEST_CASE(templateMaxTimeInvalid2);
@@ -2533,6 +2534,13 @@ private:
         const char * const argv[] = {"cppcheck", "--performance-valueflow-max-if-count=one", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, parseFromArgs(argv));
         ASSERT_EQUALS("cppcheck: error: argument to '--performance-valueflow-max-if-count=' is not valid - not an integer (invalid_argument).\n", logger->str());
+    }
+
+    void templateFullRebuild() {
+        REDIRECT;
+        const char * const argv[] = {"cppcheck", "--template-full-rebuild", "file.cpp"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
+        ASSERT_EQUALS(true, settings->templateFullRebuild);
     }
 
     void templateMaxTime() {

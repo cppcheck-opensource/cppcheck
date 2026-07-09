@@ -42,6 +42,13 @@ private:
     const Settings settings = settingsBuilder().severity(Severity::portability).build();
     const Settings settings1 = settingsBuilder(settings).library("std.cfg").build();
     const Settings settings1_d = settingsBuilder(settings1).debugwarnings().build();
+    const Settings settings1_fr = makeFullRebuildSettings(settings1);
+
+    static Settings makeFullRebuildSettings(const Settings& base) {
+        Settings s = base;
+        s.templateFullRebuild = true;
+        return s;
+    }
 
     void run() override {
         TEST_CASE(template1);
@@ -294,6 +301,7 @@ private:
         TEST_CASE(templateTypeDeduction13); // members declared after the member function are visible
         TEST_CASE(templateTypeDeduction14); // a non template overload might be a better match
         TEST_CASE(templateTypeDeduction15); // final classes
+        TEST_CASE(templateTypeDeductionFullRebuild); // --template-full-rebuild gives the same result
 
         TEST_CASE(simplifyTemplateArgs1);
         TEST_CASE(simplifyTemplateArgs2);
@@ -352,12 +360,19 @@ private:
     struct CheckOptions
     {
         bool debugwarnings = false;
+        bool templateFullRebuild = false;
     };
+
+    const Settings& checkOptionsSettings(const CheckOptions& options) const {
+        if (options.templateFullRebuild)
+            return settings1_fr;
+        return options.debugwarnings ? settings1_d : settings1;
+    }
 
 #define tok(...) tok_(__FILE__, __LINE__, __VA_ARGS__)
     template<size_t size>
     std::string tok_(const char* file, int line, const char (&code)[size], const CheckOptions& options = make_default_obj()) {
-        const Settings& s = options.debugwarnings ? settings1_d : settings1;
+        const Settings& s = checkOptionsSettings(options);
         SimpleTokenizer tokenizer(s, *this);
 
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
@@ -6868,6 +6883,48 @@ private:
                                "} ; "
                                "void E :: etf<double> ( double t ) { ( void ) t ; }";
             ASSERT_EQUALS(exp, tok(code));
+        }
+    }
+
+    void templateTypeDeductionFullRebuild()
+    { // --template-full-rebuild recreates the symbol database etc. after each type
+      // deduction round instead of updating them incrementally - the result must be
+      // the same
+        {
+            // deduction from variables and expressions
+            const char code[] = "template <typename T> void f(T n) { (void)n; }\n"
+                                "struct MyClass { int m; };\n"
+                                "void func(MyClass mc, unsigned long long ull, double d) {\n"
+                                "    f(mc);\n"
+                                "    f(ull);\n"
+                                "    f(d + 1.5);\n"
+                                "}";
+            const std::string expected = tok(code);
+            ASSERT(expected.find("f<MyClass>") != std::string::npos);
+            ASSERT_EQUALS(expected, tok(code, dinit(CheckOptions, $.templateFullRebuild = true)));
+        }
+        {
+            // base class member template: the instantiated declaration is removed in a
+            // finalize step
+            const char code[] = "struct Base {\n"
+                                "    template<class T> void btf(T t) { (void)t; }\n"
+                                "    int bm;\n"
+                                "};\n"
+                                "struct Derived : public Base {\n"
+                                "    void use() { btf(bm); }\n"
+                                "};";
+            const std::string expected = tok(code);
+            ASSERT(expected.find("Base :: btf<int>") != std::string::npos);
+            ASSERT_EQUALS(expected, tok(code, dinit(CheckOptions, $.templateFullRebuild = true)));
+        }
+        {
+            // nested calls need multiple deduction rounds
+            const char code[] = "template<class T> T pass(T x) { return x; }\n"
+                                "template<class T> void sink(T x) { (void)x; }\n"
+                                "void use(long v) { sink(pass(v)); }";
+            const std::string expected = tok(code);
+            ASSERT(expected.find("sink<long>") != std::string::npos);
+            ASSERT_EQUALS(expected, tok(code, dinit(CheckOptions, $.templateFullRebuild = true)));
         }
     }
 
