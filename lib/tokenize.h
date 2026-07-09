@@ -83,8 +83,14 @@ public:
 
 private:
     /** Set variable id */
-    void setVarId();
-    void setVarIdPass1();
+    /**
+     * Set variable ids.
+     * @param incremental don't clear the existing variable ids: tokens keep their ids
+     * and tokens without an id get a new id above the previous maximum, so the ids are
+     * stable. Used when the template simplifier has added tokens.
+     */
+    void setVarId(bool incremental = false);
+    void setVarIdPass1(bool incremental = false);
     void setVarIdPass2();
 
     /**
@@ -307,10 +313,17 @@ private:
     void simplifyTemplatesUsingTypeInformation();
 
     /**
-     * Update varid, links, AST, SymbolDatabase and ValueTypes after the template
-     * simplifier changed the token list.
+     * Recreate varid, links, AST, SymbolDatabase and ValueTypes from scratch after the
+     * template simplifier changed the token list.
      */
     void rebuildTokenDataAfterTemplateSimplification();
+
+    /**
+     * Incrementally update varid, links, AST, SymbolDatabase and ValueTypes after the
+     * template simplifier changed the token list: the information of the unchanged
+     * tokens stays valid.
+     */
+    void updateTokenDataAfterTemplateSimplification();
 
     void simplifyDoublePlusAndDoubleMinus();
 
@@ -593,7 +606,13 @@ public:
     const SymbolDatabase *getSymbolDatabase() const {
         return mSymbolDatabase;
     }
-    void createSymbolDatabase();
+    /**
+     * Create the symbol database.
+     * @param deferFinalizePhases skip the phases that only later analysis needs;
+     * SymbolDatabase::finalize() must be called when the token list is final. Used
+     * while the template simplifier still changes the token list.
+     */
+    void createSymbolDatabase(bool deferFinalizePhases = false);
 
     /** print --debug output if debug flags match the simplification:
      */

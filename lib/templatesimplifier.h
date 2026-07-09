@@ -31,10 +31,12 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 class ErrorLogger;
 class Settings;
+class SymbolDatabase;
 class Token;
 class Tokenizer;
 class TokenList;
@@ -338,9 +340,35 @@ public:
     /**
      * Remove the instantiated function template declarations whose removal was deferred
      * while type deductions were pending.
+     * @param symbolDatabase when given, its symbols for the removed declarations are
+     * removed too (incremental update)
      * @return true if any tokens were removed
      */
-    bool removeDeferredTemplateDeclarations();
+    bool removeDeferredTemplateDeclarations(SymbolDatabase* symbolDatabase = nullptr);
+
+    /** token ranges (first and last token) that were added to the token list by the
+     * last simplifyTemplatesUsingTypeInformation() call */
+    const std::vector<std::pair<Token*, Token*>>& newTokenRanges() const {
+        return mNewTokenRanges;
+    }
+
+    /** name tokens of the specializations that the last
+     * simplifyTemplatesUsingTypeInformation() call turned into normal functions */
+    const std::vector<const Token*>& convertedSpecializations() const {
+        return mConvertedSpecializations;
+    }
+
+    /** forget the recorded token changes, called when they have been consumed */
+    void clearTokenChanges() {
+        mNewTokenRanges.clear();
+        mConvertedSpecializations.clear();
+    }
+
+    /** true when the token changes made by the last simplifyTemplatesUsingTypeInformation()
+     * call can be applied to the symbol database incrementally */
+    bool incrementalUpdatePossible() const {
+        return mIncrementalUpdatePossible;
+    }
 
     /**
      * Simplify constant calculations such as "1+2" => "3"
@@ -400,6 +428,10 @@ private:
      * it again. It is removed later by removeDeferredTemplateDeclarations().
      */
     void deferRemoval(Token* declTok);
+
+    /** remember tokens that were added during a type-information round so the symbol
+     * database can be updated incrementally */
+    void rememberNewTokens(Token* first, Token* last);
 
     /**
      * Get template instantiations
@@ -568,6 +600,15 @@ private:
     std::set<std::string> mExpandedTemplateNames;
     /** instantiated function template declarations whose removal has been deferred */
     std::vector<Token*> mDeferredRemovals;
+    /** token ranges added during type-information rounds (see newTokenRanges()) */
+    std::vector<std::pair<Token*, Token*>> mNewTokenRanges;
+    /** specializations that were turned into normal functions during type-information
+     * rounds - their Function::templateDef must be cleared */
+    std::vector<const Token*> mConvertedSpecializations;
+    /** false when the current round made token changes that the incremental symbol
+     * database update can not handle (class/variable/specialization instantiations,
+     * type alias changes) */
+    bool mIncrementalUpdatePossible = true;
 
     std::list<TokenAndName> mTemplateDeclarations;
     std::list<TokenAndName> mTemplateForwardDeclarations;

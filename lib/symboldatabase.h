@@ -1338,7 +1338,12 @@ public:
 class CPPCHECKLIB SymbolDatabase {
     friend class TestSymbolDatabase;
 public:
-    explicit SymbolDatabase(Tokenizer& tokenizer);
+    /**
+     * @param deferFinalizePhases don't run the phases that only later analysis
+     * (ValueFlow, checks) needs - finalize() must be called when the token list is
+     * final. Used while the template simplifier still changes the token list.
+     */
+    explicit SymbolDatabase(Tokenizer& tokenizer, bool deferFinalizePhases = false);
     ~SymbolDatabase();
 
     /** @brief Information about all namespaces/classes/structures */
@@ -1427,6 +1432,29 @@ public:
     void clangSetVariables(const std::vector<const Variable *> &vars);
     void createSymbolDatabaseExprIds();
 
+    /**
+     * Remove the symbols (scopes, functions, variables, types) that are declared in the
+     * given token ranges (both range ends are inclusive) and clear the references to
+     * them. Called before the tokens are removed from the token list, e.g. when the
+     * template simplifier removes instantiated template declarations.
+     */
+    void removeSymbolsInTokenRanges(const std::vector<std::pair<Token*, const Token*>>& ranges);
+
+    /**
+     * Add the symbols for token ranges (both range ends are inclusive) that were added
+     * to the token list after the symbol database was created, e.g. by template
+     * instantiations. This is an incremental alternative to recreating the database.
+     * Only new function declarations/definitions are supported - not new classes.
+     * setValueTypeInTokenList() should be called afterwards.
+     */
+    void addSymbolsForNewTokenRanges(const std::vector<std::pair<Token*, Token*>>& newRanges);
+
+    /**
+     * Run the phases that only later analysis (ValueFlow, checks) needs. Called once
+     * when the token list is final - does nothing when already finalized.
+     */
+    void finalize();
+
     /* returns the opening { if tok points to enum */
     static const Token* isEnumDefinition(const Token* tok);
 
@@ -1445,6 +1473,13 @@ private:
      * @throws InternalError thrown on unhandled code
      */
     void createSymbolDatabaseFindAllScopes();
+    /**
+     * Find the scopes in the given token range (endToken is exclusive, nullptr means
+     * the end of the token list) and add the symbols to the database. startScope is
+     * the scope the range is in.
+     * @throws InternalError thrown on unhandled code
+     */
+    void findAllScopes(const Token* startToken, const Token* endToken, Scope* startScope);
     void createSymbolDatabaseClassInfo();
     void createSymbolDatabaseVariableInfo();
     void createSymbolDatabaseCopyAndMoveConstructors();
@@ -1513,6 +1548,9 @@ private:
     std::list<Type> mBlankTypes;
 
     ValueType::Sign mDefaultSignedness;
+
+    /** true when the finalize() phases have run */
+    bool mFinalized{};
 
     mutable std::map<const Type*, bool> mIsRecordTypeWithoutSideEffectsMap;
 };

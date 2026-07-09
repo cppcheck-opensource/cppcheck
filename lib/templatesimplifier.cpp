@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <cassert>
 #include <iostream>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <stack>
@@ -1311,6 +1312,7 @@ void TemplateSimplifier::deduceFunctionTemplateArguments(Token* tok,
     // when the declaration is in a base class, qualify the call site explicitly so the
     // instantiation is matched with that declaration: "btf ( x )" => "Base :: btf ( x )"
     if (!baseClassQualification.empty()) {
+        Token* const beforeQualification = tok->previous();
         std::string::size_type offset = 0;
         std::string::size_type pos = 0;
         while ((pos = baseClassQualification.find(' ', offset)) != std::string::npos) {
@@ -1320,16 +1322,19 @@ void TemplateSimplifier::deduceFunctionTemplateArguments(Token* tok,
         tok->insertTokenBefore(baseClassQualification.substr(offset));
         tok->insertTokenBefore("::");
         qualification = baseClassQualification;
+        rememberNewTokens(beforeQualification ? beforeQualification->next() : mTokenList.front(), tok->previous());
     }
 
     // insert the deduced template arguments: "f ( x )" => "f < int > ( x )"
     tok->insertToken(">");
+    Token* const closingBracket = tok->next();
     for (std::size_t i = deducedTypes.size(); i > 0; --i) {
         insertDeducedType(tok, deducedTypes[i - 1]);
         if (i > 1)
             tok->insertToken(",");
     }
     tok->insertToken("<");
+    rememberNewTokens(tok->next(), closingBracket);
     mTypeDeductionsMade = true;
     mChanged = true;
 }
@@ -1793,6 +1798,10 @@ void TemplateSimplifier::simplifyTemplateAliases()
             }
 
             mChanged = true;
+            // type alias simplification restructures tokens in a way the incremental
+            // symbol database update can not handle
+            if (mUseTypeInformation)
+                mIncrementalUpdatePossible = false;
 
             // copy template-id from declaration to after instantiation
             Token * dst = aliasUsage.token()->next()->findClosingBracket();
@@ -2095,6 +2104,12 @@ void TemplateSimplifier::expandTemplate(
     const bool isSpecialization = templateDeclaration.isSpecialization();
     const bool isVariable = templateDeclaration.isVariable();
 
+    // the incremental symbol database update only supports expansions that copy a
+    // function template - everything else falls back to recreating the database
+    if (mUseTypeInformation && (!copy || !isFunction))
+        mIncrementalUpdatePossible = false;
+    Token* const lastTokenBeforeExpansion = mTokenList.back();
+
     std::vector<newInstantiation> newInstantiations;
 
     for (const Token* tok = templateInstantiation.token()->next()->findClosingBracket();
@@ -2334,6 +2349,11 @@ void TemplateSimplifier::expandTemplate(
 
         if (isVariable || isFunction)
             simplifyTemplateArgs(dstStart, dst);
+
+        // remember the new declaration tokens
+        Token* const firstNew = dstStart ? dstStart->next() : mTokenList.front();
+        if (firstNew != dst)
+            rememberNewTokens(firstNew, dst->previous());
     }
 
     if (copy && (isClass || isFunction)) {
@@ -2797,6 +2817,10 @@ void TemplateSimplifier::expandTemplate(
             (inst.token->tokAt(2)->isNumber() || inst.token->tokAt(2)->isStandardType()))
             mTemplateInstantiations.emplace_back(inst.token, inst.scope);
     }
+
+    // remember the tokens that were appended at the end of the token list
+    if (mTokenList.back() != lastTokenBeforeExpansion)
+        rememberNewTokens(lastTokenBeforeExpansion->next(), mTokenList.back());
 }
 
 static bool isLowerThanLogicalAnd(const Token *lower)
@@ -3932,6 +3956,18 @@ void TemplateSimplifier::replaceTemplateUsage(
         nameTok = tok2;
     }
     while (!removeTokens.empty()) {
+        // remembered new token ranges that start in the erased tokens are gone
+        if (!mNewTokenRanges.empty()) {
+            const Token* const begin = removeTokens.back().first;
+            const Token* const end = removeTokens.back().second;
+            mNewTokenRanges.erase(std::remove_if(mNewTokenRanges.begin(), mNewTokenRanges.end(), [&](const std::pair<Token*, Token*>& range) {
+                for (const Token* tok = begin->next(); tok && tok != end; tok = tok->next()) {
+                    if (tok == range.first)
+                        return true;
+                }
+                return false;
+            }), mNewTokenRanges.end());
+        }
         eraseTokens(removeTokens.back().first, removeTokens.back().second);
         removeTokens.pop_back();
     }
@@ -4458,14 +4494,19 @@ void TemplateSimplifier::simplifyTemplates(const std::time_t maxtime)
             });
             if (decl != mTemplateDeclarations.end()) {
                 if (it->isSpecialization()) {
+                    // the specialization becomes a normal function - remember it so the
+                    // symbol database can clear its templateDef (incremental update)
+                    if (mUseTypeInformation)
+                        mConvertedSpecializations.push_back(it->nameToken());
                     // delete the "template < >"
                     Token * tok = it->token();
                     tok->deleteNext(2);
                     tok->deleteThis();
-                } else if (mPendingTypeDeductions && it->isFunction()) {
+                } else if (mUseTypeInformation || (mPendingTypeDeductions && it->isFunction())) {
                     // don't remove the declaration yet: pending type deductions may
-                    // instantiate this function template again. It is removed later by
-                    // removeDeferredTemplateDeclarations().
+                    // instantiate this function template again, and during the type
+                    // deduction rounds the symbol database has references to these
+                    // tokens. It is removed later by removeDeferredTemplateDeclarations().
                     auto it1 = mTemplateForwardDeclarationsMap.find(it->token());
                     if (it1 != mTemplateForwardDeclarationsMap.end())
                         deferRemoval(it1->second);
@@ -4488,7 +4529,7 @@ void TemplateSimplifier::simplifyTemplates(const std::time_t maxtime)
                                          FindToken(mMemberFunctionsToDelete.cbegin()->token()));
             // multiple functions can share the same declaration so make sure it hasn't already been deleted
             if (it != mTemplateDeclarations.end()) {
-                if (mPendingTypeDeductions && it->isFunction())
+                if (mUseTypeInformation || (mPendingTypeDeductions && it->isFunction()))
                     deferRemoval(it->token());
                 else
                     removeTemplate(it->token());
@@ -4499,7 +4540,7 @@ void TemplateSimplifier::simplifyTemplates(const std::time_t maxtime)
                                               FindToken(mMemberFunctionsToDelete.cbegin()->token()));
                 // multiple functions can share the same declaration so make sure it hasn't already been deleted
                 if (it1 != mTemplateForwardDeclarations.end()) {
-                    if (mPendingTypeDeductions && it1->isFunction())
+                    if (mUseTypeInformation || (mPendingTypeDeductions && it1->isFunction()))
                         deferRemoval(it1->token());
                     else
                         removeTemplate(it1->token());
@@ -4588,6 +4629,9 @@ bool TemplateSimplifier::simplifyTemplatesUsingTypeInformation(std::time_t maxti
     mUseTypeInformation = true;
     mTypeDeductionsMade = false;
     mPendingTypeDeductions = false;
+    mNewTokenRanges.clear();
+    mConvertedSpecializations.clear();
+    mIncrementalUpdatePossible = true;
     // start from a clean state - the state left behind by the previous
     // simplifyTemplates() call refers to a token list that has changed since
     mTemplateDeclarations.clear();
@@ -4615,18 +4659,39 @@ void TemplateSimplifier::deferRemoval(Token* declTok)
         mDeferredRemovals.push_back(declTok);
 }
 
-bool TemplateSimplifier::removeDeferredTemplateDeclarations()
+void TemplateSimplifier::rememberNewTokens(Token* first, Token* last)
 {
+    if (!mUseTypeInformation || !first || !last)
+        return;
+    mNewTokenRanges.emplace_back(first, last);
+}
+
+bool TemplateSimplifier::removeDeferredTemplateDeclarations(SymbolDatabase* symbolDatabase)
+{
+    // the declarations could have been removed by a later simplification - make sure
+    // the tokens still exist before removing them
+    std::vector<Token*> declarations;
+    std::copy_if(mDeferredRemovals.cbegin(), mDeferredRemovals.cend(), std::back_inserter(declarations), [&](Token* declTok) {
+        return mTokenList.validateToken(declTok);
+    });
+    mDeferredRemovals.clear();
+
+    if (symbolDatabase) {
+        // remove the symbols before the tokens are removed
+        std::vector<std::pair<Token*, const Token*>> ranges;
+        for (Token* declTok : declarations) {
+            const Token* end = findTemplateDeclarationEnd(declTok);
+            if (end)
+                ranges.emplace_back(declTok, end);
+        }
+        symbolDatabase->removeSymbolsInTokenRanges(ranges);
+    }
+
     bool removed = false;
-    for (Token* declTok : mDeferredRemovals) {
-        // the declaration could have been removed by a later simplification - make sure
-        // the token still exists before removing it
-        if (!mTokenList.validateToken(declTok))
-            continue;
+    for (Token* declTok : declarations) {
         if (removeTemplate(declTok))
             removed = true;
     }
-    mDeferredRemovals.clear();
     return removed;
 }
 
