@@ -1335,6 +1335,7 @@ void TemplateSimplifier::deduceFunctionTemplateArguments(Token* tok,
     }
     tok->insertToken("<");
     rememberNewTokens(tok->next(), closingBracket);
+    rememberDirtyCallSite(tok);
     mTypeDeductionsMade = true;
     mChanged = true;
 }
@@ -3934,6 +3935,7 @@ void TemplateSimplifier::replaceTemplateUsage(
 
         const Token * const nameTok1 = nameTok;
         nameTok->str(newName);
+        rememberDirtyCallSite(nameTok);
 
         // matching template usage => replace tokens..
         // Foo < int >  =>  Foo<int>
@@ -4631,6 +4633,7 @@ bool TemplateSimplifier::simplifyTemplatesUsingTypeInformation(std::time_t maxti
     mPendingTypeDeductions = false;
     mNewTokenRanges.clear();
     mConvertedSpecializations.clear();
+    mDirtyCallSites.clear();
     mIncrementalUpdatePossible = true;
     // start from a clean state - the state left behind by the previous
     // simplifyTemplates() call refers to a token list that has changed since
@@ -4666,6 +4669,14 @@ void TemplateSimplifier::rememberNewTokens(Token* first, Token* last)
     mNewTokenRanges.emplace_back(first, last);
 }
 
+void TemplateSimplifier::rememberDirtyCallSite(Token* nameTok)
+{
+    if (!mUseTypeInformation || !nameTok)
+        return;
+    if (std::find(mDirtyCallSites.cbegin(), mDirtyCallSites.cend(), nameTok) == mDirtyCallSites.cend())
+        mDirtyCallSites.push_back(nameTok);
+}
+
 bool TemplateSimplifier::removeDeferredTemplateDeclarations(SymbolDatabase* symbolDatabase)
 {
     // the declarations could have been removed by a later simplification - make sure
@@ -4676,14 +4687,30 @@ bool TemplateSimplifier::removeDeferredTemplateDeclarations(SymbolDatabase* symb
     });
     mDeferredRemovals.clear();
 
+    std::vector<std::pair<Token*, const Token*>> ranges;
+    for (Token* declTok : declarations) {
+        const Token* end = findTemplateDeclarationEnd(declTok);
+        if (end)
+            ranges.emplace_back(declTok, end);
+    }
+
+    // dirty call sites inside the removed declarations are gone
+    if (!mDirtyCallSites.empty() && !ranges.empty()) {
+        std::set<const Token*> removedTokens;
+        for (const auto& range : ranges) {
+            for (const Token* tok = range.first; tok; tok = tok->next()) {
+                removedTokens.insert(tok);
+                if (tok == range.second)
+                    break;
+            }
+        }
+        mDirtyCallSites.erase(std::remove_if(mDirtyCallSites.begin(), mDirtyCallSites.end(), [&](const Token* site) {
+            return removedTokens.count(site) != 0;
+        }), mDirtyCallSites.end());
+    }
+
     if (symbolDatabase) {
         // remove the symbols before the tokens are removed
-        std::vector<std::pair<Token*, const Token*>> ranges;
-        for (Token* declTok : declarations) {
-            const Token* end = findTemplateDeclarationEnd(declTok);
-            if (end)
-                ranges.emplace_back(declTok, end);
-        }
         symbolDatabase->removeSymbolsInTokenRanges(ranges);
     }
 

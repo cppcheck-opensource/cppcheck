@@ -1416,8 +1416,14 @@ public:
      */
     void validate() const;
 
-    /** Set valuetype in provided tokenlist */
-    void setValueTypeInTokenList(bool reportDebugWarnings, Token *tokens=nullptr);
+    /** Set valuetype in provided tokenlist. When endToken (exclusive) is given, only
+     * that token range is set and the caller is responsible for updating the function
+     * and variable pointers (updateFunctionAndVariablePointers()). */
+    void setValueTypeInTokenList(bool reportDebugWarnings, Token *tokens=nullptr, const Token *endToken=nullptr);
+
+    /** Update the function pointers of calls and the variable pointers in the whole
+     * token list, e.g. after tokens were added or renamed. */
+    void updateFunctionAndVariablePointers();
 
     /**
      * Calculates sizeof value for given type.

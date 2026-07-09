@@ -358,10 +358,19 @@ public:
         return mConvertedSpecializations;
     }
 
+    /** name tokens of the call sites that the last simplifyTemplatesUsingTypeInformation()
+     * call changed (deduced template arguments and qualifications were inserted, or the
+     * call was renamed to an instantiation) - the AST and the valuetypes of the
+     * statements around them must be recreated */
+    const std::vector<Token*>& dirtyCallSites() const {
+        return mDirtyCallSites;
+    }
+
     /** forget the recorded token changes, called when they have been consumed */
     void clearTokenChanges() {
         mNewTokenRanges.clear();
         mConvertedSpecializations.clear();
+        mDirtyCallSites.clear();
     }
 
     /** true when the token changes made by the last simplifyTemplatesUsingTypeInformation()
@@ -432,6 +441,10 @@ private:
     /** remember tokens that were added during a type-information round so the symbol
      * database can be updated incrementally */
     void rememberNewTokens(Token* first, Token* last);
+
+    /** remember a call site whose statement was changed during a type-information round
+     * so its AST and valuetypes can be recreated */
+    void rememberDirtyCallSite(Token* nameTok);
 
     /**
      * Get template instantiations
@@ -605,6 +618,8 @@ private:
     /** specializations that were turned into normal functions during type-information
      * rounds - their Function::templateDef must be cleared */
     std::vector<const Token*> mConvertedSpecializations;
+    /** call sites changed during type-information rounds (see dirtyCallSites()) */
+    std::vector<Token*> mDirtyCallSites;
     /** false when the current round made token changes that the incremental symbol
      * database update can not handle (class/variable/specialization instantiations,
      * type alias changes) */

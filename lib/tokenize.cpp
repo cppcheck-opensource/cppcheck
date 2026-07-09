@@ -4348,14 +4348,68 @@ void Tokenizer::rebuildTokenDataAfterTemplateSimplification()
 void Tokenizer::updateTokenDataAfterTemplateSimplification()
 {
     // update the supporting token information incrementally: the information of the
-    // unchanged tokens - variable ids, symbols, valuetypes - stays valid
+    // unchanged tokens - variable ids, symbols, AST, valuetypes - stays valid
     setVarId(/*incremental*/ true);
     createLinks2();   // adds the "<>" links of the new tokens
     Token::assignProgressValues(list.front());
     list.front()->assignIndexes();
-    list.clearAst();
-    list.createAst();
+
+    // The token regions whose AST and valuetypes must be recreated: the new tokens and
+    // the function bodies around the changed call sites.
+    bool rebuildAll = false;
+    // the regions (first and last token, inclusive) whose AST and valuetypes must be recreated
+    std::vector<std::pair<Token*, Token*>> regions = mTemplateSimplifier->newTokenRanges();
+    for (const Token* siteTok : mTemplateSimplifier->dirtyCallSites()) {
+        const Scope* scope = siteTok->scope();
+        if (!scope)
+            continue;   // a new token - covered by the new token ranges
+        // the outermost executable scope is the function body around the call
+        const Scope* functionScope = nullptr;
+        for (const Scope* s = scope; s; s = s->nestedIn) {
+            if (s->isExecutable())
+                functionScope = s;
+        }
+        if (!functionScope || !functionScope->bodyStart || !functionScope->bodyEnd ||
+            functionScope->bodyStart->astParent()) {
+            // no function body around the call (global initializer, lambda body that is
+            // part of an expression, ..) - recreate everything
+            rebuildAll = true;
+            break;
+        }
+        regions.emplace_back(const_cast<Token*>(functionScope->bodyStart), const_cast<Token*>(functionScope->bodyEnd));
+    }
+
+    if (!rebuildAll && !regions.empty()) {
+        // merge the overlapping regions - Token::index() is up to date
+        std::sort(regions.begin(), regions.end(), [](const std::pair<Token*, Token*>& lhs, const std::pair<Token*, Token*>& rhs) {
+            return lhs.first->index() < rhs.first->index();
+        });
+        std::vector<std::pair<Token*, Token*>> merged;
+        for (const auto& region : regions) {
+            if (!merged.empty() && region.first->index() <= merged.back().second->index()) {
+                if (region.second->index() > merged.back().second->index())
+                    merged.back().second = region.second;
+            } else
+                merged.push_back(region);
+        }
+        regions = std::move(merged);
+    }
+
+    if (rebuildAll) {
+        list.clearAst();
+        list.createAst();
+    } else {
+        for (const auto& region : regions) {
+            for (Token* tok = region.first; tok; tok = tok->next()) {
+                tok->clearAst();
+                if (tok == region.second)
+                    break;
+            }
+            list.createAst(region.first, region.second->next());
+        }
+    }
     list.validateAst(mSettings.debugnormal);
+
     for (const Token* nameTok : mTemplateSimplifier->convertedSpecializations()) {
         // the specialization became a normal function: its "template < >" tokens are gone
         if (nameTok->function())
@@ -4369,7 +4423,6 @@ void Tokenizer::updateTokenDataAfterTemplateSimplification()
             tok->tokType(Token::eName);
     }
     mSymbolDatabase->addSymbolsForNewTokenRanges(mTemplateSimplifier->newTokenRanges());
-    mTemplateSimplifier->clearTokenChanges();
     // safety net: every token needs a scope. A token that was added by a simplification
     // that is not covered by the new token ranges gets the scope of the preceding token.
     const Scope* lastScope = nullptr;
@@ -4381,8 +4434,19 @@ void Tokenizer::updateTokenDataAfterTemplateSimplification()
         } else if (lastScope)
             tok->scope(lastScope);
     }
-    mSymbolDatabase->setValueTypeInTokenList(false);
-    mSymbolDatabase->setValueTypeInTokenList(true);
+
+    // recreate the valuetypes of the changed regions
+    if (rebuildAll) {
+        mSymbolDatabase->setValueTypeInTokenList(false);
+        mSymbolDatabase->setValueTypeInTokenList(true);
+    } else {
+        mSymbolDatabase->updateFunctionAndVariablePointers();
+        for (const auto& region : regions) {
+            mSymbolDatabase->setValueTypeInTokenList(false, region.first, region.second->next());
+            mSymbolDatabase->setValueTypeInTokenList(true, region.first, region.second->next());
+        }
+    }
+    mTemplateSimplifier->clearTokenChanges();
     mSymbolDatabase->validate();
 }
 //---------------------------------------------------------------------------

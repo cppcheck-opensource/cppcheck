@@ -173,6 +173,13 @@ public:
     void createAst() const;
 
     /**
+     * Create the abstract syntax tree for the tokens in the given range. endToken is
+     * exclusive, nullptr means the end of the token list.
+     * @throws InternalError thrown if encountering an infinite loop in AST creation
+     */
+    static void createAst(Token* startToken, const Token* endToken);
+
+    /**
      * Remove the abstract syntax tree from all tokens so createAst() can be called again,
      * for instance after the token list has been modified.
      */

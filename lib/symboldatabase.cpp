@@ -2108,9 +2108,17 @@ void SymbolDatabase::addSymbolsForNewTokenRanges(const std::vector<std::pair<Tok
         }
     }
 
-    // function/type/enumerator pointers - these only set pointers that are not set, so
-    // the old tokens are not affected
-    createSymbolDatabaseSetFunctionPointers(true);
+    // set the definition and declaration pointers of the new functions. The call
+    // pointers are updated afterwards by updateFunctionAndVariablePointers().
+    for (const auto& f : newFunctions) {
+        if (f.first->tokenDef)
+            const_cast<Token *>(f.first->tokenDef)->function(f.first);
+        if (f.first->token)
+            const_cast<Token *>(f.first->token)->function(f.first);
+    }
+
+    // type/enumerator pointers - these only set pointers that are not set, so the old
+    // tokens are not affected
     createSymbolDatabaseSetTypePointers();
     createSymbolDatabaseSetSmartPointerType();
     createSymbolDatabaseEnums();
@@ -8043,15 +8051,15 @@ static int getIntegerConstantMacroWidth(const Token* tok) {
     return intnum;
 }
 
-void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *tokens)
+void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *tokens, const Token *endToken)
 {
     if (!tokens)
         tokens = mTokenizer.list.front();
 
-    for (Token *tok = tokens; tok; tok = tok->next())
+    for (Token *tok = tokens; tok && tok != endToken; tok = tok->next())
         tok->setValueType(nullptr);
 
-    for (Token *tok = tokens; tok; tok = tok->next()) {
+    for (Token *tok = tokens; tok && tok != endToken; tok = tok->next()) {
         if (tok->isNumber()) {
             if (MathLib::isFloat(tok->str())) {
                 ValueType::Type type = ValueType::Type::DOUBLE;
@@ -8486,7 +8494,7 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
     }
 
     if (reportDebugWarnings && mSettings.debugwarnings) {
-        for (Token *tok = tokens; tok; tok = tok->next()) {
+        for (Token *tok = tokens; tok && tok != endToken; tok = tok->next()) {
             if (tok->str() == "auto" && !tok->valueType()) {
                 if (Token::Match(tok->next(), "%name% ; %name% = [") && isLambdaCaptureList(tok->tokAt(5)))
                     continue;
@@ -8497,10 +8505,20 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
         }
     }
 
+    // when only a range was set the caller is responsible for updating the pointers
+    if (endToken)
+        return;
+
     // Update functions with new type information.
     createSymbolDatabaseSetFunctionPointers(false);
 
     // Update auto variables with new type information.
+    createSymbolDatabaseSetVariablePointers();
+}
+
+void SymbolDatabase::updateFunctionAndVariablePointers()
+{
+    createSymbolDatabaseSetFunctionPointers(false);
     createSymbolDatabaseSetVariablePointers();
 }
 
