@@ -2273,6 +2273,11 @@ private:
         const char code4[] = "union U { struct { int a; int b; }; int ab[2]; };";
         const char expected4[] = "union U { struct { int a ; int b ; } ; int ab [ 2 ] ; } ;";
         ASSERT_EQUALS(expected4, tokenizeAndStringify(code4));
+
+        // #14836: FP syntaxError for anonymous struct in for loop
+        const char code5[] = "void f(void) { for (struct { int a; } it = {0}; it.a < 10; it.a++) {} }";
+        const char expected5[] = "void f ( ) { struct Anonymous0 { int a ; } ; for ( struct Anonymous0 it = { 0 } ; it . a < 10 ; it . a ++ ) { } }";
+        ASSERT_EQUALS(expected5, tokenizeAndStringify(code5));
     }
 
     void vardecl1() {
