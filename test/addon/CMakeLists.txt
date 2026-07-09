@@ -3,6 +3,18 @@ if (NOT Python_Interpreter_FOUND)
     return()
 endif()
 
+# creating a virtual environment needs the venv and ensurepip modules - some
+# distributions ship them separately from the interpreter (e.g. the Debian/Ubuntu
+# python3-venv package)
+execute_process(COMMAND ${Python_EXECUTABLE} -c "import venv, ensurepip"
+        RESULT_VARIABLE PYTHON_VENV_RESULT
+        OUTPUT_QUIET
+        ERROR_QUIET)
+if (NOT PYTHON_VENV_RESULT EQUAL 0)
+    message(WARNING "Python venv module not available (e.g. install the python3-venv package) - skipping addon tests.")
+    return()
+endif()
+
 set(VENV_DIR ${CMAKE_CURRENT_BINARY_DIR}/venv)
 if (WIN32)
     set(VENV_PYTHON ${VENV_DIR}/Scripts/python.exe)
