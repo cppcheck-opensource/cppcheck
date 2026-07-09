@@ -318,6 +318,31 @@ public:
     void simplifyTemplates(std::time_t maxtime);
 
     /**
+     * Simplify templates again, using type information (AST, SymbolDatabase, ValueType)
+     * to deduce the template arguments of function template calls such as "f(x)",
+     * "f(x+y)" or "f(x.g())" from the types of the argument expressions.
+     * @param maxtime time when the simplification should be stopped
+     * @return true if the token list was changed
+     */
+    bool simplifyTemplatesUsingTypeInformation(std::time_t maxtime);
+
+    /**
+     * @return true when there are function template calls where the template arguments
+     * could not be deduced yet but deduction may succeed once type information is
+     * available (see simplifyTemplatesUsingTypeInformation).
+     */
+    bool hasPendingTypeDeductions() const {
+        return mPendingTypeDeductions;
+    }
+
+    /**
+     * Remove the instantiated function template declarations whose removal was deferred
+     * while type deductions were pending.
+     * @return true if any tokens were removed
+     */
+    bool removeDeferredTemplateDeclarations();
+
+    /**
      * Simplify constant calculations such as "1+2" => "3"
      * @param tok start token
      * @return true if modifications to token-list are done.
@@ -352,6 +377,29 @@ private:
      * @param scope scope of instantiation
      */
     void addInstantiation(Token *token, const std::string &scope);
+
+    /**
+     * Deduce the template arguments of a function template call from the function
+     * arguments and insert them after the name token: "f ( 1 )" => "f < int > ( 1 )".
+     * Literal arguments are always handled; arbitrary argument expressions are handled
+     * when type information is available (mUseTypeInformation). Sets
+     * mPendingTypeDeductions when a deduction could succeed later with type information.
+     * @param tok name token of the function call
+     * @param qualification qualification of the call ("A :: B" for "A :: B :: f ( 1 )")
+     * @param scopeName name of the scope the call is in
+     * @param functionNameMap map with all function template declarations
+     */
+    void deduceFunctionTemplateArguments(Token* tok,
+                                         std::string& qualification,
+                                         const std::string& scopeName,
+                                         const std::multimap<std::string, const TokenAndName*>& functionNameMap);
+
+    /**
+     * Remember that the given instantiated function template declaration should not be
+     * removed from the token list yet because pending type deductions may instantiate
+     * it again. It is removed later by removeDeferredTemplateDeclarations().
+     */
+    void deferRemoval(Token* declTok);
 
     /**
      * Get template instantiations
@@ -509,6 +557,17 @@ private:
     const Settings &mSettings;
     ErrorLogger &mErrorLogger;
     bool mChanged{};
+    /** true when type information (AST, SymbolDatabase, ValueType) is available for deduction */
+    bool mUseTypeInformation{};
+    /** true when there are calls where deduction may succeed once type information is available */
+    bool mPendingTypeDeductions{};
+    /** true when the current simplifyTemplatesUsingTypeInformation() call deduced something */
+    bool mTypeDeductionsMade{};
+    /** names of all expanded instantiations; persists between simplifyTemplates() calls so a
+     * later deduced instantiation reuses the existing expansion instead of duplicating it */
+    std::set<std::string> mExpandedTemplateNames;
+    /** instantiated function template declarations whose removal has been deferred */
+    std::vector<Token*> mDeferredRemovals;
 
     std::list<TokenAndName> mTemplateDeclarations;
     std::list<TokenAndName> mTemplateForwardDeclarations;

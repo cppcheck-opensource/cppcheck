@@ -297,6 +297,21 @@ private:
      */
     void simplifyTemplates();
 
+    /**
+     * Simplify templates again, this time using type information (AST, SymbolDatabase,
+     * ValueType) to deduce the template arguments of function template calls from the
+     * argument expressions. Runs in a loop: after each round of new instantiations the
+     * supporting token information (varid, links, AST, SymbolDatabase, ValueTypes) is
+     * updated so the new tokens can be used by the next round.
+     */
+    void simplifyTemplatesUsingTypeInformation();
+
+    /**
+     * Update varid, links, AST, SymbolDatabase and ValueTypes after the template
+     * simplifier changed the token list.
+     */
+    void rebuildTokenDataAfterTemplateSimplification();
+
     void simplifyDoublePlusAndDoubleMinus();
 
     void simplifyRedundantConsecutiveBraces();

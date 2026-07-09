@@ -1947,6 +1947,7 @@ SymbolDatabase::~SymbolDatabase()
         tok->variable(nullptr);
         tok->enumerator(nullptr);
         tok->setValueType(nullptr);
+        tok->exprId(0);
     }
 }
 

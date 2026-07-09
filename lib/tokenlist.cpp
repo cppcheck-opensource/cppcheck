@@ -1896,6 +1896,12 @@ static Token * createAstAtToken(Token *tok)
     return tok;
 }
 
+void TokenList::clearAst() const
+{
+    for (Token *tok = mTokensFrontBack->front; tok; tok = tok->next())
+        tok->clearAst();
+}
+
 void TokenList::createAst() const
 {
     for (Token *tok = mTokensFrontBack->front; tok; tok = tok ? tok->next() : nullptr) {

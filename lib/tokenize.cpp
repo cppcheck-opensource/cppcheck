@@ -3546,6 +3546,12 @@ bool Tokenizer::simplifyTokens1(const std::string &configuration, int fileIndex)
         mSymbolDatabase->setValueTypeInTokenList(true);
     });
 
+    if (isCPP() && mTemplateSimplifier->hasPendingTypeDeductions()) {
+        Timer::run("Tokenizer::simplifyTokens1::simplifyTemplatesUsingTypeInformation", mTimerResults, [&]() {
+            simplifyTemplatesUsingTypeInformation();
+        });
+    }
+
     if (!mSettings.buildDir.empty())
         Summaries::create(*this, configuration, fileIndex);
 
@@ -4263,6 +4269,52 @@ void Tokenizer::simplifyTemplates()
     const std::time_t maxTime = mSettings.templateMaxTime > 0 ? std::time(nullptr) + mSettings.templateMaxTime : 0;
     mTemplateSimplifier->simplifyTemplates(
         maxTime);
+}
+
+void Tokenizer::simplifyTemplatesUsingTypeInformation()
+{
+    if (isC())
+        return;
+
+    const std::time_t maxTime = mSettings.templateMaxTime > 0 ? std::time(nullptr) + mSettings.templateMaxTime : 0;
+    bool finalized = false;
+    constexpr int maxRounds = 5;
+    for (int round = 0; round < maxRounds; ++round) {
+        if (Settings::terminated())
+            return;
+        if (!mTemplateSimplifier->simplifyTemplatesUsingTypeInformation(maxTime))
+            break;
+        // when no deductions are pending anymore the deferred template declarations can
+        // be removed now, so that the rebuilt token information is already final
+        if (!mTemplateSimplifier->hasPendingTypeDeductions()) {
+            mTemplateSimplifier->removeDeferredTemplateDeclarations();
+            finalized = true;
+        }
+        rebuildTokenDataAfterTemplateSimplification();
+        if (finalized)
+            return;
+    }
+    if (!finalized && mTemplateSimplifier->removeDeferredTemplateDeclarations())
+        rebuildTokenDataAfterTemplateSimplification();
+}
+
+void Tokenizer::rebuildTokenDataAfterTemplateSimplification()
+{
+    // update the supporting token information for the added and removed tokens, in the
+    // same order the information was created initially
+    createLinks();
+    setVarId();
+    createLinks2();
+    Token::assignProgressValues(list.front());
+    list.front()->assignIndexes();
+    list.clearAst();
+    list.createAst();
+    list.validateAst(mSettings.debugnormal);
+    delete mSymbolDatabase;
+    mSymbolDatabase = nullptr;
+    createSymbolDatabase();
+    mSymbolDatabase->setValueTypeInTokenList(false);
+    mSymbolDatabase->setValueTypeInTokenList(true);
 }
 //---------------------------------------------------------------------------
 

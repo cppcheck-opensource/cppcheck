@@ -1652,6 +1652,14 @@ public:
         mImpl->mValues = nullptr;
     }
 
+    /** Clear the AST links (operands, parent and the cached top token) so the AST can be created again */
+    void clearAst() {
+        mImpl->mAstOperand1 = nullptr;
+        mImpl->mAstOperand2 = nullptr;
+        mImpl->mAstParent = nullptr;
+        mImpl->mAstTop = nullptr;
+    }
+
     // cppcheck-suppress unusedFunction - used in tests only
     std::string astString(const char *sep = "") const {
         std::string ret;

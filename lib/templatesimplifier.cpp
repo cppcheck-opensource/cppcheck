@@ -18,11 +18,13 @@
 
 #include "templatesimplifier.h"
 
+#include "astutils.h"
 #include "errorlogger.h"
 #include "errortypes.h"
 #include "mathlib.h"
 #include "settings.h"
 #include "standards.h"
+#include "symboldatabase.h"
 #include "token.h"
 #include "tokenize.h"
 #include "tokenlist.h"
@@ -792,8 +794,550 @@ static bool isTemplateInstantion(const Token* tok)
     return Token::Match(tok->tokAt(-2), "(|{|}|;|=|<<|:|.|*|&|return|<|,|!|[ :: %name% ::|<|(");
 }
 
+namespace {
+    // A function template parameter with a form that is supported by type deduction:
+    // "T", "T &", "const T &", "T *", "const T *" or a concrete single token type
+    struct ParameterShape {
+        const Token* typeTok{};
+        int templateParameterIndex = -1;   // -1 => a concrete type, nothing is deduced
+        bool isConst{};
+        bool isPointer{};
+        bool isReference{};
+    };
+
+    // The type deduced for a template parameter from a function call argument
+    struct DeducedType {
+        std::string typeStr;                     // base type, e.g. "int" or "MyClass"
+        std::vector<std::string> qualification;  // enclosing scopes for record types, outermost first
+        unsigned int constness{};                // bit 0 = data const, bit 1 = first '*' const, ..
+        int pointer{};                           // number of '*'
+        bool isUnsigned{};
+        bool isLong{};
+
+        bool operator==(const DeducedType& other) const {
+            return typeStr == other.typeStr &&
+                   qualification == other.qualification &&
+                   constness == other.constness &&
+                   pointer == other.pointer &&
+                   isUnsigned == other.isUnsigned &&
+                   isLong == other.isLong;
+        }
+    };
+}
+
+static bool parseParameterShape(const Token* start, const std::vector<const Token*>& typeParameters, ParameterShape& shape)
+{
+    const Token* tok = start;
+    if (Token::simpleMatch(tok, "const")) {
+        shape.isConst = true;
+        tok = tok->next();
+    }
+    if (!Token::Match(tok, "%type%") || Token::Match(tok, "const|struct|class|union|enum"))
+        return false;
+    shape.typeTok = tok;
+    tok = tok->next();
+    if (Token::simpleMatch(tok, "*")) {
+        shape.isPointer = true;
+        tok = tok->next();
+    } else if (Token::simpleMatch(tok, "&")) {
+        shape.isReference = true;
+        tok = tok->next();
+    }
+    if (Token::Match(tok, "%name% ,|)"))
+        tok = tok->next();
+    if (!Token::Match(tok, ",|)"))
+        return false;
+    const auto it = std::find_if(typeParameters.cbegin(), typeParameters.cend(), [&](const Token* typeParameter) {
+        return typeParameter->str() == shape.typeTok->str();
+    });
+    if (it != typeParameters.cend())
+        shape.templateParameterIndex = static_cast<int>(it - typeParameters.cbegin());
+    return true;
+}
+
+// Convert the ValueType of an argument expression to the type that the parameter shape
+// deduces for its template parameter. Returns false when the type is not supported.
+static bool valueTypeToDeducedType(const ValueType* vt, const ParameterShape& shape, DeducedType& deduced)
+{
+    if (!vt)
+        return false;
+    if (vt->bits > 0 || vt->volatileness != 0)
+        return false;
+    if (vt->smartPointer || vt->smartPointerType || vt->smartPointerTypeToken || vt->container || vt->containerTypeToken)
+        return false;
+
+    int pointer = vt->pointer;
+    unsigned int constness = vt->constness;
+    if (shape.isPointer) {
+        // "T *": the argument must be a pointer and T is the pointee type
+        if (pointer < 1)
+            return false;
+        constness &= ~(1U << pointer);
+        --pointer;
+    } else if (!shape.isReference || shape.isConst) {
+        // "T" and "const T &" deduction drops the top level const
+        constness &= ~(1U << pointer);
+    }
+    // else "T &": the constness is part of the deduced type
+
+    if (pointer > 2)
+        return false;
+    if (constness >= (1U << (pointer + 1)))
+        return false;
+    deduced.pointer = pointer;
+    deduced.constness = constness;
+
+    switch (vt->type) {
+    case ValueType::BOOL:
+        deduced.typeStr = "bool";
+        break;
+    case ValueType::CHAR:
+        deduced.typeStr = "char";
+        deduced.isUnsigned = vt->sign == ValueType::UNSIGNED;
+        break;
+    case ValueType::SHORT:
+        deduced.typeStr = "short";
+        deduced.isUnsigned = vt->sign == ValueType::UNSIGNED;
+        break;
+    case ValueType::WCHAR_T:
+        deduced.typeStr = "wchar_t";
+        break;
+    case ValueType::INT:
+        deduced.typeStr = "int";
+        deduced.isUnsigned = vt->sign == ValueType::UNSIGNED;
+        break;
+    case ValueType::LONG:
+        deduced.typeStr = "long";
+        deduced.isUnsigned = vt->sign == ValueType::UNSIGNED;
+        break;
+    case ValueType::LONGLONG:
+        deduced.typeStr = "long";
+        deduced.isLong = true;
+        deduced.isUnsigned = vt->sign == ValueType::UNSIGNED;
+        break;
+    case ValueType::FLOAT:
+        deduced.typeStr = "float";
+        break;
+    case ValueType::DOUBLE:
+        deduced.typeStr = "double";
+        break;
+    case ValueType::LONGDOUBLE:
+        deduced.typeStr = "double";
+        deduced.isLong = true;
+        break;
+    case ValueType::RECORD: {
+        const Scope* typeScope = vt->typeScope;
+        if (!typeScope || typeScope->className.empty() || !typeScope->isClassOrStructOrUnion())
+            return false;
+        deduced.typeStr = typeScope->className;
+        for (const Scope* nested = typeScope->nestedIn; nested && nested->type != ScopeType::eGlobal; nested = nested->nestedIn) {
+            if (nested->type != ScopeType::eNamespace && !nested->isClassOrStructOrUnion())
+                return false;   // local types etc. cannot be named - bail out
+            if (nested->className.empty())
+                return false;
+            deduced.qualification.insert(deduced.qualification.cbegin(), nested->className);
+        }
+        break;
+    }
+    default:
+        return false;
+    }
+
+    return true;
+}
+
+// Is there a non template function with the given name in the scope? Overload
+// resolution is not implemented, so a call is not deduced when such a function might
+// be a better overload match.
+static bool scopeHasNonTemplateFunction(const Scope* scope, const std::string& name)
+{
+    const auto range = scope->functionMap.equal_range(name);
+    return std::any_of(range.first, range.second, [](const std::pair<const std::string, const Function*>& func) {
+        return !func.second->templateDef;
+    });
+}
+
+// The qualified name of a scope ("N :: A"). Empty when the scope or an enclosing scope
+// cannot be named (anonymous namespaces, local classes, ..).
+static std::string scopeQualifiedName(const Scope* scope)
+{
+    std::string name;
+    for (const Scope* it = scope; it && it->type != ScopeType::eGlobal; it = it->nestedIn) {
+        if (it->className.empty() || (!it->isClassOrStructOrUnion() && it->type != ScopeType::eNamespace))
+            return "";
+        name = name.empty() ? it->className : (it->className + " :: " + name);
+    }
+    return name;
+}
+
+// Insert the tokens of a deduced type after tok (the tokens are inserted in reverse order)
+static void insertDeducedType(Token* tok, const DeducedType& deduced)
+{
+    for (int level = deduced.pointer; level >= 1; --level) {
+        if (deduced.constness & (1U << level))
+            tok->insertToken("const");
+        tok->insertToken("*");
+    }
+    tok->insertToken(deduced.typeStr);
+    tok->next()->isUnsigned(deduced.isUnsigned);
+    tok->next()->isLong(deduced.isLong);
+    for (auto it = deduced.qualification.crbegin(); it != deduced.qualification.crend(); ++it) {
+        tok->insertToken("::");
+        tok->insertToken(*it);
+    }
+    if (deduced.constness & 1U)
+        tok->insertToken("const");
+}
+
+void TemplateSimplifier::deduceFunctionTemplateArguments(Token* tok,
+                                                         std::string& qualification,
+                                                         const std::string& scopeName,
+                                                         const std::multimap<std::string, const TokenAndName*>& functionNameMap)
+{
+    const auto range = functionNameMap.equal_range(tok->str());
+    if (range.first == range.second)
+        return;
+
+    std::string fullName;
+    if (!qualification.empty())
+        fullName = qualification + " :: " + tok->str();
+    else if (!scopeName.empty())
+        fullName = scopeName + " :: " + tok->str();
+    else
+        fullName = tok->str();
+
+    std::vector<const Token *> instantiationArgs;
+    getFunctionArguments(tok, instantiationArgs);
+
+    // deduction from literal arguments - works without type information
+    for (auto pos = range.first; pos != range.second; ++pos) {
+        // look for declaration with same qualification or constructor with same qualification
+        if (pos->second->fullName() == fullName ||
+            (pos->second->scope() == fullName && tok->str() == pos->second->name())) {
+            std::vector<const Token *> templateParams;
+            getTemplateParametersInDeclaration(pos->second->token()->tokAt(2), templateParams);
+
+            // todo: handle more than one template parameter
+            if (templateParams.size() != 1 || !areAllParamsTypes(templateParams))
+                continue;
+
+            std::vector<const Token *> declarationParams;
+            getFunctionArguments(pos->second->nameToken(), declarationParams);
+
+            // function argument counts must match
+            if (instantiationArgs.empty() || instantiationArgs.size() != declarationParams.size())
+                continue;
+
+            size_t match = 0;
+            size_t argMatch = 0;
+            for (size_t i = 0; i < declarationParams.size(); ++i) {
+                const bool isArgLiteral = Token::Match(instantiationArgs[i], "%num%|%str%|%char%|%bool% ,|)");
+                if (isArgLiteral && Token::Match(declarationParams[i], "const| %type% &| %name%| ,|)")) {
+                    match++;
+
+                    // check if parameter types match
+                    if (templateParams[0]->str() == declarationParams[i]->str())
+                        argMatch = i;
+                    else {
+                        // todo: check if non-template args match for function overloads
+                    }
+                }
+            }
+
+            if (match == declarationParams.size()) {
+                const Token *arg = instantiationArgs[argMatch];
+                tok->insertToken(">");
+                switch (arg->tokType()) {
+                case Token::eBoolean:
+                    tok->insertToken("bool");
+                    break;
+                case Token::eChar:
+                    if (arg->isLong())
+                        tok->insertToken("wchar_t");
+                    else
+                        tok->insertToken("char");
+                    break;
+                case Token::eString:
+                    tok->insertToken("*");
+                    if (arg->isLong())
+                        tok->insertToken("wchar_t");
+                    else
+                        tok->insertToken("char");
+                    tok->insertToken("const");
+                    break;
+                case Token::eNumber: {
+                    MathLib::value num(arg->str());
+                    if (num.isFloat()) {
+                        // MathLib::getSuffix doesn't work for floating point numbers
+                        const char suffix = arg->str().back();
+                        if (suffix == 'f' || suffix == 'F')
+                            tok->insertToken("float");
+                        else if (suffix == 'l' || suffix == 'L') {
+                            tok->insertToken("double");
+                            tok->next()->isLong(true);
+                        } else
+                            tok->insertToken("double");
+                    } else if (num.isInt()) {
+                        std::string suffix = MathLib::getSuffix(tok->strAt(3));
+                        if (suffix.find("LL") != std::string::npos) {
+                            tok->insertToken("long");
+                            tok->next()->isLong(true);
+                        } else if (suffix.find('L') != std::string::npos)
+                            tok->insertToken("long");
+                        else
+                            tok->insertToken("int");
+                        if (suffix.find('U') != std::string::npos)
+                            tok->next()->isUnsigned(true);
+                    }
+                    break;
+                }
+                default:
+                    break;
+                }
+                tok->insertToken("<");
+                return;
+            }
+        }
+    }
+
+    // the remaining deduction needs the types of the argument expressions
+    if (instantiationArgs.empty())
+        return;
+
+    // a call through a variable (function object, function pointer) is not a template instantiation
+    if (tok->varId() != 0)
+        return;
+    // a call that the symbol database resolved to a real (non template) function must not
+    // be hijacked - overload resolution against non templates is not implemented here
+    if (tok->function() && !tok->function()->templateDef)
+        return;
+
+    // Parse a candidate declaration: all parameters must have a supported form and
+    // every template parameter must be deducible from the function parameters. The
+    // signature identifies the parameter list, so a forward declaration and the
+    // definition of the same template can be recognized.
+    auto parseDeductionCandidate = [&](const TokenAndName& candidate,
+                                       std::vector<const Token*>& typeParameters,
+                                       std::vector<ParameterShape>& parameterShapes,
+                                       std::string& signature) -> bool {
+        if (candidate.isVariadic())
+            return false;
+
+        getTemplateParametersInDeclaration(candidate.token()->tokAt(2), typeParameters);
+        if (typeParameters.empty() || !areAllParamsTypes(typeParameters))
+            return false;
+
+        std::vector<const Token*> declarationParams;
+        getFunctionArguments(candidate.nameToken(), declarationParams);
+        if (declarationParams.size() != instantiationArgs.size())
+            return false;
+
+        std::vector<bool> deducible(typeParameters.size(), false);
+        signature = candidate.fullName();
+        for (const Token* param : declarationParams) {
+            ParameterShape shape;
+            if (!parseParameterShape(param, typeParameters, shape))
+                return false;
+            if (shape.templateParameterIndex >= 0)
+                deducible[shape.templateParameterIndex] = true;
+            parameterShapes.push_back(shape);
+            signature += (shape.isConst ? " const" : "");
+            // template parameters are compared by position - their names may differ
+            // between a forward declaration and the definition
+            if (shape.templateParameterIndex >= 0)
+                signature += " $" + std::to_string(shape.templateParameterIndex);
+            else
+                signature += " " + shape.typeTok->str();
+            signature += (shape.isPointer ? " *" : shape.isReference ? " &" : "");
+            signature += ",";
+        }
+        return std::all_of(deducible.cbegin(), deducible.cend(), [](bool b) {
+            return b;
+        });
+    };
+
+    if (!mUseTypeInformation) {
+        // Can the deduction succeed later, when type information is available? Scope
+        // matching is not possible yet - the declaration may be in a base class - so
+        // consider all declarations with this name.
+        for (auto pos = range.first; pos != range.second; ++pos) {
+            std::vector<const Token*> typeParameters;
+            std::vector<ParameterShape> parameterShapes;
+            std::string signature;
+            if (parseDeductionCandidate(*pos->second, typeParameters, parameterShapes, signature)) {
+                mPendingTypeDeductions = true;
+                return;
+            }
+        }
+        return;
+    }
+
+    if (!tok->scope())
+        return;
+
+    // The scopes where the call name is looked up, in lookup order: the innermost scope
+    // with matching declarations wins. At class scopes the transitive base classes are
+    // searched too; when a base class declaration wins, explicit qualification is
+    // inserted at the call site so the instantiation is matched with that declaration.
+    struct LookupLevel {
+        std::string scopeName;   // "" is the global scope
+        const Scope* scope;
+        bool isBaseClass;
+    };
+    std::vector<LookupLevel> levels;
+    if (!qualification.empty())
+        levels.push_back(LookupLevel{qualification, nullptr, false});
+    else {
+        // use the symbol database scopes
+        std::vector<const Scope*> visited;
+        auto addLevel = [&](const Scope* scope, bool isBaseClass) {
+            if (std::find(visited.cbegin(), visited.cend(), scope) != visited.cend())
+                return;
+            visited.push_back(scope);
+            if (scope->type == ScopeType::eGlobal) {
+                levels.push_back(LookupLevel{"", scope, false});
+                return;
+            }
+            const std::string name = scopeQualifiedName(scope);
+            if (!name.empty())
+                levels.push_back(LookupLevel{name, scope, isBaseClass});
+        };
+        auto addClassLevels = [&](const Scope* classScope) {
+            // the class itself, then its transitive base classes (breadth first)
+            std::vector<const Scope*> queue = { classScope };
+            for (std::size_t i = 0; i < queue.size() && queue.size() < 20; ++i) {
+                const Scope* scope = queue[i];
+                addLevel(scope, i > 0);
+                if (!scope->definedType)
+                    continue;
+                for (const Type::BaseInfo& baseInfo : scope->definedType->derivedFrom) {
+                    if (baseInfo.type && baseInfo.type->classScope)
+                        queue.push_back(baseInfo.type->classScope);
+                }
+            }
+        };
+        for (const Scope* scope = tok->scope(); scope; scope = scope->nestedIn) {
+            if (scope->functionOf && scope->functionOf->isClassOrStructOrUnion()) {
+                // out of class member function body: the class, its base classes and
+                // its enclosing scopes come before the lexically enclosing scopes
+                for (const Scope* classScope = scope->functionOf; classScope && classScope->type != ScopeType::eGlobal; classScope = classScope->nestedIn) {
+                    if (classScope->isClassOrStructOrUnion())
+                        addClassLevels(classScope);
+                    else if (classScope->type == ScopeType::eNamespace)
+                        addLevel(classScope, false);
+                }
+            }
+            if (scope->isClassOrStructOrUnion())
+                addClassLevels(scope);
+            else if (scope->type == ScopeType::eNamespace || scope->type == ScopeType::eGlobal)
+                addLevel(scope, false);
+        }
+    }
+
+    // find the function template declarations this call could instantiate
+    std::vector<const TokenAndName*> candidates;
+    std::string baseClassQualification;
+    for (const LookupLevel& level : levels) {
+        // a non template function with the same name might be a better overload match
+        if (level.scope && scopeHasNonTemplateFunction(level.scope, tok->str()))
+            return;
+        const std::string lookupName = level.scopeName.empty() ? tok->str() : (level.scopeName + " :: " + tok->str());
+        for (auto pos = range.first; pos != range.second; ++pos) {
+            if (pos->second->fullName() == lookupName)
+                candidates.push_back(pos->second);
+        }
+        if (!candidates.empty()) {
+            if (level.isBaseClass)
+                baseClassQualification = level.scopeName;
+            break;
+        }
+    }
+
+    // parse the candidate declarations
+    const TokenAndName* declaration = nullptr;
+    std::vector<const Token*> typeParameters;
+    std::vector<ParameterShape> parameterShapes;
+    std::string declarationSignature;
+    for (const TokenAndName* candidate : candidates) {
+        std::vector<const Token*> candidateTypeParameters;
+        std::vector<ParameterShape> candidateShapes;
+        std::string signature;
+        if (!parseDeductionCandidate(*candidate, candidateTypeParameters, candidateShapes, signature))
+            continue;
+
+        if (declaration) {
+            // multiple overloads could match: overload resolution is not implemented => bail out
+            if (signature != declarationSignature)
+                return;
+            continue;   // forward declaration and definition of the same template
+        }
+        declaration = candidate;
+        typeParameters = std::move(candidateTypeParameters);
+        parameterShapes = std::move(candidateShapes);
+        declarationSignature = std::move(signature);
+    }
+    if (!declaration)
+        return;
+
+    // deduce the template parameters from the ValueTypes of the argument expressions
+    const std::vector<const Token*> argRoots = getArguments(tok);
+    if (argRoots.size() != instantiationArgs.size())
+        return;
+    std::vector<DeducedType> deducedTypes(typeParameters.size());
+    std::vector<bool> deducedSet(typeParameters.size(), false);
+    for (std::size_t i = 0; i < parameterShapes.size(); ++i) {
+        const ParameterShape& shape = parameterShapes[i];
+        if (shape.templateParameterIndex < 0)
+            continue;
+        const ValueType* vt = argRoots[i]->valueType();
+        if (!vt) {
+            // type information is not available (yet) for this argument
+            mPendingTypeDeductions = true;
+            return;
+        }
+        DeducedType deduced;
+        if (!valueTypeToDeducedType(vt, shape, deduced))
+            return;
+        if (deducedSet[shape.templateParameterIndex]) {
+            // inconsistent deduction => don't deduce
+            if (!(deducedTypes[shape.templateParameterIndex] == deduced))
+                return;
+        } else {
+            deducedTypes[shape.templateParameterIndex] = std::move(deduced);
+            deducedSet[shape.templateParameterIndex] = true;
+        }
+    }
+
+    // when the declaration is in a base class, qualify the call site explicitly so the
+    // instantiation is matched with that declaration: "btf ( x )" => "Base :: btf ( x )"
+    if (!baseClassQualification.empty()) {
+        std::string::size_type offset = 0;
+        std::string::size_type pos = 0;
+        while ((pos = baseClassQualification.find(' ', offset)) != std::string::npos) {
+            tok->insertTokenBefore(baseClassQualification.substr(offset, pos - offset));
+            offset = pos + 1;
+        }
+        tok->insertTokenBefore(baseClassQualification.substr(offset));
+        tok->insertTokenBefore("::");
+        qualification = baseClassQualification;
+    }
+
+    // insert the deduced template arguments: "f ( x )" => "f < int > ( x )"
+    tok->insertToken(">");
+    for (std::size_t i = deducedTypes.size(); i > 0; --i) {
+        insertDeducedType(tok, deducedTypes[i - 1]);
+        if (i > 1)
+            tok->insertToken(",");
+    }
+    tok->insertToken("<");
+    mTypeDeductionsMade = true;
+    mChanged = true;
+}
+
 void TemplateSimplifier::getTemplateInstantiations()
 {
+    mPendingTypeDeductions = false;
+
     std::multimap<std::string, const TokenAndName *> functionNameMap;
 
     for (const auto & decl : mTemplateDeclarations) {
@@ -866,111 +1410,8 @@ void TemplateSimplifier::getTemplateInstantiations()
             }
 
             // look for function instantiation with type deduction
-            if (tok->strAt(1) == "(") {
-                std::vector<const Token *> instantiationArgs;
-                getFunctionArguments(tok, instantiationArgs);
-
-                std::string fullName;
-                if (!qualification.empty())
-                    fullName = qualification + " :: " + tok->str();
-                else if (!scopeName.empty())
-                    fullName = scopeName + " :: " + tok->str();
-                else
-                    fullName = tok->str();
-
-                // get all declarations with this name
-                auto range = functionNameMap.equal_range(tok->str());
-                for (auto pos = range.first; pos != range.second; ++pos) {
-                    // look for declaration with same qualification or constructor with same qualification
-                    if (pos->second->fullName() == fullName ||
-                        (pos->second->scope() == fullName && tok->str() == pos->second->name())) {
-                        std::vector<const Token *> templateParams;
-                        getTemplateParametersInDeclaration(pos->second->token()->tokAt(2), templateParams);
-
-                        // todo: handle more than one template parameter
-                        if (templateParams.size() != 1 || !areAllParamsTypes(templateParams))
-                            continue;
-
-                        std::vector<const Token *> declarationParams;
-                        getFunctionArguments(pos->second->nameToken(), declarationParams);
-
-                        // function argument counts must match
-                        if (instantiationArgs.empty() || instantiationArgs.size() != declarationParams.size())
-                            continue;
-
-                        size_t match = 0;
-                        size_t argMatch = 0;
-                        for (size_t i = 0; i < declarationParams.size(); ++i) {
-                            // fixme: only type deduction from literals is supported
-                            const bool isArgLiteral = Token::Match(instantiationArgs[i], "%num%|%str%|%char%|%bool% ,|)");
-                            if (isArgLiteral && Token::Match(declarationParams[i], "const| %type% &| %name%| ,|)")) {
-                                match++;
-
-                                // check if parameter types match
-                                if (templateParams[0]->str() == declarationParams[i]->str())
-                                    argMatch = i;
-                                else {
-                                    // todo: check if non-template args match for function overloads
-                                }
-                            }
-                        }
-
-                        if (match == declarationParams.size()) {
-                            const Token *arg = instantiationArgs[argMatch];
-                            tok->insertToken(">");
-                            switch (arg->tokType()) {
-                            case Token::eBoolean:
-                                tok->insertToken("bool");
-                                break;
-                            case Token::eChar:
-                                if (arg->isLong())
-                                    tok->insertToken("wchar_t");
-                                else
-                                    tok->insertToken("char");
-                                break;
-                            case Token::eString:
-                                tok->insertToken("*");
-                                if (arg->isLong())
-                                    tok->insertToken("wchar_t");
-                                else
-                                    tok->insertToken("char");
-                                tok->insertToken("const");
-                                break;
-                            case Token::eNumber: {
-                                MathLib::value num(arg->str());
-                                if (num.isFloat()) {
-                                    // MathLib::getSuffix doesn't work for floating point numbers
-                                    const char suffix = arg->str().back();
-                                    if (suffix == 'f' || suffix == 'F')
-                                        tok->insertToken("float");
-                                    else if (suffix == 'l' || suffix == 'L') {
-                                        tok->insertToken("double");
-                                        tok->next()->isLong(true);
-                                    } else
-                                        tok->insertToken("double");
-                                } else if (num.isInt()) {
-                                    std::string suffix = MathLib::getSuffix(tok->strAt(3));
-                                    if (suffix.find("LL") != std::string::npos) {
-                                        tok->insertToken("long");
-                                        tok->next()->isLong(true);
-                                    } else if (suffix.find('L') != std::string::npos)
-                                        tok->insertToken("long");
-                                    else
-                                        tok->insertToken("int");
-                                    if (suffix.find('U') != std::string::npos)
-                                        tok->next()->isUnsigned(true);
-                                }
-                                break;
-                            }
-                            default:
-                                break;
-                            }
-                            tok->insertToken("<");
-                            break;
-                        }
-                    }
-                }
-            }
+            if (tok->strAt(1) == "(")
+                deduceFunctionTemplateArguments(tok, qualification, scopeName, functionNameMap);
 
             if (!Token::Match(tok, "%name% <") ||
                 Token::Match(tok, "const_cast|dynamic_cast|reinterpret_cast|static_cast"))
@@ -3298,7 +3739,9 @@ bool TemplateSimplifier::simplifyTemplateInstantiations(
         const std::string newName(templateDeclaration.name() + " < " + typeForNewName + " >");
         std::string newFullName(templateDeclaration.scope() + (templateDeclaration.scope().empty() ? "" : " :: ") + newName);
 
-        if (expandedtemplates.insert(std::move(newFullName)).second) {
+        if (mExpandedTemplateNames.find(newFullName) != mExpandedTemplateNames.cend()) {
+            // expanded during an earlier simplifyTemplates() call - just replace the usages
+        } else if (expandedtemplates.insert(std::move(newFullName)).second) {
             expandTemplate(templateDeclaration, instantiation, typeParametersInDeclaration, newName, !specialized && !isVar);
             instantiated = true;
             mChanged = true;
@@ -3373,7 +3816,9 @@ bool TemplateSimplifier::simplifyTemplateInstantiations(
         const std::string newName(templateDeclaration.name() + " < " + typeForNewName + " >");
         std::string newFullName(templateDeclaration.scope() + (templateDeclaration.scope().empty() ? "" : " :: ") + newName);
 
-        if (expandedtemplates.insert(std::move(newFullName)).second) {
+        if (mExpandedTemplateNames.find(newFullName) != mExpandedTemplateNames.cend()) {
+            // expanded during an earlier simplifyTemplates() call - just replace the usages
+        } else if (expandedtemplates.insert(std::move(newFullName)).second) {
             expandTemplate(templateDeclaration, templateDeclaration, typeParametersInDeclaration, newName, !specialized && !isVar);
             instantiated = true;
             mChanged = true;
@@ -3851,14 +4296,22 @@ void TemplateSimplifier::simplifyTemplates(const std::time_t maxtime)
 
     mTokenizer.calculateScopes();
 
+    // all template names expanded during this call; merged into mExpandedTemplateNames
+    // when this call is done so later calls can reuse the expansions
+    std::set<std::string> expandedTemplateNamesThisCall;
+
     unsigned int passCount = 0;
     constexpr unsigned int passCountMax = 10;
     for (; passCount < passCountMax; ++passCount) {
         if (passCount) {
             // it may take more than one pass to simplify type aliases
             bool usingChanged = false;
-            while (mTokenizer.simplifyUsing())
-                usingChanged = true;
+            // don't simplify type aliases again when deducing template arguments with
+            // type information - the using declarations have already been simplified
+            if (!mUseTypeInformation) {
+                while (mTokenizer.simplifyUsing())
+                    usingChanged = true;
+            }
 
             if (!usingChanged && !mChanged)
                 break;
@@ -3877,7 +4330,7 @@ void TemplateSimplifier::simplifyTemplates(const std::time_t maxtime)
 
         getTemplateDeclarations();
 
-        if (passCount == 0) {
+        if (passCount == 0 && !mUseTypeInformation) {
             mDump.clear();
             for (const TokenAndName& t: mTemplateDeclarations)
                 mDump += t.dump(mTokenizer.list.getFiles());
@@ -3888,8 +4341,10 @@ void TemplateSimplifier::simplifyTemplates(const std::time_t maxtime)
         }
 
         // Make sure there is something to simplify.
-        if (mTemplateDeclarations.empty() && mTemplateForwardDeclarations.empty())
+        if (mTemplateDeclarations.empty() && mTemplateForwardDeclarations.empty()) {
+            mExpandedTemplateNames.insert(expandedTemplateNamesThisCall.cbegin(), expandedTemplateNamesThisCall.cend());
             return;
+        }
 
         if (mSettings.debugtemplate && mSettings.debugnormal) {
             std::string title("Template Simplifier pass " + std::to_string(passCount + 1));
@@ -3995,6 +4450,8 @@ void TemplateSimplifier::simplifyTemplates(const std::time_t maxtime)
             }
         }
 
+        expandedTemplateNamesThisCall.insert(expandedtemplates.cbegin(), expandedtemplates.cend());
+
         for (auto it = mInstantiatedTemplates.cbegin(); it != mInstantiatedTemplates.cend(); ++it) {
             auto decl = std::find_if(mTemplateDeclarations.begin(), mTemplateDeclarations.end(), [&it](const TokenAndName& decl) {
                 return decl.token() == it->token();
@@ -4005,6 +4462,14 @@ void TemplateSimplifier::simplifyTemplates(const std::time_t maxtime)
                     Token * tok = it->token();
                     tok->deleteNext(2);
                     tok->deleteThis();
+                } else if (mPendingTypeDeductions && it->isFunction()) {
+                    // don't remove the declaration yet: pending type deductions may
+                    // instantiate this function template again. It is removed later by
+                    // removeDeferredTemplateDeclarations().
+                    auto it1 = mTemplateForwardDeclarationsMap.find(it->token());
+                    if (it1 != mTemplateForwardDeclarationsMap.end())
+                        deferRemoval(it1->second);
+                    deferRemoval(it->token());
                 } else {
                     // remove forward declaration if found
                     auto it1 = mTemplateForwardDeclarationsMap.find(it->token());
@@ -4023,7 +4488,10 @@ void TemplateSimplifier::simplifyTemplates(const std::time_t maxtime)
                                          FindToken(mMemberFunctionsToDelete.cbegin()->token()));
             // multiple functions can share the same declaration so make sure it hasn't already been deleted
             if (it != mTemplateDeclarations.end()) {
-                removeTemplate(it->token());
+                if (mPendingTypeDeductions && it->isFunction())
+                    deferRemoval(it->token());
+                else
+                    removeTemplate(it->token());
                 mTemplateDeclarations.erase(it);
             } else {
                 const auto it1 = std::find_if(mTemplateForwardDeclarations.begin(),
@@ -4031,7 +4499,10 @@ void TemplateSimplifier::simplifyTemplates(const std::time_t maxtime)
                                               FindToken(mMemberFunctionsToDelete.cbegin()->token()));
                 // multiple functions can share the same declaration so make sure it hasn't already been deleted
                 if (it1 != mTemplateForwardDeclarations.end()) {
-                    removeTemplate(it1->token());
+                    if (mPendingTypeDeductions && it1->isFunction())
+                        deferRemoval(it1->token());
+                    else
+                        removeTemplate(it1->token());
                     mTemplateForwardDeclarations.erase(it1);
                 }
             }
@@ -4054,6 +4525,8 @@ void TemplateSimplifier::simplifyTemplates(const std::time_t maxtime)
         }
     }
 
+    mExpandedTemplateNames.insert(expandedTemplateNamesThisCall.cbegin(), expandedTemplateNamesThisCall.cend());
+
     if (passCount == passCountMax) {
         if (mSettings.debugwarnings) {
             const std::list<const Token*> locationList(1, mTokenList.front());
@@ -4067,7 +4540,7 @@ void TemplateSimplifier::simplifyTemplates(const std::time_t maxtime)
     }
 
     // Tweak uninstantiated C++17 fold expressions (... && args)
-    if (mSettings.standards.cpp >= Standards::CPP17) {
+    if (!mUseTypeInformation && mSettings.standards.cpp >= Standards::CPP17) {
         bool simplify = false;
         for (Token *tok = mTokenList.front(); tok; tok = tok->next()) {
             if (tok->str() == "template")
@@ -4108,6 +4581,53 @@ void TemplateSimplifier::simplifyTemplates(const std::time_t maxtime)
             tok->insertToken("__cppcheck_fold_" + strop + "__");
         }
     }
+}
+
+bool TemplateSimplifier::simplifyTemplatesUsingTypeInformation(std::time_t maxtime)
+{
+    mUseTypeInformation = true;
+    mTypeDeductionsMade = false;
+    mPendingTypeDeductions = false;
+    // start from a clean state - the state left behind by the previous
+    // simplifyTemplates() call refers to a token list that has changed since
+    mTemplateDeclarations.clear();
+    mTemplateForwardDeclarations.clear();
+    mTemplateForwardDeclarationsMap.clear();
+    mTemplateSpecializationMap.clear();
+    mTemplatePartialSpecializationMap.clear();
+    mTemplateInstantiations.clear();
+    mInstantiatedTemplates.clear();
+    mExplicitInstantiationsToDelete.clear();
+    mTemplateNamePos.clear();
+    mChanged = false;
+
+    simplifyTemplates(maxtime);
+
+    mUseTypeInformation = false;
+    return mTypeDeductionsMade;
+}
+
+void TemplateSimplifier::deferRemoval(Token* declTok)
+{
+    if (!declTok)
+        return;
+    if (std::find(mDeferredRemovals.cbegin(), mDeferredRemovals.cend(), declTok) == mDeferredRemovals.cend())
+        mDeferredRemovals.push_back(declTok);
+}
+
+bool TemplateSimplifier::removeDeferredTemplateDeclarations()
+{
+    bool removed = false;
+    for (Token* declTok : mDeferredRemovals) {
+        // the declaration could have been removed by a later simplification - make sure
+        // the token still exists before removing it
+        if (!mTokenList.validateToken(declTok))
+            continue;
+        if (removeTemplate(declTok))
+            removed = true;
+    }
+    mDeferredRemovals.clear();
+    return removed;
 }
 
 void TemplateSimplifier::syntaxError(const Token *tok)
