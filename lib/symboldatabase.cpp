@@ -140,7 +140,8 @@ const Token* SymbolDatabase::isEnumDefinition(const Token* tok)
     tok = tok->next(); // skip ':'
     bool hasType = false;
     while (Token::Match(tok, "%name%|::")) {
-        hasType = true;
+        if (tok->isName())
+            hasType = true;
         tok = tok->next();
     }
     if (!hasType)
