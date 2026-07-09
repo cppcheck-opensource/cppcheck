@@ -8973,7 +8973,7 @@ void Tokenizer::findGarbageCode() const
                 if (tok->strAt(-1) == ",")
                     syntaxError(tok);
                 colons++;
-            } else if (tok->str() == "(") { // skip pairs of ( )
+            } else if (tok->str() == "(" || tok->str() == "{") { // skip pairs of ( )
                 tok = tok->link();
             }
         }
@@ -9417,6 +9417,7 @@ void Tokenizer::simplifyStructDecl()
             if (Token::Match(after->next(), "const|static|volatile| *|&| const| (| %type% )| ,|;|[|=|(|{")) {
                 after->insertToken(";");
                 after = after->next();
+                Token *declEnd = after;
                 while (!Token::Match(start, "struct|class|union|enum")) {
                     after->insertToken(start->str());
                     after = after->next();
@@ -9458,6 +9459,16 @@ void Tokenizer::simplifyStructDecl()
                             after->linkAt(1)->str(")");
                         }
                     }
+                }
+
+                // pull declaration out of for loop
+                if (Token::simpleMatch(start->tokAt(-2), "for ( struct")) {
+                    Token *link = start->linkAt(-1);
+                    start->deletePrevious(2);
+                    declEnd->insertToken("(");
+                    declEnd->next()->link(link);
+                    link->link(declEnd->next());
+                    declEnd->insertToken("for");
                 }
             }
         }
