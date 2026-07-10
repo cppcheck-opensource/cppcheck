@@ -7,6 +7,7 @@ Major bug fixes & crashes:
 New checks:
 - Warn when feof() is used as a while loop condition (wrongfeofUsage).
 - ftell() result is unspecified when file is opened in mode "t".
+- Detect when an STL algorithm such as std::copy, std::equal, std::transform, etc. accesses more elements through an iterator than are available in the container (algorithmOutOfBounds).
 
 C/C++ support:
 -
