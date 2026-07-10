@@ -954,7 +954,15 @@ static DeducedType valueTypeToDeducedType(const ValueType* vt, const ParameterSh
         }
         break;
     }
-    default:
+    case ValueType::UNKNOWN_TYPE:
+    case ValueType::POD:
+    case ValueType::NONSTD:
+    case ValueType::SMART_POINTER:
+    case ValueType::CONTAINER:
+    case ValueType::ITERATOR:
+    case ValueType::VOID:
+    case ValueType::UNKNOWN_INT:
+        // not deducible
         return DeducedType();
     }
 
@@ -1108,7 +1116,8 @@ std::string TemplateSimplifier::deduceFunctionTemplateArguments(Token* tok,
                     break;
                 }
                 default:
-                    break;
+                    // the arguments matched %num%|%str%|%char%|%bool%
+                    cppcheck::unreachable();
                 }
                 tok->insertToken("<");
                 return qualification;
