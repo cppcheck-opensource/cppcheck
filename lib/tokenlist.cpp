@@ -2002,7 +2002,7 @@ void TokenList::validateAst(bool print) const
             if (Token::simpleMatch(tok->previous(), "operator"))
                 continue;
             // Skip incomplete code
-            if (!tok->astOperand1() && !tok->astOperand2() && !tok->astParent())
+            if (!tok->astOperand1() && !tok->astOperand2() && !tok->astParent() && !(tok->str().size() == 2 && tok->str()[1] == '='))
                 continue;
             // Skip lambda assignment and/or initializer
             if (Token::Match(tok, "= {|^|["))
