@@ -56,6 +56,8 @@
 #include <utility>
 //---------------------------------------------------------------------------
 
+static const Type* findVariableTypeInBase(const Scope* scope, const Token* typeTok);
+
 SymbolDatabase::SymbolDatabase(Tokenizer& tokenizer, bool deferFinalizePhases)
     : mTokenizer(tokenizer)
     , mSettings(tokenizer.getSettings())
@@ -5913,7 +5915,7 @@ const Enumerator * SymbolDatabase::findEnumerator(const Token * tok, std::set<st
 
 //---------------------------------------------------------------------------
 
-const Type* SymbolDatabase::findVariableTypeInBase(const Scope* scope, const Token* typeTok)
+static const Type* findVariableTypeInBase(const Scope* scope, const Token* typeTok)
 {
     if (scope && scope->definedType && !scope->definedType->derivedFrom.empty()) {
         const std::vector<Type::BaseInfo> &derivedFrom = scope->definedType->derivedFrom;
