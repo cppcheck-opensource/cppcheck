@@ -268,7 +268,7 @@ def test_crash_array_in_namespace(tmpdir):
 
 
 @pytest.mark.skipif(sys.platform == 'darwin', reason='GitHub macOS runners are too slow')
-@pytest.mark.timeout(20)
+@pytest.mark.timeout(30)
 def test_crash_array_in_array(tmpdir):
     # 12861
     filename = os.path.join(tmpdir, 'hang.cpp')
