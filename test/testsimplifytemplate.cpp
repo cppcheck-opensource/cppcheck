@@ -6827,6 +6827,38 @@ private:
                                "void use ( long l ) { g ( l ) ; }";
             ASSERT_EQUALS(exp, tok(code));
         }
+        {
+            // substitution of the template would fail (SFINAE) and the non template
+            // overload wins the overload resolution => don't deduce
+            const char code[] = "template<class T>\n"
+                                "typename T::type f(T x) { return x; }\n"
+                                "int f(int x) { return x; }\n"
+                                "int use(int y) { return f(y); }";
+            const char exp[] = "template < class T > "
+                               "T :: type f ( T x ) { return x ; } "
+                               "int f ( int x ) { return x ; } "
+                               "int use ( int y ) { return f ( y ) ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // same overload set with a literal argument: the literal deduction runs
+            // before any type information exists and has no overload guards, so it
+            // wrongly instantiates the template instead of keeping the call to the
+            // non template overload
+            const char code[] = "template<class T>\n"
+                                "typename T::type f(T x) { return x; }\n"
+                                "int f(int x) { return x; }\n"
+                                "int use() { return f(1); }";
+            const char exp[] = "template < class T > "
+                               "T :: type f ( T x ) { return x ; } "
+                               "int f ( int x ) { return x ; } "
+                               "int use ( ) { return f ( 1 ) ; }";
+            const char act[] = "int :: type f<int> ( int x ) ; "
+                               "int f ( int x ) { return x ; } "
+                               "int use ( ) { return f<int> ( 1 ) ; } "
+                               "int :: type f<int> ( int x ) { return x ; }";
+            TODO_ASSERT_EQUALS(exp, act, tok(code));
+        }
     }
 
     void templateTypeDeduction15()
