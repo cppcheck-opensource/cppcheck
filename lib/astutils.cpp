@@ -2257,7 +2257,7 @@ static bool hasNoreturnFunction(const Token* tok, const Library& library, const 
                 return true;
             if (function->isAttributeNoreturn())
                 return true;
-        } else if (library.isnoreturn(ftok)) {
+        } else if (library.isnoreturn(ftok))
             return true;
         if (unknownFunc && !function && library.functions().count(library.getFunctionName(ftok)) == 0)
             *unknownFunc = ftok;
