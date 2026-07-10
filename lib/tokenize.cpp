@@ -3470,6 +3470,8 @@ bool Tokenizer::simplifyUsing()
                 skip = true;
                 simplifyUsingError(usingStart, usingEnd);
             }
+            if (!after)
+                syntaxError(tok1);
             tok1 = after->previous();
         }
 
@@ -8960,6 +8962,8 @@ void Tokenizer::findGarbageCode() const
         const Token* const endTok = tok->linkAt(1);
         for (tok = tok->tokAt(2); tok != endTok; tok = tok->next()) {
             if (const Token* lam = findLambdaEndTokenWithoutAST(tok)) {
+                if (lam == endTok)
+                    break;
                 tok = lam;
                 continue;
             }
@@ -9141,14 +9145,18 @@ void Tokenizer::findGarbageCode() const
                 }
                 if (!tok2->next() || tok2->isControlFlowKeyword() || Token::Match(tok2, "typedef|static|."))
                     syntaxError(tok);
-                if (Token::Match(tok2, "%name% %name%") && tok2->str() == tok2->strAt(1)) {
-                    if (Token::simpleMatch(tok2->tokAt(2), ";"))
-                        continue;
-                    if (tok2->isStandardType() && tok2->str() == "long")
-                        continue;
-                    if (Token::Match(tok2->tokAt(-1), "enum|struct|union") || (isCPP() && Token::Match(tok2->tokAt(-1), "class|::")))
-                        continue;
-                    syntaxError(tok2);
+                if (Token::Match(tok2, "%name% %name%")) {
+                    if (tok2->str() == tok2->strAt(1)) {
+                        if (Token::simpleMatch(tok2->tokAt(2), ";"))
+                            continue;
+                        if (tok2->isStandardType() && tok2->str() == "long")
+                            continue;
+                        if (Token::Match(tok2->tokAt(-1), "enum|struct|union") || (isCPP() && Token::Match(tok2->tokAt(-1), "class|::")))
+                            continue;
+                        syntaxError(tok2);
+                    }
+                    if (Token::Match(tok2->tokAt(2), "%name%") && tok2->isNameOnly() && tok2->tokAt(1)->isNameOnly() && tok2->tokAt(2)->isNameOnly())
+                        syntaxError(tok2);
                 }
             }
         }

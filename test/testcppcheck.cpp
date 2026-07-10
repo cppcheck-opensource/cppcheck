@@ -527,7 +527,6 @@ private:
     void checkPlistOutput() const {
         Suppressions supprs;
         ErrorLogger2 errorLogger;
-        std::vector<std::string> files = {"textfile.txt"};
 
         {
             const auto s = dinit(Settings, $.templateFormat = templateFormat, $.plistOutput = "output");
@@ -535,7 +534,7 @@ private:
             CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, {});
             const FileWithDetails fileWithDetails {file.path(), Path::identify(file.path(), false), 0};
 
-            cppcheck.checkPlistOutput(fileWithDetails, files);
+            cppcheck.checkPlistOutput(fileWithDetails);
             const std::string outputFile {"outputfile_" + std::to_string(std::hash<std::string> {}(fileWithDetails.spath())) + ".plist"};
             ASSERT(Path::exists(outputFile));
             std::remove(outputFile.c_str());
@@ -547,7 +546,7 @@ private:
             CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, {});
             const FileWithDetails fileWithDetails {file.path(), Path::identify(file.path(), false), 0};
 
-            cppcheck.checkPlistOutput(fileWithDetails, files);
+            cppcheck.checkPlistOutput(fileWithDetails);
             const std::string outputFile {"outputfile_" + std::to_string(std::hash<std::string> {}(fileWithDetails.spath())) + ".plist"};
             ASSERT(Path::exists(outputFile));
             std::remove(outputFile.c_str());
@@ -557,7 +556,7 @@ private:
             Settings s;
             const ScopedFile file("file.c", "");
             CppCheck cppcheck(s, supprs, errorLogger, nullptr, false, {});
-            cppcheck.checkPlistOutput(FileWithDetails(file.path(), Path::identify(file.path(), false), 0), files);
+            cppcheck.checkPlistOutput(FileWithDetails(file.path(), Path::identify(file.path(), false), 0));
         }
     }
 

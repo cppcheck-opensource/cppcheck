@@ -3,18 +3,12 @@
  * Copyright (C) 2016-2023 simplecpp team
  */
 
+// needs to be specified here otherwise _mingw.h will define it as 0x0601
+// causing FileIdInfo not to be available
 #if defined(_WIN32)
 #  ifndef _WIN32_WINNT
 #    define _WIN32_WINNT 0x0602
 #  endif
-#  ifndef NOMINMAX
-#    define NOMINMAX
-#  endif
-#  ifndef WIN32_LEAN_AND_MEAN
-#    define WIN32_LEAN_AND_MEAN
-#  endif
-#  include <windows.h>
-#  undef ERROR
 #endif
 
 #include "simplecpp.h"
@@ -51,10 +45,19 @@
 #include <utility>
 #include <vector>
 
-#ifdef _WIN32
+#if defined(_WIN32)
+#  ifndef NOMINMAX
+#    define NOMINMAX
+#  endif
+#  ifndef WIN32_LEAN_AND_MEAN
+#    define WIN32_LEAN_AND_MEAN
+#  endif
+#  include <windows.h>
+#  undef ERROR
 #  include <direct.h>
 #else
 #  include <sys/stat.h>
+#  include <sys/types.h>
 #endif
 
 static bool isHex(const std::string &s)
@@ -658,8 +661,6 @@ static const std::string COMMENT_END("*/");
 
 void simplecpp::TokenList::readfile(Stream &stream, const std::string &filename, OutputList *outputList)
 {
-    std::stack<simplecpp::Location> loc;
-
     unsigned int multiline = 0U;
 
     const Token *oldLastToken = nullptr;
@@ -698,59 +699,44 @@ void simplecpp::TokenList::readfile(Stream &stream, const std::string &filename,
 
             if (oldLastToken != cback()) {
                 oldLastToken = cback();
-                const Token * const llTok = isLastLinePreprocessor();
-                if (!llTok)
+
+                // #line 3
+                // #line 3 "file.c"
+                // #3
+                // #3 "file.c"
+                const Token * ppTok = isLastLinePreprocessor();
+                if (!ppTok)
                     continue;
-                const Token * const llNextToken = llTok->next;
-                if (!llTok->next)
+
+                const auto advanceAndSkipComments = [](const Token* tok) {
+                    do {
+                        tok = tok->next;
+                    } while (tok && tok->comment);
+                    return tok;
+                };
+
+                // skip #
+                ppTok = advanceAndSkipComments(ppTok);
+                if (!ppTok)
                     continue;
-                if (llNextToken->next) {
-                    // #file "file.c"
-                    if (llNextToken->str() == "file" &&
-                        llNextToken->next->str()[0] == '\"')
-                    {
-                        const Token *strtok = cback();
-                        while (strtok->comment)
-                            strtok = strtok->previous;
-                        loc.push(location);
-                        location.fileIndex = fileIndex(strtok->str().substr(1U, strtok->str().size() - 2U));
-                        location.line = 1U;
-                    }
-                    // TODO: add support for "# 3"
-                    // #3 "file.c"
-                    // #line 3 "file.c"
-                    else if ((llNextToken->number &&
-                              llNextToken->next->str()[0] == '\"') ||
-                             (llNextToken->str() == "line" &&
-                              llNextToken->next->number &&
-                              llNextToken->next->next &&
-                              llNextToken->next->next->str()[0] == '\"'))
-                    {
-                        const Token *strtok = cback();
-                        while (strtok->comment)
-                            strtok = strtok->previous;
-                        const Token *numtok = strtok->previous;
-                        while (numtok->comment)
-                            numtok = numtok->previous;
-                        lineDirective(fileIndex(replaceAll(strtok->str().substr(1U, strtok->str().size() - 2U),"\\\\","\\")),
-                                      std::atol(numtok->str().c_str()), location);
-                    }
-                    // #line 3
-                    else if (llNextToken->str() == "line" &&
-                             llNextToken->next->number)
-                    {
-                        const Token *numtok = cback();
-                        while (numtok->comment)
-                            numtok = numtok->previous;
-                        lineDirective(location.fileIndex, std::atol(numtok->str().c_str()), location);
-                    }
-                }
-                // #endfile
-                else if (llNextToken->str() == "endfile" && !loc.empty())
-                {
-                    location = loc.top();
-                    loc.pop();
-                }
+
+                if (ppTok->str() == "line")
+                    ppTok = advanceAndSkipComments(ppTok);
+
+                if (!ppTok || !ppTok->number)
+                    continue;
+
+                const unsigned int line = std::atol(ppTok->str().c_str());
+                ppTok = advanceAndSkipComments(ppTok);
+
+                unsigned int fileindex;
+
+                if (ppTok && ppTok->str()[0] == '\"')
+                    fileindex = fileIndex(replaceAll(ppTok->str().substr(1U, ppTok->str().size() - 2U),"\\\\","\\"));
+                else
+                    fileindex = location.fileIndex;
+
+                lineDirective(fileindex, line, location);
             }
 
             continue;
@@ -1031,8 +1017,7 @@ static bool isAlternativeAndBitandBitor(const simplecpp::Token* tok)
 
 void simplecpp::TokenList::combineOperators()
 {
-    std::stack<bool> executableScope;
-    executableScope.push(false);
+    std::stack<bool, std::vector<bool>> executableScope{{false}};
     for (Token *tok = front(); tok; tok = tok->next) {
         if (tok->op == '{') {
             if (executableScope.top()) {
@@ -1040,7 +1025,7 @@ void simplecpp::TokenList::combineOperators()
                 continue;
             }
             const Token *prev = tok->previous;
-            while (prev && prev->isOneOf(";{}()"))
+            while (prev && prev->isOneOf(";{}("))
                 prev = prev->previous;
             executableScope.push(prev && prev->op == ')');
             continue;
@@ -2332,9 +2317,6 @@ namespace simplecpp {
             const Token *nextTok = B->next;
 
             if (canBeConcatenatedStringOrChar) {
-                if (unexpectedA)
-                    throw invalidHashHash::unexpectedToken(tok->location, name(), A);
-
                 // It seems clearer to handle this case separately even though the code is similar-ish, but we don't want to merge here.
                 // TODO The question is whether the ## or varargs may still apply, and how to provoke?
                 if (expandArg(tokensB, B, parametertokens)) {
@@ -3090,6 +3072,65 @@ static std::string openHeader(std::ifstream &f, const simplecpp::DUI &dui, const
     return "";
 }
 
+namespace {
+    struct FileID {
+#ifdef _WIN32
+        struct {
+            std::uint64_t VolumeSerialNumber;
+            struct {
+                std::uint64_t IdentifierHi;
+                std::uint64_t IdentifierLo;
+            } FileId;
+        } fileIdInfo;
+
+        bool operator==(const FileID &that) const noexcept {
+            return fileIdInfo.VolumeSerialNumber == that.fileIdInfo.VolumeSerialNumber &&
+                   fileIdInfo.FileId.IdentifierHi == that.fileIdInfo.FileId.IdentifierHi &&
+                   fileIdInfo.FileId.IdentifierLo == that.fileIdInfo.FileId.IdentifierLo;
+        }
+#else
+        dev_t dev;
+        ino_t ino;
+
+        bool operator==(const FileID& that) const noexcept {
+            return dev == that.dev && ino == that.ino;
+        }
+#endif
+        struct Hasher {
+            std::size_t operator()(const FileID &id) const {
+#ifdef _WIN32
+                return static_cast<std::size_t>(id.fileIdInfo.FileId.IdentifierHi ^ id.fileIdInfo.FileId.IdentifierLo ^
+                                                id.fileIdInfo.VolumeSerialNumber);
+#else
+                return static_cast<std::size_t>(id.dev) ^ static_cast<std::size_t>(id.ino);
+#endif
+            }
+        };
+    };
+}
+
+struct simplecpp::FileDataCache::Impl
+{
+    void clear()
+    {
+        mIdMap.clear();
+    }
+
+    using id_map_type = std::unordered_map<FileID, FileData *, FileID::Hasher>;
+
+    id_map_type mIdMap;
+};
+
+simplecpp::FileDataCache::FileDataCache()
+    : mImpl(new Impl)
+{}
+
+simplecpp::FileDataCache::~FileDataCache() = default;
+simplecpp::FileDataCache::FileDataCache(FileDataCache &&) noexcept = default;
+simplecpp::FileDataCache &simplecpp::FileDataCache::operator=(simplecpp::FileDataCache &&) noexcept = default;
+
+static bool getFileId(const std::string &path, FileID &id);
+
 std::pair<simplecpp::FileData *, bool> simplecpp::FileDataCache::tryload(FileDataCache::name_map_type::iterator &name_it, const simplecpp::DUI &dui, std::vector<std::string> &filenames, simplecpp::OutputList *outputList)
 {
     const std::string &path = name_it->first;
@@ -3098,8 +3139,8 @@ std::pair<simplecpp::FileData *, bool> simplecpp::FileDataCache::tryload(FileDat
     if (!getFileId(path, fileId))
         return {nullptr, false};
 
-    const auto id_it = mIdMap.find(fileId);
-    if (id_it != mIdMap.end()) {
+    const auto id_it = mImpl->mIdMap.find(fileId);
+    if (id_it != mImpl->mIdMap.end()) {
         name_it->second = id_it->second;
         return {id_it->second, false};
     }
@@ -3110,8 +3151,11 @@ std::pair<simplecpp::FileData *, bool> simplecpp::FileDataCache::tryload(FileDat
         data->tokens.removeComments();
 
     name_it->second = data;
-    mIdMap.emplace(fileId, data);
+    mImpl->mIdMap.emplace(fileId, data);
     mData.emplace_back(data);
+
+    if (mLoadCallback)
+        mLoadCallback(*data);
 
     return {data, true};
 }
@@ -3162,7 +3206,14 @@ std::pair<simplecpp::FileData *, bool> simplecpp::FileDataCache::get(const std::
     return {nullptr, false};
 }
 
-bool simplecpp::FileDataCache::getFileId(const std::string &path, FileID &id)
+void simplecpp::FileDataCache::clear()
+{
+    mImpl->clear();
+    mNameMap.clear();
+    mData.clear();
+}
+
+static bool getFileId(const std::string &path, FileID &id)
 {
 #ifdef _WIN32
     HANDLE hFile = CreateFileA(path.c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -3349,20 +3400,20 @@ void simplecpp::preprocess(simplecpp::TokenList &output, const simplecpp::TokenL
     std::map<std::string, std::size_t> sizeOfType(rawtokens.sizeOfType);
     sizeOfType.insert(std::make_pair("char", sizeof(char)));
     sizeOfType.insert(std::make_pair("short", sizeof(short)));
-    sizeOfType.insert(std::make_pair("short int", sizeOfType["short"]));
+    sizeOfType.insert(std::make_pair("short int", sizeof(short)));
     sizeOfType.insert(std::make_pair("int", sizeof(int)));
     sizeOfType.insert(std::make_pair("long", sizeof(long)));
-    sizeOfType.insert(std::make_pair("long int", sizeOfType["long"]));
+    sizeOfType.insert(std::make_pair("long int", sizeof(long)));
     sizeOfType.insert(std::make_pair("long long", sizeof(long long)));
     sizeOfType.insert(std::make_pair("float", sizeof(float)));
     sizeOfType.insert(std::make_pair("double", sizeof(double)));
     sizeOfType.insert(std::make_pair("long double", sizeof(long double)));
     sizeOfType.insert(std::make_pair("char *", sizeof(char *)));
     sizeOfType.insert(std::make_pair("short *", sizeof(short *)));
-    sizeOfType.insert(std::make_pair("short int *", sizeOfType["short *"]));
+    sizeOfType.insert(std::make_pair("short int *", sizeof(short *)));
     sizeOfType.insert(std::make_pair("int *", sizeof(int *)));
     sizeOfType.insert(std::make_pair("long *", sizeof(long *)));
-    sizeOfType.insert(std::make_pair("long int *", sizeOfType["long *"]));
+    sizeOfType.insert(std::make_pair("long int *", sizeof(long *)));
     sizeOfType.insert(std::make_pair("long long *", sizeof(long long *)));
     sizeOfType.insert(std::make_pair("float *", sizeof(float *)));
     sizeOfType.insert(std::make_pair("double *", sizeof(double *)));
@@ -3466,8 +3517,19 @@ void simplecpp::preprocess(simplecpp::TokenList &output, const simplecpp::TokenL
     includetokenstack.push(rawtokens.cfront());
     for (auto it = dui.includes.cbegin(); it != dui.includes.cend(); ++it) {
         const FileData *const filedata = cache.get("", *it, dui, false, files, outputList).first;
-        if (filedata != nullptr && filedata->tokens.cfront() != nullptr)
+        if (filedata == nullptr) {
+            if (outputList) {
+                simplecpp::Output err{
+                    simplecpp::Output::EXPLICIT_INCLUDE_NOT_FOUND,
+                    {},
+                    "Can not open include file '" + *it + "' that is explicitly included."
+                };
+                outputList->emplace_back(std::move(err));
+            }
+        }
+        else if (filedata->tokens.cfront() != nullptr) {
             includetokenstack.push(filedata->tokens.cfront());
+        }
     }
 
     std::map<std::string, std::list<Location>> maybeUsedMacros;

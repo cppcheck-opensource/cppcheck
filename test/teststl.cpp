@@ -368,7 +368,9 @@ private:
                     "    if(b) ++x;\n"
                     "    return s[x];\n"
                     "}");
-        ASSERT_EQUALS("[test.cpp:5:13]: error: Out of bounds access in 's[x]', if 's' size is 6 and 'x' is 6 [containerOutOfBounds]\n", errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:5:13]: error: Out of bounds access in 's[x]', if 's' size is 6 and 'x' is 7 [containerOutOfBounds]\n",
+            errout_str());
 
         checkNormal("void f() {\n"
                     "    static const int N = 4;\n"

@@ -2450,6 +2450,9 @@ private:
 
     void nullpointer77()
     {
+        // No warning: 'i' is passed to the unknown function 'h' in the same condition that guards the
+        // dereference. 'h' may validate the pointer (e.g. return false for null), so '*i' can be safe
+        // - this is the common "if (check(p) && p->...)" pattern, so we must not assume 'i' is null.
         check("bool h(int*);\n"
               "void f(int* i) {\n"
               "    int* i = nullptr;\n"
@@ -2465,6 +2468,8 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
+        // Likewise here, even though 'i' is null when the first 'h(i)' was true: the second 'h(i)' is an
+        // independent call that may validate 'i', so '*i' is not necessarily a null dereference.
         check("bool h(int*);\n"
               "void f(int* x) {\n"
               "    int* i = x;\n"

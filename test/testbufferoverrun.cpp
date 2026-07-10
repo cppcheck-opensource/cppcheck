@@ -3545,6 +3545,12 @@ private:
               "    std::memset(&buf[0], 0, 25);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("void f() {\n" // #14859
+              "    std::vector<char> buf(25);\n"
+              "    std::memset(&buf[0], 0, 26);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:17]: (error) Buffer is accessed out of bounds: &buf[0] [bufferAccessOutOfBounds]\n", errout_str());
     }
 
     void buffer_overrun_errorpath() {
@@ -5857,7 +5863,29 @@ private:
               "    (void)y[1];\n"
               "    (void)y[2];\n"
               "}\n");
-        TODO_ASSERT_EQUALS("error", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:7:20] -> [test.cpp:9:12]: (error) The address of variable 's.a' is accessed at non-zero index. [objectIndex]\n"
+                      "[test.cpp:7:20] -> [test.cpp:10:12]: (error) The address of variable 's.a' is accessed at non-zero index. [objectIndex]\n",
+                      errout_str());
+
+        check("const int N = 12;\n" // #14887
+              "struct S {\n"
+              "    void f() const;\n"
+              "    int a[N];\n"
+              "};\n"
+              "struct T {\n"
+              "    void f() const;\n"
+              "    S s;\n"
+              "};\n"
+              "int g(const int* p) { return p[5]; }\n"
+              "void S::f() const {\n"
+              "    const int* q = a;\n"
+              "    g(q);\n"
+              "}\n"
+              "void T::f() const {\n"
+              "    const int* q = s.a;\n"
+              "    g(q);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void checkPipeParameterSize() { // #3521

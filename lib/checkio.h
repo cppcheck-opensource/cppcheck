@@ -35,6 +35,7 @@ class Token;
 class Variable;
 class ErrorLogger;
 class Tokenizer;
+class Library;
 enum class Severity : std::uint8_t;
 
 /// @addtogroup Checks
@@ -101,7 +102,7 @@ public:
         bool isKnownType() const;
         bool isStdVectorOrString();
         bool isStdContainer(const Token *tok);
-        bool isLibraryType(const Settings &settings) const;
+        bool isLibraryType(const Library &library) const;
 
         const Variable* variableInfo{};
         const Token* typeToken{};
@@ -128,6 +129,7 @@ public:
     void useClosedFileError(const Token *tok);
     void fcloseInLoopConditionError(const Token *tok, const std::string &varname);
     void seekOnAppendedFileError(const Token *tok);
+    void ftellFileError(const Token *tok);
     void incompatibleFileOpenError(const Token *tok, const std::string &filename);
     void invalidScanfError(const Token *tok);
     void wrongfeofUsage(const Token *tok);

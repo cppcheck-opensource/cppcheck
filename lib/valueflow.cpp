@@ -1952,6 +1952,35 @@ const Token* ValueFlow::getEndOfExprScope(const Token* tok, const Scope* default
     return end;
 }
 
+static void getLhsLifetimeParentsImpl(const Token* lhs, const Library& library, std::vector<const Token*>& result)
+{
+    if (!lhs)
+        return;
+
+    if (Token::simpleMatch(lhs, "[")) {
+        getLhsLifetimeParentsImpl(lhs->astOperand1(), library, result);
+    } else if (Token::simpleMatch(lhs, ".") && lhs->originalName() != "->") {
+        const Token* obj = lhs->astOperand1();
+        if (Token::simpleMatch(obj, "[") && obj->exprId() > 0)
+            result.push_back(obj);
+        getLhsLifetimeParentsImpl(obj, library, result);
+    } else {
+        const Token* tok = getParentLifetime(lhs, library);
+        if (tok && tok->exprId() > 0) {
+            const Variable* var = tok->variable();
+            if (!var || var->isLocal() || var->isArgument())
+                result.push_back(tok);
+        }
+    }
+}
+
+static std::vector<const Token*> getLhsLifetimeParents(const Token* lhs, const Library& library)
+{
+    std::vector<const Token*> result;
+    getLhsLifetimeParentsImpl(lhs, library, result);
+    return result;
+}
+
 static void valueFlowForwardLifetime(Token * tok, const TokenList &tokenlist, ErrorLogger &errorLogger, const Settings &settings)
 {
     // Forward lifetimes to constructed variable
@@ -2004,14 +2033,8 @@ static void valueFlowForwardLifetime(Token * tok, const TokenList &tokenlist, Er
                 if (val.lifetimeKind == ValueFlow::Value::LifetimeKind::Address)
                     val.lifetimeKind = ValueFlow::Value::LifetimeKind::SubObject;
             }
-            // TODO: handle `[`
-            if (Token::simpleMatch(parent->astOperand1(), ".")) {
-                const Token* parentLifetime =
-                    getParentLifetime(parent->astOperand1()->astOperand2(), settings.library);
-                if (parentLifetime && parentLifetime->exprId() > 0) {
-                    valueFlowForward(nextExpression, endOfVarScope, parentLifetime, std::move(values), tokenlist, errorLogger, settings);
-                }
-            }
+            for (const Token *p : getLhsLifetimeParents(parent->astOperand1(), settings.library))
+                valueFlowForward(nextExpression, endOfVarScope, p, values, tokenlist, errorLogger, settings);
         }
         // Constructor
     } else if (Token::simpleMatch(parent, "{") && !isScopeBracket(parent)) {
@@ -6160,7 +6183,7 @@ static bool isContainerSizeChangedByFunction(const Token* tok,
     }
 
     bool inconclusive = false;
-    const bool isChanged = isVariableChangedByFunctionCall(tok, indirect, settings, &inconclusive);
+    const bool isChanged = isVariableChangedByFunctionCall(tok, indirect, settings.library, &inconclusive);
     return (isChanged || inconclusive);
 }
 
@@ -6827,17 +6850,17 @@ static void valueFlowContainerSize(const TokenList& tokenlist,
             } else if (tok->str() == "+=" && astIsContainer(tok->astOperand1())) {
                 const Token* containerTok = tok->astOperand1();
                 const Token* valueTok = tok->astOperand2();
-                const MathLib::bigint size = ValueFlow::valueFlowGetStrLength(valueTok, settings);
+                const MathLib::bigint size = ValueFlow::valueFlowGetStrLength(valueTok, settings.library);
                 forwardMinimumContainerSize(size, tok, containerTok);
 
             } else if (tok->str() == "=" && Token::simpleMatch(tok->astOperand2(), "+") && astIsContainerString(tok)) {
                 const Token* tok2 = tok->astOperand2();
                 MathLib::bigint size = 0;
                 while (Token::simpleMatch(tok2, "+") && tok2->astOperand2()) {
-                    size += ValueFlow::valueFlowGetStrLength(tok2->astOperand2(), settings);
+                    size += ValueFlow::valueFlowGetStrLength(tok2->astOperand2(), settings.library);
                     tok2 = tok2->astOperand1();
                 }
-                size += ValueFlow::valueFlowGetStrLength(tok2, settings);
+                size += ValueFlow::valueFlowGetStrLength(tok2, settings.library);
                 forwardMinimumContainerSize(size, tok, tok->astOperand1());
             }
         }

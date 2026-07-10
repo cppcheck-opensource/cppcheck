@@ -603,9 +603,13 @@ private:
         std::vector<std::string> files;
         simplecpp::TokenList tokens1(code, files, filename, &outputList);
         Preprocessor preprocessor(tokens1, settings, *this, Path::identify(tokens1.getFiles()[0], false));
-        (void)preprocessor.reportOutput(outputList, true);
+        std::list<Directive> directives;
+        preprocessor.setLoadCallback([&](const simplecpp::FileData &data) {
+            Preprocessor::createDirectives(data.tokens, directives);
+        });
+        preprocessor.createDirectives(directives);
         ASSERT(preprocessor.loadFiles(files));
-        std::list<Directive> directives = preprocessor.createDirectives();
+        (void)preprocessor.reportOutput(outputList, true);
 
         TokenList tokenlist{settings, Path::identify(filename, false)};
         Tokenizer tokenizer(std::move(tokenlist), *this);
