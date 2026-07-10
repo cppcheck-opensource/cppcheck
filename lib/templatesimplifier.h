@@ -609,11 +609,11 @@ private:
     ErrorLogger &mErrorLogger;
     bool mChanged{};
     /** true when type information (AST, SymbolDatabase, ValueType) is available for deduction */
-    bool mUseTypeInformation{};
+    bool mUseTypeInformation = false;
     /** true when there are calls where deduction may succeed once type information is available */
-    bool mPendingTypeDeductions{};
+    bool mPendingTypeDeductions = false;
     /** true when the current simplifyTemplatesUsingTypeInformation() call deduced something */
-    bool mTypeDeductionsMade{};
+    bool mTypeDeductionsMade = false;
     /** names of all expanded instantiations; persists between simplifyTemplates() calls so a
      * later deduced instantiation reuses the existing expansion instead of duplicating it */
     std::set<std::string> mExpandedTemplateNames;

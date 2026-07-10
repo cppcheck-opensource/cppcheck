@@ -800,21 +800,21 @@ namespace {
     // A function template parameter with a form that is supported by type deduction:
     // "T", "T &", "const T &", "T *", "const T *" or a concrete single token type
     struct ParameterShape {
-        const Token* typeTok{};
+        const Token* typeTok = nullptr;
         int templateParameterIndex = -1;   // -1 => a concrete type, nothing is deduced
-        bool isConst{};
-        bool isPointer{};
-        bool isReference{};
+        bool isConst = false;
+        bool isPointer = false;
+        bool isReference = false;
     };
 
     // The type deduced for a template parameter from a function call argument
     struct DeducedType {
         std::string typeStr;                     // base type, e.g. "int" or "MyClass"
         std::vector<std::string> qualification;  // enclosing scopes for record types, outermost first
-        unsigned int constness{};                // bit 0 = data const, bit 1 = first '*' const, ..
-        int pointer{};                           // number of '*'
-        bool isUnsigned{};
-        bool isLong{};
+        unsigned int constness = 0;              // bit 0 = data const, bit 1 = first '*' const, ..
+        int pointer = 0;                         // number of '*'
+        bool isUnsigned = false;
+        bool isLong = false;
 
         bool operator==(const DeducedType& other) const {
             return typeStr == other.typeStr &&
