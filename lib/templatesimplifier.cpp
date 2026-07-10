@@ -281,7 +281,7 @@ TemplateSimplifier::TemplateSimplifier(Tokenizer &tokenizer)
     mErrorLogger(mTokenizer->getErrorLogger())
 {}
 
-void TemplateSimplifier::checkComplicatedSyntaxErrorsInTemplates()
+void TemplateSimplifier::checkComplicatedSyntaxErrorsInTemplates() const
 {
     // check for more complicated syntax errors when using templates..
     for (const Token *tok = mTokenList->front(); tok; tok = tok->next()) {
@@ -2724,7 +2724,7 @@ static bool validTokenEnd(bool bounded, const Token *tok, const Token *backToken
 
 // TODO: This is not the correct class for simplifyCalculations(), so it
 // should be moved away.
-bool TemplateSimplifier::simplifyCalculations(Token* frontToken, const Token *backToken, bool isTemplate)
+bool TemplateSimplifier::simplifyCalculations(Token* frontToken, const Token *backToken, bool isTemplate) const
 {
     bool ret = false;
     const bool bounded = frontToken || backToken;

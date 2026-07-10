@@ -59,7 +59,7 @@ public:
 
     /**
      */
-    void checkComplicatedSyntaxErrorsInTemplates();
+    void checkComplicatedSyntaxErrorsInTemplates() const;
 
     /**
      * is the token pointing at a template parameters block
@@ -334,7 +334,7 @@ private:
      * @return true if modifications to token-list are done.
      *         false if no modifications are done.
      */
-    bool simplifyCalculations(Token* frontToken = nullptr, const Token *backToken = nullptr, bool isTemplate = true);
+    bool simplifyCalculations(Token* frontToken = nullptr, const Token *backToken = nullptr, bool isTemplate = true) const;
 
     /** Simplify template instantiation arguments.
      * @param start first token of arguments
