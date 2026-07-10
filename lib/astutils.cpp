@@ -2230,7 +2230,7 @@ static bool isNoreturnFunction(const Token* ftok, const Library& library)
 {
     if (const Function* function = ftok->function())
         return function->isEscapeFunction() || function->isAttributeNoreturn();
-    return library.isnoreturn(ftok));
+    return library.isnoreturn(ftok);
 }
 
 bool isEscapeFunction(const Token* ftok, const Library& library)
