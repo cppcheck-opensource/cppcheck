@@ -824,17 +824,28 @@ namespace {
                    isLong == other.isLong;
         }
     };
+
+    // A parsed function template declaration that type deduction supports. Invalid
+    // (typeParameters is empty) when the declaration is not supported.
+    struct DeductionCandidate {
+        std::vector<const Token*> typeParameters;
+        std::vector<ParameterShape> parameterShapes;
+        std::string signature;
+    };
 }
 
-static bool parseParameterShape(const Token* start, const std::vector<const Token*>& typeParameters, ParameterShape& shape)
+// Parse a function parameter of a template declaration. The returned shape has no
+// typeTok when the parameter does not have a supported form.
+static ParameterShape parseParameterShape(const Token* start, const std::vector<const Token*>& typeParameters)
 {
+    ParameterShape shape;
     const Token* tok = start;
     if (Token::simpleMatch(tok, "const")) {
         shape.isConst = true;
         tok = tok->next();
     }
     if (!Token::Match(tok, "%type%") || Token::Match(tok, "const|struct|class|union|enum"))
-        return false;
+        return ParameterShape();
     shape.typeTok = tok;
     tok = tok->next();
     if (Token::simpleMatch(tok, "*")) {
@@ -847,32 +858,33 @@ static bool parseParameterShape(const Token* start, const std::vector<const Toke
     if (Token::Match(tok, "%name% ,|)"))
         tok = tok->next();
     if (!Token::Match(tok, ",|)"))
-        return false;
+        return ParameterShape();
     const auto it = std::find_if(typeParameters.cbegin(), typeParameters.cend(), [&](const Token* typeParameter) {
         return typeParameter->str() == shape.typeTok->str();
     });
     if (it != typeParameters.cend())
         shape.templateParameterIndex = static_cast<int>(it - typeParameters.cbegin());
-    return true;
+    return shape;
 }
 
 // Convert the ValueType of an argument expression to the type that the parameter shape
-// deduces for its template parameter. Returns false when the type is not supported.
-static bool valueTypeToDeducedType(const ValueType* vt, const ParameterShape& shape, DeducedType& deduced)
+// deduces for its template parameter. The returned type has an empty typeStr when the
+// type is not supported.
+static DeducedType valueTypeToDeducedType(const ValueType* vt, const ParameterShape& shape)
 {
     if (!vt)
-        return false;
+        return DeducedType();
     if (vt->bits > 0 || vt->volatileness != 0)
-        return false;
+        return DeducedType();
     if (vt->smartPointer || vt->smartPointerType || vt->smartPointerTypeToken || vt->container || vt->containerTypeToken)
-        return false;
+        return DeducedType();
 
     int pointer = vt->pointer;
     unsigned int constness = vt->constness;
     if (shape.isPointer) {
         // "T *": the argument must be a pointer and T is the pointee type
         if (pointer < 1)
-            return false;
+            return DeducedType();
         constness &= ~(1U << pointer);
         --pointer;
     } else if (!shape.isReference || shape.isConst) {
@@ -882,9 +894,10 @@ static bool valueTypeToDeducedType(const ValueType* vt, const ParameterShape& sh
     // else "T &": the constness is part of the deduced type
 
     if (pointer > 2)
-        return false;
+        return DeducedType();
     if (constness >= (1U << (pointer + 1)))
-        return false;
+        return DeducedType();
+    DeducedType deduced;
     deduced.pointer = pointer;
     deduced.constness = constness;
 
@@ -929,22 +942,22 @@ static bool valueTypeToDeducedType(const ValueType* vt, const ParameterShape& sh
     case ValueType::RECORD: {
         const Scope* typeScope = vt->typeScope;
         if (!typeScope || typeScope->className.empty() || !typeScope->isClassOrStructOrUnion())
-            return false;
+            return DeducedType();
         deduced.typeStr = typeScope->className;
         for (const Scope* nested = typeScope->nestedIn; nested && nested->type != ScopeType::eGlobal; nested = nested->nestedIn) {
             if (nested->type != ScopeType::eNamespace && !nested->isClassOrStructOrUnion())
-                return false;   // local types etc. cannot be named - bail out
+                return DeducedType();   // local types etc. cannot be named - bail out
             if (nested->className.empty())
-                return false;
+                return DeducedType();
             deduced.qualification.insert(deduced.qualification.cbegin(), nested->className);
         }
         break;
     }
     default:
-        return false;
+        return DeducedType();
     }
 
-    return true;
+    return deduced;
 }
 
 // Is there a non template function with the given name in the scope? Overload
@@ -990,14 +1003,14 @@ static void insertDeducedType(Token* tok, const DeducedType& deduced)
         tok->insertToken("const");
 }
 
-void TemplateSimplifier::deduceFunctionTemplateArguments(Token* tok,
-                                                         std::string& qualification,
-                                                         const std::string& scopeName,
-                                                         const std::multimap<std::string, const TokenAndName*>& functionNameMap)
+std::string TemplateSimplifier::deduceFunctionTemplateArguments(Token* tok,
+                                                                std::string qualification,
+                                                                const std::string& scopeName,
+                                                                const std::multimap<std::string, const TokenAndName*>& functionNameMap)
 {
     const auto range = functionNameMap.equal_range(tok->str());
     if (range.first == range.second)
-        return;
+        return qualification;
 
     std::string fullName;
     if (!qualification.empty())
@@ -1096,65 +1109,65 @@ void TemplateSimplifier::deduceFunctionTemplateArguments(Token* tok,
                     break;
                 }
                 tok->insertToken("<");
-                return;
+                return qualification;
             }
         }
     }
 
     // the remaining deduction needs the types of the argument expressions
     if (instantiationArgs.empty())
-        return;
+        return qualification;
 
     // a call through a variable (function object, function pointer) is not a template instantiation
     if (tok->varId() != 0)
-        return;
+        return qualification;
     // a call that the symbol database resolved to a real (non template) function must not
     // be hijacked - overload resolution against non templates is not implemented here
     if (tok->function() && !tok->function()->templateDef)
-        return;
+        return qualification;
 
     // Parse a candidate declaration: all parameters must have a supported form and
     // every template parameter must be deducible from the function parameters. The
     // signature identifies the parameter list, so a forward declaration and the
     // definition of the same template can be recognized.
-    auto parseDeductionCandidate = [&](const TokenAndName& candidate,
-                                       std::vector<const Token*>& typeParameters,
-                                       std::vector<ParameterShape>& parameterShapes,
-                                       std::string& signature) -> bool {
+    auto parseDeductionCandidate = [&](const TokenAndName& candidate) -> DeductionCandidate {
         if (candidate.isVariadic())
-            return false;
+            return DeductionCandidate();
 
-        getTemplateParametersInDeclaration(candidate.token()->tokAt(2), typeParameters);
-        if (typeParameters.empty() || !areAllParamsTypes(typeParameters))
-            return false;
+        DeductionCandidate parsed;
+        getTemplateParametersInDeclaration(candidate.token()->tokAt(2), parsed.typeParameters);
+        if (parsed.typeParameters.empty() || !areAllParamsTypes(parsed.typeParameters))
+            return DeductionCandidate();
 
         std::vector<const Token*> declarationParams;
         getFunctionArguments(candidate.nameToken(), declarationParams);
         if (declarationParams.size() != instantiationArgs.size())
-            return false;
+            return DeductionCandidate();
 
-        std::vector<bool> deducible(typeParameters.size(), false);
-        signature = candidate.fullName();
+        std::vector<bool> deducible(parsed.typeParameters.size(), false);
+        parsed.signature = candidate.fullName();
         for (const Token* param : declarationParams) {
-            ParameterShape shape;
-            if (!parseParameterShape(param, typeParameters, shape))
-                return false;
+            const ParameterShape shape = parseParameterShape(param, parsed.typeParameters);
+            if (!shape.typeTok)
+                return DeductionCandidate();
             if (shape.templateParameterIndex >= 0)
                 deducible[shape.templateParameterIndex] = true;
-            parameterShapes.push_back(shape);
-            signature += (shape.isConst ? " const" : "");
+            parsed.parameterShapes.push_back(shape);
+            parsed.signature += (shape.isConst ? " const" : "");
             // template parameters are compared by position - their names may differ
             // between a forward declaration and the definition
             if (shape.templateParameterIndex >= 0)
-                signature += " $" + std::to_string(shape.templateParameterIndex);
+                parsed.signature += " $" + std::to_string(shape.templateParameterIndex);
             else
-                signature += " " + shape.typeTok->str();
-            signature += (shape.isPointer ? " *" : shape.isReference ? " &" : "");
-            signature += ",";
+                parsed.signature += " " + shape.typeTok->str();
+            parsed.signature += (shape.isPointer ? " *" : shape.isReference ? " &" : "");
+            parsed.signature += ",";
         }
-        return std::all_of(deducible.cbegin(), deducible.cend(), [](bool b) {
+        if (!std::all_of(deducible.cbegin(), deducible.cend(), [](bool b) {
             return b;
-        });
+        }))
+            return DeductionCandidate();
+        return parsed;
     };
 
     if (!mUseTypeInformation) {
@@ -1162,19 +1175,16 @@ void TemplateSimplifier::deduceFunctionTemplateArguments(Token* tok,
         // matching is not possible yet - the declaration may be in a base class - so
         // consider all declarations with this name.
         for (auto pos = range.first; pos != range.second; ++pos) {
-            std::vector<const Token*> typeParameters;
-            std::vector<ParameterShape> parameterShapes;
-            std::string signature;
-            if (parseDeductionCandidate(*pos->second, typeParameters, parameterShapes, signature)) {
+            if (!parseDeductionCandidate(*pos->second).typeParameters.empty()) {
                 mPendingTypeDeductions = true;
-                return;
+                return qualification;
             }
         }
-        return;
+        return qualification;
     }
 
     if (!tok->scope())
-        return;
+        return qualification;
 
     // The scopes where the call name is looked up, in lookup order: the innermost scope
     // with matching declarations wins. At class scopes the transitive base classes are
@@ -1241,7 +1251,7 @@ void TemplateSimplifier::deduceFunctionTemplateArguments(Token* tok,
     for (const LookupLevel& level : levels) {
         // a non template function with the same name might be a better overload match
         if (level.scope && scopeHasNonTemplateFunction(level.scope, tok->str()))
-            return;
+            return qualification;
         const std::string lookupName = level.scopeName.empty() ? tok->str() : (level.scopeName + " :: " + tok->str());
         for (auto pos = range.first; pos != range.second; ++pos) {
             if (pos->second->fullName() == lookupName)
@@ -1256,53 +1266,47 @@ void TemplateSimplifier::deduceFunctionTemplateArguments(Token* tok,
 
     // parse the candidate declarations
     const TokenAndName* declaration = nullptr;
-    std::vector<const Token*> typeParameters;
-    std::vector<ParameterShape> parameterShapes;
-    std::string declarationSignature;
+    DeductionCandidate parsedDeclaration;
     for (const TokenAndName* candidate : candidates) {
-        std::vector<const Token*> candidateTypeParameters;
-        std::vector<ParameterShape> candidateShapes;
-        std::string signature;
-        if (!parseDeductionCandidate(*candidate, candidateTypeParameters, candidateShapes, signature))
+        DeductionCandidate parsed = parseDeductionCandidate(*candidate);
+        if (parsed.typeParameters.empty())
             continue;
 
         if (declaration) {
             // multiple overloads could match: overload resolution is not implemented => bail out
-            if (signature != declarationSignature)
-                return;
+            if (parsed.signature != parsedDeclaration.signature)
+                return qualification;
             continue;   // forward declaration and definition of the same template
         }
         declaration = candidate;
-        typeParameters = std::move(candidateTypeParameters);
-        parameterShapes = std::move(candidateShapes);
-        declarationSignature = std::move(signature);
+        parsedDeclaration = std::move(parsed);
     }
     if (!declaration)
-        return;
+        return qualification;
 
     // deduce the template parameters from the ValueTypes of the argument expressions
     const std::vector<const Token*> argRoots = getArguments(tok);
     if (argRoots.size() != instantiationArgs.size())
-        return;
-    std::vector<DeducedType> deducedTypes(typeParameters.size());
-    std::vector<bool> deducedSet(typeParameters.size(), false);
-    for (std::size_t i = 0; i < parameterShapes.size(); ++i) {
-        const ParameterShape& shape = parameterShapes[i];
+        return qualification;
+    std::vector<DeducedType> deducedTypes(parsedDeclaration.typeParameters.size());
+    std::vector<bool> deducedSet(parsedDeclaration.typeParameters.size(), false);
+    for (std::size_t i = 0; i < parsedDeclaration.parameterShapes.size(); ++i) {
+        const ParameterShape& shape = parsedDeclaration.parameterShapes[i];
         if (shape.templateParameterIndex < 0)
             continue;
         const ValueType* vt = argRoots[i]->valueType();
         if (!vt) {
             // type information is not available (yet) for this argument
             mPendingTypeDeductions = true;
-            return;
+            return qualification;
         }
-        DeducedType deduced;
-        if (!valueTypeToDeducedType(vt, shape, deduced))
-            return;
+        DeducedType deduced = valueTypeToDeducedType(vt, shape);
+        if (deduced.typeStr.empty())
+            return qualification;
         if (deducedSet[shape.templateParameterIndex]) {
             // inconsistent deduction => don't deduce
             if (!(deducedTypes[shape.templateParameterIndex] == deduced))
-                return;
+                return qualification;
         } else {
             deducedTypes[shape.templateParameterIndex] = std::move(deduced);
             deducedSet[shape.templateParameterIndex] = true;
@@ -1338,6 +1342,7 @@ void TemplateSimplifier::deduceFunctionTemplateArguments(Token* tok,
     rememberDirtyCallSite(tok);
     mTypeDeductionsMade = true;
     mChanged = true;
+    return qualification;
 }
 
 void TemplateSimplifier::getTemplateInstantiations()
@@ -1417,7 +1422,7 @@ void TemplateSimplifier::getTemplateInstantiations()
 
             // look for function instantiation with type deduction
             if (tok->strAt(1) == "(")
-                deduceFunctionTemplateArguments(tok, qualification, scopeName, functionNameMap);
+                qualification = deduceFunctionTemplateArguments(tok, qualification, scopeName, functionNameMap);
 
             if (!Token::Match(tok, "%name% <") ||
                 Token::Match(tok, "const_cast|dynamic_cast|reinterpret_cast|static_cast"))

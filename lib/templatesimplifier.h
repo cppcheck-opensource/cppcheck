@@ -425,11 +425,14 @@ private:
      * @param qualification qualification of the call ("A :: B" for "A :: B :: f ( 1 )")
      * @param scopeName name of the scope the call is in
      * @param functionNameMap map with all function template declarations
+     * @return the qualification of the call: the given qualification, or the scope of
+     * the deduced declaration when it is in a base class and explicit qualification
+     * was inserted at the call site
      */
-    void deduceFunctionTemplateArguments(Token* tok,
-                                         std::string& qualification,
-                                         const std::string& scopeName,
-                                         const std::multimap<std::string, const TokenAndName*>& functionNameMap);
+    std::string deduceFunctionTemplateArguments(Token* tok,
+                                                std::string qualification,
+                                                const std::string& scopeName,
+                                                const std::multimap<std::string, const TokenAndName*>& functionNameMap);
 
     /**
      * Remember that the given instantiated function template declaration should not be
