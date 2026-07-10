@@ -963,23 +963,26 @@ void SymbolDatabase::createSymbolDatabaseClassAndStructScopes()
     }
 }
 
+void SymbolDatabase::setFunctionReturnType(Function& function, const Scope& scope) const
+{
+    if (!function.retDef)
+        return;
+    const Token *type = function.retDef;
+    while (Token::Match(type, "static|const|struct|union|enum"))
+        type = type->next();
+    if (type) {
+        function.retType = findVariableTypeInBase(&scope, type);
+        if (!function.retType)
+            function.retType = findTypeInNested(type, function.nestedIn);
+    }
+}
+
 void SymbolDatabase::createSymbolDatabaseFunctionReturnTypes()
 {
     // fill in function return types
     for (Scope& scope : scopeList) {
-        for (auto func = scope.functionList.begin(); func != scope.functionList.end(); ++func) {
-            // add return types
-            if (func->retDef) {
-                const Token *type = func->retDef;
-                while (Token::Match(type, "static|const|struct|union|enum"))
-                    type = type->next();
-                if (type) {
-                    func->retType = findVariableTypeInBase(&scope, type);
-                    if (!func->retType)
-                        func->retType = findTypeInNested(type, func->nestedIn);
-                }
-            }
-        }
+        for (Function& function : scope.functionList)
+            setFunctionReturnType(function, scope);
     }
 }
 
@@ -1084,69 +1087,79 @@ void SymbolDatabase::createSymbolDatabaseNeedInitialization()
     }
 }
 
+void SymbolDatabase::addVariablesToSymbolTable(Scope& scope)
+{
+    for (Variable& var: scope.varlist) {
+        const int varId = var.declarationId();
+        if (varId)
+            mVariableList[varId] = &var;
+        // fix up variables without type
+        if (!var.type() && !var.typeStartToken()->isStandardType()) {
+            const Type *type = findType(var.typeStartToken(), &scope);
+            if (type)
+                var.type(type);
+        }
+    }
+}
+
+void SymbolDatabase::addArgumentsToSymbolTable(Function& function, const Scope& scope)
+{
+    for (Variable& arg: function.argumentList) {
+        // check for named parameters
+        if (arg.nameToken() && arg.declarationId()) {
+            const int declarationId = arg.declarationId();
+            mVariableList[declarationId] = &arg;
+            // fix up parameters without type
+            if (!arg.type() && !arg.typeStartToken()->isStandardType()) {
+                const Type *type = findTypeInNested(arg.typeStartToken(), &scope);
+                if (type)
+                    arg.type(type);
+            }
+        }
+    }
+}
+
+void SymbolDatabase::fillMissingVariables(const Scope& functionScope)
+{
+    for (const Token *tok = functionScope.bodyStart->next(); tok && tok != functionScope.bodyEnd; tok = tok->next()) {
+        // check for member variable
+        if (!Token::Match(tok, "%var% .|["))
+            continue;
+        const Token* tokDot = tok->next();
+        while (Token::simpleMatch(tokDot, "["))
+            tokDot = tokDot->link()->next();
+        if (!Token::Match(tokDot, ". %var%"))
+            continue;
+        const Token *member = tokDot->next();
+        if (mVariableList[member->varId()] == nullptr) {
+            const Variable *var1 = mVariableList[tok->varId()];
+            if (var1 && var1->typeScope()) {
+                const Variable* memberVar = var1->typeScope()->getVariable(member->str());
+                if (memberVar) {
+                    // add this variable to the look up table
+                    mVariableList[member->varId()] = memberVar;
+                }
+            }
+        }
+    }
+}
+
 void SymbolDatabase::createSymbolDatabaseVariableSymbolTable()
 {
     // create variable symbol table
     mVariableList.resize(mTokenizer.varIdCount() + 1);
     std::fill_n(mVariableList.begin(), mVariableList.size(), nullptr);
 
-    // check all scopes for variables
+    // check all scopes for variables and function parameters
     for (Scope& scope : scopeList) {
-        // add all variables
-        for (Variable& var: scope.varlist) {
-            const int varId = var.declarationId();
-            if (varId)
-                mVariableList[varId] = &var;
-            // fix up variables without type
-            if (!var.type() && !var.typeStartToken()->isStandardType()) {
-                const Type *type = findType(var.typeStartToken(), &scope);
-                if (type)
-                    var.type(type);
-            }
-        }
-
-        // add all function parameters
-        for (Function& func : scope.functionList) {
-            for (Variable& arg: func.argumentList) {
-                // check for named parameters
-                if (arg.nameToken() && arg.declarationId()) {
-                    const int declarationId = arg.declarationId();
-                    mVariableList[declarationId] = &arg;
-                    // fix up parameters without type
-                    if (!arg.type() && !arg.typeStartToken()->isStandardType()) {
-                        const Type *type = findTypeInNested(arg.typeStartToken(), &scope);
-                        if (type)
-                            arg.type(type);
-                    }
-                }
-            }
-        }
+        addVariablesToSymbolTable(scope);
+        for (Function& function : scope.functionList)
+            addArgumentsToSymbolTable(function, scope);
     }
 
     // fill in missing variables if possible
-    for (const Scope *func: functionScopes) {
-        for (const Token *tok = func->bodyStart->next(); tok && tok != func->bodyEnd; tok = tok->next()) {
-            // check for member variable
-            if (!Token::Match(tok, "%var% .|["))
-                continue;
-            const Token* tokDot = tok->next();
-            while (Token::simpleMatch(tokDot, "["))
-                tokDot = tokDot->link()->next();
-            if (!Token::Match(tokDot, ". %var%"))
-                continue;
-            const Token *member = tokDot->next();
-            if (mVariableList[member->varId()] == nullptr) {
-                const Variable *var1 = mVariableList[tok->varId()];
-                if (var1 && var1->typeScope()) {
-                    const Variable* memberVar = var1->typeScope()->getVariable(member->str());
-                    if (memberVar) {
-                        // add this variable to the look up table
-                        mVariableList[member->varId()] = memberVar;
-                    }
-                }
-            }
-        }
-    }
+    for (const Scope *func: functionScopes)
+        fillMissingVariables(*func);
 }
 
 void SymbolDatabase::createSymbolDatabaseSetScopePointers()
@@ -1498,6 +1511,10 @@ void SymbolDatabase::createSymbolDatabaseEnums()
 
     // find enumerators
     for (Token* tok = mTokenizer.list.front(); tok != mTokenizer.list.back(); tok = tok->next()) {
+        // an eEnumerator token without an enumerator is a copy that the template
+        // simplifier made of an already resolved token - resolve it again
+        if (tok->tokType() == Token::eEnumerator && !tok->enumerator())
+            tok->tokType(Token::eName);
         const bool isVariable = (tok->tokType() == Token::eVariable && !tok->variable());
         if (tok->tokType() != Token::eName && !isVariable)
             continue;
@@ -1856,29 +1873,19 @@ void SymbolDatabase::createSymbolDatabaseExprIds()
     }
 }
 
-void SymbolDatabase::removeSymbolsInTokenRanges(const std::vector<std::pair<Token*, const Token*>>& ranges)
+void SymbolDatabase::removeSymbolsForTokens(const std::unordered_set<const Token*>& removedTokens)
 {
-    if (ranges.empty())
+    if (removedTokens.empty())
         return;
 
-    // all tokens that are going to be removed
-    std::set<const Token*> removedTokens;
-    for (const auto& range : ranges) {
-        for (const Token* tok = range.first; tok; tok = tok->next()) {
-            removedTokens.insert(tok);
-            if (tok == range.second)
-                break;
-        }
-    }
-
     // the scopes, functions, variables, types and enumerators declared by those tokens
-    std::set<const Scope*> removedScopes;
+    std::unordered_set<const Scope*> removedScopes;
     for (const Scope& scope : scopeList) {
         if ((scope.classDef && removedTokens.count(scope.classDef) != 0) ||
             (scope.bodyStart && removedTokens.count(scope.bodyStart) != 0))
             removedScopes.insert(&scope);
     }
-    std::set<const Function*> removedFunctions;
+    std::unordered_set<const Function*> removedFunctions;
     for (Scope& scope : scopeList) {
         for (Function& function : scope.functionList) {
             if (function.tokenDef && removedTokens.count(function.tokenDef) != 0)
@@ -1892,7 +1899,7 @@ void SymbolDatabase::removeSymbolsInTokenRanges(const std::vector<std::pair<Toke
             }
         }
     }
-    std::set<const Variable*> removedVariables;
+    std::unordered_set<const Variable*> removedVariables;
     for (const Scope* scope : removedScopes) {
         std::transform(scope->varlist.cbegin(), scope->varlist.cend(), std::inserter(removedVariables, removedVariables.end()), [](const Variable& var) {
             return &var;
@@ -1903,12 +1910,12 @@ void SymbolDatabase::removeSymbolsInTokenRanges(const std::vector<std::pair<Toke
             return &arg;
         });
     }
-    std::set<const Type*> removedTypes;
+    std::unordered_set<const Type*> removedTypes;
     for (const Type& type : typeList) {
         if (type.classDef && removedTokens.count(type.classDef) != 0)
             removedTypes.insert(&type);
     }
-    std::set<const Enumerator*> removedEnumerators;
+    std::unordered_set<const Enumerator*> removedEnumerators;
     for (const Scope* scope : removedScopes) {
         std::transform(scope->enumeratorList.cbegin(), scope->enumeratorList.cend(), std::inserter(removedEnumerators, removedEnumerators.end()), [](const Enumerator& enumerator) {
             return &enumerator;
@@ -1985,7 +1992,7 @@ void SymbolDatabase::addSymbolsForNewTokenRanges(const std::vector<std::pair<Tok
     const std::size_t oldScopeCount = scopeList.size();
 
     // all new tokens - the new functions are found through them afterwards
-    std::set<const Token*> newTokens;
+    std::unordered_set<const Token*> newTokens;
     for (const auto& range : newRanges) {
         for (const Token* tok = range.first; tok; tok = tok->next()) {
             newTokens.insert(tok);
@@ -2032,16 +2039,7 @@ void SymbolDatabase::addSymbolsForNewTokenRanges(const std::vector<std::pair<Tok
     for (const auto& f : newFunctions) {
         if (f.first->argumentList.empty())
             f.first->addArguments(f.second);
-        if (f.first->retDef) {
-            const Token *type = f.first->retDef;
-            while (Token::Match(type, "static|const|struct|union|enum"))
-                type = type->next();
-            if (type) {
-                f.first->retType = findVariableTypeInBase(f.second, type);
-                if (!f.first->retType)
-                    f.first->retType = findTypeInNested(type, f.first->nestedIn);
-            }
-        }
+        setFunctionReturnType(*f.first, *f.second);
     }
 
     // fast access vectors
@@ -2055,57 +2053,14 @@ void SymbolDatabase::addSymbolsForNewTokenRanges(const std::vector<std::pair<Tok
     // variable symbol table: add the new variables (incremental version of
     // createSymbolDatabaseVariableSymbolTable)
     mVariableList.resize(mTokenizer.varIdCount() + 1);
-    for (Scope* scope : newScopes) {
-        for (Variable& var : scope->varlist) {
-            const int varId = var.declarationId();
-            if (varId)
-                mVariableList[varId] = &var;
-            // fix up variables without type
-            if (!var.type() && !var.typeStartToken()->isStandardType()) {
-                const Type *type = findType(var.typeStartToken(), scope);
-                if (type)
-                    var.type(type);
-            }
-        }
-    }
-    for (const auto& f : newFunctions) {
-        for (Variable& arg : f.first->argumentList) {
-            if (arg.nameToken() && arg.declarationId()) {
-                mVariableList[arg.declarationId()] = &arg;
-                // fix up parameters without type
-                if (!arg.type() && !arg.typeStartToken()->isStandardType()) {
-                    const Type *type = findTypeInNested(arg.typeStartToken(), f.second);
-                    if (type)
-                        arg.type(type);
-                }
-            }
-        }
-    }
+    for (Scope* scope : newScopes)
+        addVariablesToSymbolTable(*scope);
+    for (const auto& f : newFunctions)
+        addArgumentsToSymbolTable(*f.first, *f.second);
     // fill in missing variables in the new code if possible
-    for (const Scope* func : newScopes) {
-        if (func->type != ScopeType::eFunction)
-            continue;
-        for (const Token *tok = func->bodyStart->next(); tok && tok != func->bodyEnd; tok = tok->next()) {
-            // check for member variable
-            if (!Token::Match(tok, "%var% .|["))
-                continue;
-            const Token* tokDot = tok->next();
-            while (Token::simpleMatch(tokDot, "["))
-                tokDot = tokDot->link()->next();
-            if (!Token::Match(tokDot, ". %var%"))
-                continue;
-            const Token *member = tokDot->next();
-            if (mVariableList[member->varId()] == nullptr) {
-                const Variable *var1 = mVariableList[tok->varId()];
-                if (var1 && var1->typeScope()) {
-                    const Variable* memberVar = var1->typeScope()->getVariable(member->str());
-                    if (memberVar) {
-                        // add this variable to the look up table
-                        mVariableList[member->varId()] = memberVar;
-                    }
-                }
-            }
-        }
+    for (const Scope* scope : newScopes) {
+        if (scope->type == ScopeType::eFunction)
+            fillMissingVariables(*scope);
     }
 
     // set the definition and declaration pointers of the new functions. The call

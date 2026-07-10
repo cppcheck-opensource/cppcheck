@@ -38,6 +38,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -1439,12 +1440,12 @@ public:
     void createSymbolDatabaseExprIds();
 
     /**
-     * Remove the symbols (scopes, functions, variables, types) that are declared in the
-     * given token ranges (both range ends are inclusive) and clear the references to
-     * them. Called before the tokens are removed from the token list, e.g. when the
-     * template simplifier removes instantiated template declarations.
+     * Remove the symbols (scopes, functions, variables, types) that are declared by the
+     * given tokens and clear the references to them. Called before the tokens are
+     * removed from the token list, e.g. when the template simplifier removes
+     * instantiated template declarations.
      */
-    void removeSymbolsInTokenRanges(const std::vector<std::pair<Token*, const Token*>>& ranges);
+    void removeSymbolsForTokens(const std::unordered_set<const Token*>& removedTokens);
 
     /**
      * Add the symbols for token ranges (both range ends are inclusive) that were added
@@ -1492,6 +1493,15 @@ private:
     void createSymbolDatabaseFunctionScopes();
     void createSymbolDatabaseClassAndStructScopes();
     void createSymbolDatabaseFunctionReturnTypes();
+    /** fill in the return type of one function (used by the full build and by
+     * addSymbolsForNewTokenRanges) */
+    void setFunctionReturnType(Function& function, const Scope& scope) const;
+    /** add the variables of one scope to the variable symbol table */
+    void addVariablesToSymbolTable(Scope& scope);
+    /** add the parameters of one function to the variable symbol table */
+    void addArgumentsToSymbolTable(Function& function, const Scope& scope);
+    /** fill in the missing member variables in one function scope */
+    void fillMissingVariables(const Scope& functionScope);
     void createSymbolDatabaseNeedInitialization();
     void createSymbolDatabaseVariableSymbolTable();
     void createSymbolDatabaseSetScopePointers();

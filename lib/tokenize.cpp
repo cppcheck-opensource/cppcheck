@@ -4415,13 +4415,6 @@ void Tokenizer::updateTokenDataAfterTemplateSimplification()
         if (nameTok->function())
             const_cast<Function*>(nameTok->function())->templateDef = nullptr;
     }
-    // the template simplifier copies tokens including their token type: a copy of an
-    // enumerator token has the eEnumerator type but no enumerator - reset the type so
-    // the enumerator is looked up for the copy
-    for (Token* tok = list.front(); tok; tok = tok->next()) {
-        if (tok->tokType() == Token::eEnumerator && !tok->enumerator())
-            tok->tokType(Token::eName);
-    }
     mSymbolDatabase->addSymbolsForNewTokenRanges(mTemplateSimplifier->newTokenRanges());
     // safety net: every token needs a scope. A token that was added by a simplification
     // that is not covered by the new token ranges gets the scope of the preceding token.
