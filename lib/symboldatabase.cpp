@@ -1835,7 +1835,6 @@ void SymbolDatabase::createSymbolDatabaseExprIds()
     }
 }
 
-// cppcheck-suppress functionConst - has side effects
 void SymbolDatabase::setArrayDimensionsUsingValueFlow()
 {
     // set all unknown array dimensions
