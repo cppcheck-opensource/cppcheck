@@ -290,6 +290,7 @@ private:
         TEST_CASE(cppMaybeUnusedBefore);
         TEST_CASE(cppMaybeUnusedAfter1);
         TEST_CASE(cppMaybeUnusedAfter2);
+        TEST_CASE(cppMaybeUnusedAfter3);
         TEST_CASE(cppMaybeUnusedStructuredBinding);
 
         TEST_CASE(attributeAlignasBefore);
@@ -4379,6 +4380,19 @@ private:
 
         const Token *var = Token::findsimplematch(tokenizer.tokens(), "var");
         ASSERT(var && var->isAttributeMaybeUnused());
+    }
+
+    void cppMaybeUnusedAfter3() {
+        const char code[] = "void foo(int x [[maybe_unused]]) {}";
+        const char expected[] = "void foo ( int x ) { }";
+
+        SimpleTokenizer tokenizer(settingsDefault, *this);
+        ASSERT(tokenizer.tokenize(code));
+
+        ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
+
+        const Token *x = Token::findsimplematch(tokenizer.tokens(), "x");
+        ASSERT(x && x->isAttributeMaybeUnused());
     }
 
     void cppMaybeUnusedStructuredBinding() {
