@@ -791,7 +791,7 @@ void CheckOtherImpl::redundantAssignmentSameValueError(const Token *tok, const V
 //---------------------------------------------------------------------------
 static inline bool isFunctionOrBreakPattern(const Token *tok)
 {
-    return Token::Match(tok, "%name% (") || Token::Match(tok, "break|continue|return|exit|goto|throw");
+    return Token::Match(tok, "%name% (") || (tok->isKeyword() && Token::Match(tok, "break|continue|return|goto|throw"));
 }
 
 void CheckOtherImpl::redundantBitwiseOperationInSwitchError()
