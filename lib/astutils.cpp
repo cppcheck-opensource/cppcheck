@@ -2230,8 +2230,6 @@ bool isEscapeFunction(const Token* ftok, const Library& library)
 {
     if (!Token::Match(ftok, "%name% ("))
         return false;
-    if (Token::Match(ftok, "exit|abort"))
-        return true;
     const Function* function = ftok->function();
     if (function) {
         if (function->isEscapeFunction())
@@ -2261,9 +2259,6 @@ static bool hasNoreturnFunction(const Token* tok, const Library& library, const 
                 return true;
         } else if (library.isnoreturn(ftok)) {
             return true;
-        } else if (Token::Match(ftok, "exit|abort")) {
-            return true;
-        }
         if (unknownFunc && !function && library.functions().count(library.getFunctionName(ftok)) == 0)
             *unknownFunc = ftok;
         return false;
