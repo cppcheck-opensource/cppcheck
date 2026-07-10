@@ -9780,7 +9780,7 @@ void Tokenizer::simplifyCPPAttribute()
                 if (!head)
                     syntaxError(tok);
 
-                if (Token::simpleMatch(head, ";")) {
+                if (Token::Match(head, ";|,|)")) {
                     Token *backTok = tok;
                     while (Token::Match(backTok, "]|[|)")) {
                         if (Token::Match(backTok, "]|)"))
