@@ -3537,12 +3537,8 @@ bool Tokenizer::simplifyTokens1(const std::string &configuration, int fileIndex)
         list.validateAst(mSettings.debugnormal);
     });
 
-    // while pending type deductions may still change the token list, the symbol
-    // database phases that only later analysis needs are deferred to finalize()
-    const bool typeDeductionsPending = isCPP() && mTemplateSimplifier->hasPendingTypeDeductions();
-
     Timer::run("Tokenizer::simplifyTokens1::createSymbolDatabase", mTimerResults, [&]() {
-        createSymbolDatabase(typeDeductionsPending);
+        createSymbolDatabase();
     });
 
     Timer::run("Tokenizer::simplifyTokens1::setValueType", mTimerResults, [&]() {
@@ -3550,14 +3546,17 @@ bool Tokenizer::simplifyTokens1(const std::string &configuration, int fileIndex)
         mSymbolDatabase->setValueTypeInTokenList(true);
     });
 
-    if (typeDeductionsPending) {
+    if (isCPP() && mTemplateSimplifier->hasPendingTypeDeductions()) {
         Timer::run("Tokenizer::simplifyTokens1::simplifyTemplatesUsingTypeInformation", mTimerResults, [&]() {
             simplifyTemplatesUsingTypeInformation();
         });
-        Timer::run("Tokenizer::simplifyTokens1::finalizeSymbolDatabase", mTimerResults, [&]() {
-            mSymbolDatabase->finalize();
-        });
     }
+
+    // the phases that only later analysis needs run when the template simplifier can
+    // no longer change the token list
+    Timer::run("Tokenizer::simplifyTokens1::finalizeSymbolDatabase", mTimerResults, [&]() {
+        mSymbolDatabase->finalize();
+    });
 
     if (!mSettings.buildDir.empty())
         Summaries::create(*this, configuration, fileIndex);
@@ -4340,7 +4339,7 @@ void Tokenizer::rebuildTokenDataAfterTemplateSimplification()
     mSymbolDatabase = nullptr;
     // the phases that only later analysis needs are run by finalize() after the
     // template simplification is done
-    createSymbolDatabase(/*deferFinalizePhases*/ true);
+    createSymbolDatabase();
     mSymbolDatabase->setValueTypeInTokenList(false);
     mSymbolDatabase->setValueTypeInTokenList(true);
 }
@@ -10824,10 +10823,10 @@ void Tokenizer::simplifyBorland()
     }
 }
 
-void Tokenizer::createSymbolDatabase(bool deferFinalizePhases)
+void Tokenizer::createSymbolDatabase()
 {
     if (!mSymbolDatabase)
-        mSymbolDatabase = new SymbolDatabase(*this, deferFinalizePhases);
+        mSymbolDatabase = new SymbolDatabase(*this);
     mSymbolDatabase->validate();
 }
 

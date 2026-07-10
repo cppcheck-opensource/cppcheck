@@ -58,7 +58,7 @@
 
 static const Type* findVariableTypeInBase(const Scope* scope, const Token* typeTok);
 
-SymbolDatabase::SymbolDatabase(Tokenizer& tokenizer, bool deferFinalizePhases)
+SymbolDatabase::SymbolDatabase(Tokenizer& tokenizer)
     : mTokenizer(tokenizer)
     , mSettings(tokenizer.getSettings())
     , mErrorLogger(tokenizer.getErrorLogger())
@@ -88,17 +88,10 @@ SymbolDatabase::SymbolDatabase(Tokenizer& tokenizer, bool deferFinalizePhases)
     createSymbolDatabaseSetSmartPointerType();
     setValueTypeInTokenList(false);
     createSymbolDatabaseEnums();
-
-    if (!deferFinalizePhases)
-        finalize();
 }
 
 void SymbolDatabase::finalize()
 {
-    if (mFinalized)
-        return;
-    mFinalized = true;
-
     if (!mTokenizer.tokens())
         return;
 

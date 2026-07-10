@@ -606,13 +606,7 @@ public:
     const SymbolDatabase *getSymbolDatabase() const {
         return mSymbolDatabase;
     }
-    /**
-     * Create the symbol database.
-     * @param deferFinalizePhases skip the phases that only later analysis needs;
-     * SymbolDatabase::finalize() must be called when the token list is final. Used
-     * while the template simplifier still changes the token list.
-     */
-    void createSymbolDatabase(bool deferFinalizePhases = false);
+    void createSymbolDatabase();
 
     /** print --debug output if debug flags match the simplification:
      */

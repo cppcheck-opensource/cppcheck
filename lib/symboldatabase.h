@@ -1340,11 +1340,11 @@ class CPPCHECKLIB SymbolDatabase {
     friend class TestSymbolDatabase;
 public:
     /**
-     * @param deferFinalizePhases don't run the phases that only later analysis
-     * (ValueFlow, checks) needs - finalize() must be called when the token list is
-     * final. Used while the template simplifier still changes the token list.
+     * The phases that only later analysis (ValueFlow, checks) needs are not run by the
+     * constructor - call finalize() when the token list is final, e.g. after the
+     * template simplifier can no longer change it.
      */
-    explicit SymbolDatabase(Tokenizer& tokenizer, bool deferFinalizePhases = false);
+    explicit SymbolDatabase(Tokenizer& tokenizer);
     ~SymbolDatabase();
 
     /** @brief Information about all namespaces/classes/structures */
@@ -1457,8 +1457,8 @@ public:
     void addSymbolsForNewTokenRanges(const std::vector<std::pair<Token*, Token*>>& newRanges);
 
     /**
-     * Run the phases that only later analysis (ValueFlow, checks) needs. Called once
-     * when the token list is final - does nothing when already finalized.
+     * Run the phases that only later analysis (ValueFlow, checks) needs. Call exactly
+     * once, when the token list is final.
      */
     void finalize();
 
@@ -1563,9 +1563,6 @@ private:
     std::list<Type> mBlankTypes;
 
     ValueType::Sign mDefaultSignedness;
-
-    /** true when the finalize() phases have run */
-    bool mFinalized{};
 
     mutable std::map<const Type*, bool> mIsRecordTypeWithoutSideEffectsMap;
 };
