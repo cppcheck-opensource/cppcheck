@@ -128,10 +128,17 @@ jobs:
                     <fileName>lib/errorlogger.h</fileName>
                     <symbolName>verboseMessage</symbolName>
                   </suppress>
+                  <suppress>
+                    <id>unusedFunction</id>
+                    <fileName>lib/importproject.cpp</fileName>
+                    <symbolName>selectVsConfigurations</symbolName>
+                  </suppress>
+                  <suppress>
+                    <id>unusedFunction</id>
+                    <fileName>lib/importproject.cpp</fileName>
+                    <symbolName>getVSConfigs</symbolName>
+                  </suppress>
                 </suppressions>' > supprs.xml
-
-          cat supprs.xml
-
           ./cppcheck -q --template=selfcheck --error-exitcode=1 --library=cppcheck-lib -D__CPPCHECK__ -D__GNUC__ --enable=unusedFunction,information --exception-handling -rp=. --project=cmake.output.notest_nogui/compile_commands.json --suppressions-list=.selfcheck_unused_suppressions --inline-suppr --suppress-xml=supprs.xml
         env:
           DISABLE_VALUEFLOW: 1
