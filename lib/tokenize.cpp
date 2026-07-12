@@ -3587,7 +3587,7 @@ bool Tokenizer::simplifyTokens1(const std::string &configuration, int fileIndex)
 
 //---------------------------------------------------------------------------
 
-void Tokenizer::findComplicatedSyntaxErrorsInTemplates()
+void Tokenizer::findComplicatedSyntaxErrorsInTemplates() const
 {
     validate();
     mTemplateSimplifier->checkComplicatedSyntaxErrorsInTemplates();
