@@ -2442,10 +2442,8 @@ void CheckOtherImpl::constStatementError(const Token *tok, const std::string &ty
     }
     else if (!tok)
         msg = "Redundant code: Found a statement that begins with " + type + " constant.";
-    else if (tok->isCast() && tok->tokType() == Token::Type::eExtendedOp) {
-        msg = "Redundant code: Found unused cast ";
-        msg += tok ? "in expression '" + tok->expressionString() + "'." : "expression.";
-    }
+    else if (tok->isCast() && tok->tokType() == Token::Type::eExtendedOp)
+        msg = "Redundant code: Found unused cast in expression '" + tok->expressionString() + "'.";
     else if (tok->str() == "?" && tok->tokType() == Token::Type::eExtendedOp)
         msg = "Redundant code: Found unused result of ternary operator.";
     else if (tok->str() == "." && tok->tokType() == Token::Type::eOther)
