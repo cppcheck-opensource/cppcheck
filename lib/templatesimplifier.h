@@ -359,6 +359,15 @@ private:
     void getTemplateInstantiations();
 
     /**
+     * Deduce the template arguments of calls to function templates and
+     * insert the explicit "< ... >" tokens after the function name when the
+     * deduction succeeds. The token list is walked once; a scope aware
+     * symbol table of the visible declarations is maintained during the
+     * walk and used to determine the argument types.
+     */
+    void deduceFunctionTemplateArguments();
+
+    /**
      * Fix forward declared default argument values by copying them
      * when they are not present in the declaration.
      */

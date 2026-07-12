@@ -58,7 +58,7 @@ autoNoType:gui/*.cpp
 autoNoType:test/*.cpp
 autoNoType:tools/triage/mainwindow.cpp
 # ticket 11631
-templateInstantiation:test/testutils.cpp
+templateInstantiation
 
 naming-varname:externals/simplecpp/simplecpp.h
 naming-privateMemberVariable:externals/simplecpp/simplecpp.h

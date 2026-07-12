@@ -4935,6 +4935,20 @@ private:
               "    if (v > 0) {}\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        // #13630
+        check("template <typename Char>\n"
+              "void f0(Char c) {\n"
+              "    if (c <= 0) return;\n"
+              "    if (c >= 1) {}\n"
+              "}\n"
+              "void g() {\n"
+              "    char c = 'A';\n"
+              "    f0(c);\n"
+              "}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:3:11] -> [test.cpp:4:11]: (style) Condition 'c>=1' is always true [knownConditionTrueFalse]\n",
+            errout_str());
     }
 
     void alwaysTrueSymbolic()

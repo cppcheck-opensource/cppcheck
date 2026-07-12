@@ -284,6 +284,16 @@ private:
         TEST_CASE(templateTypeDeduction3);
         TEST_CASE(templateTypeDeduction4); // #9983
         TEST_CASE(templateTypeDeduction5);
+        TEST_CASE(templateTypeDeduction6); // deduction from variables
+        TEST_CASE(templateTypeDeduction7); // parameter forms: T, T&, const T&, T*
+        TEST_CASE(templateTypeDeduction8); // deduction from expressions
+        TEST_CASE(templateTypeDeduction9); // multiple parameters, scopes, bailouts
+        TEST_CASE(templateTypeDeduction10); // parameter visibility: init list, const method
+        TEST_CASE(templateTypeDeduction11); // unqualified lookup: enclosing scopes, shadowing
+        TEST_CASE(templateTypeDeduction12); // base class member templates, out of class method bodies
+        TEST_CASE(templateTypeDeduction13); // members declared after the member function are visible
+        TEST_CASE(templateTypeDeduction14); // a non template overload might be a better match
+        TEST_CASE(templateTypeDeduction15); // final classes
 
         TEST_CASE(simplifyTemplateArgs1);
         TEST_CASE(simplifyTemplateArgs2);
@@ -4715,16 +4725,16 @@ private:
                             "  g(1.0f);\n"
                             "}\n";
         const char exp[] = "float g<float> ( float x ) ; "
-                           "template < typename T > "
-                           "T g ( T x ) { return x ; } "
+                           "int g<int> ( int x ) ; "
                            "float g<float> ( float x ) {"
                            " return x + 1.0f ; "
                            "} "
                            "void f ( int i ) {"
-                           " g ( i ) ;"
+                           " g<int> ( i ) ;"
                            " g<float> ( 1.0f ) ; "
-                           "}";
-        ASSERT_EQUALS(exp, tok(code)); // TODO: instantiate g<int>(int)
+                           "} "
+                           "int g<int> ( int x ) { return x ; }";
+        ASSERT_EQUALS(exp, tok(code));
     }
 
     void template_specialization_1() {  // #7868 - template specialization template <typename T> struct S<C<T>> {..};
@@ -6126,18 +6136,12 @@ private:
                                 "void f<double,int> ( double t , int u ) ; "
                                 "static void func ( ) { "
                                 "f<int,double> ( 0 , 0.0 ) ; "
-                                "f<double,int> ( 0.0, 0 ) ; "
+                                "f<double,int> ( 0.0 , 0 ) ; "
+                                "} "
                                 "void f<int,double> ( int t , double u ) { } "
-                                "void f<double,int> ( double t , int u ) { } ";
+                                "void f<double,int> ( double t , int u ) { }";
 
-        const char actual[] = "template < typename T , typename U > "
-                              "void f ( T t , U u ) { } "
-                              "static void func ( ) { "
-                              "f ( 0 , 0.0 ) ; "
-                              "f ( 0.0 , 0 ) ; "
-                              "}";
-
-        TODO_ASSERT_EQUALS(expected, actual, tok(code));
+        ASSERT_EQUALS(expected, tok(code));
     }
 
     void templateTypeDeduction3() {  // #9975
@@ -6241,10 +6245,7 @@ private:
                                 "void f<int,double> ( int x , double y ) ; "
                                 "void test ( ) { f<int,double> ( 0 , 0.0 ) ; } "
                                 "void f<int,double> ( int x , double y ) { a = x + y ; }";
-            const char act[]  = "int a ; a = 1 ; "
-                                "template < typename T , typename U > void f ( T x , U y ) { a = x + y ; } "
-                                "void test ( ) { f ( 0 , 0.0 ) ; }";
-            TODO_ASSERT_EQUALS(exp, act, tok(code));
+            ASSERT_EQUALS(exp, tok(code));
         }
     }
 
@@ -6311,6 +6312,559 @@ private:
                                 "NS :: Fred :: Fred<double> ( double t ) { } "
                                 "NS :: Fred :: Fred<constchar*> ( const char * t ) { } "
                                 "NS :: Fred :: Fred<bool> ( bool t ) { }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+    }
+
+    void templateTypeDeduction6()
+    { // type deduction from variables
+        const char code[] = "template <typename T> void f(T n) { (void)n; }\n"
+                            "struct MyClass { int m; };\n"
+                            "void func() {\n"
+                            "    unsigned long long ull = 0;\n"
+                            "    const char* p = \"abc\";\n"
+                            "    double d = 1.0;\n"
+                            "    int arr[3];\n"
+                            "    MyClass mc;\n"
+                            "    f(ull);\n"
+                            "    f(p);\n"
+                            "    f(d);\n"
+                            "    f(arr);\n"
+                            "    f(mc);\n"
+                            "}";
+        const char exp[] = "void f<unsignedlonglong> ( unsigned long long n ) ; "
+                           "void f<constchar*> ( const char * n ) ; "
+                           "void f<double> ( double n ) ; "
+                           "void f<int*> ( int * n ) ; "
+                           "void f<MyClass> ( MyClass n ) ; "
+                           "struct MyClass { int m ; } ; "
+                           "void func ( ) { "
+                           "unsigned long long ull ; ull = 0 ; "
+                           "const char * p ; p = \"abc\" ; "
+                           "double d ; d = 1.0 ; "
+                           "int arr [ 3 ] ; "
+                           "MyClass mc ; "
+                           "f<unsignedlonglong> ( ull ) ; "
+                           "f<constchar*> ( p ) ; "
+                           "f<double> ( d ) ; "
+                           "f<int*> ( arr ) ; "
+                           "f<MyClass> ( mc ) ; "
+                           "} "
+                           "void f<unsignedlonglong> ( unsigned long long n ) { ( void ) n ; } "
+                           "void f<constchar*> ( const char * n ) { ( void ) n ; } "
+                           "void f<double> ( double n ) { ( void ) n ; } "
+                           "void f<int*> ( int * n ) { ( void ) n ; } "
+                           "void f<MyClass> ( MyClass n ) { ( void ) n ; }";
+        ASSERT_EQUALS(exp, tok(code));
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void templateTypeDeduction7()
+    { // parameter forms: T, T&, const T&, T*
+        const char code[] = "template <typename T> void byval(T x) { (void)x; }\n"
+                            "template <typename T> void byref(T& x) { (void)x; }\n"
+                            "template <typename T> void bycref(const T& x) { (void)x; }\n"
+                            "template <typename T> void byptr(T* x) { (void)x; }\n"
+                            "void func() {\n"
+                            "    const int ci = 1;\n"
+                            "    int i = 2;\n"
+                            "    int& r = i;\n"
+                            "    const char* s = \"x\";\n"
+                            "    byval(ci);\n"
+                            "    byref(ci);\n"
+                            "    bycref(ci);\n"
+                            "    byptr(s);\n"
+                            "    byval(r);\n"
+                            "}";
+        const char exp[] = "void byval<int> ( int x ) ; "
+                           "void byref<constint> ( const int & x ) ; "
+                           "void bycref<int> ( const int & x ) ; "
+                           "void byptr<constchar> ( const char * x ) ; "
+                           "void func ( ) { "
+                           "const int ci = 1 ; "
+                           "int i ; i = 2 ; "
+                           "int & r = i ; "
+                           "const char * s ; s = \"x\" ; "
+                           "byval<int> ( ci ) ; "
+                           "byref<constint> ( ci ) ; "
+                           "bycref<int> ( ci ) ; "
+                           "byptr<constchar> ( s ) ; "
+                           "byval<int> ( r ) ; "
+                           "} "
+                           "void byptr<constchar> ( const char * x ) { ( void ) x ; } "
+                           "void bycref<int> ( const int & x ) { ( void ) x ; } "
+                           "void byref<constint> ( const int & x ) { ( void ) x ; } "
+                           "void byval<int> ( int x ) { ( void ) x ; }";
+        ASSERT_EQUALS(exp, tok(code));
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void templateTypeDeduction8()
+    { // type deduction from expressions
+        const char code[] = "template <typename T> void f(T n) { (void)n; }\n"
+                            "int geti();\n"
+                            "void func() {\n"
+                            "    short s = 2;\n"
+                            "    double d = 1.0;\n"
+                            "    const char* p = \"abc\";\n"
+                            "    f(s + 1);\n"
+                            "    f(&d);\n"
+                            "    f(*p);\n"
+                            "    f((unsigned char)s);\n"
+                            "    f(static_cast<float>(d));\n"
+                            "    f(geti());\n"
+                            "    f(s == 1);\n"
+                            "}";
+        const char exp[] = "void f<int> ( int n ) ; "
+                           "void f<double*> ( double * n ) ; "
+                           "void f<char> ( char n ) ; "
+                           "void f<unsignedchar> ( unsigned char n ) ; "
+                           "void f<float> ( float n ) ; "
+                           "void f<bool> ( bool n ) ; "
+                           "int geti ( ) ; "
+                           "void func ( ) { "
+                           "short s ; s = 2 ; "
+                           "double d ; d = 1.0 ; "
+                           "const char * p ; p = \"abc\" ; "
+                           "f<int> ( s + 1 ) ; "
+                           "f<double*> ( & d ) ; "
+                           "f<char> ( * p ) ; "
+                           "f<unsignedchar> ( ( unsigned char ) s ) ; "
+                           "f<float> ( static_cast < float > ( d ) ) ; "
+                           "f<int> ( geti ( ) ) ; "
+                           "f<bool> ( s == 1 ) ; "
+                           "} "
+                           "void f<int> ( int n ) { ( void ) n ; } "
+                           "void f<double*> ( double * n ) { ( void ) n ; } "
+                           "void f<char> ( char n ) { ( void ) n ; } "
+                           "void f<unsignedchar> ( unsigned char n ) { ( void ) n ; } "
+                           "void f<float> ( float n ) { ( void ) n ; } "
+                           "void f<bool> ( bool n ) { ( void ) n ; }";
+        ASSERT_EQUALS(exp, tok(code));
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void templateTypeDeduction9()
+    { // multiple parameters, scopes, bailouts
+        {
+            // multiple template parameters, deduction from variables
+            const char code[] = "template <typename T, typename U> void f(T t, U u) { }\n"
+                                "void func() {\n"
+                                "    int i = 1;\n"
+                                "    double d = 2.0;\n"
+                                "    f(i, d);\n"
+                                "}";
+            const char exp[] = "void f<int,double> ( int t , double u ) ; "
+                               "void func ( ) { "
+                               "int i ; i = 1 ; "
+                               "double d ; d = 2.0 ; "
+                               "f<int,double> ( i , d ) ; "
+                               "} "
+                               "void f<int,double> ( int t , double u ) { }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // inconsistent deduction => don't deduce
+            const char code[] = "template <typename T> void f(T a, T b) { }\n"
+                                "void func() {\n"
+                                "    int i = 1;\n"
+                                "    long l0 = 2;\n"
+                                "    f(i, l0);\n"
+                                "}";
+            const char exp[] = "template < typename T > void f ( T a , T b ) { } "
+                               "void func ( ) { "
+                               "int i ; i = 1 ; "
+                               "long l0 ; l0 = 2 ; "
+                               "f ( i , l0 ) ; "
+                               "}";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // unknown variable => don't deduce
+            const char code[] = "template <typename T> void f(T n) { }\n"
+                                "void func() {\n"
+                                "    f(unknown);\n"
+                                "}";
+            const char exp[] = "template < typename T > void f ( T n ) { } "
+                               "void func ( ) { "
+                               "f ( unknown ) ; "
+                               "}";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // the innermost declaration shadows outer scopes
+            const char code[] = "template <typename T> void f(T n) { }\n"
+                                "int x;\n"
+                                "void func1() {\n"
+                                "    double x = 1.0;\n"
+                                "    f(x);\n"
+                                "}\n"
+                                "void func2(float x) {\n"
+                                "    f(x);\n"
+                                "}\n"
+                                "void func3() {\n"
+                                "    f(x);\n"
+                                "}";
+            const char exp[] = "void f<double> ( double n ) ; "
+                               "void f<float> ( float n ) ; "
+                               "void f<int> ( int n ) ; "
+                               "int x ; "
+                               "void func1 ( ) { "
+                               "double x ; x = 1.0 ; "
+                               "f<double> ( x ) ; "
+                               "} "
+                               "void func2 ( float x ) { "
+                               "f<float> ( x ) ; "
+                               "} "
+                               "void func3 ( ) { "
+                               "f<int> ( x ) ; "
+                               "} "
+                               "void f<double> ( double n ) { } "
+                               "void f<float> ( float n ) { } "
+                               "void f<int> ( int n ) { }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+    }
+
+    void templateTypeDeduction10()
+    { // parameters are visible in constructor
+      // initializer lists and const methods
+        const char code[] = "struct A {\n"
+                            "    template<class T> void tf(T t) { (void)t; }\n"
+                            "    int m;\n"
+                            "    A(long n) : m(0) { tf(n); }\n"
+                            "    void g(float v) const { tf(v); }\n"
+                            "};";
+        const char exp[] = "struct A { "
+                           "void tf<long> ( long t ) ; "
+                           "void tf<float> ( float t ) ; "
+                           "int m ; "
+                           "A ( long n ) : m ( 0 ) { tf<long> ( n ) ; } "
+                           "void g ( float v ) const { tf<float> ( v ) ; } "
+                           "} ; "
+                           "void A :: tf<long> ( long t ) { ( void ) t ; } "
+                           "void A :: tf<float> ( float t ) { ( void ) t ; }";
+        ASSERT_EQUALS(exp, tok(code));
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void templateTypeDeduction11()
+    { // unqualified lookup: enclosing scopes, shadowing
+        {
+            // global function template called from a class scope
+            const char code[] = "template<typename T> void f(T n) { (void)n; }\n"
+                                "struct A {\n"
+                                "    int m;\n"
+                                "    A(long n) : m(0) { f(n); }\n"
+                                "    void g(float v) const { f(v); }\n"
+                                "};";
+            const char exp[] = "void f<long> ( long n ) ; "
+                               "void f<float> ( float n ) ; "
+                               "struct A { "
+                               "int m ; "
+                               "A ( long n ) : m ( 0 ) { f<long> ( n ) ; } "
+                               "void g ( float v ) const { f<float> ( v ) ; } "
+                               "} ; "
+                               "void f<long> ( long n ) { ( void ) n ; } "
+                               "void f<float> ( float n ) { ( void ) n ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // global function template called from a class nested in a namespace
+            const char code[] = "template<typename T> T twice(T v) { return v + v; }\n"
+                                "namespace N {\n"
+                                "    struct Inner {\n"
+                                "        long go(int a) { return twice(a); }\n"
+                                "    };\n"
+                                "}";
+            const char exp[] = "int twice<int> ( int v ) ; "
+                               "namespace N { "
+                               "struct Inner { "
+                               "long go ( int a ) { return twice<int> ( a ) ; } "
+                               "} ; "
+                               "} "
+                               "int twice<int> ( int v ) { return v + v ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // a variable with the same name hides the function template
+            const char code[] = "template<typename T> void call(T v) { (void)v; }\n"
+                                "struct FunctionObject { void operator()(int) const {} };\n"
+                                "void g() {\n"
+                                "    FunctionObject call;\n"
+                                "    call(5);\n"
+                                "}";
+            const char exp[] = "template < typename T > void call ( T v ) { ( void ) v ; } "
+                               "struct FunctionObject { void operator() ( int ) const { } } ; "
+                               "void g ( ) { "
+                               "FunctionObject call ; "
+                               "call . operator() ( 5 ) ; "
+                               "}";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // a member function template shadows a global function template
+            const char code[] = "template<typename T> void dup(T t) { (void)t; }\n"
+                                "struct B {\n"
+                                "    template<typename T> void dup(T t) { (void)t; }\n"
+                                "    void m() { dup(1L); }\n"
+                                "};";
+            const char exp[] = "template < typename T > void dup ( T t ) { ( void ) t ; } "
+                               "struct B { "
+                               "void dup<long> ( long t ) ; "
+                               "void m ( ) { dup<long> ( 1L ) ; } "
+                               "} ; "
+                               "void B :: dup<long> ( long t ) { ( void ) t ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+    }
+
+    void templateTypeDeduction12()
+    { // base class member templates, out of class method bodies
+        {
+            // class members are visible in out of class member function bodies
+            const char code[] = "struct A {\n"
+                                "    int m;\n"
+                                "    template<class T> void tf(T t) { (void)t; }\n"
+                                "    void g();\n"
+                                "    long getl();\n"
+                                "};\n"
+                                "void A::g() {\n"
+                                "    tf(m);\n"
+                                "    tf(getl());\n"
+                                "}";
+            const char exp[] = "struct A { "
+                               "int m ; "
+                               "void tf<int> ( int t ) ; "
+                               "void tf<long> ( long t ) ; "
+                               "void g ( ) ; "
+                               "long getl ( ) ; "
+                               "} ; "
+                               "void A :: g ( ) { "
+                               "tf<int> ( m ) ; "
+                               "tf<long> ( getl ( ) ) ; "
+                               "} "
+                               "void A :: tf<int> ( int t ) { ( void ) t ; } "
+                               "void A :: tf<long> ( long t ) { ( void ) t ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // a member template of a base class is called with an inherited
+            // member variable as the argument
+            const char code[] = "struct Base {\n"
+                                "    template<class T> void btf(T t) { (void)t; }\n"
+                                "    int bm;\n"
+                                "};\n"
+                                "struct Derived : public Base {\n"
+                                "    void use() { btf(bm); }\n"
+                                "};";
+            const char exp[] = "struct Base { "
+                               "void btf<int> ( int t ) ; "
+                               "int bm ; "
+                               "} ; "
+                               "struct Derived : public Base { "
+                               "void use ( ) { Base :: btf<int> ( bm ) ; } "
+                               "} ; "
+                               "void Base :: btf<int> ( int t ) { ( void ) t ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // transitive base classes across namespaces, in inline and in
+            // out of class member function bodies; a derived class member
+            // template shadows the base class one
+            const char code[] = "namespace N {\n"
+                                "    struct GrandBase {\n"
+                                "        template<class T> void gtf(T t) { (void)t; }\n"
+                                "        double gm;\n"
+                                "    };\n"
+                                "    struct Mid : public GrandBase {};\n"
+                                "}\n"
+                                "struct Leaf : N::Mid {\n"
+                                "    void inlineUse() { gtf(gm); }\n"
+                                "    void outOfClassUse();\n"
+                                "};\n"
+                                "void Leaf::outOfClassUse() { gtf(gm); }\n"
+                                "struct Shadowing : N::GrandBase {\n"
+                                "    template<class T> void gtf(T t) { (void)t; }\n"
+                                "    void s() { gtf(1); }\n"
+                                "};";
+            const char exp[] = "namespace N { "
+                               "struct GrandBase { "
+                               "void gtf<double> ( double t ) ; "
+                               "double gm ; "
+                               "} ; "
+                               "struct Mid : public GrandBase { } ; "
+                               "} "
+                               "struct Leaf : N :: Mid { "
+                               "void inlineUse ( ) { N :: GrandBase :: gtf<double> ( gm ) ; } "
+                               "void outOfClassUse ( ) ; "
+                               "} ; "
+                               "void Leaf :: outOfClassUse ( ) { N :: GrandBase :: gtf<double> ( gm ) ; } "
+                               "struct Shadowing : N :: GrandBase { "
+                               "void gtf<int> ( int t ) ; "
+                               "void s ( ) { gtf<int> ( 1 ) ; } "
+                               "} ; "
+                               "void Shadowing :: gtf<int> ( int t ) { ( void ) t ; } "
+                               "void N :: GrandBase :: gtf<double> ( double t ) { ( void ) t ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+    }
+
+    void templateTypeDeduction13()
+    { // members declared after the member function are visible
+        {
+            const char code[] = "struct A {\n"
+                                "    template<class T> void tf(T t) { (void)t; }\n"
+                                "    void m() { tf(later); tf(getl()); }\n"
+                                "    int later;\n"
+                                "    long getl();\n"
+                                "};";
+            const char exp[] = "struct A { "
+                               "void tf<int> ( int t ) ; "
+                               "void tf<long> ( long t ) ; "
+                               "void m ( ) { tf<int> ( later ) ; tf<long> ( getl ( ) ) ; } "
+                               "int later ; "
+                               "long getl ( ) ; "
+                               "} ; "
+                               "void A :: tf<int> ( int t ) { ( void ) t ; } "
+                               "void A :: tf<long> ( long t ) { ( void ) t ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // constructor body; the member template is also declared later
+            const char code[] = "struct B {\n"
+                                "    B() : v(1.0f) { tf(later); }\n"
+                                "    template<class T> void tf(T t) { (void)t; }\n"
+                                "    float v;\n"
+                                "    double later;\n"
+                                "};";
+            const char exp[] = "struct B { "
+                               "B ( ) : v ( 1.0f ) { tf<double> ( later ) ; } "
+                               "void tf<double> ( double t ) ; "
+                               "float v ; "
+                               "double later ; "
+                               "} ; "
+                               "void B :: tf<double> ( double t ) { ( void ) t ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // a parameter shadows a member that is declared later
+            const char code[] = "struct C {\n"
+                                "    template<class T> void tf(T t) { (void)t; }\n"
+                                "    void n(short x) { tf(x); }\n"
+                                "    void o() { tf(x); }\n"
+                                "    long x;\n"
+                                "};";
+            const char exp[] = "struct C { "
+                               "void tf<short> ( short t ) ; "
+                               "void tf<long> ( long t ) ; "
+                               "void n ( short x ) { tf<short> ( x ) ; } "
+                               "void o ( ) { tf<long> ( x ) ; } "
+                               "long x ; "
+                               "} ; "
+                               "void C :: tf<short> ( short t ) { ( void ) t ; } "
+                               "void C :: tf<long> ( long t ) { ( void ) t ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+    }
+
+    void templateTypeDeduction14()
+    { // a non template overload might be a better match: don't deduce
+        {
+            // the non template f(int) wins the overload resolution (and the
+            // template would fail the substitution of int::type)
+            const char code[] = "template<class T>\n"
+                                "typename T::type f(T);\n"
+                                "int f(int);\n"
+                                "void use() { f(1); }";
+            const char exp[] = "template < class T > "
+                               "T :: type f ( T ) ; "
+                               "int f ( int ) ; "
+                               "void use ( ) { f ( 1 ) ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // member function overload set
+            const char code[] = "struct M {\n"
+                                "    template<class T> void mf(T t) { (void)t; }\n"
+                                "    void mf(int);\n"
+                                "    void go() { mf(1); }\n"
+                                "};";
+            const char exp[] = "struct M { "
+                               "template < class T > void mf ( T t ) { ( void ) t ; } "
+                               "void mf ( int ) ; "
+                               "void go ( ) { mf ( 1 ) ; } "
+                               "} ;";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // mixed overload set as a nested call: the return type is not
+            // known so the outer call is not deduced either
+            const char code[] = "template<class T> void g(T t) { (void)t; }\n"
+                                "template<class T> T h(T t) { return t; }\n"
+                                "long h(char);\n"
+                                "void use() { g(h('a')); }";
+            const char exp[] = "template < class T > void g ( T t ) { ( void ) t ; } "
+                               "template < class T > T h ( T t ) { return t ; } "
+                               "long h ( char ) ; "
+                               "void use ( ) { g ( h ( 'a' ) ) ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+    }
+
+    void templateTypeDeduction15()
+    { // deduction is not affected by "final" on the class
+        {
+            // members are visible in the out of class member function bodies
+            const char code[] = "struct A final {\n"
+                                "    template<class T> void tf(T t) { (void)t; }\n"
+                                "    int m;\n"
+                                "    void g();\n"
+                                "};\n"
+                                "void A::g() { tf(m); }";
+            const char exp[] = "struct A { "
+                               "void tf<int> ( int t ) ; "
+                               "int m ; "
+                               "void g ( ) ; "
+                               "} ; "
+                               "void A :: g ( ) { tf<int> ( m ) ; } "
+                               "void A :: tf<int> ( int t ) { ( void ) t ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // the base classes of a final class are searched
+            const char code[] = "struct Base {\n"
+                                "    template<class T> void btf(T t) { (void)t; }\n"
+                                "    long bm;\n"
+                                "};\n"
+                                "struct D final : public Base {\n"
+                                "    void use();\n"
+                                "};\n"
+                                "void D::use() { btf(bm); }";
+            const char exp[] = "struct Base { "
+                               "void btf<long> ( long t ) ; "
+                               "long bm ; "
+                               "} ; "
+                               "struct D : public Base { "
+                               "void use ( ) ; "
+                               "} ; "
+                               "void D :: use ( ) { Base :: btf<long> ( bm ) ; } "
+                               "void Base :: btf<long> ( long t ) { ( void ) t ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // inline member function body of a final class
+            const char code[] = "struct E final {\n"
+                                "    template<class T> void etf(T t) { (void)t; }\n"
+                                "    void m() { etf(later); }\n"
+                                "    double later;\n"
+                                "};";
+            const char exp[] = "struct E { "
+                               "void etf<double> ( double t ) ; "
+                               "void m ( ) { etf<double> ( later ) ; } "
+                               "double later ; "
+                               "} ; "
+                               "void E :: etf<double> ( double t ) { ( void ) t ; }";
             ASSERT_EQUALS(exp, tok(code));
         }
     }
