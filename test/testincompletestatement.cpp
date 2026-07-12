@@ -187,16 +187,16 @@ private:
         ASSERT_EQUALS("", errout_str());
 
         check("void f() { (void*)0; }");
-        ASSERT_EQUALS("[test.cpp:1:12]: (warning) Redundant code: Found a statement that begins with numeric constant. [constStatement]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:1:12]: (warning) Redundant code: Found unused cast in expression '(void*)0'. [constStatement]\n", errout_str());
 
         check("void f() {\n" // #13148
               "    static_cast<void>(1);\n"
               "    static_cast<void>(nullptr);\n"
               "    (void)NULL;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:22]: (warning) Redundant code: Found a statement that begins with numeric constant. [constStatement]\n"
-                      "[test.cpp:3:22]: (warning) Redundant code: Found a statement that begins with NULL constant. [constStatement]\n"
-                      "[test.cpp:4:5]: (warning) Redundant code: Found a statement that begins with NULL constant. [constStatement]\n",
+        ASSERT_EQUALS("[test.cpp:2:22]: (warning) Redundant code: Found unused cast in expression 'static_cast<void>(1)'. [constStatement]\n"
+                      "[test.cpp:3:22]: (warning) Redundant code: Found unused cast in expression 'static_cast<void>(nullptr)'. [constStatement]\n"
+                      "[test.cpp:4:5]: (warning) Redundant code: Found unused cast in expression '(void)NULL'. [constStatement]\n",
                       errout_str());
 
         check("#define X  0\n"
@@ -448,11 +448,11 @@ private:
               "}\n", dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("[test.cpp:2:5]: (warning) Redundant code: Found a statement that begins with numeric constant. [constStatement]\n"
                       "[test.cpp:3:6]: (warning) Redundant code: Found a statement that begins with numeric constant. [constStatement]\n"
-                      "[test.cpp:4:5]: (warning) Redundant code: Found a statement that begins with numeric constant. [constStatement]\n"
-                      "[test.cpp:5:6]: (warning) Redundant code: Found a statement that begins with numeric constant. [constStatement]\n"
+                      "[test.cpp:4:5]: (warning) Redundant code: Found unused cast in expression '(char)1'. [constStatement]\n"
+                      "[test.cpp:5:6]: (warning) Redundant code: Found unused cast in expression '(char)1'. [constStatement]\n"
                       "[test.cpp:6:5]: (warning, inconclusive) Found suspicious operator '!', result is not used. [constStatement]\n"
                       "[test.cpp:7:6]: (warning, inconclusive) Found suspicious operator '!', result is not used. [constStatement]\n"
-                      "[test.cpp:8:5]: (warning) Redundant code: Found unused cast of expression '!x'. [constStatement]\n"
+                      "[test.cpp:8:5]: (warning) Redundant code: Found unused cast in expression '(unsigned int)!x'. [constStatement]\n"
                       "[test.cpp:9:5]: (warning, inconclusive) Found suspicious operator '~', result is not used. [constStatement]\n",
                       errout_str());
 
@@ -463,7 +463,7 @@ private:
         ASSERT_EQUALS("", errout_str());
 
         check("void f(int x) { static_cast<unsigned>(x); }");
-        ASSERT_EQUALS("[test.cpp:1:38]: (warning) Redundant code: Found unused cast of expression 'x'. [constStatement]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:1:38]: (warning) Redundant code: Found unused cast in expression 'static_cast<unsigned int>(x)'. [constStatement]\n", errout_str());
 
         check("void f(int x, int* p) {\n"
               "    static_cast<void>(x);\n"
@@ -481,9 +481,9 @@ private:
               "    static_cast<float>((char)i);\n"
               "    (char)static_cast<float>(i);\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:5]: (warning) Redundant code: Found unused cast of expression 'i'. [constStatement]\n"
-                      "[test.cpp:3:23]: (warning) Redundant code: Found unused cast of expression 'i'. [constStatement]\n"
-                      "[test.cpp:4:5]: (warning) Redundant code: Found unused cast of expression 'i'. [constStatement]\n",
+        ASSERT_EQUALS("[test.cpp:2:5]: (warning) Redundant code: Found unused cast in expression '(float)(char)i'. [constStatement]\n"
+                      "[test.cpp:3:23]: (warning) Redundant code: Found unused cast in expression 'static_cast<float>((char)i)'. [constStatement]\n"
+                      "[test.cpp:4:5]: (warning) Redundant code: Found unused cast in expression '(char)static_cast<float>(i)'. [constStatement]\n",
                       errout_str());
 
         check("namespace M {\n"
@@ -492,7 +492,7 @@ private:
               "void f(int i) {\n"
               "    (M::N::T)i;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:5:5]: (warning) Redundant code: Found unused cast of expression 'i'. [constStatement]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:5:5]: (warning) Redundant code: Found unused cast in expression '(char)i'. [constStatement]\n", errout_str());
 
         check("void f(int (g)(int a, int b)) {\n" // #10873
               "    int p = 0, q = 1;\n"
@@ -544,7 +544,7 @@ private:
               "    for (L\"y\"; ;) {}\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:2:10]: (warning) Unused variable value 'i' [constStatement]\n"
-                      "[test.cpp:3:10]: (warning) Redundant code: Found unused cast of expression 'i'. [constStatement]\n"
+                      "[test.cpp:3:10]: (warning) Redundant code: Found unused cast in expression '(long)i'. [constStatement]\n"
                       "[test.cpp:4:10]: (warning) Redundant code: Found a statement that begins with numeric constant. [constStatement]\n"
                       "[test.cpp:5:10]: (warning) Redundant code: Found a statement that begins with bool constant. [constStatement]\n"
                       "[test.cpp:6:10]: (warning) Redundant code: Found a statement that begins with character constant. [constStatement]\n"
@@ -712,8 +712,8 @@ private:
               "    NULL;\n"
               "    nullptr;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:5]: (warning) Redundant code: Found a statement that begins with NULL constant. [constStatement]\n"
-                      "[test.cpp:3:5]: (warning) Redundant code: Found a statement that begins with NULL constant. [constStatement]\n",
+        ASSERT_EQUALS("[test.cpp:2:5]: (warning) Redundant code: Found a statement that begins with null constant. [constStatement]\n"
+                      "[test.cpp:3:5]: (warning) Redundant code: Found a statement that begins with null constant. [constStatement]\n",
                       errout_str());
 
         check("struct S { int i; };\n" // #6504

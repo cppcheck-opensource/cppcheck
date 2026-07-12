@@ -3914,7 +3914,7 @@ private:
               "    (void)(true);\n"
               "    if (r) {}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:5]: (warning) Redundant code: Found a statement that begins with bool constant. [constStatement]\n"
+        ASSERT_EQUALS("[test.cpp:2:5]: (warning) Redundant code: Found unused cast in expression '(void)(true)'. [constStatement]\n"
                       "[test.cpp:1:13]: (style) Parameter 'r' can be declared as reference to const [constParameterReference]\n",
                       errout_str());
 
@@ -7014,7 +7014,7 @@ private:
               "    std::pair<int, int>(1, 2);\n"
               "    (void)0;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:5:5]: (warning) Redundant code: Found a statement that begins with numeric constant. [constStatement]\n"
+        ASSERT_EQUALS("[test.cpp:5:5]: (warning) Redundant code: Found unused cast in expression '(void)0'. [constStatement]\n"
                       "[test.cpp:2:10]: (style) Instance of 'std::string' object is destroyed immediately. [unusedScopedObject]\n"
                       "[test.cpp:3:10]: (style) Instance of 'std::string' object is destroyed immediately. [unusedScopedObject]\n"
                       "[test.cpp:4:10]: (style) Instance of 'std::pair' object is destroyed immediately. [unusedScopedObject]\n",

@@ -2419,10 +2419,6 @@ void CheckOtherImpl::checkIncompleteStatement()
 
 void CheckOtherImpl::constStatementError(const Token *tok, const std::string &type, bool inconclusive)
 {
-    const Token *valueTok = tok;
-    while (valueTok && valueTok->isCast())
-        valueTok = valueTok->astOperand2() ? valueTok->astOperand2() : valueTok->astOperand1();
-
     std::string msg;
     if (Token::simpleMatch(tok, "=="))
         msg = "Found suspicious equality comparison. Did you intend to assign a value instead?";
@@ -2430,17 +2426,17 @@ void CheckOtherImpl::constStatementError(const Token *tok, const std::string &ty
         msg = "Found suspicious operator '" + tok->str() + "', result is not used.";
     else if (Token::Match(tok, "%var%"))
         msg = "Unused variable value '" + tok->str() + "'";
-    else if (isConstant(valueTok)) {
+    else if (isConstant(tok)) {
         std::string typeStr("string");
-        if (valueTok->isNumber())
+        if (tok->isNumber())
             typeStr = "numeric";
-        else if (valueTok->isBoolean())
+        else if (tok->isBoolean())
             typeStr = "bool";
-        else if (valueTok->tokType() == Token::eChar)
+        else if (tok->tokType() == Token::eChar)
             typeStr = "character";
-        else if (isNullOperand(valueTok))
-            typeStr = "NULL";
-        else if (valueTok->isEnumerator())
+        else if (isNullOperand(tok))
+            typeStr = "null";
+        else if (tok->isEnumerator())
             typeStr = "enumerator";
         msg = "Redundant code: Found a statement that begins with " + typeStr + " constant.";
     }
@@ -2448,7 +2444,7 @@ void CheckOtherImpl::constStatementError(const Token *tok, const std::string &ty
         msg = "Redundant code: Found a statement that begins with " + type + " constant.";
     else if (tok->isCast() && tok->tokType() == Token::Type::eExtendedOp) {
         msg = "Redundant code: Found unused cast ";
-        msg += valueTok ? "of expression '" + valueTok->expressionString() + "'." : "expression.";
+        msg += tok ? "in expression '" + tok->expressionString() + "'." : "expression.";
     }
     else if (tok->str() == "?" && tok->tokType() == Token::Type::eExtendedOp)
         msg = "Redundant code: Found unused result of ternary operator.";
