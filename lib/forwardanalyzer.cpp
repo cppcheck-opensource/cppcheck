@@ -834,8 +834,13 @@ namespace {
                                 ++ft.forkDepth;
                                 ft.updateRange(thenBranch.endBlock, end, depth - 1);
                             }
-                            if (pElse == Progress::Break)
+                            if (pElse == Progress::Break) {
+                                // Only the else branch escaped; the then branch falls through, so
+                                // the scope as a whole does not always escape.
+                                if (terminate == Analyzer::Terminate::Escape && !thenBranch.isEscape())
+                                    terminate = Analyzer::Terminate::None;
                                 return Break();
+                            }
                         }
                     }
                 } else if (Token::simpleMatch(tok, "try {")) {
