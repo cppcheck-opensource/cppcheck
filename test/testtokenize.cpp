@@ -2387,6 +2387,19 @@ private:
         ASSERT_EQUALS(expected, tokenizeAndStringify(code));
     }
 
+    void vardecl_template_3() {
+        const char code[] = "template <class T>\n" // #14909
+                            "void f(T x) {\n"
+                            "    const auto y = h<T, x.size()>;\n"
+                            "}";
+        const char expected[]  = "template < class T >\n"
+                                 "void f ( T x ) {\n"
+                                 "const auto y = h < T , x . size ( ) > ;\n"
+                                 "}";
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
+        ASSERT_EQUALS("[test.cpp:3:11]: (debug) auto token with no type. [autoNoType]\n", errout_str());
+    }
+
     void vardecl_union() {
         // ticket #1976
         const char code1[] = "class Fred { public: union { int a ; int b ; } ; } ;";
