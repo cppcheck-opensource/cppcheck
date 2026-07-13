@@ -589,12 +589,27 @@ namespace {
                 }
             }
 
+            const auto checkForRecursion = [this]() {
+                if (Token::Match(mTypedefToken, "typedef %name% %name% ;"))
+                    return;
+                for (const Token *tok = mTypedefToken; tok != mEndToken; tok = tok->next()) {
+                    if (tok == mNameToken)
+                        continue;
+                    if (tok->str() != mNameToken->str())
+                        continue;
+                    if (Token::Match(tok->previous(), "struct|class|enum|union"))
+                        continue;
+                    throw InternalError(tok, "recursive typedef encountered");
+                }
+            };
+
             for (Token* type = start; Token::Match(type, "%name%|*|&|&&"); type = type->next()) {
                 if (type != start && Token::Match(type, "%name% ;") && !type->isStandardType()) {
                     mRangeType.first = start;
                     mRangeType.second = type;
                     mNameToken = type;
                     mEndToken = mNameToken->next();
+                    checkForRecursion();
                     return;
                 }
                 if (type != start && Token::Match(type, "%name% [")) {
@@ -609,6 +624,7 @@ namespace {
                     mEndToken = end->next();
                     mRangeAfterVar.first = mNameToken->next();
                     mRangeAfterVar.second = mEndToken;
+                    checkForRecursion();
                     return;
                 }
                 if (Token::Match(type->next(), "( * const| %name% ) (") && Token::simpleMatch(type->linkAt(1)->linkAt(1), ") ;")) {
@@ -618,6 +634,7 @@ namespace {
                     mRangeType.second = mNameToken;
                     mRangeAfterVar.first = mNameToken->next();
                     mRangeAfterVar.second = mEndToken;
+                    checkForRecursion();
                     return;
                 }
                 if (type != start && Token::Match(type, "%name% ( !!(") && Token::simpleMatch(type->linkAt(1), ") ;") && !type->isStandardType()) {
@@ -627,6 +644,7 @@ namespace {
                     mRangeType.second = type;
                     mRangeAfterVar.first = mNameToken->next();
                     mRangeAfterVar.second = mEndToken;
+                    checkForRecursion();
                     return;
                 }
             }
