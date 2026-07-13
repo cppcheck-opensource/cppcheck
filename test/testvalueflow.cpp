@@ -137,6 +137,7 @@ private:
         TEST_CASE(valueFlowConditionExpressions);
 
         TEST_CASE(valueFlowContainerSize);
+        TEST_CASE(valueFlowContainerSizeIterator);
         TEST_CASE(valueFlowContainerElement);
 
         TEST_CASE(valueFlowDynamicBufferSize);
@@ -3214,6 +3215,38 @@ private:
                "    return x;\n"
                "}\n";
         ASSERT_EQUALS(true, testValueOfXKnown(code, 3U, 0));
+
+        code = "bool f();\n" // a modification after a conditional escape must still be seen
+               "void g() {\n"
+               "    bool x = false;\n"
+               "    if (f()) {\n"
+               "        if (f()) return;\n"
+               "        if (f()) x = true;\n"
+               "    }\n"
+               "    if (x) {}\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 8U, 0));
+        ASSERT_EQUALS(false, testValueOfXKnown(code, 8U, 0));
+
+        code = "bool f();\n"
+               "void g() {\n"
+               "    bool x = false;\n"
+               "    if (f()) {\n"
+               "        if (f()) return;\n"
+               "        x = true;\n"
+               "    }\n"
+               "    if (x) {}\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 8U, 0));
+        ASSERT_EQUALS(false, testValueOfXKnown(code, 8U, 0));
+
+        code = "bool f();\n" // the branch always escapes - keep the known value
+               "void g() {\n"
+               "    bool x = false;\n"
+               "    if (f()) { x = true; return; }\n"
+               "    if (x) {}\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXKnown(code, 5U, 0));
     }
 
     void valueFlowAfterSwap()
@@ -3834,6 +3867,44 @@ private:
                "    return x;\n"
                "}\n";
         ASSERT_EQUALS(true, testValueOfX(code, 4U, 0));
+
+        // if the guarded block calls an unknown, possibly noreturn function
+        // then the condition value is lowered to inconclusive after the block
+        code = "int f(int x) {\n"
+               "    if (x == 0)\n"
+               "        g();\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXInconclusive(code, 4U, 0));
+
+        // .. also when the guard is in the else branch
+        code = "int f(int x) {\n"
+               "    if (x != 0)\n"
+               "        ;\n"
+               "    else\n"
+               "        g();\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXInconclusive(code, 6U, 0));
+
+        // a declared function is assumed to return
+        code = "void g();\n"
+               "int f(int x) {\n"
+               "    if (x == 0)\n"
+               "        g();\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 5U, 0));
+        ASSERT_EQUALS(false, testValueOfXInconclusive(code, 5U, 0));
+
+        // a noreturn function conclusively escapes
+        code = "int f(int x) {\n"
+               "    if (x == 0)\n"
+               "        abort();\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(false, testValueOfX(code, 4U, 0));
+        ASSERT_EQUALS(true, testValueOfXImpossible(code, 4U, 0));
     }
 
     void valueFlowAfterConditionTernary()
@@ -7590,6 +7661,47 @@ private:
                "    if (m.empty()) {}\n"
                "}\n";
         ASSERT(!isKnownContainerSizeValue(tokenValues(code, "m ."), 0).empty());
+    }
+
+    void valueFlowContainerSizeIterator() {
+        const char* code;
+
+        // valueFlowForwardConst: the container size is added to iterators of a const container
+        code = "void f() {\n"
+               "    const std::vector<int> v{1, 2, 3};\n"
+               "    auto it = v.begin();\n"
+               "    if (it != v.end()) {}\n"
+               "}";
+        ASSERT_EQUALS(
+            "",
+            isKnownContainerSizeValue(tokenValues(code, "it !=", ValueFlow::Value::ValueType::CONTAINER_SIZE), 3));
+
+        // ..also to iterators created in place
+        code = "void f() {\n"
+               "    const std::deque<int> d{1, 2, 3, 4, 5, 6};\n"
+               "    if (std::equal(d.cbegin(), d.cend(), d.cbegin())) {}\n"
+               "}";
+        ASSERT_EQUALS(
+            "",
+            isKnownContainerSizeValue(tokenValues(code, "( ) ,", ValueFlow::Value::ValueType::CONTAINER_SIZE), 6));
+
+        // ..and to iterators of containers with a static size
+        code = "void f() {\n"
+               "    std::array<int, 5> a;\n"
+               "    auto it = a.begin();\n"
+               "    if (it != a.end()) {}\n"
+               "}";
+        ASSERT_EQUALS(
+            "",
+            isKnownContainerSizeValue(tokenValues(code, "it !=", ValueFlow::Value::ValueType::CONTAINER_SIZE), 5));
+
+        // the size of another container is not added to the iterator
+        code = "void f(std::vector<int>& w) {\n"
+               "    const std::vector<int> v{1, 2, 3};\n"
+               "    auto it = w.begin();\n"
+               "    if (it != w.end()) {}\n"
+               "}";
+        ASSERT(tokenValues(code, "it !=", ValueFlow::Value::ValueType::CONTAINER_SIZE).empty());
     }
 
     void valueFlowContainerElement()

@@ -121,8 +121,25 @@ jobs:
 
       - name: Self check (unusedFunction / no test / no gui)
         run: |
-          supprs="--suppress=unusedFunction:lib/errorlogger.h:198 --suppress=unusedFunction:lib/importproject.cpp:1671 --suppress=unusedFunction:lib/importproject.cpp:1695"
-          ./cppcheck -q --template=selfcheck --error-exitcode=1 --library=cppcheck-lib -D__CPPCHECK__ -D__GNUC__ --enable=unusedFunction,information --exception-handling -rp=. --project=cmake.output.notest_nogui/compile_commands.json --suppressions-list=.selfcheck_unused_suppressions --inline-suppr $supprs
+          echo '<?xml version="1.0"?>
+                <suppressions>
+                  <suppress>
+                    <id>unusedFunction</id>
+                    <fileName>lib/errorlogger.h</fileName>
+                    <symbolName>verboseMessage</symbolName>
+                  </suppress>
+                  <suppress>
+                    <id>unusedFunction</id>
+                    <fileName>lib/importproject.cpp</fileName>
+                    <symbolName>selectVsConfigurations</symbolName>
+                  </suppress>
+                  <suppress>
+                    <id>unusedFunction</id>
+                    <fileName>lib/importproject.cpp</fileName>
+                    <symbolName>getVSConfigs</symbolName>
+                  </suppress>
+                </suppressions>' > supprs.xml
+          ./cppcheck -q --template=selfcheck --error-exitcode=1 --library=cppcheck-lib -D__CPPCHECK__ -D__GNUC__ --enable=unusedFunction,information --exception-handling -rp=. --project=cmake.output.notest_nogui/compile_commands.json --suppressions-list=.selfcheck_unused_suppressions --inline-suppr --suppress-xml=supprs.xml
         env:
           DISABLE_VALUEFLOW: 1
           UNUSEDFUNCTION_ONLY: 1

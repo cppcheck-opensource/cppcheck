@@ -568,23 +568,23 @@ namespace {
                 const std::pair<const Token*, Token*> rangeBefore(start, Token::findsimplematch(start, "{"));
 
                 // find typedef name token
-                Token* nameToken = rangeBefore.second->link()->next();
-                while (Token::Match(nameToken, "%name%|* %name%|*"))
-                    nameToken = nameToken->next();
-                const std::pair<const Token*, Token*> rangeQualifiers(rangeBefore.second->link()->next(), nameToken);
+                Token* nameTok = rangeBefore.second->link()->next();
+                while (Token::Match(nameTok, "%name%|* %name%|*"))
+                    nameTok = nameTok->next();
+                const std::pair<const Token*, Token*> rangeQualifiers(rangeBefore.second->link()->next(), nameTok);
 
-                if (Token::Match(nameToken, "%name% ;")) {
+                if (Token::Match(nameTok, "%name% ;")) {
                     if (Token::Match(rangeBefore.second->previous(), "enum|struct|union|class {"))
-                        rangeBefore.second->previous()->insertToken(nameToken->str());
+                        rangeBefore.second->previous()->insertToken(nameTok->str());
                     mRangeType = rangeBefore;
                     mRangeTypeQualifiers = rangeQualifiers;
                     Token* typeName = rangeBefore.second->previous();
                     if (typeName->isKeyword()) {
                         // TODO typeName->insertToken("T:" + std::to_string(num++));
-                        typeName->insertToken(nameToken->str());
+                        typeName->insertToken(nameTok->str());
                     }
-                    mNameToken = nameToken;
-                    mEndToken = nameToken->next();
+                    mNameToken = nameTok;
+                    mEndToken = nameTok->next();
                     return;
                 }
             }
@@ -8973,7 +8973,7 @@ void Tokenizer::findGarbageCode() const
                 if (tok->strAt(-1) == ",")
                     syntaxError(tok);
                 colons++;
-            } else if (tok->str() == "(") { // skip pairs of ( )
+            } else if (tok->str() == "(" || tok->str() == "{") { // skip pairs of ( )
                 tok = tok->link();
             }
         }
@@ -9145,14 +9145,18 @@ void Tokenizer::findGarbageCode() const
                 }
                 if (!tok2->next() || tok2->isControlFlowKeyword() || Token::Match(tok2, "typedef|static|."))
                     syntaxError(tok);
-                if (Token::Match(tok2, "%name% %name%") && tok2->str() == tok2->strAt(1)) {
-                    if (Token::simpleMatch(tok2->tokAt(2), ";"))
-                        continue;
-                    if (tok2->isStandardType() && tok2->str() == "long")
-                        continue;
-                    if (Token::Match(tok2->tokAt(-1), "enum|struct|union") || (isCPP() && Token::Match(tok2->tokAt(-1), "class|::")))
-                        continue;
-                    syntaxError(tok2);
+                if (Token::Match(tok2, "%name% %name%")) {
+                    if (tok2->str() == tok2->strAt(1)) {
+                        if (Token::simpleMatch(tok2->tokAt(2), ";"))
+                            continue;
+                        if (tok2->isStandardType() && tok2->str() == "long")
+                            continue;
+                        if (Token::Match(tok2->tokAt(-1), "enum|struct|union") || (isCPP() && Token::Match(tok2->tokAt(-1), "class|::")))
+                            continue;
+                        syntaxError(tok2);
+                    }
+                    if (Token::Match(tok2->tokAt(2), "%name%") && tok2->isNameOnly() && tok2->tokAt(1)->isNameOnly() && tok2->tokAt(2)->isNameOnly())
+                        syntaxError(tok2);
                 }
             }
         }
@@ -9413,6 +9417,7 @@ void Tokenizer::simplifyStructDecl()
             if (Token::Match(after->next(), "const|static|volatile| *|&| const| (| %type% )| ,|;|[|=|(|{")) {
                 after->insertToken(";");
                 after = after->next();
+                Token *declEnd = after;
                 while (!Token::Match(start, "struct|class|union|enum")) {
                     after->insertToken(start->str());
                     after = after->next();
@@ -9454,6 +9459,16 @@ void Tokenizer::simplifyStructDecl()
                             after->linkAt(1)->str(")");
                         }
                     }
+                }
+
+                // pull declaration out of for loop
+                if (Token::simpleMatch(start->tokAt(-2), "for ( struct")) {
+                    Token *link = start->linkAt(-1);
+                    start->deletePrevious(2);
+                    declEnd->insertToken("(");
+                    declEnd->next()->link(link);
+                    link->link(declEnd->next());
+                    declEnd->insertToken("for");
                 }
             }
         }
@@ -9776,7 +9791,7 @@ void Tokenizer::simplifyCPPAttribute()
                 if (!head)
                     syntaxError(tok);
 
-                if (Token::simpleMatch(head, ";")) {
+                if (Token::Match(head, ";|,|)")) {
                     Token *backTok = tok;
                     while (Token::Match(backTok, "]|[|)")) {
                         if (Token::Match(backTok, "]|)"))

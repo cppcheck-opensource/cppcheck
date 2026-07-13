@@ -138,8 +138,14 @@ const Token* SymbolDatabase::isEnumDefinition(const Token* tok)
     if (tok->str() == "{")
         return tok;
     tok = tok->next(); // skip ':'
-    while (Token::Match(tok, "%name%|::"))
+    bool hasType = false;
+    while (Token::Match(tok, "%name%|::")) {
+        if (tok->isName())
+            hasType = true;
         tok = tok->next();
+    }
+    if (!hasType)
+        throw InternalError(tok, "SymbolDatabase bailout; invalid enum", InternalError::SYNTAX);
     return Token::simpleMatch(tok, "{") ? tok : nullptr;
 }
 
@@ -7816,7 +7822,7 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
 
                 setValueType(tok, ValueType(sign, type, 0U));
             }
-        } else if (tok->isComparisonOp() || tok->tokType() == Token::eLogicalOp) {
+        } else if ((tok->isComparisonOp() || tok->tokType() == Token::eLogicalOp) && tok->astOperand1()) {
             if (tok->isCpp() && tok->isComparisonOp() && (getClassScope(tok->astOperand1()) || getClassScope(tok->astOperand2()))) {
                 const Function *function = getOperatorFunction(tok);
                 if (function) {

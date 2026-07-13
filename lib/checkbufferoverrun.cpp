@@ -65,7 +65,10 @@ static const CWE CWE_BUFFER_OVERRUN(788U);   // Access of Memory Location After 
 static const ValueFlow::Value *getBufferSizeValue(const Token *tok)
 {
     const std::list<ValueFlow::Value> &tokenValues = tok->values();
-    const auto it = std::find_if(tokenValues.cbegin(), tokenValues.cend(), std::mem_fn(&ValueFlow::Value::isBufferSizeValue));
+    auto it = std::find_if(tokenValues.cbegin(), tokenValues.cend(), std::mem_fn(&ValueFlow::Value::isBufferSizeValue));
+    if (it != tokenValues.cend())
+        return &*it;
+    it = std::find_if(tokenValues.cbegin(), tokenValues.cend(), std::mem_fn(&ValueFlow::Value::isContainerSizeValue));
     return it == tokenValues.cend() ? nullptr : &*it;
 }
 
@@ -552,7 +555,7 @@ void CheckBufferOverrunImpl::pointerArithmeticError(const Token *tok, const Toke
 
 //---------------------------------------------------------------------------
 
-ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok) const
+ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok, const Settings& settings) const
 {
     if (!bufTok->valueType())
         return ValueFlow::Value(-1);
@@ -569,9 +572,20 @@ ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok) cons
     const Variable *var = bufTok->variable();
 
     if (!var || var->dimensions().empty()) {
-        const ValueFlow::Value *value = getBufferSizeValue(bufTok);
-        if (value)
-            return *value;
+        if (const ValueFlow::Value *value = getBufferSizeValue(bufTok)) {
+            if (value->isBufferSizeValue())
+                return *value;
+            if (value->isContainerSizeValue() && bufTok->valueType() && bufTok->valueType()->container) {
+                const ValueType vtElement = ValueType::parseDecl(bufTok->valueType()->containerTypeToken, settings);
+                const size_t elementSize = vtElement.getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
+                if (elementSize > 0) {
+                    ValueFlow::Value bufSizeVal;
+                    bufSizeVal.valueType = ValueFlow::Value::ValueType::BUFFER_SIZE;
+                    bufSizeVal.intvalue = value->intvalue * elementSize;
+                    return bufSizeVal;
+                }
+            }
+        }
     }
 
     if (!var || var->isPointer() || (astIsContainer(bufTok) && var->getTypeName() != "std::array"))
@@ -671,7 +685,7 @@ void CheckBufferOverrunImpl::bufferOverflow()
                 if (argtok->valueType() && argtok->valueType()->pointer == 0)
                     continue;
                 // TODO: strcpy(buf+10, "hello");
-                const ValueFlow::Value bufferSize = getBufferSize(argtok);
+                const ValueFlow::Value bufferSize = getBufferSize(argtok, mSettings);
                 if (bufferSize.intvalue <= 0)
                     continue;
                 // buffer size == 1 => do not warn for dynamic memory
@@ -782,7 +796,7 @@ void CheckBufferOverrunImpl::stringNotZeroTerminated()
             const Token *sizeToken = args[2];
             if (!sizeToken->hasKnownIntValue())
                 continue;
-            const ValueFlow::Value &bufferSize = getBufferSize(args[0]);
+            const ValueFlow::Value &bufferSize = getBufferSize(args[0], mSettings);
             if (bufferSize.intvalue < 0 || sizeToken->getKnownIntValue() < bufferSize.intvalue)
                 continue;
             if (Token::simpleMatch(args[1], "(") && Token::simpleMatch(args[1]->astOperand1(), ". c_str") && args[1]->astOperand1()->astOperand1()) {
