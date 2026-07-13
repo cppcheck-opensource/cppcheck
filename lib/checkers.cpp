@@ -167,6 +167,7 @@ namespace checkers {
         {"CheckSizeof::sizeofVoid","portability"},
         {"CheckSizeof::sizeofsizeof","warning"},
         {"CheckSizeof::suspiciousSizeofCalculation","warning,inconclusive"},
+        {"CheckStl::algorithmOutOfBounds",""},
         {"CheckStl::checkDereferenceInvalidIterator","warning"},
         {"CheckStl::checkDereferenceInvalidIterator2",""},
         {"CheckStl::checkFindInsert","performance"},

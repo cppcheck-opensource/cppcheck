@@ -4935,6 +4935,20 @@ private:
               "    if (v > 0) {}\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("bool f(int x) {\n" // only the innermost else escapes - x is 0 or >1 afterwards, not known
+              "    if (!x) {}\n"
+              "    else if (x > 1) {}\n"
+              "    else return false;\n"
+              "    return x ? false : true;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("bool f(int x) {\n" // the branch's fall-through path must clear the escape
+              "    if (x) { if (x > 1) {} else return false; }\n"
+              "    return x ? false : true;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void alwaysTrueSymbolic()
