@@ -3836,11 +3836,11 @@ private:
                            "}";
         ASSERT_EQUALS(exp, tok(code));
 
-        const char code2[] = "typedef stuct T* T;\n" // #14669
+        const char code2[] = "typedef struct T* T;\n" // #14669
                              "struct T {\n"
                              "    T p;\n"
                              "};\n";
-        const char exp2[] = "struct T { stuct T * p ; } ;";
+        const char exp2[] = "struct T { struct T * p ; } ;";
         ASSERT_EQUALS(exp2, simplifyTypedefC(code2));
     }
 
