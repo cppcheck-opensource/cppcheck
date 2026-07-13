@@ -3407,8 +3407,10 @@ bool Function::returnsVoid(const Function* function, bool unknown)
     });
 }
 
-bool Function::isCoroutine(const Function* function)
+bool Function::isCoroutine(const Function* function, const Standards &standards, const Tokenizer &tokens)
 {
+    if (!tokens.isCPP() || standards.cpp < Standards::CPP20)
+        return false;
     if (!function->functionScope)
         return false;
     const Scope *scope = function->functionScope;

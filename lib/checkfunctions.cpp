@@ -329,7 +329,7 @@ void CheckFunctionsImpl::checkMissingReturn()
             continue;
         if (Function::returnsVoid(function, true))
             continue;
-        if (Function::isCoroutine(function))
+        if (Function::isCoroutine(function, mSettings.standards, *mTokenizer))
             continue;
         const Token *errorToken = checkMissingReturnScope(scope->bodyEnd, mSettings.library);
         if (errorToken)
