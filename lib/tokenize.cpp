@@ -3389,12 +3389,17 @@ bool Tokenizer::simplifyUsing()
                 } else if (fpArgList && fpQual && Token::Match(tok1->next(), "%name%")) {
                     // function pointer
                     const bool isFuncDecl = Token::simpleMatch(tok1->tokAt(2), "(");
-                    TokenList::copyTokens(tok1->next(), fpArgList, usingEnd->previous());
+                    Token *dest = tok1->next();
+                    while (Token::Match(dest, "%name% :: %name%"))
+                        dest = dest->tokAt(2);
+                    TokenList::copyTokens(dest, fpArgList, usingEnd->previous());
                     Token* const copyEnd = TokenList::copyTokens(tok1, start, fpQual->link()->previous());
                     Token* leftPar = copyEnd->previous();
                     while (leftPar->str() != "(")
                         leftPar = leftPar->previous();
-                    Token* const insertTok = isFuncDecl ? copyEnd->linkAt(2) : copyEnd->next();
+                    Token *insertTok = isFuncDecl ? copyEnd->linkAt(2) : copyEnd->next();
+                    while (Token::Match(insertTok, "%name% :: %name%"))
+                        insertTok = insertTok->tokAt(2);
                     Token* const rightPar = insertTok->insertToken(")");
                     Token::createMutualLinks(leftPar, rightPar);
                     tok1->deleteThis();
