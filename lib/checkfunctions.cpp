@@ -329,6 +329,8 @@ void CheckFunctionsImpl::checkMissingReturn()
             continue;
         if (Function::returnsVoid(function, true))
             continue;
+        if (Function::isCoroutine(function))
+            continue;
         const Token *errorToken = checkMissingReturnScope(scope->bodyEnd, mSettings.library);
         if (errorToken)
             missingReturnError(errorToken);
