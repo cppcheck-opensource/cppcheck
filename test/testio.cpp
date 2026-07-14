@@ -53,6 +53,7 @@ private:
         TEST_CASE(testScanf3); // #3494
         TEST_CASE(testScanf4); // #ticket 2553
         TEST_CASE(testScanf5); // #10632
+        TEST_CASE(testScanf6);
 
         mNewTemplate = false;
         TEST_CASE(testScanfArgument);
@@ -890,6 +891,14 @@ private:
               "}");
         ASSERT_EQUALS("[test.cpp:3:5]: (error) Width 42 given in format string (no. 1) is larger than destination buffer 's1[42]', use %41s to prevent overflowing it. [invalidScanfFormatWidth]\n"
                       "[test.cpp:3:5]: (error) Width 42 given in format string (no. 2) is larger than destination buffer 's2[42]', use %41[a-z] to prevent overflowing it. [invalidScanfFormatWidth]\n", errout_str());
+    }
+
+    void testScanf6() {
+        ASSERT_NO_THROW(check("int f(const char *p) {\n"
+                              "        char a[3];\n"
+                              "        return sscanf(p, \"%02s\", a);\n"
+                              "}\n"));
+        ASSERT_EQUALS("", errout_str());
     }
 
 
