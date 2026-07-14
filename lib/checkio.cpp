@@ -155,6 +155,8 @@ void CheckIOImpl::checkFileUsage()
                 tok = tok->linkAt(1);
                 continue;
             }
+            if (tok->function() && tok->function()->nestedIn)
+                continue;
             if (tok->str() == "{")
                 indent++;
             else if (tok->str() == "}") {
