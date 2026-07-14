@@ -841,6 +841,8 @@ void CheckIOImpl::checkFormatString(const Token * const tok,
                 }
                 ++i;
             }
+            while (!width.empty() && width[0] == '0')
+                width = width.substr(1);
             auto bracketBeg = formatString.cend();
             if (i != formatString.cend() && *i == '[') {
                 bracketBeg = i;
