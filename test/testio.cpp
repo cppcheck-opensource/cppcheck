@@ -693,6 +693,23 @@ private:
               "    fwrite(X::data(), sizeof(char), buffer.size(), d->file);\n"
               "}");
         ASSERT_EQUALS("[test.cpp:9:5]: (error) Read and write operations without a call to a positioning function (fseek, fsetpos or rewind) or fflush in between result in undefined behaviour. [IOWithoutPositioning]\n", errout_str());
+
+        check("struct MemStream {\n"
+              "    char buf[1024];\n"
+              "    int pos = 0;\n"
+              "    void fwrite(const void *ptr, size_t n) { memcpy(buf + pos, ptr, n); pos += (int)n; }\n"
+              "};\n"
+              "struct FileStream {\n"
+              "    FILE *fp;\n"
+              "    size_t _fread(void *ptr, size_t n) { return ::fread(ptr, 1, n, fp); }\n"
+              "    size_t fread(void *ptr, size_t n) { return _fread(ptr, n); }\n"
+              "    void copy_to(MemStream *dst, size_t n) {\n"
+              "        char tmp[256];\n"
+              "        fread(tmp, n);\n"
+              "        dst->fwrite(tmp, n);\n"
+              "    }\n"
+              "};\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void seekOnAppendedFile() {
