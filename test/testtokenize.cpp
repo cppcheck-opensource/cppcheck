@@ -92,6 +92,7 @@ private:
         TEST_CASE(tokenize40);  // #13181
         TEST_CASE(tokenize41);  // #13847
         TEST_CASE(tokenize42);  // #13861
+        TEST_CASE(tokenize43);  // #13861
 
         TEST_CASE(validate);
 
@@ -938,6 +939,12 @@ private:
                       "AB x [ 10 ] = { 0 } ;\n"
                       "x [ 1 ] . a = 2 ;\n"
                       "}", tokenizeAndStringify(code));
+        (void)errout_str();
+    }
+
+    void tokenize43() {
+        const char code[] = "void f(int i) { do if (i &= 1) {} while (0); }";
+        ASSERT_NO_THROW(tokenizeAndStringify(code));
         (void)errout_str();
     }
 
