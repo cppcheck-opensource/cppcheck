@@ -3914,7 +3914,9 @@ private:
               "    (void)(true);\n"
               "    if (r) {}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:1:13]: (style) Parameter 'r' can be declared as reference to const [constParameterReference]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:5]: (warning) Redundant code: Found unused cast in expression '(void)(true)'. [constStatement]\n"
+                      "[test.cpp:1:13]: (style) Parameter 'r' can be declared as reference to const [constParameterReference]\n",
+                      errout_str());
 
         check("struct S { void f(int&); };\n" // #12216
               "void g(S& s, int& r, void (S::* p2m)(int&)) {\n"
@@ -4913,6 +4915,18 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:2:14]: (style) Parameter 's' can be declared as pointer to const [constParameterPointer]\n"
                       "[test.cpp:2:46]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n",
+                      errout_str());
+
+        check("struct S : U {\n" // #13944
+              "    void f(int* p) const {\n"
+              "        if (m == p) {}\n"
+              "    }\n"
+              "    void g(int* p) final {\n"
+              "        if (m == p) {}\n"
+              "    }\n"
+              "    int* m;\n"
+              "};\n");
+        ASSERT_EQUALS("[test.cpp:2:17]: (style) Either there is a missing override/final keyword, or the parameter 'p' can be declared as pointer to const [constParameterPointer]\n",
                       errout_str());
     }
 
@@ -7000,7 +7014,8 @@ private:
               "    std::pair<int, int>(1, 2);\n"
               "    (void)0;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:10]: (style) Instance of 'std::string' object is destroyed immediately. [unusedScopedObject]\n"
+        ASSERT_EQUALS("[test.cpp:5:5]: (warning) Redundant code: Found unused cast in expression '(void)0'. [constStatement]\n"
+                      "[test.cpp:2:10]: (style) Instance of 'std::string' object is destroyed immediately. [unusedScopedObject]\n"
                       "[test.cpp:3:10]: (style) Instance of 'std::string' object is destroyed immediately. [unusedScopedObject]\n"
                       "[test.cpp:4:10]: (style) Instance of 'std::pair' object is destroyed immediately. [unusedScopedObject]\n",
                       errout_str());
@@ -11499,8 +11514,9 @@ private:
               "        x = a + b;\n"
               "    return x;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:11] -> [test.cpp:4:9]: (style) Variable 'x' is assigned an expression that holds the same value. [redundantAssignment]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:2:11] -> [test.cpp:3:9] -> [test.cpp:4:9]: (style) Variable 'x' is assigned an expression that holds the same value. [redundantAssignment]\n",
+            errout_str());
     }
 
     void varFuncNullUB() { // #4482
@@ -13194,6 +13210,9 @@ private:
 
         check("struct S { static int i(); static void f(int i) {} };\n");
         ASSERT_EQUALS("[test.cpp:1:23] -> [test.cpp:1:46]: (style) Argument 'i' shadows outer function [shadowFunction]\n", errout_str());
+
+        check("struct S { void g(float f) {} void f() {} };\n");
+        ASSERT_EQUALS("[test.cpp:1:36] -> [test.cpp:1:25]: (style) Argument 'f' shadows outer function [shadowFunction]\n", errout_str());
     }
 
     void knownArgument() {

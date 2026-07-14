@@ -32,7 +32,9 @@
 #include "fixture.h"
 #include "helpers.h"
 
+#include <algorithm>
 #include <cstring>
+#include <iterator>
 #include <list>
 #include <map>
 #include <set>
@@ -137,12 +139,15 @@ private:
         preprocessor.simplifyPragmaAsm();
 
         std::map<std::string, std::string> cfgcode;
-        if (cfgs.empty())
-            cfgs = preprocessor.getConfigs();
+        if (cfgs.empty()) {
+            cfgs.insert("");
+            std::set<std::string> configDefines = { "__cplusplus" };
+            preprocessor.getConfigs(configDefines, cfgs);
+        }
         for (const std::string & config : cfgs) {
             try {
-                const bool writeLocations = (strstr(code, "#include") != nullptr);
-                cfgcode[config] = preprocessor.getcode(config, files, writeLocations);
+                const bool writeLocs = (strstr(code, "#include") != nullptr);
+                cfgcode[config] = preprocessor.getcode(config, files, writeLocs);
             } catch (const simplecpp::Output &) {
                 cfgcode[config] = "";
             }
@@ -368,6 +373,8 @@ private:
         TEST_CASE(testMissingIncludeMixed);
         TEST_CASE(testMissingIncludeCheckConfig);
 
+        TEST_CASE(testLazyInclude);
+
         TEST_CASE(hasInclude);
 
         TEST_CASE(limitsDefines);
@@ -394,10 +401,23 @@ private:
         simplecpp::OutputList outputList;
         simplecpp::TokenList tokens(code,files,"test.c",&outputList);
         Preprocessor preprocessor(tokens, settings, *this, Standards::Language::C);
+        std::set<std::string> configs = { "" };
+        std::set<std::string> configDefines = { "__cplusplus" };
+        const auto getDefineName = [](const std::string &defineString) {
+            return defineString.substr(0, defineString.find_first_of("( "));
+        };
+        std::transform(settings.library.defines().begin(),
+                       settings.library.defines().end(),
+                       std::inserter(configDefines, configDefines.end()),
+                       getDefineName);
+        preprocessor.setLoadCallback([&](simplecpp::FileData &data) {
+            Preprocessor::removeComments(data.tokens);
+            preprocessor.getConfigs(data.filename, data.tokens, configDefines, configs);
+        });
+        preprocessor.removeComments();
+        preprocessor.getConfigs(configDefines, configs);
         ASSERT(preprocessor.loadFiles(files));
         ASSERT(!preprocessor.reportOutput(outputList, true));
-        preprocessor.removeComments();
-        const std::set<std::string> configs = preprocessor.getConfigs();
         std::string ret;
         for (const std::string & config : configs)
             ret += config + '\n';
@@ -409,8 +429,11 @@ private:
         std::vector<std::string> files;
         simplecpp::TokenList tokens(code,files,"test.c");
         Preprocessor preprocessor(tokens, settingsDefault, *this, Standards::Language::C);
-        ASSERT(preprocessor.loadFiles(files));
+        preprocessor.setLoadCallback([](simplecpp::FileData &data) {
+            Preprocessor::removeComments(data.tokens);
+        });
         preprocessor.removeComments();
+        ASSERT(preprocessor.loadFiles(files));
         return preprocessor.calculateHash("");
     }
 
@@ -3031,6 +3054,36 @@ private:
                       "test.c:6:2: information: Include file: \"header4.h\" not found. [missingInclude]\n"
                       "test.c:9:2: information: Include file: \"" + missing3 + "\" not found. [missingInclude]\n"
                       "test.c:11:2: information: Include file: <" + missing4 + "> not found. Please note: Standard library headers do not need to be provided to get proper results. [missingIncludeSystem]\n", errout_str());
+    }
+
+    void testLazyInclude() {
+        const char *code = "#ifdef CONFIG1\n"
+                           "#include \"header1.h\"\n"
+                           "#include \"missing1.h\"\n"
+                           "#else\n"
+                           "#include \"header2.h\"\n"
+                           "#include \"missing2.h\"\n"
+                           "#endif\n";
+
+        std::vector<std::string> files;
+        simplecpp::TokenList tokens(code, files, "test.c");
+
+        ScopedFile header1("header1.h", "1");
+        ScopedFile header2("header2.h", "2");
+
+        Settings settings;
+        Preprocessor preprocessor(tokens, settings, *this, Standards::Language::CPP);
+
+        simplecpp::OutputList outputList;
+        simplecpp::TokenList tokens2 = preprocessor.preprocess("CONFIG1", files, outputList);
+        std::string out = tokens2.stringify();
+
+        const simplecpp::FileDataCache &cache = preprocessor.mFileCache;
+
+        ASSERT_EQUALS("\n#line 1 \"header1.h\"\n1", out);
+        ASSERT_EQUALS(1, outputList.size());
+        ASSERT_EQUALS("Header not found: \"missing1.h\"", outputList.begin()->msg);
+        ASSERT_EQUALS(1, cache.size());
     }
 
     void hasInclude() {

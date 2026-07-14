@@ -791,7 +791,7 @@ void CheckOtherImpl::redundantAssignmentSameValueError(const Token *tok, const V
 //---------------------------------------------------------------------------
 static inline bool isFunctionOrBreakPattern(const Token *tok)
 {
-    return Token::Match(tok, "%name% (") || Token::Match(tok, "break|continue|return|exit|goto|throw");
+    return Token::Match(tok, "%name% (") || (tok->isKeyword() && Token::Match(tok, "break|continue|return|goto|throw"));
 }
 
 void CheckOtherImpl::redundantBitwiseOperationInSwitchError()
@@ -1793,7 +1793,7 @@ void CheckOtherImpl::checkConstVariable()
                             continue;
                     } else if (const Token* ftok = getTokenArgumentFunction(tok, argn)) {
                         bool inconclusive{};
-                        if (var->valueType() && !isVariableChangedByFunctionCall(ftok, var->valueType()->pointer, var->declarationId(), mSettings, &inconclusive) && !inconclusive)
+                        if (var->valueType() && !isVariableChangedByFunctionCall(ftok, var->valueType()->pointer, var->declarationId(), mSettings.library, &inconclusive) && !inconclusive)
                             continue;
                     }
                     usedInAssignment = true;
@@ -1989,7 +1989,7 @@ void CheckOtherImpl::checkConstPointer()
                 continue;
             else if (const Token* ftok = getTokenArgumentFunction(parent, argn)) {
                 bool inconclusive{};
-                if (!isVariableChangedByFunctionCall(ftok->next(), vt->pointer, var->declarationId(), mSettings, &inconclusive) && !inconclusive)
+                if (!isVariableChangedByFunctionCall(ftok->next(), vt->pointer, var->declarationId(), mSettings.library, &inconclusive) && !inconclusive)
                     continue;
             }
         } else {
@@ -2014,7 +2014,7 @@ void CheckOtherImpl::checkConstPointer()
                         const Variable* argVar = ftok->function()->getArgumentVar(argn);
                         if (argVar && argVar->valueType() && argVar->valueType()->isConst(vt->pointer)) {
                             bool inconclusive{};
-                            if (!isVariableChangedByFunctionCall(ftok, vt->pointer, var->declarationId(), mSettings, &inconclusive) && !inconclusive)
+                            if (!isVariableChangedByFunctionCall(ftok, vt->pointer, var->declarationId(), mSettings.library, &inconclusive) && !inconclusive)
                                 continue;
                         }
                     }
@@ -2033,8 +2033,11 @@ void CheckOtherImpl::checkConstPointer()
             nonConstPointers.emplace(var);
     }
     for (const Variable *p: pointers) {
+        bool foundAllBaseClasses = true;
         if (p->isArgument()) {
-            if (!p->scope() || !p->scope()->function || p->scope()->function->isImplicitlyVirtual(true) || p->scope()->function->hasVirtualSpecifier())
+            if (!p->scope() || !p->scope()->function || p->scope()->function->hasVirtualSpecifier())
+                continue;
+            if (p->scope()->function->isImplicitlyVirtual(true, &foundAllBaseClasses) && foundAllBaseClasses)
                 continue;
             if (p->isMaybeUnused())
                 continue;
@@ -2051,12 +2054,12 @@ void CheckOtherImpl::checkConstPointer()
                 continue;
             if (p->typeStartToken() && p->typeStartToken()->isSimplifiedTypedef() && !(Token::simpleMatch(p->typeEndToken(), "*") && !p->typeEndToken()->isSimplifiedTypedef()))
                 continue;
-            constVariableError(p, p->isArgument() ? p->scope()->function : nullptr);
+            constVariableError(p, p->isArgument() ? p->scope()->function : nullptr, foundAllBaseClasses);
         }
     }
 }
 
-void CheckOtherImpl::constVariableError(const Variable *var, const Function *function)
+void CheckOtherImpl::constVariableError(const Variable *var, const Function *function, bool foundAllBaseClasses)
 {
     if (!var) {
         reportError(nullptr, Severity::style, "constParameter", "Parameter 'x' can be declared with const");
@@ -2069,13 +2072,18 @@ void CheckOtherImpl::constVariableError(const Variable *var, const Function *fun
         return;
     }
 
-    const std::string vartype(var->isArgument() ? "Parameter" : "Variable");
+    std::string vartype(var->isArgument() ? "Parameter" : "Variable");
     const std::string& varname(var->name());
     const std::string ptrRefArray = var->isArray() ? "const array" : (var->isPointer() ? "pointer to const" : "reference to const");
 
     ErrorPath errorPath;
     std::string id = "const" + vartype;
-    std::string message = "$symbol:" + varname + "\n" + vartype + " '$symbol' can be declared as " + ptrRefArray;
+    std::string message = "$symbol:" + varname + "\n";
+    if (!foundAllBaseClasses) {
+        message += "Either there is a missing override/final keyword, or the ";
+        vartype[0] = std::tolower(vartype[0]);
+    }
+    message += vartype + " '$symbol' can be declared as " + ptrRefArray;
     errorPath.emplace_back(var->nameToken(), message);
     if (var->isArgument() && function && function->functionPointerUsage) {
         errorPath.emplace_front(function->functionPointerUsage, "You might need to cast the function pointer here");
@@ -2315,18 +2323,12 @@ static bool isConstStatement(const Token *tok, const Library& library, bool plat
 
 static bool isVoidStmt(const Token *tok)
 {
-    if (Token::simpleMatch(tok, "( void"))
+    if (Token::simpleMatch(tok, "( void") && !(tok->astOperand1() && (tok->astOperand1()->isLiteral() || isNullOperand(tok->astOperand1()))))
         return true;
-    if (isCPPCast(tok) && tok->astOperand1() && Token::Match(tok->astOperand1()->next(), "< void *| >"))
+    if (isCPPCast(tok) && tok->astOperand1() && Token::Match(tok->astOperand1()->next(), "< void *| >") &&
+        !(tok->astOperand2() && (tok->astOperand2()->isLiteral() || isNullOperand(tok->astOperand2()))))
         return true;
-    const Token *tok2 = tok;
-    while (tok2->astOperand1())
-        tok2 = tok2->astOperand1();
-    if (Token::simpleMatch(tok2->previous(), ")") && Token::simpleMatch(tok2->linkAt(-1), "( void"))
-        return true;
-    if (Token::simpleMatch(tok2, "( void"))
-        return true;
-    return Token::Match(tok2->previous(), "delete|throw|return");
+    return false;
 }
 
 static bool isConstTop(const Token *tok)
@@ -2400,7 +2402,7 @@ void CheckOtherImpl::checkIncompleteStatement()
             !(tok->str() == "," && tok->astParent() && tok->astParent()->isAssignmentOp()))
             continue;
         // Skip statement expressions
-        if (Token::simpleMatch(rtok, "; } )"))
+        if (Token::simpleMatch(rtok, "; } )") || Token::simpleMatch(tok->next(), "; } )"))
             continue;
         if (!isConstStatement(tok, mSettings.library, false))
             continue;
@@ -2417,10 +2419,6 @@ void CheckOtherImpl::checkIncompleteStatement()
 
 void CheckOtherImpl::constStatementError(const Token *tok, const std::string &type, bool inconclusive)
 {
-    const Token *valueTok = tok;
-    while (valueTok && valueTok->isCast())
-        valueTok = valueTok->astOperand2() ? valueTok->astOperand2() : valueTok->astOperand1();
-
     std::string msg;
     if (Token::simpleMatch(tok, "=="))
         msg = "Found suspicious equality comparison. Did you intend to assign a value instead?";
@@ -2428,26 +2426,24 @@ void CheckOtherImpl::constStatementError(const Token *tok, const std::string &ty
         msg = "Found suspicious operator '" + tok->str() + "', result is not used.";
     else if (Token::Match(tok, "%var%"))
         msg = "Unused variable value '" + tok->str() + "'";
-    else if (isConstant(valueTok)) {
+    else if (isConstant(tok)) {
         std::string typeStr("string");
-        if (valueTok->isNumber())
+        if (tok->isNumber())
             typeStr = "numeric";
-        else if (valueTok->isBoolean())
+        else if (tok->isBoolean())
             typeStr = "bool";
-        else if (valueTok->tokType() == Token::eChar)
+        else if (tok->tokType() == Token::eChar)
             typeStr = "character";
-        else if (isNullOperand(valueTok))
-            typeStr = "NULL";
-        else if (valueTok->isEnumerator())
+        else if (isNullOperand(tok))
+            typeStr = "null";
+        else if (tok->isEnumerator())
             typeStr = "enumerator";
         msg = "Redundant code: Found a statement that begins with " + typeStr + " constant.";
     }
     else if (!tok)
         msg = "Redundant code: Found a statement that begins with " + type + " constant.";
-    else if (tok->isCast() && tok->tokType() == Token::Type::eExtendedOp) {
-        msg = "Redundant code: Found unused cast ";
-        msg += valueTok ? "of expression '" + valueTok->expressionString() + "'." : "expression.";
-    }
+    else if (tok->isCast() && tok->tokType() == Token::Type::eExtendedOp)
+        msg = "Redundant code: Found unused cast in expression '" + tok->expressionString() + "'.";
     else if (tok->str() == "?" && tok->tokType() == Token::Type::eExtendedOp)
         msg = "Redundant code: Found unused result of ternary operator.";
     else if (tok->str() == "." && tok->tokType() == Token::Type::eOther)
@@ -3973,7 +3969,7 @@ void CheckOtherImpl::checkAccessOfMovedVariable()
                 if (usage == ExprUsage::Used)
                     accessOfMoved = true;
                 if (usage == ExprUsage::PassedByReference)
-                    accessOfMoved = !isVariableChangedByFunctionCall(tok, 0, mSettings, &inconclusive);
+                    accessOfMoved = !isVariableChangedByFunctionCall(tok, 0, mSettings.library, &inconclusive);
                 else if (usage == ExprUsage::Inconclusive)
                     inconclusive = true;
             }
@@ -4145,7 +4141,8 @@ static const Token *findShadowed(const Scope *scope, const Variable& var, int li
             return v.nameToken();
     }
     auto it = std::find_if(scope->functionList.cbegin(), scope->functionList.cend(), [&](const Function& f) {
-        return f.type == FunctionType::eFunction && f.name() == var.name() && precedes(f.tokenDef, var.nameToken());
+        return f.type == FunctionType::eFunction && f.name() == var.name()
+               && (scope->isClassOrStructOrUnion() || precedes(f.tokenDef, var.nameToken()));
     });
     if (it != scope->functionList.end())
         return it->tokenDef;

@@ -196,6 +196,7 @@ private:
         TEST_CASE(const99);
         TEST_CASE(const100);
         TEST_CASE(const101);
+        TEST_CASE(const102);
 
         TEST_CASE(const_handleDefaultParameters);
         TEST_CASE(const_passThisToMemberOfOtherClass);
@@ -6996,6 +6997,22 @@ private:
                    "    }\n"
                    "};\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void const102() {
+        checkConst("struct S {\n" // #14888
+                   "    void f() {\n"
+                   "        int *p = a;\n"
+                   "        *p = 0;\n"
+                   "    }\n"
+                   "    void g() {\n"
+                   "        const int *p = a;\n"
+                   "        if (*p) {}\n"
+                   "    }\n"
+                   "    int a[3];\n"
+                   "};\n");
+        ASSERT_EQUALS("[test.cpp:6:10]: (style, inconclusive) Technically the member function 'S::g' can be const. [functionConst]\n",
+                      errout_str());
     }
 
     void const_handleDefaultParameters() {

@@ -290,6 +290,7 @@ private:
         TEST_CASE(cppMaybeUnusedBefore);
         TEST_CASE(cppMaybeUnusedAfter1);
         TEST_CASE(cppMaybeUnusedAfter2);
+        TEST_CASE(cppMaybeUnusedAfter3);
         TEST_CASE(cppMaybeUnusedStructuredBinding);
 
         TEST_CASE(attributeAlignasBefore);
@@ -603,9 +604,13 @@ private:
         std::vector<std::string> files;
         simplecpp::TokenList tokens1(code, files, filename, &outputList);
         Preprocessor preprocessor(tokens1, settings, *this, Path::identify(tokens1.getFiles()[0], false));
-        (void)preprocessor.reportOutput(outputList, true);
+        std::list<Directive> directives;
+        preprocessor.setLoadCallback([&](const simplecpp::FileData &data) {
+            Preprocessor::createDirectives(data.tokens, directives);
+        });
+        preprocessor.createDirectives(directives);
         ASSERT(preprocessor.loadFiles(files));
-        std::list<Directive> directives = preprocessor.createDirectives();
+        (void)preprocessor.reportOutput(outputList, true);
 
         TokenList tokenlist{settings, Path::identify(filename, false)};
         Tokenizer tokenizer(std::move(tokenlist), *this);
@@ -2269,6 +2274,11 @@ private:
         const char code4[] = "union U { struct { int a; int b; }; int ab[2]; };";
         const char expected4[] = "union U { struct { int a ; int b ; } ; int ab [ 2 ] ; } ;";
         ASSERT_EQUALS(expected4, tokenizeAndStringify(code4));
+
+        // #14836: FP syntaxError for anonymous struct in for loop
+        const char code5[] = "void f(void) { for (struct { int a; } it = {0}; it.a < 10; it.a++) {} }";
+        const char expected5[] = "void f ( ) { struct Anonymous0 { int a ; } ; for ( struct Anonymous0 it = { 0 } ; it . a < 10 ; it . a ++ ) { } }";
+        ASSERT_EQUALS(expected5, tokenizeAndStringify(code5));
     }
 
     void vardecl1() {
@@ -4375,6 +4385,19 @@ private:
 
         const Token *var = Token::findsimplematch(tokenizer.tokens(), "var");
         ASSERT(var && var->isAttributeMaybeUnused());
+    }
+
+    void cppMaybeUnusedAfter3() {
+        const char code[] = "void foo(int x [[maybe_unused]]) {}";
+        const char expected[] = "void foo ( int x ) { }";
+
+        SimpleTokenizer tokenizer(settingsDefault, *this);
+        ASSERT(tokenizer.tokenize(code));
+
+        ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
+
+        const Token *x = Token::findsimplematch(tokenizer.tokens(), "x");
+        ASSERT(x && x->isAttributeMaybeUnused());
     }
 
     void cppMaybeUnusedStructuredBinding() {

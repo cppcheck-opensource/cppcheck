@@ -4911,6 +4911,44 @@ private:
         ASSERT_EQUALS("[test.cpp:3:10]: (style) Condition 'b()' is always false [knownConditionTrueFalse]\n"
                       "[test.cpp:4:9]: (style) Condition '!b()' is always true [knownConditionTrueFalse]\n",
                       errout_str());
+
+        check("int g();\n" // a value modified inside a nested branch must be lowered to possible
+              "void f(int outer, int inner) {\n"
+              "    int bits = 0;\n"
+              "    if (outer) {\n"
+              "        if (inner == 1)\n"
+              "            bits = g();\n"
+              "    }\n"
+              "    if (bits > 0) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("int g();\n" // the modifying branch has an escaping sibling - still must be lowered
+              "void f(int t, int u) {\n"
+              "    int v = 0;\n"
+              "    if (t) {\n"
+              "        if (u == 2)\n"
+              "            v = g();\n"
+              "        else\n"
+              "            return;\n"
+              "    }\n"
+              "    if (v > 0) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("bool f(int x) {\n" // only the innermost else escapes - x is 0 or >1 afterwards, not known
+              "    if (!x) {}\n"
+              "    else if (x > 1) {}\n"
+              "    else return false;\n"
+              "    return x ? false : true;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("bool f(int x) {\n" // the branch's fall-through path must clear the escape
+              "    if (x) { if (x > 1) {} else return false; }\n"
+              "    return x ? false : true;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void alwaysTrueSymbolic()
