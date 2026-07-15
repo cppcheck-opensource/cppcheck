@@ -23,6 +23,7 @@
 #include <wchar.h>
 #include <atlstr.h>
 #include <string>
+#include <locale.h>
 
 bool UpdateTraceACalled(TRACEHANDLE traceHandle, LPCSTR loggerName, EVENT_TRACE_PROPERTIES* pProperties)
 {
@@ -1237,4 +1238,18 @@ void constParameterPointer_SetupDiGetDeviceInstanceId(HDEVINFO info, SP_DEVINFO_
     const DWORD buffer_size = 256;
     TCHAR buffer[buffer_size];
     SetupDiGetDeviceInstanceId(info, data, buffer, buffer_size, NULL);
+}
+
+int invalidPrintfArgType_sprintf_s_l()
+{
+    double value = 3.14;
+    const size_t buffer_size = 64;
+    char buffer[buffer_size];
+    int precision = 2;
+    // cppcheck-suppress [checkLibraryFunction,valueFlowBailoutIncompleteVar]
+    _locale_t locale = _create_locale(LC_ALL, "C");
+    _sprintf_s_l(buffer, buffer_size, "%.*f", locale, precision, value);
+    // cppcheck-suppress checkLibraryFunction
+    _free_locale(locale);
+    return 0;
 }
