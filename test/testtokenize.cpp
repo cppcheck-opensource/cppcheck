@@ -104,6 +104,7 @@ private:
 
         TEST_CASE(foreach);     // #3690
         TEST_CASE(ifconstexpr);
+        TEST_CASE(ifconsteval);
 
         TEST_CASE(combineOperators);
 
@@ -1040,6 +1041,18 @@ private:
         ASSERT_EQUALS(
             "[test.cpp:1:27]: (debug) valueFlowConditionExpressions bailout: Skipping function due to incomplete variable FOO [valueFlowBailoutIncompleteVar]\n",
             filter_valueflow(errout_str()));
+    }
+
+    void ifconsteval() {
+        ASSERT_EQUALS("void f ( ) { if ( __cppcheck_consteval__ ) { bar ( ) ; } }", tokenizeAndStringify("void f() { if consteval { bar(); } }"));
+        filter_valueflow(errout_str());
+
+        ASSERT_EQUALS("void f ( ) { if ( ! __cppcheck_consteval__ ) { bar ( ) ; } }", tokenizeAndStringify("void f() { if !consteval { bar(); } }"));
+        filter_valueflow(errout_str());
+
+        ASSERT_EQUALS("void f ( ) { if ( __cppcheck_consteval__ ) { bar ( ) ; } else { baz ( ) ; } }",
+                       tokenizeAndStringify("void f() { if consteval { bar(); } else { baz(); } }"));
+        filter_valueflow(errout_str());
     }
 
     void combineOperators() {
