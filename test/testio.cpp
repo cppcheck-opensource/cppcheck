@@ -4791,6 +4791,18 @@ private:
                       "[test.cpp:17:5]: (warning) %s in format string (no. 5) requires 'char *' but the argument type is 'signed int'. [invalidPrintfArgType_s]\n"
                       "[test.cpp:17:5]: (warning) sprintf_s format string requires 5 parameters but 6 are given. [wrongPrintfScanfArgNum]\n", errout_str());
 
+        check("int main()\n"
+              "{\n"
+              "    double value = 3.14;\n"
+              "    const size_t buffer_size = 64;\n"
+              "    char buffer[buffer_size];\n"
+              "    int precision = 2;\n"
+              "    _locale_t locale = _create_locale(LC_ALL, \"C\");\n"
+              "    _sprintf_s_l(buffer, buffer_size, \"%.*f\", locale, precision, value);\n"
+              "    _free_locale(locale);\n"
+              "    return 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void testMicrosoftSecureScanfArgument() {
