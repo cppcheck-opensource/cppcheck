@@ -8810,6 +8810,9 @@ void Tokenizer::findGarbageCode() const
             if (!cpp || mSettings.standards.cpp < Standards::CPP20 || !Token::Match(tok->previous(), "%name% : %num% ="))
                 syntaxError(tok, tok->strAt(1) + " " + tok->strAt(2));
         }
+        else if (!cpp && Token::Match(tok, "++|--") && Token::Match(tok->next(), "++|--")) {
+            syntaxError(tok, tok->str() + tok->strAt(1));
+        }
         else if (Token::simpleMatch(tok, ") return") && !Token::Match(tok->link()->previous(), "if|while|for (")) {
             if (tok->link()->previous() && tok->link()->previous()->isUpperCaseName())
                 unknownMacroError(tok->link()->previous());
