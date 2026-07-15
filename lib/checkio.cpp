@@ -713,11 +713,11 @@ static int getMaxArgNo(const Library::Function *func)
 {
     const auto &checks = func->argumentChecks;
     return std::max_element(checks.cbegin(), checks.cend(),
-        [](const std::pair<int, Library::ArgumentChecks> &lhs,
-           const std::pair<int, Library::ArgumentChecks> &rhs) {
-            return lhs.first < rhs.first;
-        }
-    )->first;
+                            [](const std::pair<int, Library::ArgumentChecks> &lhs,
+                               const std::pair<int, Library::ArgumentChecks> &rhs) {
+        return lhs.first < rhs.first;
+    }
+                            )->first;
 }
 
 void CheckIOImpl::checkWrongPrintfScanfArguments()
