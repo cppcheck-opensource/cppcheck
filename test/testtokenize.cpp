@@ -400,6 +400,7 @@ private:
         TEST_CASE(multipleAssignment);
 
         TEST_CASE(platformWin);
+        TEST_CASE(platformWinEnumerator);
         TEST_CASE(platformWin32A);
         TEST_CASE(platformWin32W);
         TEST_CASE(platformWin32AStringCat); // ticket #5015
@@ -6262,6 +6263,31 @@ private:
         ASSERT_EQUALS(expected, win32A);
         ASSERT_EQUALS(win32A, tokenizeAndStringify(code, settings_win32w));
         ASSERT_EQUALS(win32A, tokenizeAndStringify(code, settings_win32a));
+    }
+
+    void platformWinEnumerator() {
+        // #11538 - HANDLE is a platform type (-> void*) but here it's an enumerator and must not be replaced
+        {
+            const char code[] = "enum class E { HANDLE, OTHER };";
+            ASSERT_EQUALS("enum class E { HANDLE , OTHER } ;", tokenizeAndStringify(code, settings_win32a));
+        }
+        // a platform type used within an enumerator's constant-expression is not a name and must still be replaced
+        {
+            const char code[] = "enum E { A = sizeof(HANDLE) };";
+            ASSERT_EQUALS("enum E { A = sizeof ( void * ) } ;", tokenizeAndStringify(code, settings_win32a));
+        }
+        // combines both: DWORD is the enum's underlying type (-> replaced), HANDLE is the enumerator name (-> kept),
+        // and the HANDLE inside sizeof() is part of the constant-expression (-> replaced)
+        {
+            const char code[] = "enum class T : DWORD { HANDLE = sizeof(HANDLE) };";
+            ASSERT_EQUALS("enum class T : unsigned long { HANDLE = sizeof ( void * ) } ;", tokenizeAndStringify(code, settings_win32a));
+        }
+        // a first naive fix walked backwards from every platform-type token to find an enclosing "{".
+        // this implementation failed on the following example, therefore test it.
+        {
+            const char code[] = "enum T { }; void test(int, HANDLE, int);";
+            ASSERT_EQUALS("enum T { } ; void test ( int , void * , int ) ;", tokenizeAndStringify(code, settings_win32a));
+        }
     }
 
     void platformWin32A() {
