@@ -3001,7 +3001,7 @@ bool isVariableChanged(const Variable * var, const Settings &settings, int depth
     const Token * start = var->declEndToken();
     if (!start)
         return false;
-    if (Token::Match(start, "; %varid% =", var->declarationId()) && !Token::simpleMatch(start->previous(), ")"))
+    if (start->isSplittedVarDeclEq() && Token::Match(start, "; %varid% =", var->declarationId()))
         start = start->tokAt(2);
     if (Token::simpleMatch(start, "=")) {
         const Token* next = nextAfterAstRightmostLeafGeneric(start);
