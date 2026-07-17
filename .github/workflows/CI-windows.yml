@@ -21,6 +21,7 @@ defaults:
 
 jobs:
 
+  # TODO: use Debug build to speed it up?
   build_qt:
     strategy:
       matrix:
@@ -68,7 +69,10 @@ jobs:
 
       - name: Run CMake install
         run: |
+          rem TODO: this performs a Debug build
+          rem TODO: the Qt DLLS are not being installed (because of the missing windeployqt?)
           cmake --build build --target install
+          rem TODO: validate the installed files
 
   build_cmake_cxxstd:
     strategy:

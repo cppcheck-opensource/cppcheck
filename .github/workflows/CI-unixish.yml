@@ -150,6 +150,7 @@ jobs:
       - name: Run CMake install
         run: |
           cmake --build cmake.output --target install
+          # TODO: validate the installed files
 
       - name: Run CMake on ubuntu (no CLI)
         if: matrix.os == 'ubuntu-22.04'
