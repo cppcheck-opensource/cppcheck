@@ -563,6 +563,9 @@ function check_file {
             lua_fn
             cppcheck_run --library="$lib" "${DIR}""$f"
             ;;
+        microsoft_gsl.cpp)
+            cppcheck_run --library="$lib" "${DIR}""$f"
+            ;;
         mfc.cpp)
             mfc_fn
             cppcheck_run --platform=win64 --library="$lib" "${DIR}""$f"
