@@ -4146,6 +4146,14 @@ private:
               "    *o = 1;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("int f() {\n"
+              "  int x = 0;\n"
+              "  int& r(x);\n"
+              "  r = x;\n"
+              "  return r;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void constParameterCallback() {

@@ -22,4 +22,4 @@ Infrastructure & dependencies:
 -
 
 Other:
--
+- Added configuration file for Microsoft.GSL (Guideline Support Library).

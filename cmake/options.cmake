@@ -134,18 +134,22 @@ set(CMAKE_DISABLE_PRECOMPILE_HEADERS Off CACHE BOOL "Disable precompiled headers
 # see https://gitlab.kitware.com/cmake/cmake/-/issues/21219
 set(CMAKE_PCH_PROLOGUE "")
 
+# TODO: do we need to set these?
 set(CMAKE_INCLUDE_DIRS_CONFIGCMAKE ${CMAKE_INSTALL_PREFIX}/include      CACHE PATH "Output directory for headers")
 set(CMAKE_LIB_DIRS_CONFIGCMAKE     ${CMAKE_INSTALL_PREFIX}/lib          CACHE PATH "Output directory for libraries")
 
+# TODO: do we need to set these?
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 
 string(LENGTH "${FILESDIR}" _filesdir_len)
 # override FILESDIR if it is set or empty
+# needs to be an absolute path in Cppcheck but a relative one for CMake install
 if(FILESDIR OR ${_filesdir_len} EQUAL 0)
-# TODO: verify that it is an absolute path?
+    set(FILESDIR_INSTALL               "${FILESDIR}") # TODO: make relative - leverage CMAKE_INSTALL_DATAROOTDIR?
     set(FILESDIR_DEF                   "${FILESDIR}")
 else()
-    set(FILESDIR_DEF                   ${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME} CACHE STRING "Cppcheck files directory")
+    set(FILESDIR_INSTALL               "share/${PROJECT_NAME}")
+    set(FILESDIR_DEF                   "${CMAKE_INSTALL_PREFIX}/${FILESDIR_INSTALL}")
 endif()
