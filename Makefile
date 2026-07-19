@@ -8,6 +8,10 @@ ifndef HAVE_RULES
     HAVE_RULES=
 endif
 
+ifndef HAVE_PCRE
+    HAVE_PCRE=1
+endif
+
 ifndef MATCHCOMPILER
     MATCHCOMPILER=
 endif
@@ -140,19 +144,26 @@ ifeq (g++, $(findstring g++,$(CXX)))
 endif
 override CXXFLAGS += -std=c++11
 ifeq ($(HAVE_RULES),yes)
+    override CPPFLAGS += -DHAVE_RULES
+    # TODO: handle explicit disabling
+    HAVE_PCRE=1
+    override CPPFLAGS += -DHAVE_STD_REGEX
+else ifneq ($(HAVE_RULES),)
+    $(error invalid HAVE_RULES value '$(HAVE_RULES)')
+endif
+
+ifeq ($(HAVE_PCRE),1)
     PCRE_CONFIG = $(shell which pcre-config)
     ifeq ($(PCRE_CONFIG),)
         $(error Did not find pcre-config)
     endif
     override CXXFLAGS += $(shell $(PCRE_CONFIG) --cflags)
-    override CPPFLAGS += -DHAVE_RULES
+    override CPPFLAGS += -DHAVE_PCRE
     ifdef LIBS
         LIBS += $(shell $(PCRE_CONFIG) --libs)
     else
         LIBS=$(shell $(PCRE_CONFIG) --libs)
     endif
-else ifneq ($(HAVE_RULES),)
-    $(error invalid HAVE_RULES value '$(HAVE_RULES)')
 endif
 
 # older make versions do not support # in $(shell) and newer ones handle the escape sequence literally

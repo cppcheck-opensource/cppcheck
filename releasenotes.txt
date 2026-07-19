@@ -22,4 +22,6 @@ Infrastructure & dependencies:
 -
 
 Other:
+- Added support for `std::regex` as the regular engine for rules. It can be specified using `std` in the engine` element in a rule XML.
+-
 -

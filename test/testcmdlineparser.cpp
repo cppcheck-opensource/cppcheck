@@ -409,6 +409,8 @@ private:
 #ifdef HAVE_RULES
         TEST_CASE(ruleFileMulti);
         TEST_CASE(ruleFileSingle);
+        TEST_CASE(ruleFileSinglePcre);
+        TEST_CASE(ruleFileSingleStd);
         TEST_CASE(ruleFileEmpty);
         TEST_CASE(ruleFileMissing);
         TEST_CASE(ruleFileInvalid);
@@ -2702,7 +2704,15 @@ private:
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--rule=.*\\", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, parser->parseFromArgs(3, argv));
+#if defined(HAVE_PCRE)
         ASSERT_EQUALS("cppcheck: error: failed to compile rule pattern '.*\\' (\\ at end of pattern).\n", logger->str());
+#elif defined(HAVE_STD_REGEX)
+    #if defined(_LIBCPP_VERSION)
+        ASSERT_EQUALS("cppcheck: error: failed to compile rule pattern '.*\\' (The expression contained an invalid escaped character, or a trailing escape.).\n", logger->str());
+    #else
+        ASSERT_EQUALS("cppcheck: error: failed to compile rule pattern '.*\\' (Invalid escape at end of regular expression).\n", logger->str());
+    #endif
+#endif
     }
 #else
     void ruleNotSupported() {
@@ -2719,7 +2729,6 @@ private:
         ScopedFile file("rule.xml",
                         "<rules>\n"
                         "<rule>\n"
-                        "<engine>pcre</engine>\n"
                         "<tokenlist>raw</tokenlist>\n"
                         "<pattern>.+</pattern>\n"
                         "<message>\n"
@@ -2742,14 +2751,14 @@ private:
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(2, settings->rules.size());
         auto it = settings->rules.cbegin();
-        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->regex->engine());
+        ASSERT_EQUALS_ENUM(Regex::defaultEngine(), it->regex->engine());
         ASSERT_EQUALS("raw", it->tokenlist);
         ASSERT_EQUALS(".+", it->pattern);
         ASSERT_EQUALS_ENUM(Severity::error, it->severity);
         ASSERT_EQUALS("ruleId1", it->id);
         ASSERT_EQUALS("ruleSummary1", it->summary);
         ++it;
-        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->regex->engine());
+        ASSERT_EQUALS_ENUM(Regex::defaultEngine(), it->regex->engine());
         ASSERT_EQUALS("define", it->tokenlist);
         ASSERT_EQUALS(".*", it->pattern);
         ASSERT_EQUALS_ENUM(Severity::warning, it->severity);
@@ -2773,12 +2782,52 @@ private:
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(1, settings->rules.size());
         auto it = settings->rules.cbegin();
-        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->regex->engine());
+        ASSERT_EQUALS_ENUM(Regex::defaultEngine(), it->regex->engine());
         ASSERT_EQUALS("define", it->tokenlist);
         ASSERT_EQUALS(".+", it->pattern);
         ASSERT_EQUALS_ENUM(Severity::error, it->severity);
         ASSERT_EQUALS("ruleId", it->id);
         ASSERT_EQUALS("ruleSummary", it->summary);
+    }
+
+    void ruleFileSinglePcre() {
+        REDIRECT;
+        ScopedFile file("rule_single_pcre.xml",
+                        "<rule>\n"
+                        "<pattern>.+</pattern>\n"
+                        "<engine>pcre</engine>\n"
+                        "</rule>\n");
+        const char * const argv[] = {"cppcheck", "--rule-file=rule_single_pcre.xml", "file.cpp"};
+#if defined(HAVE_PCRE)
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
+        ASSERT_EQUALS(1, settings->rules.size());
+        auto it = settings->rules.cbegin();
+        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->regex->engine());
+        ASSERT_EQUALS(".+", it->pattern);
+#else
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, parseFromArgs(argv));
+        ASSERT_EQUALS("cppcheck: error: unknown regex engine 'pcre'.\n", logger->str()); // TODO: lacks file context
+#endif
+    }
+
+    void ruleFileSingleStd() {
+        REDIRECT;
+        ScopedFile file("rule_single_std.xml",
+                        "<rule>\n"
+                        "<pattern>.+</pattern>\n"
+                        "<engine>std</engine>\n"
+                        "</rule>\n");
+        const char * const argv[] = {"cppcheck", "--rule-file=rule_single_std.xml", "file.cpp"};
+#if defined(HAVE_STD_REGEX)
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
+        ASSERT_EQUALS(1, settings->rules.size());
+        auto it = settings->rules.cbegin();
+        ASSERT_EQUALS_ENUM(Regex::Engine::Std, it->regex->engine());
+        ASSERT_EQUALS(".+", it->pattern);
+#else
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, parseFromArgs(argv));
+        ASSERT_EQUALS("cppcheck: error: unknown regex engine 'std'..\n", logger->str()); // TODO: lacks file context
+#endif
     }
 
     void ruleFileEmpty() {
@@ -2941,7 +2990,15 @@ private:
                         "</rule>\n");
         const char * const argv[] = {"cppcheck", "--rule-file=rule.xml", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, parser->parseFromArgs(3, argv));
+#if defined(HAVE_PCRE)
         ASSERT_EQUALS("cppcheck: error: unable to load rule-file 'rule.xml' - pattern '.+\\' failed to compile (\\ at end of pattern).\n", logger->str());
+#elif defined(HAVE_STD_REGEX)
+        #if defined(_LIBCPP_VERSION)
+            ASSERT_EQUALS("cppcheck: error: unable to load rule-file 'rule.xml' - pattern '.+\\' failed to compile (The expression contained an invalid escaped character, or a trailing escape.).\n", logger->str());
+        #else
+            ASSERT_EQUALS("cppcheck: error: unable to load rule-file 'rule.xml' - pattern '.+\\' failed to compile (Invalid escape at end of regular expression).\n", logger->str());
+        #endif
+#endif
     }
 
     void ruleFileInvalidEngine() {
@@ -2953,7 +3010,7 @@ private:
                         "</rule>\n");
         const char * const argv[] = {"cppcheck", "--rule-file=rule.xml", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, parseFromArgs(argv));
-        ASSERT_EQUALS("cppcheck: error: unknown regex engine 'llvm'.\n", logger->str());
+        ASSERT_EQUALS("cppcheck: error: unknown regex engine 'llvm'.\n", logger->str()); // TODO: lacks file context
     }
 #else
     void ruleFileNotSupported() {

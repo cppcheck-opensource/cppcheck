@@ -1317,7 +1317,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
             }
 
             std::string regex_err;
-            auto regex = Regex::create(rule.pattern, Regex::Engine::Pcre, regex_err);
+            auto regex = Regex::create(rule.pattern, Regex::defaultEngine(), regex_err);
             if (!regex) {
                 mLogger.printError("failed to compile rule pattern '" + rule.pattern + "' (" + regex_err + ").");
                 return Result::Fail;
@@ -1345,7 +1345,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                     node = node->FirstChildElement("rule");
                 for (; node && strcmp(node->Value(), "rule") == 0; node = node->NextSiblingElement()) {
                     Rule rule;
-                    Regex::Engine regexEngine = Regex::Engine::Pcre;
+                    Regex::Engine regexEngine = Regex::defaultEngine();
 
                     for (const tinyxml2::XMLElement *subnode = node->FirstChildElement(); subnode; subnode = subnode->NextSiblingElement()) {
                         const char * const subname = subnode->Name();
@@ -1377,10 +1377,8 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                         }
                         else if (std::strcmp(subname, "engine") == 0) {
                             const char * const engine = empty_if_null(subtext);
-                            if (std::strcmp(engine, "pcre") == 0) {
-                                regexEngine = Regex::Engine::Pcre;
-                            }
-                            else {
+                            if (!Regex::stringToEngine(engine, regexEngine))
+                            {
                                 mLogger.printError(std::string("unknown regex engine '") + engine + "'.");
                                 return Result::Fail;
                             }
