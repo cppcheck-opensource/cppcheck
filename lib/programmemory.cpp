@@ -1512,6 +1512,31 @@ namespace {
             return unknown();
         }
 
+        // Get the size of the container. If the container itself is not tracked in the program
+        // memory then check if it is symbolically equal to a container whose size is tracked.
+        ValueFlow::Value executeContainerSize(const Token* containerTok)
+        {
+            ValueFlow::Value v = execute(containerTok);
+            if (v.isContainerSizeValue())
+                return v;
+            for (const ValueFlow::Value& value : containerTok->values()) {
+                if (!value.isSymbolicValue())
+                    continue;
+                if (value.isImpossible())
+                    continue;
+                if (value.intvalue != 0)
+                    continue;
+                if (!value.tokvalue)
+                    continue;
+                if (value.tokvalue->exprId() == 0)
+                    continue;
+                const ValueFlow::Value* sizeValue = pm->getValue(value.tokvalue->exprId());
+                if (sizeValue && sizeValue->isContainerSizeValue())
+                    return *sizeValue;
+            }
+            return unknown();
+        }
+
         ValueFlow::Value executeImpl(const Token* expr)
         {
             const ValueFlow::Value* value = nullptr;
@@ -1540,14 +1565,14 @@ namespace {
                 const Token* containerTok = expr->tokAt(-2)->astOperand1();
                 const Library::Container::Yield yield = containerTok->valueType()->container->getYield(expr->strAt(-1));
                 if (yield == Library::Container::Yield::SIZE) {
-                    ValueFlow::Value v = execute(containerTok);
+                    ValueFlow::Value v = executeContainerSize(containerTok);
                     if (!v.isContainerSizeValue())
                         return unknown();
                     v.valueType = ValueFlow::Value::ValueType::INT;
                     return v;
                 }
                 if (yield == Library::Container::Yield::EMPTY) {
-                    ValueFlow::Value v = execute(containerTok);
+                    ValueFlow::Value v = executeContainerSize(containerTok);
                     if (!v.isContainerSizeValue())
                         return unknown();
                     if (v.isImpossible() && v.intvalue == 0)

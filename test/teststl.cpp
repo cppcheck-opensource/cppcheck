@@ -1003,6 +1003,18 @@ private:
                     "}\n");
         ASSERT_EQUALS("[test.cpp:2:13]: error: Out of bounds access in 'v[2]', if 'v' size is 1 and '2' is 2 [containerOutOfBounds]\n",
                       errout_str());
+
+        checkNormal("std::string f(const std::string& str) {\n" // do not warn, the copy has the same size as 'str'
+                    "    std::string outStr = str;\n"
+                    "    if (!outStr.empty())\n"
+                    "        outStr[0] = 'a';\n"
+                    "    for (int i = 0; i < str.size(); ++i) {\n"
+                    "        if (outStr[i] == '_')\n"
+                    "            outStr[i] = ' ';\n"
+                    "    }\n"
+                    "    return outStr;\n"
+                    "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void outOfBoundsSymbolic()
