@@ -301,6 +301,7 @@ private:
         TEST_CASE(templateTypeDeduction13); // members declared after the member function are visible
         TEST_CASE(templateTypeDeduction14); // a non template overload might be a better match
         TEST_CASE(templateTypeDeduction15); // final classes
+        TEST_CASE(templateTypeDeduction16); // template between two blocks of the same namespace
         TEST_CASE(templateTypeDeductionFullRebuild); // --template-full-rebuild gives the same result
 
         TEST_CASE(simplifyTemplateArgs1);
@@ -6916,6 +6917,22 @@ private:
                                "void E :: etf<double> ( double t ) { ( void ) t ; }";
             ASSERT_EQUALS(exp, tok(code));
         }
+    }
+
+    void templateTypeDeduction16()
+    { // the declaration that replaces a template between two blocks of the same namespace
+      // must be added to the enclosing scope - a namespace consists of multiple blocks and
+      // bodyStart/bodyEnd only track the latest one
+        const char code[] = "namespace N { struct A {}; }\n"
+                            "template<class T> T* def(T* p, T* d) { return p ? p : d; }\n"
+                            "namespace N { struct B {}; }\n"
+                            "const char* f(const char* p) { return def(p, \"\"); }";
+        const char exp[] = "namespace N { struct A { } ; } "
+                           "const char * def<constchar> ( const char * p , const char * d ) ; "
+                           "namespace N { struct B { } ; } "
+                           "const char * f ( const char * p ) { return def<constchar> ( p , \"\" ) ; } "
+                           "const char * def<constchar> ( const char * p , const char * d ) { return p ? p : d ; }";
+        ASSERT_EQUALS(exp, tok(code));
     }
 
     void templateTypeDeductionFullRebuild()

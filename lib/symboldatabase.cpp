@@ -1875,17 +1875,29 @@ void SymbolDatabase::removeSymbolsForTokens(const std::unordered_set<const Token
 
     // the scopes, functions, variables, types and enumerators declared by those tokens
     std::unordered_set<const Scope*> removedScopes;
+    std::unordered_set<const Variable*> removedVariables;
+    std::unordered_set<const Enumerator*> removedEnumerators;
     for (const Scope& scope : scopeList) {
         if ((scope.classDef && removedTokens.count(scope.classDef) != 0) ||
-            (scope.bodyStart && removedTokens.count(scope.bodyStart) != 0))
+            (scope.bodyStart && removedTokens.count(scope.bodyStart) != 0)) {
             removedScopes.insert(&scope);
+            std::transform(scope.varlist.cbegin(), scope.varlist.cend(), std::inserter(removedVariables, removedVariables.end()), [](const Variable& var) {
+                return &var;
+            });
+            std::transform(scope.enumeratorList.cbegin(), scope.enumeratorList.cend(), std::inserter(removedEnumerators, removedEnumerators.end()), [](const Enumerator& enumerator) {
+                return &enumerator;
+            });
+        }
     }
     std::unordered_set<const Function*> removedFunctions;
     for (Scope& scope : scopeList) {
         for (Function& function : scope.functionList) {
-            if (function.tokenDef && removedTokens.count(function.tokenDef) != 0)
+            if (function.tokenDef && removedTokens.count(function.tokenDef) != 0) {
                 removedFunctions.insert(&function);
-            else if (function.token && removedTokens.count(function.token) != 0) {
+                std::transform(function.argumentList.cbegin(), function.argumentList.cend(), std::inserter(removedVariables, removedVariables.end()), [](const Variable& arg) {
+                    return &arg;
+                });
+            } else if (function.token && removedTokens.count(function.token) != 0) {
                 // only the function definition is removed - the declaration remains
                 function.token = nullptr;
                 function.arg = function.argDef;
@@ -1894,27 +1906,10 @@ void SymbolDatabase::removeSymbolsForTokens(const std::unordered_set<const Token
             }
         }
     }
-    std::unordered_set<const Variable*> removedVariables;
-    for (const Scope* scope : removedScopes) {
-        std::transform(scope->varlist.cbegin(), scope->varlist.cend(), std::inserter(removedVariables, removedVariables.end()), [](const Variable& var) {
-            return &var;
-        });
-    }
-    for (const Function* function : removedFunctions) {
-        std::transform(function->argumentList.cbegin(), function->argumentList.cend(), std::inserter(removedVariables, removedVariables.end()), [](const Variable& arg) {
-            return &arg;
-        });
-    }
     std::unordered_set<const Type*> removedTypes;
     for (const Type& type : typeList) {
         if (type.classDef && removedTokens.count(type.classDef) != 0)
             removedTypes.insert(&type);
-    }
-    std::unordered_set<const Enumerator*> removedEnumerators;
-    for (const Scope* scope : removedScopes) {
-        std::transform(scope->enumeratorList.cbegin(), scope->enumeratorList.cend(), std::inserter(removedEnumerators, removedEnumerators.end()), [](const Enumerator& enumerator) {
-            return &enumerator;
-        });
     }
 
     // clear the references from the surviving tokens
@@ -2004,7 +1999,11 @@ void SymbolDatabase::addSymbolsForNewTokenRanges(const std::vector<std::pair<Tok
         const Scope* enclosing = anchor ? anchor->scope() : &scopeList.front();
         if (!enclosing)
             continue;
-        if (anchor && anchor == enclosing->bodyEnd)
+        // an anchor that closes the enclosing scope means the new tokens are in its parent.
+        // a namespace can consist of multiple blocks and bodyStart/bodyEnd only track the
+        // latest block - so for namespaces any closing brace with the namespace scope closes it.
+        if (anchor && anchor->str() == "}" &&
+            (anchor == enclosing->bodyEnd || enclosing->type == ScopeType::eNamespace))
             enclosing = enclosing->nestedIn ? enclosing->nestedIn : &scopeList.front();
         findAllScopes(range.first, range.second->next(), const_cast<Scope*>(enclosing));
     }

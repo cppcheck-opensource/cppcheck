@@ -4404,7 +4404,7 @@ void Tokenizer::updateTokenDataAfterTemplateSimplification()
                 if (tok == region.second)
                     break;
             }
-            list.createAst(region.first, region.second->next());
+            TokenList::createAst(region.first, region.second->next());
         }
     }
     list.validateAst(mSettings.debugnormal);
@@ -4421,7 +4421,10 @@ void Tokenizer::updateTokenDataAfterTemplateSimplification()
     for (Token* tok = list.front(); tok; tok = tok->next()) {
         if (tok->scope()) {
             lastScope = tok->scope();
-            if (tok == lastScope->bodyEnd && lastScope->nestedIn)
+            // a namespace can consist of multiple blocks and bodyStart/bodyEnd only track the
+            // latest block - so for namespaces any closing brace with the namespace scope closes it
+            if (lastScope->nestedIn &&
+                (tok == lastScope->bodyEnd || (tok->str() == "}" && lastScope->type == ScopeType::eNamespace)))
                 lastScope = lastScope->nestedIn;
         } else if (lastScope)
             tok->scope(lastScope);

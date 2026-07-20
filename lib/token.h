@@ -1242,7 +1242,7 @@ public:
         if (v || mImpl->mVarId)
             tokType(eVariable);
         else if (mTokType == eVariable)
-            tokType(eName);
+            update_property_info(); // eType for standard types, eKeyword for keywords, eName otherwise
     }
 
     /**
