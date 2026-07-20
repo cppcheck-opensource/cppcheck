@@ -144,7 +144,7 @@ namespace {
                 // If we are in a loop then jump to the end
                 if (out)
                     *out = loopEnds.back();
-            } else if (Token::Match(tok, "return|throw")) {
+            } else if (Token::Match(tok, "return|co_return|throw")) {
                 traverseRecursive(tok->astOperand2(), f, traverseUnknown);
                 traverseRecursive(tok->astOperand1(), f, traverseUnknown);
                 return Break(Analyzer::Terminate::Escape);
