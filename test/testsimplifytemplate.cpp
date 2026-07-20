@@ -302,6 +302,7 @@ private:
         TEST_CASE(templateTypeDeduction14); // a non template overload might be a better match
         TEST_CASE(templateTypeDeduction15); // final classes
         TEST_CASE(templateTypeDeduction16); // template between two blocks of the same namespace
+        TEST_CASE(templateTypeDeductionTokenTypes); // standard types/keywords keep their token type
         TEST_CASE(templateTypeDeductionFullRebuild); // --template-full-rebuild gives the same result
 
         TEST_CASE(simplifyTemplateArgs1);
@@ -6933,6 +6934,34 @@ private:
                            "const char * f ( const char * p ) { return def<constchar> ( p , \"\" ) ; } "
                            "const char * def<constchar> ( const char * p , const char * d ) { return p ? p : d ; }";
         ASSERT_EQUALS(exp, tok(code));
+    }
+
+    void templateTypeDeductionTokenTypes()
+    { // standard types and keywords must keep their token type when the deduce loop
+      // rebuilds the symbol database (the teardown clears the symbol associations of
+      // all tokens) - a MATCHCOMPILER=Verify build reports the resulting difference
+      // between the compiled and the parsed Token::Match
+        const char code[] = "template<class T> T id(T x) { return x; }\n"
+                            "void* g(void* p) { return id(p); }\n"
+                            "int h() { auto y = id(1); return y; }";
+        for (const Settings* s : {&settings1, &settings1_fr}) {
+            SimpleTokenizer tokenizer(*s, *this);
+            ASSERT(tokenizer.tokenize(code));
+            int voidCount = 0;
+            int autoCount = 0;
+            for (const Token* tok2 = tokenizer.tokens(); tok2; tok2 = tok2->next()) {
+                if (tok2->str() == "void") {
+                    ++voidCount;
+                    ASSERT_EQUALS_ENUM(Token::Type::eType, tok2->tokType());
+                    ASSERT_EQUALS(true, tok2->isStandardType());
+                } else if (tok2->str() == "auto") {
+                    ++autoCount;
+                    ASSERT(tok2->tokType() == Token::Type::eKeyword || tok2->tokType() == Token::Type::eType);
+                }
+            }
+            ASSERT(voidCount >= 2); // the declaration and the instantiation
+            ASSERT_EQUALS(1, autoCount);
+        }
     }
 
     void templateTypeDeductionFullRebuild()
