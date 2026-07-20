@@ -145,6 +145,7 @@ private:
         TEST_CASE(nullpointer105); // #13861
         TEST_CASE(nullpointer106); // #13682
         TEST_CASE(nullpointer107); // #13682 (FP/FN cases around guards that depend on the pointer indirectly)
+        TEST_CASE(nullpointer108);
         TEST_CASE(nullpointer_addressOf); // address of
         TEST_CASE(nullpointerSwitch); // #2626
         TEST_CASE(nullpointer_cast); // #4692
@@ -3103,6 +3104,15 @@ private:
               "    p->g();\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void nullpointer108() { // #14422
+        check("void f() {\n"
+              "    int *p{};\n"
+              "    int *&r{p};\n"
+              "    if (*r) {}\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:4:10]: (error) Null pointer dereference: r [nullPointer]\n", errout_str());
     }
 
     void nullpointer_addressOf() { // address of
