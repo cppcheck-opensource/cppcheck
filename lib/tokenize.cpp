@@ -4003,7 +4003,6 @@ void Tokenizer::arraySize()
     }
 }
 
-// cppcheck-suppress functionConst
 void Tokenizer::arraySizeAfterValueFlow()
 {
     // After ValueFlow, adjust array sizes.
