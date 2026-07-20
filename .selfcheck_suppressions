@@ -59,6 +59,8 @@ autoNoType:test/*.cpp
 autoNoType:tools/triage/mainwindow.cpp
 # ticket 11631
 templateInstantiation:test/testutils.cpp
+# used in a member initializer - the check does not see usage there
+unusedPrivateFunction:test/testsimplifytemplate.cpp
 
 naming-varname:externals/simplecpp/simplecpp.h
 naming-privateMemberVariable:externals/simplecpp/simplecpp.h

@@ -1976,6 +1976,12 @@ void SymbolDatabase::removeSymbolsForTokens(const std::unordered_set<const Token
 
 void SymbolDatabase::addSymbolsForNewTokenRanges(const std::vector<std::pair<Token*, Token*>>& newRanges)
 {
+    // the incremental setVarId() can assign new variable ids even when there are no new
+    // token ranges (for example in a round that only removes deferred template
+    // declarations) - the variable symbol table must cover all ids
+    if (mVariableList.size() < mTokenizer.varIdCount() + 1)
+        mVariableList.resize(mTokenizer.varIdCount() + 1);
+
     if (newRanges.empty())
         return;
 
@@ -2046,7 +2052,6 @@ void SymbolDatabase::addSymbolsForNewTokenRanges(const std::vector<std::pair<Tok
 
     // variable symbol table: add the new variables (incremental version of
     // createSymbolDatabaseVariableSymbolTable)
-    mVariableList.resize(mTokenizer.varIdCount() + 1);
     for (Scope* scope : newScopes)
         addVariablesToSymbolTable(*scope);
     for (const auto& f : newFunctions)

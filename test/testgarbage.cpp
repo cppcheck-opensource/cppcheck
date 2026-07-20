@@ -261,6 +261,7 @@ private:
         TEST_CASE(garbageCode229);
         TEST_CASE(garbageCode230);
         TEST_CASE(garbageCode231);
+        TEST_CASE(garbageCode232);
 
         TEST_CASE(garbageCodeFuzzerClientMode1); // test cases created with the fuzzer client, mode 1
 
@@ -1780,6 +1781,18 @@ private:
     }
     void garbageCode231() {
         ASSERT_THROW_INTERNAL(checkCode("char char* [] = {\"a\" \"b\"}"), SYNTAX);
+    }
+
+    void garbageCode232() {
+        // a template deduction round that only removes deferred template declarations can
+        // still assign new variable ids - the variable symbol table must cover them
+        (void)checkCode("template <> struct a {\n"
+                        "} template <class b> a<b> c(b) {\n"
+                        "}\n"
+                        "int d;\n"
+                        "c(d)(e, function<(g, h i)> &f) template <class n> j(k, n);\n"
+                        "j(l, m)\n"); // don't crash
+        ASSERT_EQUALS("", errout_str());
     }
 
 

@@ -44,6 +44,8 @@ private:
     const Settings settings1_d = settingsBuilder(settings1).debugwarnings().build();
     const Settings settings1_fr = makeFullRebuildSettings(settings1);
 
+    // used in the settings1_fr initializer - the unusedPrivateFunction check does not
+    // see usage in member initializers (suppressed in .selfcheck_suppressions)
     static Settings makeFullRebuildSettings(const Settings& base) {
         Settings s = base;
         s.templateFullRebuild = true;
