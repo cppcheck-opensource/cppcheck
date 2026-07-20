@@ -146,6 +146,7 @@ private:
         TEST_CASE(nullpointer106); // #13682
         TEST_CASE(nullpointer107); // #13682 (FP/FN cases around guards that depend on the pointer indirectly)
         TEST_CASE(nullpointer108);
+        TEST_CASE(nullpointer109);
         TEST_CASE(nullpointer_addressOf); // address of
         TEST_CASE(nullpointerSwitch); // #2626
         TEST_CASE(nullpointer_cast); // #4692
@@ -3113,6 +3114,18 @@ private:
               "    if (*r) {}\n"
               "}");
         ASSERT_EQUALS("[test.cpp:4:10]: (error) Null pointer dereference: r [nullPointer]\n", errout_str());
+    }
+
+    void nullpointer109()
+    {
+        check("boost::asio::awaitable<int> test()\n"
+              "{\n"
+              "    const auto *s = getStr();\n"
+              "    if(!s) co_return int{1};\n"
+              "    std::print(\"{}\",*s);\n"
+              "    co_return int{9};\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void nullpointer_addressOf() { // address of
