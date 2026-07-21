@@ -3553,8 +3553,8 @@ private:
         ASSERT_EQUALS("[test.cpp:3:17]: (error) Buffer is accessed out of bounds: &buf[0] [bufferAccessOutOfBounds]\n", errout_str());
 
         check("void f(FILE *fp) {\n" // #14929
-	        "    std::string s;\n"
-	        "    fwrite(&s, 1, 1, fp);\n"
+              "    std::string s;\n"
+              "    fwrite(&s, 1, 1, fp);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str()); // don't crash
     }
