@@ -864,7 +864,7 @@ static ParameterShape parseParameterShape(const Token* start, const std::vector<
         return typeParameter->str() == shape.typeTok->str();
     });
     if (it != typeParameters.cend())
-        shape.templateParameterIndex = static_cast<int>(it - typeParameters.cbegin());
+        shape.templateParameterIndex = it - typeParameters.cbegin();
     return shape;
 }
 
@@ -1186,7 +1186,9 @@ std::string TemplateSimplifier::deduceFunctionTemplateArguments(Token* tok,
         if (it != parameterCountCache.cend())
             return it->second;
         const DeductionCandidate parsed = parseDeductionCandidate(candidate);
-        const int count = parsed.typeParameters.empty() ? -1 : static_cast<int>(parsed.parameterShapes.size());
+        int count = -1;
+        if (!parsed.typeParameters.empty())
+            count = parsed.parameterShapes.size();
         parameterCountCache[&candidate] = count;
         return count;
     };
@@ -1196,7 +1198,7 @@ std::string TemplateSimplifier::deduceFunctionTemplateArguments(Token* tok,
         // matching is not possible yet - the declaration may be in a base class - so
         // consider all declarations with this name.
         for (auto pos = range.first; pos != range.second; ++pos) {
-            if (supportedParameterCount(*pos->second) == static_cast<int>(instantiationArgs.size())) {
+            if (supportedParameterCount(*pos->second) == instantiationArgs.size()) {
                 mPendingTypeDeductions = true;
                 return qualification;
             }
@@ -1280,7 +1282,7 @@ std::string TemplateSimplifier::deduceFunctionTemplateArguments(Token* tok,
     const TokenAndName* declaration = nullptr;
     DeductionCandidate parsedDeclaration;
     for (const TokenAndName* candidate : candidates) {
-        if (supportedParameterCount(*candidate) != static_cast<int>(instantiationArgs.size()))
+        if (supportedParameterCount(*candidate) != instantiationArgs.size())
             continue;
         DeductionCandidate parsed = parseDeductionCandidate(*candidate);
 
