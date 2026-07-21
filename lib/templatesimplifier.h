@@ -415,6 +415,10 @@ private:
      */
     void addInstantiation(Token *token, const std::string &scope);
 
+    /** deduceFunctionTemplateArguments() parse results, cached per declaration and
+     * shared by the call sites of one pass */
+    struct DeductionCache;
+
     /**
      * Deduce the template arguments of a function template call from the function
      * arguments and insert them after the name token: "f ( 1 )" => "f < int > ( 1 )".
@@ -425,8 +429,7 @@ private:
      * @param qualification qualification of the call ("A :: B" for "A :: B :: f ( 1 )")
      * @param scopeName name of the scope the call is in
      * @param functionNameMap map with all function template declarations
-     * @param parameterCountCache cache of the per declaration parse results, shared by
-     * the call sites of one pass
+     * @param deductionCache cache of the per declaration parse results, must not be null
      * @return the qualification of the call: the given qualification, or the scope of
      * the deduced declaration when it is in a base class and explicit qualification
      * was inserted at the call site
@@ -435,7 +438,7 @@ private:
                                                 std::string qualification,
                                                 const std::string& scopeName,
                                                 const std::multimap<std::string, const TokenAndName*>& functionNameMap,
-                                                std::map<const TokenAndName*, int>& parameterCountCache);
+                                                DeductionCache* deductionCache);
 
     /**
      * Remember that the given instantiated function template declaration should not be
@@ -443,6 +446,14 @@ private:
      * it again. It is removed later by removeDeferredTemplateDeclarations().
      */
     void deferRemoval(Token* declTok);
+
+    /**
+     * Whether removing the given instantiated template declaration must be deferred
+     * with deferRemoval() instead of removing it immediately.
+     */
+    bool shouldDeferRemoval(const TokenAndName& declaration) const {
+        return mUseTypeInformation || (mPendingTypeDeductions && declaration.isFunction());
+    }
 
     /** remember tokens that were added during a type-information round so the symbol
      * database can be updated incrementally */

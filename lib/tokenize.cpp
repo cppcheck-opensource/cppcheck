@@ -4289,15 +4289,6 @@ void Tokenizer::simplifyTemplatesUsingTypeInformation()
 
     bool finalized = false;
 
-    auto updateOrRebuild = [&](bool incremental) {
-        if (incremental)
-            updateTokenDataAfterTemplateSimplification();
-        else {
-            mTemplateSimplifier->clearTokenChanges();
-            rebuildTokenDataAfterTemplateSimplification();
-        }
-    };
-
     constexpr int maxRounds = 5;
     for (int round = 0; round < maxRounds; ++round) {
         if (Settings::terminated())
@@ -4311,14 +4302,24 @@ void Tokenizer::simplifyTemplatesUsingTypeInformation()
             mTemplateSimplifier->removeDeferredTemplateDeclarations(incremental ? mSymbolDatabase : nullptr);
             finalized = true;
         }
-        updateOrRebuild(incremental);
+        updateOrRebuildTokenDataAfterTemplateSimplification(incremental);
         if (finalized)
             break;
     }
     if (!finalized) {
         const bool incremental = allowIncremental && mTemplateSimplifier->incrementalUpdatePossible();
         if (mTemplateSimplifier->removeDeferredTemplateDeclarations(incremental ? mSymbolDatabase : nullptr))
-            updateOrRebuild(incremental);
+            updateOrRebuildTokenDataAfterTemplateSimplification(incremental);
+    }
+}
+
+void Tokenizer::updateOrRebuildTokenDataAfterTemplateSimplification(bool incremental)
+{
+    if (incremental)
+        updateTokenDataAfterTemplateSimplification();
+    else {
+        mTemplateSimplifier->clearTokenChanges();
+        rebuildTokenDataAfterTemplateSimplification();
     }
 }
 

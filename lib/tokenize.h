@@ -325,6 +325,12 @@ private:
      */
     void updateTokenDataAfterTemplateSimplification();
 
+    /**
+     * updateTokenDataAfterTemplateSimplification() or
+     * rebuildTokenDataAfterTemplateSimplification() depending on incremental
+     */
+    void updateOrRebuildTokenDataAfterTemplateSimplification(bool incremental);
+
     void simplifyDoublePlusAndDoubleMinus();
 
     void simplifyRedundantConsecutiveBraces();
