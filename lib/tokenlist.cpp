@@ -1898,24 +1898,23 @@ static Token * createAstAtToken(Token *tok)
 
 void TokenList::clearAst() const
 {
-    for (Token *tok = mTokensFrontBack->front; tok; tok = tok->next())
+    for (Token* tok = mTokensFrontBack->front; tok; tok = tok->next())
         tok->clearAst();
 }
 
-void TokenList::createAst() const
-{
+void TokenList::createAst() const {
     createAst(mTokensFrontBack->front, nullptr);
 }
 
 void TokenList::createAst(Token* startToken, const Token* endToken)
 {
-    for (Token *tok = startToken; tok && tok != endToken; tok = tok ? tok->next() : nullptr) {
+    for (Token* tok = startToken; tok && tok != endToken; tok = tok ? tok->next() : nullptr) {
         Token* const nextTok = createAstAtToken(tok);
         if (precedes(nextTok, tok))
             throw InternalError(tok, "Syntax Error: Infinite loop when creating AST.", InternalError::AST);
         tok = nextTok;
     }
-    for (Token *tok = startToken; tok && tok != endToken; tok = tok ? tok->next() : nullptr) {
+    for (Token* tok = startToken; tok && tok != endToken; tok = tok ? tok->next() : nullptr) {
         if (tok->astParent())
             continue;
         if (!tok->astOperand1() && !tok->astOperand2())

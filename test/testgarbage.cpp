@@ -1783,7 +1783,8 @@ private:
         ASSERT_THROW_INTERNAL(checkCode("char char* [] = {\"a\" \"b\"}"), SYNTAX);
     }
 
-    void garbageCode232() {
+    void garbageCode232()
+    {
         // a template deduction round that only removes deferred template declarations can
         // still assign new variable ids - the variable symbol table must cover them
         (void)checkCode("template <> struct a {\n"
@@ -1794,7 +1795,6 @@ private:
                         "j(l, m)\n"); // don't crash
         ASSERT_EQUALS("", errout_str());
     }
-
 
     void syntaxErrorFirstToken() {
         ASSERT_THROW_INTERNAL(checkCode("&operator(){[]};"), SYNTAX); // #7818

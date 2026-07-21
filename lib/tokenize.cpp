@@ -4349,7 +4349,7 @@ void Tokenizer::updateTokenDataAfterTemplateSimplification()
     // update the supporting token information incrementally: the information of the
     // unchanged tokens - variable ids, symbols, AST, valuetypes - stays valid
     setVarId(/*incremental*/ true);
-    createLinks2();   // adds the "<>" links of the new tokens
+    createLinks2(); // adds the "<>" links of the new tokens
     Token::assignProgressValues(list.front());
     list.front()->assignIndexes();
 
@@ -4361,7 +4361,7 @@ void Tokenizer::updateTokenDataAfterTemplateSimplification()
     for (const Token* siteTok : mTemplateSimplifier->dirtyCallSites()) {
         const Scope* scope = siteTok->scope();
         if (!scope)
-            continue;   // a new token - covered by the new token ranges
+            continue; // a new token - covered by the new token ranges
         // the outermost executable scope is the function body around the call
         const Scope* functionScope = nullptr;
         for (const Scope* s = scope; s; s = s->nestedIn) {
@@ -4380,7 +4380,9 @@ void Tokenizer::updateTokenDataAfterTemplateSimplification()
 
     if (!rebuildAll && !regions.empty()) {
         // merge the overlapping regions - Token::index() is up to date
-        std::sort(regions.begin(), regions.end(), [](const std::pair<Token*, Token*>& lhs, const std::pair<Token*, Token*>& rhs) {
+        std::sort(regions.begin(),
+                  regions.end(),
+                  [](const std::pair<Token*, Token*>& lhs, const std::pair<Token*, Token*>& rhs) {
             return lhs.first->index() < rhs.first->index();
         });
         std::vector<std::pair<Token*, Token*>> merged;
@@ -4693,7 +4695,7 @@ static void setVarIdStructMembers(Token *&tok1,
                 const auto it = utils::as_const(members).find(tok->str());
                 if (it == members.cend()) {
                     if (tok->varId() != 0)
-                        members[tok->str()] = tok->varId();   // keep the id (incremental pass)
+                        members[tok->str()] = tok->varId(); // keep the id (incremental pass)
                     else {
                         members[tok->str()] = ++varId;
                         tok->varId(varId);
@@ -4735,7 +4737,7 @@ static void setVarIdStructMembers(Token *&tok1,
         const auto it = utils::as_const(members).find(tok->str());
         if (it == members.cend()) {
             if (tok->varId() != 0)
-                members[tok->str()] = tok->varId();   // keep the id (incremental pass)
+                members[tok->str()] = tok->varId(); // keep the id (incremental pass)
             else {
                 members[tok->str()] = ++varId;
                 tok->varId(varId);
@@ -4878,13 +4880,11 @@ void Tokenizer::setVarIdClassFunction(const std::string &classname,
     }
 }
 
-
-
 void Tokenizer::setVarId(bool incremental)
 {
     if (!incremental) {
         // Clear all variable ids
-        for (Token *tok = list.front(); tok; tok = tok->next()) {
+        for (Token* tok = list.front(); tok; tok = tok->next()) {
             if (tok->isName())
                 tok->varId(0);
         }
@@ -4916,7 +4916,7 @@ void Tokenizer::setVarIdPass1(bool incremental)
 
     VariableMap variableMap;
     if (incremental)
-        variableMap.getVarId() = mVarId;   // new ids continue above the previous maximum
+        variableMap.getVarId() = mVarId; // new ids continue above the previous maximum
     std::map<nonneg int, std::map<std::string, nonneg int>> structMembers;
 
     std::stack<VarIdScopeInfo> scopeStack;

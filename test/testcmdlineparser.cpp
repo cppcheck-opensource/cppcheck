@@ -2536,9 +2536,10 @@ private:
         ASSERT_EQUALS("cppcheck: error: argument to '--performance-valueflow-max-if-count=' is not valid - not an integer (invalid_argument).\n", logger->str());
     }
 
-    void templateFullRebuild() {
+    void templateFullRebuild()
+    {
         REDIRECT;
-        const char * const argv[] = {"cppcheck", "--template-full-rebuild", "file.cpp"};
+        const char* const argv[] = {"cppcheck", "--template-full-rebuild", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(true, settings->templateFullRebuild);
     }

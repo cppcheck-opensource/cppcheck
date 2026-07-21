@@ -46,7 +46,8 @@ private:
 
     // used in the settings1_fr initializer - the unusedPrivateFunction check does not
     // see usage in member initializers (suppressed in .selfcheck_suppressions)
-    static Settings makeFullRebuildSettings(const Settings& base) {
+    static Settings makeFullRebuildSettings(const Settings& base)
+    {
         Settings s = base;
         s.templateFullRebuild = true;
         return s;
@@ -293,18 +294,18 @@ private:
         TEST_CASE(templateTypeDeduction3);
         TEST_CASE(templateTypeDeduction4); // #9983
         TEST_CASE(templateTypeDeduction5);
-        TEST_CASE(templateTypeDeduction6);  // deduction from variables
-        TEST_CASE(templateTypeDeduction7);  // parameter forms: T, T&, const T&, T*
-        TEST_CASE(templateTypeDeduction8);  // deduction from expressions
-        TEST_CASE(templateTypeDeduction9);  // multiple parameters, scopes, bailouts
-        TEST_CASE(templateTypeDeduction10); // parameter visibility: init list, const method
-        TEST_CASE(templateTypeDeduction11); // unqualified lookup: enclosing scopes, shadowing
-        TEST_CASE(templateTypeDeduction12); // base class member templates, out of class method bodies
-        TEST_CASE(templateTypeDeduction13); // members declared after the member function are visible
-        TEST_CASE(templateTypeDeduction14); // a non template overload might be a better match
-        TEST_CASE(templateTypeDeduction15); // final classes
-        TEST_CASE(templateTypeDeduction16); // template between two blocks of the same namespace
-        TEST_CASE(templateTypeDeductionTokenTypes); // standard types/keywords keep their token type
+        TEST_CASE(templateTypeDeduction6); // deduction from variables
+        TEST_CASE(templateTypeDeduction7); // parameter forms: T, T&, const T&, T*
+        TEST_CASE(templateTypeDeduction8); // deduction from expressions
+        TEST_CASE(templateTypeDeduction9); // multiple parameters, scopes, bailouts
+        TEST_CASE(templateTypeDeduction10);          // parameter visibility: init list, const method
+        TEST_CASE(templateTypeDeduction11);          // unqualified lookup: enclosing scopes, shadowing
+        TEST_CASE(templateTypeDeduction12);          // base class member templates, out of class method bodies
+        TEST_CASE(templateTypeDeduction13);          // members declared after the member function are visible
+        TEST_CASE(templateTypeDeduction14);          // a non template overload might be a better match
+        TEST_CASE(templateTypeDeduction15);          // final classes
+        TEST_CASE(templateTypeDeduction16);          // template between two blocks of the same namespace
+        TEST_CASE(templateTypeDeductionTokenTypes);  // standard types/keywords keep their token type
         TEST_CASE(templateTypeDeductionFullRebuild); // --template-full-rebuild gives the same result
 
         TEST_CASE(simplifyTemplateArgs1);
@@ -367,7 +368,8 @@ private:
         bool templateFullRebuild = false;
     };
 
-    const Settings& checkOptionsSettings(const CheckOptions& options) const {
+    const Settings& checkOptionsSettings(const CheckOptions& options) const
+    {
         if (options.templateFullRebuild)
             return settings1_fr;
         return options.debugwarnings ? settings1_d : settings1;

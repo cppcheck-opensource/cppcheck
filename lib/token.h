@@ -1653,7 +1653,8 @@ public:
     }
 
     /** Clear the AST links (operands, parent and the cached top token) so the AST can be created again */
-    void clearAst() {
+    void clearAst()
+    {
         mImpl->mAstOperand1 = nullptr;
         mImpl->mAstOperand2 = nullptr;
         mImpl->mAstParent = nullptr;

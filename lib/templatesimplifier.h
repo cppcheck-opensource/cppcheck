@@ -367,7 +367,8 @@ public:
     }
 
     /** forget the recorded token changes, called when they have been consumed */
-    void clearTokenChanges() {
+    void clearTokenChanges()
+    {
         mNewTokenRanges.clear();
         mConvertedSpecializations.clear();
         mDirtyCallSites.clear();
@@ -451,7 +452,8 @@ private:
      * Whether removing the given instantiated template declaration must be deferred
      * with deferRemoval() instead of removing it immediately.
      */
-    bool shouldDeferRemoval(const TokenAndName& declaration) const {
+    bool shouldDeferRemoval(const TokenAndName& declaration) const
+    {
         return mUseTypeInformation || (mPendingTypeDeductions && declaration.isFunction());
     }
 

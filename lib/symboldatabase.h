@@ -1420,7 +1420,7 @@ public:
     /** Set valuetype in provided tokenlist. When endToken (exclusive) is given, only
      * that token range is set and the caller is responsible for updating the function
      * and variable pointers (updateFunctionAndVariablePointers()). */
-    void setValueTypeInTokenList(bool reportDebugWarnings, Token *tokens=nullptr, const Token *endToken=nullptr);
+    void setValueTypeInTokenList(bool reportDebugWarnings, Token* tokens = nullptr, const Token* endToken = nullptr);
 
     /** Update the function pointers of calls and the variable pointers in the whole
      * token list, e.g. after tokens were added or renamed. */
@@ -1525,7 +1525,10 @@ private:
     bool isFunction(const Token *tok, const Scope* outerScope, const Token *&funcStart, const Token *&argStart, const Token*& declEnd) const;
     const Type *findTypeInNested(const Token *startTok, const Scope *startScope) const;
     const Scope *findNamespace(const Token * tok, const Scope * scope) const;
-    static Function *findFunctionInScope(const Token *func, const Scope *ns, const std::string & path, nonneg int path_length);
+    static Function* findFunctionInScope(const Token* func,
+                                         const Scope* ns,
+                                         const std::string& path,
+                                         nonneg int path_length);
 
     using MemberIdMap = std::map<unsigned int, unsigned int>;
     using VarIdMap = std::map<unsigned int, MemberIdMap>;
