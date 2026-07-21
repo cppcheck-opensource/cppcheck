@@ -575,7 +575,7 @@ ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok, cons
         if (const ValueFlow::Value *value = getBufferSizeValue(bufTok)) {
             if (value->isBufferSizeValue())
                 return *value;
-            if (value->isContainerSizeValue() && bufTok->valueType() && bufTok->valueType()->container) {
+            if (value->isContainerSizeValue() && bufTok->valueType() && bufTok->valueType()->containerTypeToken) {
                 const ValueType vtElement = ValueType::parseDecl(bufTok->valueType()->containerTypeToken, settings);
                 const size_t elementSize = vtElement.getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
                 if (elementSize > 0) {
