@@ -1938,9 +1938,13 @@ void SymbolDatabase::removeSymbolsForTokens(const std::unordered_set<const Token
     }
 
     // remove from the indexes
-    std::replace_if(mVariableList.begin(), mVariableList.end(), [&](const Variable* var) {
+    std::replace_if(
+        mVariableList.begin(),
+        mVariableList.end(),
+        [&](const Variable* var) {
         return var && removedVariables.count(var) != 0;
-    }, nullptr);
+    },
+        nullptr);
     functionScopes.erase(std::remove_if(functionScopes.begin(),
                                         functionScopes.end(),
                                         [&](const Scope* scope) {

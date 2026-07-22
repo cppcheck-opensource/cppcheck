@@ -1086,7 +1086,9 @@ struct TemplateSimplifier::DeductionCache {
         // every template parameter must be deducible from the function parameters
         const int typeParameterCount = parsedCandidate.typeParameters.size();
         for (int i = 0; i < typeParameterCount; ++i) {
-            if (std::none_of(parsedCandidate.parameterShapes.cbegin(), parsedCandidate.parameterShapes.cend(), [i](const ParameterShape& shape) {
+            if (std::none_of(parsedCandidate.parameterShapes.cbegin(),
+                             parsedCandidate.parameterShapes.cend(),
+                             [i](const ParameterShape& shape) {
                 return shape.templateParameterIndex == i;
             }))
                 return DeductionCandidate();
@@ -4012,7 +4014,10 @@ void TemplateSimplifier::replaceTemplateUsage(
     // remembered new token ranges that start in the erased tokens are gone
     if (!mNewTokenRanges.empty() && !removeTokens.empty()) {
         std::unordered_set<const Token*> rangeStarts;
-        std::transform(mNewTokenRanges.cbegin(), mNewTokenRanges.cend(), std::inserter(rangeStarts, rangeStarts.end()), [](const std::pair<Token*, Token*>& range) {
+        std::transform(mNewTokenRanges.cbegin(),
+                       mNewTokenRanges.cend(),
+                       std::inserter(rangeStarts, rangeStarts.end()),
+                       [](const std::pair<Token*, Token*>& range) {
             return range.first;
         });
         std::unordered_set<const Token*> erasedRangeStarts;
@@ -4023,13 +4028,12 @@ void TemplateSimplifier::replaceTemplateUsage(
             }
         }
         if (!erasedRangeStarts.empty()) {
-            mNewTokenRanges.erase(
-                std::remove_if(mNewTokenRanges.begin(),
-                               mNewTokenRanges.end(),
-                               [&](const std::pair<Token*, Token*>& range) {
+            mNewTokenRanges.erase(std::remove_if(mNewTokenRanges.begin(),
+                                                 mNewTokenRanges.end(),
+                                                 [&](const std::pair<Token*, Token*>& range) {
                 return erasedRangeStarts.count(range.first) != 0;
             }),
-                mNewTokenRanges.end());
+                                  mNewTokenRanges.end());
         }
     }
     while (!removeTokens.empty()) {
