@@ -12903,6 +12903,13 @@ private:
               "    cif::condition mWhere;\n"
               "};\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("void g(std::string);\n" // #14928
+              "void f(std::string s) {\n"
+              "    g(std::move(s));\n"
+              "    for (char c : s) {}\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:19]: (warning) Access of moved variable 's'. [accessMoved]\n", errout_str());
     }
 
     void moveTernary()
