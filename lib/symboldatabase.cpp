@@ -4451,6 +4451,11 @@ void SymbolDatabase::printXml(std::ostream &out) const
             outs += ErrorLogger::toxml(scope->className);
             outs += "\"";
         }
+        if (scope->classDef) {
+            outs += " classDef=\"";
+            outs += id_string(scope->classDef);
+            outs += "\"";
+        }
         if (scope->bodyStart) {
             outs += " bodyStart=\"";
             outs += id_string(scope->bodyStart);
