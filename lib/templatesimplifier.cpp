@@ -1253,12 +1253,10 @@ std::string TemplateSimplifier::deduceFunctionTemplateArguments(
         // Can the deduction succeed later, when type information is available? Scope
         // matching is not possible yet - the declaration may be in a base class - so
         // consider all declarations with this name.
-        for (auto pos = range.first; pos != range.second; ++pos) {
-            if (deductionCache->supportedParameterCount(*pos->second) == instantiationArgs.size()) {
-                mPendingTypeDeductions = true;
-                return qualification;
-            }
-        }
+        if (std::any_of(range.first, range.second, [&](const std::pair<const std::string, const TokenAndName*>& entry) {
+            return deductionCache->supportedParameterCount(*entry.second) == instantiationArgs.size();
+        }))
+            mPendingTypeDeductions = true;
         return qualification;
     }
 
@@ -4014,8 +4012,9 @@ void TemplateSimplifier::replaceTemplateUsage(
     // remembered new token ranges that start in the erased tokens are gone
     if (!mNewTokenRanges.empty() && !removeTokens.empty()) {
         std::unordered_set<const Token*> rangeStarts;
-        for (const auto& range : mNewTokenRanges)
-            rangeStarts.insert(range.first);
+        std::transform(mNewTokenRanges.cbegin(), mNewTokenRanges.cend(), std::inserter(rangeStarts, rangeStarts.end()), [](const std::pair<Token*, Token*>& range) {
+            return range.first;
+        });
         std::unordered_set<const Token*> erasedRangeStarts;
         for (const auto& removeToken : removeTokens) {
             for (const Token* tok = removeToken.first->next(); tok && tok != removeToken.second; tok = tok->next()) {

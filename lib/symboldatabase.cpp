@@ -1938,10 +1938,9 @@ void SymbolDatabase::removeSymbolsForTokens(const std::unordered_set<const Token
     }
 
     // remove from the indexes
-    for (std::size_t i = 0; i < mVariableList.size(); ++i) {
-        if (mVariableList[i] && removedVariables.count(mVariableList[i]) != 0)
-            mVariableList[i] = nullptr;
-    }
+    std::replace_if(mVariableList.begin(), mVariableList.end(), [&](const Variable* var) {
+        return var && removedVariables.count(var) != 0;
+    }, nullptr);
     functionScopes.erase(std::remove_if(functionScopes.begin(),
                                         functionScopes.end(),
                                         [&](const Scope* scope) {
@@ -2036,8 +2035,9 @@ void SymbolDatabase::addSymbolsForNewTokenRanges(const std::vector<std::pair<Tok
     {
         auto it = scopeList.begin();
         std::advance(it, oldScopeCount);
-        for (; it != scopeList.end(); ++it)
-            newScopes.push_back(&(*it));
+        std::transform(it, scopeList.end(), std::back_inserter(newScopes), [](Scope& scope) {
+            return &scope;
+        });
     }
     std::vector<std::pair<Function*, Scope*>> newFunctions; // the function and the scope it is declared in
     for (Scope& scope : scopeList) {
