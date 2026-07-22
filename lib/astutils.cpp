@@ -3918,3 +3918,23 @@ const Token *skipUnreachableBranch(const Token *tok)
 
     return tok;
 }
+
+bool isEscapeKeyword(const Token *tok, const Settings &settings)
+{
+    if (!tok)
+        return false;
+
+    if (tok->str() == "return")
+        return true;
+
+    if (!tok->isCpp())
+        return false;
+
+    if (tok->str() == "throw")
+        return true;
+
+    if (settings.standards.cpp < Standards::CPP20)
+        return false;
+
+    return tok->str() == "co_return";
+}
