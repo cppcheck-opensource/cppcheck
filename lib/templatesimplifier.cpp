@@ -812,7 +812,7 @@ namespace {
         std::string typeStr;                // base type, e.g. "int" or "MyClass"
         std::vector<std::string> qualification; // enclosing scopes for record types, outermost first
         unsigned int constness = 0;         // bit 0 = data const, bit 1 = first '*' const, ..
-        int pointer = 0;                    // number of '*'
+        unsigned int pointer = 0;           // number of '*'
         bool isUnsigned = false;
         bool isLong = false;
 
@@ -877,7 +877,7 @@ static DeducedType valueTypeToDeducedType(const ValueType* vt, const ParameterSh
     if (vt->smartPointer || vt->smartPointerType || vt->smartPointerTypeToken || vt->container || vt->containerTypeToken)
         return DeducedType();
 
-    int pointer = vt->pointer;
+    unsigned int pointer = vt->pointer;
     unsigned int constness = vt->constness;
     if (shape.isPointer) {
         // "T *": the argument must be a pointer and T is the pointee type
@@ -1032,7 +1032,7 @@ namespace {
 // Insert the tokens of a deduced type after tok (the tokens are inserted in reverse order)
 static void insertDeducedType(Token* tok, const DeducedType& deduced)
 {
-    for (int level = deduced.pointer; level >= 1; --level) {
+    for (unsigned int level = deduced.pointer; level >= 1; --level) {
         if (deduced.constness & (1U << level))
             tok->insertToken("const");
         tok->insertToken("*");
@@ -1068,13 +1068,10 @@ struct TemplateSimplifier::DeductionCache {
         std::vector<const Token*> declarationParams;
         getFunctionArguments(candidate.nameToken(), declarationParams);
 
-        std::vector<bool> deducible(parsedCandidate.typeParameters.size(), false);
         for (const Token* param : declarationParams) {
             const ParameterShape shape = parseParameterShape(param, parsedCandidate.typeParameters);
             if (!shape.typeTok)
                 return DeductionCandidate();
-            if (shape.templateParameterIndex >= 0)
-                deducible[shape.templateParameterIndex] = true;
             parsedCandidate.parameterShapes.push_back(shape);
             parsedCandidate.signature += (shape.isConst ? " const" : "");
             // template parameters are compared by position - their names may differ
@@ -1086,10 +1083,14 @@ struct TemplateSimplifier::DeductionCache {
             parsedCandidate.signature += (shape.isPointer ? " *" : shape.isReference ? " &" : "");
             parsedCandidate.signature += ",";
         }
-        if (!std::all_of(deducible.cbegin(), deducible.cend(), [](bool b) {
-            return b;
-        }))
-            return DeductionCandidate();
+        // every template parameter must be deducible from the function parameters
+        const int typeParameterCount = parsedCandidate.typeParameters.size();
+        for (int i = 0; i < typeParameterCount; ++i) {
+            if (std::none_of(parsedCandidate.parameterShapes.cbegin(), parsedCandidate.parameterShapes.cend(), [i](const ParameterShape& shape) {
+                return shape.templateParameterIndex == i;
+            }))
+                return DeductionCandidate();
+        }
         return parsedCandidate;
     }
 
