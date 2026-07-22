@@ -384,7 +384,7 @@ namespace ValueFlow
             setTokenValueCast(parent, valueType, std::move(value), settings);
         }
 
-        else if (parent->str() == ":") {
+        else if (parent->str() == ":" && Token::simpleMatch(parent->astParent(), "?")) {
             setTokenValue(parent,std::move(value),settings);
         }
 
