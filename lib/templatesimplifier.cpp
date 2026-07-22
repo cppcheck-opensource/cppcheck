@@ -1199,6 +1199,8 @@ std::string TemplateSimplifier::deduceFunctionTemplateArguments(
                     tok->insertToken("const");
                     break;
                 case Token::eNumber: {
+                    // A token should have an empty string
+                    assert(!arg->str().empty());
                     MathLib::value num(arg->str());
                     if (num.isFloat()) {
                         // MathLib::getSuffix doesn't work for floating point numbers
