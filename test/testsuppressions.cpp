@@ -1705,6 +1705,27 @@ private:
             ASSERT_EQUALS("sym", suppr.symbolName);
         }
 
+        {
+            ScopedFile file("suppressparsexml.xml",
+                            "<suppressions>\n"
+                            "<suppress>\n"
+                            "<id>uninitvar</id>\n"
+                            "<fileName>file.c</fileName>\n"
+                            "<macroName>MACRO_NAME</macroName>\n"
+                            "</suppress>\n"
+                            "</suppressions>");
+
+            SuppressionList supprList;
+            ASSERT_EQUALS("", supprList.parseXmlFile(file.path().c_str()));
+            const auto& supprs = supprList.getSuppressions();
+            ASSERT_EQUALS(1, supprs.size());
+            const auto& suppr = *supprs.cbegin();
+            ASSERT_EQUALS("uninitvar", suppr.errorId);
+            ASSERT_EQUALS("file.c", suppr.fileName);
+            ASSERT_EQUALS("MACRO_NAME", suppr.macroName);
+            ASSERT_EQUALS_ENUM(SuppressionList::Type::macro, suppr.type);
+        }
+
         // no file specified
         {
             SuppressionList supprList;
