@@ -4013,18 +4013,25 @@ void TemplateSimplifier::replaceTemplateUsage(
     }
     // remembered new token ranges that start in the erased tokens are gone
     if (!mNewTokenRanges.empty() && !removeTokens.empty()) {
-        std::unordered_set<const Token*> erasedTokens;
+        std::unordered_set<const Token*> rangeStarts;
+        for (const auto& range : mNewTokenRanges)
+            rangeStarts.insert(range.first);
+        std::unordered_set<const Token*> erasedRangeStarts;
         for (const auto& removeToken : removeTokens) {
-            for (const Token* tok = removeToken.first->next(); tok && tok != removeToken.second; tok = tok->next())
-                erasedTokens.insert(tok);
+            for (const Token* tok = removeToken.first->next(); tok && tok != removeToken.second; tok = tok->next()) {
+                if (rangeStarts.count(tok) != 0)
+                    erasedRangeStarts.insert(tok);
+            }
         }
-        mNewTokenRanges.erase(
-            std::remove_if(mNewTokenRanges.begin(),
-                           mNewTokenRanges.end(),
-                           [&](const std::pair<Token*, Token*>& range) {
-            return erasedTokens.count(range.first) != 0;
-        }),
-            mNewTokenRanges.end());
+        if (!erasedRangeStarts.empty()) {
+            mNewTokenRanges.erase(
+                std::remove_if(mNewTokenRanges.begin(),
+                               mNewTokenRanges.end(),
+                               [&](const std::pair<Token*, Token*>& range) {
+                return erasedRangeStarts.count(range.first) != 0;
+            }),
+                mNewTokenRanges.end());
+        }
     }
     while (!removeTokens.empty()) {
         eraseTokens(removeTokens.back().first, removeTokens.back().second);
@@ -4739,16 +4746,12 @@ bool TemplateSimplifier::removeDeferredTemplateDeclarations(SymbolDatabase* symb
 
     // the declarations could have been removed by a later simplification - make sure
     // the tokens still exist before removing them
-    std::unordered_set<const Token*> liveTokens;
-    for (const Token* tok = mTokenList.front(); tok; tok = tok->next())
-        liveTokens.insert(tok);
+    const std::unordered_set<Token*> deferred(mDeferredRemovals.cbegin(), mDeferredRemovals.cend());
     std::vector<Token*> declarations;
-    std::copy_if(mDeferredRemovals.cbegin(),
-                 mDeferredRemovals.cend(),
-                 std::back_inserter(declarations),
-                 [&](const Token* declTok) {
-        return liveTokens.count(declTok) != 0;
-    });
+    for (Token* tok = mTokenList.front(); tok && declarations.size() < deferred.size(); tok = tok->next()) {
+        if (deferred.count(tok) != 0)
+            declarations.push_back(tok);
+    }
     mDeferredRemovals.clear();
 
     // all tokens that are going to be removed
