@@ -119,6 +119,7 @@ private:
         TEST_CASE(addSuppressionLineMultiple);
 
         TEST_CASE(suppressionsParseXmlFile);
+        TEST_CASE(xmlMacroSuppressions);
 
         TEST_CASE(toString);
 
@@ -1802,6 +1803,44 @@ private:
         instance.checkBuffer(sourcefile, code.c_str(), code.size());
 
         ASSERT_EQUALS_LOC(expected, errout_str(), thisfile, thisline);
+    }
+
+    void xmlMacroSuppressions()
+    {
+        testXmlSuppressions(
+            "<suppressions>\n"
+            "<suppress>\n"
+            "<id>uninitvar</id>\n"
+            "<fileName>file.c</fileName>\n"
+            "<macroName>VAR</macroName>\n"
+            "</suppress>\n"
+            "</suppressions>",
+
+            "#define VAR x\n"
+            "int f(void) {\n"
+            "    int VAR;\n"
+            "    return VAR;\n"
+            "}\n",
+
+            ""
+        );
+        testXmlSuppressions(
+            "<suppressions>\n"
+            "<suppress>\n"
+            "<id>uninitvar</id>\n"
+            "<fileName>file.c</fileName>\n"
+            "<macroName>WRONG</macroName>\n"
+            "</suppress>\n"
+            "</suppressions>",
+
+            "#define VAR x\n"
+            "int f(void) {\n"
+            "    int VAR;\n"
+            "    return VAR;\n"
+            "}\n",
+
+            "[test.c:4:12]: (error) Uninitialized variable: x [uninitvar]\n"
+        );
     }
 
     void addSuppressionDuplicate() const {
