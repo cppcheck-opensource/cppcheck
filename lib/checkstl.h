@@ -26,6 +26,7 @@
 #include "checkimpl.h"
 #include "config.h"
 #include "errortypes.h"
+#include "mathlib.h"
 
 #include <cstdint>
 #include <string>
@@ -73,6 +74,7 @@ private:
                "- useless calls of string and STL functions\n"
                "- dereferencing an invalid iterator\n"
                "- erasing an iterator that is out of bounds\n"
+               "- out of bounds access of an iterator passed to an STL algorithm\n"
                "- reading from empty STL container\n"
                "- iterating over an empty STL container\n"
                "- consider using an STL algorithm instead of raw loop\n"
@@ -183,6 +185,12 @@ public:
 
     void eraseIteratorOutOfBounds();
 
+    /**
+     * Check that the iterator given to an STL algorithm is not accessed
+     * out of bounds: std::equal(in.begin(), in.end(), out.begin())
+     */
+    void algorithmOutOfBounds();
+
     void checkMutexes();
 
     bool isContainerSize(const Token *containerToken, const Token *expr) const;
@@ -234,6 +242,14 @@ public:
     void knownEmptyContainerError(const Token *tok, const std::string& algo);
 
     void eraseIteratorOutOfBoundsError(const Token* ftok, const Token* itertok, const ValueFlow::Value* val = nullptr);
+
+    void algorithmOutOfBoundsError(const Token* tok,
+                                   const std::string& algoName,
+                                   MathLib::bigint accessed,
+                                   MathLib::bigint available,
+                                   const ValueFlow::Value* value,
+                                   bool mayAccessFewer,
+                                   bool inconclusive);
 
     void globalLockGuardError(const Token *tok);
     void localMutexError(const Token *tok);

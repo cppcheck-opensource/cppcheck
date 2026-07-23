@@ -2226,23 +2226,18 @@ static bool isEscapedOrJump(const Token* tok, bool functionsScope, const Library
     return Token::Match(tok, "return|goto|throw|continue|break");
 }
 
+static bool isNoreturnFunction(const Token* ftok, const Library& library)
+{
+    if (const Function* function = ftok->function())
+        return function->isEscapeFunction() || function->isAttributeNoreturn();
+    return library.isnoreturn(ftok);
+}
+
 bool isEscapeFunction(const Token* ftok, const Library& library)
 {
     if (!Token::Match(ftok, "%name% ("))
         return false;
-    if (Token::Match(ftok, "exit|abort"))
-        return true;
-    const Function* function = ftok->function();
-    if (function) {
-        if (function->isEscapeFunction())
-            return true;
-        if (function->isAttributeNoreturn())
-            return true;
-    } else {
-        if (library.isnoreturn(ftok))
-            return true;
-    }
-    return false;
+    return isNoreturnFunction(ftok, library);
 }
 
 static bool hasNoreturnFunction(const Token* tok, const Library& library, const Token** unknownFunc)
@@ -2253,18 +2248,9 @@ static bool hasNoreturnFunction(const Token* tok, const Library& library, const 
     while (Token::simpleMatch(ftok, "("))
         ftok = ftok->astOperand1();
     if (ftok) {
-        const Function * function = ftok->function();
-        if (function) {
-            if (function->isEscapeFunction())
-                return true;
-            if (function->isAttributeNoreturn())
-                return true;
-        } else if (library.isnoreturn(ftok)) {
+        if (isNoreturnFunction(ftok, library))
             return true;
-        } else if (Token::Match(ftok, "exit|abort")) {
-            return true;
-        }
-        if (unknownFunc && !function && library.functions().count(library.getFunctionName(ftok)) == 0)
+        if (unknownFunc && !ftok->function() && library.functions().count(library.getFunctionName(ftok)) == 0)
             *unknownFunc = ftok;
         return false;
     }
@@ -3015,7 +3001,7 @@ bool isVariableChanged(const Variable * var, const Settings &settings, int depth
     const Token * start = var->declEndToken();
     if (!start)
         return false;
-    if (Token::Match(start, "; %varid% =", var->declarationId()))
+    if (start->isSplittedVarDeclEq() && Token::Match(start, "; %varid% =", var->declarationId()))
         start = start->tokAt(2);
     if (Token::simpleMatch(start, "=")) {
         const Token* next = nextAfterAstRightmostLeafGeneric(start);
@@ -3931,4 +3917,24 @@ const Token *skipUnreachableBranch(const Token *tok)
     }
 
     return tok;
+}
+
+bool isEscapeKeyword(const Token *tok, const Settings &settings)
+{
+    if (!tok)
+        return false;
+
+    if (tok->str() == "return")
+        return true;
+
+    if (!tok->isCpp())
+        return false;
+
+    if (tok->str() == "throw")
+        return true;
+
+    if (settings.standards.cpp < Standards::CPP20)
+        return false;
+
+    return tok->str() == "co_return";
 }

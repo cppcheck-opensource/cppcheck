@@ -568,26 +568,40 @@ namespace {
                 const std::pair<const Token*, Token*> rangeBefore(start, Token::findsimplematch(start, "{"));
 
                 // find typedef name token
-                Token* nameToken = rangeBefore.second->link()->next();
-                while (Token::Match(nameToken, "%name%|* %name%|*"))
-                    nameToken = nameToken->next();
-                const std::pair<const Token*, Token*> rangeQualifiers(rangeBefore.second->link()->next(), nameToken);
+                Token* nameTok = rangeBefore.second->link()->next();
+                while (Token::Match(nameTok, "%name%|* %name%|*"))
+                    nameTok = nameTok->next();
+                const std::pair<const Token*, Token*> rangeQualifiers(rangeBefore.second->link()->next(), nameTok);
 
-                if (Token::Match(nameToken, "%name% ;")) {
+                if (Token::Match(nameTok, "%name% ;")) {
                     if (Token::Match(rangeBefore.second->previous(), "enum|struct|union|class {"))
-                        rangeBefore.second->previous()->insertToken(nameToken->str());
+                        rangeBefore.second->previous()->insertToken(nameTok->str());
                     mRangeType = rangeBefore;
                     mRangeTypeQualifiers = rangeQualifiers;
                     Token* typeName = rangeBefore.second->previous();
                     if (typeName->isKeyword()) {
                         // TODO typeName->insertToken("T:" + std::to_string(num++));
-                        typeName->insertToken(nameToken->str());
+                        typeName->insertToken(nameTok->str());
                     }
-                    mNameToken = nameToken;
-                    mEndToken = nameToken->next();
+                    mNameToken = nameTok;
+                    mEndToken = nameTok->next();
                     return;
                 }
             }
+
+            const auto checkForRecursion = [this]() {
+                if (Token::Match(mTypedefToken, "typedef %name% %name% ;"))
+                    return;
+                for (const Token *tok = mTypedefToken; tok != mEndToken; tok = tok->next()) {
+                    if (tok == mNameToken)
+                        continue;
+                    if (tok->str() != mNameToken->str())
+                        continue;
+                    if (Token::Match(tok->previous(), "struct|class|enum|union"))
+                        continue;
+                    throw InternalError(tok, "recursive typedef encountered");
+                }
+            };
 
             for (Token* type = start; Token::Match(type, "%name%|*|&|&&"); type = type->next()) {
                 if (type != start && Token::Match(type, "%name% ;") && !type->isStandardType()) {
@@ -595,6 +609,7 @@ namespace {
                     mRangeType.second = type;
                     mNameToken = type;
                     mEndToken = mNameToken->next();
+                    checkForRecursion();
                     return;
                 }
                 if (type != start && Token::Match(type, "%name% [")) {
@@ -609,6 +624,7 @@ namespace {
                     mEndToken = end->next();
                     mRangeAfterVar.first = mNameToken->next();
                     mRangeAfterVar.second = mEndToken;
+                    checkForRecursion();
                     return;
                 }
                 if (Token::Match(type->next(), "( * const| %name% ) (") && Token::simpleMatch(type->linkAt(1)->linkAt(1), ") ;")) {
@@ -618,6 +634,7 @@ namespace {
                     mRangeType.second = mNameToken;
                     mRangeAfterVar.first = mNameToken->next();
                     mRangeAfterVar.second = mEndToken;
+                    checkForRecursion();
                     return;
                 }
                 if (type != start && Token::Match(type, "%name% ( !!(") && Token::simpleMatch(type->linkAt(1), ") ;") && !type->isStandardType()) {
@@ -627,6 +644,7 @@ namespace {
                     mRangeType.second = type;
                     mRangeAfterVar.first = mNameToken->next();
                     mRangeAfterVar.second = mEndToken;
+                    checkForRecursion();
                     return;
                 }
             }
@@ -3389,12 +3407,17 @@ bool Tokenizer::simplifyUsing()
                 } else if (fpArgList && fpQual && Token::Match(tok1->next(), "%name%")) {
                     // function pointer
                     const bool isFuncDecl = Token::simpleMatch(tok1->tokAt(2), "(");
-                    TokenList::copyTokens(tok1->next(), fpArgList, usingEnd->previous());
+                    Token *dest = tok1->next();
+                    while (Token::Match(dest, "%name% :: %name%"))
+                        dest = dest->tokAt(2);
+                    TokenList::copyTokens(dest, fpArgList, usingEnd->previous());
                     Token* const copyEnd = TokenList::copyTokens(tok1, start, fpQual->link()->previous());
                     Token* leftPar = copyEnd->previous();
                     while (leftPar->str() != "(")
                         leftPar = leftPar->previous();
-                    Token* const insertTok = isFuncDecl ? copyEnd->linkAt(2) : copyEnd->next();
+                    Token *insertTok = isFuncDecl ? copyEnd->linkAt(2) : copyEnd->next();
+                    while (Token::Match(insertTok, "%name% :: %name%"))
+                        insertTok = insertTok->tokAt(2);
                     Token* const rightPar = insertTok->insertToken(")");
                     Token::createMutualLinks(leftPar, rightPar);
                     tok1->deleteThis();
@@ -7095,7 +7118,7 @@ Token *Tokenizer::simplifyAddBracesToCommand(Token *tok)
             // before the "while"
             if (tokEnd) {
                 tokEnd=tokEnd->next();
-                if (!tokEnd || tokEnd->str()!="while") // no while
+                if (!Token::simpleMatch(tokEnd, "while (") || !Token::simpleMatch(tokEnd->linkAt(1), ") ;")) // no while
                     syntaxError(tok);
             }
         }
@@ -9171,7 +9194,7 @@ void Tokenizer::findGarbageCode() const
                 if (tok->strAt(-1) == ",")
                     syntaxError(tok);
                 colons++;
-            } else if (tok->str() == "(") { // skip pairs of ( )
+            } else if (tok->str() == "(" || tok->str() == "{") { // skip pairs of ( )
                 tok = tok->link();
             }
         }
@@ -9615,6 +9638,7 @@ void Tokenizer::simplifyStructDecl()
             if (Token::Match(after->next(), "const|static|volatile| *|&| const| (| %type% )| ,|;|[|=|(|{")) {
                 after->insertToken(";");
                 after = after->next();
+                Token *declEnd = after;
                 while (!Token::Match(start, "struct|class|union|enum")) {
                     after->insertToken(start->str());
                     after = after->next();
@@ -9656,6 +9680,16 @@ void Tokenizer::simplifyStructDecl()
                             after->linkAt(1)->str(")");
                         }
                     }
+                }
+
+                // pull declaration out of for loop
+                if (Token::simpleMatch(start->tokAt(-2), "for ( struct")) {
+                    Token *link = start->linkAt(-1);
+                    start->deletePrevious(2);
+                    declEnd->insertToken("(");
+                    declEnd->next()->link(link);
+                    link->link(declEnd->next());
+                    declEnd->insertToken("for");
                 }
             }
         }
@@ -9978,7 +10012,7 @@ void Tokenizer::simplifyCPPAttribute()
                 if (!head)
                     syntaxError(tok);
 
-                if (Token::simpleMatch(head, ";")) {
+                if (Token::Match(head, ";|,|)")) {
                     Token *backTok = tok;
                     while (Token::Match(backTok, "]|[|)")) {
                         if (Token::Match(backTok, "]|)"))

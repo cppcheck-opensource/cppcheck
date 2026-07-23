@@ -145,6 +145,8 @@ private:
         TEST_CASE(nullpointer105); // #13861
         TEST_CASE(nullpointer106); // #13682
         TEST_CASE(nullpointer107); // #13682 (FP/FN cases around guards that depend on the pointer indirectly)
+        TEST_CASE(nullpointer108);
+        TEST_CASE(nullpointer109);
         TEST_CASE(nullpointer_addressOf); // address of
         TEST_CASE(nullpointerSwitch); // #2626
         TEST_CASE(nullpointer_cast); // #4692
@@ -3105,6 +3107,27 @@ private:
         ASSERT_EQUALS("", errout_str());
     }
 
+    void nullpointer108() { // #14422
+        check("void f() {\n"
+              "    int *p{};\n"
+              "    int *&r{p};\n"
+              "    if (*r) {}\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:4:10]: (error) Null pointer dereference: r [nullPointer]\n", errout_str());
+    }
+
+    void nullpointer109()
+    {
+        check("boost::asio::awaitable<int> test()\n"
+              "{\n"
+              "    const auto *s = getStr();\n"
+              "    if(!s) co_return int{1};\n"
+              "    std::print(\"{}\",*s);\n"
+              "    co_return int{9};\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
     void nullpointer_addressOf() { // address of
         check("void f() {\n"
               "  struct X *x = 0;\n"
@@ -4467,6 +4490,59 @@ private:
         ASSERT_EQUALS(
             "[test.cpp:3:13]: (warning) If resource allocation fails, then there is a possible null pointer dereference: fid [nullPointerOutOfResources]\n"
             "[test.cpp:4:12]: (warning) If resource allocation fails, then there is a possible null pointer dereference: fid [nullPointerOutOfResources]\n",
+            errout_str());
+
+        // the guard might call an unknown, possibly noreturn function -> no warning
+        check("void f() {\n"
+              "    FILE* fid = fopen(\"x.txt\", \"w\");\n"
+              "    if (fid == NULL)\n"
+              "        g();\n"
+              "    fclose(fid);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // .. but an inconclusive warning is reported with --inconclusive
+        check("void f() {\n"
+              "    FILE* fid = fopen(\"x.txt\", \"w\");\n"
+              "    if (fid == NULL)\n"
+              "        g();\n"
+              "    fclose(fid);\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS(
+            "[test.cpp:5:12]: (warning, inconclusive) If resource allocation fails, then there is a possible null pointer dereference: fid [nullPointerOutOfResources]\n",
+            errout_str());
+
+        check("int f(const int* p) {\n"
+              "    if (p == nullptr)\n"
+              "        g();\n"
+              "    return *p;\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS(
+            "[test.cpp:2:11] -> [test.cpp:4:13]: (warning, inconclusive) Either the condition 'p==nullptr' is redundant or there is possible null pointer dereference: p. [nullPointerRedundantCheck]\n",
+            errout_str());
+
+        check("void f() {\n"
+              "    FILE* fid = fopen(\"x.txt\", \"w\");\n"
+              "    if (fid != NULL)\n"
+              "        ;\n"
+              "    else\n"
+              "        g();\n"
+              "    fclose(fid);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // guard function is known to return -> warning
+        check("void g() {}\n"
+              "void f() {\n"
+              "    FILE* fid = fopen(\"x.txt\", \"w\");\n"
+              "    if (fid == NULL)\n"
+              "        g();\n"
+              "    fclose(fid);\n"
+              "}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:6:12]: (warning) If resource allocation fails, then there is a possible null pointer dereference: fid [nullPointerOutOfResources]\n",
             errout_str());
     }
 

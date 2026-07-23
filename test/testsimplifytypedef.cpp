@@ -233,6 +233,7 @@ private:
         TEST_CASE(simplifyTypedef160);
         TEST_CASE(simplifyTypedef161);
         TEST_CASE(simplifyTypedef162);
+        TEST_CASE(simplifyTypedef163);
 
         TEST_CASE(simplifyTypedefFunction1);
         TEST_CASE(simplifyTypedefFunction2); // ticket #1685
@@ -3836,11 +3837,11 @@ private:
                            "}";
         ASSERT_EQUALS(exp, tok(code));
 
-        const char code2[] = "typedef stuct T* T;\n" // #14669
+        const char code2[] = "typedef struct T* T;\n" // #14669
                              "struct T {\n"
                              "    T p;\n"
                              "};\n";
-        const char exp2[] = "struct T { stuct T * p ; } ;";
+        const char exp2[] = "struct T { struct T * p ; } ;";
         ASSERT_EQUALS(exp2, simplifyTypedefC(code2));
     }
 
@@ -3866,6 +3867,11 @@ private:
                             "void f(ints v);\n";
         const char exp[] = "void f ( std :: vector < int > v ) ;";
         ASSERT_EQUALS(exp, tok(code));
+    }
+
+    void simplifyTypedef163() {
+        const char code[] = "typedef v *v;";
+        ASSERT_THROW_INTERNAL(tok(code), INTERNAL);
     }
 
     void simplifyTypedefFunction1() {
