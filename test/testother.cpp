@@ -11063,6 +11063,95 @@ private:
               "    Dst.s->y = Src.s->y;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        // Ticket #14371 "redundantAssignment when using a union"
+        check("union U {\n"
+              "    struct {\n"
+              "        unsigned int abcd;\n"
+              "    } u32;\n"
+              "    struct {\n"
+              "        unsigned short ab;\n"
+              "        unsigned short cd;\n"
+              "    } u16;\n"
+              "};\n"
+              "void f() {\n"
+              "    U m;\n"
+              "    m.u32.abcd = 1234;\n"
+              "    m.u32.abcd = 5 * m.u16.ab;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = false));
+        ASSERT_EQUALS("", errout_str());
+
+        // Ticket #14371 "redundantAssignment when using a union"
+        check("union U {\n"
+              "    struct {\n"
+              "        unsigned int abcd;\n"
+              "    } u32;\n"
+              "    struct {\n"
+              "        unsigned short ab;\n"
+              "        unsigned short cd;\n"
+              "    } u16;\n"
+              "};\n"
+              "void f(unsigned int a, unsigned short b) {\n"
+              "    U m;\n"
+              "    m.u32.abcd = a;\n"
+              "    m.u32.abcd += 0x8000;\n"
+              "    m.u32.abcd = m.u16.ab * b;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = false));
+        ASSERT_EQUALS("", errout_str());
+
+        // Related to #14371 - reading a different union variable must not suppress the warning
+        check("union U {\n"
+              "    struct {\n"
+              "        unsigned int abcd;\n"
+              "    } u32;\n"
+              "    struct {\n"
+              "        unsigned short ab;\n"
+              "        unsigned short cd;\n"
+              "    } u16;\n"
+              "};\n"
+              "void f(unsigned int seed) {\n"
+              "    U m, other;\n"
+              "    other.u32.abcd = seed;\n"
+              "    m.u32.abcd = 1234;\n"
+              "    m.u32.abcd = other.u16.ab * 2;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = false));
+        ASSERT_EQUALS("[test.cpp:13:16] -> [test.cpp:14:16]: (style) Variable 'm.u32.abcd' is reassigned a value before the old one has been used. [redundantAssignment]\n", errout_str());
+
+        // Ticket #14371 "redundantAssignment when using a union"
+        check("union U {\n"
+              "    struct {\n"
+              "        unsigned int abcd;\n"
+              "    } u32;\n"
+              "    struct {\n"
+              "        unsigned short ab;\n"
+              "        unsigned short cd;\n"
+              "    } u16;\n"
+              "};\n"
+              "void f(unsigned short x) {\n"
+              "    U m;\n"
+              "    m.u16.ab = x;\n"
+              "    m.u16.cd = 0;\n"
+              "    m.u16.ab = m.u32.abcd / 53;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = false));
+        ASSERT_EQUALS("", errout_str());
+
+        // Related to #14371 - an intervening write to a sibling member must not by itself suppress the warning
+        check("union U {\n"
+              "    struct {\n"
+              "        unsigned int abcd;\n"
+              "    } u32;\n"
+              "    struct {\n"
+              "        unsigned short ab;\n"
+              "        unsigned short cd;\n"
+              "    } u16;\n"
+              "};\n"
+              "void f(unsigned short x, unsigned int y) {\n"
+              "    U m;\n"
+              "    m.u16.ab = x;\n"
+              "    m.u16.cd = 0;\n"
+              "    m.u16.ab = y;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = false));
+        ASSERT_EQUALS("[test.cpp:12:14] -> [test.cpp:14:14]: (style) Variable 'm.u16.ab' is reassigned a value before the old one has been used. [redundantAssignment]\n", errout_str());
     }
 
     void redundantVarAssignment_7133() {
