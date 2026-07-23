@@ -1785,7 +1785,7 @@ private:
                               int thisline,
                               const std::string &xml,
                               const std::string &code,
-                              const std::string expected)
+                              const std::string &expected)
     {
         const char *xmlpath = "testsupressions.xml";
         const char *sourcepath = "test.c";
