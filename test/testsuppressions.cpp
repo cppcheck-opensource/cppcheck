@@ -1823,7 +1823,7 @@ private:
             "}\n",
 
             ""
-        );
+            );
         testXmlSuppressions(
             "<suppressions>\n"
             "<suppress>\n"
@@ -1840,7 +1840,7 @@ private:
             "}\n",
 
             "[test.c:4:12]: (error) Uninitialized variable: x [uninitvar]\n"
-        );
+            );
     }
 
     void addSuppressionDuplicate() const {
