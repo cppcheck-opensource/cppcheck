@@ -174,6 +174,7 @@ public:
     void alwaysTrueFalseError(const Token* tok, const Token* condition, const ValueFlow::Value* value);
 
     void invalidTestForOverflow(const Token* tok, const ValueType *valueType, const std::string &replace);
+    void invalidPointerOverlapTestError(const Token *tok);
     void pointerAdditionResultNotNullError(const Token *tok, const Token *calc);
 
     void duplicateConditionalAssignError(const Token *condTok, const Token* assignTok, bool isRedundant = false);

@@ -6193,8 +6193,87 @@ private:
         check("int f(int x, int y) { return x - y > x; }");
         ASSERT_EQUALS(MSG("x-y>x", "y<0"), errout_str());
 
+        // x - y >= x
         check("int f(int x, int y) { return x - y >= x; }");
         ASSERT_EQUALS(MSG("x-y>=x", "y<=0"), errout_str());
+
+        // Pointer overlap idiom:  p1 >= p2 && p1 < p2 + n  (distinct pointers,
+        // unsigned offset). Only flagged when paired (via &&) with a comparison
+        // of the same two pointers -- inconclusive.
+        const Settings sInc = settingsBuilder(settings0).certainty(Certainty::inconclusive).build();
+
+#undef MSG
+#define MSG(LOC, EXPR)   "[test.cpp:2:" LOC "]: (warning, inconclusive) Invalid test for overflow '" EXPR "'; pointer overflow is undefined behavior. The offset added to the pointer may be large enough to overflow, and some mainstream compilers assume such overflow cannot happen and fold the comparison. Cast the pointers to uintptr_t and compare in integer space instead. [invalidPointerOverlapTest]\n"
+
+        // the memcpy_s overlap check
+        check("int f(const char *dest, const char *src, size_t count) {\n"
+              "    return dest >= src && dest < src + count;\n"
+              "}", sInc);
+        ASSERT_EQUALS(MSG("32", "dest<src+count"), errout_str());
+
+        // mirror order of the two clauses
+        check("int f(const char *dest, const char *src, size_t count) {\n"
+              "    return dest < src + count && dest >= src;\n"
+              "}", sInc);
+        ASSERT_EQUALS(MSG("17", "dest<src+count"), errout_str());
+
+        // offset on the left side of the comparison
+        check("int f(const char *dest, const char *src, size_t count) {\n"
+              "    return dest >= src && src + count > dest;\n"
+              "}", sInc);
+        ASSERT_EQUALS(MSG("39", "src+count>dest"), errout_str());
+
+        // casts on the offending clause (as in real memcpy_s)
+        check("int f(void *dest, const void *src, size_t count) {\n"
+              "    return dest >= src && (char*)dest < (char*)src + count;\n"
+              "}", sInc);
+        ASSERT_EQUALS(MSG("39", "(char*)dest<(char*)src+count"), errout_str());
+
+        // the paired comparison may use any comparison operator
+        check("int f(const char *dest, const char *src, size_t count) {\n"
+              "    return dest != src && dest < src + count;\n"
+              "}", sInc);
+        ASSERT_EQUALS(MSG("32", "dest<src+count"), errout_str());
+
+        // --- negatives ---
+
+        // plain bounds check, no paired pointer comparison -> NOT flagged
+        check("int f(const char *p, const char *buf, size_t len) {\n"
+              "    return p < buf + len;\n"
+              "}", sInc);
+        ASSERT_EQUALS("", errout_str());
+
+        // room check -> NOT flagged
+        check("int f(const char *cur, const char *limit, size_t need) {\n"
+              "    return cur + need <= limit;\n"
+              "}", sInc);
+        ASSERT_EQUALS("", errout_str());
+
+        // && partner compares unrelated operands -> NOT flagged
+        check("int f(const char *p, const char *buf, size_t len, int flag) {\n"
+              "    return flag > 0 && p < buf + len;\n"
+              "}", sInc);
+        ASSERT_EQUALS("", errout_str());
+
+        // signed offset -> NOT flagged (overflow check is meaningful)
+        check("int f(const char *dest, const char *src, int count) {\n"
+              "    return dest >= src && dest < src + count;\n"
+              "}", sInc);
+        ASSERT_EQUALS("", errout_str());
+
+        // not inconclusive -> NOT reported
+        check("int f(const char *dest, const char *src, size_t count) {\n"
+              "    return dest >= src && dest < src + count;\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
+
+        // same pointer var on both sides -> existing check applies, not the new one
+        check("int f(const char *p, size_t n) {\n"
+              "    return p < p + n;\n"
+              "}", sInc);
+        ASSERT_EQUALS(
+            "[test.cpp:2:14]: (warning) Invalid test for overflow 'p<p+n'; pointer overflow is undefined behavior. Some mainstream compilers remove such overflow tests when optimising the code and assume it's always true. [invalidTestForOverflow]\n",
+            errout_str());
     }
 
     void checkConditionIsAlwaysTrueOrFalseInsideIfWhile() {
