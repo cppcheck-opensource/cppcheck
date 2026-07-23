@@ -1779,6 +1779,31 @@ private:
         }
     }
 
+    #define testXmlSuppressions(...) testXmlSuppressions_(__FILE__,__LINE__,__VA_ARGS__)
+    void testXmlSuppressions_(const char *thisfile,
+                              int thisline,
+                              const std::string &xml,
+                              const std::string &code,
+                              const std::string expected)
+    {
+        const char *xmlpath = "testsupressions.xml";
+        const char *sourcepath = "test.c";
+
+        Suppressions supprs;
+        const ScopedFile xmlfile(xmlpath, xml);
+        ASSERT_EQUALS_LOC("", supprs.nomsg.parseXmlFile(xmlpath), thisfile, thisline);
+
+        Settings settings;
+        settings.templateFormat = templateFormat;
+        settings.quiet = true;
+
+        const FileWithDetails sourcefile(sourcepath, Standards::Language::C, 0);
+        CppCheck instance(settings, supprs, *this, nullptr, true, nullptr);
+        instance.checkBuffer(sourcefile, code.c_str(), code.size());
+
+        ASSERT_EQUALS_LOC(expected, errout_str(), thisfile, thisline);
+    }
+
     void addSuppressionDuplicate() const {
         SuppressionList supprs;
 
