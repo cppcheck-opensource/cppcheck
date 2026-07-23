@@ -1248,7 +1248,7 @@ void CheckClassImpl::initializationListUsage()
                 continue;
             if (var->isPointer() || var->isReference() || var->isEnumType())
                 continue;
-            if (!WRONG_DATA(!var->valueType(), tok) && var->valueType()->type > ValueType::Type::ITERATOR)
+            if (!var->valueType() || var->valueType()->type > ValueType::Type::ITERATOR)
                 continue;
 
             // bailout: multi line lambda in rhs => do not warn

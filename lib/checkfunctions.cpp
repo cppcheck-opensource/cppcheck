@@ -538,9 +538,9 @@ void CheckFunctionsImpl::memsetZeroBytes()
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope *scope : symbolDatabase->functionScopes) {
         for (const Token* tok = scope->bodyStart->next(); tok != scope->bodyEnd; tok = tok->next()) {
-            if (Token::Match(tok, "memset|wmemset (") && (numberOfArguments(tok)==3)) {
+            if (Token::Match(tok, "memset|wmemset (")) {
                 const std::vector<const Token *> &arguments = getArguments(tok);
-                if (WRONG_DATA(arguments.size() != 3U, tok))
+                if (arguments.size() != 3U)
                     continue;
                 const Token* lastParamTok = arguments[2];
                 if (MathLib::isNullValue(lastParamTok->str()))

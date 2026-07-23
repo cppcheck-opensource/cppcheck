@@ -39,9 +39,6 @@ class Settings;
 class ErrorLogger;
 class Tokenizer;
 
-/** Use WRONG_DATA in checkers to mark conditions that check that data is correct */
-#define WRONG_DATA(COND, TOK)  ((COND) && wrongData((TOK), #COND))
-
 /// @addtogroup Core
 /// @{
 
