@@ -22,7 +22,7 @@
 #include "errortypes.h"
 #include "library.h"
 #include "mathlib.h"
-#include "nonnullptr.h"
+#include "refthunk.h"
 #include "pathanalysis.h"
 #include "settings.h"
 #include "standards.h"
@@ -2876,7 +2876,7 @@ namespace {
     private:
         const Token* mBodyTok;
         const Token* mLoopVar{};
-        NonNullPtr<const Settings> mSettings;
+        RefThunk<const Settings> mSettings;
         std::set<nonneg int> mVarsChanged;
 
     public:
@@ -2899,7 +2899,7 @@ namespace {
             int n = 1 + (astIsPointer(tok) ? 1 : 0);
             for (int i = 0; i < n; i++) {
                 bool inconclusive = false;
-                if (isVariableChangedByFunctionCall(tok, i, mSettings->library, &inconclusive))
+                if (isVariableChangedByFunctionCall(tok, i, mSettings().library, &inconclusive))
                     return true;
                 if (inconclusive)
                     return true;

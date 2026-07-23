@@ -24,7 +24,7 @@
 #include "fwdanalysis.h"
 #include "library.h"
 #include "mathlib.h"
-#include "nonnullptr.h"
+#include "refthunk.h"
 #include "platform.h"
 #include "settings.h"
 #include "standards.h"
@@ -4503,7 +4503,7 @@ struct UnionMember {
         : name(name)
         , size(size) {}
 
-    NonNullPtr<const std::string> name;
+    RefThunk<const std::string> name;
     size_t size;
 };
 
@@ -4513,7 +4513,7 @@ struct Union {
         , name(scope.className) {}
 
     const Scope *scope;
-    NonNullPtr<const std::string> name;
+    RefThunk<const std::string> name;
     std::vector<UnionMember> members;
 
     const UnionMember *largestMember() const {
@@ -4622,7 +4622,7 @@ void CheckOtherImpl::unionZeroInitError(const Token *tok,
                 "Zero initializing union '$symbol' does not guarantee " +
                 "its complete storage to be zero initialized as its largest member " +
                 "is not declared as the first member. Consider making " +
-                *largestMember.name + " the first member or favor memset().");
+                largestMember.name() + " the first member or favor memset().");
 }
 
 //-----------------------------------------------------------------------------

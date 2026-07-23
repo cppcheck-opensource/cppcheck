@@ -61,12 +61,12 @@ SymbolDatabase::SymbolDatabase(Tokenizer& tokenizer)
     , mSettings(tokenizer.getSettings())
     , mErrorLogger(tokenizer.getErrorLogger())
 {
-    if (!mTokenizer->tokens())
+    if (!mTokenizer().tokens())
         return;
 
-    if (mSettings->platform.defaultSign == 's' || mSettings->platform.defaultSign == 'S')
+    if (mSettings().platform.defaultSign == 's' || mSettings().platform.defaultSign == 'S')
         mDefaultSignedness = ValueType::SIGNED;
-    else if (mSettings->platform.defaultSign == 'u' || mSettings->platform.defaultSign == 'U')
+    else if (mSettings().platform.defaultSign == 'u' || mSettings().platform.defaultSign == 'U')
         mDefaultSignedness = ValueType::UNSIGNED;
     else
         mDefaultSignedness = ValueType::UNKNOWN_SIGN;
@@ -174,7 +174,7 @@ void SymbolDatabase::createSymbolDatabaseFindAllScopes()
         const Token* funcStart = Token::simpleMatch(argStart, "[") ? argStart : argStart->astParent();
         const Function* function = addGlobalFunction(scope, tok, argStart, funcStart);
         if (!function)
-            mTokenizer->syntaxError(tok);
+            mTokenizer().syntaxError(tok);
         return lambdaStartToken;
     };
 
@@ -205,10 +205,10 @@ void SymbolDatabase::createSymbolDatabaseFindAllScopes()
         return it->second.count(tok->str()) > 0 ? startScope : nullptr;
     };
 
-    ProgressReporter progressReporter(mErrorLogger, mSettings->reportProgress, mTokenizer->list.getSourceFilePath(), "SymbolDatabase (find all scopes)");
+    ProgressReporter progressReporter(mErrorLogger, mSettings().reportProgress, mTokenizer().list.getSourceFilePath(), "SymbolDatabase (find all scopes)");
 
     // find all scopes
-    for (const Token *tok = mTokenizer->tokens(); tok; tok = tok ? tok->next() : nullptr) {
+    for (const Token *tok = mTokenizer().tokens(); tok; tok = tok ? tok->next() : nullptr) {
         // #5593 suggested to add here:
 
         progressReporter.report(tok->progressValue());
@@ -298,7 +298,7 @@ void SymbolDatabase::createSymbolDatabaseFindAllScopes()
                 if (new_scope->isClassOrStruct()) {
                     // goto initial '{'
                     if (!new_scope->definedType)
-                        mTokenizer->syntaxError(nullptr); // #6808
+                        mTokenizer().syntaxError(nullptr); // #6808
                     tok2 = new_scope->definedType->initBaseInfo(tok, tok2);
                     // make sure we have valid code
                     if (!tok2) {
@@ -319,7 +319,7 @@ void SymbolDatabase::createSymbolDatabaseFindAllScopes()
                 new_scope->setBodyStartEnd(tok2);
                 // make sure we have valid code
                 if (!new_scope->bodyEnd) {
-                    mTokenizer->syntaxError(tok);
+                    mTokenizer().syntaxError(tok);
                 }
                 scope = new_scope;
                 tok = tok2;
@@ -355,7 +355,7 @@ void SymbolDatabase::createSymbolDatabaseFindAllScopes()
 
                     // make sure we have valid code
                     if (!tok2) {
-                        mTokenizer->syntaxError(tok);
+                        mTokenizer().syntaxError(tok);
                     }
                 } else if (new_scope->type == ScopeType::eEnum) {
                     if (tok2->str() == ":") {
@@ -369,7 +369,7 @@ void SymbolDatabase::createSymbolDatabaseFindAllScopes()
 
                 // make sure we have valid code
                 if (!new_scope->bodyEnd) {
-                    mTokenizer->syntaxError(tok);
+                    mTokenizer().syntaxError(tok);
                 }
 
                 if (new_scope->type == ScopeType::eEnum) {
@@ -377,7 +377,7 @@ void SymbolDatabase::createSymbolDatabaseFindAllScopes()
                     scope->nestedList.push_back(new_scope);
 
                     if (!tok2)
-                        mTokenizer->syntaxError(tok);
+                        mTokenizer().syntaxError(tok);
                 } else {
                     // make the new scope the current scope
                     scope->nestedList.push_back(new_scope);
@@ -681,7 +681,7 @@ void SymbolDatabase::createSymbolDatabaseFindAllScopes()
                 friendInfo.type = nullptr;
 
                 if (!scope->definedType)
-                    mTokenizer->syntaxError(tok);
+                    mTokenizer().syntaxError(tok);
 
                 scope->definedType->friendList.push_back(friendInfo);
             }
@@ -711,12 +711,12 @@ void SymbolDatabase::createSymbolDatabaseFindAllScopes()
                         const Function* const function = addGlobalFunction(scope, tok, argStart, funcStart);
 
                         if (!function)
-                            mTokenizer->syntaxError(tok);
+                            mTokenizer().syntaxError(tok);
                     }
 
                     // syntax error?
                     if (!scope)
-                        mTokenizer->syntaxError(tok);
+                        mTokenizer().syntaxError(tok);
                 }
                 // function prototype?
                 else if (declEnd && declEnd->str() == ";") {
@@ -835,17 +835,17 @@ void SymbolDatabase::createSymbolDatabaseFindAllScopes()
             }
             // syntax error?
             if (!scope)
-                mTokenizer->syntaxError(tok);
+                mTokenizer().syntaxError(tok);
             // End of scope or list should be handled above
             if (tok->str() == "}")
-                mTokenizer->syntaxError(tok);
+                mTokenizer().syntaxError(tok);
         }
     }
 }
 
 void SymbolDatabase::createSymbolDatabaseClassInfo()
 {
-    if (mTokenizer->isC())
+    if (mTokenizer().isC())
         return;
 
     // fill in using info
@@ -871,7 +871,7 @@ void SymbolDatabase::createSymbolDatabaseClassInfo()
             const Type* found = findType(i.nameTok, type.enclosingScope, /*lookOutside*/ true);
             if (found && found->findDependency(&type)) {
                 // circular dependency
-                //mTokenizer->syntaxError(nullptr);
+                //mTokenizer().syntaxError(nullptr);
             } else {
                 i.type = found;
             }
@@ -970,7 +970,7 @@ void SymbolDatabase::createSymbolDatabaseFunctionReturnTypes()
 
 void SymbolDatabase::createSymbolDatabaseNeedInitialization()
 {
-    if (mTokenizer->isC()) {
+    if (mTokenizer().isC()) {
         // For C code it is easy, as there are no constructors and no default values
         for (const Scope& scope : scopeList) {
             if (scope.definedType)
@@ -1060,7 +1060,7 @@ void SymbolDatabase::createSymbolDatabaseNeedInitialization()
         } while (unknowns && retry < 100);
 
         // this shouldn't happen so output a debug warning
-        if (retry == 100 && mSettings->debugwarnings) {
+        if (retry == 100 && mSettings().debugwarnings) {
             for (const Scope& scope : scopeList) {
                 if (scope.isClassOrStruct() && scope.definedType->needInitialization == Type::NeedInitialization::Unknown)
                     debugMessage(scope.classDef, "debug", "SymbolDatabase couldn't resolve all user defined types.");
@@ -1072,7 +1072,7 @@ void SymbolDatabase::createSymbolDatabaseNeedInitialization()
 void SymbolDatabase::createSymbolDatabaseVariableSymbolTable()
 {
     // create variable symbol table
-    mVariableList.resize(mTokenizer->varIdCount() + 1);
+    mVariableList.resize(mTokenizer().varIdCount() + 1);
     std::fill_n(mVariableList.begin(), mVariableList.size(), nullptr);
 
     // check all scopes for variables
@@ -1167,7 +1167,7 @@ void SymbolDatabase::createSymbolDatabaseSetScopePointers()
     // Set scope pointers
     for (const Scope& scope: scopeList) {
         if (scope.type == ScopeType::eGlobal)
-            setScopePointers(scope, mTokenizer->list.front(), mTokenizer->list.back());
+            setScopePointers(scope, mTokenizer().list.front(), mTokenizer().list.back());
         else {
             for (const Token *bodyStart: scope.bodyStartList)
                 setScopePointers(scope, bodyStart, bodyStart->link());
@@ -1192,7 +1192,7 @@ void SymbolDatabase::createSymbolDatabaseSetFunctionPointers(bool firstPass)
 
     // Set function call pointers
     const Token* inTemplateArg = nullptr;
-    for (Token* tok = mTokenizer->list.front(); tok != mTokenizer->list.back(); tok = tok->next()) {
+    for (Token* tok = mTokenizer().list.front(); tok != mTokenizer().list.back(); tok = tok->next()) {
         if (inTemplateArg == nullptr && tok->link() && tok->str() == "<")
             inTemplateArg = tok->link();
         if (inTemplateArg == tok)
@@ -1255,7 +1255,7 @@ void SymbolDatabase::createSymbolDatabaseSetTypePointers()
     }
 
     // Set type pointers
-    for (Token* tok = mTokenizer->list.front(); tok != mTokenizer->list.back(); tok = tok->next()) {
+    for (Token* tok = mTokenizer().list.front(); tok != mTokenizer().list.back(); tok = tok->next()) {
         if (!tok->isName() || tok->varId() || tok->function() || tok->type() || tok->enumerator())
             continue;
 
@@ -1290,7 +1290,7 @@ void SymbolDatabase::fixVarId(VarIdMap & varIds, const Token * vartok, Token * m
     if (varId == varIds.end()) {
         MemberIdMap memberId;
         if (membertok->varId() == 0) {
-            memberId[membervar->nameToken()->varId()] = mTokenizer->newVarId();
+            memberId[membervar->nameToken()->varId()] = mTokenizer().newVarId();
             mVariableList.push_back(membervar);
         } else
             mVariableList[membertok->varId()] = membervar;
@@ -1300,7 +1300,7 @@ void SymbolDatabase::fixVarId(VarIdMap & varIds, const Token * vartok, Token * m
     auto memberId = utils::as_const(varId->second).find(membervar->nameToken()->varId());
     if (memberId == varId->second.cend()) {
         if (membertok->varId() == 0) {
-            varId->second.emplace(membervar->nameToken()->varId(), mTokenizer->newVarId());
+            varId->second.emplace(membervar->nameToken()->varId(), mTokenizer().newVarId());
             mVariableList.push_back(membervar);
             memberId = varId->second.find(membervar->nameToken()->varId());
         } else
@@ -1325,7 +1325,7 @@ void SymbolDatabase::createSymbolDatabaseSetVariablePointers()
     };
 
     // Set variable pointers
-    for (Token* tok = mTokenizer->list.front(); tok != mTokenizer->list.back(); tok = tok->next()) {
+    for (Token* tok = mTokenizer().list.front(); tok != mTokenizer().list.back(); tok = tok->next()) {
         if (!tok->isName() || tok->isKeyword() || tok->isStandardType())
             continue;
         if (tok->varId())
@@ -1413,7 +1413,7 @@ void SymbolDatabase::createSymbolDatabaseSetVariablePointers()
                         setMemberVar(membervar, membertok, tok->function()->retDef);
                     }
                 }
-            } else if (mSettings->library.detectSmartPointer(tok->function()->retDef)) {
+            } else if (mSettings().library.detectSmartPointer(tok->function()->retDef)) {
                 if (const Token* templateArg = Token::findsimplematch(tok->function()->retDef, "<")) {
                     if (const Type* spType = findTypeInNested(templateArg->next(), tok->scope())) {
                         if (spType->classScope) {
@@ -1469,7 +1469,7 @@ void SymbolDatabase::createSymbolDatabaseEnums()
             // look for initialization tokens that can be converted to enumerators and convert them
             if (enumerator.start) {
                 if (!enumerator.end)
-                    mTokenizer->syntaxError(enumerator.start);
+                    mTokenizer().syntaxError(enumerator.start);
                 for (const Token * tok3 = enumerator.start; tok3 && tok3 != enumerator.end->next(); tok3 = tok3->next()) {
                     if (tok3->tokType() == Token::eName) {
                         const Enumerator * e = findEnumerator(tok3, tokensThatAreNotEnumeratorValues);
@@ -1482,7 +1482,7 @@ void SymbolDatabase::createSymbolDatabaseEnums()
     }
 
     // find enumerators
-    for (Token* tok = mTokenizer->list.front(); tok != mTokenizer->list.back(); tok = tok->next()) {
+    for (Token* tok = mTokenizer().list.front(); tok != mTokenizer().list.back(); tok = tok->next()) {
         const bool isVariable = (tok->tokType() == Token::eVariable && !tok->variable());
         if (tok->tokType() != Token::eName && !isVariable)
             continue;
@@ -1497,7 +1497,7 @@ void SymbolDatabase::createSymbolDatabaseEnums()
 
 void SymbolDatabase::createSymbolDatabaseIncompleteVars()
 {
-    for (Token* tok = mTokenizer->list.front(); precedes(tok, mTokenizer->list.back()); tok = tok->next()) {
+    for (Token* tok = mTokenizer().list.front(); precedes(tok, mTokenizer().list.back()); tok = tok->next()) {
         const Scope * scope = tok->scope();
         if (!scope)
             continue;
@@ -1518,7 +1518,7 @@ void SymbolDatabase::createSymbolDatabaseIncompleteVars()
             if (tok->str() == "using") {
                 Token* usingEnd = Token::findsimplematch(tok, ";");
                 if (!usingEnd)
-                    mTokenizer->syntaxError(tok);
+                    mTokenizer().syntaxError(tok);
                 tok = usingEnd;
                 continue;
             }
@@ -1554,7 +1554,7 @@ void SymbolDatabase::createSymbolDatabaseIncompleteVars()
             fstr.insert(0, ftok->strAt(-1) + "::");
             ftok = ftok->tokAt(-2);
         }
-        if (mSettings->library.functions().find(fstr) != mSettings->library.functions().end())
+        if (mSettings().library.functions().find(fstr) != mSettings().library.functions().end())
             continue;
         if (tok->isCpp()) {
             const Token* parent = tok->astParent();
@@ -1581,7 +1581,7 @@ void SymbolDatabase::createSymbolDatabaseEscapeFunctions()
             continue;
         if (Token::findsimplematch(scope.bodyStart, "return", scope.bodyEnd))
             continue;
-        function->isEscapeFunction(isReturnScope(scope.bodyEnd, mSettings->library, nullptr, true));
+        function->isEscapeFunction(isReturnScope(scope.bodyEnd, mSettings().library, nullptr, true));
     }
 }
 
@@ -1719,14 +1719,14 @@ void SymbolDatabase::createSymbolDatabaseExprIds()
 {
     // Find highest varId
     nonneg int maximumVarId = 0;
-    for (const Token* tok = mTokenizer->list.front(); tok; tok = tok->next()) {
+    for (const Token* tok = mTokenizer().list.front(); tok; tok = tok->next()) {
         maximumVarId = std::max(tok->varId(), maximumVarId);
     }
     nonneg int id = maximumVarId + 1;
     // Find incomplete vars that are used in constant context
     std::unordered_map<std::string, nonneg int> unknownConstantIds;
     const Token* inConstExpr = nullptr;
-    for (const Token* tok = mTokenizer->list.front(); tok != mTokenizer->list.back(); tok = tok->next()) {
+    for (const Token* tok = mTokenizer().list.front(); tok != mTokenizer().list.back(); tok = tok->next()) {
         if (Token::Match(tok, "decltype|sizeof|typeof (") && tok->linkAt(1)) {
             tok = tok->linkAt(1)->previous();
         } else if (tok == inConstExpr) {
@@ -1822,7 +1822,7 @@ void SymbolDatabase::createSymbolDatabaseExprIds()
 
     // Mark expressions that are unique
     std::vector<std::pair<Token*, int>> uniqueExprId(id);
-    for (Token* tok = mTokenizer->list.front(); tok; tok = tok->next()) {
+    for (Token* tok = mTokenizer().list.front(); tok; tok = tok->next()) {
         const auto id2 = tok->exprId();
         if (id2 == 0 || id2 <= maximumVarId)
             continue;
@@ -1910,19 +1910,19 @@ void SymbolDatabase::setArrayDimensionsUsingValueFlow()
                 std::uint8_t bits = 0;
                 switch (dimension.tok->valueType()->type) {
                 case ValueType::Type::CHAR:
-                    bits = mSettings->platform.char_bit;
+                    bits = mSettings().platform.char_bit;
                     break;
                 case ValueType::Type::SHORT:
-                    bits = mSettings->platform.short_bit;
+                    bits = mSettings().platform.short_bit;
                     break;
                 case ValueType::Type::INT:
-                    bits = mSettings->platform.int_bit;
+                    bits = mSettings().platform.int_bit;
                     break;
                 case ValueType::Type::LONG:
-                    bits = mSettings->platform.long_bit;
+                    bits = mSettings().platform.long_bit;
                     break;
                 case ValueType::Type::LONGLONG:
-                    bits = mSettings->platform.long_long_bit;
+                    bits = mSettings().platform.long_long_bit;
                     break;
                 default:
                     break;
@@ -1945,7 +1945,7 @@ void SymbolDatabase::setArrayDimensionsUsingValueFlow()
 SymbolDatabase::~SymbolDatabase()
 {
     // Clear scope, type, function and variable pointers
-    for (Token* tok = mTokenizer->list.front(); tok; tok = tok->next()) {
+    for (Token* tok = mTokenizer().list.front(); tok; tok = tok->next()) {
         tok->scope(nullptr);
         tok->type(nullptr);
         tok->function(nullptr);
@@ -2148,7 +2148,7 @@ bool SymbolDatabase::isFunction(const Token *tok, const Scope* outerScope, const
             declEnd = tok->linkAt(1)->next();
             return true;
         }
-        mTokenizer->syntaxError(tok);
+        mTokenizer().syntaxError(tok);
     }
 
     return false;
@@ -2163,11 +2163,11 @@ void SymbolDatabase::validateExecutableScopes() const
         if (scope->isExecutable() && !function) {
             const std::list<const Token*> callstack(1, scope->classDef);
             const std::string msg = std::string("Executable scope '") + scope->classDef->str() + "' with unknown function.";
-            const ErrorMessage errmsg(callstack, &mTokenizer->list, Severity::debug,
+            const ErrorMessage errmsg(callstack, &mTokenizer().list, Severity::debug,
                                       "symbolDatabaseWarning",
                                       msg,
                                       Certainty::normal);
-            mErrorLogger->reportErr(errmsg);
+            mErrorLogger().reportErr(errmsg);
         }
     }
 }
@@ -2375,7 +2375,7 @@ bool SymbolDatabase::isRecordTypeWithoutSideEffects(const Type* type) const
 
 void SymbolDatabase::validate() const
 {
-    if (mSettings->debugwarnings) {
+    if (mSettings().debugwarnings) {
         validateExecutableScopes();
     }
     validateVariables();
@@ -2388,9 +2388,9 @@ void SymbolDatabase::clangSetVariables(const std::vector<const Variable *> &vars
 
 void SymbolDatabase::debugSymbolDatabase() const
 {
-    if (!mSettings->debugnormal && !mSettings->debugwarnings)
+    if (!mSettings().debugnormal && !mSettings().debugwarnings)
         return;
-    for (const Token* tok = mTokenizer->list.front(); tok != mTokenizer->list.back(); tok = tok->next()) {
+    for (const Token* tok = mTokenizer().list.front(); tok != mTokenizer().list.back(); tok = tok->next()) {
         if (tok->astParent() && tok->astParent()->getTokenDebug() == tok->getTokenDebug())
             continue;
         if (tok->getTokenDebug() == TokenDebug::ValueType) {
@@ -2405,8 +2405,8 @@ void SymbolDatabase::debugSymbolDatabase() const
                 msg += "missing";
             }
             errorPath.emplace_back(tok, "");
-            mErrorLogger->reportErr(
-                {std::move(errorPath), &mTokenizer->list, Severity::debug, "valueType", msg, CWE{0}, Certainty::normal});
+            mErrorLogger().reportErr(
+                {std::move(errorPath), &mTokenizer().list, Severity::debug, "valueType", msg, CWE{0}, Certainty::normal});
         }
     }
 }
@@ -3029,10 +3029,10 @@ static bool typesMatch(
     const Token *&new_second)
 {
     // get first type
-    const Type* first_type = first_scope->symdb->findType(first_token, first_scope, /*lookOutside*/ true);
+    const Type* first_type = first_scope->symdb().findType(first_token, first_scope, /*lookOutside*/ true);
     if (first_type) {
         // get second type
-        const Type* second_type = second_scope->symdb->findType(second_token, second_scope, /*lookOutside*/ true);
+        const Type* second_type = second_scope->symdb().findType(second_token, second_scope, /*lookOutside*/ true);
         // check if types match
         if (first_type == second_type) {
             const Token* tok1 = first_token;
@@ -3708,7 +3708,7 @@ void SymbolDatabase::addNewFunction(Scope *&scope, const Token *&tok)
 
         // syntax error?
         if (!newScope->bodyEnd) {
-            mTokenizer->unmatchedToken(tok1);
+            mTokenizer().unmatchedToken(tok1);
         } else {
             scope->nestedList.push_back(newScope);
             scope = newScope;
@@ -3814,7 +3814,7 @@ const Token *Type::initBaseInfo(const Token *tok, const Token *tok1)
                 }
             }
 
-            const Type * baseType = classScope->symdb->findType(base.nameTok, enclosingScope);
+            const Type * baseType = classScope->symdb().findType(base.nameTok, enclosingScope);
             if (baseType && !baseType->findDependency(this))
                 base.type = baseType;
 
@@ -3853,27 +3853,27 @@ std::string Type::name() const
 
 void SymbolDatabase::debugMessage(const Token *tok, const std::string &type, const std::string &msg) const
 {
-    if (tok && mSettings->debugwarnings) {
+    if (tok && mSettings().debugwarnings) {
         const std::list<const Token*> locationList(1, tok);
-        const ErrorMessage errmsg(locationList, &mTokenizer->list,
+        const ErrorMessage errmsg(locationList, &mTokenizer().list,
                                   Severity::debug,
                                   type,
                                   msg,
                                   Certainty::normal);
-        mErrorLogger->reportErr(errmsg);
+        mErrorLogger().reportErr(errmsg);
     }
 }
 
 void SymbolDatabase::returnImplicitIntError(const Token *tok) const
 {
-    if (tok && mSettings->severity.isEnabled(Severity::portability) && (tok->isC() && mSettings->standards.c != Standards::C89)) {
+    if (tok && mSettings().severity.isEnabled(Severity::portability) && (tok->isC() && mSettings().standards.c != Standards::C89)) {
         const std::list<const Token*> locationList(1, tok);
-        const ErrorMessage errmsg(locationList, &mTokenizer->list,
+        const ErrorMessage errmsg(locationList, &mTokenizer().list,
                                   Severity::portability,
                                   "returnImplicitInt",
                                   "Omitted return type of function '" + tok->str() + "' defaults to int, this is not supported by ISO C99 and later standards.",
                                   Certainty::normal);
-        mErrorLogger->reportErr(errmsg);
+        mErrorLogger().reportErr(errmsg);
     }
 }
 
@@ -4183,7 +4183,7 @@ void SymbolDatabase::printVariable(const Variable *var, const char *indent) cons
     std::cout << indent << "mType: ";
     if (var->type()) {
         std::cout << var->type()->type() << " " << var->type()->name();
-        std::cout << " " << mTokenizer->list.fileLine(var->type()->classDef);
+        std::cout << " " << mTokenizer().list.fileLine(var->type()->classDef);
         std::cout << " " << var->type() << std::endl;
     } else
         std::cout << "none" << std::endl;
@@ -4357,7 +4357,7 @@ void SymbolDatabase::printOut(const char *title) const
                 std::cout << "::" << tok1->strAt(1);
                 tok1 = tok1->tokAt(2);
             }
-            std::cout << " " << mTokenizer->list.fileLine(use->start) << std::endl;
+            std::cout << " " << mTokenizer().list.fileLine(use->start) << std::endl;
         }
 
         std::cout << "    functionOf: " << scopeToString(scope->functionOf, mTokenizer) << std::endl;
@@ -4428,7 +4428,7 @@ void SymbolDatabase::printOut(const char *title) const
         std::cout << "mVariableList[" << i << "]: " << mVariableList[i];
         if (mVariableList[i]) {
             std::cout << " " << mVariableList[i]->name() << " "
-                      << mTokenizer->list.fileLine(mVariableList[i]->nameToken());
+                      << mTokenizer().list.fileLine(mVariableList[i]->nameToken());
         }
         std::cout << std::endl;
     }
@@ -4670,7 +4670,7 @@ void SymbolDatabase::printXml(std::ostream &out) const
 
 static const Type* findVariableTypeIncludingUsedNamespaces(const Scope* scope, const Token* typeTok)
 {
-    const Type* argType = scope->symdb->findVariableType(scope, typeTok);
+    const Type* argType = scope->symdb().findVariableType(scope, typeTok);
     if (argType)
         return argType;
 
@@ -4678,7 +4678,7 @@ static const Type* findVariableTypeIncludingUsedNamespaces(const Scope* scope, c
     while (scope) {
         for (const Scope::UsingInfo &ui : scope->usingList) {
             if (ui.scope) {
-                argType = scope->symdb->findVariableType(ui.scope, typeTok);
+                argType = scope->symdb().findVariableType(ui.scope, typeTok);
                 if (argType)
                     return argType;
             }
@@ -4751,7 +4751,7 @@ void Function::addArguments(const Scope *scope)
         while (Token::Match(typeTok, "const|volatile|enum|struct|::"))
             typeTok = typeTok->next();
         if (Token::Match(typeTok, ",|)")) { // #8333
-            scope->symdb->mTokenizer->syntaxError(typeTok);
+            scope->symdb().mTokenizer().syntaxError(typeTok);
         }
         if (Token::Match(typeTok, "%type% <") && Token::Match(typeTok->linkAt(1), "> :: %type%"))
             typeTok = typeTok->linkAt(1)->tokAt(2);
@@ -4770,7 +4770,7 @@ void Function::addArguments(const Scope *scope)
                     endTok = nameTok->previous();
 
                     if (hasBody())
-                        scope->symdb->debugMessage(nameTok, "varid0", "Function::addArguments found argument \'" + nameTok->str() + "\' with varid 0.");
+                        scope->symdb().debugMessage(nameTok, "varid0", "Function::addArguments found argument \'" + nameTok->str() + "\' with varid 0.");
                 } else
                     endTok = typeTok;
             } else
@@ -4801,7 +4801,7 @@ void Function::addArguments(const Scope *scope)
         if (startTok == nameTok)
             break;
 
-        argumentList.emplace_back(nameTok, startTok, endTok, count++, AccessControl::Argument, argType, functionScope, scope->symdb->mSettings);
+        argumentList.emplace_back(nameTok, startTok, endTok, count++, AccessControl::Argument, argType, functionScope, scope->symdb().mSettings);
 
         if (tok->str() == ")") {
             // check for a variadic function or a variadic template function
@@ -5045,7 +5045,7 @@ void Scope::addVariable(const Token *token_, const Token *start_, const Token *e
     // keep possible size_t -> int truncation outside emplace_back() to have a single line
     // C4267 VC++ warning instead of several dozens lines
     const int varIndex = varlist.size();
-    varlist.emplace_back(token_, start_, end_, varIndex, access_, type_, scope_, scope_->symdb->mSettings);
+    varlist.emplace_back(token_, start_, end_, varIndex, access_, type_, scope_, scope_->symdb().mSettings);
 }
 
 // Get variable list..
@@ -5058,7 +5058,7 @@ void Scope::getVariableList()
 
     // global scope
     else if (type == ScopeType::eGlobal)
-        getVariableList(symdb->mTokenizer->tokens(), nullptr);
+        getVariableList(symdb().mTokenizer().tokens(), nullptr);
 
     // forward declaration
     else
@@ -5203,7 +5203,7 @@ const Token *Scope::checkVariable(const Token *tok, AccessControl varaccess)
     const Token *typestart = tok;
 
     // C++17 structured bindings
-    if (tok && tok->isCpp() && (symdb->mSettings->standards.cpp >= Standards::CPP17) && Token::Match(tok, "auto &|&&| [")) {
+    if (tok && tok->isCpp() && (symdb().mSettings().standards.cpp >= Standards::CPP17) && Token::Match(tok, "auto &|&&| [")) {
         const Token *typeend = Token::findsimplematch(typestart, "[")->previous();
         for (tok = typeend->tokAt(2); Token::Match(tok, "%name%|,"); tok = tok->next()) {
             if (tok->varId())
@@ -5229,7 +5229,7 @@ const Token *Scope::checkVariable(const Token *tok, AccessControl varaccess)
 
         if (vartok->varId() == 0) {
             if (!vartok->isBoolean())
-                symdb->debugMessage(vartok, "varid0", "Scope::checkVariable found variable \'" + vartok->str() + "\' with varid 0.");
+                symdb().debugMessage(vartok, "varid0", "Scope::checkVariable found variable \'" + vartok->str() + "\' with varid 0.");
             return tok;
         }
 
@@ -5255,7 +5255,7 @@ const Token *Scope::checkVariable(const Token *tok, AccessControl varaccess)
                 }
                 if (Token::Match(tok2, ", %name%")) {
                     if (tok2->next()->varId() == 0) {
-                        symdb->debugMessage(tok2->next(), "varid0", "Scope::checkVariable found variable \'" + tok2->strAt(1) + "\' with varid 0.");
+                        symdb().debugMessage(tok2->next(), "varid0", "Scope::checkVariable found variable \'" + tok2->strAt(1) + "\' with varid 0.");
                         return tok;
                     }
                     addVariable(tok2->next(), typestart, vartok->previous(), varaccess, vType, this);
@@ -5345,7 +5345,7 @@ bool Scope::isVariableDeclaration(const Token* const tok, const Token*& vartok, 
     if (isCPP && Token::Match(tok, "throw|new"))
         return false;
 
-    const bool isCPP11 = isCPP && symdb->mSettings->standards.cpp >= Standards::CPP11;
+    const bool isCPP11 = isCPP && symdb().mSettings().standards.cpp >= Standards::CPP11;
 
     if (isCPP11 && tok->str() == "using")
         return false;
@@ -6823,13 +6823,13 @@ bool SymbolDatabase::isReservedName(const Token* tok)
 
 nonneg int SymbolDatabase::sizeOfType(const Token *type) const
 {
-    int size = mTokenizer->sizeOfType(type);
+    int size = mTokenizer().sizeOfType(type);
 
     if (size == 0 && type->type() && type->type()->isEnumType() && type->type()->classScope) {
-        size = mSettings->platform.sizeof_int;
+        size = mSettings().platform.sizeof_int;
         const Token * enum_type = type->type()->classScope->enumType;
         if (enum_type)
-            size = mTokenizer->sizeOfType(enum_type);
+            size = mTokenizer().sizeOfType(enum_type);
     }
 
     return size;
@@ -6844,7 +6844,7 @@ static const Token* parsedecl(const Token* type,
 void SymbolDatabase::setValueType(Token* tok, const Variable& var, const SourceLocation &loc)
 {
     ValueType valuetype;
-    if (mSettings->debugnormal || mSettings->debugwarnings)
+    if (mSettings().debugnormal || mSettings().debugwarnings)
         valuetype.setDebugPath(tok, loc);
     if (var.nameToken())
         valuetype.bits = var.nameToken()->bits();
@@ -6885,7 +6885,7 @@ static ValueType::Type getEnumType(const Scope* scope, const Platform& platform)
 void SymbolDatabase::setValueType(Token* tok, const Enumerator& enumerator, const SourceLocation &loc)
 {
     ValueType valuetype;
-    if (mSettings->debugnormal || mSettings->debugwarnings)
+    if (mSettings().debugnormal || mSettings().debugwarnings)
         valuetype.setDebugPath(tok, loc);
     valuetype.typeScope = enumerator.scope;
     const Token * type = enumerator.scope->enumType;
@@ -6910,7 +6910,7 @@ void SymbolDatabase::setValueType(Token* tok, const Enumerator& enumerator, cons
         setValueType(tok, valuetype);
     } else {
         valuetype.sign = ValueType::SIGNED;
-        valuetype.type = getEnumType(enumerator.scope, mSettings->platform);
+        valuetype.type = getEnumType(enumerator.scope, mSettings().platform);
         setValueType(tok, valuetype);
     }
 }
@@ -6936,7 +6936,7 @@ static bool isContainerYieldPointer(Library::Container::Yield yield)
 void SymbolDatabase::setValueType(Token* tok, const ValueType& valuetype, const SourceLocation &loc)
 {
     auto* valuetypePtr = new ValueType(valuetype);
-    if (mSettings->debugnormal || mSettings->debugwarnings)
+    if (mSettings().debugnormal || mSettings().debugwarnings)
         valuetypePtr->setDebugPath(tok, loc);
     tok->setValueType(valuetypePtr);
     Token *parent = tok->astParent();
@@ -7227,7 +7227,7 @@ void SymbolDatabase::setValueType(Token* tok, const ValueType& valuetype, const 
                 setType = true;
                 autovt.type = ValueType::Type::RECORD;
             } else if (vt2->containerTypeToken) {
-                if (mSettings->library.isSmartPointer(vt2->containerTypeToken)) {
+                if (mSettings().library.isSmartPointer(vt2->containerTypeToken)) {
                     const Token *smartPointerTypeTok = vt2->containerTypeToken;
                     while (Token::Match(smartPointerTypeTok, "%name%|::"))
                         smartPointerTypeTok = smartPointerTypeTok->next();
@@ -7298,7 +7298,7 @@ void SymbolDatabase::setValueType(Token* tok, const ValueType& valuetype, const 
     }
 
     // c++17 auto type deduction of braced init list
-    if (parent->isCpp() && mSettings->standards.cpp >= Standards::CPP17
+    if (parent->isCpp() && mSettings().standards.cpp >= Standards::CPP17
         && Token::Match(parent->astOperand1(), "%var% {") && vt2) {
 
         auto reference = Reference::None;
@@ -7601,7 +7601,7 @@ static const Token* parsedecl(const Token* type,
                 valuetype->container = container;
             } else {
                 const Scope *scope = type->scope();
-                valuetype->typeScope = scope->symdb->findScope(typeTokens.front(), scope);
+                valuetype->typeScope = scope->symdb().findScope(typeTokens.front(), scope);
                 if (valuetype->typeScope)
                     valuetype->type = (scope->type == ScopeType::eClass) ? ValueType::Type::RECORD : ValueType::Type::NONSTD;
             }
@@ -7813,7 +7813,7 @@ static int getIntegerConstantMacroWidth(const Token* tok) {
 void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *tokens)
 {
     if (!tokens)
-        tokens = mTokenizer->list.front();
+        tokens = mTokenizer().list.front();
 
     for (Token *tok = tokens; tok; tok = tok->next())
         tok->setValueType(nullptr);
@@ -7845,18 +7845,18 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
                         pos -= 2;
                     } else break;
                 }
-                if (mSettings->platform.type != Platform::Type::Unspecified) {
-                    if (type <= ValueType::Type::INT && mSettings->platform.isIntValue(unsignedSuffix ? (value >> 1) : value))
+                if (mSettings().platform.type != Platform::Type::Unspecified) {
+                    if (type <= ValueType::Type::INT && mSettings().platform.isIntValue(unsignedSuffix ? (value >> 1) : value))
                         type = ValueType::Type::INT;
-                    else if (type <= ValueType::Type::INT && !MathLib::isDec(tokStr) && mSettings->platform.isIntValue(value >> 2)) {
+                    else if (type <= ValueType::Type::INT && !MathLib::isDec(tokStr) && mSettings().platform.isIntValue(value >> 2)) {
                         type = ValueType::Type::INT;
                         sign = ValueType::Sign::UNSIGNED;
-                    } else if (type <= ValueType::Type::LONG && mSettings->platform.isLongValue(unsignedSuffix ? (value >> 1) : value))
+                    } else if (type <= ValueType::Type::LONG && mSettings().platform.isLongValue(unsignedSuffix ? (value >> 1) : value))
                         type = ValueType::Type::LONG;
-                    else if (type <= ValueType::Type::LONG && !MathLib::isDec(tokStr) && mSettings->platform.isLongValue(value >> 2)) {
+                    else if (type <= ValueType::Type::LONG && !MathLib::isDec(tokStr) && mSettings().platform.isLongValue(value >> 2)) {
                         type = ValueType::Type::LONG;
                         sign = ValueType::Sign::UNSIGNED;
-                    } else if (mSettings->platform.isLongLongValue(unsignedSuffix ? (value >> 1) : value))
+                    } else if (mSettings().platform.isLongLongValue(unsignedSuffix ? (value >> 1) : value))
                         type = ValueType::Type::LONGLONG;
                     else {
                         type = ValueType::Type::LONGLONG;
@@ -7885,7 +7885,7 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
             nonneg int const volatileness = 0;
             ValueType valuetype(ValueType::Sign::UNKNOWN_SIGN, ValueType::Type::CHAR, pointer, constness, volatileness);
 
-            if (tok->isCpp() && mSettings->standards.cpp >= Standards::CPP20 && tok->isUtf8()) {
+            if (tok->isCpp() && mSettings().standards.cpp >= Standards::CPP20 && tok->isUtf8()) {
                 valuetype.originalTypeName = "char8_t";
                 valuetype.fromLibraryType(valuetype.originalTypeName, mSettings);
             } else if (tok->isUtf16()) {
@@ -7919,7 +7919,7 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
             }
 
             // Construct smart pointer
-            else if (start && start->isCpp() && mSettings->library.isSmartPointer(start)) {
+            else if (start && start->isCpp() && mSettings().library.isSmartPointer(start)) {
                 ValueType valuetype;
                 if (parsedecl(start, &valuetype, mDefaultSignedness, mSettings)) {
                     setValueType(tok, valuetype);
@@ -7938,7 +7938,7 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
             else if (Token::simpleMatch(tok->previous(), "sizeof (")) {
                 ValueType valuetype(ValueType::Sign::UNSIGNED, ValueType::Type::LONG, 0U);
                 // TODO: handle via sizeof_size_t instead
-                if (mSettings->platform.type == Platform::Type::Win64)
+                if (mSettings().platform.type == Platform::Type::Win64)
                     valuetype.type = ValueType::Type::LONGLONG;
 
                 valuetype.originalTypeName = "size_t";
@@ -7955,15 +7955,15 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
             // functions from stdint.h
             else if (const int macroWidth = getIntegerConstantMacroWidth(tok->previous())) {
                 ValueType valuetype;
-                if (macroWidth == mSettings->platform.char_bit)
+                if (macroWidth == mSettings().platform.char_bit)
                     valuetype.type = ValueType::Type::CHAR;
-                else if (macroWidth == mSettings->platform.short_bit)
+                else if (macroWidth == mSettings().platform.short_bit)
                     valuetype.type = ValueType::Type::SHORT;
-                else if (macroWidth == mSettings->platform.int_bit)
+                else if (macroWidth == mSettings().platform.int_bit)
                     valuetype.type = ValueType::Type::INT;
-                else if (macroWidth == mSettings->platform.long_bit)
+                else if (macroWidth == mSettings().platform.long_bit)
                     valuetype.type = ValueType::Type::LONG;
-                else if (macroWidth == mSettings->platform.long_long_bit)
+                else if (macroWidth == mSettings().platform.long_long_bit)
                     valuetype.type = ValueType::Type::LONGLONG;
                 else
                     valuetype.type = ValueType::Type::INT;
@@ -8022,8 +8022,8 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
                     const Token *typeStartToken = tok->astOperand1();
                     while (typeStartToken && typeStartToken->str() == "::")
                         typeStartToken = typeStartToken->astOperand1();
-                    if (mSettings->library.detectContainerOrIterator(typeStartToken) ||
-                        mSettings->library.detectSmartPointer(typeStartToken)) {
+                    if (mSettings().library.detectContainerOrIterator(typeStartToken) ||
+                        mSettings().library.detectSmartPointer(typeStartToken)) {
                         ValueType vt;
                         if (parsedecl(typeStartToken, &vt, mDefaultSignedness, mSettings)) {
                             setValueType(tok, vt);
@@ -8040,10 +8040,10 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
                             vt.smartPointerType = vt.typeScope->definedType;
                             vt.typeScope = nullptr;
                         }
-                        if (e == "std::make_shared" && mSettings->library.smartPointers().count("std::shared_ptr") > 0)
-                            vt.smartPointer = &mSettings->library.smartPointers().at("std::shared_ptr");
-                        if (e == "std::make_unique" && mSettings->library.smartPointers().count("std::unique_ptr") > 0)
-                            vt.smartPointer = &mSettings->library.smartPointers().at("std::unique_ptr");
+                        if (e == "std::make_shared" && mSettings().library.smartPointers().count("std::shared_ptr") > 0)
+                            vt.smartPointer = &mSettings().library.smartPointers().at("std::shared_ptr");
+                        if (e == "std::make_unique" && mSettings().library.smartPointers().count("std::unique_ptr") > 0)
+                            vt.smartPointer = &mSettings().library.smartPointers().at("std::unique_ptr");
                         vt.type = ValueType::Type::SMART_POINTER;
                         vt.smartPointerTypeToken = tok->astOperand1()->tokAt(3);
                         setValueType(tok, vt);
@@ -8057,7 +8057,7 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
                     }
                 }
 
-                const std::string& typestr(mSettings->library.returnValueType(tok->previous()));
+                const std::string& typestr(mSettings().library.returnValueType(tok->previous()));
                 if (!typestr.empty()) {
                     ValueType valuetype;
                     TokenList tokenList(mSettings, tok->isCpp() ? Standards::Language::CPP : Standards::Language::C);
@@ -8107,7 +8107,7 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
                             continue;
                         }
 
-                        const auto yield = astFunctionYield(tok->previous(), mSettings->library);
+                        const auto yield = astFunctionYield(tok->previous(), mSettings().library);
                         if (yield == Library::Container::Yield::START_ITERATOR ||
                             yield == Library::Container::Yield::END_ITERATOR ||
                             yield == Library::Container::Yield::ITERATOR) {
@@ -8121,7 +8121,7 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
                     if (isReturnIter) {
                         const std::vector<const Token*> args = getArguments(tok);
                         if (!args.empty()) {
-                            const Library::ArgumentChecks::IteratorInfo* info = mSettings->library.getArgIteratorInfo(tok->previous(), 1);
+                            const Library::ArgumentChecks::IteratorInfo* info = mSettings().library.getArgIteratorInfo(tok->previous(), 1);
                             if (info && info->it) {
                                 const Token* contTok = args[0];
                                 if (Token::simpleMatch(args[0]->astOperand1(), ".") && args[0]->astOperand1()->astOperand1()) // .begin()
@@ -8187,7 +8187,7 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
             if (Token::Match(typeTok, "( std| ::| nothrow )"))
                 typeTok = typeTok->link()->next();
             bool isIterator = false;
-            if (const Library::Container* c = mSettings->library.detectContainerOrIterator(typeTok, &isIterator)) {
+            if (const Library::Container* c = mSettings().library.detectContainerOrIterator(typeTok, &isIterator)) {
                 ValueType vt;
                 vt.pointer = 1;
                 vt.container = c;
@@ -8252,7 +8252,7 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
         }
     }
 
-    if (reportDebugWarnings && mSettings->debugwarnings) {
+    if (reportDebugWarnings && mSettings().debugwarnings) {
         for (Token *tok = tokens; tok; tok = tok->next()) {
             if (tok->str() == "auto" && !tok->valueType()) {
                 if (Token::Match(tok->next(), "%name% ; %name% = [") && isLambdaCaptureList(tok->tokAt(5)))
@@ -8893,5 +8893,5 @@ void SymbolDatabase::getErrorMessages(ErrorLogger& /*errorLogger*/)
 {
     // TODO
     //SymbolDatabase symdb;
-    //symdb->returnImplicitIntError(nullptr);
+    //symdb().returnImplicitIntError(nullptr);
 }

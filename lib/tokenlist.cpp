@@ -407,9 +407,9 @@ void TokenList::createTokens(simplecpp::TokenList&& tokenList)
             tokenList.deleteToken(tok->previous);
     }
 
-    if (mSettings->relativePaths) {
+    if (mSettings().relativePaths) {
         for (std::string & mFile : mFiles)
-            mFile = Path::getRelativePath(mFile, mSettings->basePaths);
+            mFile = Path::getRelativePath(mFile, mSettings().basePaths);
     }
 
     Token::assignProgressValues(mTokensFrontBack->front);
@@ -2082,17 +2082,17 @@ bool TokenList::validateToken(const Token* tok) const
 
 void TokenList::simplifyPlatformTypes()
 {
-    const bool isCPP11 = isCPP() && (mSettings->standards.cpp >= Standards::CPP11);
+    const bool isCPP11 = isCPP() && (mSettings().standards.cpp >= Standards::CPP11);
 
     enum : std::uint8_t { isLongLong, isLong, isInt } type;
 
     /** @todo This assumes a flat address space. Not true for segmented address space (FAR *). */
 
-    if (mSettings->platform.sizeof_size_t == mSettings->platform.sizeof_long)
+    if (mSettings().platform.sizeof_size_t == mSettings().platform.sizeof_long)
         type = isLong;
-    else if (mSettings->platform.sizeof_size_t == mSettings->platform.sizeof_long_long)
+    else if (mSettings().platform.sizeof_size_t == mSettings().platform.sizeof_long_long)
         type = isLongLong;
-    else if (mSettings->platform.sizeof_size_t == mSettings->platform.sizeof_int)
+    else if (mSettings().platform.sizeof_size_t == mSettings().platform.sizeof_int)
         type = isInt;
     else
         return;
@@ -2145,13 +2145,13 @@ void TokenList::simplifyPlatformTypes()
         }
     }
 
-    const std::string platform_type(mSettings->platform.toString());
+    const std::string platform_type(mSettings().platform.toString());
 
     for (Token *tok = front(); tok; tok = tok->next()) {
         if (tok->tokType() != Token::eType && tok->tokType() != Token::eName)
             continue;
 
-        const Library::PlatformType * const platformtype = mSettings->library.platform_type(tok->str(), platform_type);
+        const Library::PlatformType * const platformtype = mSettings().library.platform_type(tok->str(), platform_type);
 
         if (platformtype) {
             // check for namespace
@@ -2239,7 +2239,7 @@ void TokenList::simplifyStdType()
             continue;
         }
 
-        if (Token::Match(tok, "char|short|int|long|unsigned|signed|double|float") || (isC() && (mSettings->standards.c >= Standards::C99) && Token::Match(tok, "complex|_Complex"))) {
+        if (Token::Match(tok, "char|short|int|long|unsigned|signed|double|float") || (isC() && (mSettings().standards.c >= Standards::C99) && Token::Match(tok, "complex|_Complex"))) {
             bool isFloat= false;
             bool isSigned = false;
             bool isUnsigned = false;
@@ -2262,7 +2262,7 @@ void TokenList::simplifyStdType()
                 else if (Token::Match(tok2, "float|double")) {
                     isFloat = true;
                     typeSpec = tok2;
-                } else if (isC() && (mSettings->standards.c >= Standards::C99) && Token::Match(tok2, "complex|_Complex"))
+                } else if (isC() && (mSettings().standards.c >= Standards::C99) && Token::Match(tok2, "complex|_Complex"))
                     isComplex = !isFloat || tok2->str() == "_Complex" || Token::Match(tok2->next(), "*|&|%name%"); // Ensure that "complex" is not the variables name
                 else if (Token::Match(tok2, "char|int")) {
                     if (!typeSpec)
@@ -2301,7 +2301,7 @@ void TokenList::simplifyStdType()
 bool TokenList::isKeyword(const std::string &str) const
 {
     if (isCPP()) {
-        const auto &cpp_keywords = Keywords::getAll(mSettings->standards.cpp);
+        const auto &cpp_keywords = Keywords::getAll(mSettings().standards.cpp);
         const bool b = cpp_keywords.find(str) != cpp_keywords.end();
         if (b) {
             // TODO: integrate into keywords?
@@ -2313,7 +2313,7 @@ bool TokenList::isKeyword(const std::string &str) const
         return b;
     }
 
-    const auto &c_keywords = Keywords::getAll(mSettings->standards.c);
+    const auto &c_keywords = Keywords::getAll(mSettings().standards.c);
     const bool b = c_keywords.find(str) != c_keywords.end();
     if (b) {
         // TODO: integrate into Keywords?

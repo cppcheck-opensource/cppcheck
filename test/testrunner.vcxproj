@@ -77,7 +77,6 @@
     <ClCompile Include="testlibrary.cpp" />
     <ClCompile Include="testmathlib.cpp" />
     <ClCompile Include="testmemleak.cpp" />
-    <ClCompile Include="testnonnullptr.cpp" />
     <ClCompile Include="testnullpointer.cpp" />
     <ClCompile Include="testoptions.cpp" />
     <ClCompile Include="testother.cpp" />
@@ -88,6 +87,7 @@
     <ClCompile Include="testpreprocessor.cpp" />
     <ClCompile Include="testprocessexecutor.cpp" />
     <ClCompile Include="testprogrammemory.cpp" />
+    <ClCompile Include="testrefthunk.cpp" />
     <ClCompile Include="testregex.cpp" />
     <ClCompile Include="testsarifreport.cpp" />
     <ClCompile Include="testsettings.cpp" />

@@ -129,19 +129,19 @@ void CheckersReport::countCheckers()
     mActiveCheckersCount = mAllCheckersCount = 0;
 
     for (const auto& checkReq: checkers::allCheckers) {
-        if (mActiveCheckers->count(checkReq.first) > 0)
+        if (mActiveCheckers().count(checkReq.first) > 0)
             ++mActiveCheckersCount;
         ++mAllCheckersCount;
     }
-    for (const auto& addonInfo: mSettings->addonInfos) {
+    for (const auto& addonInfo: mSettings().addonInfos) {
         for (const auto& checkReq: addonInfo.checkers) {
-            if (mActiveCheckers->count(checkReq.first) > 0)
+            if (mActiveCheckers().count(checkReq.first) > 0)
                 ++mActiveCheckersCount;
             ++mAllCheckersCount;
         }
     }
 
-    if (mSettings->addons.count("misra")) {
+    if (mSettings().addons.count("misra")) {
         const bool doUnusedFunctionOnly = Settings::unusedFunctionOnly();
         for (const checkers::MisraInfo& info: checkers::misraC2012Rules) {
             const std::string rule = std::to_string(info.a) + "." + std::to_string(info.b);
@@ -185,7 +185,7 @@ std::string CheckersReport::getReport(const std::string& criticalErrors) const
     }
     for (const auto& checkReq: checkers::allCheckers) {
         const std::string& checker = checkReq.first;
-        const bool active = mActiveCheckers->count(checkReq.first) > 0;
+        const bool active = mActiveCheckers().count(checkReq.first) > 0;
         const std::string& req = checkReq.second;
         fout << (active ? "Yes  " : "No   ") << checker;
         if (!active && !req.empty())
@@ -193,12 +193,12 @@ std::string CheckersReport::getReport(const std::string& criticalErrors) const
         fout << std::endl;
     }
 
-    for (const auto& addonInfo: mSettings->addonInfos) {
+    for (const auto& addonInfo: mSettings().addonInfos) {
         if (addonInfo.checkers.empty())
             continue;
         fout << std::endl << std::endl;
         std::string title;
-        if (mSettings->premium && addonInfo.name == "premiumaddon.json")
+        if (mSettings().premium && addonInfo.name == "premiumaddon.json")
             title = "Cppcheck Premium";
         else {
             title = addonInfo.name;
@@ -217,7 +217,7 @@ std::string CheckersReport::getReport(const std::string& criticalErrors) const
 
         for (const auto& checkReq: addonInfo.checkers) {
             const std::string& checker = checkReq.first;
-            const bool active = mActiveCheckers->count(checkReq.first) > 0;
+            const bool active = mActiveCheckers().count(checkReq.first) > 0;
             const std::string& req = checkReq.second;
             fout << (active ? "Yes  " : "No   ") << checker;
             if (!active && !req.empty())
@@ -238,7 +238,7 @@ std::string CheckersReport::getXmlReport(const std::string& criticalErrors) cons
         ret += "    <critical-errors/>\n";
     ret += "    <checkers-report>\n";
     const int misraCVersion = getMisraCVersion(mSettings);
-    for (std::string checker: *mActiveCheckers) {
+    for (std::string checker: mActiveCheckers()) {
         if (checker.compare(0,8,"Misra C:") == 0)
             checker = "Misra C " + std::to_string(misraCVersion) + ":" + checker.substr(8);
         ret += "        <checker id=\"" + checker + "\"/>\n";

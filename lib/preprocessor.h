@@ -22,7 +22,7 @@
 //---------------------------------------------------------------------------
 
 #include "config.h"
-#include "nonnullptr.h"
+#include "refthunk.h"
 #include "standards.h"
 
 #include <cstddef>
@@ -178,10 +178,10 @@ private:
     void invalidSuppression(const simplecpp::Location& loc, const std::string &msg) const;
     void error(const simplecpp::Location& loc, const std::string &msg, const std::string& id) const;
 
-    NonNullPtr<simplecpp::TokenList> mTokens;
+    RefThunk<simplecpp::TokenList> mTokens;
 
-    NonNullPtr<const Settings> mSettings;
-    NonNullPtr<ErrorLogger> mErrorLogger;
+    RefThunk<const Settings> mSettings;
+    RefThunk<ErrorLogger> mErrorLogger;
 
     simplecpp::FileDataCache mFileCache;
 

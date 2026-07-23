@@ -23,7 +23,7 @@
 #include "infer.h"
 #include "library.h"
 #include "mathlib.h"
-#include "nonnullptr.h"
+#include "refthunk.h"
 #include "settings.h"
 #include "standards.h"
 #include "symboldatabase.h"
@@ -589,7 +589,7 @@ ProgramMemoryState::FindChangedFn ProgramMemoryState::getCachedFindExpressionCha
     // variable follows the same path) and memoizes those evals in evalCache for the closure's lifetime.
     using EvalCache = std::map<const Token*, std::vector<MathLib::bigint>>;
     const std::shared_ptr<ChangedCache> cache = changedCache;
-    const Settings* const sp = settings.get();
+    const Settings* const sp = &settings();
     ProgramMemory snapshot = state;
     const std::shared_ptr<EvalCache> evalCache = skipDeadCode ? std::make_shared<EvalCache>() : nullptr;
     return [cache, sp, snapshot, skipDeadCode, evalCache](const Token* expr,
@@ -1359,7 +1359,7 @@ static void pruneConditions(std::vector<const Token*>& conds,
 namespace {
     struct Executor {
         ProgramMemory* pm;
-        NonNullPtr<const Settings> settings;
+        RefThunk<const Settings> settings;
         // Values tracked by the forward/reverse analysis. A tracked value is the authoritative
         // current value of its expression and takes precedence over the program memory.
         const ProgramMemory::Map* vars = nullptr;
@@ -1738,7 +1738,7 @@ namespace {
                         BuiltinLibraryFunction lf = getBuiltinLibraryFunction(ftok->str());
                         if (lf)
                             return lf(args);
-                        const std::string& returnValue = settings->library.returnValue(ftok);
+                        const std::string& returnValue = settings().library.returnValue(ftok);
                         if (!returnValue.empty()) {
                             std::unordered_map<nonneg int, ValueFlow::Value> arg_map;
                             int argn = 0;

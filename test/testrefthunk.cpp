@@ -17,21 +17,20 @@
  */
 
 #include "fixture.h"
-#include "nonnullptr.h"
+#include "refthunk.h"
 
 #include <cstddef>
 #include <string>
 
-class TestNonNullPtr : public TestFixture {
+class TestRefThunk : public TestFixture {
 public:
-    TestNonNullPtr() : TestFixture("TestNonNullPtr") {}
+    TestRefThunk() : TestFixture("TestRefThunk") {}
 
 private:
     void run() override {
-        TEST_CASE(getPointer);
-        TEST_CASE(pointerConversion);
+        TEST_CASE(callAccess);
+        TEST_CASE(getReference);
         TEST_CASE(referenceConversion);
-        TEST_CASE(dereference);
         TEST_CASE(memberAccess);
         TEST_CASE(mutation);
         TEST_CASE(copyConstruct);
@@ -41,104 +40,93 @@ private:
         TEST_CASE(functionArguments);
     }
 
-    void getPointer() const {
-        int x = 1;
-        const NonNullPtr<int> p(x);
-        ASSERT(p.get() == &x);
+    void callAccess() const {
+        int x = 42;
+        const RefThunk<int> p(x);
+        ASSERT_EQUALS(42, p());
+        ASSERT(&p() == &x);
     }
 
-    void pointerConversion() const {
+    void getReference() const {
         int x = 1;
-        const NonNullPtr<int> p(x);
-        int* raw = p;
-        ASSERT(raw == &x);
-        *raw = 2;
+        const RefThunk<int> p(x);
+        ASSERT(&p.get() == &x);
+        p.get() = 2;
         ASSERT_EQUALS(2, x);
     }
 
     void referenceConversion() const {
         int x = 1;
-        const NonNullPtr<int> p(x);
+        const RefThunk<int> p(x);
         int& ref = p;
         ASSERT(&ref == &x);
         ref = 2;
         ASSERT_EQUALS(2, x);
     }
 
-    void dereference() const {
-        int x = 42;
-        const NonNullPtr<int> p(x);
-        ASSERT_EQUALS(42, *p);
-        ASSERT(&*p == &x);
-    }
-
     void memberAccess() const {
         const std::string s = "abc";
-        const NonNullPtr<const std::string> p(s);
-        ASSERT_EQUALS(3, p->size());
-        ASSERT_EQUALS("abc", *p);
+        const RefThunk<const std::string> p(s);
+        ASSERT_EQUALS(3, p().size());
+        ASSERT_EQUALS("abc", p());
     }
 
     void mutation() const {
         std::string s = "abc";
-        const NonNullPtr<std::string> p(s);
-        *p += "d";
-        p->push_back('e');
+        const RefThunk<std::string> p(s);
+        p() += "d";
+        p().push_back('e');
         ASSERT_EQUALS("abcde", s);
     }
 
     void copyConstruct() const {
         int x = 1;
-        const NonNullPtr<int> p(x);
-        const NonNullPtr<int> q(p);
-        ASSERT(q.get() == &x);
+        const RefThunk<int> p(x);
+        const RefThunk<int> q(p);
+        ASSERT(&q() == &x);
     }
 
     void copyAssign() const {
         int x = 1;
         int y = 2;
-        NonNullPtr<int> p(x);
-        const NonNullPtr<int> q(y);
+        RefThunk<int> p(x);
+        const RefThunk<int> q(y);
         p = q;
-        ASSERT(p.get() == &y);
-        ASSERT_EQUALS(2, *p);
+        ASSERT(&p() == &y);
+        ASSERT_EQUALS(2, p());
     }
 
     void rebind() const {
         int x = 1;
         int y = 2;
-        NonNullPtr<int> p(x);
+        RefThunk<int> p(x);
         // assignment rebinds, like std::reference_wrapper - it does not write through
         p = y;
-        ASSERT(p.get() == &y);
+        ASSERT(&p() == &y);
         ASSERT_EQUALS(1, x);
     }
 
     void convertToConst() const {
         int x = 1;
-        const NonNullPtr<int> p(x);
-        const NonNullPtr<const int> cp(p);
-        ASSERT(cp.get() == &x);
-        const int* raw = cp;
-        ASSERT(raw == &x);
+        const RefThunk<int> p(x);
+        const RefThunk<const int> cp(p);
+        ASSERT(&cp() == &x);
+        const int& ref = cp;
+        ASSERT(&ref == &x);
     }
 
     static std::size_t refArg(const std::string& s) {
         return s.size();
     }
 
-    static std::size_t ptrArg(const std::string* s) {
-        return s->size();
-    }
-
     void functionArguments() const {
         std::string s = "abcd";
-        const NonNullPtr<std::string> p(s);
+        const RefThunk<std::string> p(s);
         // implicit conversion to reference, like std::reference_wrapper
         ASSERT_EQUALS(4, refArg(p));
-        // implicit conversion to pointer, like gsl::not_null
-        ASSERT_EQUALS(4, ptrArg(p));
+        // explicit access through operator()
+        ASSERT_EQUALS(4, refArg(p()));
     }
 };
 
-REGISTER_TEST(TestNonNullPtr)
+REGISTER_TEST(TestRefThunk)

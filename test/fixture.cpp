@@ -509,7 +509,7 @@ TestFixture::SettingsBuilder& TestFixture::SettingsBuilder::library(const char l
     if (REDUNDANT_CHECK && std::find(settings.libraries.cbegin(), settings.libraries.cend(), lib) != settings.libraries.cend())
         throw std::runtime_error("redundant setting: libraries (" + std::string(lib) + ")");
     // TODO: exename is not yet set
-    const Library::ErrorCode lib_error = settings.library.load(fixture->exename.c_str(), lib).errorcode;
+    const Library::ErrorCode lib_error = settings.library.load(fixture().exename.c_str(), lib).errorcode;
     if (lib_error != Library::ErrorCode::OK)
         throw std::runtime_error("loading library '" + std::string(lib) + "' failed - " + std::to_string(static_cast<int>(lib_error)));
     // strip extension
@@ -531,7 +531,7 @@ TestFixture::SettingsBuilder& TestFixture::SettingsBuilder::platform(Platform::T
 
     std::string errstr;
     // TODO: exename is not yet set
-    if (!settings.platform.set(platformStr, errstr, {fixture->exename}))
+    if (!settings.platform.set(platformStr, errstr, {fixture().exename}))
         throw std::runtime_error("platform '" + platformStr + "' not found");
     return *this;
 }

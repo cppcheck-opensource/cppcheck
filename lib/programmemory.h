@@ -21,7 +21,7 @@
 
 #include "config.h"
 #include "mathlib.h"
-#include "nonnullptr.h"
+#include "refthunk.h"
 #include "vfvalue.h" // needed for alias
 
 #include <cstddef>
@@ -180,7 +180,7 @@ struct ProgramMemoryState {
 
     ProgramMemory state;
     std::map<nonneg int, const Token*> origins;
-    NonNullPtr<const Settings> settings;
+    RefThunk<const Settings> settings;
     // Memoized findExpressionChanged() pre-filter; structural, so never invalidated.
     std::shared_ptr<ChangedCache> changedCache;
 

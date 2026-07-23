@@ -23,7 +23,7 @@
 #include "errortypes.h"
 #include "forwardanalyzer.h"
 #include "mathlib.h"
-#include "nonnullptr.h"
+#include "refthunk.h"
 #include "settings.h"
 #include "symboldatabase.h"
 #include "token.h"
@@ -42,9 +42,9 @@ namespace {
             : analyzer(analyzer), tokenlist(tokenlist), errorLogger(errorLogger), settings(settings)
         {}
         ValuePtr<Analyzer> analyzer;
-        NonNullPtr<const TokenList> tokenlist;
-        NonNullPtr<ErrorLogger> errorLogger;
-        NonNullPtr<const Settings> settings;
+        RefThunk<const TokenList> tokenlist;
+        RefThunk<ErrorLogger> errorLogger;
+        RefThunk<const Settings> settings;
 
         std::pair<bool, bool> evalCond(const Token* tok) const {
             std::vector<MathLib::bigint> result = analyzer->evaluate(tok);
@@ -266,7 +266,7 @@ namespace {
                             // Assignment to
                         } else if (lhsAction.matches() && !assignTok->astOperand2()->hasKnownIntValue() &&
                                    assignTok->astOperand2()->exprId() > 0 &&
-                                   isConstExpression(assignTok->astOperand2(), settings->library)) {
+                                   isConstExpression(assignTok->astOperand2(), settings().library)) {
                             const std::string info = "Assignment to '" + assignTok->expressionString() + "'";
                             ValuePtr<Analyzer> a = analyzer->reanalyze(assignTok->astOperand2(), info);
                             if (a) {

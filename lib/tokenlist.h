@@ -22,7 +22,7 @@
 //---------------------------------------------------------------------------
 
 #include "config.h"
-#include "nonnullptr.h"
+#include "refthunk.h"
 #include "standards.h"
 
 #include <cstddef>
@@ -229,7 +229,7 @@ private:
     std::vector<std::string> mOrigFiles;
 
     /** settings */
-    NonNullPtr<const Settings> mSettings;
+    RefThunk<const Settings> mSettings;
 
     /** File is known to be C/C++ code */
     Standards::Language mLang{Standards::Language::None};

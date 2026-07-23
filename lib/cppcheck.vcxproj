@@ -159,7 +159,6 @@
     <ClInclude Include="library.h" />
     <ClInclude Include="matchcompiler.h" />
     <ClInclude Include="mathlib.h" />
-    <ClInclude Include="nonnullptr.h" />
     <ClInclude Include="path.h" />
     <ClInclude Include="pathanalysis.h" />
     <ClInclude Include="pathmatch.h" />
@@ -167,6 +166,7 @@
     <ClInclude Include="precompiled.h" />
     <ClInclude Include="preprocessor.h" />
     <ClInclude Include="programmemory.h" />
+    <ClInclude Include="refthunk.h" />
     <ClInclude Include="regex.h" />
     <ClInclude Include="reverseanalyzer.h" />
     <ClInclude Include="rule.h" />

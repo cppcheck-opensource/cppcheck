@@ -24,7 +24,7 @@
 #include "errorlogger.h"
 #include "errortypes.h"
 #include "mathlib.h"
-#include "nonnullptr.h"
+#include "refthunk.h"
 #include "settings.h"
 #include "symboldatabase.h"
 #include "token.h"
@@ -51,9 +51,9 @@ namespace {
             : analyzer(analyzer), tokenList(tokenList), errorLogger(errorLogger), settings(settings)
         {}
         ValuePtr<Analyzer> analyzer;
-        NonNullPtr<const TokenList> tokenList;
-        NonNullPtr<ErrorLogger> errorLogger;
-        NonNullPtr<const Settings> settings;
+        RefThunk<const TokenList> tokenList;
+        RefThunk<ErrorLogger> errorLogger;
+        RefThunk<const Settings> settings;
         Analyzer::Action actions;
         bool analyzeOnly{};
         bool analyzeTerminate{};
@@ -149,7 +149,7 @@ namespace {
                 traverseRecursive(tok->astOperand2(), f, traverseUnknown);
                 traverseRecursive(tok->astOperand1(), f, traverseUnknown);
                 return Break(Analyzer::Terminate::Escape);
-            } else if (Token::Match(tok, "%name% (") && isEscapeFunction(tok, settings->library)) {
+            } else if (Token::Match(tok, "%name% (") && isEscapeFunction(tok, settings().library)) {
                 // Traverse the parameters of the function before escaping
                 traverseRecursive(tok->next()->astOperand2(), f, traverseUnknown);
                 return Break(Analyzer::Terminate::Escape);
@@ -357,7 +357,7 @@ namespace {
 
         bool isEscapeScope(const Token* endBlock, bool& unknown) const {
             const Token* ftok = nullptr;
-            const bool r = isReturnScope(endBlock, settings->library, &ftok);
+            const bool r = isReturnScope(endBlock, settings().library, &ftok);
             if (!r && ftok)
                 unknown = true;
             return r;
@@ -722,9 +722,9 @@ namespace {
                     }
                 } else if (tok->isControlFlowKeyword() && Token::Match(tok, "if|while|for (") &&
                            Token::simpleMatch(tok->linkAt(1), ") {")) {
-                    if ((settings->vfOptions.maxForwardBranches > 0) && (++branchCount > settings->vfOptions.maxForwardBranches)) {
+                    if ((settings().vfOptions.maxForwardBranches > 0) && (++branchCount > settings().vfOptions.maxForwardBranches)) {
                         // TODO: should be logged on function-level instead of file-level
-                        if (settings->severity.isEnabled(Severity::information)) {
+                        if (settings().severity.isEnabled(Severity::information)) {
                             reportError(Severity::information, "normalCheckLevelMaxBranches", "Limiting analysis of branches. Use --check-level=exhaustive to analyze all branches.");
                         }
                         return Break(Analyzer::Terminate::Bail);
@@ -826,8 +826,8 @@ namespace {
                             // Carry the then-fork forward, unless a limit is hit - then only the linear main
                             // path continues (no bail). forkDepth bounds nesting, forkBudget total. <0 = off.
                             assert(forkBudget != nullptr);
-                            const int forkDepthLimit = settings->vfOptions.maxForwardConditionForkDepth;
-                            const int forkBudgetLimit = settings->vfOptions.maxForwardConditionForks;
+                            const int forkDepthLimit = settings().vfOptions.maxForwardConditionForkDepth;
+                            const int forkBudgetLimit = settings().vfOptions.maxForwardConditionForks;
                             const bool depthOk = forkDepthLimit < 0 || forkDepth < forkDepthLimit;
                             const bool budgetOk = forkBudgetLimit < 0 || *forkBudget < forkBudgetLimit;
                             if (pThen != Progress::Break && !thenBranch.isEscape() && depthOk && budgetOk) {
@@ -920,9 +920,9 @@ namespace {
         }
 
         void reportError(Severity severity, const std::string& id, const std::string& msg) const {
-            ErrorMessage::FileLocation loc(tokenList->getSourceFilePath(), 0, 0);
-            const ErrorMessage errmsg({std::move(loc)}, tokenList->getSourceFilePath(), severity, msg, id, Certainty::normal);
-            errorLogger->reportErr(errmsg);
+            ErrorMessage::FileLocation loc(tokenList().getSourceFilePath(), 0, 0);
+            const ErrorMessage errmsg({std::move(loc)}, tokenList().getSourceFilePath(), severity, msg, id, Certainty::normal);
+            errorLogger().reportErr(errmsg);
         }
 
         static bool isFunctionCall(const Token* tok)
