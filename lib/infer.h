@@ -63,6 +63,11 @@ std::vector<MathLib::bigint> getMaxValue(const ValuePtr<InferModel>& model, cons
 
 ValuePtr<InferModel> makeIntegralInferModel();
 
+ValuePtr<InferModel> makeSymbolicInferModel(const Token* token);
+
+ValuePtr<InferModel> makeEndIteratorInferModel();
+ValuePtr<InferModel> makeStartIteratorInferModel();
+
 ValueFlow::Value inferCondition(const std::string& op, const Token* varTok, MathLib::bigint val);
 
 #endif
