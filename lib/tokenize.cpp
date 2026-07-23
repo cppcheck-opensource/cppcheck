@@ -5721,7 +5721,22 @@ bool Tokenizer::simplifyTokenList1(const char FileName[])
 
     // if MACRO
     for (Token *tok = list.front(); tok; tok = tok->next()) {
-        if (Token::Match(tok, "if|for|while %name% (")) {
+        if (Token::simpleMatch(tok, "if consteval {")) {
+            // 'if consteval { ... }' -> 'if ( __cppcheck_consteval__ ) { ... }'
+            Token *parTok = tok->next();
+            parTok->str("(");
+            Token *evalTok = parTok->insertToken("__cppcheck_consteval__");
+            evalTok->originalName("consteval");
+            evalTok->insertToken(")");
+        } else if (Token::simpleMatch(tok, "if ! consteval {")) {
+            // 'if !consteval { ... }' -> 'if ( ! __cppcheck_consteval__ ) { ... }'
+            Token *notTok = tok->next();
+            notTok->insertTokenBefore("(");
+            Token *evalTok = notTok->next();
+            evalTok->str("__cppcheck_consteval__");
+            evalTok->originalName("consteval");
+            evalTok->insertToken(")");
+        } else if (Token::Match(tok, "if|for|while %name% (")) {
             if (Token::simpleMatch(tok, "for each")) {
                 // 'for each (x in y )' -> 'for (x : y)'
                 if (Token* in = Token::findsimplematch(tok->tokAt(2), "in", tok->linkAt(2)))
