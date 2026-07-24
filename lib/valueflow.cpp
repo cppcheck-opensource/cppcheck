@@ -2542,6 +2542,8 @@ static void valueFlowLifetimeFunction(Token *tok, const TokenList &tokenlist, Er
         for (const Token* returnTok : returns) {
             if (returnTok == tok)
                 continue;
+            if (!ValueFlow::isLifetimeBorrowed(returnTok, settings))
+                return;
             const Variable *returnVar = ValueFlow::getLifetimeVariable(returnTok, settings);
             if (returnVar && returnVar->isArgument() && (returnVar->isConst() || !isVariableChanged(returnVar, settings))) {
                 LifetimeStore ls = LifetimeStore::fromFunctionArg(f, tok, returnVar, tokenlist, settings, errorLogger);
