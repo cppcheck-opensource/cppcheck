@@ -24,6 +24,7 @@
 #include "config.h"
 #include "library.h"
 #include "mathlib.h"
+#include "refthunk.h"
 #include "programmemory.h"
 #include "smallvector.h"
 #include "settings.h"
@@ -59,10 +60,10 @@ static bool isDereferenceOp(const Token* tok)
 }
 
 struct ValueFlowAnalyzer : Analyzer {
-    const Settings& settings;
+    RefThunk<const Settings> settings;
     ProgramMemoryState pms;
 
-    explicit ValueFlowAnalyzer(const Settings& s) : settings(s), pms(settings) {}
+    explicit ValueFlowAnalyzer(const Settings& s) : settings(s), pms(s) {}
 
     virtual const ValueFlow::Value* getValue(const Token* tok) const = 0;
     virtual ValueFlow::Value* getValue(const Token* tok) = 0;
@@ -1309,7 +1310,7 @@ struct ExpressionAnalyzer : SingleValueFlowAnalyzer {
     }
 
     void setupExprVarIds(const Token* start, int depth = 0) {
-        if (depth > settings.vfOptions.maxExprVarIdDepth) {
+        if (depth > settings().vfOptions.maxExprVarIdDepth) {
             // TODO: add bailout message
             return;
         }
@@ -1538,7 +1539,7 @@ struct ContainerExpressionAnalyzer : ExpressionAnalyzer {
             if (action == Library::Container::Action::PUSH || action == Library::Container::Action::POP || action == Library::Container::Action::APPEND) { // TODO: handle more actions?
                 std::vector<const Token*> args = getArguments(tok->tokAt(3));
                 bool isVariadic = false;
-                if (const Library::Function* libFunc = settings.library.getFunction(tok->tokAt(2))) {
+                if (const Library::Function* libFunc = settings().library.getFunction(tok->tokAt(2))) {
                     const auto& argChecks = libFunc->argumentChecks;
                     isVariadic = argChecks.find(-1) != argChecks.end() && argChecks.at(-1).variadic;
                 }
@@ -1586,7 +1587,7 @@ struct ContainerExpressionAnalyzer : ExpressionAnalyzer {
             case Library::Container::Action::APPEND: {
                 std::vector<const Token*> args = getArguments(tok->astParent()->tokAt(2));
                 if (args.size() == 1) // TODO: handle overloads
-                    n = ValueFlow::valueFlowGetStrLength(tok->astParent()->tokAt(3), settings.library);
+                    n = ValueFlow::valueFlowGetStrLength(tok->astParent()->tokAt(3), settings().library);
                 if (n == 0) // TODO: handle known empty append
                     val->setPossible();
                 break;

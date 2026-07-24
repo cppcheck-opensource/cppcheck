@@ -70,10 +70,10 @@ namespace {
         VarIdScopeInfo(bool isExecutable, bool isStructInit, bool isEnum, nonneg int startVarid)
             : isExecutable(isExecutable), isStructInit(isStructInit), isEnum(isEnum), startVarid(startVarid) {}
 
-        const bool isExecutable{};
-        const bool isStructInit{};
-        const bool isEnum{};
-        const nonneg int startVarid{};
+        bool isExecutable{};
+        bool isStructInit{};
+        bool isEnum{};
+        nonneg int startVarid{};
     };
 }
 
@@ -3610,7 +3610,7 @@ bool Tokenizer::simplifyTokens1(const std::string &configuration, int fileIndex)
 
 //---------------------------------------------------------------------------
 
-void Tokenizer::findComplicatedSyntaxErrorsInTemplates()
+void Tokenizer::findComplicatedSyntaxErrorsInTemplates() const
 {
     validate();
     mTemplateSimplifier->checkComplicatedSyntaxErrorsInTemplates();

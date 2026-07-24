@@ -26,6 +26,7 @@
 #include "infer.h"
 #include "library.h"
 #include "mathlib.h"
+#include "refthunk.h"
 #include "settings.h"
 #include "symboldatabase.h"
 #include "token.h"
@@ -3128,7 +3129,7 @@ namespace {
     };
 
     struct ExpressionChangedSkipDeadCode {
-        const Library& library;
+        RefThunk<const Library> library;
         const std::function<std::vector<MathLib::bigint>(const Token* tok)>* evaluate;
         ExpressionChangedSkipDeadCode(const Library& library,
                                       const std::function<std::vector<MathLib::bigint>(const Token* tok)>& evaluate)

@@ -166,6 +166,7 @@
     <ClInclude Include="precompiled.h" />
     <ClInclude Include="preprocessor.h" />
     <ClInclude Include="programmemory.h" />
+    <ClInclude Include="refthunk.h" />
     <ClInclude Include="regex.h" />
     <ClInclude Include="reverseanalyzer.h" />
     <ClInclude Include="rule.h" />

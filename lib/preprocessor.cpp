@@ -343,7 +343,7 @@ void Preprocessor::inlineSuppressions(SuppressionList &suppressions) const
 
 void Preprocessor::inlineSuppressions(const simplecpp::TokenList &tokens, SuppressionList &suppressions) const
 {
-    if (!mSettings.inlineSuppressions)
+    if (!mSettings().inlineSuppressions)
         return;
     std::list<BadInlineSuppression> err;
     ::addInlineSuppressions(tokens, mSettings, suppressions, err);
@@ -753,10 +753,10 @@ static void getConfigs(const simplecpp::TokenList &tokens, std::set<std::string>
 
 void Preprocessor::getConfigs(std::set<std::string> &defined, std::set<std::string> &configs) const
 {
-    if (!mTokens.cfront())
+    if (!mTokens().cfront())
         return;
 
-    ::getConfigs(mTokens, defined, mSettings.userDefines, mSettings.userUndefs, configs);
+    ::getConfigs(mTokens, defined, mSettings().userDefines, mSettings().userUndefs, configs);
 }
 
 void Preprocessor::getConfigs(const std::string &filename, const simplecpp::TokenList &tokens, std::set<std::string> &defined, std::set<std::string> &configs) const
@@ -764,8 +764,8 @@ void Preprocessor::getConfigs(const std::string &filename, const simplecpp::Toke
     if (!tokens.cfront())
         return;
 
-    if (!mSettings.configurationExcluded(filename))
-        ::getConfigs(tokens, defined, mSettings.userDefines, mSettings.userUndefs, configs);
+    if (!mSettings().configurationExcluded(filename))
+        ::getConfigs(tokens, defined, mSettings().userDefines, mSettings().userUndefs, configs);
 }
 
 static void splitcfg(const std::string &cfgStr, std::list<std::string> &defines, const std::string &defaultValue)
@@ -829,7 +829,7 @@ static simplecpp::DUI createDUI(const Settings &mSettings, const std::string &cf
 
 const simplecpp::Output* Preprocessor::handleErrors(const simplecpp::OutputList& outputList)
 {
-    const bool showerror = (!mSettings.userDefines.empty() && !mSettings.force);
+    const bool showerror = (!mSettings().userDefines.empty() && !mSettings().force);
     return reportOutput(outputList, showerror);
 }
 
@@ -854,22 +854,22 @@ void Preprocessor::removeComments(simplecpp::TokenList &tokens)
 
 void Preprocessor::setPlatformInfo()
 {
-    mTokens.sizeOfType["bool"]          = mSettings.platform.sizeof_bool;
-    mTokens.sizeOfType["short"]         = mSettings.platform.sizeof_short;
-    mTokens.sizeOfType["int"]           = mSettings.platform.sizeof_int;
-    mTokens.sizeOfType["long"]          = mSettings.platform.sizeof_long;
-    mTokens.sizeOfType["long long"]     = mSettings.platform.sizeof_long_long;
-    mTokens.sizeOfType["float"]         = mSettings.platform.sizeof_float;
-    mTokens.sizeOfType["double"]        = mSettings.platform.sizeof_double;
-    mTokens.sizeOfType["long double"]   = mSettings.platform.sizeof_long_double;
-    mTokens.sizeOfType["bool *"]        = mSettings.platform.sizeof_pointer;
-    mTokens.sizeOfType["short *"]       = mSettings.platform.sizeof_pointer;
-    mTokens.sizeOfType["int *"]         = mSettings.platform.sizeof_pointer;
-    mTokens.sizeOfType["long *"]        = mSettings.platform.sizeof_pointer;
-    mTokens.sizeOfType["long long *"]   = mSettings.platform.sizeof_pointer;
-    mTokens.sizeOfType["float *"]       = mSettings.platform.sizeof_pointer;
-    mTokens.sizeOfType["double *"]      = mSettings.platform.sizeof_pointer;
-    mTokens.sizeOfType["long double *"] = mSettings.platform.sizeof_pointer;
+    mTokens().sizeOfType["bool"]          = mSettings().platform.sizeof_bool;
+    mTokens().sizeOfType["short"]         = mSettings().platform.sizeof_short;
+    mTokens().sizeOfType["int"]           = mSettings().platform.sizeof_int;
+    mTokens().sizeOfType["long"]          = mSettings().platform.sizeof_long;
+    mTokens().sizeOfType["long long"]     = mSettings().platform.sizeof_long_long;
+    mTokens().sizeOfType["float"]         = mSettings().platform.sizeof_float;
+    mTokens().sizeOfType["double"]        = mSettings().platform.sizeof_double;
+    mTokens().sizeOfType["long double"]   = mSettings().platform.sizeof_long_double;
+    mTokens().sizeOfType["bool *"]        = mSettings().platform.sizeof_pointer;
+    mTokens().sizeOfType["short *"]       = mSettings().platform.sizeof_pointer;
+    mTokens().sizeOfType["int *"]         = mSettings().platform.sizeof_pointer;
+    mTokens().sizeOfType["long *"]        = mSettings().platform.sizeof_pointer;
+    mTokens().sizeOfType["long long *"]   = mSettings().platform.sizeof_pointer;
+    mTokens().sizeOfType["float *"]       = mSettings().platform.sizeof_pointer;
+    mTokens().sizeOfType["double *"]      = mSettings().platform.sizeof_pointer;
+    mTokens().sizeOfType["long double *"] = mSettings().platform.sizeof_pointer;
 }
 
 simplecpp::TokenList Preprocessor::preprocess(const std::string &cfgStr, std::vector<std::string> &files, simplecpp::OutputList& outputList)
@@ -898,7 +898,7 @@ std::string Preprocessor::getcode(const std::string &cfgStr, std::vector<std::st
     std::ostringstream ret;
     for (const simplecpp::Token *tok = tokens2.cfront(); tok; tok = tok->next) {
         if (writeLocations && tok->location.fileIndex != prevfile) {
-            ret << "\n#line " << tok->location.line << " \"" << mTokens.file(tok->location) << "\"\n";
+            ret << "\n#line " << tok->location.line << " \"" << mTokens().file(tok->location) << "\"\n";
             prevfile = tok->location.fileIndex;
             line = tok->location.line;
         }
@@ -993,31 +993,31 @@ void Preprocessor::error(const simplecpp::Location& loc, const std::string &msg,
 void Preprocessor::error(const simplecpp::Location& loc, const std::string &msg, const std::string& id) const
 {
     std::list<ErrorMessage::FileLocation> locationList;
-    if (!mTokens.file(loc).empty()) {
-        std::string file = Path::fromNativeSeparators(mTokens.file(loc));
-        if (mSettings.relativePaths)
-            file = Path::getRelativePath(file, mSettings.basePaths);
+    if (!mTokens().file(loc).empty()) {
+        std::string file = Path::fromNativeSeparators(mTokens().file(loc));
+        if (mSettings().relativePaths)
+            file = Path::getRelativePath(file, mSettings().basePaths);
 
         locationList.emplace_back(file, loc.line, loc.col);
     }
-    mErrorLogger.reportErr(ErrorMessage(std::move(locationList),
-                                        mFile0,
-                                        Severity::error,
-                                        msg,
-                                        id,
-                                        Certainty::normal));
+    mErrorLogger().reportErr(ErrorMessage(std::move(locationList),
+                                          mFile0,
+                                          Severity::error,
+                                          msg,
+                                          id,
+                                          Certainty::normal));
 }
 
 // Report that include is missing
 void Preprocessor::missingInclude(const simplecpp::Location& loc, const std::string &header, HeaderTypes headerType)
 {
-    if (!mSettings.checks.isEnabled(Checks::missingInclude))
+    if (!mSettings().checks.isEnabled(Checks::missingInclude))
         return;
 
     std::list<ErrorMessage::FileLocation> locationList;
-    if (!mTokens.file(loc).empty()) {
+    if (!mTokens().file(loc).empty()) {
         // TODO: add relative path handling?
-        locationList.emplace_back(mTokens.file(loc), loc.line, loc.col);
+        locationList.emplace_back(mTokens().file(loc), loc.line, loc.col);
     }
     ErrorMessage errmsg(std::move(locationList), mFile0, Severity::information,
                         (headerType==SystemHeader) ?
@@ -1025,7 +1025,7 @@ void Preprocessor::missingInclude(const simplecpp::Location& loc, const std::str
                         "Include file: \"" + header + "\" not found.",
                         (headerType==SystemHeader) ? "missingIncludeSystem" : "missingInclude",
                         Certainty::normal);
-    mErrorLogger.reportErr(errmsg);
+    mErrorLogger().reportErr(errmsg);
 }
 
 void Preprocessor::invalidSuppression(const simplecpp::Location& loc, const std::string &msg) const
@@ -1061,10 +1061,10 @@ void Preprocessor::dump(std::ostream &out) const
         for (const simplecpp::MacroUsage &macroUsage: mMacroUsage) {
             out << "    <macro"
                 << " name=\"" << macroUsage.macroName << "\""
-                << " file=\"" << ErrorLogger::toxml(mTokens.file(macroUsage.macroLocation)) << "\""
+                << " file=\"" << ErrorLogger::toxml(mTokens().file(macroUsage.macroLocation)) << "\""
                 << " line=\"" << macroUsage.macroLocation.line << "\""
                 << " column=\"" << macroUsage.macroLocation.col << "\""
-                << " usefile=\"" << ErrorLogger::toxml(mTokens.file(macroUsage.useLocation)) << "\""
+                << " usefile=\"" << ErrorLogger::toxml(mTokens().file(macroUsage.useLocation)) << "\""
                 << " useline=\"" << macroUsage.useLocation.line << "\""
                 << " usecolumn=\"" << macroUsage.useLocation.col << "\""
                 << " is-known-value=\"" << bool_to_string(macroUsage.macroValueKnown) << "\""
@@ -1077,7 +1077,7 @@ void Preprocessor::dump(std::ostream &out) const
         out << "  <simplecpp-if-cond>" << std::endl;
         for (const simplecpp::IfCond &ifCond: mIfCond) {
             out << "    <if-cond"
-                << " file=\"" << ErrorLogger::toxml(mTokens.file(ifCond.location)) << "\""
+                << " file=\"" << ErrorLogger::toxml(mTokens().file(ifCond.location)) << "\""
                 << " line=\"" << ifCond.location.line << "\""
                 << " column=\"" << ifCond.location.col << "\""
                 << " E=\"" << ErrorLogger::toxml(ifCond.E) << "\""
@@ -1091,7 +1091,7 @@ void Preprocessor::dump(std::ostream &out) const
 std::size_t Preprocessor::calculateHash(const std::string &toolinfo) const
 {
     std::string hashData = toolinfo;
-    for (const simplecpp::Token *tok = mTokens.cfront(); tok; tok = tok->next) {
+    for (const simplecpp::Token *tok = mTokens().cfront(); tok; tok = tok->next) {
         if (!tok->comment) {
             hashData += tok->str();
             hashData += static_cast<char>(tok->location.line);

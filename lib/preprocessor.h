@@ -22,6 +22,7 @@
 //---------------------------------------------------------------------------
 
 #include "config.h"
+#include "refthunk.h"
 #include "standards.h"
 
 #include <cstddef>
@@ -177,10 +178,10 @@ private:
     void invalidSuppression(const simplecpp::Location& loc, const std::string &msg) const;
     void error(const simplecpp::Location& loc, const std::string &msg, const std::string& id) const;
 
-    simplecpp::TokenList& mTokens;
+    RefThunk<simplecpp::TokenList> mTokens;
 
-    const Settings& mSettings;
-    ErrorLogger &mErrorLogger;
+    RefThunk<const Settings> mSettings;
+    RefThunk<ErrorLogger> mErrorLogger;
 
     simplecpp::FileDataCache mFileCache;
 
