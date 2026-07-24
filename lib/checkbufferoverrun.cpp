@@ -560,12 +560,18 @@ ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok, cons
     if (!bufTok->valueType())
         return ValueFlow::Value(-1);
 
+    MathLib::bigint index = 0;
     if (bufTok->isUnaryOp("&")) {
         bufTok = bufTok->astOperand1();
         if (Token::simpleMatch(bufTok, "[")) {
-            const Token* index = bufTok->astOperand2();
-            if (!(index && index->hasKnownIntValue() && index->getKnownIntValue() == 0))
-                return ValueFlow::Value(-1);
+            if (const Token* indexTok = bufTok->astOperand2()) {
+                if (indexTok->hasKnownIntValue())
+                    index = indexTok->getKnownIntValue();
+                else if (const ValueFlow::Value* maxValue = indexTok->getMaxValue(false))
+                    index = maxValue->intvalue;
+                else
+                    return ValueFlow::Value(-1);
+            }
             bufTok = bufTok->astOperand1();
         }
     }
@@ -600,10 +606,10 @@ ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok, cons
     v.valueType = ValueFlow::Value::ValueType::BUFFER_SIZE;
 
     if (var->isPointerArray())
-        v.intvalue = dim * mSettings.platform.sizeof_pointer;
+        v.intvalue = (dim - index) * mSettings.platform.sizeof_pointer;
     else {
         const size_t typeSize = bufTok->valueType()->getSizeOf(mSettings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointee);
-        v.intvalue = dim * typeSize;
+        v.intvalue = (dim - index) * typeSize;
     }
 
     return v;

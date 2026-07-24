@@ -2778,7 +2778,7 @@ bool isVariableChanged(const Token *tok, int indirect, const Settings &settings,
         if (ftok->str() == "(" && Token::simpleMatch(ftok->astOperand1(), "[")) // operator() on array element, bail out
             return true;
         const Token * ptok = tok2;
-        while (Token::Match(ptok->astParent(), ".|::|["))
+        while (Token::Match(ptok->astParent(), ".|::"))
             ptok = ptok->astParent();
         int pindirect = indirect;
         if (indirect == 0 && astIsLHS(tok2) && Token::Match(ptok, ". %var%") && astIsPointer(ptok->next()))

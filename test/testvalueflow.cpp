@@ -5112,6 +5112,27 @@ private:
         ++it;
         ASSERT_EQUALS(0, it->intvalue);
         ASSERT(it->isPossible());
+
+        code = "void g(int*);\n"
+               "void f(int* a) {\n"
+               "    for (int i = 0; i < 5; ++i) {\n"
+               "        g(&a[i]);\n"
+               "    }\n"
+               "}\n";
+        values = tokenValues(code, "i ]");
+        ASSERT_EQUALS(4, values.size());
+        it = values.begin();
+        ASSERT_EQUALS(0, it->intvalue);
+        ASSERT(it->isPossible());
+        ++it;
+        ASSERT_EQUALS(-1, it->intvalue);
+        ASSERT(it->isImpossible());
+        ++it;
+        ASSERT_EQUALS(4, it->intvalue);
+        ASSERT(it->isPossible());
+        ++it;
+        ASSERT_EQUALS(5, it->intvalue);
+        ASSERT(it->isImpossible());
     }
 
     void valueFlowSubFunction() {

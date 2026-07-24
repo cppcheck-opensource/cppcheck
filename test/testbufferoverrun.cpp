@@ -3537,7 +3537,7 @@ private:
               "}\n");
         TODO_ASSERT_EQUALS("[test.cpp:3:12]: (error) Buffer is accessed out of bounds: &a[5] [bufferAccessOutOfBounds]\n"
                            "[test.cpp:7:12]: (error) Buffer is accessed out of bounds: &a[0][0] [bufferAccessOutOfBounds]\n",
-                           "",
+                           "[test.cpp:3:12]: (error) Buffer is accessed out of bounds: &a[5] [bufferAccessOutOfBounds]\n",
                            errout_str());
 
         check("void f() {\n" // #14866
@@ -3557,6 +3557,13 @@ private:
               "    fwrite(&s, 1, 1, fp);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str()); // don't crash
+
+        check("void f() {\n" // #14935
+              "    int a[5];\n"
+              "    for (int i = 0; i < 5; ++i)\n"
+              "        memset(&a[i], 0, sizeof(a));\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:16]: (error) Buffer is accessed out of bounds: &a[i] [bufferAccessOutOfBounds]\n", errout_str());
     }
 
     void buffer_overrun_errorpath() {
@@ -3814,7 +3821,7 @@ private:
               "  int i[10];\n"
               "  memset(&i[1], 0, 1000);\n"
               "}");
-        TODO_ASSERT_EQUALS("[test.cpp:3:10]: (error) Buffer is accessed out of bounds: &i[1] [bufferAccessOutOfBounds]\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:10]: (error) Buffer is accessed out of bounds: &i[1] [bufferAccessOutOfBounds]\n", errout_str());
 
         check("struct S { int x; };\n" // #8616
               "void f() {\n"
