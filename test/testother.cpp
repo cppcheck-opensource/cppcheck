@@ -201,6 +201,7 @@ private:
         TEST_CASE(duplicateExpression19);
         TEST_CASE(duplicateExpression20);
         TEST_CASE(duplicateExpression21);
+        TEST_CASE(duplicateExpression22);
         TEST_CASE(duplicateExpressionLoop);
         TEST_CASE(duplicateValueTernary);
         TEST_CASE(duplicateValueTernarySizeof); // #13773
@@ -8362,6 +8363,35 @@ private:
               "    const int o = p->i;\n"
               "    t.modify();\n"
               "    if (p->i == o) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void duplicateExpression22() {
+        check("int f() {\n" // #14913
+              "    return 0x1 | (0x2 | 0x4) | 0x1;\n"
+              "}\n"
+              "int g() {\n"
+              "    return 0x1 | (0x2 | 0x1);\n"
+              "}\n"
+              "int h() {\n"
+              "    return 0x1 | (0x1 | 0x2);\n"
+              "}\n"
+              "int i() {\n"
+              "    return 0x2 | (0x4 | 0x1) | 0x1;\n"
+              "}\n"
+              "int j() {\n"
+              "    return 0x2 | (0x1 | 0x4) | 0x1;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:30]: (style) Same expression '0x1' found multiple times in chain of '|' operators. [duplicateExpression]\n"
+                      "[test.cpp:5:23]: (style) Same expression '0x1' found multiple times in chain of '|' operators. [duplicateExpression]\n"
+                      "[test.cpp:8:23]: (style) Same expression '0x1' found multiple times in chain of '|' operators. [duplicateExpression]\n"
+                      "[test.cpp:11:23]: (style) Same expression '0x1' found multiple times in chain of '|' operators. [duplicateExpression]\n"
+                      "[test.cpp:14:23]: (style) Same expression '0x1' found multiple times in chain of '|' operators. [duplicateExpression]\n",
+                      errout_str());
+
+        check("bool f(const int** a, const int** b) {\n"
+              "    return (a[0] != nullptr) != (b[0] != nullptr);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
     }

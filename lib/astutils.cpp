@@ -1700,7 +1700,7 @@ bool isSameExpression(bool macro, const Token *tok1, const Token *tok2, const Se
                     compare = true;
                 }
             }
-            if (compare && astIsBoolLike(varTok1, settings) && astIsBoolLike(varTok2, settings))
+            if (compare && varTok1 != varTok2 && astIsBoolLike(varTok1, settings) && astIsBoolLike(varTok2, settings))
                 return isSameExpression(macro, varTok1, varTok2, settings, pure, followVar, errors);
 
         }

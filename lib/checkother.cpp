@@ -3054,6 +3054,16 @@ void CheckOtherImpl::checkDuplicateExpression()
                                 checkDuplicate(ast1->astOperand1(), tok->astOperand2(), ast1);
                             ast1 = ast1->astOperand1();
                         }
+                        if (tok->str() != "=") {
+                            const Token* par = tok->astParent();
+                            while (par && tok->str() == par->str() && precedes(par->astOperand1(), tok)) { // chain of identical operators with parentheses
+                                checkDuplicate(par->astOperand1(), tok->astOperand1(), par);
+                                checkDuplicate(par->astOperand1(), tok->astOperand2(), par);
+                                checkDuplicate(par->astOperand2(), tok->astOperand1(), par);
+                                checkDuplicate(par->astOperand2(), tok->astOperand2(), par);
+                                par = par->astParent();
+                            }
+                        }
                     }
                 }
             } else if (tok->astOperand1() && tok->astOperand2() && tok->str() == ":" && tok->astParent() && tok->astParent()->str() == "?") {
