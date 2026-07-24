@@ -666,16 +666,20 @@ void CheckIOImpl::wrongfeofUsage(const Token * tok)
 //    printf("", 1); // Too much arguments
 //---------------------------------------------------------------------------
 
-static bool findFormat(nonneg int arg, const Token *firstArg,
+static bool findFormat(nonneg int arg, nonneg int argc, const Token *firstArg,
                        const Token *&formatStringTok, const Token *&formatArgTok)
 {
+    formatArgTok = firstArg;
+
+    for (int i = 0; i < argc && formatArgTok; ++i)
+        formatArgTok = formatArgTok->nextArgument();
+
     const Token* argTok = firstArg;
 
     for (int i = 0; i < arg && argTok; ++i)
         argTok = argTok->nextArgument();
 
     if (Token::Match(argTok, "%str% [,)]")) {
-        formatArgTok = argTok->nextArgument();
         formatStringTok = argTok;
         return true;
     }
@@ -686,7 +690,6 @@ static bool findFormat(nonneg int arg, const Token *firstArg,
          (argTok->variable()->dimensions().size() == 1 &&
           argTok->variable()->dimensionKnown(0) &&
           argTok->variable()->dimension(0) != 0))) {
-        formatArgTok = argTok->nextArgument();
         if (!argTok->values().empty()) {
             const auto value = std::find_if(
                 argTok->values().cbegin(), argTok->values().cend(), std::mem_fn(&ValueFlow::Value::isTokValue));
@@ -706,6 +709,17 @@ static inline bool typesMatch(const std::string& iToTest, const std::string& iTy
     return (iToTest == iTypename) || (iToTest == iOptionalPrefix + iTypename);
 }
 
+static int getMaxArgNo(const Library::Function *func)
+{
+    const auto &checks = func->argumentChecks;
+    return std::max_element(checks.cbegin(), checks.cend(),
+                            [](const std::pair<int, Library::ArgumentChecks> &lhs,
+                               const std::pair<int, Library::ArgumentChecks> &rhs) {
+        return lhs.first < rhs.first;
+    }
+                            )->first;
+}
+
 void CheckIOImpl::checkWrongPrintfScanfArguments()
 {
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
@@ -723,8 +737,10 @@ void CheckIOImpl::checkWrongPrintfScanfArguments()
             bool scan = false;
             bool scanf_s = false;
             int formatStringArgNo = -1;
+            int argc = -1;
 
             if (tok->strAt(1) == "(" && mSettings.library.formatstr_function(tok)) {
+                argc = getMaxArgNo(mSettings.library.getFunction(tok));
                 formatStringArgNo = mSettings.library.formatstr_argno(tok);
                 scan = mSettings.library.formatstr_scan(tok);
                 scanf_s = mSettings.library.formatstr_secure(tok);
@@ -732,37 +748,37 @@ void CheckIOImpl::checkWrongPrintfScanfArguments()
 
             if (formatStringArgNo >= 0) {
                 // formatstring found in library. Find format string and first argument belonging to format string.
-                if (!findFormat(formatStringArgNo, tok->tokAt(2), formatStringTok, argListTok))
+                if (!findFormat(formatStringArgNo, argc, tok->tokAt(2), formatStringTok, argListTok))
                     continue;
             } else if (Token::simpleMatch(tok, "swprintf (")) {
                 if (Token::Match(tok->tokAt(2)->nextArgument(), "%str%")) {
                     // Find third parameter and format string
-                    if (!findFormat(1, tok->tokAt(2), formatStringTok, argListTok))
+                    if (!findFormat(1, 2, tok->tokAt(2), formatStringTok, argListTok))
                         continue;
                 } else {
                     // Find fourth parameter and format string
-                    if (!findFormat(2, tok->tokAt(2), formatStringTok, argListTok))
+                    if (!findFormat(2, 3, tok->tokAt(2), formatStringTok, argListTok))
                         continue;
                 }
             } else if (isWindows && Token::Match(tok, "sprintf_s|swprintf_s (")) {
                 // template <size_t size> int sprintf_s(char (&buffer)[size], const char *format, ...);
-                if (findFormat(1, tok->tokAt(2), formatStringTok, argListTok)) {
+                if (findFormat(1, 2, tok->tokAt(2), formatStringTok, argListTok)) {
                     if (!formatStringTok)
                         continue;
                 }
                 // int sprintf_s(char *buffer, size_t sizeOfBuffer, const char *format, ...);
-                else if (findFormat(2, tok->tokAt(2), formatStringTok, argListTok)) {
+                else if (findFormat(2, 3, tok->tokAt(2), formatStringTok, argListTok)) {
                     if (!formatStringTok)
                         continue;
                 }
             } else if (isWindows && Token::Match(tok, "_snprintf_s|_snwprintf_s (")) {
                 // template <size_t size> int _snprintf_s(char (&buffer)[size], size_t count, const char *format, ...);
-                if (findFormat(2, tok->tokAt(2), formatStringTok, argListTok)) {
+                if (findFormat(2, 3, tok->tokAt(2), formatStringTok, argListTok)) {
                     if (!formatStringTok)
                         continue;
                 }
                 // int _snprintf_s(char *buffer, size_t sizeOfBuffer, size_t count, const char *format, ...);
-                else if (findFormat(3, tok->tokAt(2), formatStringTok, argListTok)) {
+                else if (findFormat(3, 4, tok->tokAt(2), formatStringTok, argListTok)) {
                     if (!formatStringTok)
                         continue;
                 }
