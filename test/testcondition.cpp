@@ -5222,6 +5222,12 @@ private:
               "    if (c) {}\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("void f(int a, int b) {\n" // #11437
+              "    a = a < b ? b : a;\n"
+              "    if (a != b) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void alwaysTrueInfer() {
