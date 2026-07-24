@@ -83,8 +83,14 @@ public:
 
 private:
     /** Set variable id */
-    void setVarId();
-    void setVarIdPass1();
+    /**
+     * Set variable ids.
+     * @param incremental don't clear the existing variable ids: tokens keep their ids
+     * and tokens without an id get a new id above the previous maximum, so the ids are
+     * stable. Used when the template simplifier has added tokens.
+     */
+    void setVarId(bool incremental = false);
+    void setVarIdPass1(bool incremental = false);
     void setVarIdPass2();
 
     /**
@@ -296,6 +302,34 @@ private:
      * Simplify templates
      */
     void simplifyTemplates();
+
+    /**
+     * Simplify templates again, this time using type information (AST, SymbolDatabase,
+     * ValueType) to deduce the template arguments of function template calls from the
+     * argument expressions. Runs in a loop: after each round of new instantiations the
+     * supporting token information (varid, links, AST, SymbolDatabase, ValueTypes) is
+     * updated so the new tokens can be used by the next round.
+     */
+    void simplifyTemplatesUsingTypeInformation();
+
+    /**
+     * Recreate varid, links, AST, SymbolDatabase and ValueTypes from scratch after the
+     * template simplifier changed the token list.
+     */
+    void rebuildTokenDataAfterTemplateSimplification();
+
+    /**
+     * Incrementally update varid, links, AST, SymbolDatabase and ValueTypes after the
+     * template simplifier changed the token list: the information of the unchanged
+     * tokens stays valid.
+     */
+    void updateTokenDataAfterTemplateSimplification();
+
+    /**
+     * updateTokenDataAfterTemplateSimplification() or
+     * rebuildTokenDataAfterTemplateSimplification() depending on incremental
+     */
+    void updateOrRebuildTokenDataAfterTemplateSimplification(bool incremental);
 
     void simplifyDoublePlusAndDoubleMinus();
 

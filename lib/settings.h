@@ -466,6 +466,11 @@ public:
         e.g. "{severity} {file}:{line} {message} {id}" */
     std::string templateFormat;
 
+    /** @brief Is --template-full-rebuild given? Recreate the symbol database etc. from
+     * scratch after each template type deduction round instead of updating them
+     * incrementally. For testing and debugging. */
+    bool templateFullRebuild = false;
+
     /** @brief The output format in which the error locations are printed in
      *  text mode, e.g. "{file}:{line} {info}" */
     std::string templateLocation;

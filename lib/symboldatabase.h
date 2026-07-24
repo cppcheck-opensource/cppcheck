@@ -38,6 +38,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -1339,6 +1340,11 @@ public:
 class CPPCHECKLIB SymbolDatabase {
     friend class TestSymbolDatabase;
 public:
+    /**
+     * The phases that only later analysis (ValueFlow, checks) needs are not run by the
+     * constructor - call finalize() when the token list is final, e.g. after the
+     * template simplifier can no longer change it.
+     */
     explicit SymbolDatabase(Tokenizer& tokenizer);
     ~SymbolDatabase();
 
@@ -1412,8 +1418,14 @@ public:
      */
     void validate() const;
 
-    /** Set valuetype in provided tokenlist */
-    void setValueTypeInTokenList(bool reportDebugWarnings, Token *tokens=nullptr);
+    /** Set valuetype in provided tokenlist. When endToken (exclusive) is given, only
+     * that token range is set and the caller is responsible for updating the function
+     * and variable pointers (updateFunctionAndVariablePointers()). */
+    void setValueTypeInTokenList(bool reportDebugWarnings, Token* tokens = nullptr, const Token* endToken = nullptr);
+
+    /** Update the function pointers of calls and the variable pointers in the whole
+     * token list, e.g. after tokens were added or renamed. */
+    void updateFunctionAndVariablePointers();
 
     /**
      * Calculates sizeof value for given type.
@@ -1427,6 +1439,29 @@ public:
 
     void clangSetVariables(const std::vector<const Variable *> &vars);
     void createSymbolDatabaseExprIds();
+
+    /**
+     * Remove the symbols (scopes, functions, variables, types) that are declared by the
+     * given tokens and clear the references to them. Called before the tokens are
+     * removed from the token list, e.g. when the template simplifier removes
+     * instantiated template declarations.
+     */
+    void removeSymbolsForTokens(const std::unordered_set<const Token*>& removedTokens);
+
+    /**
+     * Add the symbols for token ranges (both range ends are inclusive) that were added
+     * to the token list after the symbol database was created, e.g. by template
+     * instantiations. This is an incremental alternative to recreating the database.
+     * Only new function declarations/definitions are supported - not new classes.
+     * setValueTypeInTokenList() should be called afterwards.
+     */
+    void addSymbolsForNewTokenRanges(const std::vector<std::pair<Token*, Token*>>& newRanges);
+
+    /**
+     * Run the phases that only later analysis (ValueFlow, checks) needs. Call exactly
+     * once, when the token list is final.
+     */
+    void finalize();
 
     /* returns the opening { if tok points to enum */
     static const Token* isEnumDefinition(const Token* tok);
@@ -1446,12 +1481,28 @@ private:
      * @throws InternalError thrown on unhandled code
      */
     void createSymbolDatabaseFindAllScopes();
+    /**
+     * Find the scopes in the given token range (endToken is exclusive, nullptr means
+     * the end of the token list) and add the symbols to the database. startScope is
+     * the scope the range is in.
+     * @throws InternalError thrown on unhandled code
+     */
+    void findAllScopes(const Token* startToken, const Token* endToken, Scope* startScope);
     void createSymbolDatabaseClassInfo();
     void createSymbolDatabaseVariableInfo();
     void createSymbolDatabaseCopyAndMoveConstructors();
     void createSymbolDatabaseFunctionScopes();
     void createSymbolDatabaseClassAndStructScopes();
     void createSymbolDatabaseFunctionReturnTypes();
+    /** fill in the return type of one function (used by the full build and by
+     * addSymbolsForNewTokenRanges) */
+    void setFunctionReturnType(Function& function, const Scope& scope) const;
+    /** add the variables of one scope to the variable symbol table */
+    void addVariablesToSymbolTable(Scope& scope);
+    /** add the parameters of one function to the variable symbol table */
+    void addArgumentsToSymbolTable(Function& function, const Scope& scope);
+    /** fill in the missing member variables in one function scope */
+    void fillMissingVariables(const Scope& functionScope);
     void createSymbolDatabaseNeedInitialization();
     void createSymbolDatabaseVariableSymbolTable();
     void createSymbolDatabaseSetScopePointers();
@@ -1475,8 +1526,10 @@ private:
     bool isFunction(const Token *tok, const Scope* outerScope, const Token *&funcStart, const Token *&argStart, const Token*& declEnd) const;
     const Type *findTypeInNested(const Token *startTok, const Scope *startScope) const;
     const Scope *findNamespace(const Token * tok, const Scope * scope) const;
-    static Function *findFunctionInScope(const Token *func, const Scope *ns, const std::string & path, nonneg int path_length);
-    static const Type *findVariableTypeInBase(const Scope *scope, const Token *typeTok);
+    static Function* findFunctionInScope(const Token* func,
+                                         const Scope* ns,
+                                         const std::string& path,
+                                         nonneg int path_length);
 
     using MemberIdMap = std::map<unsigned int, unsigned int>;
     using VarIdMap = std::map<unsigned int, MemberIdMap>;
