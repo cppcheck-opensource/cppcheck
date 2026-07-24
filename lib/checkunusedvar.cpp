@@ -1366,9 +1366,8 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage()
                     continue;
             }
 
-            FwdAnalysis fwdAnalysis(mSettings);
             const Token* scopeEnd = ValueFlow::getEndOfExprScope(expr, scope, /*smallest*/ false);
-            if (fwdAnalysis.unusedValue(expr, start, scopeEnd)) {
+            if (FwdAnalysis::unusedValue(expr, start, scopeEnd, mSettings)) {
                 if (!bailoutTypeName.empty()) {
                     if (bailoutTypeName != "auto")
                         reportLibraryCfgError(tok, bailoutTypeName);
