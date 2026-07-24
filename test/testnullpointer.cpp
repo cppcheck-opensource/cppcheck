@@ -147,6 +147,7 @@ private:
         TEST_CASE(nullpointer107); // #13682 (FP/FN cases around guards that depend on the pointer indirectly)
         TEST_CASE(nullpointer108);
         TEST_CASE(nullpointer109);
+        TEST_CASE(nullpointer110); // #14937
         TEST_CASE(nullpointer_addressOf); // address of
         TEST_CASE(nullpointerSwitch); // #2626
         TEST_CASE(nullpointer_cast); // #4692
@@ -3125,6 +3126,24 @@ private:
               "    std::print(\"{}\",*s);\n"
               "    co_return int{9};\n"
               "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void nullpointer110()
+    { // #14937 - noreturn member function called on operator() result
+        check("struct A {\n"
+              "    [[noreturn]] void g(int);\n"
+              "};\n"
+              "template<class T>\n"
+              "struct Thunk {\n"
+              "    T& operator()() const;\n"
+              "};\n"
+              "void f(Thunk<A> thunk, int* p) {\n"
+              "    if (!p)\n"
+              "        thunk().g(0);\n"
+              "    *p = 1;\n"
+              "}",
+              dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
     }
 

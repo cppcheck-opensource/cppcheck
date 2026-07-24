@@ -542,6 +542,8 @@ private:
         TEST_CASE(findFunction60);
         TEST_CASE(findFunction61);
         TEST_CASE(findFunction62); // #14272 - pointer passed to function is const
+        TEST_CASE(findFunction63); // #14937 - member function of type returned by operator()
+        TEST_CASE(findFunction64); // overloaded operator()
         TEST_CASE(findFunctionRef1);
         TEST_CASE(findFunctionRef2); // #13328
         TEST_CASE(findFunctionContainer);
@@ -8873,6 +8875,90 @@ private:
         ASSERT(functionCall->function());
         ASSERT(functionCall->function()->token);
         ASSERT_EQUALS(2, functionCall->function()->token->linenr());
+    }
+
+    void findFunction63()
+    { // #14937
+        GET_SYMBOL_DB("struct A {\n"
+                      "    void g(int);\n"
+                      "};\n"
+                      "template<class T>\n"
+                      "struct Thunk {\n"
+                      "    T& operator()() const;\n"
+                      "};\n"
+                      "void f(Thunk<A> thunk) {\n"
+                      "    thunk().g(0);\n"
+                      "}\n");
+        const Token* g = Token::findsimplematch(tokenizer.tokens(), "g ( 0 )");
+        ASSERT(g);
+        ASSERT(g->function());
+        ASSERT(g->function()->tokenDef);
+        ASSERT_EQUALS(2, g->function()->tokenDef->linenr());
+        const Token* call = Token::findsimplematch(tokenizer.tokens(), "( ) . g");
+        ASSERT(call && call->valueType());
+        ASSERT(call->valueType()->typeScope && call->valueType()->typeScope->className == "A");
+        ASSERT_EQUALS(static_cast<int>(Reference::LValue), static_cast<int>(call->valueType()->reference));
+    }
+
+    void findFunction64()
+    {                                                    // overloaded operator()
+        {
+            GET_SYMBOL_DB("struct A { void g(int); };\n" // overloads distinguished by argument count
+                          "struct B { void h(int); };\n"
+                          "template<class T>\n"
+                          "struct C {\n"
+                          "    A& operator()();\n"
+                          "    B& operator()(int);\n"
+                          "};\n"
+                          "void f(C<int> c) {\n"
+                          "    c().g(1);\n"
+                          "    c(1).h(1);\n"
+                          "}\n");
+            const Token* g = Token::findsimplematch(tokenizer.tokens(), "g ( 1 )");
+            ASSERT(g && g->function());
+            ASSERT_EQUALS(1, g->function()->tokenDef->linenr());
+            const Token* h = Token::findsimplematch(tokenizer.tokens(), "h ( 1 )");
+            ASSERT(h && h->function());
+            ASSERT_EQUALS(2, h->function()->tokenDef->linenr());
+        }
+        {
+            GET_SYMBOL_DB("struct A { void g(int); };\n" // overloads distinguished by constness of the object
+                          "struct B { void h(int); };\n"
+                          "template<class T>\n"
+                          "struct C {\n"
+                          "    A& operator()();\n"
+                          "    B& operator()() const;\n"
+                          "};\n"
+                          "void f(C<int> c, const C<int>& k) {\n"
+                          "    c().g(1);\n"
+                          "    k().h(1);\n"
+                          "}\n");
+            const Token* g = Token::findsimplematch(tokenizer.tokens(), "g ( 1 )");
+            ASSERT(g && g->function());
+            ASSERT_EQUALS(1, g->function()->tokenDef->linenr());
+            const Token* h = Token::findsimplematch(tokenizer.tokens(), "h ( 1 )");
+            ASSERT(h && h->function());
+            ASSERT_EQUALS(2, h->function()->tokenDef->linenr());
+        }
+        {
+            GET_SYMBOL_DB("struct A { void g(int); };\n" // overloads distinguished by argument type
+                          "struct B { void h(int); };\n"
+                          "template<class T>\n"
+                          "struct C {\n"
+                          "    A& operator()(int);\n"
+                          "    B& operator()(double);\n"
+                          "};\n"
+                          "void f(C<int> c, int i, double d) {\n"
+                          "    c(i).g(1);\n"
+                          "    c(d).h(1);\n"
+                          "}\n");
+            const Token* g = Token::findsimplematch(tokenizer.tokens(), "g ( 1 )");
+            ASSERT(g && g->function());
+            ASSERT_EQUALS(1, g->function()->tokenDef->linenr());
+            const Token* h = Token::findsimplematch(tokenizer.tokens(), "h ( 1 )");
+            ASSERT(h && h->function());
+            ASSERT_EQUALS(2, h->function()->tokenDef->linenr());
+        }
     }
 
     void findFunctionRef1() {
