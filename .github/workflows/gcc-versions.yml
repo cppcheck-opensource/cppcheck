@@ -1,0 +1,39 @@
+# the purpose of this github action is to test that cppcheck source code can be compiled using old gcc versions.
+# the gcc images we use here are copied from the official gcc images on docker hub
+
+name: gcc-versions
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'releases/**'
+      - '2.*'
+    tags:
+      - '2.*'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+
+    strategy:
+      matrix:
+        #image: ["ghcr.io/cppcheck-opensource/gcc:5.4", "ghcr.io/cppcheck-opensource/gcc:6.5", "ghcr.io/cppcheck-opensource/gcc:7.5", "ghcr.io/cppcheck-opensource/gcc:8.5", "ghcr.io/cppcheck-opensource/gcc:9.5"]
+        image: ["ghcr.io/cppcheck-opensource/gcc:5.4"]
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Build cppcheck
+        run: |
+          # FIXME: simplecpp-1.8.0 can't be compiled with gcc 5.4, so we can't run 'make test' now
+          #docker run --rm -v ${{ github.workspace }}:/cppcheck -w /cppcheck ${{ matrix.image }} make -j$(nproc) CXXOPTS="-Werror" test
+          docker run --rm -v ${{ github.workspace }}:/cppcheck -w /cppcheck ${{ matrix.image }} g++ -fsyntax-only -Iexternals -Iexternals/picojson -Iexternals/simplecpp -Iexternals/tinyxml2 -std=c++11 -Wno-multichar lib/*.cpp
