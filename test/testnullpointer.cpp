@@ -3129,7 +3129,8 @@ private:
         ASSERT_EQUALS("", errout_str());
     }
 
-    void nullpointer110() { // #14937 - noreturn member function called on operator() result
+    void nullpointer110()
+    { // #14937 - noreturn member function called on operator() result
         check("struct A {\n"
               "    [[noreturn]] void g(int);\n"
               "};\n"
@@ -3141,7 +3142,8 @@ private:
               "    if (!p)\n"
               "        thunk().g(0);\n"
               "    *p = 1;\n"
-              "}", dinit(CheckOptions, $.inconclusive = true));
+              "}",
+              dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
     }
 

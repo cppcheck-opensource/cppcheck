@@ -5861,7 +5861,10 @@ bool Scope::hasInlineOrLambdaFunction(const Token** tokStart, bool onlyInline) c
     });
 }
 
-void Scope::findFunctionInBase(const std::string& name, const Token* tok, size_t args, std::vector<const Function *> & matches) const
+void Scope::findFunctionInBase(const std::string& name,
+                               const Token* tok,
+                               size_t args,
+                               std::vector<const Function*>& matches) const
 {
     if (isClassOrStruct() && definedType && !definedType->derivedFrom.empty()) {
         const std::vector<Type::BaseInfo> &derivedFrom = definedType->derivedFrom;
@@ -6021,9 +6024,9 @@ static bool hasMatchingConstructor(const Scope* classScope, const ValueType* arg
     });
 }
 
-const Function* Scope::findFunction(const Token *tok, bool requireConst, Reference ref, const std::string &funcName) const
+const Function* Scope::findFunction(const Token* tok, bool requireConst, Reference ref, const std::string& funcName) const
 {
-    const std::string &name = funcName.empty() ? tok->str() : funcName;
+    const std::string& name = funcName.empty() ? tok->str() : funcName;
 
     const bool isCall = Token::Match(tok->next(), "(|{");
 
@@ -6034,7 +6037,7 @@ const Function* Scope::findFunction(const Token *tok, bool requireConst, Referen
     // find all the possible functions that could match
     const std::size_t args = arguments.size();
 
-    auto addMatchingFunctions = [&](const Scope *scope) {
+    auto addMatchingFunctions = [&](const Scope* scope) {
         auto range = scope->functionMap.equal_range(name);
         for (auto it = range.first; it != range.second; ++it) {
             const Function *func = it->second;
@@ -7796,7 +7799,8 @@ static const Function* getFunction(const Token* tok) {
             return lambda;
         // calling an object of a class that overloads operator()
         if (tok != lvar->nameToken() && !lvar->isPointer() && !lvar->isArray() && lvar->typeScope()) {
-            const Function* callOp = lvar->typeScope()->findFunction(tok, lvar->isConst(), Reference::LValue, "operator()");
+            const Function* callOp =
+                lvar->typeScope()->findFunction(tok, lvar->isConst(), Reference::LValue, "operator()");
             if (callOp && callOp->retDef)
                 return callOp;
         }

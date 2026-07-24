@@ -1148,7 +1148,10 @@ public:
      * @param funcName name to look up instead of tok->str(), e.g. "operator()" when tok is a variable that is called
      * @return pointer to function if found or NULL if not found
      */
-    const Function *findFunction(const Token *tok, bool requireConst=false, Reference ref=Reference::None, const std::string &funcName = "") const;
+    const Function* findFunction(const Token* tok,
+                                 bool requireConst = false,
+                                 Reference ref = Reference::None,
+                                 const std::string& funcName = "") const;
 
     const Scope *findRecordInNestedList(const std::string & name, bool isC = false) const;
     Scope *findRecordInNestedList(const std::string & name, bool isC = false);
@@ -1212,7 +1215,10 @@ private:
      */
     bool isVariableDeclaration(const Token* tok, const Token*& vartok, const Token*& typetok) const;
 
-    void findFunctionInBase(const std::string& name, const Token* tok, size_t args, std::vector<const Function *> & matches) const;
+    void findFunctionInBase(const std::string& name,
+                            const Token* tok,
+                            size_t args,
+                            std::vector<const Function*>& matches) const;
 
     /** @brief initialize varlist */
     void getVariableList(const Token *start, const Token *end);

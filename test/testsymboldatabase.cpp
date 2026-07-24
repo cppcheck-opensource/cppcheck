@@ -8877,7 +8877,8 @@ private:
         ASSERT_EQUALS(2, functionCall->function()->token->linenr());
     }
 
-    void findFunction63() { // #14937
+    void findFunction63()
+    { // #14937
         GET_SYMBOL_DB("struct A {\n"
                       "    void g(int);\n"
                       "};\n"
@@ -8899,7 +8900,8 @@ private:
         ASSERT_EQUALS(static_cast<int>(Reference::LValue), static_cast<int>(call->valueType()->reference));
     }
 
-    void findFunction64() { // overloaded operator()
+    void findFunction64()
+    {                                                    // overloaded operator()
         {
             GET_SYMBOL_DB("struct A { void g(int); };\n" // overloads distinguished by argument count
                           "struct B { void h(int); };\n"
