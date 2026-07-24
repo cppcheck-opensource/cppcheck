@@ -9225,6 +9225,15 @@ private:
                "    return x;\n"
                "}\n";
         ASSERT_EQUALS(false, testValueOfX(code, 3U, "malloc(10)", 0));
+
+        code = "struct S {\n" // #14891
+               "    void f() const {\n"
+               "        const int* p = a;\n"
+               "        if (*p) {}\n"
+               "    }\n"
+               "    int a[3];\n"
+               "};\n";
+        ASSERT(tokenValues(code, "* p )").empty());
     }
 
     void valueFlowSymbolicIdentity()
