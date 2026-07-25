@@ -11063,6 +11063,48 @@ private:
               "    Dst.s->y = Src.s->y;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        // Ticket #14371 "redundantAssignment when using a union"
+        check("union U {\n"
+              "    struct {\n"
+              "        unsigned int abcd;\n"
+              "    } u32;\n"
+              "    struct {\n"
+              "        unsigned short ab;\n"
+              "        unsigned short cd;\n"
+              "    } u16;\n"
+              "};\n"
+              "void f1() {\n"
+              "    U m;\n"
+              "    m.u32.abcd = 1234;\n"
+              "    m.u32.abcd = 5 * m.u16.ab;\n"
+              "}\n"
+              "void f2(unsigned int a, unsigned short b) {\n"
+              "    U m;\n"
+              "    m.u32.abcd = a;\n"
+              "    m.u32.abcd += 0x8000;\n"
+              "    m.u32.abcd = m.u16.ab * b;\n"
+              "}\n"
+              "void f3(unsigned int seed) {\n"
+              "    U m, other;\n"
+              "    other.u32.abcd = seed;\n"
+              "    m.u32.abcd = 1234;\n"
+              "    m.u32.abcd = other.u16.ab * 2;\n"
+              "}\n"
+              "void f4(unsigned short x) {\n"
+              "    U m;\n"
+              "    m.u16.ab = x;\n"
+              "    m.u16.cd = 0;\n"
+              "    m.u16.ab = m.u32.abcd / 53;\n"
+              "}\n"
+              "void f5(unsigned short x, unsigned int y) {\n"
+              "    U m;\n"
+              "    m.u16.ab = x;\n"
+              "    m.u16.cd = 0;\n"
+              "    m.u16.ab = y;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = false));
+        ASSERT_EQUALS("[test.cpp:24:16] -> [test.cpp:25:16]: (style) Variable 'm.u32.abcd' is reassigned a value before the old one has been used. [redundantAssignment]\n"
+                      "[test.cpp:35:14] -> [test.cpp:37:14]: (style) Variable 'm.u16.ab' is reassigned a value before the old one has been used. [redundantAssignment]\n", errout_str());
     }
 
     void redundantVarAssignment_7133() {
@@ -12903,6 +12945,13 @@ private:
               "    cif::condition mWhere;\n"
               "};\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("void g(std::string);\n" // #14928
+              "void f(std::string s) {\n"
+              "    g(std::move(s));\n"
+              "    for (char c : s) {}\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:19]: (warning) Access of moved variable 's'. [accessMoved]\n", errout_str());
     }
 
     void moveTernary()
