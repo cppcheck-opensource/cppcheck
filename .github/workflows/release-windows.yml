@@ -32,7 +32,7 @@ jobs:
       BOOST_MINOR_VERSION: 89
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
@@ -95,7 +95,7 @@ jobs:
           del build\bin\Release\cppcheck-gui.ilk || exit /b !errorlevel!
           del build\bin\Release\cppcheck-gui.pdb || exit /b !errorlevel!
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: deploy
           path: build\bin\Release
@@ -109,7 +109,7 @@ jobs:
         env:
           _CL_: /WX
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: bin
           path: bin
@@ -158,7 +158,7 @@ jobs:
           :: copy libcrypto-3-x64.dll and libssl-3-x64.dll
           copy %RUNNER_WORKSPACE%\Qt\Tools\OpenSSLv3\Win_x64\bin\lib*.dll win_installer\files || exit /b !errorlevel!
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: collect
           path: win_installer\files
@@ -173,7 +173,7 @@ jobs:
           @echo ProductVersion="%PRODUCTVER%" || exit /b !errorlevel!
           msbuild -m cppcheck.wixproj -p:Platform=x64,ProductVersion=%PRODUCTVER%.${{ github.run_number }} || exit /b !errorlevel!
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: installer
           path: win_installer/Build/
@@ -209,7 +209,7 @@ jobs:
           del win_installer\files\Qt6Svg.dll || exit /b !errorlevel!
           del win_installer\files\vc_redist.x64.exe || exit /b !errorlevel!
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: portable
           path: win_installer\files
