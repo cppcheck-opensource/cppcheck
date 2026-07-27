@@ -160,13 +160,13 @@ private:
         TEST_CASE(valueFlowIdempotent);
         TEST_CASE(valueFlowUnsigned);
         TEST_CASE(valueFlowMod);
-        TEST_CASE(valueFlowImpossibleMinMax);
         TEST_CASE(valueFlowIncDec);
         TEST_CASE(valueFlowNotNull);
         TEST_CASE(valueFlowSymbolic);
         TEST_CASE(valueFlowSymbolicIdentity);
         TEST_CASE(valueFlowSymbolicStrlen);
         TEST_CASE(valueFlowSmartPointer);
+        TEST_CASE(valueFlowImpossibleMinMax);
         TEST_CASE(valueFlowImpossibleIncDec);
         TEST_CASE(valueFlowImpossibleUnknownConstant);
         TEST_CASE(valueFlowContainerEqual);
