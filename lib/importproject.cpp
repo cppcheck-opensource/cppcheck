@@ -34,6 +34,7 @@
 #include <initializer_list>
 #include <iostream>
 #include <iterator>
+#include <regex>
 #include <stack>
 #include <stdexcept>
 #include <unordered_set>
@@ -816,6 +817,32 @@ namespace {
         bool useOfMfc = false;
         bool useUnicode = false;
     };
+
+    struct ItemGroupClCompile {
+        explicit ItemGroupClCompile(std::string file) : filename(std::move(file)) {}
+        ItemGroupClCompile(const tinyxml2::XMLElement* element, std::string file) : filename(std::move(file)) {
+            for (const tinyxml2::XMLElement* childElement = element->FirstChildElement(); childElement; childElement = childElement->NextSiblingElement()) {
+                const char* name = childElement->Name();
+                if (!name)
+                    continue;
+                if (std::strcmp(name, "ExcludedFromBuild") == 0) {
+                    const char* condition = childElement->Attribute("Condition");
+                    const char* text = childElement->GetText();
+                    if (!condition || !text)
+                        continue;
+                    const std::string cond(condition);
+                    // Check if the condition is of the form: '$(Configuration)|$(Platform)' == 'Debug|x64'
+                    const std::regex rgx("==\\s*'([^']+)'");
+                    std::smatch match;
+                    if (std::regex_search(cond, match, rgx) && match.size() > 1 && std::strcmp(text, "true") == 0)
+                        exclude.insert(match[1]);
+                }
+                // TODO: ForcedIncludeFiles and PrecompiledHeaderFile
+            }
+        }
+        std::string filename;
+        std::set<std::string> exclude;
+    };
 }
 
 static std::list<std::string> toStringList(const std::string &s)
@@ -923,7 +950,7 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
     variables["ProjectDir"] = Path::simplifyPath(Path::getPathFromFilename(filename));
 
     std::list<ProjectConfiguration> projectConfigurationList;
-    std::list<std::string> compileList;
+    std::list<ItemGroupClCompile> compileList;
     std::list<ItemDefinitionGroup> itemDefinitionGroupList;
     std::vector<ConfigurationPropertyGroup> configurationPropertyGroups;
     std::string includePath;
@@ -954,7 +981,7 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
                         const char *include = e->Attribute("Include");
                         if (include && Path::acceptFile(include)) {
                             std::string toInclude = Path::simplifyPath(Path::isAbsolute(include) ? include : Path::getPathFromFilename(filename) + include);
-                            compileList.emplace_back(toInclude);
+                            compileList.emplace_back(e, toInclude);
                         }
                     }
                 }
@@ -1016,7 +1043,7 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
     for (const auto& sharedProject : sharedItemsProjects) {
         for (const auto &file : sharedProject.sourceFiles) {
             std::string pathToFile = Path::simplifyPath(Path::getPathFromFilename(sharedProject.pathToProjectFile) + file);
-            compileList.emplace_back(std::move(pathToFile));
+            compileList.emplace_back(pathToFile);
         }
         for (const auto &p : sharedProject.includePaths) {
             std::string path = Path::simplifyPath(Path::getPathFromFilename(sharedProject.pathToProjectFile) + p);
@@ -1026,8 +1053,8 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
 
     // Project files
     PathMatch filtermatcher(fileFilters, Path::getCurrentPath());
-    for (const std::string &cfilename : compileList) {
-        if (!fileFilters.empty() && !filtermatcher.match(cfilename))
+    for (const ItemGroupClCompile &compile : compileList) {
+        if (!fileFilters.empty() && !filtermatcher.match(compile.filename))
             continue;
 
         for (const ProjectConfiguration &p : projectConfigurationList) {
@@ -1040,7 +1067,11 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
                     continue;
             }
 
-            FileSettings fs{cfilename, Standards::Language::None, 0}; // file will be identified later on
+            // check if the file should be excluded for this configuration
+            if (!compile.exclude.empty() && compile.exclude.find(p.name) != compile.exclude.end())
+                continue;
+
+            FileSettings fs{ compile.filename, Standards::Language::None, 0}; // file will be identified later on
             fs.cfg = p.name;
             // TODO: detect actual MSC version
             fs.msc = true;
@@ -1053,7 +1084,7 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
             }
             std::string additionalIncludePaths;
             for (const ItemDefinitionGroup &i : itemDefinitionGroupList) {
-                if (!i.conditionIsTrue(p, cfilename, errors))
+                if (!i.conditionIsTrue(p, compile.filename, errors))
                     continue;
                 fs.standard = Standards::getCPP(i.cppstd);
                 fs.defines += ';' + i.preprocessorDefinitions;
@@ -1071,7 +1102,7 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
             }
             bool useUnicode = false;
             for (const ConfigurationPropertyGroup &c : configurationPropertyGroups) {
-                if (!c.conditionIsTrue(p, cfilename, errors))
+                if (!c.conditionIsTrue(p, compile.filename, errors))
                     continue;
                 // in msbuild the last definition wins
                 useUnicode = c.useUnicode;
@@ -1081,10 +1112,11 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
                 fs.defines += ";UNICODE=1;_UNICODE=1";
             }
             fsSetDefines(fs, fs.defines);
-            fsSetIncludePaths(fs, Path::getPathFromFilename(filename), toStringList(includePath + ';' + additionalIncludePaths), variables);
+            fsSetIncludePaths(fs, Path::getPathFromFilename(compile.filename), toStringList(includePath + ';' + additionalIncludePaths), variables);
             for (const auto &path : sharedItemsIncludePaths) {
                 fs.includePaths.emplace_back(path);
             }
+
             fileSettings.push_back(std::move(fs));
         }
     }
