@@ -1120,6 +1120,7 @@ static void valueFlowImpossibleValues(TokenList& tokenList, const Settings& sett
                             return false;
                         return v.isSymbolicValue();
                     });
+                }
             }
             const bool isMin = Token::Match(condTok, "<|<=") ^ flipped;
             for (ValueFlow::Value& value : values) {
