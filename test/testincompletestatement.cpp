@@ -492,7 +492,7 @@ private:
               "void f(int i) {\n"
               "    (M::N::T)i;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:5:5]: (warning) Redundant code: Found unused cast in expression '(char)i'. [constStatement]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:5:5]: (warning) Redundant code: Found unused cast in expression '(T)i'. [constStatement]\n", errout_str());
 
         check("void f(int (g)(int a, int b)) {\n" // #10873
               "    int p = 0, q = 1;\n"
