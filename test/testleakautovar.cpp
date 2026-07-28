@@ -3179,8 +3179,8 @@ private:
         ASSERT_EQUALS("", errout_str());
     }
 
-    void unconditionalScope() { // #14945
-        check("void f() {\n"
+    void unconditionalScope() {
+        check("void f() {\n" // #14945
               "    {\n"
               "        int* p = new int;\n"
               "        *p = 1;\n"
@@ -3195,6 +3195,16 @@ private:
               "    delete r;\n"
               "}\n", dinit(CheckOptions, $.cpp = true));
         ASSERT_EQUALS("[test.cpp:5:5]: (error) Memory leak: p [memleak]\n", errout_str());
+
+        check("void f() {\n"
+              "    int* p = new int;\n"
+              "    {\n"
+              "        (void)p;\n"
+              "    }\n"
+              "    *p = 1;\n"
+              "    delete p;\n"
+              "}\n", dinit(CheckOptions, $.cpp = true));
+        ASSERT_EQUALS("", errout_str());
     }
 
     void functionCallCastConfig() { // #9652
