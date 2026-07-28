@@ -981,6 +981,7 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
                         const char *include = e->Attribute("Include");
                         if (include && Path::acceptFile(include)) {
                             std::string toInclude = Path::simplifyPath(Path::isAbsolute(include) ? include : Path::getPathFromFilename(filename) + include);
+                            findAndReplace(toInclude, "$(MSBuildThisFileDirectory)", "./");
                             compileList.emplace_back(e, toInclude);
                         }
                     }
