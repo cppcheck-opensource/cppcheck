@@ -234,6 +234,7 @@ private:
         TEST_CASE(simplifyTypedef161);
         TEST_CASE(simplifyTypedef162);
         TEST_CASE(simplifyTypedef163);
+        TEST_CASE(simplifyTypedef164);
 
         TEST_CASE(simplifyTypedefFunction1);
         TEST_CASE(simplifyTypedefFunction2); // ticket #1685
@@ -3871,6 +3872,11 @@ private:
 
     void simplifyTypedef163() {
         const char code[] = "typedef v *v;";
+        ASSERT_THROW_INTERNAL(tok(code), INTERNAL);
+    }
+
+    void simplifyTypedef164() {
+        const char code[] = "typedef struct D{x;}y y;";
         ASSERT_THROW_INTERNAL(tok(code), INTERNAL);
     }
 
