@@ -2044,6 +2044,7 @@ void Tokenizer::simplifyTypedefCpp()
                         tok2->previous()->str("typedef");
                         tok2->insertToken(tok2->str());
                     }
+                    tok2->originalName(tok2->str());
                     tok2->str(typeStart->str());
 
                     // restore qualification if it was removed
