@@ -573,6 +573,34 @@ The usage of the suppressions file is as follows:
 
     cppcheck --suppress-xml=suppressions.xml src/
 
+### The `<hash>` element
+
+Cppcheck calculates a unique ID for each error, called the hash. The hash depends on the code that
+is related to the error, not on where that code is located. This means that the hash for an error
+stays the same even when unrelated code elsewhere in the file is added, removed or moved, shifting
+the line numbers around. The hash only changes if the related code itself is modified.
+
+This makes hash-based suppressions more robust than line-based suppressions: once you have
+reviewed and suppressed a specific warning, the suppression keeps working even after the file is
+edited, as long as the offending code is not changed.
+
+The hash for an error is included as the `hash` attribute in the [XML output](#the-error-element).
+You can copy that value into a `<hash>` element in a suppressions XML file:
+
+    <?xml version="1.0"?>
+    <suppressions>
+      <suppress>
+        <id>uninitvar</id>
+        <fileName>src/file1.c</fileName>
+        <hash>12345678</hash>
+      </suppress>
+    </suppressions>
+
+A suppression can use `<hash>` on its own, without `<id>`, to suppress a specific error regardless
+of its id. It is also possible to combine `<hash>` with `<id>`, `<fileName>`, `<lineNumber>` and
+`<symbolName>`; when several of these are specified, all of them must match for the suppression to
+apply.
+
 ## Inline suppressions
 
 Suppressions can also be added directly in the code by adding comments that contain special keywords.

@@ -5112,6 +5112,27 @@ private:
         ++it;
         ASSERT_EQUALS(0, it->intvalue);
         ASSERT(it->isPossible());
+
+        code = "void g(int*);\n"
+               "void f(int* a) {\n"
+               "    for (int i = 0; i < 5; ++i) {\n"
+               "        g(&a[i]);\n"
+               "    }\n"
+               "}\n";
+        values = tokenValues(code, "i ]");
+        ASSERT_EQUALS(4, values.size());
+        it = values.begin();
+        ASSERT_EQUALS(0, it->intvalue);
+        ASSERT(it->isPossible());
+        ++it;
+        ASSERT_EQUALS(-1, it->intvalue);
+        ASSERT(it->isImpossible());
+        ++it;
+        ASSERT_EQUALS(4, it->intvalue);
+        ASSERT(it->isPossible());
+        ++it;
+        ASSERT_EQUALS(5, it->intvalue);
+        ASSERT(it->isImpossible());
     }
 
     void valueFlowSubFunction() {
@@ -9204,6 +9225,15 @@ private:
                "    return x;\n"
                "}\n";
         ASSERT_EQUALS(false, testValueOfX(code, 3U, "malloc(10)", 0));
+
+        code = "struct S {\n" // #14891
+               "    void f() const {\n"
+               "        const int* p = a;\n"
+               "        if (*p) {}\n"
+               "    }\n"
+               "    int a[3];\n"
+               "};\n";
+        ASSERT(tokenValues(code, "* p )").empty());
     }
 
     void valueFlowSymbolicIdentity()

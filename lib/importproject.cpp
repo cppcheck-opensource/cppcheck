@@ -1653,7 +1653,18 @@ bool ImportProject::importCppcheckGuiProject(std::istream &istr, Settings &setti
 
     for (const std::string &p : paths)
         guiProject.pathNames.push_back(Path::fromNativeSeparators(p));
-    supprs.nomsg.addSuppressions(std::move(suppressions)); // TODO: check result
+
+    bool ok = true;
+    for (const auto &suppression : suppressions) {
+        const std::string addError = supprs.nomsg.addSuppression(suppression);
+        if (!addError.empty()) {
+            errors.emplace_back(addError);
+            ok = false;
+        }
+    }
+    if (!ok)
+        return false;
+
     settings.checkHeaders = temp.checkHeaders;
     settings.checkUnusedTemplates = temp.checkUnusedTemplates;
     settings.maxCtuDepth = temp.maxCtuDepth;
