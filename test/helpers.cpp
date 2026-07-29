@@ -47,12 +47,22 @@
 
 const Settings SimpleTokenizer::s_settings;
 
+std::set<std::string> ScopedFile::s_scopedfiles;
+
 // TODO: better path-only usage
 ScopedFile::ScopedFile(std::string name, const std::string &content, std::string path)
     : mName(std::move(name))
     , mPath(Path::toNativeSeparators(std::move(path)))
     , mFullPath(Path::join(mPath, mName))
 {
+    if (mPath.empty() && mName.empty()) {
+        throw std::runtime_error("ScopedFile(" + mFullPath + ") - no file specified");
+    }
+
+    if (!s_scopedfiles.emplace(mFullPath).second) {
+        throw std::runtime_error("ScopedFile(" + mFullPath + ") - file not unique");
+    }
+
     if (!mPath.empty() && mPath != Path::getCurrentPath()) {
         if (Path::isDirectory(mPath))
             throw std::runtime_error("ScopedFile(" + mFullPath + ") - directory already exists");
