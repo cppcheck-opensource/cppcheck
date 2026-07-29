@@ -390,11 +390,10 @@ namespace ValueFlow
 
         else if (parent->str() == "?" && tok->str() == ":" && tok == parent->astOperand2() && parent->astOperand1()) {
             // is condition always true/false?
-            if (parent->astOperand1()->hasKnownValue()) {
-                const Value &condvalue = parent->astOperand1()->values().front();
-                const bool cond(condvalue.isTokValue() || (condvalue.isIntValue() && condvalue.intvalue != 0));
+            if (const Value* condvalue = parent->astOperand1()->getKnownValue()) {
+                const bool cond(condvalue->isTokValue() || (condvalue->isIntValue() && condvalue->intvalue != 0));
                 if (cond && !tok->astOperand1()) { // true condition, no second operator
-                    setTokenValue(parent, condvalue, settings);
+                    setTokenValue(parent, *condvalue, settings);
                 } else {
                     const Token *op = cond ? tok->astOperand1() : tok->astOperand2();
                     if (!op) // #7769 segmentation fault at setTokenValue()
