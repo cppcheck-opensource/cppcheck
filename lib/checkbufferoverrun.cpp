@@ -230,7 +230,8 @@ static bool getDimensionsEtc(const Token * const arrayToken, const Settings &set
         const size_t typeSize = array->valueType()->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, sizeOf);
         if (typeSize == 0)
             return false;
-        dim.num = value->intvalue / typeSize;
+        // a container size counts elements, a buffer size counts bytes
+        dim.num = value->isContainerSizeValue() ? value->intvalue : value->intvalue / typeSize;
         dimensions.emplace_back(dim);
     }
     return !dimensions.empty();
@@ -581,9 +582,14 @@ ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok, cons
         if (const ValueFlow::Value *value = getBufferSizeValue(bufTok)) {
             if (value->isBufferSizeValue())
                 return *value;
-            if (value->isContainerSizeValue() && bufTok->valueType() && bufTok->valueType()->containerTypeToken) {
-                const ValueType vtElement = ValueType::parseDecl(bufTok->valueType()->containerTypeToken, settings);
-                const size_t elementSize = vtElement.getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
+            if (value->isContainerSizeValue() && bufTok->valueType()) {
+                size_t elementSize = 0;
+                if (bufTok->valueType()->containerTypeToken) {
+                    const ValueType vtElement = ValueType::parseDecl(bufTok->valueType()->containerTypeToken, settings);
+                    elementSize = vtElement.getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
+                } else if (bufTok->valueType()->pointer == 1) {
+                    elementSize = bufTok->valueType()->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointee);
+                }
                 if (elementSize > 0) {
                     ValueFlow::Value bufSizeVal;
                     bufSizeVal.valueType = ValueFlow::Value::ValueType::BUFFER_SIZE;

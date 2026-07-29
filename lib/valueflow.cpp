@@ -3858,10 +3858,12 @@ static void valueFlowForwardConst(Token* start,
             [&] {
                 // Add the container size to iterators of the container (mirrors ContainerExpressionAnalyzer::match)
                 if (hasContainerSizeValue && isIteratorOf(tok, var->declarationId())) {
-                    for (const ValueFlow::Value& value : values) {
+                    for (ValueFlow::Value value : values) {
                         if (!value.isContainerSizeValue())
                             continue;
-                        setTokenValue(tok, value, settings);
+                        if (!value.container)
+                            value.container = var->nameToken();
+                        setTokenValue(tok, std::move(value), settings);
                     }
                     return;
                 }
@@ -4210,10 +4212,12 @@ static void valueFlowAfterAssign(const TokenList &tokenlist,
             values.remove_if([&](const ValueFlow::Value& value) {
                 return types.count(value.valueType) > 0;
             });
-            // Remove container size if its not a container
+            // Remove container size if its not a container - unless the size records its container
+            // and flows into a pointer to the container data (e.g. p = v.data())
             if (!astIsContainer(tok->astOperand2()))
                 values.remove_if([&](const ValueFlow::Value& value) {
-                    return value.valueType == ValueFlow::Value::ValueType::CONTAINER_SIZE;
+                    return value.valueType == ValueFlow::Value::ValueType::CONTAINER_SIZE &&
+                           (!value.container || !astIsPointer(tok->astOperand1()));
                 });
             // Remove symbolic values that are the same as the LHS
             values.remove_if([&](const ValueFlow::Value& value) {

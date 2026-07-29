@@ -7682,6 +7682,31 @@ private:
                "    if (m.empty()) {}\n"
                "}\n";
         ASSERT(!isKnownContainerSizeValue(tokenValues(code, "m ."), 0).empty());
+
+        // the pointer returned by data() carries the container size
+        code = "int f() {\n"
+               "    std::vector<int> v(3);\n"
+               "    int* p = v.data();\n"
+               "    return p[1];\n"
+               "}";
+        ASSERT_EQUALS("", isKnownContainerSizeValue(tokenValues(code, "p [", ValueFlow::Value::ValueType::CONTAINER_SIZE), 3));
+
+        // ..which is invalidated when the container size changes
+        code = "int f() {\n"
+               "    std::vector<int> v(3);\n"
+               "    int* p = v.data();\n"
+               "    v.push_back(1);\n"
+               "    return p[1];\n"
+               "}";
+        ASSERT_EQUALS(0U, tokenValues(code, "p [", ValueFlow::Value::ValueType::CONTAINER_SIZE).size());
+
+        // the buffer of c_str() includes the null terminator
+        code = "const char* f() {\n"
+               "    std::string s = \"abc\";\n"
+               "    const char* p = s.c_str();\n"
+               "    return p + 3;\n"
+               "}";
+        ASSERT_EQUALS("", isKnownContainerSizeValue(tokenValues(code, "p +", ValueFlow::Value::ValueType::CONTAINER_SIZE), 4));
     }
 
     void valueFlowContainerSizeIterator() {

@@ -197,6 +197,7 @@ private:
         TEST_CASE(array_index_function_parameter);
         TEST_CASE(array_index_enum_array); // #8439
         TEST_CASE(array_index_container); // #9386
+        TEST_CASE(array_index_container_data); // pointer from data()/c_str() carries the container size
         TEST_CASE(array_index_two_for_loops);
         TEST_CASE(array_index_new); // #7690
 
@@ -2900,6 +2901,67 @@ private:
               "    a[2] = 2;\n"
               "}");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void array_index_container_data() {
+        check("void f() {\n"
+              "    std::vector<int> v(3);\n"
+              "    int* p = v.data();\n"
+              "    p[2] = 1;\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f() {\n"
+              "    std::vector<int> v(3);\n"
+              "    int* p = v.data();\n"
+              "    p[5] = 1;\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:4:6]: (error) Array 'p[3]' accessed at index 5, which is out of bounds. [arrayIndexOutOfBounds]\n",
+                      errout_str());
+
+        check("void f() {\n"
+              "    std::vector<int> v(3);\n"
+              "    memset(v.data(), 0, 12);\n"
+              "    memset(v.data(), 0, 100);\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:4:18]: (error) Buffer is accessed out of bounds: v.data() [bufferAccessOutOfBounds]\n",
+                      errout_str());
+
+        check("void f() {\n"
+              "    std::vector<int> v(3);\n"
+              "    int* p = v.data();\n"
+              "    memset(p, 0, 100);\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:4:12]: (error) Buffer is accessed out of bounds: p [bufferAccessOutOfBounds]\n",
+                      errout_str());
+
+        // the size is not tracked past changes of the container size
+        check("void f() {\n"
+              "    std::vector<int> v(3);\n"
+              "    v.reserve(100);\n"
+              "    int* p = v.data();\n"
+              "    v.resize(10);\n"
+              "    memset(p, 0, 40);\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
+
+        // ..or when the pointer is reassigned
+        check("void f(int* q) {\n"
+              "    std::vector<int> v(3);\n"
+              "    int* p = v.data();\n"
+              "    p = q;\n"
+              "    memset(p, 0, 100);\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
+
+        // the buffer of c_str() includes the null terminator
+        check("void f(char* dst) {\n"
+              "    std::string s = \"abc\";\n"
+              "    memcpy(dst, s.c_str(), 4);\n"
+              "    memcpy(dst, s.c_str(), 5);\n"
+              "}");
+        ASSERT_EQUALS("[test.cpp:4:24]: (error) Buffer is accessed out of bounds: s.c_str() [bufferAccessOutOfBounds]\n",
+                      errout_str());
     }
 
     void array_index_two_for_loops() {

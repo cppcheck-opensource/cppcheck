@@ -1299,6 +1299,12 @@ struct ExpressionAnalyzer : SingleValueFlowAnalyzer {
             dependOnThis |= exprDependsOnThis(value.tokvalue);
             setupExprVarIds(value.tokvalue);
         }
+        if (value.isContainerSizeValue() && value.container) {
+            // a container size tracked through another expression (e.g. a pointer obtained from
+            // data()) is invalidated by writes to the container it belongs to
+            dependOnThis |= exprDependsOnThis(value.container);
+            setupExprVarIds(value.container);
+        }
         uniqueExprId =
             expr->isUniqueExprId() && (Token::Match(expr, "%cop%") || !isVariableChanged(expr, 0, s));
     }
@@ -1500,47 +1506,25 @@ ValuePtr<Analyzer> makeMemberExpressionAnalyzer(std::string varname, const Token
     return MemberExpressionAnalyzer{std::move(varname), e, std::move(val), p, s};
 }
 
-// Is tok an iterator into a default-inserted element of the associative container with the given
-// expression id (e.g. m[k].begin() for a map m)? Such an element is empty when the container is empty.
-static bool isIteratorOfDefaultInsertedElement(const Token* tok, nonneg int containerExprId)
-{
-    if (!astIsIterator(tok))
-        return false;
-    return std::any_of(tok->values().cbegin(), tok->values().cend(), [&](const ValueFlow::Value& v) {
-        if (!v.isLocalLifetimeValue() || v.isInconclusive() ||
-            v.lifetimeKind != ValueFlow::Value::LifetimeKind::Iterator)
-            return false;
-        const Token* elem = v.tokvalue;
-        while (Token::simpleMatch(elem, "[") && elem->astOperand1()) {
-            const ValueType* vt = elem->astOperand1()->valueType();
-            if (!vt || !vt->container || !vt->container->stdAssociativeLike)
-                return false;
-            if (elem->astOperand1()->exprId() == containerExprId)
-                return true;
-            elem = elem->astOperand1();
-        }
-        return false;
-    });
-}
-
 struct ContainerExpressionAnalyzer : ExpressionAnalyzer {
     ContainerExpressionAnalyzer(const Token* expr, ValueFlow::Value val, const Settings& s)
         : ExpressionAnalyzer(expr, std::move(val), s)
-    {}
+    {
+        // The size of a container expression belongs to that expression. Through a pointer the
+        // size keeps belonging to the container the pointer was obtained from.
+        if (astIsContainer(expr) && !astIsPointer(expr))
+            value.container = expr;
+    }
 
     bool match(const Token* tok) const override {
-        if (tok->exprId() == expr->exprId())
-            return true;
-        if (isIteratorOf(tok, expr->exprId()))
-            return true;
-        // an empty associative container implies that its elements are empty as well
-        return !value.isImpossible() && value.intvalue == 0 &&
-               isIteratorOfDefaultInsertedElement(tok, expr->exprId());
+        return tok->exprId() == expr->exprId() || isIteratorOf(tok, expr->exprId());
     }
 
     Action isWritable(const Token* tok, Direction /*d*/) const override
     {
-        if (astIsIterator(tok))
+        // only writes to the container itself change its size - not writes through an iterator
+        // or to a default-inserted element
+        if (tok->exprId() != expr->exprId())
             return Action::None;
         if (!getValue(tok))
             return Action::None;
