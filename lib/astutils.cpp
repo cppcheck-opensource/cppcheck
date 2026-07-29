@@ -1069,6 +1069,19 @@ bool isAliasOf(const Token *tok, nonneg int varid, bool* inconclusive)
     return false;
 }
 
+bool isIteratorOf(const Token* tok, nonneg int exprId)
+{
+    if (!astIsIterator(tok))
+        return false;
+    // An iterator into a subcontainer (e.g. c[0].begin()) aliases the container but iterates
+    // an unrelated range, so require an Iterator lifetime referring to the container itself
+    return std::any_of(tok->values().cbegin(), tok->values().cend(), [&](const ValueFlow::Value& v) {
+        return v.isLocalLifetimeValue() && !v.isInconclusive() &&
+               v.lifetimeKind == ValueFlow::Value::LifetimeKind::Iterator && v.tokvalue &&
+               v.tokvalue->exprId() == exprId;
+    });
+}
+
 bool isAliasOf(const Token* tok, const Token* expr, nonneg int* indirect)
 {
     if (indirect)

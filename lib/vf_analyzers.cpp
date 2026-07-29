@@ -1500,13 +1500,42 @@ ValuePtr<Analyzer> makeMemberExpressionAnalyzer(std::string varname, const Token
     return MemberExpressionAnalyzer{std::move(varname), e, std::move(val), p, s};
 }
 
+// Is tok an iterator into a default-inserted element of the associative container with the given
+// expression id (e.g. m[k].begin() for a map m)? Such an element is empty when the container is empty.
+static bool isIteratorOfDefaultInsertedElement(const Token* tok, nonneg int containerExprId)
+{
+    if (!astIsIterator(tok))
+        return false;
+    return std::any_of(tok->values().cbegin(), tok->values().cend(), [&](const ValueFlow::Value& v) {
+        if (!v.isLocalLifetimeValue() || v.isInconclusive() ||
+            v.lifetimeKind != ValueFlow::Value::LifetimeKind::Iterator)
+            return false;
+        const Token* elem = v.tokvalue;
+        while (Token::simpleMatch(elem, "[") && elem->astOperand1()) {
+            const ValueType* vt = elem->astOperand1()->valueType();
+            if (!vt || !vt->container || !vt->container->stdAssociativeLike)
+                return false;
+            if (elem->astOperand1()->exprId() == containerExprId)
+                return true;
+            elem = elem->astOperand1();
+        }
+        return false;
+    });
+}
+
 struct ContainerExpressionAnalyzer : ExpressionAnalyzer {
     ContainerExpressionAnalyzer(const Token* expr, ValueFlow::Value val, const Settings& s)
         : ExpressionAnalyzer(expr, std::move(val), s)
     {}
 
     bool match(const Token* tok) const override {
-        return tok->exprId() == expr->exprId() || (astIsIterator(tok) && isAliasOf(tok, expr->exprId()));
+        if (tok->exprId() == expr->exprId())
+            return true;
+        if (isIteratorOf(tok, expr->exprId()))
+            return true;
+        // an empty associative container implies that its elements are empty as well
+        return !value.isImpossible() && value.intvalue == 0 &&
+               isIteratorOfDefaultInsertedElement(tok, expr->exprId());
     }
 
     Action isWritable(const Token* tok, Direction /*d*/) const override

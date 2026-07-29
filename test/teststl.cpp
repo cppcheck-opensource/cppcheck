@@ -2798,6 +2798,21 @@ private:
         ASSERT_EQUALS(
             "[test.cpp:4:24]: (error) The algorithm 'std::fill_n' accesses 10 elements through the iterator 'v.begin()' but only 5 elements are available. [algorithmOutOfBounds]\n",
             errout_str());
+
+        // an iterator into a nested container does not carry the outer container's size
+        check("std::array<std::array<int, 16>, 1> f(const std::array<int, 16>& a) {\n"
+              "    std::array<std::array<int, 16>, 1> res;\n"
+              "    std::copy(a.begin(), a.end(), res[0].begin());\n"
+              "    return res;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f() {\n"
+              "    const std::vector<int> v0{1,2,3};\n"
+              "    std::vector<std::vector<int>> v1(1, std::vector<int>(5));\n"
+              "    std::copy(v0.begin(), v0.end(), v1[0].begin());\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     // Dereferencing invalid pointer

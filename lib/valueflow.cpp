@@ -3857,7 +3857,7 @@ static void valueFlowForwardConst(Token* start,
         } else {
             [&] {
                 // Add the container size to iterators of the container (mirrors ContainerExpressionAnalyzer::match)
-                if (hasContainerSizeValue && astIsIterator(tok) && isAliasOf(tok, var->declarationId())) {
+                if (hasContainerSizeValue && isIteratorOf(tok, var->declarationId())) {
                     for (const ValueFlow::Value& value : values) {
                         if (!value.isContainerSizeValue())
                             continue;
