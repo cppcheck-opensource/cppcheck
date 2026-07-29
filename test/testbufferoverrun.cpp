@@ -2903,7 +2903,8 @@ private:
         ASSERT_EQUALS("", errout_str());
     }
 
-    void array_index_container_data() {
+    void array_index_container_data()
+    {
         check("void f() {\n"
               "    std::vector<int> v(3);\n"
               "    int* p = v.data();\n"
@@ -2916,8 +2917,9 @@ private:
               "    int* p = v.data();\n"
               "    p[5] = 1;\n"
               "}");
-        ASSERT_EQUALS("[test.cpp:4:6]: (error) Array 'p[3]' accessed at index 5, which is out of bounds. [arrayIndexOutOfBounds]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:4:6]: (error) Array 'p[3]' accessed at index 5, which is out of bounds. [arrayIndexOutOfBounds]\n",
+            errout_str());
 
         check("void f() {\n"
               "    std::vector<int> v(3);\n"

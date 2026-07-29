@@ -7689,7 +7689,8 @@ private:
                "    int* p = v.data();\n"
                "    return p[1];\n"
                "}";
-        ASSERT_EQUALS("", isKnownContainerSizeValue(tokenValues(code, "p [", ValueFlow::Value::ValueType::CONTAINER_SIZE), 3));
+        ASSERT_EQUALS("",
+                      isKnownContainerSizeValue(tokenValues(code, "p [", ValueFlow::Value::ValueType::CONTAINER_SIZE), 3));
 
         // ..which is invalidated when the container size changes
         code = "int f() {\n"
@@ -7706,13 +7707,16 @@ private:
                "    const char* p = s.c_str();\n"
                "    return p + 3;\n"
                "}";
-        ASSERT_EQUALS("", isKnownContainerSizeValue(tokenValues(code, "p +", ValueFlow::Value::ValueType::CONTAINER_SIZE), 4));
+        ASSERT_EQUALS("",
+                      isKnownContainerSizeValue(tokenValues(code, "p +", ValueFlow::Value::ValueType::CONTAINER_SIZE), 4));
 
         code = "const char* f() {\n"
                "    std::string s = \"abc\";\n"
                "    return s.c_str();\n"
                "}";
-        ASSERT_EQUALS("", isKnownContainerSizeValue(tokenValues(code, "( ) ;", ValueFlow::Value::ValueType::CONTAINER_SIZE), 4));
+        ASSERT_EQUALS(
+            "",
+            isKnownContainerSizeValue(tokenValues(code, "( ) ;", ValueFlow::Value::ValueType::CONTAINER_SIZE), 4));
 
         // the size value of a data() pointer records the container the size belongs to
         code = "int* f() {\n"
@@ -7743,8 +7747,7 @@ private:
                "}";
         ASSERT_EQUALS(
             "",
-            isKnownContainerSizeValue(tokenValues(code, "[ b ] . front", ValueFlow::Value::ValueType::CONTAINER_SIZE),
-                                      0));
+            isKnownContainerSizeValue(tokenValues(code, "[ b ] . front", ValueFlow::Value::ValueType::CONTAINER_SIZE), 0));
 
         // ..but not for non-associative containers..
         code = "void f(int i) {\n"
