@@ -1046,7 +1046,6 @@ void CheckMemoryLeakNoVarImpl::checkForUnreleasedInputArgument(const Scope *scop
             const AllocType alloc = getAllocationType(arg, 0);
             if (alloc == No)
                 continue;
-            //if (alloc == New || alloc == NewArray) {
             else {
                 const Token* typeTok = arg->next();
                 bool bail = !typeTok->isStandardType() &&
