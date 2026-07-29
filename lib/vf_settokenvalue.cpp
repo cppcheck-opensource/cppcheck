@@ -316,14 +316,15 @@ namespace ValueFlow
                 value.valueType = Value::ValueType::INT;
                 value.container = nullptr;
                 setTokenValue(next, std::move(value), settings);
-            } else if (yields == Library::Container::Yield::BUFFER || yields == Library::Container::Yield::BUFFER_NT) {
-                // The returned pointer has as many elements available as the container..
+            } else if (contains({Library::Container::Yield::BUFFER,
+                                 Library::Container::Yield::BUFFER_NT,
+                                 Library::Container::Yield::START_ITERATOR,
+                                 Library::Container::Yield::END_ITERATOR,
+                                 Library::Container::Yield::ITERATOR},
+                                yields)) {
+                // The returned pointer or iterator has as many elements available as the container
                 if (yields == Library::Container::Yield::BUFFER_NT)
                     value.intvalue += 1; // ..plus the null terminator
-                setTokenValue(next, std::move(value), settings);
-            } else if (yields == Library::Container::Yield::START_ITERATOR || yields == Library::Container::Yield::END_ITERATOR ||
-                       yields == Library::Container::Yield::ITERATOR) {
-                // an iterator into the container carries the container size
                 setTokenValue(next, std::move(value), settings);
             } else if (yields == Library::Container::Yield::EMPTY) {
                 const Value::Bound bound = value.bound;

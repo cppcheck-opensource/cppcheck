@@ -766,17 +766,16 @@ static ValueFlow::Value getLifetimeIteratorValue(const Token* tok, MathLib::bigi
 }
 
 // Whether a container size value found on an iterator token belongs to the range of that
-// iterator. The size value records its container when known.
-static bool sizeValueAppliesToIterator(const ValueFlow::Value& sizeValue, const Token* iterTok)
+// iterator. The size value records its container when known; the container of the iterator
+// is its lifetime container (getLifetimeIteratorValue(tok).tokvalue).
+static bool sizeValueAppliesToIterator(const ValueFlow::Value& sizeValue, const Token* iterContainer)
 {
     if (!sizeValue.container)
         return true; // the origin of the size is not known
-    const ValueFlow::Value lifetime = getLifetimeIteratorValue(iterTok);
-    if (!lifetime.tokvalue)
+    if (!iterContainer)
         return true; // the range of the iterator is not known
-    if (lifetime.tokvalue == sizeValue.container)
-        return true;
-    return lifetime.tokvalue->exprId() != 0 && lifetime.tokvalue->exprId() == sizeValue.container->exprId();
+    return iterContainer == sizeValue.container ||
+           (iterContainer->exprId() != 0 && iterContainer->exprId() == sizeValue.container->exprId());
 }
 
 bool CheckStlImpl::checkIteratorPair(const Token* tok1, const Token* tok2)
@@ -2521,9 +2520,17 @@ void CheckStlImpl::checkDereferenceInvalidIterator2()
                      tok->values().cend(),
                      std::back_inserter(contValues),
                      [&](const ValueFlow::Value& value) {
-            return isUsableValue(value, mSettings) && value.isContainerSizeValue() &&
-                   sizeValueAppliesToIterator(value, tok);
+            return isUsableValue(value, mSettings) && value.isContainerSizeValue();
         });
+        if (!contValues.empty()) {
+            const Token* const iterContainer = getLifetimeIteratorValue(tok).tokvalue;
+            contValues.erase(std::remove_if(contValues.begin(),
+                                            contValues.end(),
+                                            [&](const ValueFlow::Value& value) {
+                return !sizeValueAppliesToIterator(value, iterContainer);
+            }),
+                             contValues.end());
+        }
 
         // Can iterator point to END or before START?
         for (const ValueFlow::Value& value:tok->values()) {
@@ -3462,9 +3469,10 @@ static IteratorPosition getIteratorPosition(const Token* tok, const Settings& se
     });
     if (!position.value)
         return position;
+    const Token* const iterContainer = getLifetimeIteratorValue(tok).tokvalue;
     position.sizeValue = selectPreferredValue(tok, [&](const ValueFlow::Value& value) {
         return isUsableValue(value, settings) && value.isContainerSizeValue() && value.path == position.value->path &&
-               sizeValueAppliesToIterator(value, tok);
+               sizeValueAppliesToIterator(value, iterContainer);
     });
     return position;
 }
@@ -3522,6 +3530,7 @@ static ElementCount findInsufficientSpace(const Token* tok,
     BestCandidate insufficient;
     if (!tok)
         return insufficient.best;
+    const Token* const iterContainer = getLifetimeIteratorValue(tok).tokvalue;
     const auto consider = [&](const ElementCount& candidate) {
         if (!candidate)
             return;
@@ -3543,7 +3552,7 @@ static ElementCount findInsufficientSpace(const Token* tok,
         for (const ValueFlow::Value& sizeValue : tok->values()) {
             if (!isUsableValue(sizeValue, settings) || !sizeValue.isContainerSizeValue() || sizeValue.path != value.path)
                 continue;
-            if (!sizeValueAppliesToIterator(sizeValue, tok))
+            if (!sizeValueAppliesToIterator(sizeValue, iterContainer))
                 continue;
             position.sizeValue = &sizeValue;
             consider(getAvailableSpace(position));
@@ -3568,6 +3577,8 @@ static ElementCount findExcessiveDistance(const Token* firstTok,
             return; // the access is within bounds
         excessive.consider(candidate);
     };
+    const Token* const firstContainer = getLifetimeIteratorValue(firstTok).tokvalue;
+    const Token* const lastContainer = getLifetimeIteratorValue(lastTok).tokvalue;
     for (const ValueFlow::Value& firstValue : firstTok->values()) {
         if (!isUsableValue(firstValue, settings) || !firstValue.isIteratorValue())
             continue;
@@ -3585,11 +3596,12 @@ static ElementCount findExcessiveDistance(const Token* firstTok,
             }
             IteratorPosition& endPosition = first.fromEnd() ? first : last;
             const Token* const endTok = first.fromEnd() ? firstTok : lastTok;
+            const Token* const endContainer = first.fromEnd() ? firstContainer : lastContainer;
             for (const ValueFlow::Value& sizeValue : endTok->values()) {
                 if (!isUsableValue(sizeValue, settings) || !sizeValue.isContainerSizeValue() ||
                     sizeValue.path != endPosition.value->path)
                     continue;
-                if (!sizeValueAppliesToIterator(sizeValue, endTok))
+                if (!sizeValueAppliesToIterator(sizeValue, endContainer))
                     continue;
                 endPosition.sizeValue = &sizeValue;
                 consider(getIteratorDistance(first, last));

@@ -3858,12 +3858,13 @@ static void valueFlowForwardConst(Token* start,
             [&] {
                 // Add the container size to iterators of the container (mirrors ContainerExpressionAnalyzer::match)
                 if (hasContainerSizeValue && isIteratorOf(tok, var->declarationId())) {
-                    for (ValueFlow::Value value : values) {
+                    for (const ValueFlow::Value& value : values) {
                         if (!value.isContainerSizeValue())
                             continue;
-                        if (!value.container)
-                            value.container = var->nameToken();
-                        setTokenValue(tok, std::move(value), settings);
+                        ValueFlow::Value sizeValue = value;
+                        if (!sizeValue.container)
+                            sizeValue.container = var->nameToken();
+                        setTokenValue(tok, std::move(sizeValue), settings);
                     }
                     return;
                 }
@@ -4214,11 +4215,13 @@ static void valueFlowAfterAssign(const TokenList &tokenlist,
             });
             // Remove container size if its not a container - unless the size records its container
             // and flows into a pointer to the container data (e.g. p = v.data())
-            if (!astIsContainer(tok->astOperand2()))
+            if (!astIsContainer(tok->astOperand2())) {
+                const bool lhsIsPointer = astIsPointer(tok->astOperand1());
                 values.remove_if([&](const ValueFlow::Value& value) {
                     return value.valueType == ValueFlow::Value::ValueType::CONTAINER_SIZE &&
-                           (!value.container || !astIsPointer(tok->astOperand1()));
+                           (!value.container || !lhsIsPointer);
                 });
+            }
             // Remove symbolic values that are the same as the LHS
             values.remove_if([&](const ValueFlow::Value& value) {
                 if (value.isSymbolicValue() && value.tokvalue)
