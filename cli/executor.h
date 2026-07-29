@@ -19,6 +19,8 @@
 #ifndef EXECUTOR_H
 #define EXECUTOR_H
 
+#include "config.h"
+
 #include <cstddef>
 #include <list>
 #include <mutex>
@@ -42,7 +44,7 @@ class TimerResults;
  */
 class Executor {
 public:
-    Executor(const std::list<FileWithDetails> &files, const std::list<FileSettings>& fileSettings, const Settings &settings, Suppressions &suppressions, ErrorLogger &errorLogger, TimerResults* timerResults);
+    Executor(const std::list<FileWithDetails> &files LIFETIMEBOUND, const std::list<FileSettings>& fileSettings LIFETIMEBOUND, const Settings &settings LIFETIMEBOUND, Suppressions &suppressions LIFETIMEBOUND, ErrorLogger &errorLogger LIFETIMEBOUND, TimerResults* timerResults LIFETIMEBOUND);
     virtual ~Executor() = default;
 
     Executor(const Executor &) = delete;
