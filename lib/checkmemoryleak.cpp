@@ -517,7 +517,7 @@ void CheckMemoryLeakInClassImpl::check()
     // only check classes and structures
     for (const Scope * scope : symbolDatabase->classAndStructScopes) {
         for (const Variable &var : scope->varlist) {
-            if (!var.isStatic() && (var.isPointer() || var.isPointerArray())) {
+            if (!var.isStatic()) {
                 // allocation but no deallocation of private variables in public function..
                 const Token *tok = var.typeStartToken();
                 // Either it is of standard type or a non-derived type
@@ -1046,7 +1046,8 @@ void CheckMemoryLeakNoVarImpl::checkForUnreleasedInputArgument(const Scope *scop
             const AllocType alloc = getAllocationType(arg, 0);
             if (alloc == No)
                 continue;
-            if (alloc == New || alloc == NewArray) {
+            //if (alloc == New || alloc == NewArray) {
+            else {
                 const Token* typeTok = arg->next();
                 bool bail = !typeTok->isStandardType() &&
                             (!typeTok->valueType() ||
