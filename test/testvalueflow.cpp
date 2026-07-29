@@ -7707,6 +7707,66 @@ private:
                "    return p + 3;\n"
                "}";
         ASSERT_EQUALS("", isKnownContainerSizeValue(tokenValues(code, "p +", ValueFlow::Value::ValueType::CONTAINER_SIZE), 4));
+
+        code = "const char* f() {\n"
+               "    std::string s = \"abc\";\n"
+               "    return s.c_str();\n"
+               "}";
+        ASSERT_EQUALS("", isKnownContainerSizeValue(tokenValues(code, "( ) ;", ValueFlow::Value::ValueType::CONTAINER_SIZE), 4));
+
+        // the size value of a data() pointer records the container the size belongs to
+        code = "int* f() {\n"
+               "    std::vector<int> v(3);\n"
+               "    return v.data();\n"
+               "}";
+        const std::list<ValueFlow::Value> dataValues =
+            tokenValues(code, "( ) ;", ValueFlow::Value::ValueType::CONTAINER_SIZE);
+        ASSERT_EQUALS("", isKnownContainerSizeValue(dataValues, 3));
+        ASSERT(dataValues.front().container);
+        ASSERT_EQUALS("v", dataValues.front().container->str());
+
+        // an empty associative container implies that its default-inserted elements are empty as well
+        code = "void f(const std::string& k) {\n"
+               "    std::map<std::string, std::vector<int>> m;\n"
+               "    m[k].front();\n"
+               "}";
+        const std::list<ValueFlow::Value> elementValues =
+            tokenValues(code, "[ k ] . front", ValueFlow::Value::ValueType::CONTAINER_SIZE);
+        ASSERT_EQUALS("", isKnownContainerSizeValue(elementValues, 0));
+        ASSERT(elementValues.front().container);
+        ASSERT_EQUALS("m[k]", elementValues.front().container->expressionString());
+
+        // ..also for nested associative containers..
+        code = "void f(int a, int b) {\n"
+               "    std::map<int, std::map<int, std::vector<int>>> m;\n"
+               "    m[a][b].front();\n"
+               "}";
+        ASSERT_EQUALS(
+            "",
+            isKnownContainerSizeValue(tokenValues(code, "[ b ] . front", ValueFlow::Value::ValueType::CONTAINER_SIZE),
+                                      0));
+
+        // ..but not for non-associative containers..
+        code = "void f(int i) {\n"
+               "    std::vector<std::vector<int>> v;\n"
+               "    v[i].front();\n"
+               "}";
+        ASSERT_EQUALS(0U, tokenValues(code, "[ i ] . front", ValueFlow::Value::ValueType::CONTAINER_SIZE).size());
+
+        // ..nor when the container is not empty..
+        code = "void f(std::map<std::string, std::vector<int>>& m, const std::string& k) {\n"
+               "    if (m.size() == 1)\n"
+               "        m[k].front();\n"
+               "}";
+        ASSERT_EQUALS(0U, tokenValues(code, "[ k ] . front", ValueFlow::Value::ValueType::CONTAINER_SIZE).size());
+
+        // ..nor when the container was modified
+        code = "void f(const std::string& k) {\n"
+               "    std::map<std::string, std::vector<int>> m;\n"
+               "    m[\"a\"].push_back(1);\n"
+               "    m[k].front();\n"
+               "}";
+        ASSERT_EQUALS(0U, tokenValues(code, "[ k ] . front", ValueFlow::Value::ValueType::CONTAINER_SIZE).size());
     }
 
     void valueFlowContainerSizeIterator() {
@@ -7748,6 +7808,30 @@ private:
                "    if (it != w.end()) {}\n"
                "}";
         ASSERT(tokenValues(code, "it !=", ValueFlow::Value::ValueType::CONTAINER_SIZE).empty());
+
+        // iterators created from the container carry the container size
+        code = "bool f() {\n"
+               "    std::vector<int> v(3);\n"
+               "    return v.begin() != v.end();\n"
+               "}";
+        ASSERT_EQUALS(
+            "",
+            isKnownContainerSizeValue(tokenValues(code, "( ) !=", ValueFlow::Value::ValueType::CONTAINER_SIZE), 3));
+        ASSERT_EQUALS(
+            "",
+            isKnownContainerSizeValue(tokenValues(code, "( ) ;", ValueFlow::Value::ValueType::CONTAINER_SIZE), 3));
+
+        // the size value records the container it belongs to
+        code = "void f() {\n"
+               "    std::vector<int> v(3);\n"
+               "    auto it = v.begin();\n"
+               "    if (it != v.end()) {}\n"
+               "}";
+        const std::list<ValueFlow::Value> itValues =
+            tokenValues(code, "it !=", ValueFlow::Value::ValueType::CONTAINER_SIZE);
+        ASSERT_EQUALS("", isKnownContainerSizeValue(itValues, 3));
+        ASSERT(itValues.front().container);
+        ASSERT_EQUALS("v", itValues.front().container->str());
     }
 
     void valueFlowContainerElement()
