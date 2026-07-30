@@ -1548,6 +1548,11 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
             // TODO: bail out when no placeholders are found?
         }
 
+        // Recreate the symbol database etc. after each template type deduction round
+        // instead of updating them incrementally - for testing and debugging
+        else if (std::strcmp(argv[i], "--template-full-rebuild") == 0)
+            mSettings.templateFullRebuild = true;
+
         else if (std::strncmp(argv[i], "--template-location=", 20) == 0) {
             mSettings.templateLocation = argv[i] + 20;
             // TODO: bail out when no template is provided?

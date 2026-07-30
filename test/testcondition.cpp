@@ -4949,6 +4949,19 @@ private:
               "    return x ? false : true;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("template <typename Char>\n" // deduced template parameter type is integral
+              "void f0(Char c)\n"
+              "{\n"
+              "    if (c <= 0) return;\n"
+              "    if (c >= 1) {;}\n"
+              "}\n"
+              "void g()\n"
+              "{\n"
+              "    char c = 'A';\n"
+              "    f0(c);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:11] -> [test.cpp:5:11]: (style) Condition 'c>=1' is always true [knownConditionTrueFalse]\n", errout_str());
     }
 
     void alwaysTrueSymbolic()

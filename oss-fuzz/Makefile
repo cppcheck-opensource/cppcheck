@@ -339,7 +339,7 @@ $(libcppdir)/summaries.o: ../lib/summaries.cpp ../lib/analyzerinfo.h ../lib/chec
 $(libcppdir)/suppressions.o: ../lib/suppressions.cpp ../externals/tinyxml2/tinyxml2.h ../lib/addoninfo.h ../lib/checkers.h ../lib/config.h ../lib/errorlogger.h ../lib/errortypes.h ../lib/filesettings.h ../lib/library.h ../lib/mathlib.h ../lib/path.h ../lib/pathmatch.h ../lib/platform.h ../lib/settings.h ../lib/smallvector.h ../lib/standards.h ../lib/suppressions.h ../lib/templatesimplifier.h ../lib/token.h ../lib/tokenlist.h ../lib/utils.h ../lib/vfvalue.h ../lib/xml.h
 	$(CXX) ${LIB_FUZZING_ENGINE} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(libcppdir)/suppressions.cpp
 
-$(libcppdir)/templatesimplifier.o: ../lib/templatesimplifier.cpp ../lib/checkers.h ../lib/config.h ../lib/errorlogger.h ../lib/errortypes.h ../lib/library.h ../lib/mathlib.h ../lib/platform.h ../lib/settings.h ../lib/smallvector.h ../lib/standards.h ../lib/templatesimplifier.h ../lib/token.h ../lib/tokenize.h ../lib/tokenlist.h ../lib/utils.h ../lib/vfvalue.h
+$(libcppdir)/templatesimplifier.o: ../lib/templatesimplifier.cpp ../lib/astutils.h ../lib/checkers.h ../lib/config.h ../lib/errorlogger.h ../lib/errortypes.h ../lib/library.h ../lib/mathlib.h ../lib/platform.h ../lib/settings.h ../lib/smallvector.h ../lib/sourcelocation.h ../lib/standards.h ../lib/symboldatabase.h ../lib/templatesimplifier.h ../lib/token.h ../lib/tokenize.h ../lib/tokenlist.h ../lib/utils.h ../lib/vfvalue.h
 	$(CXX) ${LIB_FUZZING_ENGINE} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(libcppdir)/templatesimplifier.cpp
 
 $(libcppdir)/timer.o: ../lib/timer.cpp ../lib/config.h ../lib/timer.h

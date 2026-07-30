@@ -31,10 +31,12 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 class ErrorLogger;
 class Settings;
+class SymbolDatabase;
 class Token;
 class Tokenizer;
 class TokenList;
@@ -318,6 +320,67 @@ public:
     void simplifyTemplates(std::time_t maxtime);
 
     /**
+     * Simplify templates again, using type information (AST, SymbolDatabase, ValueType)
+     * to deduce the template arguments of function template calls such as "f(x)",
+     * "f(x+y)" or "f(x.g())" from the types of the argument expressions.
+     * @param maxtime time when the simplification should be stopped
+     * @return true if the token list was changed
+     */
+    bool simplifyTemplatesUsingTypeInformation(std::time_t maxtime);
+
+    /**
+     * @return true when there are function template calls where the template arguments
+     * could not be deduced yet but deduction may succeed once type information is
+     * available (see simplifyTemplatesUsingTypeInformation).
+     */
+    bool hasPendingTypeDeductions() const {
+        return mPendingTypeDeductions;
+    }
+
+    /**
+     * Remove the instantiated function template declarations whose removal was deferred
+     * while type deductions were pending.
+     * @param symbolDatabase when given, its symbols for the removed declarations are
+     * removed too (incremental update)
+     * @return true if any tokens were removed
+     */
+    bool removeDeferredTemplateDeclarations(SymbolDatabase* symbolDatabase = nullptr);
+
+    /** token ranges (first and last token) that were added to the token list by the
+     * last simplifyTemplatesUsingTypeInformation() call */
+    const std::vector<std::pair<Token*, Token*>>& newTokenRanges() const {
+        return mNewTokenRanges;
+    }
+
+    /** name tokens of the specializations that the last
+     * simplifyTemplatesUsingTypeInformation() call turned into normal functions */
+    const std::vector<const Token*>& convertedSpecializations() const {
+        return mConvertedSpecializations;
+    }
+
+    /** name tokens of the call sites that the last simplifyTemplatesUsingTypeInformation()
+     * call changed (deduced template arguments and qualifications were inserted, or the
+     * call was renamed to an instantiation) - the AST and the valuetypes of the
+     * statements around them must be recreated */
+    const std::vector<Token*>& dirtyCallSites() const {
+        return mDirtyCallSites;
+    }
+
+    /** forget the recorded token changes, called when they have been consumed */
+    void clearTokenChanges()
+    {
+        mNewTokenRanges.clear();
+        mConvertedSpecializations.clear();
+        mDirtyCallSites.clear();
+    }
+
+    /** true when the token changes made by the last simplifyTemplatesUsingTypeInformation()
+     * call can be applied to the symbol database incrementally */
+    bool incrementalUpdatePossible() const {
+        return mIncrementalUpdatePossible;
+    }
+
+    /**
      * Simplify constant calculations such as "1+2" => "3"
      * @param tok start token
      * @return true if modifications to token-list are done.
@@ -352,6 +415,55 @@ private:
      * @param scope scope of instantiation
      */
     void addInstantiation(Token *token, const std::string &scope);
+
+    /** deduceFunctionTemplateArguments() parse results, cached per declaration and
+     * shared by the call sites of one pass */
+    struct DeductionCache;
+
+    /**
+     * Deduce the template arguments of a function template call from the function
+     * arguments and insert them after the name token: "f ( 1 )" => "f < int > ( 1 )".
+     * Literal arguments are always handled; arbitrary argument expressions are handled
+     * when type information is available (mUseTypeInformation). Sets
+     * mPendingTypeDeductions when a deduction could succeed later with type information.
+     * @param tok name token of the function call
+     * @param qualification qualification of the call ("A :: B" for "A :: B :: f ( 1 )")
+     * @param scopeName name of the scope the call is in
+     * @param functionNameMap map with all function template declarations
+     * @param deductionCache cache of the per declaration parse results, must not be null
+     * @return the qualification of the call: the given qualification, or the scope of
+     * the deduced declaration when it is in a base class and explicit qualification
+     * was inserted at the call site
+     */
+    std::string deduceFunctionTemplateArguments(Token* tok,
+                                                std::string qualification,
+                                                const std::string& scopeName,
+                                                const std::multimap<std::string, const TokenAndName*>& functionNameMap,
+                                                DeductionCache* deductionCache);
+
+    /**
+     * Remember that the given instantiated function template declaration should not be
+     * removed from the token list yet because pending type deductions may instantiate
+     * it again. It is removed later by removeDeferredTemplateDeclarations().
+     */
+    void deferRemoval(Token* declTok);
+
+    /**
+     * Whether removing the given instantiated template declaration must be deferred
+     * with deferRemoval() instead of removing it immediately.
+     */
+    bool shouldDeferRemoval(const TokenAndName& declaration) const
+    {
+        return mUseTypeInformation || (mPendingTypeDeductions && declaration.isFunction());
+    }
+
+    /** remember tokens that were added during a type-information round so the symbol
+     * database can be updated incrementally */
+    void rememberNewTokens(Token* first, Token* last);
+
+    /** remember a call site whose statement was changed during a type-information round
+     * so its AST and valuetypes can be recreated */
+    void rememberDirtyCallSite(Token* nameTok);
 
     /**
      * Get template instantiations
@@ -509,6 +621,28 @@ private:
     const Settings &mSettings;
     ErrorLogger &mErrorLogger;
     bool mChanged{};
+    /** true when type information (AST, SymbolDatabase, ValueType) is available for deduction */
+    bool mUseTypeInformation = false;
+    /** true when there are calls where deduction may succeed once type information is available */
+    bool mPendingTypeDeductions = false;
+    /** true when the current simplifyTemplatesUsingTypeInformation() call deduced something */
+    bool mTypeDeductionsMade = false;
+    /** names of all expanded instantiations; persists between simplifyTemplates() calls so a
+     * later deduced instantiation reuses the existing expansion instead of duplicating it */
+    std::set<std::string> mExpandedTemplateNames;
+    /** instantiated function template declarations whose removal has been deferred */
+    std::vector<Token*> mDeferredRemovals;
+    /** token ranges added during type-information rounds (see newTokenRanges()) */
+    std::vector<std::pair<Token*, Token*>> mNewTokenRanges;
+    /** specializations that were turned into normal functions during type-information
+     * rounds - their Function::templateDef must be cleared */
+    std::vector<const Token*> mConvertedSpecializations;
+    /** call sites changed during type-information rounds (see dirtyCallSites()) */
+    std::vector<Token*> mDirtyCallSites;
+    /** false when the current round made token changes that the incremental symbol
+     * database update can not handle (class/variable/specialization instantiations,
+     * type alias changes) */
+    bool mIncrementalUpdatePossible = true;
 
     std::list<TokenAndName> mTemplateDeclarations;
     std::list<TokenAndName> mTemplateForwardDeclarations;
