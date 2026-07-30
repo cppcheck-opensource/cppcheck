@@ -158,6 +158,7 @@ private:
         TEST_CASE(localvar71);
         TEST_CASE(localvar72);
         TEST_CASE(localvar73);
+        TEST_CASE(localvar74);
         TEST_CASE(localvarloops); // loops
         TEST_CASE(localvaralias1);
         TEST_CASE(localvaralias2); // ticket #1637
@@ -4096,6 +4097,17 @@ private:
                               "    auto a{ S() };\n"
                               "    auto const &b{ S() };\n"
                               "    const auto &&c{ S() };\n"
+                              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void localvar74() {
+        functionVariableUsage("struct S { void (*fp)(); };\n"
+                              "void g();\n"
+                              "void f() {\n"
+                              "    S s;\n"
+                              "    s.fp = g;\n"
+                              "    s.fp();\n"
                               "}\n");
         ASSERT_EQUALS("", errout_str());
     }
