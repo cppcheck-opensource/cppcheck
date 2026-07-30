@@ -5088,7 +5088,7 @@ void Scope::getVariableList()
 void Scope::getVariableList(const Token* start, const Token* end)
 {
     // Variable declared in condition: if (auto x = bar())
-    if (Token::Match(classDef, "if|while ( %type%") && Token::simpleMatch(classDef->next()->astOperand2(), "=")) {
+    if (Token::Match(classDef, "if|while|switch ( %type%") && Token::simpleMatch(classDef->next()->astOperand2(), "=")) {
         checkVariable(classDef->tokAt(2), defaultAccess());
     }
 
