@@ -4549,7 +4549,7 @@ static void setVarIdStructMembers(Token *&tok1,
         return;
     }
 
-    while (Token::Match(tok->next(), ")| . %name% !!(")) {
+    while (Token::Match(tok->next(), ")| . %name%")) {
         // Don't set varid for trailing return type
         if (tok->strAt(1) == ")" && Token::Match(tok->linkAt(1)->tokAt(-1), "%name%|]") && !tok->linkAt(1)->tokAt(-1)->isKeyword() &&
             TokenList::isFunctionHead(tok->linkAt(1), "{;")) {
@@ -4571,6 +4571,8 @@ static void setVarIdStructMembers(Token *&tok1,
         std::map<std::string, nonneg int>& members = structMembers[struct_varid];
         const auto it = utils::as_const(members).find(tok->str());
         if (it == members.cend()) {
+            if (Token::Match(tok, "%name% ("))
+                break;
             members[tok->str()] = ++varId;
             tok->varId(varId);
         } else {
