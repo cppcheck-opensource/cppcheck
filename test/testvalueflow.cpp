@@ -526,11 +526,11 @@ private:
         const Token* tok = Token::findmatch(tokenizer.tokens(), tokstr);
         if (!tok)
             return "";
-        for (const ValueFlow::Value& v : tok->values()) {
-            if (v.isContainerSizeValue() && v.container)
-                return v.container->expressionString();
-        }
-        return "";
+        const std::list<ValueFlow::Value>& values = tok->values();
+        const auto it = std::find_if(values.cbegin(), values.cend(), [](const ValueFlow::Value& v) {
+            return v.isContainerSizeValue() && v.container;
+        });
+        return it == values.cend() ? "" : it->container->expressionString();
     }
 
 #define lifetimeValues(...) lifetimeValues_(__FILE__, __LINE__, __VA_ARGS__)
