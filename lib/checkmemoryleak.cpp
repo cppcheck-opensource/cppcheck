@@ -1046,22 +1046,20 @@ void CheckMemoryLeakNoVarImpl::checkForUnreleasedInputArgument(const Scope *scop
             const AllocType alloc = getAllocationType(arg, 0);
             if (alloc == No)
                 continue;
-            else {
-                const Token* typeTok = arg->next();
-                bool bail = !typeTok->isStandardType() &&
-                            (!typeTok->valueType() ||
-                             (typeTok->valueType()->type < ValueType::Type::SMART_POINTER &&
-                              typeTok->valueType()->type != ValueType::Type::POD)) &&
-                            !mSettings.library.detectContainerOrIterator(typeTok) &&
-                            !mSettings.library.podtype(typeTok->expressionString());
-                if (bail && typeTok->type() && typeTok->type()->classScope &&
-                    typeTok->type()->classScope->numConstructors == 0 &&
-                    typeTok->type()->classScope->getDestructor() == nullptr) {
-                    bail = false;
-                }
-                if (bail)
-                    continue;
+            const Token* typeTok = arg->next();
+            bool bail = !typeTok->isStandardType() &&
+                        (!typeTok->valueType() ||
+                         (typeTok->valueType()->type < ValueType::Type::SMART_POINTER &&
+                          typeTok->valueType()->type != ValueType::Type::POD)) &&
+                        !mSettings.library.detectContainerOrIterator(typeTok) &&
+                        !mSettings.library.podtype(typeTok->expressionString());
+            if (bail && typeTok->type() && typeTok->type()->classScope &&
+                typeTok->type()->classScope->numConstructors == 0 &&
+                typeTok->type()->classScope->getDestructor() == nullptr) {
+                bail = false;
             }
+            if (bail)
+                continue;
             if (isReopenStandardStream(arg))
                 continue;
             if (tok->function()) {
