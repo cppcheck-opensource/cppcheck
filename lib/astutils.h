@@ -463,4 +463,6 @@ bool isUnreachableOperand(const Token *tok);
 
 const Token *skipUnreachableBranch(const Token *tok);
 
+bool isEscapeKeyword(const Token *tok, const Settings &settings);
+
 #endif // astutilsH

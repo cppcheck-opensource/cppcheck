@@ -83,7 +83,7 @@ void CheckAssertImpl::assertWithSideEffects()
             if (!scope) {
                 // guess that const method doesn't have side effects
                 if (f->nestedIn->isClassOrStruct() && !f->isConst() && !f->isStatic())
-                    sideEffectInAssertError(tmp, f->name()); // Non-const member function called, assume it has side effects
+                    sideEffectInAssertError(tmp, f->name(), " If there are no side effects, consider declaring the method const."); // Non-const member function called, assume it has side effects
                 continue;
             }
 
@@ -117,12 +117,12 @@ void CheckAssertImpl::assertWithSideEffects()
 //---------------------------------------------------------------------------
 
 
-void CheckAssertImpl::sideEffectInAssertError(const Token *tok, const std::string& functionName)
+void CheckAssertImpl::sideEffectInAssertError(const Token *tok, const std::string& functionName, const std::string &extra)
 {
     reportError(tok, Severity::warning,
                 "assertWithSideEffect",
                 "$symbol:" + functionName + "\n"
-                "Assert statement calls a function which may have desired side effects: '$symbol'.\n"
+                "Assert statement calls a function which may have desired side effects: '$symbol'." + extra + "\n"
                 "Non-pure function: '$symbol' is called inside assert statement. "
                 "Assert statements are removed from release builds so the code inside "
                 "assert statement is not executed. If the code is needed also in release "

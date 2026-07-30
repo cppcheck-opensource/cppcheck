@@ -701,8 +701,12 @@ void CheckOtherImpl::checkRedundantAssignment()
                 // Get next assignment..
                 const Token *nextAssign = fwdAnalysis.reassign(tokenToCheck, start, scope->bodyEnd);
                 // extra check for union
-                if (nextAssign && tokenToCheck != tok->astOperand1())
+                if (nextAssign && tokenToCheck != tok->astOperand1()) {
                     nextAssign = fwdAnalysis.reassign(tok->astOperand1(), start, scope->bodyEnd);
+                    // reading another member of the same union in the rhs is a use through aliasing
+                    if (nextAssign && fwdAnalysis.hasOperand(nextAssign->astOperand2(), tokenToCheck))
+                        nextAssign = nullptr;
+                }
 
                 if (!nextAssign)
                     continue;
@@ -3054,6 +3058,16 @@ void CheckOtherImpl::checkDuplicateExpression()
                             if (ast1->astOperand1() && ast1->astOperand1()->str() != tok->str()) // check first condition in the chain
                                 checkDuplicate(ast1->astOperand1(), tok->astOperand2(), ast1);
                             ast1 = ast1->astOperand1();
+                        }
+                        if (tok->str() != "=") {
+                            const Token* par = tok->astParent();
+                            while (par && tok->str() == par->str() && precedes(par->astOperand1(), tok)) { // chain of identical operators with parentheses
+                                checkDuplicate(par->astOperand1(), tok->astOperand1(), par);
+                                checkDuplicate(par->astOperand1(), tok->astOperand2(), par);
+                                checkDuplicate(par->astOperand2(), tok->astOperand1(), par);
+                                checkDuplicate(par->astOperand2(), tok->astOperand2(), par);
+                                par = par->astParent();
+                            }
                         }
                     }
                 }

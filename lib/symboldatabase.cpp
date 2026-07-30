@@ -3405,6 +3405,20 @@ bool Function::returnsVoid(const Function* function, bool unknown)
     });
 }
 
+bool Function::isCoroutine(const Function* function, const Standards &standards, const Tokenizer &tokens)
+{
+    if (!tokens.isCPP() || standards.cpp < Standards::CPP20)
+        return false;
+    if (!function->functionScope)
+        return false;
+    const Scope *scope = function->functionScope;
+    for (const Token *tok = scope->bodyStart; tok != scope->bodyEnd; tok = tok->next()) {
+        if (Token::Match(tok, "co_return|co_await|co_yield"))
+            return true;
+    }
+    return false;
+}
+
 std::vector<const Token*> Function::findReturns(const Function* f)
 {
     std::vector<const Token*> result;
@@ -4453,6 +4467,11 @@ void SymbolDatabase::printXml(std::ostream &out) const
         if (!scope->className.empty()) {
             outs += " className=\"";
             outs += ErrorLogger::toxml(scope->className);
+            outs += "\"";
+        }
+        if (scope->classDef) {
+            outs += " classDef=\"";
+            outs += id_string(scope->classDef);
             outs += "\"";
         }
         if (scope->bodyStart) {
@@ -5840,7 +5859,10 @@ bool Scope::hasInlineOrLambdaFunction(const Token** tokStart, bool onlyInline) c
     });
 }
 
-void Scope::findFunctionInBase(const Token* tok, size_t args, std::vector<const Function *> & matches) const
+void Scope::findFunctionInBase(const std::string& name,
+                               const Token* tok,
+                               size_t args,
+                               std::vector<const Function*>& matches) const
 {
     if (isClassOrStruct() && definedType && !definedType->derivedFrom.empty()) {
         const std::vector<Type::BaseInfo> &derivedFrom = definedType->derivedFrom;
@@ -5850,7 +5872,7 @@ void Scope::findFunctionInBase(const Token* tok, size_t args, std::vector<const 
                 if (base->classScope == this) // Ticket #5120, #5125: Recursive class; tok should have been found already
                     continue;
 
-                auto range = base->classScope->functionMap.equal_range(tok->str());
+                auto range = base->classScope->functionMap.equal_range(name);
                 for (auto it = range.first; it != range.second; ++it) {
                     const Function *func = it->second;
                     if (func->isDestructor() && !Token::simpleMatch(tok->tokAt(-1), "~"))
@@ -5861,7 +5883,7 @@ void Scope::findFunctionInBase(const Token* tok, size_t args, std::vector<const 
                     }
                 }
 
-                base->classScope->findFunctionInBase(tok, args, matches);
+                base->classScope->findFunctionInBase(name, tok, args, matches);
             }
         }
     }
@@ -6000,8 +6022,10 @@ static bool hasMatchingConstructor(const Scope* classScope, const ValueType* arg
     });
 }
 
-const Function* Scope::findFunction(const Token *tok, bool requireConst, Reference ref) const
+const Function* Scope::findFunction(const Token* tok, bool requireConst, Reference ref, const std::string& funcName) const
 {
+    const std::string& name = funcName.empty() ? tok->str() : funcName;
+
     const bool isCall = Token::Match(tok->next(), "(|{");
 
     const std::vector<const Token *> arguments = getArguments(tok);
@@ -6011,8 +6035,8 @@ const Function* Scope::findFunction(const Token *tok, bool requireConst, Referen
     // find all the possible functions that could match
     const std::size_t args = arguments.size();
 
-    auto addMatchingFunctions = [&](const Scope *scope) {
-        auto range = scope->functionMap.equal_range(tok->str());
+    auto addMatchingFunctions = [&](const Scope* scope) {
+        auto range = scope->functionMap.equal_range(name);
         for (auto it = range.first; it != range.second; ++it) {
             const Function *func = it->second;
             if (ref == Reference::LValue && func->hasRvalRefQualifier())
@@ -6047,7 +6071,7 @@ const Function* Scope::findFunction(const Token *tok, bool requireConst, Referen
     const std::size_t numberOfMatchesNonBase = matches.size();
 
     // check in base classes
-    findFunctionInBase(tok, args, matches);
+    findFunctionInBase(name, tok, args, matches);
 
     // Non-call => Do not match parameters
     if (!isCall) {
@@ -6277,8 +6301,8 @@ const Function* Scope::findFunction(const Token *tok, bool requireConst, Referen
         matches.erase(itPure);
 
     // Only one candidate left
-    if (matches.size() == 1 && std::none_of(functionList.begin(), functionList.end(), [tok](const Function& f) {
-        return startsWith(f.name(), tok->str() + " <");
+    if (matches.size() == 1 && std::none_of(functionList.begin(), functionList.end(), [&name](const Function& f) {
+        return startsWith(f.name(), name + " <");
     }))
         return matches[0];
 
@@ -7771,6 +7795,13 @@ static const Function* getFunction(const Token* tok) {
             lambda = lvar->nameToken()->tokAt(2)->function();
         if (lambda && lambda->retDef)
             return lambda;
+        // calling an object of a class that overloads operator()
+        if (tok != lvar->nameToken() && !lvar->isPointer() && !lvar->isArray() && lvar->typeScope()) {
+            const Function* callOp =
+                lvar->typeScope()->findFunction(tok, lvar->isConst(), Reference::LValue, "operator()");
+            if (callOp && callOp->retDef)
+                return callOp;
+        }
     }
     return nullptr;
 }

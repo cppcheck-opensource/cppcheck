@@ -1701,7 +1701,7 @@ bool isSameExpression(bool macro, const Token *tok1, const Token *tok2, const Se
                     compare = true;
                 }
             }
-            if (compare && astIsBoolLike(varTok1, settings) && astIsBoolLike(varTok2, settings))
+            if (compare && varTok1 != varTok2 && astIsBoolLike(varTok1, settings) && astIsBoolLike(varTok2, settings))
                 return isSameExpression(macro, varTok1, varTok2, settings, pure, followVar, errors);
 
         }
@@ -2779,7 +2779,7 @@ bool isVariableChanged(const Token *tok, int indirect, const Settings &settings,
         if (ftok->str() == "(" && Token::simpleMatch(ftok->astOperand1(), "[")) // operator() on array element, bail out
             return true;
         const Token * ptok = tok2;
-        while (Token::Match(ptok->astParent(), ".|::|["))
+        while (Token::Match(ptok->astParent(), ".|::"))
             ptok = ptok->astParent();
         int pindirect = indirect;
         if (indirect == 0 && astIsLHS(tok2) && Token::Match(ptok, ". %var%") && astIsPointer(ptok->next()))
@@ -3002,7 +3002,7 @@ bool isVariableChanged(const Variable * var, const Settings &settings, int depth
     const Token * start = var->declEndToken();
     if (!start)
         return false;
-    if (Token::Match(start, "; %varid% =", var->declarationId()) && !Token::simpleMatch(start->previous(), ")"))
+    if (start->isSplittedVarDeclEq() && Token::Match(start, "; %varid% =", var->declarationId()))
         start = start->tokAt(2);
     if (Token::simpleMatch(start, "=")) {
         const Token* next = nextAfterAstRightmostLeafGeneric(start);
@@ -3918,4 +3918,24 @@ const Token *skipUnreachableBranch(const Token *tok)
     }
 
     return tok;
+}
+
+bool isEscapeKeyword(const Token *tok, const Settings &settings)
+{
+    if (!tok)
+        return false;
+
+    if (tok->str() == "return")
+        return true;
+
+    if (!tok->isCpp())
+        return false;
+
+    if (tok->str() == "throw")
+        return true;
+
+    if (settings.standards.cpp < Standards::CPP20)
+        return false;
+
+    return tok->str() == "co_return";
 }

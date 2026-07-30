@@ -156,7 +156,7 @@ private:
               "void foo(SquarePack s) {\n"
               "   assert( s.Foo() );\n"
               "}");
-        ASSERT_EQUALS("[test.cpp:5:14]: (warning) Assert statement calls a function which may have desired side effects: 'Foo'. [assertWithSideEffect]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:5:14]: (warning) Assert statement calls a function which may have desired side effects: 'Foo'. If there are no side effects, consider declaring the method const. [assertWithSideEffect]\n", errout_str());
 
         check("struct SquarePack {\n"
               "   int Foo() const;\n"
