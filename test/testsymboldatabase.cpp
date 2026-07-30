@@ -204,6 +204,7 @@ private:
         TEST_CASE(isVariableDeclarationRValueRef);
         TEST_CASE(isVariableDeclarationDoesNotIdentifyCase);
         TEST_CASE(isVariableDeclarationIf);
+        TEST_CASE(isVariableDeclarationSwitch);
         TEST_CASE(isVariableStlType);
         TEST_CASE(isVariablePointerToConstPointer);
         TEST_CASE(isVariablePointerToVolatilePointer);
@@ -1232,6 +1233,17 @@ private:
         ASSERT(y);
         ASSERT(y->varId());
         ASSERT(y->variable());
+    }
+
+    void isVariableDeclarationSwitch() {
+        GET_SYMBOL_DB("void foo(void) {\n"
+                      "    int x = 0;\n"
+                      "    switch (auto &s = x) {}\n"
+                      "}\n");
+        const Token *s = Token::findsimplematch(tokenizer.tokens(), "s");
+        ASSERT(s);
+        ASSERT(s->varId());
+        ASSERT(s->variable());
     }
 
     void VariableValueType1() {
