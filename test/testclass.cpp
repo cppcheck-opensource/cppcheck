@@ -38,7 +38,7 @@ private:
     const Settings settings0_i = settingsBuilder(settings0).certainty(Certainty::inconclusive).build();
     const Settings settings1 = settingsBuilder().severity(Severity::warning).library("std.cfg").build();
     const Settings settings2 = settingsBuilder().severity(Severity::style).library("std.cfg").certainty(Certainty::inconclusive).build();
-    const Settings settings3 = settingsBuilder().severity(Severity::style).library("std.cfg").severity(Severity::warning).build();
+    const Settings settings3 = settingsBuilder().severity(Severity::style).library("std.cfg").severity(Severity::warning).library("posix.cfg").build();
     const Settings settings3_i = settingsBuilder(settings3).certainty(Certainty::inconclusive).build();
     const Settings settings4 = settingsBuilder().severity(Severity::warning).severity(Severity::portability).library("std.cfg").library("posix.cfg").build();
 

@@ -488,7 +488,7 @@ public:
     TestMemleakInClass() : TestFixture("TestMemleakInClass") {}
 
 private:
-    const Settings settings = settingsBuilder().severity(Severity::warning).severity(Severity::style).library("std.cfg").build();
+    const Settings settings = settingsBuilder().severity(Severity::warning).severity(Severity::style).library("std.cfg").library("posix.cfg").build();
 
     /**
      * Tokenize and execute leak check for given code
