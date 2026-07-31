@@ -211,6 +211,7 @@ private:
         TEST_CASE(inlineFunction); // #3989
 
         TEST_CASE(smartPtrInContainer); // #8262
+        TEST_CASE(unconditionalScope);
 
         TEST_CASE(functionCallCastConfig); // #9652
         TEST_CASE(functionCallLeakIgnoreConfig); // #7923
@@ -3175,6 +3176,34 @@ private:
               "}\n",
               dinit(CheckOptions, $.cpp = true)
               );
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void unconditionalScope() {
+        check("void f() {\n" // #14945
+              "    {\n"
+              "        int* p = new int;\n"
+              "        *p = 1;\n"
+              "    }\n"
+              "    {\n"
+              "        int* q = new int;\n"
+              "        *q = 2;\n"
+              "        delete q;\n"
+              "    }\n"
+              "    int* r = new int;\n"
+              "    *r = 3;\n"
+              "    delete r;\n"
+              "}\n", dinit(CheckOptions, $.cpp = true));
+        ASSERT_EQUALS("[test.cpp:5:5]: (error) Memory leak: p [memleak]\n", errout_str());
+
+        check("void f() {\n"
+              "    int* p = new int;\n"
+              "    {\n"
+              "        (void)p;\n"
+              "    }\n"
+              "    *p = 1;\n"
+              "    delete p;\n"
+              "}\n", dinit(CheckOptions, $.cpp = true));
         ASSERT_EQUALS("", errout_str());
     }
 

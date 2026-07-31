@@ -563,6 +563,20 @@ namespace {
             if (Token::simpleMatch(start, "typename"))
                 start = start->next();
 
+            const auto checkForRecursion = [this]() {
+                if (Token::Match(mTypedefToken, "typedef %name% %name% ;"))
+                    return;
+                for (const Token *tok = mTypedefToken; tok != mEndToken; tok = tok->next()) {
+                    if (tok == mNameToken)
+                        continue;
+                    if (tok->str() != mNameToken->str())
+                        continue;
+                    if (Token::Match(tok->previous(), "struct|class|enum|union"))
+                        continue;
+                    throw InternalError(tok, "recursive typedef encountered");
+                }
+            };
+
             // TODO handle unnamed structs etc
             if (Token::Match(start, "const| enum|struct|union|class %name%| {")) {
                 const std::pair<const Token*, Token*> rangeBefore(start, Token::findsimplematch(start, "{"));
@@ -585,23 +599,10 @@ namespace {
                     }
                     mNameToken = nameTok;
                     mEndToken = nameTok->next();
+                    checkForRecursion();
                     return;
                 }
             }
-
-            const auto checkForRecursion = [this]() {
-                if (Token::Match(mTypedefToken, "typedef %name% %name% ;"))
-                    return;
-                for (const Token *tok = mTypedefToken; tok != mEndToken; tok = tok->next()) {
-                    if (tok == mNameToken)
-                        continue;
-                    if (tok->str() != mNameToken->str())
-                        continue;
-                    if (Token::Match(tok->previous(), "struct|class|enum|union"))
-                        continue;
-                    throw InternalError(tok, "recursive typedef encountered");
-                }
-            };
 
             for (Token* type = start; Token::Match(type, "%name%|*|&|&&"); type = type->next()) {
                 if (type != start && Token::Match(type, "%name% ;") && !type->isStandardType()) {
@@ -4548,7 +4549,7 @@ static void setVarIdStructMembers(Token *&tok1,
         return;
     }
 
-    while (Token::Match(tok->next(), ")| . %name% !!(")) {
+    while (Token::Match(tok->next(), ")| . %name%")) {
         // Don't set varid for trailing return type
         if (tok->strAt(1) == ")" && Token::Match(tok->linkAt(1)->tokAt(-1), "%name%|]") && !tok->linkAt(1)->tokAt(-1)->isKeyword() &&
             TokenList::isFunctionHead(tok->linkAt(1), "{;")) {
@@ -4570,6 +4571,8 @@ static void setVarIdStructMembers(Token *&tok1,
         std::map<std::string, nonneg int>& members = structMembers[struct_varid];
         const auto it = utils::as_const(members).find(tok->str());
         if (it == members.cend()) {
+            if (Token::Match(tok, "%name% ("))
+                break;
             members[tok->str()] = ++varId;
             tok->varId(varId);
         } else {

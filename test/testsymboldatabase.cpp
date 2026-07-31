@@ -204,6 +204,7 @@ private:
         TEST_CASE(isVariableDeclarationRValueRef);
         TEST_CASE(isVariableDeclarationDoesNotIdentifyCase);
         TEST_CASE(isVariableDeclarationIf);
+        TEST_CASE(isVariableDeclarationSwitch);
         TEST_CASE(isVariableStlType);
         TEST_CASE(isVariablePointerToConstPointer);
         TEST_CASE(isVariablePointerToVolatilePointer);
@@ -233,6 +234,7 @@ private:
         TEST_CASE(rangeBasedFor);
 
         TEST_CASE(memberVar1);
+        TEST_CASE(memberVar2);
         TEST_CASE(arrayMemberVar1);
         TEST_CASE(arrayMemberVar2);
         TEST_CASE(arrayMemberVar3);
@@ -1234,6 +1236,17 @@ private:
         ASSERT(y->variable());
     }
 
+    void isVariableDeclarationSwitch() {
+        GET_SYMBOL_DB("void foo(void) {\n"
+                      "    int x = 0;\n"
+                      "    switch (auto &s = x) {}\n"
+                      "}\n");
+        const Token *s = Token::findsimplematch(tokenizer.tokens(), "s");
+        ASSERT(s);
+        ASSERT(s->varId());
+        ASSERT(s->variable());
+    }
+
     void VariableValueType1() {
         GET_SYMBOL_DB("typedef uint8_t u8;\n"
                       "static u8 x;");
@@ -1862,6 +1875,22 @@ private:
         const Token *tok = Token::findsimplematch(tokenizer.tokens(), "x =");
         ASSERT(tok->variable());
         ASSERT(Token::simpleMatch(tok->variable()->typeStartToken(), "int x ;"));
+    }
+
+    void memberVar2() {
+        GET_SYMBOL_DB( "struct S { void (*fp)(); };\n"
+                       "void g();\n"
+                       "void f() {\n"
+                       "    S s;\n"
+                       "    s.fp = g;\n"
+                       "    s.fp();\n"
+                       "}\n");
+
+        ASSERT(db != nullptr);
+        const Token *fp1 = Token::findsimplematch(tokenizer.tokens(), "fp =");
+        const Token *fp2 = Token::findsimplematch(tokenizer.tokens(), "fp (");
+        ASSERT(fp1->varId());
+        ASSERT_EQUALS(fp2->varId(), fp1->varId());
     }
 
     void arrayMemberVar1() {

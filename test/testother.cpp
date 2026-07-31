@@ -4155,6 +4155,17 @@ private:
               "  return r;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct Item { int state; };\n"
+              "void foo(std::vector<Item> &items) {\n"
+              "    for (auto &item : items) {\n"
+              "        switch (auto &s = item.state) {\n"
+              "        case 0: s = 1; break;\n"
+              "        default: break;\n"
+              "        }\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void constParameterCallback() {

@@ -4949,6 +4949,28 @@ private:
               "    return x ? false : true;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("void f() {\n"
+              "    if (42) {}\n"
+              "    if (42U) {}\n"
+              "    if (42L) {}\n"
+              "    if (42UL) {}\n"
+              "    if (42LL) {}\n"
+              "    if (042) {}\n"
+              "    if (0x42) {}\n"
+              "    if (0b101010) {}\n"
+              "    if (!42) {}\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:9]: (style) Condition '42' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:3:9]: (style) Condition '42U' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:4:9]: (style) Condition '42L' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:5:9]: (style) Condition '42UL' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:6:9]: (style) Condition '42LL' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:7:9]: (style) Condition '042' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:8:9]: (style) Condition '0x42' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:9:9]: (style) Condition '0b101010' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:10:9]: (style) Condition '!42' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
     }
 
     void alwaysTrueSymbolic()
