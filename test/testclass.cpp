@@ -63,6 +63,7 @@ private:
         TEST_CASE(copyConstructor5); // multiple inheritance
         TEST_CASE(copyConstructor6); // array of pointers
         TEST_CASE(copyConstructor7);
+        TEST_CASE(copyConstructor8);
         TEST_CASE(deletedMemberPointer); // deleted member pointer in destructor
         TEST_CASE(noOperatorEq); // class with memory management should have operator eq
         TEST_CASE(noDestructor); // class with memory management should have destructor
@@ -1103,6 +1104,15 @@ private:
                              "    int m_fd;\n"
                              "};\n");
         ASSERT_EQUALS("[test.cpp:2:30]: (warning) Struct 'S' does not have a copy constructor which is recommended since it has dynamic memory/resource management. [noCopyConstructor]\n", errout_str());
+    }
+
+    void copyConstructor8() {
+        checkCopyConstructor("struct S {\n"
+                             "    S() : m_ptr(new int) {}\n"
+                             "    ~S();\n"
+                             "    std::unique_ptr<int> m_ptr;\n"
+                             "};\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void deletedMemberPointer() {
