@@ -62,6 +62,7 @@ private:
         TEST_CASE(copyConstructor4); // base class with private constructor
         TEST_CASE(copyConstructor5); // multiple inheritance
         TEST_CASE(copyConstructor6); // array of pointers
+        TEST_CASE(copyConstructor7);
         TEST_CASE(deletedMemberPointer); // deleted member pointer in destructor
         TEST_CASE(noOperatorEq); // class with memory management should have operator eq
         TEST_CASE(noDestructor); // class with memory management should have destructor
@@ -1092,6 +1093,16 @@ private:
                            "[test.cpp:4]: (warning) Struct 'S' does not have a destructor which is recommended since it has dynamic memory/resource management.\n",
                            "",
                            errout_str());
+    }
+
+    void copyConstructor7() {
+        checkCopyConstructor("struct S {\n"
+                             "    explicit S(char *name) { m_fd = mkstemp(name); }\n"
+                             "    ~S() { /* close(m_fd); */ }\n"
+                             "    S &operator =(const S&);\n"
+                             "    int m_fd;\n"
+                             "};\n");
+        ASSERT_EQUALS("[test.cpp:2:30]: (warning) Struct 'S' does not have a copy constructor which is recommended since it has dynamic memory/resource management. [noCopyConstructor]\n", errout_str());
     }
 
     void deletedMemberPointer() {
