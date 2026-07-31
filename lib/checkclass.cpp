@@ -473,7 +473,7 @@ void CheckClassImpl::copyconstructors()
                     if (Token::Match(tok, "%var% ( new") ||
                         (Token::Match(tok, "%var% ( %name% (") && mSettings.library.getAllocFuncInfo(tok->tokAt(2)))) {
                         const Variable* var = tok->variable();
-                        if (var && var->isPointer() && var->scope() == scope)
+                        if (var && var->scope() == scope)
                             allocatedVars[tok->varId()] = tok;
                     }
                 }
@@ -481,7 +481,7 @@ void CheckClassImpl::copyconstructors()
                     if (Token::Match(tok, "%var% = new") ||
                         (Token::Match(tok, "%var% = %name% (") && mSettings.library.getAllocFuncInfo(tok->tokAt(2)))) {
                         const Variable* var = tok->variable();
-                        if (var && var->isPointer() && var->scope() == scope && !var->isStatic())
+                        if (var && var->scope() == scope && !var->isStatic())
                             allocatedVars[tok->varId()] = tok;
                     }
                 }
@@ -493,7 +493,7 @@ void CheckClassImpl::copyconstructors()
                         (Token::Match(tok, "%name% ( %var%") && mSettings.library.getDeallocFuncInfo(tok))) {
                         const Token *vartok = tok->str() == "delete" ? tok->next() : tok->tokAt(2);
                         const Variable* var = vartok->variable();
-                        if (var && var->isPointer() && var->scope() == scope && !var->isStatic())
+                        if (var && var->scope() == scope && !var->isStatic())
                             deallocatedVars[vartok->varId()] = vartok;
                     }
                 }
