@@ -473,7 +473,7 @@ void CheckClassImpl::copyconstructors()
                     if (Token::Match(tok, "%var% ( new") ||
                         (Token::Match(tok, "%var% ( %name% (") && mSettings.library.getAllocFuncInfo(tok->tokAt(2)))) {
                         const Variable* var = tok->variable();
-                        if (var && var->scope() == scope)
+                        if (var && var->scope() == scope && var->valueType() && var->valueType()->type != ValueType::SMART_POINTER)
                             allocatedVars[tok->varId()] = tok;
                     }
                 }
@@ -481,7 +481,7 @@ void CheckClassImpl::copyconstructors()
                     if (Token::Match(tok, "%var% = new") ||
                         (Token::Match(tok, "%var% = %name% (") && mSettings.library.getAllocFuncInfo(tok->tokAt(2)))) {
                         const Variable* var = tok->variable();
-                        if (var && var->scope() == scope && !var->isStatic())
+                        if (var && var->scope() == scope && !var->isStatic() && var->valueType() && var->valueType()->type != ValueType::SMART_POINTER)
                             allocatedVars[tok->varId()] = tok;
                     }
                 }
@@ -493,7 +493,10 @@ void CheckClassImpl::copyconstructors()
                         (Token::Match(tok, "%name% ( %var%") && mSettings.library.getDeallocFuncInfo(tok))) {
                         const Token *vartok = tok->str() == "delete" ? tok->next() : tok->tokAt(2);
                         const Variable* var = vartok->variable();
-                        if (var && var->scope() == scope && !var->isStatic())
+                        if (var && var->scope() == scope && !var->isStatic() &&
+                            var->valueType() && ((var->valueType()->type != ValueType::CONTAINER &&
+                            var->valueType()->type != ValueType::RECORD &&
+                            var->valueType()->type != ValueType::UNKNOWN_TYPE) || var->valueType()->pointer))
                             deallocatedVars[vartok->varId()] = vartok;
                     }
                 }
