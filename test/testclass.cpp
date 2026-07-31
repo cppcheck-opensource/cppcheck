@@ -1169,6 +1169,15 @@ private:
                              "   ~F();\n"
                              "};");
         ASSERT_EQUALS("", errout_str());
+
+        checkCopyConstructor("struct S {\n"
+                             "    explicit S(char *name) { m_fd = mkstemp(name); }\n"
+                             "    S(const S&);\n"
+                             "    ~S() { /* close(m_fd); */ }\n"
+                             "    int m_fd;\n"
+                             "};\n");
+        ASSERT_EQUALS("[test.cpp:2:30]: (warning) Struct 'S' does not have a operator= which is recommended since it has dynamic memory/resource management. [noOperatorEq]\n", errout_str());
+
     }
 
     void noDestructor() {
