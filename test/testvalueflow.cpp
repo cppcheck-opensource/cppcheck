@@ -8355,6 +8355,17 @@ private:
                "    auto b = a;\n"
                "}\n";
         (void)valueOfTok(code, "b");
+
+        code = "namespace O {}\n" // #14952
+               "namespace N {\n"
+               "    using namespace O;\n"
+               "    enum class E { E0 };\n"
+               "    auto E0 = E::E0;\n"
+               "    struct S {\n"
+               "        E f() const { return E0; }\n"
+               "    };\n"
+               "}\n";
+        (void)valueOfTok(code, "E0");
     }
 
     void valueFlowHang() {
