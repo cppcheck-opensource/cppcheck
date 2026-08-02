@@ -5516,7 +5516,12 @@ static void valueFlowForLoop(const TokenList &tokenlist, const SymbolDatabase& s
                             continue;
                         if (p.first.tok->varId() == 0)
                             continue;
-                        valueFlowForLoopSimplifyAfter(tok, p.first.getExpressionId(), p.second.intvalue, tokenlist, errorLogger, settings);
+                        valueFlowForLoopSimplifyAfter(tok,
+                                                      p.first.getExpressionId(),
+                                                      p.second.intvalue,
+                                                      tokenlist,
+                                                      errorLogger,
+                                                      settings);
                     }
                 }
             }

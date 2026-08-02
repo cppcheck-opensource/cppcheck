@@ -2055,7 +2055,9 @@ private:
               "    }\n"
               "    arr[idx] = 0;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:8:8]: (error) Array 'arr[3]' accessed at index 3, which is out of bounds. [arrayIndexOutOfBounds]\n", errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:8:8]: (error) Array 'arr[3]' accessed at index 3, which is out of bounds. [arrayIndexOutOfBounds]\n",
+            errout_str());
 
         check("void f(bool c) {\n" // continue -> the loop condition can be evaluated again
               "    int idx;\n"
@@ -2067,7 +2069,9 @@ private:
               "    }\n"
               "    arr[idx] = 0;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:9:8]: (error) Array 'arr[3]' accessed at index 3, which is out of bounds. [arrayIndexOutOfBounds]\n", errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:9:8]: (error) Array 'arr[3]' accessed at index 3, which is out of bounds. [arrayIndexOutOfBounds]\n",
+            errout_str());
     }
 
     void array_index_multidim() {
