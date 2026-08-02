@@ -5133,6 +5133,36 @@ private:
         ++it;
         ASSERT_EQUALS(5, it->intvalue);
         ASSERT(it->isImpossible());
+
+        code = "void f() {\n" // the loop always exits through the break
+               "    int x;\n"
+               "    for (x = 0; x < 3; x++) {\n"
+               "        break;\n"
+               "    }\n"
+               "    a[x] = 0;\n" // <- x is not 3
+               "}";
+        ASSERT_EQUALS(false, testValueOfX(code, 6U, 3));
+
+        code = "void f(bool c) {\n" // conditional break -> the loop can run to completion
+               "    int x;\n"
+               "    for (x = 0; x < 3; x++) {\n"
+               "        if (c)\n"
+               "            break;\n"
+               "    }\n"
+               "    a[x] = 0;\n"
+               "}";
+        ASSERT_EQUALS(true, testValueOfX(code, 7U, 3));
+
+        code = "void f(bool c) {\n" // continue -> the loop condition can be evaluated again
+               "    int x;\n"
+               "    for (x = 0; x < 3; x++) {\n"
+               "        if (c)\n"
+               "            continue;\n"
+               "        break;\n"
+               "    }\n"
+               "    a[x] = 0;\n"
+               "}";
+        ASSERT_EQUALS(true, testValueOfX(code, 8U, 3));
     }
 
     void valueFlowSubFunction() {

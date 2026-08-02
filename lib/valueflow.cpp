@@ -4354,6 +4354,20 @@ static bool isBreakScope(const Token* const endToken)
     return Token::findmatch(endToken->link(), "break|goto", endToken);
 }
 
+// If this is the body of a loop, the loop always exits through an unconditional break:
+// the last statement is a top-level break and no continue (or goto) can jump back to
+// evaluate the loop condition again
+static bool isUnconditionalBreakScope(const Token* const endToken)
+{
+    if (!Token::simpleMatch(endToken, "}"))
+        return false;
+    if (!Token::simpleMatch(endToken->link(), "{"))
+        return false;
+    if (!Token::Match(endToken->tokAt(-2), "break ;") || !Token::Match(endToken->tokAt(-3), "{|}|;"))
+        return false;
+    return !Token::findmatch(endToken->link(), "continue|goto", endToken);
+}
+
 ValueFlow::Value ValueFlow::asImpossible(ValueFlow::Value v)
 {
     v.invertRange();
@@ -4901,10 +4915,12 @@ struct ConditionHandler {
                 Token* after = top->link()->linkAt(1);
                 bool dead_if = deadBranch[0];
                 bool dead_else = deadBranch[1];
+                bool alwaysBreaks = false;
                 const Token* unknownFunction = nullptr;
-                if (condTok->astParent() && Token::Match(top->previous(), "while|for ("))
+                if (condTok->astParent() && Token::Match(top->previous(), "while|for (")) {
                     dead_if = !isBreakScope(after);
-                else if (!dead_if)
+                    alwaysBreaks = isUnconditionalBreakScope(after);
+                } else if (!dead_if)
                     dead_if = isReturnScope(after, settings.library, &unknownFunction);
 
                 // If the taken branch might not return (it ends in a call to an unknown,
@@ -4943,12 +4959,15 @@ struct ConditionHandler {
                                  [](const ValueFlow::Value& v) {
                         return v.isPossible() || v.isInconclusive();
                     });
-                    std::copy_if(elseValues.cbegin(),
-                                 elseValues.cend(),
-                                 std::back_inserter(values),
-                                 [](const ValueFlow::Value& v) {
-                        return v.isPossible() || v.isInconclusive();
-                    });
+                    // if the loop body always breaks then the loop condition is evaluated at most once,
+                    // so the false-condition values from iterating the loop do not apply after the loop
+                    if (!alwaysBreaks)
+                        std::copy_if(elseValues.cbegin(),
+                                     elseValues.cend(),
+                                     std::back_inserter(values),
+                                     [](const ValueFlow::Value& v) {
+                            return v.isPossible() || v.isInconclusive();
+                        });
                 }
 
                 if (values.empty())
@@ -5453,8 +5472,11 @@ static void valueFlowForLoop(const TokenList &tokenlist, const SymbolDatabase& s
                     valueFlowForward(bodyStart, bodyStart->link(), vartok, std::move(lastValues), tokenlist, errorLogger, settings);
                 }
             }
-            const MathLib::bigint afterValue = executeBody ? lastValue + stepValue : initValue;
-            valueFlowForLoopSimplifyAfter(tok, varid, afterValue, tokenlist, errorLogger, settings);
+            // if the body always exits through a break the counter does not reach its final value
+            if (!executeBody || !isUnconditionalBreakScope(bodyStart->link())) {
+                const MathLib::bigint afterValue = executeBody ? lastValue + stepValue : initValue;
+                valueFlowForLoopSimplifyAfter(tok, varid, afterValue, tokenlist, errorLogger, settings);
+            }
         } else {
             ProgramMemory mem1, mem2, memAfter;
             if (valueFlowForLoop2(tok, mem1, mem2, memAfter, settings)) {
@@ -5485,14 +5507,17 @@ static void valueFlowForLoop(const TokenList &tokenlist, const SymbolDatabase& s
                         valueFlowForLoopSimplify(bodyStart, p.first.tok, false, p.second.intvalue, tokenlist, errorLogger, settings);
                     }
                 }
-                for (const auto& p : memAfter) {
-                    if (!p.second.isIntValue())
-                        continue;
-                    if (p.second.isImpossible())
-                        continue;
-                    if (p.first.tok->varId() == 0)
-                        continue;
-                    valueFlowForLoopSimplifyAfter(tok, p.first.getExpressionId(), p.second.intvalue, tokenlist, errorLogger, settings);
+                // if the body always exits through a break the counters do not reach their final values
+                if (!isUnconditionalBreakScope(bodyStart->link())) {
+                    for (const auto& p : memAfter) {
+                        if (!p.second.isIntValue())
+                            continue;
+                        if (p.second.isImpossible())
+                            continue;
+                        if (p.first.tok->varId() == 0)
+                            continue;
+                        valueFlowForLoopSimplifyAfter(tok, p.first.getExpressionId(), p.second.intvalue, tokenlist, errorLogger, settings);
+                    }
                 }
             }
         }
