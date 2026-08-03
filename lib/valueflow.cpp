@@ -4363,7 +4363,7 @@ static bool isUnconditionalBreakScope(const Token* const endToken)
         return false;
     if (!Token::simpleMatch(endToken->link(), "{"))
         return false;
-    if (!Token::Match(endToken->tokAt(-2), "break ;") || !Token::Match(endToken->tokAt(-3), "{|}|;"))
+    if (!Token::simpleMatch(endToken->tokAt(-2), "break ;") || !Token::Match(endToken->tokAt(-3), "{|}|;"))
         return false;
     return !Token::findmatch(endToken->link(), "continue|goto", endToken);
 }
