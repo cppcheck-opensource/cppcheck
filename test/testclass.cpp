@@ -62,7 +62,7 @@ private:
         TEST_CASE(copyConstructor4); // base class with private constructor
         TEST_CASE(copyConstructor5); // multiple inheritance
         TEST_CASE(copyConstructor6); // array of pointers
-        TEST_CASE(copyConstructor7);
+        TEST_CASE(copyConstructor7); // ticket #14954
         TEST_CASE(copyConstructor8);
         TEST_CASE(deletedMemberPointer); // deleted member pointer in destructor
         TEST_CASE(noOperatorEq); // class with memory management should have operator eq
@@ -1096,7 +1096,7 @@ private:
                            errout_str());
     }
 
-    void copyConstructor7() {
+    void copyConstructor7() { // ticket #14954
         checkCopyConstructor("struct S {\n"
                              "    explicit S(char *name) { m_fd = mkstemp(name); }\n"
                              "    ~S() { /* close(m_fd); */ }\n"

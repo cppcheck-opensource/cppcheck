@@ -533,7 +533,7 @@ private:
         TEST_CASE(class25); // ticket #4367 - false positive implementation for destructor is not seen
         TEST_CASE(class26); // ticket #10789
         TEST_CASE(class27); // ticket #8126
-        TEST_CASE(class28);
+        TEST_CASE(class28); // ticket #14954
 
         TEST_CASE(staticvar);
 
@@ -1485,7 +1485,7 @@ private:
         ASSERT_EQUALS("[test.cpp:6:11]: (style) Class 'S' is unsafe, 'S::a' can leak by wrong usage. [unsafeClassCanLeak]\n", errout_str());
     }
 
-    void class28() {
+    void class28() { // ticket #14954
         check("struct S {\n"
               "    explicit S(char *name) { m_fd = mkstemp(name); }\n"
               "    ~S() { /* close(m_fd); */ }\n"
