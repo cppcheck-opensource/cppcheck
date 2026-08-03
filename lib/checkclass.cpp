@@ -495,8 +495,8 @@ void CheckClassImpl::copyconstructors()
                         const Variable* var = vartok->variable();
                         if (var && var->scope() == scope && !var->isStatic() &&
                             var->valueType() && ((var->valueType()->type != ValueType::CONTAINER &&
-                            var->valueType()->type != ValueType::RECORD &&
-                            var->valueType()->type != ValueType::UNKNOWN_TYPE) || var->valueType()->pointer))
+                                                  var->valueType()->type != ValueType::RECORD &&
+                                                  var->valueType()->type != ValueType::UNKNOWN_TYPE) || var->valueType()->pointer))
                             deallocatedVars[vartok->varId()] = vartok;
                     }
                 }
