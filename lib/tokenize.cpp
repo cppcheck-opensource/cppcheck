@@ -5271,22 +5271,9 @@ void Tokenizer::setVarIdPass2()
         std::list<const Token *> usingnamespaces;
         const Token *enumEnd = nullptr;
         for (Token *tok = list.front(); tok; tok = tok->next()) {
-            if (tok->str() == "enum") {
-                tok = tok->next();
-                if (tok->str() == "class")
-                    tok = tok->next();
-                if (tok->isName())
-                    tok = tok->next();
-                if (tok->str() == ":") {
-                    tok = tok->next();
-                    if (tok->str() == "::")
-                        tok = tok->next();
-                    while (Token::Match(tok, "%name% ::"))
-                        tok = tok->tokAt(2);
-                    tok = tok->next();
-                }
-                if (tok->str() == "{")
-                    enumEnd = tok->link();
+            if (isEnumStart(tok)) {
+                enumEnd = tok->link();
+                continue;
             }
             if (tok == enumEnd) {
                 enumEnd = nullptr;
