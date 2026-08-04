@@ -93,6 +93,7 @@ private:
         TEST_CASE(tokenize41);  // #13847
         TEST_CASE(tokenize42);  // #13861
         TEST_CASE(tokenize43);  // #13861
+        TEST_CASE(tokenize44);  // #14955
 
         TEST_CASE(validate);
 
@@ -946,6 +947,22 @@ private:
     void tokenize43() {
         const char code[] = "void f(int i) { do if (i &= 1) {} while (0); }";
         ASSERT_NO_THROW(tokenizeAndStringify(code));
+        (void)errout_str();
+    }
+
+    void tokenize44() { // #14955
+        const char code[] = "namespace O {}\n"
+                            "namespace N {\n"
+                            "    using namespace O;\n"
+                            "    enum class E { E0 };\n"
+                            "    int E0 = E::E0;\n"
+                            "}\n";
+        const char expected[] = "2: namespace N {\n"
+                                "3: using namespace O ;\n"
+                                "4: enum class E { E0 } ;\n"
+                                "5: int E0@1 ; E0@1 = E :: E0 ;\n"
+                                "6: }\n";
+        ASSERT_EQUALS(expected, tokenizeDebugListing(code));
         (void)errout_str();
     }
 
