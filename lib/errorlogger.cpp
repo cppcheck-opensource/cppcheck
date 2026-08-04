@@ -36,11 +36,13 @@
 #include <cstring>
 #include <fstream>
 #include <iomanip>
-#include <numeric>
+#include <ios>
+#include <list>
 #include <sstream>
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "xml.h"
 
@@ -605,13 +607,57 @@ std::string ErrorMessage::toXML() const
     return printer.CStr();
 }
 
+// Byte offset of the start of each line, indexed by 1-based line number.
+// Building this once per file keeps readCode() cheap. Without it every call
+// rescans the file from the start, which is quadratic for a file that produces
+// many findings - vendor/generated headers routinely produce tens of thousands.
+static const std::vector<std::streamoff>* getLineOffsets(const std::string &file)
+{
+    // thread_local: the thread executor calls this concurrently
+    static thread_local std::list<std::pair<std::string, std::vector<std::streamoff>>> cache;
+
+    for (auto it = cache.begin(); it != cache.end(); ++it) {
+        if (it->first == file) {
+            // most recently used goes first
+            cache.splice(cache.begin(), cache, it);
+            return &cache.front().second;
+        }
+    }
+
+    // Binary mode so the offsets match what the seek in readCode() expects.
+    // A trailing '\r' is stripped by the caller.
+    std::ifstream fin(file, std::ios::binary);
+    if (!fin.is_open())
+        return nullptr;
+
+    std::vector<std::streamoff> offsets{0, 0}; // index 0 is unused, line 1 starts at offset 0
+    std::array<char, 64 * 1024> buf;
+    std::streamoff pos = 0;
+    while (fin.read(buf.data(), buf.size()) || fin.gcount() > 0) {
+        const std::streamsize n = fin.gcount();
+        for (std::streamsize i = 0; i < n; ++i) {
+            if (buf[i] == '\n')
+                offsets.push_back(pos + i + 1);
+        }
+        pos += n;
+    }
+
+    constexpr std::size_t maxCachedFiles = 4;
+    if (cache.size() >= maxCachedFiles)
+        cache.pop_back();
+    cache.emplace_front(file, std::move(offsets));
+    return &cache.front().second;
+}
+
 // TODO: read info from some shared resource instead?
 static std::string readCode(const std::string &file, int linenr, int column, const char endl[])
 {
-    std::ifstream fin(file);
     std::string line;
-    while (linenr > 0 && std::getline(fin,line)) {
-        linenr--;
+    const std::vector<std::streamoff>* const offsets = getLineOffsets(file);
+    if (offsets && linenr > 0 && linenr < static_cast<int>(offsets->size())) {
+        std::ifstream fin(file, std::ios::binary);
+        fin.seekg((*offsets)[linenr]);
+        std::getline(fin, line);
     }
     const std::string::size_type endPos = line.find_last_not_of("\r\n\t ");
     if (endPos + 1 < line.size())
