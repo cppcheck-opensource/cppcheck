@@ -293,24 +293,3 @@ std::string AnalyzerInformation::processFilesTxt(const std::string& buildDir, co
     // TODO: error on empty file?
     return "";
 }
-
-void AnalyzerInformation::reopen(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId)
-{
-    if (buildDir.empty() || sourcefile.empty())
-        return;
-
-    const std::string analyzerInfoFile = AnalyzerInformation::getAnalyzerInfoFile(buildDir,sourcefile,cfg,fsFileId);
-    std::ifstream ifs(analyzerInfoFile);
-    if (!ifs.is_open())
-        return;
-
-    std::ostringstream iss;
-    iss << ifs.rdbuf();
-    ifs.close();
-
-    std::string content = iss.str();
-    content.resize(content.find("</analyzerinfo>"));
-
-    mOutputStream.open(analyzerInfoFile, std::ios::trunc);
-    mOutputStream << content;
-}
