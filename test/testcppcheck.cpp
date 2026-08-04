@@ -490,7 +490,7 @@ private:
                             ";\n";
 
         simplecpp::OutputList outputList;
-        const simplecpp::TokenList tokens2(code, files, "", &outputList);
+        const simplecpp::TokenList tokens2(code, files, "", {}, &outputList);
         const std::string expected2 = "  <rawtokens>\n"
                                       "    <file index=\"0\" name=\"test.c\"/>\n"
                                       "    <file index=\"1\" name=\"\"/>\n"

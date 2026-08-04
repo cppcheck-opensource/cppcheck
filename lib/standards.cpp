@@ -157,3 +157,15 @@ bool Standards::setStd(const std::string& str)
 {
     return setC(str) || setCPP(str);
 }
+
+std::string Standards::getStdForLanguage(Standards::Language language) const
+{
+    switch (language) {
+    case C:
+        return getC();
+    case CPP:
+        return getCPP();
+    default:
+        return "";
+    }
+}
