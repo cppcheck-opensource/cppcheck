@@ -894,16 +894,20 @@ std::size_t CppCheck::calculateHash(const Preprocessor& preprocessor, const std:
 
 unsigned int CppCheck::checkBuffer(const FileWithDetails &file, const std::string &cfgname, const char* data, std::size_t size)
 {
-    const auto f = [&file, data, size](std::vector<std::string>& files, simplecpp::OutputList* outputList) {
-        return simplecpp::TokenList{{data, size}, files, file.spath(), outputList};
+    const auto f = [&file, data, size, this](std::vector<std::string>& files, simplecpp::OutputList* outputList) {
+        simplecpp::DUI dui;
+        dui.std = mSettings.standards.getStdForLanguage(file.lang());
+        return simplecpp::TokenList{{data, size}, files, file.spath(), dui, outputList};
     };
     return checkInternal(file, cfgname, f);
 }
 
 unsigned int CppCheck::checkFile(const FileWithDetails& file, const std::string &cfgname)
 {
-    const auto f = [&file](std::vector<std::string>& files, simplecpp::OutputList* outputList) {
-        return simplecpp::TokenList{file.spath(), files, outputList};
+    const auto f = [&file, this](std::vector<std::string>& files, simplecpp::OutputList* outputList) {
+        simplecpp::DUI dui;
+        dui.std = mSettings.standards.getStdForLanguage(file.lang());
+        return simplecpp::TokenList{file.spath(), files, dui, outputList};
     };
     return checkInternal(file, cfgname, f);
 }

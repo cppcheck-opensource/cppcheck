@@ -156,7 +156,7 @@ private:
         // TokenList::determineCppC() because there are no tokens
         const char code[] = "#include <sys/poll.h>";
         std::vector<std::string> files;
-        simplecpp::TokenList tokens1(code, files, "poll.h", nullptr);
+        simplecpp::TokenList tokens1(code, files, "poll.h", {}, nullptr);
         Preprocessor preprocessor(tokens1, settingsDefault, *this, Path::identify(tokens1.getFiles()[0], false));
         simplecpp::OutputList outputList_pp;
         simplecpp::TokenList tokensP = preprocessor.preprocess("", files, outputList_pp);

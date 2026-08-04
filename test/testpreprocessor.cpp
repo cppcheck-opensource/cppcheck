@@ -57,7 +57,7 @@ private:
     std::string expandMacros_(const char* file, int line, const char (&code)[size], ErrorLogger &errorLogger) const {
         simplecpp::OutputList outputList;
         std::vector<std::string> files;
-        simplecpp::TokenList tokens1 = simplecpp::TokenList(code, files, "file.cpp", &outputList);
+        simplecpp::TokenList tokens1 = simplecpp::TokenList(code, files, "file.cpp", {}, &outputList);
         Preprocessor p(tokens1, settingsDefault, errorLogger, Path::identify(tokens1.getFiles()[0], false));
         ASSERT_LOC(p.loadFiles(files), file, line);
         simplecpp::TokenList tokens2 = p.preprocess("", files, outputList);
@@ -75,7 +75,7 @@ private:
             throw std::runtime_error("token list not empty");
 
         simplecpp::OutputList outputList;
-        const simplecpp::TokenList tokens1(code, files, file0, &outputList);
+        const simplecpp::TokenList tokens1(code, files, file0, dui, &outputList);
 
         // Preprocess..
         simplecpp::TokenList tokens2(files);
@@ -124,7 +124,7 @@ private:
         simplecpp::OutputList outputList;
         std::vector<std::string> files;
 
-        simplecpp::TokenList tokens({code, size}, files, Path::simplifyPath(filename), &outputList);
+        simplecpp::TokenList tokens({code, size}, files, Path::simplifyPath(filename), {}, &outputList);
 
         // TODO: we should be using the actual Preprocessor implementation
         Preprocessor preprocessor(tokens, settings, errorlogger, Path::identify(tokens.getFiles()[0], false));
@@ -399,7 +399,8 @@ private:
             ASSERT(settings.library.load("", library, false).errorcode == Library::ErrorCode::OK);
         std::vector<std::string> files;
         simplecpp::OutputList outputList;
-        simplecpp::TokenList tokens(code,files,"test.c",&outputList);
+        simplecpp::DUI dui;
+        simplecpp::TokenList tokens(code,files,"test.c",dui,&outputList);
         Preprocessor preprocessor(tokens, settings, *this, Standards::Language::C);
         std::set<std::string> configs = { "" };
         std::set<std::string> configDefines = { "__cplusplus" };
