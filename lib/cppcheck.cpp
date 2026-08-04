@@ -1248,6 +1248,21 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
                     mSuppressions.nomsg.markUnmatchedInlineSuppressionsAsChecked(tokenizer.list);
                 }
 
+                // TODO: handle differently?
+                // dummy call to make sure included files are being flagged as checked in case isSuppressed() is never called
+                for (auto f : tokenizer.list.getFiles())
+                {
+                    f = Path::simplifyPath(f); // TODO: necessary?
+
+                    // skip the file which is being analyzed
+                    if (f == file.spath())
+                        continue;
+
+                    // the empty ID is intentional for now - although it should not be allowed
+                    ErrorMessage msg({}, f, Severity::information, "", "", Certainty::normal);
+                    (void)mSuppressions.nomsg.isSuppressed(SuppressionList::ErrorMessage::fromErrorMessage(msg, {}), true);
+                }
+
                 // Skip if we already met the same simplified token list
                 if (maxConfigs > 1) {
                     const std::size_t hash = tokenizer.list.calculateHash();
