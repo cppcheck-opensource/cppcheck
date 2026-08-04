@@ -24,7 +24,7 @@ jobs:
           - image: "ubuntu:24.04"
             with_gui: true
             full_build: true
-          - image: "ubuntu:25.10"
+          - image: "ubuntu:26.04"
             with_gui: true
             full_build: true
           - image: "alpine:3.23"
