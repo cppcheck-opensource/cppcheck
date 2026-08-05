@@ -1281,7 +1281,7 @@ private:
     void macro_NULL() {
         // See ticket #4482 - UB when passing NULL to variadic function
         ASSERT_EQUALS("\n0", expandMacros("#define null 0\nnull\n", *this));
-        TODO_ASSERT_EQUALS("\nNULL", "\n0", expandMacros("#define NULL 0\nNULL", *this)); // TODO: Let the tokenizer handle NULL?
+        TODO_ASSERT_EQUALS("\nNULL\n", "\n0", expandMacros("#define NULL 0\nNULL\n", *this)); // TODO: Let the tokenizer handle NULL?
     }
 
     void string1() {
@@ -3172,7 +3172,7 @@ private:
             std::vector<std::string> files;
             TokenList tokenlist{settingsDefault, Standards::Language::CPP};
             // TODO: can this happen from application code? if yes we need to turn it into a proper error
-            ASSERT_THROW_EQUALS(preprocess(code, files, "test.cpp", tokenlist, dui), std::runtime_error, "unexpected simplecpp::Output type 9");
+            ASSERT_THROW_EQUALS(preprocess(code, files, "test.cpp", tokenlist, dui), std::runtime_error, "unexpected simplecpp::Output type 12");
             ASSERT(!tokenlist.front()); // nothing is tokenized when an unknown standard is provided
         }
     }
@@ -3183,7 +3183,7 @@ private:
                            "public:\n"
                            "    void f() {}\n"
                            "};\n";
-        const char code[] = R"(#include "test.h")";
+        const char code[] = "#include \"test.h\"\n";
         ScopedFile header("test.h", inc);
         const std::string processed = getcodeforcfg(settingsDefault, *this, code, "", "test.cpp");
         ASSERT_EQUALS(

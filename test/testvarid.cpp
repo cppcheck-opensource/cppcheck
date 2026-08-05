@@ -917,14 +917,18 @@ private:
             const char code[] = "void blah() {\n"
                                 "    Bar bar(*x);\n"
                                 "}\n";
-            ASSERT_EQUALS("1: void blah ( ) { Bar bar@1 ( * x ) ; }\n",
+            ASSERT_EQUALS("1: void blah ( ) {\n"
+                          "2: Bar bar@1 ( * x ) ;\n"
+                          "3: }\n",
                           tokenize(code));
         }
         {
             const char code[] = "void blah() {\n"
                                 "    Bar bar(&x);\n"
                                 "}\n";
-            ASSERT_EQUALS("1: void blah ( ) { Bar bar@1 ( & x ) ; }\n",
+            ASSERT_EQUALS("1: void blah ( ) {\n"
+                          "2: Bar bar@1 ( & x ) ;\n"
+                          "3: }\n",
                           tokenize(code));
         }
     }
@@ -1070,65 +1074,58 @@ private:
     }
 
     void varid55() { // Ticket #5868
-        const char code[] =     "typedef struct foo {} foo; "
+        const char code[] = "typedef struct foo {} foo;\n"
                             "void bar1(struct foo foo) {}\n"
                             "void baz1(foo foo) {}\n"
                             "void bar2(struct foo& foo) {}\n"
                             "void baz2(foo& foo) {}\n"
                             "void bar3(struct foo* foo) {}\n"
                             "void baz3(foo* foo) {}\n";
-        const char expected[] = "1: "
-                                "struct foo { } ; "
-                                "void bar1 ( struct foo foo@1 ) { } "
-                                "void baz1 ( struct foo foo@2 ) { } "
-                                "void bar2 ( struct foo & foo@3 ) { } "
-                                "void baz2 ( struct foo & foo@4 ) { } "
-                                "void bar3 ( struct foo * foo@5 ) { } "
-                                "void baz3 ( struct foo * foo@6 ) { }\n";
+        const char expected[] = "1: struct foo { } ;\n"
+                                "2: void bar1 ( struct foo foo@1 ) { }\n"
+                                "3: void baz1 ( struct foo foo@2 ) { }\n"
+                                "4: void bar2 ( struct foo & foo@3 ) { }\n"
+                                "5: void baz2 ( struct foo & foo@4 ) { }\n"
+                                "6: void bar3 ( struct foo * foo@5 ) { }\n"
+                                "7: void baz3 ( struct foo * foo@6 ) { }\n";
         ASSERT_EQUALS(expected, tokenize(code));
     }
 
     void varid56() { // Ticket #6548 - function with a throw()
         const char code1[] = "void fred(int x) throw() {}\n"
                              "void wilma() { x++; }\n";
-        const char expected1[] = "1: "
-                                 "void fred ( int x@1 ) throw ( ) { } "
-                                 "void wilma ( ) { x ++ ; }\n";
+        const char expected1[] = "1: void fred ( int x@1 ) throw ( ) { }\n"
+                                 "2: void wilma ( ) { x ++ ; }\n";
         ASSERT_EQUALS(expected1, tokenize(code1));
 
         const char code2[] = "void fred(int x) const throw(EXCEPT) {}\n"
                              "void wilma() { x++; }\n";
-        const char expected2[] = "1: "
-                                 "void fred ( int x@1 ) const throw ( EXCEPT ) { } "
-                                 "void wilma ( ) { x ++ ; }\n";
+        const char expected2[] = "1: void fred ( int x@1 ) const throw ( EXCEPT ) { }\n"
+                                 "2: void wilma ( ) { x ++ ; }\n";
         ASSERT_EQUALS(expected2, tokenize(code2));
 
         const char code3[] = "void fred(int x) throw() ABCD {}\n"
                              "void wilma() { x++; }\n";
-        const char expected3[] = "1: "
-                                 "void fred ( int x@1 ) throw ( ) { } "
-                                 "void wilma ( ) { x ++ ; }\n";
+        const char expected3[] = "1: void fred ( int x@1 ) throw ( ) { }\n"
+                                 "2: void wilma ( ) { x ++ ; }\n";
         ASSERT_EQUALS(expected3, tokenize(code3));
 
         const char code4[] = "void fred(int x) noexcept() {}\n"
                              "void wilma() { x++; }\n";
-        const char expected4[] = "1: "
-                                 "void fred ( int x@1 ) noexcept ( ) { } "
-                                 "void wilma ( ) { x ++ ; }\n";
+        const char expected4[] = "1: void fred ( int x@1 ) noexcept ( ) { }\n"
+                                 "2: void wilma ( ) { x ++ ; }\n";
         ASSERT_EQUALS(expected4, tokenize(code4));
 
         const char code5[] = "void fred(int x) noexcept {}\n"
                              "void wilma() { x++; }\n";
-        const char expected5[] = "1: "
-                                 "void fred ( int x@1 ) noexcept ( true ) { } "
-                                 "void wilma ( ) { x ++ ; }\n";
+        const char expected5[] = "1: void fred ( int x@1 ) noexcept ( true ) { }\n"
+                                 "2: void wilma ( ) { x ++ ; }\n";
         ASSERT_EQUALS(expected5, tokenize(code5));
 
         const char code6[] = "void fred(int x) noexcept ( false ) {}\n"
                              "void wilma() { x++; }\n";
-        const char expected6[] = "1: "
-                                 "void fred ( int x@1 ) noexcept ( false ) { } "
-                                 "void wilma ( ) { x ++ ; }\n";
+        const char expected6[] = "1: void fred ( int x@1 ) noexcept ( false ) { }\n"
+                                 "2: void wilma ( ) { x ++ ; }\n";
         ASSERT_EQUALS(expected6, tokenize(code6));
     }
 

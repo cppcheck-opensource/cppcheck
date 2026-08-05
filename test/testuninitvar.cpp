@@ -2515,14 +2515,14 @@ private:
                        "    int x;\n"
                        "    a(x);\n"
                        "}\n");
-        ASSERT_EQUALS("[test.cpp:3:7]: (error) Uninitialized variable: x [legacyUninitvar]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:4:7]: (error) Uninitialized variable: x [legacyUninitvar]\n", errout_str());
 
         checkUninitVar(funca +
                        "void b() {\n"
                        "    int *p;\n"
                        "    a(*p);\n"
                        "}\n");
-        ASSERT_EQUALS("[test.cpp:3:8]: (error) Uninitialized variable: p [legacyUninitvar]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:4:8]: (error) Uninitialized variable: p [legacyUninitvar]\n", errout_str());
     }
 
 
@@ -2544,7 +2544,7 @@ private:
                        "    int *p;\n"
                        "    a(p);\n"
                        "}\n");
-        ASSERT_EQUALS("[test.cpp:3:7]: (error) Uninitialized variable: p [legacyUninitvar]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:4:7]: (error) Uninitialized variable: p [legacyUninitvar]\n", errout_str());
     }
 
     void uninitvar_typeof() {

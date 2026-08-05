@@ -4033,7 +4033,7 @@ private:
                    "void Fred::foo(std::string & a) { a = s; }\n"
                    "void Fred::foo(const std::string & a) { s = a; }\n");
         ASSERT_EQUALS("[test.cpp:3:10] -> [test.cpp:7:12]: (style) The member function 'Fred::foo' can be static. [functionStatic]\n"
-                      "[test.cpp:4:10] -> [test.cpp:7:32]: (style, inconclusive) Technically the member function 'Fred::foo' can be const. [functionConst]\n", errout_str());
+                      "[test.cpp:4:10] -> [test.cpp:8:12]: (style, inconclusive) Technically the member function 'Fred::foo' can be const. [functionConst]\n", errout_str());
 
         // check functions with different or missing parameter names
         checkConst("class Fred {\n"
@@ -9348,19 +9348,19 @@ private:
     }
 
     void ctuOneDefinitionRule() {
-        ctu({"class C { C() { std::cout << 0; } };", "class C { C() { std::cout << 1; } };"});
+        ctu({"class C { C() { std::cout << 0; } };\n", "class C { C() { std::cout << 1; } };\n"});
         ASSERT_EQUALS("[1.cpp:1:1] -> [0.cpp:1:1]: (error) The one definition rule is violated, different classes/structs have the same name 'C' [ctuOneDefinitionRuleViolation]\n", errout_str());
 
-        ctu({"class C { C(); }; C::C() { std::cout << 0; }", "class C { C(); }; C::C() { std::cout << 1; }"});
+        ctu({"class C { C(); }; C::C() { std::cout << 0; }\n", "class C { C(); }; C::C() { std::cout << 1; }\n"});
         ASSERT_EQUALS("[1.cpp:1:1] -> [0.cpp:1:1]: (error) The one definition rule is violated, different classes/structs have the same name 'C' [ctuOneDefinitionRuleViolation]\n", errout_str());
 
         ctu({"class C { C() {} };\n", "class C { C() {} };\n"});
         ASSERT_EQUALS("", errout_str());
 
-        ctu({"class C { C(); }; C::C(){}", "class C { C(); }; C::C(){}"});
+        ctu({"class C { C(); }; C::C(){}\n", "class C { C(); }; C::C(){}\n"});
         ASSERT_EQUALS("", errout_str());
 
-        ctu({"class A::C { C() { std::cout << 0; } };", "class B::C { C() { std::cout << 1; } };"});
+        ctu({"class A::C { C() { std::cout << 0; } };\n", "class B::C { C() { std::cout << 1; } };\n"});
         ASSERT_EQUALS("", errout_str());
 
         // 11435 - template specialisations

@@ -143,7 +143,7 @@ private:
               "{\n"
               "  (void)(*((int*)0));\n"
               "}\n", dinit(CheckOptions,
-                         $.quiet = false));
+                           $.quiet = false));
         {
             std::string expected;
             for (int i = 1; i <= num_files; ++i) {
