@@ -23,6 +23,7 @@
 #include "path.h"
 #include "settings.h"
 #include "suppressions.h"
+#include "symboldatabase.h"
 #include "token.h"
 #include "tokenlist.h"
 #include "utils.h"
@@ -35,6 +36,7 @@
 #include <cstring>
 #include <fstream>
 #include <iomanip>
+#include <numeric>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -161,11 +163,12 @@ ErrorMessage::ErrorMessage(ErrorPath errorPath, const TokenList *tokenList, Seve
 
     setmsg(msg);
 
-    std::list<const Token*> callstack;
-    for (const ErrorPathItem& e: errorPath) {
-        callstack.push_back(e.first);
-    }
-    calculateWarningHash(callstack);
+    std::list<const Token*> tokens;
+    std::transform(errorPath.cbegin(), errorPath.cend(), std::back_inserter(tokens),
+                   [](const ErrorPathItem& e) {
+        return e.first;
+    });
+    calculateWarningHash(tokens);
 }
 
 // TODO: improve errorhandling?
@@ -259,6 +262,8 @@ void ErrorMessage::calculateWarningHash(const std::list<const Token*>& callstack
     for (const Token* tok: callstack) {
         if (!tok)
             continue;
+        if (!tok->scope())
+            return; // might be a syntax error before scope info has been set
         if (tok->scope()->isExecutable()) {
             // Executable scope => include all tokens in the function => if the
             // function is changed the hash is changed
@@ -295,10 +300,9 @@ void ErrorMessage::calculateWarningHash(const std::list<const Token*>& callstack
 
     // hash algorithm: sdbm
     // any hash algorithm can be used but it has to be the same hash on different platforms and compilers
-    hash = 0;
-    for (auto c: hashString) {
-        hash = c + (hash << 6) + (hash << 16) - hash;
-    }
+    hash = std::accumulate(hashString.cbegin(), hashString.cend(), 0, [](std::size_t hash, char c) {
+        return static_cast<unsigned char>(c) + (hash << 6) + (hash << 16) - hash;
+    });
 }
 
 static void serializeString(std::string &oss, const std::string & str)

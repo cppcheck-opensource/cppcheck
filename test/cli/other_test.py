@@ -2666,7 +2666,7 @@ void f(const void* p)
 <results version="2">
     <cppcheck version="{}"/>
     <errors>
-        <error id="nullPointerRedundantCheck" severity="warning" msg="Either the condition &apos;p&apos; is redundant or there is possible null pointer dereference: p." verbose="Either the condition &apos;p&apos; is redundant or there is possible null pointer dereference: p." cwe="476" file0="{}" remark="boom">
+        <error id="nullPointerRedundantCheck" severity="warning" msg="Either the condition &apos;p&apos; is redundant or there is possible null pointer dereference: p." verbose="Either the condition &apos;p&apos; is redundant or there is possible null pointer dereference: p." cwe="476" hash="1842500187" file0="{}" remark="boom">
             <location file="{}" line="5" column="12" info="Null pointer dereference"/>
             <location file="{}" line="4" column="8" info="Assuming that condition &apos;p&apos; is not redundant"/>
             <symbol>p</symbol>
