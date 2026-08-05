@@ -1595,7 +1595,7 @@ namespace simplecpp {
          * @throws std::runtime_error thrown on bad macro syntax
          */
         Macro(const std::string &name, const std::string &value, std::vector<std::string> &f) : nameTokDef(nullptr), files(f), tokenListDefine(f), valueDefinedInCode_(false) {
-            const std::string def(name + ' ' + value);
+            const std::string def(name + ' ' + value + '\n');
             StdCharBufStream stream(reinterpret_cast<const unsigned char*>(def.data()), def.size());
             tokenListDefine.readfile(stream);
             if (!parseDefine(tokenListDefine.cfront()))
