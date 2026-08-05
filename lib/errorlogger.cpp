@@ -106,6 +106,8 @@ ErrorMessage::ErrorMessage(const std::list<const Token*>& callstack, const Token
         file0 = list->getFiles()[0];
 
     setmsg(msg);
+
+    calculateWarningHash(callstack);
 }
 
 
@@ -126,7 +128,7 @@ ErrorMessage::ErrorMessage(const std::list<const Token*>& callstack, const Token
 
     setmsg(msg);
 
-    // hash = calculateWarningHash(list, hashWarning.str());
+    calculateWarningHash(callstack);
 }
 
 ErrorMessage::ErrorMessage(ErrorPath errorPath, const TokenList *tokenList, Severity severity, const char id[], const std::string &msg, const CWE &cwe, Certainty certainty)
@@ -159,7 +161,11 @@ ErrorMessage::ErrorMessage(ErrorPath errorPath, const TokenList *tokenList, Seve
 
     setmsg(msg);
 
-    // hash = calculateWarningHash(tokenList, hashWarning.str());
+    std::list<const Token*> callstack;
+    for (const ErrorPathItem& e: errorPath) {
+        callstack.push_back(e.first);
+    }
+    calculateWarningHash(callstack);
 }
 
 // TODO: improve errorhandling?
@@ -241,6 +247,57 @@ void ErrorMessage::setmsg(const std::string &msg)
     } else {
         mShortMessage = replaceStr(msg.substr(0, pos), "$symbol", symbolName);
         mVerboseMessage = replaceStr(msg.substr(pos + 1), "$symbol", symbolName);
+    }
+}
+
+void ErrorMessage::calculateWarningHash(const std::list<const Token*>& callstack)
+{
+    if (callstack.empty())
+        return;
+    // Calculate a hash for this warning message
+    std::string hashString;
+    for (const Token* tok: callstack) {
+        if (!tok)
+            continue;
+        if (tok->scope()->isExecutable()) {
+            // Executable scope => include all tokens in the function => if the
+            // function is changed the hash is changed
+            for (const Token* t = tok; t; t = t->previous()) {
+                if (!t->scope()->isExecutable())
+                    break;
+                hashString += " " + t->str();
+            }
+            for (const Token* t = tok->next(); t; t = t->next()) {
+                if (!t->scope()->isExecutable())
+                    break;
+                hashString += " " + t->str();
+            }
+        } else {
+            // Non executable scope => include tokens in current statement => if the current statement is changed the hash is changed
+            for (const Token* t = tok; t; t = t->previous()) {
+                if (t->str() == ";")
+                    break;
+                if (t->scope() != tok->scope()) // stop on {} unless its an initializer
+                    break;
+                hashString += " " + t->str();
+            }
+            for (const Token* t = tok->next(); t; t = t->next()) {
+                hashString += " " + t->str();
+                if (t->str() == ";")
+                    break;
+                if (t->scope() != tok->scope()) // stop on {} unless its an initializer
+                    break;
+            }
+        }
+    }
+
+    hashString = id + '\n' + mShortMessage + '\n' + hashString;
+
+    // hash algorithm: sdbm
+    // any hash algorithm can be used but it has to be the same hash on different platforms and compilers
+    hash = 0;
+    for (auto c: hashString) {
+        hash = c + (hash << 6) + (hash << 16) - hash;
     }
 }
 

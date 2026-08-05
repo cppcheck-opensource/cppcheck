@@ -209,6 +209,8 @@ public:
 private:
     static std::string fixInvalidChars(const std::string& raw);
 
+    void calculateWarningHash(const std::list<const Token*>& callstack);
+
     /** Short message */
     std::string mShortMessage;
 
