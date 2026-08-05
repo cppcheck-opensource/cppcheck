@@ -955,15 +955,14 @@ private:
                             "namespace N {\n"
                             "    using namespace O;\n"
                             "    enum class E { E0 };\n"
-                            "    int E0 = E::E0;\n"
+                            "    E E0 = E::E0;\n"
                             "}\n";
         const char expected[] = "2: namespace N {\n"
                                 "3: using namespace O ;\n"
                                 "4: enum class E { E0 } ;\n"
-                                "5: int E0@1 ; E0@1 = E :: E0 ;\n"
+                                "5: E E0@1 ; E0@1 = E :: E0 ;\n"
                                 "6: }\n";
         ASSERT_EQUALS(expected, tokenizeDebugListing(code));
-        (void)errout_str();
     }
 
     void validate() {
