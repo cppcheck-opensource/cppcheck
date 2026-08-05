@@ -113,8 +113,12 @@ ScopedFile::~ScopedFile() {
 
 void SimpleTokenizer2::preprocess(const char* code, std::size_t size, std::vector<std::string> &files, const std::string& file0, Tokenizer& tokenizer, ErrorLogger& errorlogger)
 {
+    const Standards &standards = tokenizer.getSettings().standards;
+    const Standards::Language language = tokenizer.isCPP() ? Standards::CPP : Standards::C;
     simplecpp::OutputList outputList;
-    simplecpp::TokenList tokens1({code, size}, files, file0, &outputList);
+    simplecpp::DUI dui;
+    dui.std = standards.getStdForLanguage(language);
+    simplecpp::TokenList tokens1({code, size}, files, file0, dui, &outputList);
 
     Preprocessor preprocessor(tokens1, tokenizer.getSettings(), errorlogger, Path::identify(tokens1.getFiles()[0], false));
     (void)preprocessor.loadFiles(files); // TODO: check result

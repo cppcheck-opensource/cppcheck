@@ -119,7 +119,7 @@ private:
               "{ }\n"
               "\n"
               "unsigned int Fred::f()\n"
-              "{ }");
+              "{ }\n");
 
         ASSERT_EQUALS("[test.cpp:4:18] -> [test.cpp:12:20]: (style) Unused private function: 'Fred::f' [unusedPrivateFunction]\n", errout_str());
 
@@ -137,7 +137,7 @@ private:
               "{ }\n"
               "\n"
               "unsigned int Fred::f()\n"
-              "{ }");
+              "{ }\n");
 
         ASSERT_EQUALS("[p.h:4:18] -> [p.cpp:4:20]: (style) Unused private function: 'Fred::f' [unusedPrivateFunction]\n", errout_str());
 
@@ -153,7 +153,7 @@ private:
               "\n"
               "void Fred::f()\n"
               "{\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[p.h:4:6] -> [p.cpp:2:12]: (style) Unused private function: 'Fred::f' [unusedPrivateFunction]\n", errout_str());
 
         // Don't warn about include files which implementation we don't see
@@ -169,7 +169,7 @@ private:
               "\n"
               "int main()\n"
               "{\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -187,7 +187,7 @@ private:
               "};\n"
               "\n"
               "A::A()\n"
-              "{ }");
+              "{ }\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -202,7 +202,7 @@ private:
               "};\n"
               "\n"
               "A::~A()\n"
-              "{ B(); }");
+              "{ B(); }\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -217,7 +217,7 @@ private:
               "};\n"
               "\n"
               "A::A() : _owner(false)\n"
-              "{ b(); }");
+              "{ b(); }\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -228,14 +228,14 @@ private:
               "    A() : lock(new Lock())\n"
               "    { }\n"
               "    Lock *lock;\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
     }
 
     void test6() { // ticket #2602 segmentation fault
         check("class A {\n"
               "    A& operator=(const A&);\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -272,7 +272,7 @@ private:
               "};\n"
               "\n"
               "Fred::Fred()\n"
-              "{}");
+              "{}\n");
 
         ASSERT_EQUALS("[test.cpp:6:12] -> [test.cpp:6:12]: (style) Unused private function: 'Fred::get' [unusedPrivateFunction]\n", errout_str());
     }
@@ -291,7 +291,7 @@ private:
               "    void callback(const& unsigned) const {}\n"
               "\n"
               "    Observer<UnusedPrivateFunctionMemberPointer, unsigned> mObserver;\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -305,7 +305,7 @@ private:
               "\n"
               "private:\n"
               "    void f1() const {}\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -319,7 +319,7 @@ private:
               "    void (*fptr)();\n"
               "};\n"
               "myclass::myclass() { fptr = &f; }\n"
-              "void myclass::f() {}");
+              "void myclass::f() {}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -331,7 +331,7 @@ private:
               "    void (*f)();\n"
               "private:\n"
               "    static void func() { }\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -344,7 +344,7 @@ private:
               "    void test(void* f = a) {\n"
               "        f(\"test\");\n"
               "    }\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -385,7 +385,7 @@ private:
               "    }\n"
               "\n"
               "    int numOfThreads;\n"
-              "};");
+              "};\n");
 
         ASSERT_EQUALS("", errout_str());
     }
@@ -398,7 +398,7 @@ private:
               "  double TotalWeighting() { return 123.0; }\n"  // called from constructor
               "public:\n"
               "  double totalWeighting_;\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -406,7 +406,7 @@ private:
         check("class C {\n"
               "    C() = default;\n"
               "    void f() const { (void)this; }\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("[test.cpp:3:10] -> [test.cpp:3:10]: (style) Unused private function: 'C::f' [unusedPrivateFunction]\n", errout_str());
     }
 
@@ -423,7 +423,7 @@ private:
               "private:\n"
               "    static void f()\n"
               "    { }\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("[test.cpp:10:17] -> [test.cpp:10:17]: (style) Unused private function: 'A::f' [unusedPrivateFunction]\n", errout_str());
 
         check("class A\n"
@@ -442,7 +442,7 @@ private:
               "        B(A *a)\n"
               "        { a->f(); }\n"
               "    };\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
 
         check("class A {\n"  // #6968 - outer definition
@@ -453,7 +453,7 @@ private:
               "};\n"
               "class A::B {"
               "  B() { A a; a.f(); }\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
 
         check("class C {\n" // #13790
@@ -476,7 +476,7 @@ private:
               "private:\n"
               "    void f() { }\n"
               "    void f(int) { }\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -488,7 +488,7 @@ private:
               "    derived() : base() { }\n"
               "private:\n"
               "    void f();\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
 
         check("class base {\n"
@@ -500,7 +500,7 @@ private:
               "private:\n"
               "    void foo() {}\n" // Skip for overrides of virtual functions of base
               "    void bar() {}\n" // Don't skip if no function is overridden
-              "};");
+              "};\n");
         ASSERT_EQUALS("[test.cpp:9:10] -> [test.cpp:9:10]: (style) Unused private function: 'derived::bar' [unusedPrivateFunction]\n", errout_str());
 
         check("class Base {\n"
@@ -519,7 +519,7 @@ private:
               "class Derived2: public Derived1 {\n"
               "private:\n"
               "    void func() {}\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
 
         check("class Base {\n"
@@ -537,7 +537,7 @@ private:
               "    Derived* f() {\n"
               "      return 0;\n"
               "    }\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -547,7 +547,7 @@ private:
               "private:\n"
               "    friend Bar;\n" // Unknown friend class
               "    void f() { }\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
 
         check("struct Bar {\n"
@@ -557,7 +557,7 @@ private:
               "private:\n"
               "    friend Bar;\n"
               "    void f();\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
 
         check("struct Bar {\n"
@@ -567,7 +567,7 @@ private:
               "private:\n"
               "    friend Bar;\n"
               "    void f() { }\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
 
         check("class Bar {\n" // Friend class seen, f() not used in it
@@ -575,7 +575,7 @@ private:
               "class Foo {\n"
               "    friend Bar;\n"
               "    void f() { }\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("[test.cpp:5:10] -> [test.cpp:5:10]: (style) Unused private function: 'Foo::f' [unusedPrivateFunction]\n", errout_str());
 
         check("struct F;\n" // #10265
@@ -589,7 +589,7 @@ private:
               "    bool operator()(const S& lhs, const S& rhs) const {\n"
               "        return lhs.f() < rhs.f();\n"
               "    }\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -603,7 +603,7 @@ private:
               "public:\n"
               "    Foo() { }\n"
               "    __property int x = {read=getx}\n"
-              "};", dinit(CheckOptions, $.platform = Platform::Type::Win32A));
+              "};\n", dinit(CheckOptions, $.platform = Platform::Type::Win32A));
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -616,7 +616,7 @@ private:
               "    }\n"
               "public:\n"
               "    Foo() { }\n"
-              "};", dinit(CheckOptions, $.platform = Platform::Type::Win32A));
+              "};\n", dinit(CheckOptions, $.platform = Platform::Type::Win32A));
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -634,7 +634,7 @@ private:
               "template <class T>\n"
               "T A::getVal() const {\n"
               "    return internalGetVal();\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -650,7 +650,7 @@ private:
               "private:\n"
               "    void startListening() {\n"
               "    }\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
 
         check("class Fred\n"
@@ -662,100 +662,100 @@ private:
               "private:\n"
               "    void startListening() {\n"
               "    }\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("[test.cpp:8:10] -> [test.cpp:8:10]: (style) Unused private function: 'Fred::startListening' [unusedPrivateFunction]\n", errout_str());
 
         // #5059
         check("class Fred {\n"
               "    void* operator new(size_t obj_size, size_t buf_size) {}\n"
-              "};");
+              "};\n");
         TODO_ASSERT_EQUALS("[test.cpp:2]: (style) Unused private function: 'Fred::operatornew'\n", "", errout_str()); // No message for operators - we currently cannot check their usage
 
         check("class Fred {\n"
               "    void* operator new(size_t obj_size, size_t buf_size) {}\n"
               "public:\n"
               "    void* foo() { return new(size) Fred(); }\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
     }
 
     void testDoesNotIdentifyMethodAsFirstFunctionArgument() {
-        check("void callback(void (*func)(int), int arg)"
-              "{"
-              "    (*func)(arg);"
-              "}"
-              "class MountOperation"
-              "{"
-              "    static void Completed(int i);"
-              "public:"
-              "    MountOperation(int i);"
-              "};"
-              "void MountOperation::Completed(int i)"
-              "{"
-              "    std::cerr << i << std::endl;"
-              "}"
-              "MountOperation::MountOperation(int i)"
-              "{"
-              "    callback(MountOperation::Completed, i);"
-              "}"
-              "int main(void)"
-              "{"
-              "    MountOperation aExample(10);"
-              "}"
+        check("void callback(void (*func)(int), int arg)\n"
+              "{\n"
+              "    (*func)(arg);\n"
+              "}\n"
+              "class MountOperation\n"
+              "{\n"
+              "    static void Completed(int i);\n"
+              "public:\n"
+              "    MountOperation(int i);\n"
+              "};\n"
+              "void MountOperation::Completed(int i)\n"
+              "{\n"
+              "    std::cerr << i << std::endl;\n"
+              "}\n"
+              "MountOperation::MountOperation(int i)\n"
+              "{\n"
+              "    callback(MountOperation::Completed, i);\n"
+              "}\n"
+              "int main(void)\n"
+              "{\n"
+              "    MountOperation aExample(10);\n"
+              "}\n"
               );
         ASSERT_EQUALS("", errout_str());
     }
 
     void testDoesNotIdentifyMethodAsMiddleFunctionArgument() {
-        check("void callback(char, void (*func)(int), int arg)"
-              "{"
-              "    (*func)(arg);"
-              "}"
-              "class MountOperation"
-              "{"
-              "    static void Completed(int i);"
-              "public:"
-              "    MountOperation(int i);"
-              "};"
-              "void MountOperation::Completed(int i)"
-              "{"
-              "    std::cerr << i << std::endl;"
-              "}"
-              "MountOperation::MountOperation(int i)"
-              "{"
-              "    callback('a', MountOperation::Completed, i);"
-              "}"
-              "int main(void)"
-              "{"
-              "    MountOperation aExample(10);"
-              "}"
+        check("void callback(char, void (*func)(int), int arg)\n"
+              "{\n"
+              "    (*func)(arg);\n"
+              "}\n"
+              "class MountOperation\n"
+              "{\n"
+              "    static void Completed(int i);\n"
+              "public:\n"
+              "    MountOperation(int i);\n"
+              "};\n"
+              "void MountOperation::Completed(int i)\n"
+              "{\n"
+              "    std::cerr << i << std::endl;\n"
+              "}\n"
+              "MountOperation::MountOperation(int i)\n"
+              "{\n"
+              "    callback('a', MountOperation::Completed, i);\n"
+              "}\n"
+              "int main(void)\n"
+              "{\n"
+              "    MountOperation aExample(10);\n"
+              "}\n"
               );
         ASSERT_EQUALS("", errout_str());
     }
 
     void testDoesNotIdentifyMethodAsLastFunctionArgument() {
-        check("void callback(int arg, void (*func)(int))"
-              "{"
-              "    (*func)(arg);"
-              "}"
-              "class MountOperation"
-              "{"
-              "    static void Completed(int i);"
-              "public:"
-              "    MountOperation(int i);"
-              "};"
-              "void MountOperation::Completed(int i)"
-              "{"
-              "    std::cerr << i << std::endl;"
-              "}"
-              "MountOperation::MountOperation(int i)"
-              "{"
-              "    callback(i, MountOperation::Completed);"
-              "}"
-              "int main(void)"
-              "{"
-              "    MountOperation aExample(10);"
-              "}"
+        check("void callback(int arg, void (*func)(int))\n"
+              "{\n"
+              "    (*func)(arg);\n"
+              "}\n"
+              "class MountOperation\n"
+              "{\n"
+              "    static void Completed(int i);\n"
+              "public:\n"
+              "    MountOperation(int i);\n"
+              "};\n"
+              "void MountOperation::Completed(int i)\n"
+              "{\n"
+              "    std::cerr << i << std::endl;\n"
+              "}\n"
+              "MountOperation::MountOperation(int i)\n"
+              "{\n"
+              "    callback(i, MountOperation::Completed);\n"
+              "}\n"
+              "int main(void)\n"
+              "{\n"
+              "    MountOperation aExample(10);\n"
+              "}\n"
               );
         ASSERT_EQUALS("", errout_str());
     }
@@ -767,7 +767,7 @@ private:
               "private:\n"
               "    virtual void F() const;\n"
               "};\n"
-              "void Bla::F() const { }");
+              "void Bla::F() const { }\n");
 
         ASSERT_EQUALS("", errout_str());
     }
@@ -786,7 +786,7 @@ private:
               "};\n"
               "void InfiniteA::foo() {\n"
               "    C a;\n"
-              "}");
+              "}\n");
 
         ASSERT_EQUALS("", errout_str());
     }
@@ -796,7 +796,7 @@ private:
               "    static int i;\n"
               "    static int F() const { return 1; }\n"
               "};\n"
-              "int Foo::i = Foo::F();");
+              "int Foo::i = Foo::F();\n");
         ASSERT_EQUALS("", errout_str());
 
         check("class Foo {\n"
@@ -804,15 +804,15 @@ private:
               "    int F() const { return 1; }\n"
               "};\n"
               "Foo f;\n"
-              "int Foo::i = f.F();");
+              "int Foo::i = f.F();\n");
         ASSERT_EQUALS("", errout_str());
 
         check("class Foo {\n"
               "    static int i;\n"
               "    static int F() const { return 1; }\n"
               "};\n"
-              "int Foo::i = sth();"
-              "int i = F();");
+              "int Foo::i = sth();\n"
+              "int i = F();\n");
         ASSERT_EQUALS("[test.cpp:3:16] -> [test.cpp:3:16]: (style) Unused private function: 'Foo::F' [unusedPrivateFunction]\n", errout_str());
     }
 
@@ -835,14 +835,14 @@ private:
               "int main() {\n"
               "    CTest::Greeting<bool>(true);\n"
               "    return 0;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
     void maybeUnused() {
         check("class C {\n"
               "    [[maybe_unused]] int f() { return 42; }\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
 
         check("class C {\n"
@@ -855,7 +855,7 @@ private:
     void attributeUnused() {
         check("class C {\n"
               "    __attribute__((unused)) int f() { return 42; }\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
 
         check("class C {\n"

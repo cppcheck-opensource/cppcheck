@@ -65,7 +65,7 @@ private:
     }
 
     void inc() const {
-        const char code[] = "a++1;1++b;";
+        const char code[] = "a++1;1++b;\n";
 
         const SimpleTokenList tokenlist(code);
         ASSERT(Token::simpleMatch(tokenlist.front(), "a + + 1 ; 1 + + b ;"));
@@ -73,7 +73,7 @@ private:
 
     void isKeyword() const {
 
-        const char code[] = "for a int delete true";
+        const char code[] = "for a int delete true\n";
 
         {
             const SimpleTokenList tokenlist(code, Standards::Language::C);
@@ -109,19 +109,19 @@ private:
         }
 
         {
-            const char code2[] = "_Generic"; // C11 keyword
+            const char code2[] = "_Generic\n"; // C11 keyword
             const SimpleTokenList tokenlist(code2); // default settings use latest standard
             ASSERT_EQUALS(false, tokenlist.front()->isKeyword());
         }
 
         {
-            const char code2[] = "_Generic"; // C11 keyword
+            const char code2[] = "_Generic\n"; // C11 keyword
             const SimpleTokenList tokenlist(code2, Standards::Language::C); // default settings use latest standard
             ASSERT_EQUALS(true, tokenlist.front()->isKeyword());
         }
 
         {
-            const char code2[] = "_Generic"; // C11 keyword
+            const char code2[] = "_Generic\n"; // C11 keyword
             const Settings s = settingsBuilder().c(Standards::C89).build();
             TokenList tokenlist(s, Standards::Language::C);
             tokenlist.appendFileIfNew("a.c");
@@ -130,19 +130,19 @@ private:
         }
 
         {
-            const char code2[] = "co_return"; // C++20 keyword
+            const char code2[] = "co_return\n"; // C++20 keyword
             const SimpleTokenList tokenlist(code2); // default settings use latest standard
             ASSERT_EQUALS(true, tokenlist.front()->isKeyword());
         }
 
         {
-            const char code2[] = "co_return"; // C++20 keyword
+            const char code2[] = "co_return\n"; // C++20 keyword
             const SimpleTokenList tokenlist(code2, Standards::Language::C); // default settings use latest standard
             ASSERT_EQUALS(false, tokenlist.front()->isKeyword());
         }
 
         {
-            const char code2[] = "noexcept"; // C++11 keyword
+            const char code2[] = "noexcept\n"; // C++11 keyword
             const Settings s = settingsBuilder().cpp(Standards::CPP03).build();
             TokenList tokenlist(s, Standards::Language::CPP);
             tokenlist.appendFileIfNew("a.cpp");
@@ -154,9 +154,9 @@ private:
     void notokens() {
         // analyzing /usr/include/poll.h caused Path::identify() to be called with an empty filename from
         // TokenList::determineCppC() because there are no tokens
-        const char code[] = "#include <sys/poll.h>";
+        const char code[] = "#include <sys/poll.h>\n";
         std::vector<std::string> files;
-        simplecpp::TokenList tokens1(code, files, "poll.h", nullptr);
+        simplecpp::TokenList tokens1(code, files, "poll.h", {}, nullptr);
         Preprocessor preprocessor(tokens1, settingsDefault, *this, Path::identify(tokens1.getFiles()[0], false));
         simplecpp::OutputList outputList_pp;
         simplecpp::TokenList tokensP = preprocessor.preprocess("", files, outputList_pp);
@@ -166,7 +166,7 @@ private:
     }
 
     void ast1() const {
-        const char code[] = "('Release|x64' == 'Release|x64');";
+        const char code[] = "('Release|x64' == 'Release|x64');\n";
 
         TokenList tokenlist(settingsDefault, Standards::Language::C);
         ASSERT(tokenlist.createTokensFromString(code));

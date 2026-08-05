@@ -649,7 +649,7 @@ namespace {
         }
 
         static bool evalCondition(const std::string& condition, const ProjectConfiguration &p) {
-            std::string c = '(' + condition + ")";
+            std::string c = '(' + condition + ")\n";
             replaceAll(c, "$(Configuration)", p.configuration);
             replaceAll(c, "$(Platform)", p.platformStr);
 

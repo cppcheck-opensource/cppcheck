@@ -45,15 +45,15 @@ private:
     }
 
     void createSummaries1() {
-        ASSERT_EQUALS("foo\n", createSummaries("void foo() {}"));
+        ASSERT_EQUALS("foo\n", createSummaries("void foo() {}\n"));
     }
 
     void createSummariesGlobal() {
-        ASSERT_EQUALS("foo global:[x]\n", createSummaries("int x; void foo() { x=0; }"));
+        ASSERT_EQUALS("foo global:[x]\n", createSummaries("int x; void foo() { x=0; }\n"));
     }
 
     void createSummariesNoreturn() {
-        ASSERT_EQUALS("foo call:[bar] noreturn:[bar]\n", createSummaries("void foo() { bar(); }"));
+        ASSERT_EQUALS("foo call:[bar] noreturn:[bar]\n", createSummaries("void foo() { bar(); }\n"));
     }
 };
 
