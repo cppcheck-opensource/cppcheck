@@ -43,7 +43,7 @@ public:
     TestValueFlow() : TestFixture("TestValueFlow") {}
 
 private:
-    /*const*/ Settings settings = settingsBuilder().library("std.cfg").build();
+    const Settings settings = settingsBuilder().library("std.cfg").build();
 
     void run() override {
 
@@ -430,9 +430,10 @@ private:
         return false;
     }
 
-    bool testValueOfX_(const char* file, int line, const char code[], unsigned int linenr, int value, ValueFlow::Value::ValueType type) {
+    bool testValueOfX_(const char* file, int line, const char code[], unsigned int linenr, int value, ValueFlow::Value::ValueType type, const Settings* s = nullptr) {
+        const Settings& curSettings = s ? *s : settings;
         // Tokenize..
-        SimpleTokenizer tokenizer(settings, *this);
+        SimpleTokenizer tokenizer(curSettings, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         for (const Token *tok = tokenizer.tokens(); tok; tok = tok->next()) {
@@ -5864,21 +5865,19 @@ private:
         ASSERT_EQUALS(false, value.isKnown());
 
         // #13959
-        const Settings settingsOld = settings;
-        settings.standards.c = Standards::C23;
+        const Settings settingsC23 = settingsBuilder(settings).c(Standards::C23).build();
         code = "void f(int* p) {\n"
                "    if (p == nullptr)\n"
                "        return;\n"
                "    if (p) {}\n"
                "}\n";
-        value = valueOfTok(code, "p ) { }", &settings, /*cpp*/ false);
+        value = valueOfTok(code, "p ) { }", &settingsC23, /*cpp*/ false);
         ASSERT_EQUALS(1, value.intvalue);
         ASSERT_EQUALS(true, value.isKnown());
 
-        settings.standards.c = Standards::C17;
-        value = valueOfTok(code, "p ) { }", &settings, /*cpp*/ false);
+        const Settings settingsC17 = settingsBuilder(settings).c(Standards::C17).build();
+        value = valueOfTok(code, "p ) { }", &settingsC17, /*cpp*/ false);
         ASSERT(value == ValueFlow::Value());
-        settings = settingsOld;
     }
 
     void valueFlowSizeofForwardDeclaredEnum() {
@@ -7747,48 +7746,47 @@ private:
     void valueFlowDynamicBufferSize() {
         const char *code;
 
-        const Settings settingsOld = settings; // TODO: get rid of this
-        settings = settingsBuilder(settings).library("posix.cfg").library("bsd.cfg").build();
+        const Settings settingsCfg = settingsBuilder(settings).library("posix.cfg").library("bsd.cfg").build();
 
         code = "void* f() {\n"
                "  void* x = malloc(10);\n"
                "  return x;\n"
                "}";
-        ASSERT_EQUALS(true, testValueOfX(code, 3U, 10,  ValueFlow::Value::ValueType::BUFFER_SIZE));
+        ASSERT_EQUALS(true, testValueOfX(code, 3U, 10, ValueFlow::Value::ValueType::BUFFER_SIZE, &settingsCfg));
 
         code = "void* f() {\n"
                "  void* x = calloc(4, 5);\n"
                "  return x;\n"
                "}";
-        ASSERT_EQUALS(true, testValueOfX(code, 3U, 20,  ValueFlow::Value::ValueType::BUFFER_SIZE));
+        ASSERT_EQUALS(true, testValueOfX(code, 3U, 20,  ValueFlow::Value::ValueType::BUFFER_SIZE, &settingsCfg));
 
         code = "void* f() {\n"
                "  const char* y = \"abcd\";\n"
                "  const char* x = strdup(y);\n"
                "  return x;\n"
                "}";
-        ASSERT_EQUALS(true, testValueOfX(code, 4U, 5,  ValueFlow::Value::ValueType::BUFFER_SIZE));
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 5,  ValueFlow::Value::ValueType::BUFFER_SIZE, &settingsCfg));
 
         code = "void* f() {\n"
                "  void* y = malloc(10);\n"
                "  void* x = realloc(y, 20);\n"
                "  return x;\n"
                "}";
-        ASSERT_EQUALS(true, testValueOfX(code, 4U, 20,  ValueFlow::Value::ValueType::BUFFER_SIZE));
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 20,  ValueFlow::Value::ValueType::BUFFER_SIZE, &settingsCfg));
 
         code = "void* f() {\n"
                "  void* y = calloc(10, 4);\n"
                "  void* x = reallocarray(y, 20, 5);\n"
                "  return x;\n"
                "}";
-        ASSERT_EQUALS(true, testValueOfX(code, 4U, 100,  ValueFlow::Value::ValueType::BUFFER_SIZE));
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 100,  ValueFlow::Value::ValueType::BUFFER_SIZE, &settingsCfg));
 
         code = "struct A {};\n" // #14305
                "void* f() {\n"
                "  A* x = new A();\n"
                "  return x;\n"
                "}";
-        ASSERT_EQUALS(true, testValueOfX(code, 4U, 1, ValueFlow::Value::ValueType::BUFFER_SIZE));
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 1, ValueFlow::Value::ValueType::BUFFER_SIZE, &settingsCfg));
 
         code = "struct A {};\n"
                "void* f() {\n"
@@ -7796,7 +7794,7 @@ private:
                "  return x;\n"
                "}";
         {
-            auto values = tokenValues(code, "x ; }");
+            auto values = tokenValues(code, "x ; }", &settingsCfg);
             ASSERT_EQUALS(1, values.size());
             ASSERT(values.front().isSymbolicValue());
             // TODO: add BUFFER_SIZE value = 1
@@ -7807,9 +7805,7 @@ private:
                "  B* x = new B();\n"
                "  return x;\n"
                "}";
-        ASSERT_EQUALS(true, testValueOfX(code, 4U, 4, ValueFlow::Value::ValueType::BUFFER_SIZE));
-
-        settings = settingsOld;
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 4, ValueFlow::Value::ValueType::BUFFER_SIZE, &settingsCfg));
     }
 
     void valueFlowSafeFunctionParameterValues() {
