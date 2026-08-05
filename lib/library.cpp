@@ -177,7 +177,7 @@ static std::vector<std::string> getnames(const char *names)
 
 static void gettokenlistfromvalid(const std::string& valid, TokenList& tokenList)
 {
-    const std::string str(valid + ',');
+    const std::string str(valid + ",\n");
     tokenList.createTokensFromBuffer(str.data(), str.size()); // TODO: check result?
     for (Token *tok = tokenList.front(); tok; tok = tok->next()) {
         if (Token::Match(tok,"- %num%")) {
