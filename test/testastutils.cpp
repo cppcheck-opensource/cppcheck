@@ -62,29 +62,29 @@ private:
     void findLambdaEndTokenTest() {
         const Token* nullTok = nullptr;
         ASSERT(nullptr == (::findLambdaEndToken)(nullTok));
-        ASSERT_EQUALS(false, findLambdaEndToken("void f() { }"));
-        ASSERT_EQUALS(true, findLambdaEndToken("[]{ }"));
-        ASSERT_EQUALS(true, findLambdaEndToken("[]{ return 0; }"));
-        ASSERT_EQUALS(true, findLambdaEndToken("[](){ }"));
-        ASSERT_EQUALS(true, findLambdaEndToken("[&](){ }"));
-        ASSERT_EQUALS(true, findLambdaEndToken("[&, i](){ }"));
-        ASSERT_EQUALS(true, findLambdaEndToken("[](void) { return -1; }"));
-        ASSERT_EQUALS(true, findLambdaEndToken("[](int a, int b) { return a + b; }"));
-        ASSERT_EQUALS(true, findLambdaEndToken("[](int a, int b) mutable { return a + b; }"));
-        ASSERT_EQUALS(true, findLambdaEndToken("[](int a, int b) constexpr { return a + b; }"));
-        ASSERT_EQUALS(true, findLambdaEndToken("[](void) -> int { return -1; }"));
-        ASSERT_EQUALS(true, findLambdaEndToken("[](void) mutable -> int { return -1; }"));
-        ASSERT_EQUALS(false, findLambdaEndToken("[](void) foo -> int { return -1; }"));
-        ASSERT_EQUALS(true, findLambdaEndToken("[](void) constexpr -> int { return -1; }"));
-        ASSERT_EQUALS(true, findLambdaEndToken("[](void) constexpr -> int* { return x; }"));
-        ASSERT_EQUALS(true, findLambdaEndToken("[](void) constexpr -> const * int { return x; }"));
-        ASSERT_EQUALS(true, findLambdaEndToken("[](void) mutable -> const * int { return x; }"));
-        ASSERT_EQUALS(true, findLambdaEndToken("[](void) constexpr -> const ** int { return x; }"));
-        ASSERT_EQUALS(true, findLambdaEndToken("[](void) constexpr -> const * const* int { return x; }"));
-        ASSERT_EQUALS(false, findLambdaEndToken("int** a[] { new int*[2] { new int, new int} };", "[ ]"));
-        ASSERT_EQUALS(false, findLambdaEndToken("int** a[] { new int*[2] { new int, new int} };", "[ 2"));
-        ASSERT_EQUALS(false, findLambdaEndToken("shared_ptr<Type *[]> sp{ new Type *[2] {new Type, new Type}, Deleter<Type>{ 2 } };", "[ 2"));
-        ASSERT_EQUALS(true, findLambdaEndToken("int i = 5 * []{ return 7; }();", "[", /*checkNext*/ false));
+        ASSERT_EQUALS(false, findLambdaEndToken("void f() { }\n"));
+        ASSERT_EQUALS(true, findLambdaEndToken("[]{ }\n"));
+        ASSERT_EQUALS(true, findLambdaEndToken("[]{ return 0; }\n"));
+        ASSERT_EQUALS(true, findLambdaEndToken("[](){ }\n"));
+        ASSERT_EQUALS(true, findLambdaEndToken("[&](){ }\n"));
+        ASSERT_EQUALS(true, findLambdaEndToken("[&, i](){ }\n"));
+        ASSERT_EQUALS(true, findLambdaEndToken("[](void) { return -1; }\n"));
+        ASSERT_EQUALS(true, findLambdaEndToken("[](int a, int b) { return a + b; }\n"));
+        ASSERT_EQUALS(true, findLambdaEndToken("[](int a, int b) mutable { return a + b; }\n"));
+        ASSERT_EQUALS(true, findLambdaEndToken("[](int a, int b) constexpr { return a + b; }\n"));
+        ASSERT_EQUALS(true, findLambdaEndToken("[](void) -> int { return -1; }\n"));
+        ASSERT_EQUALS(true, findLambdaEndToken("[](void) mutable -> int { return -1; }\n"));
+        ASSERT_EQUALS(false, findLambdaEndToken("[](void) foo -> int { return -1; }\n"));
+        ASSERT_EQUALS(true, findLambdaEndToken("[](void) constexpr -> int { return -1; }\n"));
+        ASSERT_EQUALS(true, findLambdaEndToken("[](void) constexpr -> int* { return x; }\n"));
+        ASSERT_EQUALS(true, findLambdaEndToken("[](void) constexpr -> const * int { return x; }\n"));
+        ASSERT_EQUALS(true, findLambdaEndToken("[](void) mutable -> const * int { return x; }\n"));
+        ASSERT_EQUALS(true, findLambdaEndToken("[](void) constexpr -> const ** int { return x; }\n"));
+        ASSERT_EQUALS(true, findLambdaEndToken("[](void) constexpr -> const * const* int { return x; }\n"));
+        ASSERT_EQUALS(false, findLambdaEndToken("int** a[] { new int*[2] { new int, new int} };\n", "[ ]"));
+        ASSERT_EQUALS(false, findLambdaEndToken("int** a[] { new int*[2] { new int, new int} };\n", "[ 2"));
+        ASSERT_EQUALS(false, findLambdaEndToken("shared_ptr<Type *[]> sp{ new Type *[2] {new Type, new Type}, Deleter<Type>{ 2 } };\n", "[ 2"));
+        ASSERT_EQUALS(true, findLambdaEndToken("int i = 5 * []{ return 7; }();\n", "[", /*checkNext*/ false));
     }
 
 #define findLambdaStartToken(...) findLambdaStartToken_(__FILE__, __LINE__, __VA_ARGS__)
@@ -98,25 +98,25 @@ private:
 
     void findLambdaStartTokenTest() {
         ASSERT(nullptr == (::findLambdaStartToken)(nullptr));
-        ASSERT_EQUALS(false, findLambdaStartToken("void f() { }"));
-        ASSERT_EQUALS(true, findLambdaStartToken("[]{ }"));
-        ASSERT_EQUALS(true, findLambdaStartToken("[]{ return 0; }"));
-        ASSERT_EQUALS(true, findLambdaStartToken("[](){ }"));
-        ASSERT_EQUALS(true, findLambdaStartToken("[&](){ }"));
-        ASSERT_EQUALS(true, findLambdaStartToken("[&, i](){ }"));
-        ASSERT_EQUALS(true, findLambdaStartToken("[](void) { return -1; }"));
-        ASSERT_EQUALS(true, findLambdaStartToken("[](int a, int b) { return a + b; }"));
-        ASSERT_EQUALS(true, findLambdaStartToken("[](int a, int b) mutable { return a + b; }"));
-        ASSERT_EQUALS(true, findLambdaStartToken("[](int a, int b) constexpr { return a + b; }"));
-        ASSERT_EQUALS(true, findLambdaStartToken("[](void) -> int { return -1; }"));
-        ASSERT_EQUALS(true, findLambdaStartToken("[](void) mutable -> int { return -1; }"));
-        ASSERT_EQUALS(false, findLambdaStartToken("[](void) foo -> int { return -1; }"));
-        ASSERT_EQUALS(true, findLambdaStartToken("[](void) constexpr -> int { return -1; }"));
-        ASSERT_EQUALS(true, findLambdaStartToken("[](void) constexpr -> int* { return x; }"));
-        ASSERT_EQUALS(true, findLambdaStartToken("[](void) constexpr -> const * int { return x; }"));
-        ASSERT_EQUALS(true, findLambdaStartToken("[](void) mutable -> const * int { return x; }"));
-        ASSERT_EQUALS(true, findLambdaStartToken("[](void) constexpr -> const ** int { return x; }"));
-        ASSERT_EQUALS(true, findLambdaStartToken("[](void) constexpr -> const * const* int { return x; }"));
+        ASSERT_EQUALS(false, findLambdaStartToken("void f() { }\n"));
+        ASSERT_EQUALS(true, findLambdaStartToken("[]{ }\n"));
+        ASSERT_EQUALS(true, findLambdaStartToken("[]{ return 0; }\n"));
+        ASSERT_EQUALS(true, findLambdaStartToken("[](){ }\n"));
+        ASSERT_EQUALS(true, findLambdaStartToken("[&](){ }\n"));
+        ASSERT_EQUALS(true, findLambdaStartToken("[&, i](){ }\n"));
+        ASSERT_EQUALS(true, findLambdaStartToken("[](void) { return -1; }\n"));
+        ASSERT_EQUALS(true, findLambdaStartToken("[](int a, int b) { return a + b; }\n"));
+        ASSERT_EQUALS(true, findLambdaStartToken("[](int a, int b) mutable { return a + b; }\n"));
+        ASSERT_EQUALS(true, findLambdaStartToken("[](int a, int b) constexpr { return a + b; }\n"));
+        ASSERT_EQUALS(true, findLambdaStartToken("[](void) -> int { return -1; }\n"));
+        ASSERT_EQUALS(true, findLambdaStartToken("[](void) mutable -> int { return -1; }\n"));
+        ASSERT_EQUALS(false, findLambdaStartToken("[](void) foo -> int { return -1; }\n"));
+        ASSERT_EQUALS(true, findLambdaStartToken("[](void) constexpr -> int { return -1; }\n"));
+        ASSERT_EQUALS(true, findLambdaStartToken("[](void) constexpr -> int* { return x; }\n"));
+        ASSERT_EQUALS(true, findLambdaStartToken("[](void) constexpr -> const * int { return x; }\n"));
+        ASSERT_EQUALS(true, findLambdaStartToken("[](void) mutable -> const * int { return x; }\n"));
+        ASSERT_EQUALS(true, findLambdaStartToken("[](void) constexpr -> const ** int { return x; }\n"));
+        ASSERT_EQUALS(true, findLambdaStartToken("[](void) constexpr -> const * const* int { return x; }\n"));
     }
 
 #define isNullOperand(...) isNullOperand_(__FILE__, __LINE__, __VA_ARGS__)
@@ -128,16 +128,16 @@ private:
     }
 
     void isNullOperandTest() {
-        ASSERT_EQUALS(true, isNullOperand("(void*)0;"));
-        ASSERT_EQUALS(true, isNullOperand("(void*)0U;"));
-        ASSERT_EQUALS(true, isNullOperand("(void*)0x0LL;"));
-        ASSERT_EQUALS(true, isNullOperand("NULL;"));
-        ASSERT_EQUALS(true, isNullOperand("nullptr;"));
-        ASSERT_EQUALS(true, isNullOperand("(void*)NULL;"));
-        ASSERT_EQUALS(true, isNullOperand("static_cast<int*>(0);"));
-        ASSERT_EQUALS(false, isNullOperand("0;"));
-        ASSERT_EQUALS(false, isNullOperand("(void*)0.0;"));
-        ASSERT_EQUALS(false, isNullOperand("(void*)1;"));
+        ASSERT_EQUALS(true, isNullOperand("(void*)0;\n"));
+        ASSERT_EQUALS(true, isNullOperand("(void*)0U;\n"));
+        ASSERT_EQUALS(true, isNullOperand("(void*)0x0LL;\n"));
+        ASSERT_EQUALS(true, isNullOperand("NULL;\n"));
+        ASSERT_EQUALS(true, isNullOperand("nullptr;\n"));
+        ASSERT_EQUALS(true, isNullOperand("(void*)NULL;\n"));
+        ASSERT_EQUALS(true, isNullOperand("static_cast<int*>(0);\n"));
+        ASSERT_EQUALS(false, isNullOperand("0;\n"));
+        ASSERT_EQUALS(false, isNullOperand("(void*)0.0;\n"));
+        ASSERT_EQUALS(false, isNullOperand("(void*)1;\n"));
     }
 
 #define isReturnScope(...) isReturnScope_(__FILE__, __LINE__, __VA_ARGS__)
@@ -152,22 +152,22 @@ private:
     }
 
     void isReturnScopeTest() {
-        ASSERT_EQUALS(true, isReturnScope("void f() { if (a) { return; } }", -2));
-        ASSERT_EQUALS(true, isReturnScope("int f() { if (a) { return {}; } }", -2));                        // #8891
-        ASSERT_EQUALS(true, isReturnScope("std::string f() { if (a) { return std::string{}; } }", -2));     // #8891
-        ASSERT_EQUALS(true, isReturnScope("std::string f() { if (a) { return std::string{\"\"}; } }", -2)); // #8891
-        ASSERT_EQUALS(true, isReturnScope("void f() { if (a) { return (ab){0}; } }", -2)); // #7103
-        ASSERT_EQUALS(false, isReturnScope("void f() { if (a) { return (ab){0}; } }", -4)); // #7103
-        ASSERT_EQUALS(true, isReturnScope("void f() { if (a) { {throw new string(x);}; } }", -4)); // #7144
-        ASSERT_EQUALS(true, isReturnScope("void f() { if (a) { {throw new string(x);}; } }", -2)); // #7144
-        ASSERT_EQUALS(false, isReturnScope("void f() { [=]() { return data; }; }", -1));
-        ASSERT_EQUALS(true, isReturnScope("auto f() { return [=]() { return data; }; }", -1));
-        ASSERT_EQUALS(true, isReturnScope("auto f() { return [=]() { return data; }(); }", -1));
-        ASSERT_EQUALS(false, isReturnScope("auto f() { [=]() { return data; }(); }", -1));
+        ASSERT_EQUALS(true, isReturnScope("void f() { if (a) { return; } }\n", -2));
+        ASSERT_EQUALS(true, isReturnScope("int f() { if (a) { return {}; } }\n", -2));                        // #8891
+        ASSERT_EQUALS(true, isReturnScope("std::string f() { if (a) { return std::string{}; } }\n", -2));     // #8891
+        ASSERT_EQUALS(true, isReturnScope("std::string f() { if (a) { return std::string{\"\"}; } }\n", -2)); // #8891
+        ASSERT_EQUALS(true, isReturnScope("void f() { if (a) { return (ab){0}; } }\n", -2)); // #7103
+        ASSERT_EQUALS(false, isReturnScope("void f() { if (a) { return (ab){0}; } }\n", -4)); // #7103
+        ASSERT_EQUALS(true, isReturnScope("void f() { if (a) { {throw new string(x);}; } }\n", -4)); // #7144
+        ASSERT_EQUALS(true, isReturnScope("void f() { if (a) { {throw new string(x);}; } }\n", -2)); // #7144
+        ASSERT_EQUALS(false, isReturnScope("void f() { [=]() { return data; }; }\n", -1));
+        ASSERT_EQUALS(true, isReturnScope("auto f() { return [=]() { return data; }; }\n", -1));
+        ASSERT_EQUALS(true, isReturnScope("auto f() { return [=]() { return data; }(); }\n", -1));
+        ASSERT_EQUALS(false, isReturnScope("auto f() { [=]() { return data; }(); }\n", -1));
 
-        ASSERT_EQUALS(true, isReturnScope("void negativeTokenOffset() { return; }", -1));
-        ASSERT_EQUALS(false, isReturnScope("void zeroTokenOffset() { return; }", 0));
-        ASSERT_EQUALS(true, isReturnScope("void positiveTokenOffset() { return; }", 7));
+        ASSERT_EQUALS(true, isReturnScope("void negativeTokenOffset() { return; }\n", -1));
+        ASSERT_EQUALS(false, isReturnScope("void zeroTokenOffset() { return; }\n", 0));
+        ASSERT_EQUALS(true, isReturnScope("void positiveTokenOffset() { return; }\n", 7));
     }
 
 #define isSameExpression(...) isSameExpression_(__FILE__, __LINE__, __VA_ARGS__)
@@ -181,33 +181,33 @@ private:
     }
 
     void isSameExpressionTestInternal(bool cpp) {
-        ASSERT_EQUALS(true,  isSameExpression("x = 1 + 1;", "1", "1", cpp));
-        ASSERT_EQUALS(false, isSameExpression("x = 1 + 1u;", "1", "1u", cpp));
-        ASSERT_EQUALS(true,  isSameExpression("x = 1.0 + 1.0;", "1.0", "1.0", cpp));
-        ASSERT_EQUALS(false, isSameExpression("x = 1.0f + 1.0;", "1.0f", "1.0", cpp));
-        ASSERT_EQUALS(false, isSameExpression("x = 1L + 1;", "1L", "1", cpp));
-        ASSERT_EQUALS(true,  isSameExpression("x = 0.0f + 0x0p+0f;", "0.0f", "0x0p+0f", cpp));
-        ASSERT_EQUALS(true,  isSameExpression("x < x;", "x", "x", cpp));
-        ASSERT_EQUALS(false, isSameExpression("x < y;", "x", "y", cpp));
-        ASSERT_EQUALS(true,  isSameExpression("(x + 1) < (x + 1);", "+", "+", cpp));
-        ASSERT_EQUALS(false, isSameExpression("(x + 1) < (x + 1L);", "+", "+", cpp));
-        ASSERT_EQUALS(!cpp,  isSameExpression("(1 + x) < (x + 1);", "+", "+", cpp));
-        ASSERT_EQUALS(false, isSameExpression("(1.0l + x) < (1.0 + x);", "+", "+", cpp));
-        ASSERT_EQUALS(!cpp,  isSameExpression("(0.0 + x) < (x + 0x0p+0);", "+", "+", cpp));
-        ASSERT_EQUALS(true,  isSameExpression("void f() {double y = 1e1; (x + y) < (x + 10.0); } ", "+", "+", cpp));
-        ASSERT_EQUALS(!cpp,  isSameExpression("void f() {double y = 1e1; (x + 10.0) < (y + x); } ", "+", "+", cpp));
-        ASSERT_EQUALS(true,  isSameExpression("void f() {double y = 1e1; double z = 10.0; (x + y) < (x + z); } ", "+", "+", cpp));
-        ASSERT_EQUALS(true,  isSameExpression("A + A", "A", "A", cpp));
+        ASSERT_EQUALS(true,  isSameExpression("x = 1 + 1;\n", "1", "1", cpp));
+        ASSERT_EQUALS(false, isSameExpression("x = 1 + 1u;\n", "1", "1u", cpp));
+        ASSERT_EQUALS(true,  isSameExpression("x = 1.0 + 1.0;\n", "1.0", "1.0", cpp));
+        ASSERT_EQUALS(false, isSameExpression("x = 1.0f + 1.0;\n", "1.0f", "1.0", cpp));
+        ASSERT_EQUALS(false, isSameExpression("x = 1L + 1;\n", "1L", "1", cpp));
+        ASSERT_EQUALS(true,  isSameExpression("x = 0.0f + 0x0p+0f;\n", "0.0f", "0x0p+0f", cpp));
+        ASSERT_EQUALS(true,  isSameExpression("x < x;\n", "x", "x", cpp));
+        ASSERT_EQUALS(false, isSameExpression("x < y;\n", "x", "y", cpp));
+        ASSERT_EQUALS(true,  isSameExpression("(x + 1) < (x + 1);\n", "+", "+", cpp));
+        ASSERT_EQUALS(false, isSameExpression("(x + 1) < (x + 1L);\n", "+", "+", cpp));
+        ASSERT_EQUALS(!cpp,  isSameExpression("(1 + x) < (x + 1);\n", "+", "+", cpp));
+        ASSERT_EQUALS(false, isSameExpression("(1.0l + x) < (1.0 + x);\n", "+", "+", cpp));
+        ASSERT_EQUALS(!cpp,  isSameExpression("(0.0 + x) < (x + 0x0p+0);\n", "+", "+", cpp));
+        ASSERT_EQUALS(true,  isSameExpression("void f() {double y = 1e1; (x + y) < (x + 10.0); } \n", "+", "+", cpp));
+        ASSERT_EQUALS(!cpp,  isSameExpression("void f() {double y = 1e1; (x + 10.0) < (y + x); } \n", "+", "+", cpp));
+        ASSERT_EQUALS(true,  isSameExpression("void f() {double y = 1e1; double z = 10.0; (x + y) < (x + z); } \n", "+", "+", cpp));
+        ASSERT_EQUALS(true,  isSameExpression("A + A\n", "A", "A", cpp));
 
         // the remaining test cases are not valid C code
         if (!cpp)
             return;
 
         //https://trac.cppcheck.net/ticket/9700
-        ASSERT_EQUALS(true, isSameExpression("A::B + A::B;", "::", "::", cpp));
-        ASSERT_EQUALS(false, isSameExpression("A::B + A::C;", "::", "::", cpp));
-        ASSERT_EQUALS(true, isSameExpression("A::B* get() { if(x) return new A::B(true); else return new A::B(true); }", "new", "new", cpp));
-        ASSERT_EQUALS(false, isSameExpression("A::B* get() { if(x) return new A::B(true); else return new A::C(true); }", "new", "new", cpp));
+        ASSERT_EQUALS(true, isSameExpression("A::B + A::B;\n", "::", "::", cpp));
+        ASSERT_EQUALS(false, isSameExpression("A::B + A::C;\n", "::", "::", cpp));
+        ASSERT_EQUALS(true, isSameExpression("A::B* get() { if(x) return new A::B(true); else return new A::B(true); }\n", "new", "new", cpp));
+        ASSERT_EQUALS(false, isSameExpression("A::B* get() { if(x) return new A::B(true); else return new A::C(true); }\n", "new", "new", cpp));
     }
 
     void isSameExpressionCpp() {
@@ -233,7 +233,7 @@ private:
         (void)isVariableChanged("void f() {\n"
                                 "  int b;\n"
                                 "  if (b) { (int)((INTOF(8))result >> b); }\n"
-                                "}", "if", "}");
+                                "}\n", "if", "}");
         // #9235
         ASSERT_EQUALS(false,
                       isVariableChanged("void f() {\n"
@@ -242,13 +242,13 @@ private:
                                         "= a",
                                         "}"));
 
-        ASSERT_EQUALS(false, isVariableChanged("void f(const A& a) { a.f(); }", "{", "}"));
+        ASSERT_EQUALS(false, isVariableChanged("void f(const A& a) { a.f(); }\n", "{", "}"));
         ASSERT_EQUALS(true,
                       isVariableChanged("void g(int*);\n"
                                         "void f(int x) { g(&x); }\n",
                                         "{",
                                         "}"));
-        ASSERT_EQUALS(false, isVariableChanged("const int A[] = { 1, 2, 3 };", "[", "]"));
+        ASSERT_EQUALS(false, isVariableChanged("const int A[] = { 1, 2, 3 };\n", "[", "]"));
     }
 
 #define isVariableChangedByFunctionCall(...) isVariableChangedByFunctionCall_( __FILE__, __LINE__, __VA_ARGS__)
@@ -267,7 +267,7 @@ private:
         { // #8271 - template method
             const char code[] = "void f(int x) {\n"
                                 "  a<int>(x);\n"
-                                "}";
+                                "}\n";
             bool inconclusive = false;
             ASSERT_EQUALS(false, isVariableChangedByFunctionCall(code, "x ) ;", &inconclusive));
             ASSERT_EQUALS(true, inconclusive);
@@ -431,8 +431,8 @@ private:
 
     void isExpressionChangedTest()
     {
-        ASSERT_EQUALS(true, isExpressionChanged("void f(std::map<int, int>& m) { m[0]; }", "m [", "{", "}"));
-        ASSERT_EQUALS(false, isExpressionChanged("void f(const A& a) { a.f(); }", "a .", "{", "}"));
+        ASSERT_EQUALS(true, isExpressionChanged("void f(std::map<int, int>& m) { m[0]; }\n", "m [", "{", "}"));
+        ASSERT_EQUALS(false, isExpressionChanged("void f(const A& a) { a.f(); }\n", "a .", "{", "}"));
 
         ASSERT_EQUALS(true,
                       isExpressionChanged("void g(int*);\n"
@@ -459,17 +459,17 @@ private:
     }
 
     void nextAfterAstRightmostLeafTest() {
-        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("void f(int a, int b) { int x = a + b; }", "=", "; }"));
-        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("int * g(int); void f(int a, int b) { int x = g(a); }", "=", "; }"));
-        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("int * g(int); void f(int a, int b) { int x = g(a)[b]; }", "=", "; }"));
-        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("int * g(int); void f(int a, int b) { int x = g(g(a)[b]); }", "=", "; }"));
-        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("int * g(int); void f(int a, int b) { int x = g(g(a)[b] + a); }", "=", "; }"));
-        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("int * g(int); void f(int a, int b) { int x = g(a)[b + 1]; }", "=", "; }"));
-        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("void f() { int a; int b; int x = [](int a){}; }", "=", "; }"));
+        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("void f(int a, int b) { int x = a + b; }\n", "=", "; }"));
+        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("int * g(int); void f(int a, int b) { int x = g(a); }\n", "=", "; }"));
+        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("int * g(int); void f(int a, int b) { int x = g(a)[b]; }\n", "=", "; }"));
+        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("int * g(int); void f(int a, int b) { int x = g(g(a)[b]); }\n", "=", "; }"));
+        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("int * g(int); void f(int a, int b) { int x = g(g(a)[b] + a); }\n", "=", "; }"));
+        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("int * g(int); void f(int a, int b) { int x = g(a)[b + 1]; }\n", "=", "; }"));
+        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("void f() { int a; int b; int x = [](int a){}; }\n", "=", "; }"));
 
-        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("int * g(int); void f(int a, int b) { int x = a + b; }", "+", "; }"));
-        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("int * g(int); void f(int a, int b) { int x = g(a)[b + 1]; }", "+", "] ; }"));
-        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("int * g(int); void f(int a, int b) { int x = g(a + 1)[b]; }", "+", ") ["));
+        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("int * g(int); void f(int a, int b) { int x = a + b; }\n", "+", "; }"));
+        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("int * g(int); void f(int a, int b) { int x = g(a)[b + 1]; }\n", "+", "] ; }"));
+        ASSERT_EQUALS(true, nextAfterAstRightmostLeaf("int * g(int); void f(int a, int b) { int x = g(a + 1)[b]; }\n", "+", ") ["));
     }
 
     enum class Result : std::uint8_t {False, True, Fail};
@@ -486,37 +486,37 @@ private:
     }
 
     void isUsedAsBool() {
-        ASSERT(Result::True == isUsedAsBool("void f() { bool b = true; }", "b"));
-        ASSERT(Result::False ==isUsedAsBool("void f() { int i = true; }", "i"));
-        ASSERT(Result::True == isUsedAsBool("void f() { int i; if (i) {} }", "i )"));
-        ASSERT(Result::True == isUsedAsBool("void f() { int i; while (i) {} }", "i )"));
-        ASSERT(Result::True == isUsedAsBool("void f() { int i; for (;i;) {} }", "i ; )"));
-        ASSERT(Result::False == isUsedAsBool("void f() { int i; for (;;i) {} }", "i )"));
-        ASSERT(Result::False == isUsedAsBool("void f() { int i; for (i;;) {} }", "i ; ; )"));
-        ASSERT(Result::True == isUsedAsBool("void f() { int i; for (int j=0; i; ++j) {} }", "i ; ++"));
-        ASSERT(Result::False == isUsedAsBool("void f() { int i; if (i == 2) {} }", "i =="));
-        ASSERT(Result::False == isUsedAsBool("void f() { int i; if (i == true) {} }", "i =="));
-        ASSERT(Result::False == isUsedAsBool("void f() { int i,j; if (i == (j&&f())) {} }", "i =="));
-        ASSERT(Result::True == isUsedAsBool("void f() { int i; if (!i == 0) {} }", "i =="));
-        ASSERT(Result::True == isUsedAsBool("void f() { int i; if (!i) {} }", "i )"));
-        ASSERT(Result::True == isUsedAsBool("void f() { int i; if (!!i) {} }", "i )"));
-        ASSERT(Result::True == isUsedAsBool("void f() { int i; if (i && f()) {} }", "i &&"));
-        ASSERT(Result::True == isUsedAsBool("void f() { int i; int j = i && f(); }", "i &&"));
-        ASSERT(Result::False == isUsedAsBool("void f() { int i; if (i & f()) {} }", "i &"));
-        ASSERT(Result::True == isUsedAsBool("void f() { int i; if (static_cast<bool>(i)) {} }", "i )"));
-        ASSERT(Result::True == isUsedAsBool("void f() { int i; if ((bool)i) {} }", "i )"));
-        ASSERT(Result::True == isUsedAsBool("void f() { int i; if (1+static_cast<bool>(i)) {} }", "i )"));
-        ASSERT(Result::True == isUsedAsBool("void f() { int i; if (1+(bool)i) {} }", "i )"));
-        ASSERT(Result::False == isUsedAsBool("void f() { int i; if (1+static_cast<int>(i)) {} }", "i )"));
-        ASSERT(Result::True == isUsedAsBool("void f() { int i; if (1+!static_cast<int>(i)) {} }", "i )"));
-        ASSERT(Result::False == isUsedAsBool("void f() { int i; if (1+(int)i) {} }", "i )"));
-        ASSERT(Result::False == isUsedAsBool("void f() { int i; if (i + 2) {} }", "i +"));
-        ASSERT(Result::True == isUsedAsBool("void f() { int i; bool b = i; }", "i ; }"));
-        ASSERT(Result::True == isUsedAsBool("void f(bool b); void f() { int i; f(i); }","i )"));
-        ASSERT(Result::False == isUsedAsBool("void f() { int *i; if (*i) {} }", "i )"));
-        ASSERT(Result::True == isUsedAsBool("void f() { int *i; if (*i) {} }", "* i )"));
-        ASSERT(Result::True == isUsedAsBool("int g(); void h(bool); void f() { h(g()); }", "( ) )"));
-        ASSERT(Result::True == isUsedAsBool("int g(int); void h(bool); void f() { h(g(0)); }", "( 0 ) )"));
+        ASSERT(Result::True == isUsedAsBool("void f() { bool b = true; }\n", "b"));
+        ASSERT(Result::False ==isUsedAsBool("void f() { int i = true; }\n", "i"));
+        ASSERT(Result::True == isUsedAsBool("void f() { int i; if (i) {} }\n", "i )"));
+        ASSERT(Result::True == isUsedAsBool("void f() { int i; while (i) {} }\n", "i )"));
+        ASSERT(Result::True == isUsedAsBool("void f() { int i; for (;i;) {} }\n", "i ; )"));
+        ASSERT(Result::False == isUsedAsBool("void f() { int i; for (;;i) {} }\n", "i )"));
+        ASSERT(Result::False == isUsedAsBool("void f() { int i; for (i;;) {} }\n", "i ; ; )"));
+        ASSERT(Result::True == isUsedAsBool("void f() { int i; for (int j=0; i; ++j) {} }\n", "i ; ++"));
+        ASSERT(Result::False == isUsedAsBool("void f() { int i; if (i == 2) {} }\n", "i =="));
+        ASSERT(Result::False == isUsedAsBool("void f() { int i; if (i == true) {} }\n", "i =="));
+        ASSERT(Result::False == isUsedAsBool("void f() { int i,j; if (i == (j&&f())) {} }\n", "i =="));
+        ASSERT(Result::True == isUsedAsBool("void f() { int i; if (!i == 0) {} }\n", "i =="));
+        ASSERT(Result::True == isUsedAsBool("void f() { int i; if (!i) {} }\n", "i )"));
+        ASSERT(Result::True == isUsedAsBool("void f() { int i; if (!!i) {} }\n", "i )"));
+        ASSERT(Result::True == isUsedAsBool("void f() { int i; if (i && f()) {} }\n", "i &&"));
+        ASSERT(Result::True == isUsedAsBool("void f() { int i; int j = i && f(); }\n", "i &&"));
+        ASSERT(Result::False == isUsedAsBool("void f() { int i; if (i & f()) {} }\n", "i &"));
+        ASSERT(Result::True == isUsedAsBool("void f() { int i; if (static_cast<bool>(i)) {} }\n", "i )"));
+        ASSERT(Result::True == isUsedAsBool("void f() { int i; if ((bool)i) {} }\n", "i )"));
+        ASSERT(Result::True == isUsedAsBool("void f() { int i; if (1+static_cast<bool>(i)) {} }\n", "i )"));
+        ASSERT(Result::True == isUsedAsBool("void f() { int i; if (1+(bool)i) {} }\n", "i )"));
+        ASSERT(Result::False == isUsedAsBool("void f() { int i; if (1+static_cast<int>(i)) {} }\n", "i )"));
+        ASSERT(Result::True == isUsedAsBool("void f() { int i; if (1+!static_cast<int>(i)) {} }\n", "i )"));
+        ASSERT(Result::False == isUsedAsBool("void f() { int i; if (1+(int)i) {} }\n", "i )"));
+        ASSERT(Result::False == isUsedAsBool("void f() { int i; if (i + 2) {} }\n", "i +"));
+        ASSERT(Result::True == isUsedAsBool("void f() { int i; bool b = i; }\n", "i ; }"));
+        ASSERT(Result::True == isUsedAsBool("void f(bool b); void f() { int i; f(i); }\n","i )"));
+        ASSERT(Result::False == isUsedAsBool("void f() { int *i; if (*i) {} }\n", "i )"));
+        ASSERT(Result::True == isUsedAsBool("void f() { int *i; if (*i) {} }\n", "* i )"));
+        ASSERT(Result::True == isUsedAsBool("int g(); void h(bool); void f() { h(g()); }\n", "( ) )"));
+        ASSERT(Result::True == isUsedAsBool("int g(int); void h(bool); void f() { h(g(0)); }\n", "( 0 ) )"));
     }
 };
 
