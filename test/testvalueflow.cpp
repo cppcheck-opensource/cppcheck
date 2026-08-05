@@ -43,16 +43,9 @@ public:
     TestValueFlow() : TestFixture("TestValueFlow") {}
 
 private:
-    /*const*/ Settings settings = settingsBuilder().library("std.cfg").build();
+    const Settings settings = settingsBuilder().library("std.cfg").build();
 
     void run() override {
-        // strcpy, abort cfg
-        constexpr char cfg[] = "<?xml version=\"1.0\"?>\n"
-                               "<def>\n"
-                               "  <function name=\"strcpy\"> <arg nr=\"1\"><not-null/></arg> </function>\n"
-                               "  <function name=\"abort\"> <noreturn>true</noreturn> </function>\n" // abort is a noreturn function
-                               "</def>";
-        settings = settingsBuilder(settings).libraryxml(cfg).build();
 
         mNewTemplate = true;
         TEST_CASE(valueFlowNumber);
