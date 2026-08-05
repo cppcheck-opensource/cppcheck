@@ -43,7 +43,7 @@ public:
     TestValueFlow() : TestFixture("TestValueFlow") {}
 
 private:
-    const Settings settings = settingsBuilder().library("std.cfg").build();
+    /*const*/ Settings settings = settingsBuilder().library("std.cfg").build();
 
     void run() override {
 
