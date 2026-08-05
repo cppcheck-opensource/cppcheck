@@ -463,7 +463,8 @@ private:
 
     void declareVar() {
         const char code[] = "void f ( ) { char str [ 100 ] = \"100\" ; }\n";
-        ASSERT_EQUALS(code, tok(code));
+        const char expected[] = "void f ( ) { char str [ 100 ] = \"100\" ; }";
+        ASSERT_EQUALS(expected, tok(code));
     }
 
     void declareArray() {
@@ -790,7 +791,8 @@ private:
         {
             // #4786 - don't replace , with ; in ".. : public B, C .." code
             const char code[] = "template < class T = X > class A : public B , C { } ;\n";
-            ASSERT_EQUALS(code, tok(code));
+            const char expected[] = "template < class T = X > class A : public B , C { } ;";
+            ASSERT_EQUALS(expected, tok(code));
         }
     }
 
@@ -1609,7 +1611,8 @@ private:
     void simplifyKnownVariables14() {
         // ticket #753
         const char code[] = "void f ( ) { int n ; n = 1 ; do { ++ n ; } while ( n < 10 ) ; }\n";
-        ASSERT_EQUALS(code, simplifyKnownVariables(code));
+        const char expected[] = "void f ( ) { int n ; n = 1 ; do { ++ n ; } while ( n < 10 ) ; }";
+        ASSERT_EQUALS(expected, simplifyKnownVariables(code));
     }
 
     void simplifyKnownVariables16() {
@@ -2063,7 +2066,10 @@ private:
                              "  char buf[10] = \"ab\";\n"
                              "    memset(buf, 0, 10);\n"
                              "}\n";
-        const char expected2[] = "void f ( ) { char buf [ 10 ] = \"ab\" ; memset ( buf , 0 , 10 ) ; }";
+        const char expected2[] = "void f ( ) {\n"
+                                 "char buf [ 10 ] = \"ab\" ;\n"
+                                 "memset ( buf , 0 , 10 ) ;\n"
+                                 "}";
         ASSERT_EQUALS(expected2, tokenizeAndStringify(code2));
     }
 
@@ -2089,9 +2095,9 @@ private:
                                 "    free(s);\n"
                                 "}\n";
             const char expected[] = "void f ( ) {\n"
-                                    " char * s ; s = malloc ( 10 ) ;"
-                                    " strcpy ( s , \"\" ) ;"
-                                    " free ( s ) ; "
+                                    "char * s ; s = malloc ( 10 ) ;\n"
+                                    "strcpy ( s , \"\" ) ;\n"
+                                    "free ( s ) ;\n"
                                     "}";
             ASSERT_EQUALS(expected, tokenizeAndStringify(code));
         }
@@ -2102,8 +2108,8 @@ private:
                                 "    q = p;\n"
                                 "}\n";
             const char expected[] = "void f ( char * p , char * q ) {\n"
-                                    " strcpy ( p , \"abc\" ) ;"
-                                    " q = p ; "
+                                    "strcpy ( p , \"abc\" ) ;\n"
+                                    "q = p ;\n"
                                     "}";
             ASSERT_EQUALS(expected, tokenizeAndStringify(code));
         }
@@ -2249,7 +2255,24 @@ private:
                                 "const char x7 = 'b' ;\n"
                                 "return & x7 ;\n"
                                 "}\n";
-            ASSERT_EQUALS(code, tokenizeAndStringify(code));
+
+            const char expected[] = "const char * foo ( ) {\n"
+                                    "const char x1 = 'b' ;\n"
+                                    "f ( & x1 ) ;\n"
+                                    "const char x2 = 'b' ;\n"
+                                    "f ( y , & x2 ) ;\n"
+                                    "const char x3 = 'b' ;\n"
+                                    "t = & x3 ;\n"
+                                    "const char x4 = 'b' ;\n"
+                                    "t = y + & x4 ;\n"
+                                    "const char x5 = 'b' ;\n"
+                                    "z [ & x5 ] = y ;\n"
+                                    "const char x6 = 'b' ;\n"
+                                    "v = { & x6 } ;\n"
+                                    "const char x7 = 'b' ;\n"
+                                    "return & x7 ;\n"
+                                    "}";
+            ASSERT_EQUALS(expected, tokenizeAndStringify(code));
             ASSERT_EQUALS(
                 "[test.cpp:5:5]: (debug) valueFlowConditionExpressions bailout: Skipping function due to incomplete variable y [valueFlowBailoutIncompleteVar]\n",
                 errout_str());
@@ -2272,7 +2295,24 @@ private:
                                 "const int x7 = 1 ;\n"
                                 "return & x7 ;\n"
                                 "}\n";
-            ASSERT_EQUALS(code, tokenizeAndStringify(code));
+
+            const char expected[] = "const int * foo ( ) {\n"
+                                    "const int x1 = 1 ;\n"
+                                    "f ( & x1 ) ;\n"
+                                    "const int x2 = 1 ;\n"
+                                    "f ( y , & x2 ) ;\n"
+                                    "const int x3 = 1 ;\n"
+                                    "t = & x3 ;\n"
+                                    "const int x4 = 1 ;\n"
+                                    "t = y + & x4 ;\n"
+                                    "const int x5 = 1 ;\n"
+                                    "z [ & x5 ] = y ;\n"
+                                    "const int x6 = 1 ;\n"
+                                    "v = { & x6 } ;\n"
+                                    "const int x7 = 1 ;\n"
+                                    "return & x7 ;\n"
+                                    "}";
+            ASSERT_EQUALS(expected, tokenizeAndStringify(code));
             ASSERT_EQUALS(
                 "[test.cpp:5:5]: (debug) valueFlowConditionExpressions bailout: Skipping function due to incomplete variable y [valueFlowBailoutIncompleteVar]\n",
                 errout_str());
@@ -2507,7 +2547,11 @@ private:
                                 "    int x = 123;\n"
                                 "    a(x);\n"       // <- don't replace with a(123);
                                 "}\n";
-            const char expected[] = "void a ( int & x ) ; void b ( ) { int x ; x = 123 ; a ( x ) ; }";
+            const char expected[] = "void a ( int & x ) ;\n"
+                                    "void b ( ) {\n"
+                                    "int x ; x = 123 ;\n"
+                                    "a ( x ) ;\n"
+                                    "}";
             ASSERT_EQUALS(expected, tokenizeAndStringify(code));
         }
     }
@@ -2519,7 +2563,12 @@ private:
                             "    x = 123;\n"
                             "    while (!x) { dostuff(); }\n"
                             "}\n";
-        ASSERT_EQUALS("static int x ; void f ( ) { x = 123 ; while ( ! x ) { dostuff ( ) ; } }", tokenizeAndStringify(code));
+        const char expected[] = "static int x ;\n"
+                                "void f ( ) {\n"
+                                "x = 123 ;\n"
+                                "while ( ! x ) { dostuff ( ) ; }\n"
+                                "}";
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
         ASSERT_EQUALS("", filter_valueflow(errout_str()));
     }
 

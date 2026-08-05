@@ -13173,7 +13173,7 @@ private:
         ASSERT_NO_THROW(check("\n void foo(int declaration = {}) {\n"
                               "\n   for (int i = 0; i < 10; i++) {}\n"
                               "\n }\n"
-                              "\n  "));
+                              "\n"));
         ASSERT_EQUALS("", errout_str());
     }
 

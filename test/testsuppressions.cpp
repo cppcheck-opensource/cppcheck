@@ -1402,7 +1402,7 @@ private:
         CppCheck cppCheck(settings, supprs, *this, nullptr, false, nullptr); // <- do not "use global suppressions". pretend this is a thread that just checks a file.
 
         const char code[] = "int f() { int a; return a; }\n";
-        ASSERT_EQUALS(0, cppCheck.checkBuffer(FileWithDetails("test.c", Standards::Language::C, 0),code, sizeof(code))); // <- no unsuppressed error is seen
+        ASSERT_EQUALS(0, cppCheck.checkBuffer(FileWithDetails("test.c", Standards::Language::C, 0),code, sizeof(code)-1)); // <- no unsuppressed error is seen
         ASSERT_EQUALS("[test.c:1:25]: (error) Uninitialized variable: a [uninitvar]\n", errout_str()); // <- report error so ThreadExecutor can suppress it and make sure the global suppression is matched.
     }
 
@@ -1442,7 +1442,7 @@ private:
             "    int y;\n"
             "};\n";
         CppCheck cppCheck(settings, supprs, *this, nullptr, true, nullptr);
-        ASSERT_EQUALS(0, cppCheck.checkBuffer(FileWithDetails("/somewhere/test.cpp", Standards::Language::CPP, 0), code, sizeof(code)));
+        ASSERT_EQUALS(0, cppCheck.checkBuffer(FileWithDetails("/somewhere/test.cpp", Standards::Language::CPP, 0), code, sizeof(code)-1));
         ASSERT_EQUALS("",errout_str());
     }
 

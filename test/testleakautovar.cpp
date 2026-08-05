@@ -362,13 +362,13 @@ private:
               "    char *p;\n"
               "    if (x && (p = malloc(10))) { }\n"
               "}\n");
-        ASSERT_EQUALS("[test.c:3:35]: (error) Memory leak: p [memleak]\n", errout_str());
+        ASSERT_EQUALS("[test.c:4:1]: (error) Memory leak: p [memleak]\n", errout_str());
 
         check("void f(int x) {\n"
               "    char *p;\n"
               "    if (x && (p = new char[10])) { }\n"
               "}\n", dinit(CheckOptions, $.cpp = true));
-        ASSERT_EQUALS("[test.cpp:3:37]: (error) Memory leak: p [memleak]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:4:1]: (error) Memory leak: p [memleak]\n", errout_str());
     }
 
     void assign15() {
@@ -409,13 +409,13 @@ private:
               "    char *p;\n"
               "    if (x && (p = (char*)malloc(10))) { }\n"
               "}\n");
-        ASSERT_EQUALS("[test.c:3:42]: (error) Memory leak: p [memleak]\n", errout_str());
+        ASSERT_EQUALS("[test.c:4:1]: (error) Memory leak: p [memleak]\n", errout_str());
 
         check("void f(int x) {\n"
               "    char *p;\n"
               "    if (x && (p = (char*)(int*)malloc(10))) { }\n"
               "}\n");
-        ASSERT_EQUALS("[test.c:3:48]: (error) Memory leak: p [memleak]\n", errout_str());
+        ASSERT_EQUALS("[test.c:4:1]: (error) Memory leak: p [memleak]\n", errout_str());
     }
 
     void assign19() {

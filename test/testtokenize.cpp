@@ -623,11 +623,13 @@ private:
     }
 
     void tokenize1() {
-        const char code[] = "void f ( )\n"
-                            "{ if ( p . y ( ) > yof ) { } }";
-        ASSERT_EQUALS(code, tokenizeAndStringify(code));
+        const char code[] = "void f()\n"
+                            "{ if (p.y() > yof) {} }\n";
+        const char expected[] = "void f ( )\n"
+                                "{ if ( p . y ( ) > yof ) { } }";
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
         ASSERT_EQUALS(
-            "[test.cpp:2:20]: (debug) valueFlowConditionExpressions bailout: Skipping function due to incomplete variable yof [valueFlowBailoutIncompleteVar]\n",
+            "[test.cpp:2:15]: (debug) valueFlowConditionExpressions bailout: Skipping function due to incomplete variable yof [valueFlowBailoutIncompleteVar]\n",
             errout_str());
     }
 
@@ -814,8 +816,9 @@ private:
     // #5884 - Avoid left shift of negative integer value.
     void tokenize32() {
         // Do not simplify negative integer left shifts.
-        const char code[] = "void f ( ) { int max_x ; max_x = -10000 << 16 ; }";
-        ASSERT_EQUALS(code, tokenizeAndStringify(code));
+        const char code[] = "void f () { int max_x; max_x = -10000 << 16; }\n";
+        const char expected[] = "void f ( ) { int max_x ; max_x = -10000 << 16 ; }";
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
     }
 
     // #5780 Various crashes on valid template code in Tokenizer::setVarId()
@@ -870,8 +873,9 @@ private:
     }
 
     void tokenize36() { // #8436
-        const char code[] = "int foo ( int i ) { return i ? * new int { 5 } : int { i ? 0 : 1 } ; }";
-        ASSERT_EQUALS(code, tokenizeAndStringify(code));
+        const char code[] = "int foo (int i) { return i ? *new int {5} : int {i ? 0 : 1}; }\n";
+        const char expected[] = "int foo ( int i ) { return i ? * new int { 5 } : int { i ? 0 : 1 } ; }";
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
     }
 
     void tokenize37() { // #8550
@@ -879,12 +883,14 @@ private:
                              "typedef class name N;\n"
                              "void foo ( ) { return N :: init ( ) ; }\n";
         const char expC[] = "class name { public: static void init ( ) { } } ;\n"
+                            "\n"
                             "void foo ( ) { return name :: init ( ) ; }";
         ASSERT_EQUALS(expC, tokenizeAndStringify(codeC));
         const char codeS[] = "class name { public: static void init ( ) {} } ;\n"
                              "typedef struct name N;\n"
                              "void foo ( ) { return N :: init ( ) ; }\n";
         const char expS[] = "class name { public: static void init ( ) { } } ;\n"
+                            "\n"
                             "void foo ( ) { return name :: init ( ) ; }";
         ASSERT_EQUALS(expS, tokenizeAndStringify(codeS));
     }
@@ -1084,8 +1090,9 @@ private:
 
 
     void longtok() {
-        const std::string filedata(10000, 'a');
-        ASSERT_EQUALS(filedata, tokenizeAndStringify(filedata));
+        const std::string code = std::string(10000, 'a') + '\n';
+        const std::string expected = std::string(10000, 'a');
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
     }
 
 
@@ -1175,8 +1182,12 @@ private:
                             "  e_lis r7, (lf)@h\n"
                             "%error\n"
                             "}\n";
-        ASSERT_EQUALS("void dostuff ( uint32_t x ) { asm ( \"% reg x e_lis r7 , ( lf ) @ h % error\" ) ; }",
-                      tokenizeAndStringify(code));
+        const char expected[] = "void dostuff ( uint32_t x ) {\n"
+                                "asm ( \"% reg x e_lis r7 , ( lf ) @ h % error\" ) ;\n"
+                                "\n"
+                                "\n"
+                                "}";
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
     }
 
     // #4725 - ^{}
@@ -1374,10 +1385,12 @@ private:
             const char code[] = "void f() {\n"
                                 "(void) ( { if(*p) (*p) = x(); } )\n"
                                 "}\n";
-            ASSERT_EQUALS("void f ( ) { ( void ) ( { if ( * p ) { ( * p ) = x ( ) ; } } ) }",
-                          tokenizeAndStringify(code));
+            const char expected[] = "void f ( ) {\n"
+                                    "( void ) ( { if ( * p ) { ( * p ) = x ( ) ; } } )\n"
+                                    "}";
+            ASSERT_EQUALS(expected, tokenizeAndStringify(code));
             ASSERT_EQUALS(
-                "[test.cpp:1:27]: (debug) valueFlowConditionExpressions bailout: Skipping function due to incomplete variable p [valueFlowBailoutIncompleteVar]\n",
+                "[test.cpp:2:16]: (debug) valueFlowConditionExpressions bailout: Skipping function due to incomplete variable p [valueFlowBailoutIncompleteVar]\n",
                 filter_valueflow(errout_str()));
         }
     }
@@ -1817,7 +1830,8 @@ private:
     void simplifyFunctionParameters() {
         {
             const char code[] = "char a [ ABC ( DEF ) ] ;\n";
-            ASSERT_EQUALS(code, tokenizeAndStringify(code));
+            const char expected[] = "char a [ ABC ( DEF ) ] ;";
+            ASSERT_EQUALS(expected, tokenizeAndStringify(code));
             ASSERT_EQUALS("", errout_str());
         }
 
@@ -1848,9 +1862,16 @@ private:
                                 "        int x;\n"
                                 "    { }\n"
                                 "}\n";
-            ASSERT_EQUALS("void foo ( ) { if ( x ) { int x ; } { } }", tokenizeAndStringify(code));
+
+            const char expected[] = "void foo ( )\n"
+                                    "{\n"
+                                    "if ( x ) {\n"
+                                    "int x ; }\n"
+                                    "{ }\n"
+                                    "}";
+            ASSERT_EQUALS(expected, tokenizeAndStringify(code));
             ASSERT_EQUALS(
-                "[test.cpp:1:20]: (debug) valueFlowConditionExpressions bailout: Skipping function due to incomplete variable x [valueFlowBailoutIncompleteVar]\n",
+                "[test.cpp:3:9]: (debug) valueFlowConditionExpressions bailout: Skipping function due to incomplete variable x [valueFlowBailoutIncompleteVar]\n",
                 filter_valueflow(errout_str()));
         }
     }
@@ -1869,35 +1890,51 @@ private:
 
     void simplifyFunctionParameters2() { // #4430
         const char code[] = "class Item {\n"
-                            "int i ; "
+                            "    int i;\n"
                             "public:\n"
-                            "Item ( int i ) ; "
-                            "} ; "
-                            "Item :: Item ( int i ) : i ( i ) { }";
-        ASSERT_EQUALS(code, tokenizeAndStringify(code));
+                            "    Item (int i);\n"
+                            "};\n"
+                            "Item::Item(int i) : i(i) { }\n";
+        const char expected[] = "class Item {\n"
+                                "int i ;\n"
+                                "public:\n"
+                                "Item ( int i ) ;\n"
+                                "} ;\n"
+                                "Item :: Item ( int i ) : i ( i ) { }";
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
     }
 
     void simplifyFunctionParameters3() { // #4436
         const char code[] = "class Item {\n"
-                            "int i ; "
-                            "int j ; "
+                            "    int i;\n"
+                            "    int j;\n"
                             "public:\n"
-                            "Item ( int i , int j ) ; "
-                            "} ; "
-                            "Item :: Item ( int i , int j ) : i ( i ) , j ( j ) { }";
-        ASSERT_EQUALS(code, tokenizeAndStringify(code));
+                            "    Item(int i, int j);\n"
+                            "};\n"
+                            "Item :: Item (int i, int j) : i(i), j(j) {}\n";
+        const char expected[] = "class Item {\n"
+                                "int i ;\n"
+                                "int j ;\n"
+                                "public:\n"
+                                "Item ( int i , int j ) ;\n"
+                                "} ;\n"
+                                "Item :: Item ( int i , int j ) : i ( i ) , j ( j ) { }";
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
     }
 
     void simplifyFunctionParameters4() { // #9421
-        const char code[] = "int foo :: bar ( int , int ) const ;";
-        ASSERT_EQUALS(code, tokenizeAndStringify(code));
+        const char code[] = "int foo::bar(int, int) const;\n";
+        const char expected[] = "int foo :: bar ( int , int ) const ;";
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
     }
 
     void simplifyFunctionParametersMultiTemplate() {
-        const char code[] = "template < typename T1 > template < typename T2 > "
-                            "void A < T1 > :: foo ( T2 ) { }";
-        ASSERT_EQUALS(code, tokenizeAndStringify(code));
-        ASSERT_EQUALS("[test.cpp:1:68]: (debug) Executable scope 'foo' with unknown function. [symbolDatabaseWarning]\n", errout_str());
+        const char code[] = "template<typename T1> template<typename T2>\n"
+                            "void A<T1>::foo(T2) {}\n";
+        const char expected[] = "template < typename T1 > template < typename T2 >\n"
+                                "void A < T1 > :: foo ( T2 ) { }";
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
+        ASSERT_EQUALS("[test.cpp:2:13]: (debug) Executable scope 'foo' with unknown function. [symbolDatabaseWarning]\n", errout_str());
     }
 
     void simplifyFunctionParametersErrors() {
@@ -1972,10 +2009,13 @@ private:
                             "{\n"
                             "    free(((void*)p));\n"
                             "}\n";
-
-        ASSERT_EQUALS("void foo ( ) { free ( ( void * ) p ) ; }", tokenizeAndStringify(code));
+        const char expected[] = "void foo ( )\n"
+                                "{\n"
+                                "free ( ( void * ) p ) ;\n"
+                                "}";
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
         ASSERT_EQUALS(
-            "[test.cpp:1:29]: (debug) valueFlowConditionExpressions bailout: Skipping function due to incomplete variable p [valueFlowBailoutIncompleteVar]\n",
+            "[test.cpp:3:18]: (debug) valueFlowConditionExpressions bailout: Skipping function due to incomplete variable p [valueFlowBailoutIncompleteVar]\n",
             errout_str());
     }
 
@@ -1985,7 +2025,11 @@ private:
                                 "{\n"
                                 "    if (( true )==(true)){}\n"
                                 "}\n";
-            ASSERT_EQUALS("void foo ( ) { if ( true == true ) { } }", tokenizeAndStringify(code));
+            const char expected[] = "void foo ( )\n"
+                                    "{\n"
+                                    "if ( true == true ) { }\n"
+                                    "}";
+            ASSERT_EQUALS(expected, tokenizeAndStringify(code));
         }
 
         {
@@ -1993,7 +2037,11 @@ private:
                                 "{\n"
                                 "    if (( 2 )==(2)){}\n"
                                 "}\n";
-            ASSERT_EQUALS("void foo ( ) { if ( 2 == 2 ) { } }", tokenizeAndStringify(code));
+            const char expected[] = "void foo ( )\n"
+                                    "{\n"
+                                    "if ( 2 == 2 ) { }\n"
+                                    "}";
+            ASSERT_EQUALS(expected, tokenizeAndStringify(code));
         }
 
         {
@@ -2001,7 +2049,11 @@ private:
                                 "{\n"
                                 "    if( g(10)){}\n"
                                 "}\n";
-            ASSERT_EQUALS("void foo ( ) { if ( g ( 10 ) ) { } }", tokenizeAndStringify(code));
+            const char expected[] = "void foo ( )\n"
+                                    "{\n"
+                                    "if ( g ( 10 ) ) { }\n"
+                                    "}";
+            ASSERT_EQUALS(expected, tokenizeAndStringify(code));
         }
     }
 
@@ -2011,9 +2063,13 @@ private:
                             "{\n"
                             "    (free(p));\n"
                             "}\n";
-        ASSERT_EQUALS("void foo ( ) { free ( p ) ; }", tokenizeAndStringify(code));
+        const char expected[] = "void foo ( )\n"
+                                "{\n"
+                                "free ( p ) ;\n"
+                                "}";
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
         ASSERT_EQUALS(
-            "[test.cpp:1:22]: (debug) valueFlowConditionExpressions bailout: Skipping function due to incomplete variable p [valueFlowBailoutIncompleteVar]\n",
+            "[test.cpp:3:11]: (debug) valueFlowConditionExpressions bailout: Skipping function due to incomplete variable p [valueFlowBailoutIncompleteVar]\n",
             errout_str());
     }
 
@@ -2024,9 +2080,13 @@ private:
                                 "{\n"
                                 "    (delete p);\n"
                                 "}\n";
-            ASSERT_EQUALS("void foo ( ) { delete p ; }", tokenizeAndStringify(code));
+            const char expected[] = "void foo ( )\n"
+                                    "{\n"
+                                    "delete p ;\n"
+                                    "}";
+            ASSERT_EQUALS(expected, tokenizeAndStringify(code));
             ASSERT_EQUALS(
-                "[test.cpp:1:24]: (debug) valueFlowConditionExpressions bailout: Skipping function due to incomplete variable p [valueFlowBailoutIncompleteVar]\n",
+                "[test.cpp:3:13]: (debug) valueFlowConditionExpressions bailout: Skipping function due to incomplete variable p [valueFlowBailoutIncompleteVar]\n",
                 errout_str());
         }
 
@@ -2036,9 +2096,13 @@ private:
                                 "{\n"
                                 "    (delete [] p);\n"
                                 "}\n";
-            ASSERT_EQUALS("void foo ( ) { delete [ ] p ; }", tokenizeAndStringify(code));
+            const char expected[] = "void foo ( )\n"
+                                    "{\n"
+                                    "delete [ ] p ;\n"
+                                    "}";
+            ASSERT_EQUALS(expected, tokenizeAndStringify(code));
             ASSERT_EQUALS(
-                "[test.cpp:1:27]: (debug) valueFlowConditionExpressions bailout: Skipping function due to incomplete variable p [valueFlowBailoutIncompleteVar]\n",
+                "[test.cpp:3:16]: (debug) valueFlowConditionExpressions bailout: Skipping function due to incomplete variable p [valueFlowBailoutIncompleteVar]\n",
                 errout_str());
         }
     }
@@ -2138,10 +2202,10 @@ private:
 
     void removeParentheses22() {
         static char code[] = "struct S {\n"
-                             "char *(a); "
-                             "char &(b); "
-                             "const static char *(c); "
-                             "} ;";
+                             "    char *(a);\n"
+                             "    char &(b);\n"
+                             "    const static char *(c);\n"
+                             "};\n";
         static const char exp[] = "struct S {\n"
                                   "char * a ;\n"
                                   "char & b ;\n"
@@ -2262,7 +2326,7 @@ private:
     }
 
     void tokenize_strings() {
-        const char code[] =   "void f() {\n"
+        const char code[] = "void f() {\n"
                             "const char *a =\n"
                             "{\n"
                             "\"hello \"\n"
@@ -2427,7 +2491,7 @@ private:
     void vardecl_union() {
         // ticket #1976
         const char code1[] = "class Fred { public: union { int a ; int b ; } ; } ;\n";
-        ASSERT_EQUALS(code1, tokenizeAndStringify(code1));
+        ASSERT_EQUALS("class Fred { public: union { int a ; int b ; } ; } ;", tokenizeAndStringify(code1));
 
         // ticket #2039
         const char code2[] = "void f() {\n"
@@ -2471,7 +2535,7 @@ private:
             // don't simplify declarations of static variables
             // "static int i = 0;" is not the same as "static int i; i = 0;"
             const char code[] = "static int i = 0 ;\n";
-            ASSERT_EQUALS(code, tokenizeAndStringify(code));
+            ASSERT_EQUALS("static int i = 0 ;", tokenizeAndStringify(code));
         }
 
         {
@@ -2503,7 +2567,8 @@ private:
             // Ticket #4450
             const char code[] = "static int large_eeprom_type = (13 | (5)),\n"
                                 "default_flash_type = 42;\n";
-            ASSERT_EQUALS("static int large_eeprom_type = 13 | 5 ; static int default_flash_type = 42 ;",
+            ASSERT_EQUALS("static int large_eeprom_type = 13 | 5 ; static int\n"
+                          "default_flash_type = 42 ;",
                           tokenizeAndStringify(code));
         }
 
@@ -2593,8 +2658,8 @@ private:
 
     void vardecl10() {
         // ticket #732
-        const char code[] = "char a [ 2 ] = { '-' } ; memset ( a , '-' , sizeof ( a ) ) ;";
-        ASSERT_EQUALS(code, tokenizeAndStringify(code));
+        const char code[] = "char a[2] = {'-'}; memset(a, '-', sizeof(a));\n";
+        ASSERT_EQUALS("char a [ 2 ] = { '-' } ; memset ( a , '-' , sizeof ( a ) ) ;", tokenizeAndStringify(code));
     }
 
     void vardecl11() {
@@ -3022,8 +3087,9 @@ private:
      */
     void implicitIntSigned1() {
         {
-            const char code1[] = "void foo ( signed int , float ) ;";
-            ASSERT_EQUALS(code1, tokenizeAndStringify(code1));
+            const char code1[] = "void foo(signed int, float);\n";
+            const char code2[] = "void foo ( signed int , float ) ;";
+            ASSERT_EQUALS(code2, tokenizeAndStringify(code1));
         }
 
         {
@@ -3034,7 +3100,8 @@ private:
 
         {
             const char code1[] = "signed int i ;\n";
-            ASSERT_EQUALS(code1, tokenizeAndStringify(code1));
+            const char code2[] = "signed int i ;";
+            ASSERT_EQUALS(code2, tokenizeAndStringify(code1));
         }
 
         {
@@ -3057,8 +3124,9 @@ private:
     void implicitIntUnsigned1() {
         // No changes..
         {
-            const char code[] = "void foo ( unsigned int , float ) ;";
-            ASSERT_EQUALS(code, tokenizeAndStringify(code));
+            const char code1[] = "void foo(unsigned int, float);\n";
+            const char code2[] = "void foo ( unsigned int , float ) ;";
+            ASSERT_EQUALS(code2, tokenizeAndStringify(code1));
         }
 
         // insert "int" after "unsigned"..
@@ -4646,7 +4714,7 @@ private:
     void cpp14template() { // Ticket #6708
         (void)tokenizeAndStringify("template <typename T>\n"
                                    "decltype(auto) forward(T& t) { return 0; }\n");
-        ASSERT_EQUALS("[test.cpp:1:32]: (debug) auto token with no type. [autoNoType]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:10]: (debug) auto token with no type. [autoNoType]\n", errout_str());
     }
 
     void arraySize() {
@@ -5130,7 +5198,11 @@ private:
                             "MACRO\n"
                             "default: { }\n"
                             ";\n";
-        ASSERT_EQUALS("{ } MACRO default : { } ;", tokenizeAndStringify(code));
+        const char expected[] = "{ }\n"
+                                "MACRO\n"
+                                "default : { }\n"
+                                ";";
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
     }
 
     void bitfields12() { // ticket #3485 (segmentation fault)
@@ -5637,7 +5709,9 @@ private:
         const char code[] = "void f() {\n"
                             "static_cast<ScToken*>(xResult.operator->())->GetMatrix();\n"
                             "}\n";
-        const char result[] = "void f ( ) { static_cast < ScToken * > ( xResult . operator-> ( ) ) . GetMatrix ( ) ; }";
+        const char result[] = "void f ( ) {\n"
+                              "static_cast < ScToken * > ( xResult . operator-> ( ) ) . GetMatrix ( ) ;\n"
+                              "}";
         ASSERT_EQUALS(result, tokenizeAndStringify(code));
     }
 
@@ -5705,8 +5779,9 @@ private:
     }
 
     void simplifyOperatorName9() { // Ticket #5709
-        const char code[] = "struct R { R operator, ( R b ) ; } ;";
-        ASSERT_EQUALS(code, tokenizeAndStringify(code));
+        const char code[] = "struct R { R operator,(R b); };\n";
+        const char expected[] = "struct R { R operator, ( R b ) ; } ;";
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
     }
 
     void simplifyOperatorName10() { // #8746
@@ -5777,9 +5852,15 @@ private:
                             "  operator c();\n"
                             "};\n"
                             "template <> struct a<char> : b<char> { using b::operator char; };\n";
-        ASSERT_EQUALS("struct a<char> ; template < typename > struct a ; "
+        ASSERT_EQUALS("struct a<char> ;\n"
+                      "template < typename > struct a ;\n"
                       "struct b<char> ;\n"
-                      "struct a<char> : b<char> { using b :: operatorchar ; } ; struct b<char> { "
+                      "\n"
+                      "\n"
+                      "\n"
+                      "struct a<char> : b<char> { using b :: operatorchar ; } ;\n"
+                      "struct b<char> {\n"
+                      "\n"
                       "operatorchar ( ) ;\n"
                       "} ;",
                       tokenizeAndStringify(code));
@@ -5904,7 +5985,7 @@ private:
                       "}",
                       tokenizeAndStringify(code));
         ASSERT_EQUALS(
-            "[test.cpp:1:116]: (debug) valueFlowConditionExpressions bailout: Skipping function due to incomplete variable RSLEqual [valueFlowBailoutIncompleteVar]\n",
+            "[test.cpp:2:43]: (debug) valueFlowConditionExpressions bailout: Skipping function due to incomplete variable RSLEqual [valueFlowBailoutIncompleteVar]\n",
             filter_valueflow(errout_str()));
     }
 
@@ -5958,7 +6039,9 @@ private:
         const char code[] = "void foo() {\n"
                             "    x = y.operator *().z[123];\n"
                             "}\n";
-        ASSERT_EQUALS("void foo ( ) { x = y . operator* ( ) . z [ 123 ] ; }",
+        ASSERT_EQUALS("void foo ( ) {\n"
+                      "x = y . operator* ( ) . z [ 123 ] ;\n"
+                      "}",
                       tokenizeAndStringify(code));
         ignore_errout();
     }

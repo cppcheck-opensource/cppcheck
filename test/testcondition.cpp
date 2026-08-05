@@ -5215,9 +5215,9 @@ private:
               "    if (i == a.x) {}\n"
               "    if (j == a.x) {}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:6:11]: (style) Condition 'i==j' is always true [knownConditionTrueFalse]\n"
-                      "[test.cpp:7:11]: (style) Condition 'i==a.x' is always true [knownConditionTrueFalse]\n"
-                      "[test.cpp:8:11]: (style) Condition 'j==a.x' is always true [knownConditionTrueFalse]\n",
+        ASSERT_EQUALS("[test.cpp:7:11]: (style) Condition 'i==j' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:8:11]: (style) Condition 'i==a.x' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:9:11]: (style) Condition 'j==a.x' is always true [knownConditionTrueFalse]\n",
                       errout_str());
 
         check("struct S { int i; };\n" // #12795
