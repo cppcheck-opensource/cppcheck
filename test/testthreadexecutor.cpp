@@ -169,7 +169,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS(num_files, cppcheck::count_all_of(errout_str(), "(error) Null pointer dereference: (int*)0"));
     }
 
@@ -180,7 +180,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}", dinit(CheckOptions, $.showtime = Settings::ShowTime::SUMMARY));
+              "}\n", dinit(CheckOptions, $.showtime = Settings::ShowTime::SUMMARY));
         // we are not interested in the results - so just consume them
         ignore_errout();
     }
@@ -193,7 +193,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}", dinit(CheckOptions, $.plistOutput = plistOutput.c_str()));
+              "}\n", dinit(CheckOptions, $.plistOutput = plistOutput.c_str()));
         // we are not interested in the results - so just consume them
         ignore_errout();
     }
@@ -203,7 +203,7 @@ private:
               "int main()\n"
               "{\n"
               "  return 0;\n"
-              "}");
+              "}\n");
     }
 
     void no_errors_less_files() {
@@ -211,7 +211,7 @@ private:
               "int main()\n"
               "{\n"
               "  return 0;\n"
-              "}");
+              "}\n");
     }
 
     void no_errors_equal_amount_files() {
@@ -219,7 +219,7 @@ private:
               "int main()\n"
               "{\n"
               "  return 0;\n"
-              "}");
+              "}\n");
     }
 
     void one_error_less_files() {
@@ -227,7 +227,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[" + fprefix() + "_1.c:3:12]: (error) Null pointer dereference: (int*)0 [nullPointer]\n", errout_str());
     }
 
@@ -237,7 +237,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS(num_files, cppcheck::count_all_of(errout_str(), "(error) Null pointer dereference: (int*)0"));
     }
 
@@ -247,7 +247,7 @@ private:
     void showtime_top5_file() {
         REDIRECT; // should not cause TSAN failures as the showtime logging is synchronized
         check(2, 2, 0,
-              "int main() {}",
+              "int main() {}\n",
               dinit(CheckOptions,
                     $.showtime = Settings::ShowTime::TOP5_FILE));
         const std::string output_s = GET_REDIRECT_OUTPUT;
@@ -258,7 +258,7 @@ private:
     void showtime_file() {
         REDIRECT; // should not cause TSAN failures as the showtime logging is synchronized
         check(2, 2, 0,
-              "int main() {}",
+              "int main() {}\n",
               dinit(CheckOptions,
                     $.showtime = Settings::ShowTime::FILE));
         const std::string output_s = GET_REDIRECT_OUTPUT;
@@ -268,7 +268,7 @@ private:
     void showtime_file_total() {
         REDIRECT; // should not cause TSAN failures as the showtime logging is synchronized
         check(2, 2, 0,
-              "int main() {}",
+              "int main() {}\n",
               dinit(CheckOptions,
                     $.showtime = Settings::ShowTime::FILE_TOTAL));
         const std::string output_s = GET_REDIRECT_OUTPUT;
@@ -285,7 +285,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
         settings = settingsOld;
     }
@@ -296,9 +296,9 @@ private:
                          "inline void f()\n"
                          "{\n"
                          "  (void)(*((int*)0));\n"
-                         "}");
+                         "}\n");
         check(2, 2, 2,
-              "#include \"" + inc_h.name() +"\"");
+              "#include \"" + inc_h.name() +"\"\n");
         // this is made unique by the executor
         ASSERT_EQUALS("[" + inc_h.name() + ":3:12]: (error) Null pointer dereference: (int*)0 [nullPointer]\n", errout_str());
     }

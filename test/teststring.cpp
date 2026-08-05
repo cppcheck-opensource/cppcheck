@@ -82,25 +82,25 @@ private:
         check("void f() {\n"
               "  char *abc = \"abc\";\n"
               "  abc[0] = 'a';\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:3] -> [test.cpp:2:15]: (error) Modifying string literal \"abc\" directly or indirectly is undefined behaviour. [stringLiteralWrite]\n", errout_str());
 
         check("void f() {\n"
               "  char *abc = \"abc\";\n"
               "  *abc = 'a';\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:4] -> [test.cpp:2:15]: (error) Modifying string literal \"abc\" directly or indirectly is undefined behaviour. [stringLiteralWrite]\n", errout_str());
 
         check("void f() {\n"
               "  char *abc = \"A very long string literal\";\n"
               "  abc[0] = 'a';\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:3] -> [test.cpp:2:15]: (error) Modifying string literal \"A very long stri..\" directly or indirectly is undefined behaviour. [stringLiteralWrite]\n", errout_str());
 
         check("void f() {\n"
               "  QString abc = \"abc\";\n"
               "  abc[0] = 'a';\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void foo_FP1(char *p) {\n"
@@ -109,7 +109,7 @@ private:
               "void foo_FP2(void) {\n"
               "  char* s = \"Y\";\n"
               "  foo_FP1(s);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS(
             "[test.cpp:2:3] -> [test.cpp:5:13]: (error) Modifying string literal \"Y\" directly or indirectly is undefined behaviour. [stringLiteralWrite]\n",
             errout_str());
@@ -120,19 +120,19 @@ private:
               "void foo_FP2(void) {\n"
               "  char s[10] = \"Y\";\n"
               "  foo_FP1(s);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void f() {\n"
               "  wchar_t *abc = L\"abc\";\n"
               "  abc[0] = u'a';\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:3] -> [test.cpp:2:18]: (error) Modifying string literal L\"abc\" directly or indirectly is undefined behaviour. [stringLiteralWrite]\n", errout_str());
 
         check("void f() {\n"
               "  char16_t *abc = u\"abc\";\n"
               "  abc[0] = 'a';\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:3] -> [test.cpp:2:19]: (error) Modifying string literal u\"abc\" directly or indirectly is undefined behaviour. [stringLiteralWrite]\n", errout_str());
 
         check("void foo() {\n" // #8332
@@ -142,7 +142,7 @@ private:
               "        p[i] = \'X\';\n" // <<
               "    }\n"
               "    printf(\"%s\\n\", p);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:5:9] -> [test.cpp:3:16]: (error) Modifying string literal \"string literal\" directly or indirectly is undefined behaviour. [stringLiteralWrite]\n", errout_str());
     }
 
@@ -160,7 +160,7 @@ private:
               "  if (wmemcmp(L\"A\",L\"A\",1)){}\n"
               "  if (wcscmp(L\"A\",L\"A\")){}\n"
               "  if (wcscasecmp(L\"A\",L\"A\")){}\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:7]: (warning) Unnecessary comparison of static strings. [staticStringCompare]\n"
                       "[test.cpp:3:7]: (warning) Unnecessary comparison of static strings. [staticStringCompare]\n"
                       "[test.cpp:4:7]: (warning) Unnecessary comparison of static strings. [staticStringCompare]\n"
@@ -180,7 +180,7 @@ private:
               "     if (!memcmp(p + offset, p, 42)){}\n"
               "     if (!memcmp(offset + p, p, 42)){}\n"
               "     if (!memcmp(p, offset + p, 42)){}\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // avoid false positives when the address is modified #6415
@@ -189,7 +189,7 @@ private:
               "     if (!memcmp(c + offset, c, 42)){}\n"
               "     if (!memcmp(offset + c, c, 42)){}\n"
               "     if (!memcmp(c, offset + c, 42)){}\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // avoid false positives when the address is modified #6415
@@ -198,164 +198,164 @@ private:
               "     if (!memcmp(s.c_str() + offset, s.c_str(), 42)){}\n"
               "     if (!memcmp(offset + s.c_str(), s.c_str(), 42)){}\n"
               "     if (!memcmp(s.c_str(), offset + s.c_str(), 42)){}\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("int f(void) {\n" // #13527
               "    const wchar_t* str1 = L\"Hello\";\n"
               "    return wcsicmp(str1, str1);\n" // <<
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:12]: (warning) Comparison of identical string variables. [stringCompare]\n", errout_str());
 
         check("int main()\n"
               "{\n"
-              "  if (strcmp(\"00FF00\", \"00FF00\") == 0)"
-              "  {"
-              "    std::cout << \"Equal\";"
-              "  }"
-              "}");
+              "  if (strcmp(\"00FF00\", \"00FF00\") == 0)\n"
+              "  {\n"
+              "    std::cout << \"Equal\";\n"
+              "  }\n"
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:7]: (warning) Unnecessary comparison of static strings. [staticStringCompare]\n", errout_str());
 
         check("void f() {\n"
-              "  if (strcmp($\"00FF00\", \"00FF00\") == 0) {}"
-              "}");
+              "  if (strcmp($\"00FF00\", \"00FF00\") == 0) {}\n"
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void f() {\n"
-              "  if ($strcmp(\"00FF00\", \"00FF00\") == 0) {}"
-              "}");
+              "  if ($strcmp(\"00FF00\", \"00FF00\") == 0) {}\n"
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("int main()\n"
               "{\n"
-              "  if (stricmp(\"hotdog\",\"HOTdog\") == 0)"
-              "  {"
-              "    std::cout << \"Equal\";"
-              "  }"
-              "}");
+              "  if (stricmp(\"hotdog\",\"HOTdog\") == 0)\n"
+              "  {\n"
+              "    std::cout << \"Equal\";\n"
+              "  }\n"
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:7]: (warning) Unnecessary comparison of static strings. [staticStringCompare]\n", errout_str());
 
         check("int main()\n"
               "{\n"
-              "  if (QString::compare(\"Hamburger\", \"Hotdog\") == 0)"
-              "  {"
-              "    std::cout << \"Equal\";"
-              "  }"
-              "}");
+              "  if (QString::compare(\"Hamburger\", \"Hotdog\") == 0)\n"
+              "  {\n"
+              "    std::cout << \"Equal\";\n"
+              "  }\n"
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:7]: (warning) Unnecessary comparison of static strings. [staticStringCompare]\n", errout_str());
 
         check("int main()\n"
               "{\n"
-              "  if (QString::compare(argv[2], \"hotdog\") == 0)"
-              "  {"
-              "    std::cout << \"Equal\";"
-              "  }"
-              "}");
+              "  if (QString::compare(argv[2], \"hotdog\") == 0)\n"
+              "  {\n"
+              "    std::cout << \"Equal\";\n"
+              "  }\n"
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("int main()\n"
               "{\n"
-              "  if (strncmp(\"hotdog\",\"hotdog\", 6) == 0)"
-              "  {"
-              "    std::cout << \"Equal\";"
-              "  }"
-              "}");
+              "  if (strncmp(\"hotdog\",\"hotdog\", 6) == 0)\n"
+              "  {\n"
+              "    std::cout << \"Equal\";\n"
+              "  }\n"
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:7]: (warning) Unnecessary comparison of static strings. [staticStringCompare]\n", errout_str());
 
         check("int foo(const char *buf)\n"
               "{\n"
-              "  if (strcmp(buf, buf) == 0)"
-              "  {"
-              "    std::cout << \"Equal\";"
-              "  }"
-              "}");
+              "  if (strcmp(buf, buf) == 0)\n"
+              "  {\n"
+              "    std::cout << \"Equal\";\n"
+              "  }\n"
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:7]: (warning) Comparison of identical string variables. [stringCompare]\n", errout_str());
 
         check("int foo(const std::string& buf)\n"
               "{\n"
-              "  if (stricmp(buf.c_str(), buf.c_str()) == 0)"
-              "  {"
-              "    std::cout << \"Equal\";"
-              "  }"
-              "}");
+              "  if (stricmp(buf.c_str(), buf.c_str()) == 0)\n"
+              "  {\n"
+              "    std::cout << \"Equal\";\n"
+              "  }\n"
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:7]: (warning) Comparison of identical string variables. [stringCompare]\n", errout_str());
 
         check("int main() {\n"
               "  if (\"str\" == \"str\") {\n"
               "    std::cout << \"Equal\";\n"
               "  }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:6]: (warning) Unnecessary comparison of static strings. [staticStringCompare]\n", errout_str());
 
         check("int main() {\n"
               "  if (\"str\" != \"str\") {\n"
               "    std::cout << \"Equal\";\n"
               "  }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:6]: (warning) Unnecessary comparison of static strings. [staticStringCompare]\n", errout_str());
 
         check("int main() {\n"
               "  if (a+\"str\" != \"str\"+b) {\n"
               "    std::cout << \"Equal\";\n"
               "  }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
     void suspiciousStringCompare() {
         check("bool foo(char* c) {\n"
               "    return c == \"x\";\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:14]: (warning) String literal compared with variable 'c'. Did you intend to use strcmp() instead? [literalWithCharPtrCompare]\n", errout_str());
 
         check("bool foo(char** c) {\n"
               "    return c[3] == \"x\";\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:17]: (warning) String literal compared with variable 'c[3]'. Did you intend to use strcmp() instead? [literalWithCharPtrCompare]\n", errout_str());
 
         check("bool foo(wchar_t* c) {\n"
               "    return c == L\"x\";\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:14]: (warning) String literal compared with variable 'c'. Did you intend to use wcscmp() instead? [literalWithCharPtrCompare]\n", errout_str());
 
         check("bool foo(const char* c) {\n"
               "    return \"x\" == c;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:16]: (warning) String literal compared with variable 'c'. Did you intend to use strcmp() instead? [literalWithCharPtrCompare]\n", errout_str());
 
         check("bool foo(char* c) {\n"
               "    return foo+\"x\" == c;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("bool foo(char* c) {\n"
               "    return \"x\" == c+foo;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("bool foo(char* c) {\n"
               "    return \"x\" == c+foo;\n"
-              "}", dinit(CheckOptions, $.cpp = false));
+              "}\n", dinit(CheckOptions, $.cpp = false));
         ASSERT_EQUALS("[test.c:2:16]: (warning) String literal compared with variable 'c+foo'. Did you intend to use strcmp() instead? [literalWithCharPtrCompare]\n", errout_str());
 
         check("bool foo(Foo c) {\n"
               "    return \"x\" == c.foo;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("bool foo(Foo c) {\n"
               "    return \"x\" == c.foo;\n"
-              "}", dinit(CheckOptions, $.cpp = false));
+              "}\n", dinit(CheckOptions, $.cpp = false));
         ASSERT_EQUALS("[test.c:2:16]: (warning) String literal compared with variable 'c.foo'. Did you intend to use strcmp() instead? [literalWithCharPtrCompare]\n", errout_str());
 
         check("bool foo(const std::string& c) {\n"
               "    return \"x\" == c;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("bool foo(const Foo* c) {\n"
               "    return \"x\" == c->bar();\n" // #4314
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // Ticket #4257
@@ -367,33 +367,33 @@ private:
         // Ticket #4257
         check("bool foo() {\n"
               "MyString *str=Getter();\n"
-              "return *str==\"bug\"; }");
+              "return *str==\"bug\"; }\n");
         ASSERT_EQUALS("", errout_str());
 
         // Ticket #4257
         check("bool foo() {\n"
               "MyString **str=OtherGetter();\n"
-              "return *str==\"bug\"; }", dinit(CheckOptions, $.cpp = false));
+              "return *str==\"bug\"; }\n", dinit(CheckOptions, $.cpp = false));
         ASSERT_EQUALS("[test.c:3:12]: (warning) String literal compared with variable '*str'. Did you intend to use strcmp() instead? [literalWithCharPtrCompare]\n", errout_str());
 
         // Ticket #4257
         check("bool foo() {\n"
               "MyString str=OtherGetter2();\n"
-              "return &str==\"bug\"; }", dinit(CheckOptions, $.cpp = false));
+              "return &str==\"bug\"; }\n", dinit(CheckOptions, $.cpp = false));
         ASSERT_EQUALS("[test.c:3:12]: (warning) String literal compared with variable '&str'. Did you intend to use strcmp() instead? [literalWithCharPtrCompare]\n", errout_str());
 
         // Ticket #5734
         check("int foo(char c) {\n"
-              "return c == '4';}");
+              "return c == '4';}\n");
         ASSERT_EQUALS("", errout_str());
         check("int foo(char c) {\n"
-              "return c == '4';}", dinit(CheckOptions, $.cpp = false));
+              "return c == '4';}\n", dinit(CheckOptions, $.cpp = false));
         ASSERT_EQUALS("", errout_str());
         check("int foo(char c) {\n"
-              "return c == \"42\"[0];}");
+              "return c == \"42\"[0];}\n");
         ASSERT_EQUALS("", errout_str());
         check("int foo(char c) {\n"
-              "return c == \"42\"[0];}", dinit(CheckOptions, $.cpp = false));
+              "return c == \"42\"[0];}\n", dinit(CheckOptions, $.cpp = false));
         ASSERT_EQUALS("", errout_str());
 
         // 5639 String literal compared with char buffer in a struct
@@ -418,81 +418,81 @@ private:
         check("void f(std::vector<std::string> theArgs) {\n"
               "   std::string arg1(*theArgs.begin());\n"
               "   if(arg1 == \"aaa\") {}\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
     void suspiciousStringCompare_char() {
         check("bool foo(char* c) {\n"
               "    return c == 'x';\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:14]: (warning) Char literal compared with pointer 'c'. Did you intend to dereference it? [charLiteralWithCharPtrCompare]\n", errout_str());
 
         check("bool foo(wchar_t* c) {\n"
               "    return c == L'x';\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:14]: (warning) Char literal compared with pointer 'c'. Did you intend to dereference it? [charLiteralWithCharPtrCompare]\n", errout_str());
 
         check("bool foo(char* c) {\n"
               "    return '\\0' != c;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:17]: (warning) Char literal compared with pointer 'c'. Did you intend to dereference it? [charLiteralWithCharPtrCompare]\n", errout_str());
 
         check("bool foo(char c) {\n"
               "    return c == '\\0';\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("bool foo(char* c) {\n"
               "    return c[0] == '\\0';\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("bool foo(char** c) {\n"
               "    return c[0] == '\\0';\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:17]: (warning) Char literal compared with pointer 'c[0]'. Did you intend to dereference it? [charLiteralWithCharPtrCompare]\n", errout_str());
 
         check("bool foo(char** c) {\n"
               "    return *c == '\\0';\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:15]: (warning) Char literal compared with pointer '*c'. Did you intend to dereference it? [charLiteralWithCharPtrCompare]\n", errout_str());
 
         check("bool foo(char c) {\n"
               "    return c == 0;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("bool foo(char* c) {\n"
               "    return *c == 0;\n"
-              "}", dinit(CheckOptions, $.cpp = false));
+              "}\n", dinit(CheckOptions, $.cpp = false));
         ASSERT_EQUALS("", errout_str());
 
         check("bool foo(char* c) {\n"
               "    return *c == 0;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("bool foo(Foo* c) {\n"
               "    return 0 == c->x;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void foo(char* c) {\n"
               "    if(c == '\\0') bar();\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:10]: (warning) Char literal compared with pointer 'c'. Did you intend to dereference it? [charLiteralWithCharPtrCompare]\n", errout_str());
 
         check("void f() {\n"
               "  struct { struct { char *str; } x; } a;\n"
               "  return a.x.str == '\\0';"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:18]: (warning) Char literal compared with pointer 'a.x.str'. Did you intend to dereference it? [charLiteralWithCharPtrCompare]\n", errout_str());
 
         check("void f() {\n"
               "  struct { struct { char *str; } x; } a;\n"
               "  return *a.x.str == '\\0';"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -502,7 +502,7 @@ private:
               "{\n"
               "    char buf[100];\n"
               "    snprintf(buf,100,\"%s\",buf);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:4:27]: (error) Undefined behavior: Variable 'buf' is used as parameter and destination in snprintf(). [sprintfOverlappingData]\n", errout_str());
     }
 
@@ -511,7 +511,7 @@ private:
               "{\n"
               "    char buf[100];\n"
               "    sprintf(buf,\"%s\",buf);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:4:22]: (error) Undefined behavior: Variable 'buf' is used as parameter and destination in sprintf(). [sprintfOverlappingData]\n", errout_str());
     }
 
@@ -520,7 +520,7 @@ private:
               "{\n"
               "    char buf[100];\n"
               "    sprintf(buf,\"%i\",sizeof(buf));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -530,7 +530,7 @@ private:
               "    char buf[100];\n"
               "    sprintf(buf,\"%i\",sizeof(buf));\n"
               "    if (buf[0]);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -545,7 +545,7 @@ private:
               "    const char* filename = \"hello\";\n"
               "    struct A a;\n"
               "    snprintf(a.filename, 128, \"%s\", filename);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -558,7 +558,7 @@ private:
               "void foo(struct A *a)\n"
               "{\n"
               "    snprintf(a->filename, 128, \"%s\", a->filename);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:8:39]: (error) Undefined behavior: Variable 'a->filename' is used as parameter and destination in snprintf(). [sprintfOverlappingData]\n", errout_str());
     }
 
@@ -567,7 +567,7 @@ private:
               "{\n"
               "    char buf[100];\n"
               "    sprintf((char*)buf,\"%s\",(char*)buf);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:4:29]: (error) Undefined behavior: Variable 'buf' is used as parameter and destination in sprintf(). [sprintfOverlappingData]\n", errout_str());
     }
 
@@ -576,7 +576,7 @@ private:
               "{\n"
               "    char buf[100];\n"
               "    sprintf((char*)(void*)buf,\"%s\",(void*)(char*)buf);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:4:36]: (error) Undefined behavior: Variable 'buf' is used as parameter and destination in sprintf(). [sprintfOverlappingData]\n", errout_str());
     }
 
@@ -585,7 +585,7 @@ private:
               "{\n"
               "    wchar_t buf[100];\n"
               "    swprintf(buf,10, \"%s\",buf);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:4:27]: (error) Undefined behavior: Variable 'buf' is used as parameter and destination in swprintf(). [sprintfOverlappingData]\n", errout_str());
     }
 
@@ -594,7 +594,7 @@ private:
         check("void foo()\n"
               "{\n"
               "    const char *p = \"/usr\" + '/';\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:28]: (error) Unusual pointer arithmetic. A value of type 'char' is added to a string literal. [strPlusChar]\n", errout_str());
     }
 
@@ -604,7 +604,7 @@ private:
               "{\n"
               "    char ch = 1;\n"
               "    const char *p = ch + \"/usr\";\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // Strange looking pointer arithmetic..
@@ -613,7 +613,7 @@ private:
               "    int i = 1;\n"
               "    const char* psz = \"Bla\";\n"
               "    const std::string str = i + psz;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -623,7 +623,7 @@ private:
               "{\n"
               "    std::string temp = \"/tmp\";\n"
               "    std::string path = temp + '/' + \"sub\" + '/';\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -632,100 +632,100 @@ private:
         check("void foo()\n"
               "{\n"
               "    const wchar_t *p = L\"/usr\" + L'/';\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:32]: (error) Unusual pointer arithmetic. A value of type 'wchar_t' is added to a string literal. [strPlusChar]\n", errout_str());
 
         check("void foo(wchar_t c)\n"
               "{\n"
               "    const wchar_t *p = L\"/usr\" + c;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:32]: (error) Unusual pointer arithmetic. A value of type 'wchar_t' is added to a string literal. [strPlusChar]\n", errout_str());
     }
 
     void incorrectStringCompare() {
         check("int f() {\n"
               "    return test.substr( 0 , 4 ) == \"Hello\" ? 0 : 1 ;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:17]: (warning) String literal \"Hello\" doesn't match length argument for substr(). [incorrectStringCompare]\n", errout_str());
 
         check("int f() {\n"
               "    return test.substr( 0 , 4 ) == L\"Hello\" ? 0 : 1 ;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:17]: (warning) String literal L\"Hello\" doesn't match length argument for substr(). [incorrectStringCompare]\n", errout_str());
 
         check("int f() {\n"
               "    return test.substr( 0 , 5 ) == \"Hello\" ? 0 : 1 ;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("int f() {\n"
               "    return \"Hello\" == test.substr( 0 , 4 ) ? 0 : 1 ;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:28]: (warning) String literal \"Hello\" doesn't match length argument for substr(). [incorrectStringCompare]\n", errout_str());
 
         check("int f() {\n"
               "    return \"Hello\" == foo.bar<int>().z[1].substr(i+j*4, 4) ? 0 : 1 ;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:43]: (warning) String literal \"Hello\" doesn't match length argument for substr(). [incorrectStringCompare]\n", errout_str());
 
         check("int f() {\n"
               "    return \"Hello\" == test.substr( 0 , 5 ) ? 0 : 1 ;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("int f() {\n"
               "    if (\"Hello\") { }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:9]: (warning) Conversion of string literal \"Hello\" to bool always evaluates to true. [incorrectStringBooleanError]\n", errout_str());
 
         check("int f() {\n"
               "    if (\"Hello\" && test) { }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:9]: (warning) Conversion of string literal \"Hello\" to bool always evaluates to true. [incorrectStringBooleanError]\n", errout_str());
 
         check("int f() {\n"
               "    if (test && \"Hello\") { }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:17]: (warning) Conversion of string literal \"Hello\" to bool always evaluates to true. [incorrectStringBooleanError]\n", errout_str());
 
         check("int f() {\n"
               "    while (\"Hello\") { }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:12]: (warning) Conversion of string literal \"Hello\" to bool always evaluates to true. [incorrectStringBooleanError]\n", errout_str());
 
         check("int f() {\n"
               "    return \"Hello\" ? 1 : 2;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:12]: (warning) Conversion of string literal \"Hello\" to bool always evaluates to true. [incorrectStringBooleanError]\n", errout_str());
 
         check("int f() {\n"
               "    assert (test || \"Hello\");\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:21]: (warning) Conversion of string literal \"Hello\" to bool always evaluates to true. [incorrectStringBooleanError]\n", errout_str());
 
         check("int f() {\n"
               "    assert (test && \"Hello\");\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("int f() {\n"
               "    assert (\"Hello\" || test);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:13]: (warning) Conversion of string literal \"Hello\" to bool always evaluates to true. [incorrectStringBooleanError]\n", errout_str());
 
         check("int f() {\n"
               "    assert (\"Hello\" && test);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("int f() {\n"
               "    BOOST_ASSERT (\"Hello\" && test);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("int f() {\n"
               "    return f2(\"Hello\");\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // #7750 warn about char literals in boolean expressions
@@ -734,7 +734,7 @@ private:
               "  if(L'b'){}\n"
               "  if(1 && 'c'){}\n"
               "  int x = 'd' ? 1 : 2;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:6]: (warning) Conversion of char literal 'a' to bool always evaluates to true. [incorrectCharBooleanError]\n"
                       "[test.cpp:3:6]: (warning) Conversion of char literal L'b' to bool always evaluates to true. [incorrectCharBooleanError]\n"
                       "[test.cpp:4:11]: (warning) Conversion of char literal 'c' to bool always evaluates to true. [incorrectCharBooleanError]\n"
@@ -744,7 +744,7 @@ private:
         check("void f() {\n"
               "  if('\\0'){}\n"
               "  if(L'\\0'){}\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:6]: (warning) Conversion of char literal '\\0' to bool always evaluates to false. [incorrectCharBooleanError]\n"
                       "[test.cpp:3:6]: (warning) Conversion of char literal L'\\0' to bool always evaluates to false. [incorrectCharBooleanError]\n",
                       errout_str());
@@ -752,7 +752,7 @@ private:
         check("void f() {\n"
               "  if('\\0' || cond){}\n"
               "  if(L'\\0' || cond){}\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:6]: (warning) Conversion of char literal '\\0' to bool always evaluates to false. [incorrectCharBooleanError]\n"
                       "[test.cpp:3:6]: (warning) Conversion of char literal L'\\0' to bool always evaluates to false. [incorrectCharBooleanError]\n", errout_str());
 
@@ -836,12 +836,12 @@ private:
     void deadStrcmp() {
         check("void f(const char *str) {\n"
               "  if (strcmp(str, \"abc\") == 0 || strcmp(str, \"def\")) {}\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:40]: (warning) The expression 'strcmp(str,\"def\") != 0' is suspicious. It overlaps 'strcmp(str,\"abc\") == 0'. [overlappingStrcmp]\n", errout_str());
 
         check("void f(const wchar_t *str) {\n"
               "  if (wcscmp(str, L\"abc\") == 0 || wcscmp(str, L\"def\")) {}\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:41]: (warning) The expression 'wcscmp(str,L\"def\") != 0' is suspicious. It overlaps 'wcscmp(str,L\"abc\") == 0'. [overlappingStrcmp]\n", errout_str());
 
         check("struct X {\n"
@@ -850,7 +850,7 @@ private:
               "\n"
               "void f(const struct X *x) {\n"
               "  if (strcmp(x->str, \"abc\") == 0 || strcmp(x->str, \"def\")) {}\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:6:43]: (warning) The expression 'strcmp(x->str,\"def\") != 0' is suspicious. It overlaps 'strcmp(x->str,\"abc\") == 0'. [overlappingStrcmp]\n", errout_str());
     }
 };

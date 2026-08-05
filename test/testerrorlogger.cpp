@@ -140,7 +140,7 @@ private:
             ASSERT_EQUALS("info", loc.getinfo());
         }
         {
-            const SimpleTokenList tokenlist("a", "dir/a.cpp");
+            const SimpleTokenList tokenlist("a\n", "dir/a.cpp");
             {
                 const ErrorMessage::FileLocation loc(tokenlist.front(), &tokenlist.get());
                 ASSERT_EQUALS("dir/a.cpp", loc.getOrigFile(false));
@@ -173,7 +173,7 @@ private:
             }
         }
         {
-            const SimpleTokenList tokenlist("a", "dir\\a.cpp");
+            const SimpleTokenList tokenlist("a\n", "dir\\a.cpp");
             {
                 const ErrorMessage::FileLocation loc(tokenlist.front(), &tokenlist.get());
                 ASSERT_EQUALS("dir\\a.cpp", loc.getOrigFile(false));
@@ -213,12 +213,12 @@ private:
         ASSERT_EQUALS("dir/a.cpp", ErrorMessage::FileLocation("dir/a.cpp", "info", 1, 1).getfile(false));
         ASSERT_EQUALS("dir/a.cpp", ErrorMessage::FileLocation("dir\\a.cpp", "info", 1, 1).getfile(false));
         {
-            const SimpleTokenList tokenlist("a", "dir/a.cpp");
+            const SimpleTokenList tokenlist("a\n", "dir/a.cpp");
             ASSERT_EQUALS("dir/a.cpp", ErrorMessage::FileLocation(tokenlist.front(), &tokenlist.get()).getfile(false));
             ASSERT_EQUALS("dir/a.cpp", ErrorMessage::FileLocation(tokenlist.front(), "info", &tokenlist.get()).getfile(false));
         }
         {
-            const SimpleTokenList tokenlist("a", "dir\\a.cpp");
+            const SimpleTokenList tokenlist("a\n", "dir\\a.cpp");
             ASSERT_EQUALS("dir/a.cpp", ErrorMessage::FileLocation(tokenlist.front(), &tokenlist.get()).getfile(false));
             ASSERT_EQUALS("dir/a.cpp", ErrorMessage::FileLocation(tokenlist.front(), "info", &tokenlist.get()).getfile(false));
         }
