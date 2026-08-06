@@ -300,8 +300,8 @@ void ErrorMessage::calculateWarningHash(const std::list<const Token*>& callstack
 
     // hash algorithm: sdbm
     // any hash algorithm can be used but it has to be the same hash on different platforms and compilers
-    hash = std::accumulate(hashString.cbegin(), hashString.cend(), 0, [](std::size_t hash, char c) {
-        return static_cast<unsigned char>(c) + (hash << 6) + (hash << 16) - hash;
+    hash = std::accumulate(hashString.cbegin(), hashString.cend(), std::size_t{0}, [](std::size_t h, unsigned char c) {
+        return static_cast<std::size_t>(c) + (h << 6) + (h << 16) - h;
     });
 }
 
