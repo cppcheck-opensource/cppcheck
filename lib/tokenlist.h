@@ -22,6 +22,7 @@
 //---------------------------------------------------------------------------
 
 #include "config.h"
+#include "refthunk.h"
 #include "standards.h"
 
 #include <cstddef>
@@ -228,7 +229,7 @@ private:
     std::vector<std::string> mOrigFiles;
 
     /** settings */
-    const Settings& mSettings;
+    RefThunk<const Settings> mSettings;
 
     /** File is known to be C/C++ code */
     Standards::Language mLang{Standards::Language::None};

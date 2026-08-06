@@ -135,7 +135,7 @@ public:
     }
 
 private:
-    const Settings settings;
+    Settings settings;
     TokenList list;
 };
 

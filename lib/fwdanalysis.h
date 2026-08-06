@@ -22,6 +22,7 @@
 //---------------------------------------------------------------------------
 
 #include "config.h"
+#include "refthunk.h"
 
 #include <cstdint>
 #include <set>
@@ -77,7 +78,7 @@ private:
     Result check(const Token *expr, const Token *startToken, const Token *endToken) const;
     Result checkRecursive(const Token *expr, const Token *startToken, const Token *endToken, const std::set<nonneg int> &exprVarIds, bool local, bool inInnerClass, int depth=0) const;
 
-    const Settings &mSettings;
+    RefThunk<const Settings> mSettings;
     enum class What : std::uint8_t { Reassign, UnusedValue } mWhat = What::Reassign;
 };
 

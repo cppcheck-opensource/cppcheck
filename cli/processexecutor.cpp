@@ -172,8 +172,8 @@ namespace {
                 writeToPipeInternal(type, data.c_str(), len);
         }
 
-        const int mWpipe;
-        const bool mDebug;
+        int mWpipe;
+        bool mDebug;
     };
 }
 

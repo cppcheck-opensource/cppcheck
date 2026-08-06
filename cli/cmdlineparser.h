@@ -27,6 +27,7 @@
 
 #include "cmdlinelogger.h"
 #include "filesettings.h"
+#include "refthunk.h"
 #include "standards.h"
 #include "utils.h"
 
@@ -117,11 +118,11 @@ private:
         T tmp;
         std::string err;
         if (!strToInt(arg + offset, tmp, &err)) {
-            mLogger.printError("argument to '" + std::string(arg, offset) + "' is not valid - " + err + ".");
+            mLogger().printError("argument to '" + std::string(arg, offset) + "' is not valid - " + err + ".");
             return false;
         }
         if (mustBePositive && tmp < 0) {
-            mLogger.printError("argument to '" + std::string(arg, offset) + "' needs to be a positive integer.");
+            mLogger().printError("argument to '" + std::string(arg, offset) + "' needs to be a positive integer.");
             return false;
         }
         num = tmp;
@@ -152,10 +153,10 @@ private:
 
     void outputFormatOptionMixingError() const;
 
-    CmdLineLogger &mLogger;
+    RefThunk<CmdLineLogger> mLogger;
 
-    Settings &mSettings;
-    Suppressions &mSuppressions;
+    RefThunk<Settings> mSettings;
+    RefThunk<Suppressions> mSuppressions;
 
 protected:
     std::vector<std::string> mPathNames;
