@@ -87,6 +87,7 @@ private:
         TEST_CASE(checkMissingReturn6); // #13180
         TEST_CASE(checkMissingReturn7); // #14370 - FN try/catch
         TEST_CASE(checkMissingReturn8);
+        TEST_CASE(checkMissingReturn9);
         TEST_CASE(checkMissingReturnStdInt); // #14482 - FN std::int32_t
 
         // std::move for locar variable
@@ -1933,6 +1934,16 @@ private:
         check("boost::asio::awaitable<void> test() {\n"
               "        co_return;\n"
               "}\n",s);
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void checkMissingReturn9() {
+        check("struct S { int v; };\n"
+              " S operator/(S x, S y) { return { x.v / y.v }; }\n"
+              " S f(int a, int b) {\n"
+              "    if (b) { return S{ a } / S{ b }; }\n"
+              "    else { return {}; }\n"
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
