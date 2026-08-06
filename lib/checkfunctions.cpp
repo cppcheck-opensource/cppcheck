@@ -386,7 +386,12 @@ static const Token *checkMissingReturnScope(const Token *tok, const Library &lib
                 if (!isExhaustiveSwitch(tok->link()))
                     return tok->link();
             } else if (tok->scope()->type == ScopeType::eIf) {
-                const Token *condition = tok->scope()->classDef->next()->astOperand2();
+                const Token *paren = tok->link()->linkAt(-1);
+                if (!paren || !Token::simpleMatch(paren->astOperand1(), "if")) {
+                    tok = tok->link();
+                    continue;
+                }
+                const Token *condition = paren->astOperand2();
                 if (condition && condition->hasKnownIntValue() && condition->getKnownIntValue() == 1)
                     return checkMissingReturnScope(tok, library);
                 return tok;
