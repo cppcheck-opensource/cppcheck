@@ -68,7 +68,9 @@ static const ValueFlow::Value *getBufferSizeValue(const Token *tok)
     auto it = std::find_if(tokenValues.cbegin(), tokenValues.cend(), std::mem_fn(&ValueFlow::Value::isBufferSizeValue));
     if (it != tokenValues.cend())
         return &*it;
-    it = std::find_if(tokenValues.cbegin(), tokenValues.cend(), std::mem_fn(&ValueFlow::Value::isContainerSizeValue));
+    it = std::find_if(tokenValues.cbegin(), tokenValues.cend(), [](const ValueFlow::Value& v) {
+        return v.isContainerSizeValue() && !v.isImpossible();
+    });
     return it == tokenValues.cend() ? nullptr : &*it;
 }
 
@@ -597,6 +599,8 @@ ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok, cons
                     ValueFlow::Value bufSizeVal;
                     bufSizeVal.valueType = ValueFlow::Value::ValueType::BUFFER_SIZE;
                     bufSizeVal.intvalue = value->intvalue * elementSize;
+                    bufSizeVal.valueKind = value->valueKind;
+                    bufSizeVal.errorPath = value->errorPath;
                     return bufSizeVal;
                 }
             }
@@ -625,7 +629,7 @@ ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok, cons
 }
 //---------------------------------------------------------------------------
 
-static bool checkBufferSize(const Token *ftok, const Library::ArgumentChecks::MinSize &minsize, const std::vector<const Token *> &args, const MathLib::bigint bufferSize, const Settings &settings, const Tokenizer* tokenizer)
+static bool checkBufferSize(const Token *ftok, const Library::ArgumentChecks::MinSize &minsize, const std::vector<const Token *> &args, ValueFlow::Value& bufferSize, const Settings &settings, const Tokenizer* tokenizer)
 {
     const Token * const arg = (minsize.arg > 0 && minsize.arg - 1 < args.size()) ? args[minsize.arg - 1] : nullptr;
     const Token * const arg2 = (minsize.arg2 > 0 && minsize.arg2 - 1 < args.size()) ? args[minsize.arg2 - 1] : nullptr;
@@ -633,20 +637,29 @@ static bool checkBufferSize(const Token *ftok, const Library::ArgumentChecks::Mi
     switch (minsize.type) {
     case Library::ArgumentChecks::MinSize::Type::STRLEN:
         if (settings.library.isargformatstr(ftok, minsize.arg)) {
-            return getMinFormatStringOutputLength(args, minsize.arg, settings) < bufferSize;
+            return getMinFormatStringOutputLength(args, minsize.arg, settings) < bufferSize.intvalue;
         } else if (arg) {
             const Token *strtoken = arg->getValueTokenMaxStrLength();
             if (strtoken)
-                return Token::getStrLength(strtoken) < bufferSize;
+                return Token::getStrLength(strtoken) < bufferSize.intvalue;
         }
         break;
     case Library::ArgumentChecks::MinSize::Type::ARGVALUE: {
-        if (arg && arg->hasKnownIntValue()) {
-            MathLib::bigint myMinsize = arg->getKnownIntValue();
+        if (arg) {
+            const ValueFlow::Value* argVal = arg->hasKnownIntValue() ? &arg->values().front() : arg->getMaxValue(true);
+            if (!argVal)
+                break;
+            MathLib::bigint myMinsize = argVal->intvalue;
             const int baseSize = tokenizer->sizeOfType(minsize.baseType);
             if (baseSize != 0)
                 myMinsize *= baseSize;
-            return myMinsize <= bufferSize;
+            const bool ok = myMinsize <= bufferSize.intvalue;
+            if (!ok) {
+                bufferSize.errorPath.insert(bufferSize.errorPath.end(), argVal->errorPath.begin(), argVal->errorPath.end());
+                if (!bufferSize.condition)
+                    bufferSize.condition = argVal->condition;
+            }
+            return ok;
         }
         break;
     }
@@ -655,14 +668,14 @@ static bool checkBufferSize(const Token *ftok, const Library::ArgumentChecks::Mi
         break;
     case Library::ArgumentChecks::MinSize::Type::MUL:
         if (arg && arg2 && arg->hasKnownIntValue() && arg2->hasKnownIntValue())
-            return (arg->getKnownIntValue() * arg2->getKnownIntValue()) <= bufferSize;
+            return (arg->getKnownIntValue() * arg2->getKnownIntValue()) <= bufferSize.intvalue;
         break;
     case Library::ArgumentChecks::MinSize::Type::VALUE: {
         MathLib::bigint myMinsize = minsize.value;
         const int baseSize = tokenizer->sizeOfType(minsize.baseType);
         if (baseSize != 0)
             myMinsize *= baseSize;
-        return myMinsize <= bufferSize;
+        return myMinsize <= bufferSize.intvalue;
     }
     case Library::ArgumentChecks::MinSize::Type::NONE:
         break;
@@ -700,7 +713,7 @@ void CheckBufferOverrunImpl::bufferOverflow()
                 if (argtok->valueType() && argtok->valueType()->pointer == 0)
                     continue;
                 // TODO: strcpy(buf+10, "hello");
-                const ValueFlow::Value bufferSize = getBufferSize(argtok, mSettings);
+                ValueFlow::Value bufferSize = getBufferSize(argtok, mSettings);
                 if (bufferSize.intvalue <= 0)
                     continue;
                 // buffer size == 1 => do not warn for dynamic memory
@@ -719,7 +732,7 @@ void CheckBufferOverrunImpl::bufferOverflow()
                     }
                 }
                 const bool error = std::none_of(minsizes->begin(), minsizes->end(), [&](const Library::ArgumentChecks::MinSize &minsize) {
-                    return checkBufferSize(tok, minsize, args, bufferSize.intvalue, mSettings, mTokenizer);
+                    return checkBufferSize(tok, minsize, args, bufferSize, mSettings, mTokenizer);
                 });
                 if (error)
                     bufferOverflowError(args[argnr], &bufferSize, Certainty::normal);
@@ -730,7 +743,10 @@ void CheckBufferOverrunImpl::bufferOverflow()
 
 void CheckBufferOverrunImpl::bufferOverflowError(const Token *tok, const ValueFlow::Value *value, Certainty certainty)
 {
-    reportError(getErrorPath(tok, value, "Buffer overrun"), Severity::error, "bufferAccessOutOfBounds", "Buffer is accessed out of bounds: " + (tok ? getRealBufferTok(tok)->expressionString() : "buf"), CWE_BUFFER_OVERRUN, certainty);
+    const auto errorPath = getErrorPath(tok, value, "Buffer overrun");
+    const auto severity = !value || (value->isKnown() && !value->condition) ? Severity::error : Severity::warning;
+    const std::string msg = "Buffer is accessed out of bounds: " + (tok ? getRealBufferTok(tok)->expressionString() : "buf");
+    reportError(errorPath, severity, "bufferAccessOutOfBounds", msg, CWE_BUFFER_OVERRUN, certainty);
 }
 
 //---------------------------------------------------------------------------
