@@ -259,20 +259,11 @@ void CheckStlImpl::outOfBoundsError(const Token *tok, const std::string &contain
         return;
     }
 
-    ErrorPath errorPath;
-    if (!indexValue)
-        errorPath = getErrorPath(tok, containerSize, "Access out of bounds");
-    else {
-        ErrorPath errorPath1 = getErrorPath(tok, containerSize, "Access out of bounds");
-        ErrorPath errorPath2 = getErrorPath(tok, indexValue, "Access out of bounds");
-        if (errorPath1.size() <= 1)
-            errorPath = std::move(errorPath2);
-        else if (errorPath2.size() <= 1)
-            errorPath = std::move(errorPath1);
-        else {
-            errorPath = std::move(errorPath1);
-            errorPath.splice(errorPath.end(), errorPath2);
-        }
+    ErrorPath errorPath = getErrorPath(tok, containerSize, "Access out of bounds");
+    if (indexValue) {
+        ErrorPath errorPathIdx = getErrorPath(tok, indexValue, "Access out of bounds");
+        if (errorPathIdx.size() >= errorPath.size())
+            errorPath = std::move(errorPathIdx);
     }
 
     reportError(std::move(errorPath),
