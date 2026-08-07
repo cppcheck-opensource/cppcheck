@@ -566,10 +566,17 @@ namespace {
             const auto checkForRecursion = [this]() {
                 if (Token::Match(mTypedefToken, "typedef %name% %name% ;"))
                     return;
+                int nBraces = 0;
                 for (const Token *tok = mTypedefToken; tok != mEndToken; tok = tok->next()) {
+                    if (tok->str() == "{")
+                        ++nBraces;
+                    else if (tok->str() == "}")
+                        --nBraces;
                     if (tok == mNameToken)
                         continue;
                     if (tok->str() != mNameToken->str())
+                        continue;
+                    if (nBraces > 0 && Token::simpleMatch(tok->next(), ";"))
                         continue;
                     if (Token::Match(tok->previous(), "struct|class|enum|union"))
                         continue;
