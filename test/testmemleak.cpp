@@ -2638,6 +2638,23 @@ private:
                       "[test.cpp:7:12]: (error) Allocation with f2, assert doesn't release it. [leakNoVarFunctionCall]\n"
                       "[test.cpp:8:12]: (error) Allocation with f3, assert doesn't release it. [leakNoVarFunctionCall]\n",
                       errout_str());
+        check("struct S {\n"
+              "    explicit S(int fd) {\n"
+              "        m_fd = fd;\n"
+              "    }\n"
+              "    ~S() {\n"
+              "        if (m_fd >= 0)\n"
+              "            close(m_fd); \n"
+              "    }\n"
+              "    int m_fd = -1;\n"
+              "};\n"
+              "S g(char *name) {\n"
+              "    return S(mkostemp(name, 0));\n"
+              "}\n"
+              "void f(char* ptr) {\n"
+              "    S s = g(ptr);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void missingAssignment() {
