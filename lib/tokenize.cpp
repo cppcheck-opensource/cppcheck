@@ -5165,8 +5165,10 @@ static Token * matchMemberName(const std::list<std::string> &scope, const Token 
 
     // Current scope..
     for (auto it = scope.cbegin(); it != scope.cend(); ++it) {
-        if (scopeIt == scopeInfo.cend() || scopeIt->name != *it)
-            return nullptr;
+        if (scopeIt == scopeInfo.cend() || scopeIt->name != *it) {
+            scopeIt = scopeInfo.cbegin();
+            break;
+        }
         ++scopeIt;
     }
 
