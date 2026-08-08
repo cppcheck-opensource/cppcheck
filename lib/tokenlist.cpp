@@ -461,7 +461,7 @@ static Token* skipDecl(Token* tok, std::vector<Token*>* inner = nullptr)
         return Token::Match(tok, "%name%| ,|)");
     };
 
-    if (!Token::Match(tok->previous(), "( %name%"))
+    if (tok->varId() || !Token::Match(tok->previous(), "( %name%"))
         return tok;
     Token *vartok = tok;
     while (Token::Match(vartok, "%name%|*|&|&&|::|<")) {

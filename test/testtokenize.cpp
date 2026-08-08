@@ -446,6 +446,7 @@ private:
         TEST_CASE(astfuncdecl);
         TEST_CASE(astarrayinit);
         TEST_CASE(astbracedinit);
+        TEST_CASE(astif);
 
         TEST_CASE(startOfExecutableScope);
 
@@ -7641,6 +7642,14 @@ private:
         ASSERT_EQUALS("ab{", testAst("int &a { b };", AstStyle::Simple, ListSimplification::Full));
         ASSERT_EQUALS("a0{", testAst("int &&a { 0 };", AstStyle::Simple, ListSimplification::Full));
         ASSERT_EQUALS("anullptr{", testAst("int *a { nullptr };", AstStyle::Simple, ListSimplification::Full));
+    }
+
+    void astif() {
+        ASSERT_EQUALS( // #14967
+            "ifxx(&&(",
+            testAst("void f(int (*x)()) {\n"
+                    "    if (x && x()) {}\n"
+                    "}\n", AstStyle::Simple, ListSimplification::Full));
     }
 
 #define isStartOfExecutableScope(offset, code) isStartOfExecutableScope_(offset, code, __FILE__, __LINE__)
