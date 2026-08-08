@@ -229,6 +229,7 @@ Third-party packages are ***not*** maintained by the Cppcheck team but their res
 * (MacOS) A package is available via <https://ports.macports.org/port/cppcheck>.
 * (Multi-Platform) A package is available via <https://anaconda.org/conda-forge/cppcheck>.
 * (Multi-Platform) A package is available via <https://conan.io/center/recipes/cppcheck>.
+* (Multi-Platform) [MegaLinter](https://megalinter.io/), an open-source linters aggregator for CI, ships Cppcheck out of the box in its Docker images. See <https://megalinter.io/latest/descriptors/c_cppcheck/> for the details.
 * Packages are also available from various download portals (mainly the Windows installer - sometimes re-packaged).
 
 ## Webpage
