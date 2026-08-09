@@ -83,6 +83,9 @@ private:
         TEST_CASE(importCppcheckGuiProjectPremiumMisra);
         TEST_CASE(ignorePaths);
         TEST_CASE(testVcxprojUnicode);
+        TEST_CASE(testVcxprojConfigurationPropertyGroups);
+        TEST_CASE(testVcxprojForcedIncludeFiles);
+        TEST_CASE(testVcxprojUnresolvableCompileInclude);
         TEST_CASE(testCollectArgs1);
         TEST_CASE(testCollectArgs2);
         TEST_CASE(testCollectArgs3);
@@ -646,6 +649,200 @@ private:
         ASSERT(project.fileSettings.back().defines.find(";UNICODE=1;") == std::string::npos);
         ASSERT(project.fileSettings.back().defines.find(";_UNICODE=1") == std::string::npos);
         ASSERT_EQUALS(project.fileSettings.back().useMfc, true);
+    }
+
+    void testVcxprojConfigurationPropertyGroups() const
+    {
+        // Properties in Configuration PropertyGroups are configuration-specific,
+        // so they must be resolved per configuration when building include paths.
+        const char vcxproj[] = R"-(
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <GeneratedFilesDir>$(RepoRoot)generated\</GeneratedFilesDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>NotSet</CharacterSet>
+    <GeneratedFilesDir>$(RepoRoot)generated\release\</GeneratedFilesDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(GeneratedFilesDir)includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>$(GeneratedFilesDir)forced.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(GeneratedFilesDir)includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>$(GeneratedFilesDir)forced.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
+</Project>
+)-";
+        tinyxml2::XMLDocument doc;
+        ASSERT_EQUALS(tinyxml2::XML_SUCCESS, doc.Parse(vcxproj, sizeof(vcxproj)));
+        TestImporter project;
+        std::map<std::string, std::string, cppcheck::stricmp> variables;
+        variables["RepoRoot"] = "C:/root/";
+        std::vector<TestImporter::SharedItemsProject> cache;
+        ASSERT_EQUALS(project.importVcxproj("test.vcxproj", doc, variables, {}, {}, cache), true);
+        ASSERT_EQUALS(project.fileSettings.size(), 2);
+        ASSERT_EQUALS(1U, project.fileSettings.front().includePaths.size());
+        ASSERT_EQUALS("C:/root/generated/includes/", project.fileSettings.front().includePaths.front());
+        const std::list<std::string> frontForced{ "C:/root/generated/forced.h" };
+        ASSERT_EQUALS(frontForced.size(), project.fileSettings.front().forcedIncludes.size());
+        ASSERT(project.fileSettings.front().forcedIncludes == frontForced);
+        ASSERT_EQUALS(1U, project.fileSettings.back().includePaths.size());
+        ASSERT_EQUALS("C:/root/generated/release/includes/", project.fileSettings.back().includePaths.front());
+        const std::list<std::string> backForced{ "C:/root/generated/release/forced.h" };
+        ASSERT_EQUALS(backForced.size(), project.fileSettings.back().forcedIncludes.size());
+        ASSERT(project.fileSettings.back().forcedIncludes == backForced);
+    }
+
+    void testVcxprojForcedIncludeFiles() const
+    {
+        const char vcxproj[] = R"-(
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{A9D955DC-E173-4F16-638A-6DBC2C3013E9}</ProjectGuid>
+  </PropertyGroup>
+  <!-- ✅ REQUIRED: Must come before Configuration PropertyGroups -->
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>NotSet</CharacterSet>
+    <UseOfMfc>Static</UseOfMfc>
+  </PropertyGroup>
+    <!-- ✅ REQUIRED: Must come after Configuration PropertyGroups -->
+    <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;FILE1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <ForcedIncludeFiles>$(MSBuildThisFileDirectory)file1.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;FILE2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <ForcedIncludeFiles>$(MSBuildThisFileDirectory)file2.h;%(ClCompile.ForcedIncludeFiles)</ForcedIncludeFiles>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;GLOBALX64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <ForcedIncludeFiles>$(MSBuildThisFileDirectory)GlobalReleaseX64.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Include="main.cpp">
+      <ForcedIncludeFiles>$(MSBuildThisFileDirectory)AllX64.h</ForcedIncludeFiles>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(MSBuildThisFileDirectory)DebugX64.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(MSBuildThisFileDirectory)ReleaseX64.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Include="main.cpp">
+      <ForcedIncludeFiles>$(MSBuildThisFileDirectory)AllX64.h</ForcedIncludeFiles>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(MSBuildThisFileDirectory)DebugX64.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(MSBuildThisFileDirectory)ReleaseX64.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
+)-";
+        tinyxml2::XMLDocument doc;
+        ASSERT_EQUALS(tinyxml2::XML_SUCCESS, doc.Parse(vcxproj, sizeof(vcxproj)));
+        TestImporter project;
+        std::map<std::string, std::string, cppcheck::stricmp> variables;
+        std::vector<TestImporter::SharedItemsProject> cache;
+        ASSERT_EQUALS(project.importVcxproj("test.vcxproj", doc, variables, {}, {}, cache), true);
+        ASSERT_EQUALS(project.fileSettings.size(), 2);
+        const std::list<std::string> front{ "AllX64.h", "DebugX64.h", "file2.h", "file1.h" };
+        size_t size = front.size();
+        ASSERT_EQUALS(project.fileSettings.front().forcedIncludes.size(), size);
+        ASSERT(project.fileSettings.front().forcedIncludes == front);
+        const std::list<std::string> back{ "AllX64.h", "ReleaseX64.h", "GlobalReleaseX64.h" };
+        size = back.size();
+        ASSERT_EQUALS(project.fileSettings.back().forcedIncludes.size(), size);
+        ASSERT(project.fileSettings.back().forcedIncludes == back);
+    }
+
+    void testVcxprojUnresolvableCompileInclude() const
+    {
+        // ClCompile includes whose paths contain configuration-dependent or
+        // undefined MSBuild variables must not abort the import. Paths that
+        // can be resolved (e.g. $(RepoRoot)) are analyzed; the rest are skipped.
+        const char vcxproj[] = R"-(
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup>
+    <GeneratedFilesDir>$(IntDir)Generated Files\</GeneratedFilesDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="$(RepoRoot)shared/interop.cpp" />
+    <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
+  </ItemGroup>
+</Project>
+)-";
+        tinyxml2::XMLDocument doc;
+        ASSERT_EQUALS(tinyxml2::XML_SUCCESS, doc.Parse(vcxproj, sizeof(vcxproj)));
+        TestImporter project;
+        std::map<std::string, std::string, cppcheck::stricmp> variables;
+        variables["RepoRoot"] = "C:/root/";
+        std::vector<TestImporter::SharedItemsProject> cache;
+        ASSERT_EQUALS(project.importVcxproj("test.vcxproj", doc, variables, {}, {}, cache), true);
+        // the unresolvable $(GeneratedFilesDir) entry must not produce an error
+        ASSERT_EQUALS(0U, project.errors.size());
+        ASSERT_EQUALS(2U, project.fileSettings.size());
+        ASSERT_EQUALS("main.cpp", project.fileSettings.front().filename());
+        ASSERT_EQUALS("C:/root/shared/interop.cpp", project.fileSettings.back().filename());
     }
 
     void testCollectArgs1() const
