@@ -4556,6 +4556,16 @@ private:
               "        haystack.remove(needle);"
               "}");
         ASSERT_EQUALS("[test.cpp:3:9]: (style) Redundant checking of STL container element existence before removing it. [redundantIfRemove]\n", errout_str());
+
+        check("void g(const std::string&);\n" // #14725
+              "std::set<std::string> g_s;\n"
+              "void f(const std::string& k) {\n"
+              "    if (g_s.find(k) != g_s.end()) {\n"
+              "        g_s.erase(k);\n"
+              "        g(k);\n"
+              "    }\n"
+              "}");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void missingInnerComparison1() {
