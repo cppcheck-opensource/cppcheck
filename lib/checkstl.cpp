@@ -1857,7 +1857,7 @@ void CheckStlImpl::redundantCondition()
             continue;
 
         const Token* tok = scope.classDef->tokAt(2);
-        if (!Token::Match(tok, "%name% . find ( %any% ) != %name% . end|rend|cend|crend ( ) ) { %name% . erase ( %any% ) ;"))
+        if (!Token::Match(tok, "%name% . find ( %any% ) != %name% . end|rend|cend|crend ( ) ) { %name% . remove|erase ( %any% ) ;"))
             continue;
 
         // Get tokens for the fields %name% and %any%
