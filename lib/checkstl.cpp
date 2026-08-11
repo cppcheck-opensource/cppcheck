@@ -1857,7 +1857,7 @@ void CheckStlImpl::redundantCondition()
             continue;
 
         const Token* tok = scope.classDef->tokAt(2);
-        if (!Token::Match(tok, "%name% . find ( %any% ) != %name% . end|rend|cend|crend ( ) ) { %name% . remove|erase ( %any% ) ;"))
+        if (!Token::Match(tok, "%name% . find ( %any% ) != %name% . end|rend|cend|crend ( ) ) { %name% . erase ( %any% ) ;"))
             continue;
 
         // Get tokens for the fields %name% and %any%
@@ -1866,6 +1866,9 @@ void CheckStlImpl::redundantCondition()
         const Token *var2 = any1->tokAt(3);
         const Token *var3 = var2->tokAt(7);
         const Token *any2 = var3->tokAt(4);
+
+        if (any2->tokAt(3) != scope.bodyEnd)
+            continue;
 
         // Check if all the "%name%" fields are the same and if all the "%any%" are the same..
         if (var1->str() == var2->str() &&
