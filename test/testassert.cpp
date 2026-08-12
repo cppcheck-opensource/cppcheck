@@ -147,6 +147,17 @@ private:
               "    assert(g());\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("int i;\n" // #14973
+              "bool f() {\n"
+              "    i = 0;\n"
+              "    return true;\n"
+              "}\n"
+              "void g() {\n"
+              "    bool (*fp)() = f;\n"
+              "    assert(fp == f);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void memberFunctionCallInAssert() {
