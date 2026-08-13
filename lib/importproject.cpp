@@ -818,10 +818,14 @@ namespace {
         bool useUnicode = false;
     };
 
+    struct ExcludedFromBuild : Conditional {
+        explicit ExcludedFromBuild(const tinyxml2::XMLElement *efb) : Conditional(efb) {}
+    };
+
     struct ItemGroupClCompile {
         explicit ItemGroupClCompile(std::string filename) : mFilename(std::move(filename)) {}
         ItemGroupClCompile(const tinyxml2::XMLElement *element, std::string file) : mFilename(std::move(file)) {
-            for (const tinyxml2::XMLElement* childElement = element->FirstChildElement(); childElement; childElement = childElement->NextSiblingElement()) {
+            for (const tinyxml2::XMLElement *childElement = element->FirstChildElement(); childElement; childElement = childElement->NextSiblingElement()) {
                 const char *name = childElement->Name();
                 if (!name)
                     continue;
@@ -830,23 +834,22 @@ namespace {
                     const char *text = childElement->GetText();
                     if (!condition || !text || std::strcmp(text, "true") != 0)
                         continue;
-                    mConditions.emplace_back(condition);
+                    mExcludedFromBuild.emplace_back(childElement);
                 }
-                // TODO: ForcedIncludeFiles and PrecompiledHeaderFile
+                // TODO: ForcedIncludeFiles and AdditionalIncludeDirectories
             }
         }
-        bool exclude(const ProjectConfiguration& p, std::vector<std::string>& errors) const {
-            if (mConditions.empty())
+        bool excludedfromBuild(const ProjectConfiguration &pc, std::vector<std::string> &errors) const {
+            if (mExcludedFromBuild.empty())
                 return false;
-            for (const std::string& condition : mConditions) {
-                Conditional conditional(condition);
-                if (conditional.conditionIsTrue(p, mFilename, errors))
+            for (const ExcludedFromBuild &excluded : mExcludedFromBuild) {
+                if (excluded.conditionIsTrue(pc, mFilename, errors))
                     return true;
             }
             return false;
         }
         std::string mFilename;
-        std::list<std::string> mConditions;
+        std::list<ExcludedFromBuild> mExcludedFromBuild;
     };
 }
 
@@ -1074,7 +1077,7 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
             }
 
             // check if the file should be excluded for this configuration
-            if (compile.exclude(p, errors))
+            if (compile.excludedfromBuild(p, errors))
                 continue;
 
             FileSettings fs{ compile.mFilename, Standards::Language::None, 0}; // file will be identified later on
