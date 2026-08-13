@@ -257,6 +257,8 @@ private:
         TEST_CASE(simplifyTypedefOriginalName1);
         TEST_CASE(simplifyTypedefOriginalName2);
         TEST_CASE(simplifyTypedefOriginalName3);
+        TEST_CASE(simplifyTypedefOriginalName4);
+        TEST_CASE(simplifyTypedefOriginalName5);
 
         TEST_CASE(simplifyTypedefTokenColumn1);
         TEST_CASE(simplifyTypedefTokenColumn2);
@@ -4607,6 +4609,36 @@ private:
     void simplifyTypedefOriginalName3() {
         const char code[] = "void f(void) {\n"
                             "    typedef int A;\n"
+                            "    A a;\n"
+                            "}\n";
+        TokenList tokenlist{ settings1, Standards::Language::C };
+        ASSERT(TokenListHelper::createTokensFromString(tokenlist, code, "file.c"));
+        TokenizerTest tokenizer(std::move(tokenlist), *this);
+        tokenizer.createLinks();
+        tokenizer.simplifyTypedef();
+        ASSERT_NO_THROW(tokenizer.validate());
+        const Token* token = Token::findsimplematch(tokenizer.list.front(), "int");
+        ASSERT_EQUALS("A", token->originalName());
+    }
+
+    void simplifyTypedefOriginalName4() {
+        const char code[] = "void f(void) {\n"
+                            "    typedef unsigned int A;\n"
+                            "    A a;\n"
+                            "}\n";
+        TokenList tokenlist{ settings1, Standards::Language::C };
+        ASSERT(TokenListHelper::createTokensFromString(tokenlist, code, "file.c"));
+        TokenizerTest tokenizer(std::move(tokenlist), *this);
+        tokenizer.createLinks();
+        tokenizer.simplifyTypedef();
+        ASSERT_NO_THROW(tokenizer.validate());
+        const Token* token = Token::findsimplematch(tokenizer.list.front(), "int");
+        ASSERT_EQUALS("A", token->originalName());
+    }
+
+    void simplifyTypedefOriginalName5() {
+        const char code[] = "void f(void) {\n"
+                            "    typedef void (*A)(int);\n"
                             "    A a;\n"
                             "}\n";
         TokenList tokenlist{ settings1, Standards::Language::C };
