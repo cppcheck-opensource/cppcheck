@@ -839,13 +839,9 @@ namespace {
             }
         }
         bool excludedfromBuild(const ProjectConfiguration &pc, std::vector<std::string> &errors) const {
-            if (mExcludedFromBuild.empty())
-                return false;
-            for (const ExcludedFromBuild &excluded : mExcludedFromBuild) {
-                if (excluded.conditionIsTrue(pc, mFilename, errors))
-                    return true;
-            }
-            return false;
+            return std::any_of(mExcludedFromBuild.cbegin(), mExcludedFromBuild.cend(), [&](const ExcludedFromBuild &excluded) {
+                return excluded.conditionIsTrue(pc, mFilename, errors);
+            });
         }
         std::string mFilename;
         std::list<ExcludedFromBuild> mExcludedFromBuild;
