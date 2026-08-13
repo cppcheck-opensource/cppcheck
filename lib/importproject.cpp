@@ -623,7 +623,6 @@ namespace {
             if (condAttr)
                 mCondition = condAttr;
         }
-        explicit Conditional(std::string condition) : mCondition(std::move(condition)) {}
 
         static void replaceAll(std::string &c, const std::string &from, const std::string &to) {
             std::string::size_type pos;
