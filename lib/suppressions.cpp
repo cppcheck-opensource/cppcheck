@@ -472,10 +472,10 @@ bool SuppressionList::Suppression::isMatch(const SuppressionList::ErrorMessage &
     cppcheck::unreachable();
 }
 
-bool SuppressionList::isSuppressed(const SuppressionList::ErrorMessage &errmsg, bool global)
-{
+bool SuppressionList::isSuppressed(const SuppressionList::ErrorMessage &errmsg, bool global, bool *inlineSupressed) {
     std::lock_guard<std::mutex> lg(mSuppressionsSync);
-
+    if (inlineSupressed)
+        *inlineSupressed = false;
     // TODO: handle unmatchedPolyspaceSuppression?
     const bool unmatchedSuppression(errmsg.errorId == "unmatchedSuppression");
     bool returnValue = false;
@@ -484,8 +484,11 @@ bool SuppressionList::isSuppressed(const SuppressionList::ErrorMessage &errmsg, 
             continue;
         if (unmatchedSuppression && s.errorId != errmsg.errorId)
             continue;
-        if (s.isMatch(errmsg))
+        if (s.isMatch(errmsg)) {
             returnValue = true;
+            if (inlineSupressed && s.isInline)
+                *inlineSupressed = true;
+        }
     }
     return returnValue;
 }
