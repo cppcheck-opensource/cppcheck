@@ -25,7 +25,6 @@
 
 #include <cstdint>
 #include <set>
-#include <vector>
 
 class Token;
 class Settings;
@@ -60,11 +59,6 @@ public:
      */
     bool unusedValue(const Token *expr, const Token *startToken, const Token *endToken);
 
-    struct KnownAndToken {
-        bool known{};
-        const Token* token{};
-    };
-
     /** Is there some possible alias for given expression */
     bool possiblyAliased(const Token *expr, const Token *startToken) const;
 
@@ -80,13 +74,11 @@ private:
         const Token* token{};
     };
 
-    Result check(const Token *expr, const Token *startToken, const Token *endToken);
-    Result checkRecursive(const Token *expr, const Token *startToken, const Token *endToken, const std::set<nonneg int> &exprVarIds, bool local, bool inInnerClass, int depth=0);
+    Result check(const Token *expr, const Token *startToken, const Token *endToken) const;
+    Result checkRecursive(const Token *expr, const Token *startToken, const Token *endToken, const std::set<nonneg int> &exprVarIds, bool local, bool inInnerClass, int depth=0) const;
 
     const Settings &mSettings;
-    enum class What : std::uint8_t { Reassign, UnusedValue, ValueFlow } mWhat = What::Reassign;
-    std::vector<KnownAndToken> mValueFlow;
-    bool mValueFlowKnown = true;
+    enum class What : std::uint8_t { Reassign, UnusedValue } mWhat = What::Reassign;
 };
 
 #endif // fwdanalysisH

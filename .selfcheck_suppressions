@@ -62,6 +62,8 @@ templateInstantiation:test/testutils.cpp
 
 naming-varname:externals/simplecpp/simplecpp.h
 naming-privateMemberVariable:externals/simplecpp/simplecpp.h
+# false positive; lambda captures its owner
+danglingLifetime:externals/simplecpp/simplecpp.h:505
 
 # TODO: these warnings need to be addressed upstream
 uninitMemberVar:externals/tinyxml2/tinyxml2.h

@@ -249,7 +249,7 @@ void Variables::clearAliases(nonneg int varid)
 
 void Variables::eraseAliases(nonneg int varid)
 {
-    VariableUsage *usage = find(varid);
+    const VariableUsage *usage = find(varid);
 
     if (usage) {
         for (auto aliases = usage->_aliases.cbegin(); aliases != usage->_aliases.cend(); ++aliases)
@@ -329,7 +329,7 @@ void Variables::write(nonneg int varid, const Token* tok)
 
 void Variables::writeAliases(nonneg int varid, const Token* tok)
 {
-    VariableUsage *usage = find(varid);
+    const VariableUsage *usage = find(varid);
 
     if (usage) {
         for (auto aliases = usage->_aliases.cbegin(); aliases != usage->_aliases.cend(); ++aliases) {
@@ -1155,10 +1155,6 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage_iterateScopes(const Scope* c
                         variables.read(tok2->varId(), tok);
                 }
             }
-        } else if (tok->variable() && tok->variable()->isClass() && tok->variable()->type() &&
-                   (tok->variable()->type()->needInitialization == Type::NeedInitialization::False) &&
-                   tok->strAt(1) == ";") {
-            variables.write(tok->varId(), tok);
         }
     }
 }
@@ -1677,6 +1673,27 @@ void CheckUnusedVarImpl::checkStructMemberUsage()
                                       [&var](const std::string& alignasExpr){
                         return alignasExpr == var.name();
                     });
+                    if (use)
+                        break;
+                }
+                // Class used in template with unknown definition
+                if (Token::Match(tok, "%name% <") && tok->linkAt(1)) {
+                    if (tok->function())
+                        continue;
+                    if (tok->type() && tok->type()->classScope)
+                        continue;
+                    const Token *start = tok;
+                    while (Token::Match(start->tokAt(-2), "%name% ::"))
+                        start = start->tokAt(-2);
+                    if (mSettings.library.detectContainer(start))
+                        continue;
+                    const Token *end = tok->linkAt(1);
+                    for (; tok != end; tok = tok->next()) {
+                        if (tok->type() && tok->type()->classScope == &scope) {
+                            use = true;
+                            break;
+                        }
+                    }
                     if (use)
                         break;
                 }

@@ -33,6 +33,7 @@
 #include <QRegion>
 #include <QTransform>
 #include <QDir>
+#include <QTimer>
 
 // TODO: this is actually available via Core5Compat but I could not get it to work with pkg-config
 #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
@@ -892,3 +893,13 @@ int qdateIsValid()
     Q_ASSERT(qd.isValid()); // Should not warn here with assertWithSideEffect
     return qd.month(); 
 }
+
+struct S_QTimer_connect : QObject { // #13846
+    S_QTimer_connect() {
+        // cppcheck-suppress checkLibraryFunction - timeout() is a signal from QTimer
+        QObject::connect(&timer, SIGNAL(timeout()), this, SLOT(update()));
+    }
+    QTimer timer;
+private slots:
+    bool update();
+};

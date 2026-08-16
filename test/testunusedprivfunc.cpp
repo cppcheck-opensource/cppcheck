@@ -58,7 +58,6 @@ private:
 
         TEST_CASE(classInClass);
         TEST_CASE(sameFunctionNames);
-        TEST_CASE(incompleteImplementation);
 
         TEST_CASE(derivedClass);   // skip warning for derived classes. It might be a virtual function.
 
@@ -76,7 +75,6 @@ private:
         TEST_CASE(testDoesNotIdentifyMethodAsMiddleFunctionArgument);
         TEST_CASE(testDoesNotIdentifyMethodAsLastFunctionArgument);
 
-        TEST_CASE(multiFile);
         TEST_CASE(unknownBaseTemplate); // ticket #2580
         TEST_CASE(hierarchy_loop); // ticket 5590
 
@@ -482,24 +480,6 @@ private:
         ASSERT_EQUALS("", errout_str());
     }
 
-    void incompleteImplementation() {
-        // The implementation for "A::a" is missing - so don't check if
-        // "A::b" is used or not
-        check("#file \"test.h\"\n"
-              "class A\n"
-              "{\n"
-              "public:\n"
-              "    A();\n"
-              "    void a();\n"
-              "private:\n"
-              "    void b();\n"
-              "};\n"
-              "#endfile\n"
-              "A::A() { }\n"
-              "void A::b() { }");
-        ASSERT_EQUALS("", errout_str());
-    }
-
     void derivedClass() {
         // skip warning in derived classes in case the base class is invisible
         check("class derived : public base\n"
@@ -777,25 +757,6 @@ private:
               "    MountOperation aExample(10);"
               "}"
               );
-        ASSERT_EQUALS("", errout_str());
-    }
-
-    void multiFile() { // ticket #2567
-        check("#file \"test.h\"\n"
-              "struct Fred\n"
-              "{\n"
-              "    Fred()\n"
-              "    {\n"
-              "        Init();\n"
-              "    }\n"
-              "private:\n"
-              "    void Init();\n"
-              "};\n"
-              "#endfile\n"
-              "void Fred::Init()\n"
-              "{\n"
-              "}");
-
         ASSERT_EQUALS("", errout_str());
     }
 

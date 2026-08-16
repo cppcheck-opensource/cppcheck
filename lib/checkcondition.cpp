@@ -455,7 +455,7 @@ bool CheckConditionImpl::isOverlappingCond(const Token * const cond1, const Toke
         if (!num1->isNumber() || MathLib::isNegative(num1->str()))
             return false;
 
-        if (!Token::Match(cond2, "&|==") || !cond2->astOperand1() || !cond2->astOperand2())
+        if (!Token::Match(cond2, "&|==") || !cond2->astOperand1())
             return false;
         const Token *expr2 = cond2->astOperand1();
         const Token *num2  = cond2->astOperand2();
@@ -1575,10 +1575,19 @@ void CheckConditionImpl::alwaysTrueFalse()
                 continue;
             if (Token::simpleMatch(tok->astParent(), "return") && Token::Match(tok, ".|%var%"))
                 continue;
-            if (Token::Match(tok, "%num%|%bool%|%char%"))
-                continue;
-            if (Token::Match(tok, "! %num%|%bool%|%char%"))
-                continue;
+            bool warnForNumber = false;
+            if (Token::Match(tok, "%num%|%bool%|%char%")) {
+                const bool isZeroOrOne = (tok->getKnownIntValue() >> 1) == 0;
+                warnForNumber = !isZeroOrOne && tok->tokType() == Token::eNumber && tok->astParent() == condition->astParent();
+                if (!warnForNumber)
+                    continue;
+            }
+            if (Token::Match(tok, "! %num%|%bool%|%char%")) {
+                const bool isZeroOrOne = tok->next()->hasKnownIntValue() && (tok->next()->getKnownIntValue() >> 1) == 0;
+                warnForNumber = !isZeroOrOne && tok->next()->tokType() == Token::eNumber && tok->astParent() == condition->astParent();
+                if (!warnForNumber)
+                    continue;
+            }
             if (Token::Match(tok, "%oror%|&&")) {
                 bool bail = false;
                 for (const Token* op : { tok->astOperand1(), tok->astOperand2() }) {
@@ -1603,7 +1612,7 @@ void CheckConditionImpl::alwaysTrueFalse()
                                  true))
                 continue;
 
-            if (!pedantic && isConstVarExpression(tok, [](const Token* tok) {
+            if (!pedantic && !warnForNumber && isConstVarExpression(tok, [](const Token* tok) {
                 return Token::Match(tok, "[|(|&|+|-|*|/|%|^|>>|<<") && !Token::simpleMatch(tok, "( )");
             }))
                 continue;

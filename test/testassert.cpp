@@ -147,6 +147,17 @@ private:
               "    assert(g());\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("int i;\n" // #14973
+              "bool f() {\n"
+              "    i = 0;\n"
+              "    return true;\n"
+              "}\n"
+              "void g() {\n"
+              "    bool (*fp)() = f;\n"
+              "    assert(fp == f);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void memberFunctionCallInAssert() {
@@ -156,7 +167,7 @@ private:
               "void foo(SquarePack s) {\n"
               "   assert( s.Foo() );\n"
               "}");
-        ASSERT_EQUALS("[test.cpp:5:14]: (warning) Assert statement calls a function which may have desired side effects: 'Foo'. [assertWithSideEffect]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:5:14]: (warning) Assert statement calls a function which may have desired side effects: 'Foo'. If there are no side effects, consider declaring the method const. [assertWithSideEffect]\n", errout_str());
 
         check("struct SquarePack {\n"
               "   int Foo() const;\n"

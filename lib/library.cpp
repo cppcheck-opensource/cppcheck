@@ -1781,6 +1781,8 @@ bool Library::isFunctionConst(const Token *ftok) const
             const Yield yield = astContainerYield(ftok->astParent()->astOperand1(), *this);
             if (yield == Yield::EMPTY || yield == Yield::SIZE || yield == Yield::BUFFER_NT)
                 return true;
+            if ((yield == Yield::START_ITERATOR || yield == Yield::END_ITERATOR) && ftok->str()[0] == 'c')
+                return true;
         }
         return false;
     }

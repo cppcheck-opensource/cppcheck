@@ -94,6 +94,16 @@ public:
 };
 
 
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ <= 9
+// Hack to workaround GCC bug.
+// Details: https://trac.cppcheck.net/ticket/14850
+// seen on g++ before 10.x
+#define  CPPCHECK_NOEXCEPT
+#else
+#define  CPPCHECK_NOEXCEPT  noexcept
+#endif
+
+
 /**
  * @brief This is just a container for general settings so that we don't need
  * to pass individual values to functions or constructors now or in the
@@ -113,8 +123,8 @@ public:
     Settings(const Settings&);
     Settings& operator=(const Settings&);
 
-    Settings(Settings&&) noexcept;
-    Settings& operator=(Settings&&) noexcept;
+    Settings(Settings&&) CPPCHECK_NOEXCEPT;
+    Settings& operator=(Settings&&) CPPCHECK_NOEXCEPT;
 
     static std::string loadCppcheckCfg(Settings& settings, Suppressions& suppressions, bool debug = false);
 
@@ -501,6 +511,15 @@ public:
 
         /** @brief Maximum performed forward branches */
         int maxForwardBranches = -1;
+
+        /** @brief Maximum depth of nested condition-fork continuations in the forward analyzer.
+            Bounds the exponential fan-out of carrying condition state forward at exhaustive level (where
+            maxForwardBranches is unlimited); past it the forward analysis continues on a single linear path
+            without skipping any branch. 0 disables forking (linear); a negative value means unlimited. */
+        int maxForwardConditionForkDepth = 4;
+
+        /** @brief Maximum total condition-fork continuations in one forward traversal. */
+        int maxForwardConditionForks = 256;
 
         /** @brief Maximum performed alignof recursion */
         int maxAlignOfRecursion = 100;

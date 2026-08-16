@@ -126,7 +126,7 @@ std::string AnalyzerInformation::skipAnalysis(const tinyxml2::XMLDocument &analy
     return "";
 }
 
-std::string AnalyzerInformation::getAnalyzerInfoFileFromFilesTxt(std::istream& filesTxt, const std::string &sourcefile, const std::string &cfg, int fsFileId)
+std::string AnalyzerInformation::getAnalyzerInfoFileFromFilesTxt(std::istream& filesTxt, const std::string &sourcefile, const std::string &cfg, size_t fsFileId)
 {
     std::string line;
     while (std::getline(filesTxt,line)) {

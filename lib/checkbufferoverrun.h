@@ -129,7 +129,7 @@ public:
     void objectIndex();
     void objectIndexError(const Token *tok, const ValueFlow::Value *v, bool known);
 
-    ValueFlow::Value getBufferSize(const Token *bufTok) const;
+    ValueFlow::Value getBufferSize(const Token *bufTok, const Settings& settings) const;
 
     // CTU
     static bool isCtuUnsafeBufferUsage(const Settings &settings, const Token *argtok, CTU::FileInfo::Value *offset, int type);

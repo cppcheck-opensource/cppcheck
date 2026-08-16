@@ -87,7 +87,7 @@ void CheckSizeofImpl::checkSizeofForArrayParameter()
                 }
 
                 const Variable *var = varTok->variable();
-                if (var && var->isArray() && var->isArgument() && !var->isReference())
+                if (var && var->isArray() && var->isArgument() && !var->isReference() && !(var->isStlType() && var->getTypeName() == "std::array"))
                     sizeofForArrayParameterError(tok);
             }
         }

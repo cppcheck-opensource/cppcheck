@@ -157,6 +157,7 @@ void test_BOOST_FOREACH_5()
 {
     std::set<int> data;
     BOOST_FOREACH(const int& i, get_data())
+        // cppcheck-suppress useStlAlgorithm
         data.insert(i);
 }
 

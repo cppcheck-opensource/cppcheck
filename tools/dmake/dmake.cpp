@@ -297,6 +297,7 @@ static std::vector<std::string> prioritizelib(const std::vector<std::string>& li
     std::map<std::string, std::size_t> priorities;
     std::size_t prio = libfiles.size();
     for (const auto &l : libfiles) {
+        // cppcheck-suppress useStlAlgorithm - std::transform is cumbersome
         priorities.emplace(l, prio--);
     }
     priorities["lib/valueflow.cpp"] = 1000;

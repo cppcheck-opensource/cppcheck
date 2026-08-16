@@ -473,7 +473,7 @@ void CheckClassImpl::copyconstructors()
                     if (Token::Match(tok, "%var% ( new") ||
                         (Token::Match(tok, "%var% ( %name% (") && mSettings.library.getAllocFuncInfo(tok->tokAt(2)))) {
                         const Variable* var = tok->variable();
-                        if (var && var->isPointer() && var->scope() == scope)
+                        if (var && var->scope() == scope && var->valueType() && var->valueType()->type != ValueType::SMART_POINTER)
                             allocatedVars[tok->varId()] = tok;
                     }
                 }
@@ -481,7 +481,7 @@ void CheckClassImpl::copyconstructors()
                     if (Token::Match(tok, "%var% = new") ||
                         (Token::Match(tok, "%var% = %name% (") && mSettings.library.getAllocFuncInfo(tok->tokAt(2)))) {
                         const Variable* var = tok->variable();
-                        if (var && var->isPointer() && var->scope() == scope && !var->isStatic())
+                        if (var && var->scope() == scope && !var->isStatic() && var->valueType() && var->valueType()->type != ValueType::SMART_POINTER)
                             allocatedVars[tok->varId()] = tok;
                     }
                 }
@@ -493,7 +493,10 @@ void CheckClassImpl::copyconstructors()
                         (Token::Match(tok, "%name% ( %var%") && mSettings.library.getDeallocFuncInfo(tok))) {
                         const Token *vartok = tok->str() == "delete" ? tok->next() : tok->tokAt(2);
                         const Variable* var = vartok->variable();
-                        if (var && var->isPointer() && var->scope() == scope && !var->isStatic())
+                        if (var && var->scope() == scope && !var->isStatic() &&
+                            var->valueType() && ((var->valueType()->type != ValueType::CONTAINER &&
+                                                  var->valueType()->type != ValueType::RECORD &&
+                                                  var->valueType()->type != ValueType::UNKNOWN_TYPE) || var->valueType()->pointer))
                             deallocatedVars[vartok->varId()] = vartok;
                     }
                 }
@@ -1059,7 +1062,7 @@ void CheckClassImpl::initializeVarList(const Function &func, std::list<const Fun
                             tok2 = tok2->next();
                             if (tok2->str() == "&")
                                 tok2 = tok2->next();
-                            if (isVariableChangedByFunctionCall(tok2, tok2->strAt(-1) == "&", tok2->varId(), mSettings, nullptr))
+                            if (isVariableChangedByFunctionCall(tok2, tok2->strAt(-1) == "&", tok2->varId(), mSettings.library, nullptr))
                                 assignVar(usage, tok2->varId());
                         }
                     }
@@ -2414,7 +2417,7 @@ bool CheckClassImpl::isMemberFunc(const Scope *scope, const Token *tok)
         for (const Function &func : scope->functionList) {
             if (func.name() == tok->str()) {
                 const Token* tok2 = tok->tokAt(2);
-                int argsPassed = tok2->str() == ")" ? 0 : 1;
+                size_t argsPassed = tok2->str() == ")" ? 0 : 1;
                 for (;;) {
                     tok2 = tok2->nextArgument();
                     if (tok2)
@@ -2511,9 +2514,9 @@ bool CheckClassImpl::checkConstFunc(const Scope *scope, const Function *func, Me
 
         if (const Function* f = funcTok->function()) { // check known function
             const std::vector<const Token*> args = getArguments(funcTok);
-            const auto argMax = std::min<nonneg int>(args.size(), f->argCount());
+            const auto argMax = std::min<size_t>(args.size(), f->argCount());
 
-            for (nonneg int argIndex = 0; argIndex < argMax; ++argIndex) {
+            for (size_t argIndex = 0; argIndex < argMax; ++argIndex) {
                 const Variable* const argVar = f->getArgumentVar(argIndex);
                 if (!argVar || ((argVar->isArrayOrPointer() || argVar->isReference()) &&
                                 !(argVar->valueType() && argVar->valueType()->isConst(argVar->valueType()->pointer)))) { // argument might be modified
@@ -2608,9 +2611,12 @@ bool CheckClassImpl::checkConstFunc(const Scope *scope, const Function *func, Me
                     return false;
             } else {
                 if (lhs->isAssignmentOp()) {
-                    const Variable* lhsVar = lhs->previous()->variable();
-                    if (lhsVar && !lhsVar->isConst() && lhsVar->isReference() && lhs == lhsVar->nameToken()->next())
-                        return false;
+                    if (const Variable* lhsVar = lhs->previous()->variable()) {
+                        if (!lhsVar->isConst() && lhsVar->isReference() && lhs == lhsVar->nameToken()->next())
+                            return false;
+                        if (lhsVar->isPointer() && v && v->isArray() && !(lhsVar->valueType() && lhsVar->valueType()->isConst(/*indirect*/ 1)))
+                            return false;
+                    }
                 }
             }
 
@@ -3452,9 +3458,14 @@ void CheckClassImpl::checkUselessOverride()
 
                     if (isSameCode) {
                         // bailout for shadowed members
-                        if (!classScope->definedType ||
-                            !getDuplInheritedMembersRecursive(classScope->definedType, classScope->definedType, /*skipPrivate*/ false).empty() ||
-                            !getDuplInheritedMemberFunctionsRecursive(classScope->definedType, classScope->definedType, /*skipPrivate*/ false).empty())
+                        if (!getDuplInheritedMembersRecursive(classScope->definedType,
+                                                              classScope->definedType,
+                                                              /*skipPrivate*/ false)
+                            .empty() ||
+                            !getDuplInheritedMemberFunctionsRecursive(classScope->definedType,
+                                                                      classScope->definedType,
+                                                                      /*skipPrivate*/ false)
+                            .empty())
                             continue;
                         uselessOverrideError(baseFunc, &func, true);
                         continue;

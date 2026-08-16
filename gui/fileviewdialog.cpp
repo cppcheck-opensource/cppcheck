@@ -54,7 +54,7 @@ void FileViewDialog::loadTextFile(const QString &filename, QTextEdit *edit)
         msg = msg.arg(filename);
 
         QMessageBox msgbox(QMessageBox::Critical,
-                           tr("Cppcheck"),
+                           "Cppcheck",
                            msg,
                            QMessageBox::Ok,
                            this);
@@ -68,7 +68,7 @@ void FileViewDialog::loadTextFile(const QString &filename, QTextEdit *edit)
         msg = msg.arg(filename);
 
         QMessageBox msgbox(QMessageBox::Critical,
-                           tr("Cppcheck"),
+                           "Cppcheck",
                            msg,
                            QMessageBox::Ok,
                            this);

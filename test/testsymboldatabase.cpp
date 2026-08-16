@@ -204,6 +204,7 @@ private:
         TEST_CASE(isVariableDeclarationRValueRef);
         TEST_CASE(isVariableDeclarationDoesNotIdentifyCase);
         TEST_CASE(isVariableDeclarationIf);
+        TEST_CASE(isVariableDeclarationSwitch);
         TEST_CASE(isVariableStlType);
         TEST_CASE(isVariablePointerToConstPointer);
         TEST_CASE(isVariablePointerToVolatilePointer);
@@ -220,6 +221,8 @@ private:
         TEST_CASE(VariableValueType4); // smart pointer type
         TEST_CASE(VariableValueType5); // smart pointer type
         TEST_CASE(VariableValueType6); // smart pointer type
+        TEST_CASE(VariableValueType7);
+        TEST_CASE(VariableValueType8);
         TEST_CASE(VariableValueTypeReferences);
         TEST_CASE(VariableValueTypeTemplate);
 
@@ -231,6 +234,7 @@ private:
         TEST_CASE(rangeBasedFor);
 
         TEST_CASE(memberVar1);
+        TEST_CASE(memberVar2);
         TEST_CASE(arrayMemberVar1);
         TEST_CASE(arrayMemberVar2);
         TEST_CASE(arrayMemberVar3);
@@ -540,6 +544,8 @@ private:
         TEST_CASE(findFunction60);
         TEST_CASE(findFunction61);
         TEST_CASE(findFunction62); // #14272 - pointer passed to function is const
+        TEST_CASE(findFunction63); // #14937 - member function of type returned by operator()
+        TEST_CASE(findFunction64); // overloaded operator()
         TEST_CASE(findFunctionRef1);
         TEST_CASE(findFunctionRef2); // #13328
         TEST_CASE(findFunctionContainer);
@@ -1230,6 +1236,17 @@ private:
         ASSERT(y->variable());
     }
 
+    void isVariableDeclarationSwitch() {
+        GET_SYMBOL_DB("void foo(void) {\n"
+                      "    int x = 0;\n"
+                      "    switch (auto &s = x) {}\n"
+                      "}\n");
+        const Token *s = Token::findsimplematch(tokenizer.tokens(), "s");
+        ASSERT(s);
+        ASSERT(s->varId());
+        ASSERT(s->variable());
+    }
+
     void VariableValueType1() {
         GET_SYMBOL_DB("typedef uint8_t u8;\n"
                       "static u8 x;");
@@ -1314,6 +1331,71 @@ private:
         ASSERT(check);
         ASSERT(check->valueType());
         ASSERT(check->valueType()->smartPointerTypeToken);
+    }
+
+    void VariableValueType7() {
+        GET_SYMBOL_DB("void f() {\n"
+                      "    auto x0 = 0;\n"
+                      "    auto &x1 = x0;\n"
+                      "    auto &x2 {x0};\n"
+                      "    auto &&x3 = 0;\n"
+                      "    auto &&x4 {0};\n"
+                      "}\n");
+
+        const Token* x1 = Token::findsimplematch(tokenizer.tokens(), "x1");
+        const Token* x2 = Token::findsimplematch(tokenizer.tokens(), "x2");
+        const Token* x3 = Token::findsimplematch(tokenizer.tokens(), "x3");
+        const Token* x4 = Token::findsimplematch(tokenizer.tokens(), "x4");
+
+        ASSERT(x1);
+        ASSERT(x2);
+        ASSERT(x3);
+        ASSERT(x4);
+
+        ASSERT_EQUALS_ENUM(ValueType::INT, x1->valueType()->type);
+        ASSERT_EQUALS_ENUM(ValueType::INT, x2->valueType()->type);
+        ASSERT_EQUALS_ENUM(ValueType::INT, x3->valueType()->type);
+        ASSERT_EQUALS_ENUM(ValueType::INT, x4->valueType()->type);
+
+        ASSERT_EQUALS_ENUM(Reference::LValue, x1->valueType()->reference);
+        ASSERT_EQUALS_ENUM(Reference::LValue, x2->valueType()->reference);
+        ASSERT_EQUALS_ENUM(Reference::RValue, x3->valueType()->reference);
+        ASSERT_EQUALS_ENUM(Reference::RValue, x4->valueType()->reference);
+    }
+
+    void VariableValueType8() {
+        GET_SYMBOL_DB("void f() {\n"
+                      "    char buf[128];\n"
+                      "    const auto *const x0 {buf};\n"
+                      "    auto *const x1 {buf};\n"
+                      "    const auto *x2 {buf};\n"
+                      "    auto x3 {buf};\n"
+                      "}\n");
+
+        const Token* x0 = Token::findsimplematch(tokenizer.tokens(), "x0");
+        const Token* x1 = Token::findsimplematch(tokenizer.tokens(), "x1");
+        const Token* x2 = Token::findsimplematch(tokenizer.tokens(), "x2");
+        const Token* x3 = Token::findsimplematch(tokenizer.tokens(), "x3");
+
+        ASSERT(x0);
+        ASSERT(x1);
+        ASSERT(x2);
+        ASSERT(x3);
+
+        ASSERT_EQUALS_ENUM(ValueType::CHAR, x0->valueType()->type);
+        ASSERT_EQUALS_ENUM(ValueType::CHAR, x1->valueType()->type);
+        ASSERT_EQUALS_ENUM(ValueType::CHAR, x2->valueType()->type);
+        ASSERT_EQUALS_ENUM(ValueType::CHAR, x3->valueType()->type);
+
+        ASSERT_EQUALS(3, x0->valueType()->constness);
+        ASSERT_EQUALS(1, x1->valueType()->constness);
+        ASSERT_EQUALS(2, x2->valueType()->constness);
+        ASSERT_EQUALS(0, x3->valueType()->constness);
+
+        ASSERT_EQUALS(1, x0->valueType()->pointer);
+        ASSERT_EQUALS(1, x1->valueType()->pointer);
+        ASSERT_EQUALS(1, x2->valueType()->pointer);
+        ASSERT_EQUALS(1, x3->valueType()->pointer);
     }
 
     void VariableValueTypeReferences() {
@@ -1793,6 +1875,22 @@ private:
         const Token *tok = Token::findsimplematch(tokenizer.tokens(), "x =");
         ASSERT(tok->variable());
         ASSERT(Token::simpleMatch(tok->variable()->typeStartToken(), "int x ;"));
+    }
+
+    void memberVar2() {
+        GET_SYMBOL_DB( "struct S { void (*fp)(); };\n"
+                       "void g();\n"
+                       "void f() {\n"
+                       "    S s;\n"
+                       "    s.fp = g;\n"
+                       "    s.fp();\n"
+                       "}\n");
+
+        ASSERT(db != nullptr);
+        const Token *fp1 = Token::findsimplematch(tokenizer.tokens(), "fp =");
+        const Token *fp2 = Token::findsimplematch(tokenizer.tokens(), "fp (");
+        ASSERT(fp1->varId());
+        ASSERT_EQUALS(fp2->varId(), fp1->varId());
     }
 
     void arrayMemberVar1() {
@@ -8808,6 +8906,90 @@ private:
         ASSERT_EQUALS(2, functionCall->function()->token->linenr());
     }
 
+    void findFunction63()
+    { // #14937
+        GET_SYMBOL_DB("struct A {\n"
+                      "    void g(int);\n"
+                      "};\n"
+                      "template<class T>\n"
+                      "struct Thunk {\n"
+                      "    T& operator()() const;\n"
+                      "};\n"
+                      "void f(Thunk<A> thunk) {\n"
+                      "    thunk().g(0);\n"
+                      "}\n");
+        const Token* g = Token::findsimplematch(tokenizer.tokens(), "g ( 0 )");
+        ASSERT(g);
+        ASSERT(g->function());
+        ASSERT(g->function()->tokenDef);
+        ASSERT_EQUALS(2, g->function()->tokenDef->linenr());
+        const Token* call = Token::findsimplematch(tokenizer.tokens(), "( ) . g");
+        ASSERT(call && call->valueType());
+        ASSERT(call->valueType()->typeScope && call->valueType()->typeScope->className == "A");
+        ASSERT_EQUALS(static_cast<int>(Reference::LValue), static_cast<int>(call->valueType()->reference));
+    }
+
+    void findFunction64()
+    {                                                    // overloaded operator()
+        {
+            GET_SYMBOL_DB("struct A { void g(int); };\n" // overloads distinguished by argument count
+                          "struct B { void h(int); };\n"
+                          "template<class T>\n"
+                          "struct C {\n"
+                          "    A& operator()();\n"
+                          "    B& operator()(int);\n"
+                          "};\n"
+                          "void f(C<int> c) {\n"
+                          "    c().g(1);\n"
+                          "    c(1).h(1);\n"
+                          "}\n");
+            const Token* g = Token::findsimplematch(tokenizer.tokens(), "g ( 1 )");
+            ASSERT(g && g->function());
+            ASSERT_EQUALS(1, g->function()->tokenDef->linenr());
+            const Token* h = Token::findsimplematch(tokenizer.tokens(), "h ( 1 )");
+            ASSERT(h && h->function());
+            ASSERT_EQUALS(2, h->function()->tokenDef->linenr());
+        }
+        {
+            GET_SYMBOL_DB("struct A { void g(int); };\n" // overloads distinguished by constness of the object
+                          "struct B { void h(int); };\n"
+                          "template<class T>\n"
+                          "struct C {\n"
+                          "    A& operator()();\n"
+                          "    B& operator()() const;\n"
+                          "};\n"
+                          "void f(C<int> c, const C<int>& k) {\n"
+                          "    c().g(1);\n"
+                          "    k().h(1);\n"
+                          "}\n");
+            const Token* g = Token::findsimplematch(tokenizer.tokens(), "g ( 1 )");
+            ASSERT(g && g->function());
+            ASSERT_EQUALS(1, g->function()->tokenDef->linenr());
+            const Token* h = Token::findsimplematch(tokenizer.tokens(), "h ( 1 )");
+            ASSERT(h && h->function());
+            ASSERT_EQUALS(2, h->function()->tokenDef->linenr());
+        }
+        {
+            GET_SYMBOL_DB("struct A { void g(int); };\n" // overloads distinguished by argument type
+                          "struct B { void h(int); };\n"
+                          "template<class T>\n"
+                          "struct C {\n"
+                          "    A& operator()(int);\n"
+                          "    B& operator()(double);\n"
+                          "};\n"
+                          "void f(C<int> c, int i, double d) {\n"
+                          "    c(i).g(1);\n"
+                          "    c(d).h(1);\n"
+                          "}\n");
+            const Token* g = Token::findsimplematch(tokenizer.tokens(), "g ( 1 )");
+            ASSERT(g && g->function());
+            ASSERT_EQUALS(1, g->function()->tokenDef->linenr());
+            const Token* h = Token::findsimplematch(tokenizer.tokens(), "h ( 1 )");
+            ASSERT(h && h->function());
+            ASSERT_EQUALS(2, h->function()->tokenDef->linenr());
+        }
+    }
+
     void findFunctionRef1() {
         GET_SYMBOL_DB("struct X {\n"
                       "    const std::vector<int> getInts() const & { return mInts; }\n"
@@ -10191,6 +10373,15 @@ private:
             tok = Token::findsimplematch(tok, "auto r");
             ASSERT(tok);
             TODO_ASSERT(tok->valueType() && "container(std :: string|wstring|u16string|u32string)" == tok->valueType()->str());
+        }
+        {
+            GET_SYMBOL_DB("void f() {\n"
+                          "    int &&x = 0;\n"
+                          "}\n");
+
+            const Token* tok = Token::findsimplematch(tokenizer.tokens(), "&&");
+            ASSERT(tok);
+            ASSERT_EQUALS(static_cast<const ValueType*>(nullptr), tok->valueType());
         }
     }
 

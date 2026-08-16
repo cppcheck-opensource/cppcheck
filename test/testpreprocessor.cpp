@@ -32,7 +32,9 @@
 #include "fixture.h"
 #include "helpers.h"
 
+#include <algorithm>
 #include <cstring>
+#include <iterator>
 #include <list>
 #include <map>
 #include <set>
@@ -50,13 +52,14 @@ public:
     TestPreprocessor() : TestFixture("TestPreprocessor") {}
 
 private:
+    #define expandMacros(...) expandMacros_(__FILE__, __LINE__, __VA_ARGS__)
     template<size_t size>
-    std::string expandMacros(const char (&code)[size], ErrorLogger &errorLogger) const {
+    std::string expandMacros_(const char* file, int line, const char (&code)[size], ErrorLogger &errorLogger) const {
         simplecpp::OutputList outputList;
         std::vector<std::string> files;
         simplecpp::TokenList tokens1 = simplecpp::TokenList(code, files, "file.cpp", &outputList);
         Preprocessor p(tokens1, settingsDefault, errorLogger, Path::identify(tokens1.getFiles()[0], false));
-        ASSERT(p.loadFiles(files));
+        ASSERT_LOC(p.loadFiles(files), file, line);
         simplecpp::TokenList tokens2 = p.preprocess("", files, outputList);
         (void)p.reportOutput(outputList, true);
         return tokens2.stringify();
@@ -136,12 +139,15 @@ private:
         preprocessor.simplifyPragmaAsm();
 
         std::map<std::string, std::string> cfgcode;
-        if (cfgs.empty())
-            cfgs = preprocessor.getConfigs();
+        if (cfgs.empty()) {
+            cfgs.insert("");
+            std::set<std::string> configDefines = { "__cplusplus" };
+            preprocessor.getConfigs(configDefines, cfgs);
+        }
         for (const std::string & config : cfgs) {
             try {
-                const bool writeLocations = (strstr(code, "#file") != nullptr) || (strstr(code, "#include") != nullptr);
-                cfgcode[config] = preprocessor.getcode(config, files, writeLocations);
+                const bool writeLocs = (strstr(code, "#include") != nullptr);
+                cfgcode[config] = preprocessor.getcode(config, files, writeLocs);
             } catch (const simplecpp::Output &) {
                 cfgcode[config] = "";
             }
@@ -367,6 +373,8 @@ private:
         TEST_CASE(testMissingIncludeMixed);
         TEST_CASE(testMissingIncludeCheckConfig);
 
+        TEST_CASE(testLazyInclude);
+
         TEST_CASE(hasInclude);
 
         TEST_CASE(limitsDefines);
@@ -392,11 +400,24 @@ private:
         std::vector<std::string> files;
         simplecpp::OutputList outputList;
         simplecpp::TokenList tokens(code,files,"test.c",&outputList);
-        Preprocessor preprocessor(tokens, settings, *this, Standards::Language::C); // TODO: do we need to consider #file?
+        Preprocessor preprocessor(tokens, settings, *this, Standards::Language::C);
+        std::set<std::string> configs = { "" };
+        std::set<std::string> configDefines = { "__cplusplus" };
+        const auto getDefineName = [](const std::string &defineString) {
+            return defineString.substr(0, defineString.find_first_of("( "));
+        };
+        std::transform(settings.library.defines().begin(),
+                       settings.library.defines().end(),
+                       std::inserter(configDefines, configDefines.end()),
+                       getDefineName);
+        preprocessor.setLoadCallback([&](simplecpp::FileData &data) {
+            Preprocessor::removeComments(data.tokens);
+            preprocessor.getConfigs(data.filename, data.tokens, configDefines, configs);
+        });
+        preprocessor.removeComments();
+        preprocessor.getConfigs(configDefines, configs);
         ASSERT(preprocessor.loadFiles(files));
         ASSERT(!preprocessor.reportOutput(outputList, true));
-        preprocessor.removeComments();
-        const std::set<std::string> configs = preprocessor.getConfigs();
         std::string ret;
         for (const std::string & config : configs)
             ret += config + '\n';
@@ -407,9 +428,12 @@ private:
     std::size_t getHash(const char (&code)[size]) {
         std::vector<std::string> files;
         simplecpp::TokenList tokens(code,files,"test.c");
-        Preprocessor preprocessor(tokens, settingsDefault, *this, Standards::Language::C); // TODO: do we need to consider #file?
-        ASSERT(preprocessor.loadFiles(files));
+        Preprocessor preprocessor(tokens, settingsDefault, *this, Standards::Language::C);
+        preprocessor.setLoadCallback([](simplecpp::FileData &data) {
+            Preprocessor::removeComments(data.tokens);
+        });
         preprocessor.removeComments();
+        ASSERT(preprocessor.loadFiles(files));
         return preprocessor.calculateHash("");
     }
 
@@ -472,16 +496,19 @@ private:
     void error4() {
         // In included file
         {
+            ScopedFile header("ab.h", "#error hello world!\n");
             const auto settings = dinit(Settings, $.userDefines = "TEST");
-            const char code[] = "#file \"ab.h\"\n#error hello world!\n#endfile";
+            const char code[] = "#include \"ab.h\"";
             (void)getcodeforcfg(settings, *this, code, "TEST", "test.c");
             ASSERT_EQUALS("[ab.h:1:2]: (error) #error hello world! [preprocessorErrorDirective]\n", errout_str());
         }
 
         // After including a file
         {
+            ScopedFile header("ab.h", "");
             const auto settings = dinit(Settings, $.userDefines = "TEST");
-            const char code[] = "#file \"ab.h\"\n\n#endfile\n#error aaa";
+            const char code[] = "#include \"ab.h\"\n"
+                                "#error aaa";
             (void)getcodeforcfg(settings, *this, code, "TEST", "test.c");
             ASSERT_EQUALS("[test.c:2:2]: (error) #error aaa [preprocessorErrorDirective]\n", errout_str());
         }
@@ -584,35 +611,35 @@ private:
     }
 
     void includeguard1() {
+        ScopedFile header("abc.h",
+                          "#ifndef abcH\n"
+                          "#define abcH\n"
+                          "#endif\n");
         // Handling include guards..
-        const char filedata[] = "#file \"abc.h\"\n"
-                                "#ifndef abcH\n"
-                                "#define abcH\n"
-                                "#endif\n"
-                                "#endfile\n"
+        const char filedata[] = "#include \"abc.h\"\n"
                                 "#ifdef ABC\n"
                                 "#endif";
         ASSERT_EQUALS("\nABC=ABC\n", getConfigsStr(filedata));
     }
 
     void includeguard2() {
+        ScopedFile header("abc.h",
+                          "foo\n"
+                          "#ifdef ABC\n"
+                          "\n"
+                          "#endif\n");
         // Handling include guards..
-        const char filedata[] = "#file \"abc.h\"\n"
-                                "foo\n"
-                                "#ifdef ABC\n"
-                                "\n"
-                                "#endif\n"
-                                "#endfile\n";
+        const char filedata[] = "#include \"abc.h\"\n";
         ASSERT_EQUALS("\nABC=ABC\n", getConfigsStr(filedata));
     }
 
 
     void ifdefwithfile() {
+        ScopedFile header("abc.h", "class A{};/*\n\n\n\n\n\n\n*/\n");
+
         // Handling include guards..
         const char filedata[] = "#ifdef ABC\n"
-                                "#file \"abc.h\"\n"
-                                "class A{};/*\n\n\n\n\n\n\n*/\n"
-                                "#endfile\n"
+                                "#include \"abc.h\"\n"
                                 "#endif\n"
                                 "int main() {}\n";
 
@@ -1576,22 +1603,9 @@ private:
         }
 
         {
-            const char filedata[] = "#file \"abc.h\"\n"
-                                    "#define a\n"
-                                    "\"\n"
-                                    "#endfile\n";
-
-            // expand macros..
-            const std::string actual(expandMacros(filedata, *this));
-
-            ASSERT_EQUALS("", actual);
-            ASSERT_EQUALS("[abc.h:2:1]: (error) No pair for character (\"). Can't process file. File is either invalid or unicode, which is currently not supported. [syntaxError]\n", errout_str());
-        }
-
-        {
-            const char filedata[] = "#file \"abc.h\"\n"
-                                    "#define a\n"
-                                    "#endfile\n"
+            ScopedFile header("abc.h",
+                              "#define a\n");
+            const char filedata[] = "#include \"abc.h\"\n"
                                     "\"\n";
 
             // expand macros..
@@ -2286,14 +2300,14 @@ private:
     }
 
     void getConfigs7e() {
+        ScopedFile header("test.h",
+                          "#ifndef test_h\n"
+                          "#define test_h\n"
+                          "#ifdef ABC\n"
+                          "#endif\n"
+                          "#endif\n");
         const char filedata[] = "#ifdef ABC\n"
-                                "#file \"test.h\"\n"
-                                "#ifndef test_h\n"
-                                "#define test_h\n"
-                                "#ifdef ABC\n"
-                                "#endif\n"
-                                "#endif\n"
-                                "#endfile\n"
+                                "#include \"test.h\"\n"
                                 "#endif\n";
         ASSERT_EQUALS("\nABC=ABC\n", getConfigsStr(filedata));
     }
@@ -2315,12 +2329,12 @@ private:
     }
 
     void getConfigs11() { // #9832 - include guards
-        const char filedata[] = "#file \"test.h\"\n"
-                                "#if !defined(test_h)\n"
-                                "#define test_h\n"
-                                "123\n"
-                                "#endif\n"
-                                "#endfile\n";
+        ScopedFile header("test.h",
+                          "#if !defined(test_h)\n"
+                          "#define test_h\n"
+                          "123\n"
+                          "#endif\n");
+        const char filedata[] = "#include \"test.h\"\n";
         ASSERT_EQUALS("\n", getConfigsStr(filedata));
     }
 
@@ -3040,6 +3054,36 @@ private:
                       "test.c:6:2: information: Include file: \"header4.h\" not found. [missingInclude]\n"
                       "test.c:9:2: information: Include file: \"" + missing3 + "\" not found. [missingInclude]\n"
                       "test.c:11:2: information: Include file: <" + missing4 + "> not found. Please note: Standard library headers do not need to be provided to get proper results. [missingIncludeSystem]\n", errout_str());
+    }
+
+    void testLazyInclude() {
+        const char *code = "#ifdef CONFIG1\n"
+                           "#include \"header1.h\"\n"
+                           "#include \"missing1.h\"\n"
+                           "#else\n"
+                           "#include \"header2.h\"\n"
+                           "#include \"missing2.h\"\n"
+                           "#endif\n";
+
+        std::vector<std::string> files;
+        simplecpp::TokenList tokens(code, files, "test.c");
+
+        ScopedFile header1("header1.h", "1");
+        ScopedFile header2("header2.h", "2");
+
+        Settings settings;
+        Preprocessor preprocessor(tokens, settings, *this, Standards::Language::CPP);
+
+        simplecpp::OutputList outputList;
+        simplecpp::TokenList tokens2 = preprocessor.preprocess("CONFIG1", files, outputList);
+        std::string out = tokens2.stringify();
+
+        const simplecpp::FileDataCache &cache = preprocessor.mFileCache;
+
+        ASSERT_EQUALS("\n#line 1 \"header1.h\"\n1", out);
+        ASSERT_EQUALS(1, outputList.size());
+        ASSERT_EQUALS("Header not found: \"missing1.h\"", outputList.begin()->msg);
+        ASSERT_EQUALS(1, cache.size());
     }
 
     void hasInclude() {

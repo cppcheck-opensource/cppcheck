@@ -71,8 +71,8 @@ CheckOptions:
         add_dependencies(cppcheck-gui online-help.qhc)
     endif()
 
-    install(TARGETS cppcheck-gui RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT applications)
-    install(FILES ${qms} DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT applications)
+    install(TARGETS cppcheck-gui RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT applications)
+    install(FILES ${qms} DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT applications)
 
     install(FILES cppcheck-gui.desktop DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications)
 

@@ -1,0 +1,12 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+  </Configurations>
+  <Folder Name="/Lib/">
+    <File Path="lib/lib.h" />
+    <Project Path="lib\lib.vcxproj" />
+  </Folder>
+  <Folder Name="/App/">
+    <Project Path="app\app.vcxproj" Id="0de77c38-881a-4f9f-bdfa-2c429968985e" />
+  </Folder>
+</Solution>

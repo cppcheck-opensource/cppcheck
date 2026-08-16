@@ -65,7 +65,7 @@ public:
     void checkVariableAssignment(const Token* assignTok, const Scope *assertionScope);
     static bool inSameScope(const Token* returnTok, const Token* assignTok);
 
-    void sideEffectInAssertError(const Token *tok, const std::string& functionName);
+    void sideEffectInAssertError(const Token *tok, const std::string& functionName, const std::string &extra = "");
     void assignmentInAssertError(const Token *tok, const std::string &varname);
 };
 /// @}

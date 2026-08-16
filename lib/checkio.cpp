@@ -48,6 +48,7 @@
 // CVE ID used:
 static const CWE CWE119(119U);  // Improper Restriction of Operations within the Bounds of a Memory Buffer
 static const CWE CWE398(398U);  // Indicator of Poor Code Quality
+static const CWE CWE474(474U);  // Use of Function with Inconsistent Implementations
 static const CWE CWE664(664U);  // Improper Control of a Resource Through its Lifetime
 static const CWE CWE685(685U);  // Function Call With Incorrect Number of Arguments
 static const CWE CWE686(686U);  // Function Call With Incorrect Argument Type
@@ -111,6 +112,8 @@ namespace {
         nonneg int op_indent{};
         enum class AppendMode : std::uint8_t { UNKNOWN_AM, APPEND, APPEND_EX };
         AppendMode append_mode = AppendMode::UNKNOWN_AM;
+        enum class ReadMode : std::uint8_t { READ_TEXT, READ_BIN };
+        ReadMode read_mode = ReadMode::READ_BIN;
         std::string filename;
         explicit Filepointer(OpenMode mode_ = OpenMode::UNKNOWN_OM)
             : mode(mode_) {}
@@ -152,6 +155,8 @@ void CheckIOImpl::checkFileUsage()
                 tok = tok->linkAt(1);
                 continue;
             }
+            if (tok->function() && tok->function()->nestedIn)
+                continue;
             if (tok->str() == "{")
                 indent++;
             else if (tok->str() == "}") {
@@ -183,6 +188,7 @@ void CheckIOImpl::checkFileUsage()
                 }
             } else if (Token::Match(tok, "%name% (") && tok->previous() && (!tok->previous()->isName() || Token::Match(tok->previous(), "return|throw"))) {
                 std::string mode;
+                bool isftell = false;
                 const Token* fileTok = nullptr;
                 const Token* fileNameTok = nullptr;
                 Filepointer::Operation operation = Filepointer::Operation::NONE;
@@ -266,6 +272,9 @@ void CheckIOImpl::checkFileUsage()
                     fileTok = tok->tokAt(2);
                     if ((tok->str() == "ungetc" || tok->str() == "ungetwc") && fileTok)
                         fileTok = fileTok->nextArgument();
+                    else if (tok->str() == "ftell") {
+                        isftell = true;
+                    }
                     operation = Filepointer::Operation::UNIMPORTANT;
                 } else if (!Token::Match(tok, "if|for|while|catch|switch") && !mSettings.library.isFunctionConst(tok->str(), true)) {
                     const Token* const end2 = tok->linkAt(1);
@@ -321,10 +330,15 @@ void CheckIOImpl::checkFileUsage()
                             f.append_mode = Filepointer::AppendMode::APPEND_EX;
                         else
                             f.append_mode = Filepointer::AppendMode::APPEND;
+                    }
+                    else if (mode.find('r') != std::string::npos &&
+                             mode.find('t') != std::string::npos) {
+                        f.read_mode = Filepointer::ReadMode::READ_TEXT;
                     } else
                         f.append_mode = Filepointer::AppendMode::UNKNOWN_AM;
                     f.mode_indent = indent;
                     break;
+
                 case Filepointer::Operation::POSITIONING:
                     if (f.mode == OpenMode::CLOSED)
                         useClosedFileError(tok);
@@ -357,6 +371,8 @@ void CheckIOImpl::checkFileUsage()
                 case Filepointer::Operation::UNIMPORTANT:
                     if (f.mode == OpenMode::CLOSED)
                         useClosedFileError(tok);
+                    if (isftell && f.read_mode == Filepointer::ReadMode::READ_TEXT && printPortability)
+                        ftellFileError(tok);
                     break;
                 case Filepointer::Operation::UNKNOWN_OP:
                     f.mode = OpenMode::UNKNOWN_OM;
@@ -422,6 +438,12 @@ void CheckIOImpl::seekOnAppendedFileError(const Token *tok)
 {
     reportError(tok, Severity::warning,
                 "seekOnAppendedFile", "Repositioning operation performed on a file opened in append mode has no effect.", CWE398, Certainty::normal);
+}
+
+void CheckIOImpl::ftellFileError(const Token *tok)
+{
+    reportError(tok, Severity::portability,
+                "ftellTextModeFile", "ftell() result is unspecified when file is opened in mode \"t\"", CWE474, Certainty::normal);
 }
 
 void CheckIOImpl::incompatibleFileOpenError(const Token *tok, const std::string &filename)
@@ -507,22 +529,157 @@ void CheckIOImpl::invalidScanfError(const Token *tok)
                 CWE119, Certainty::normal);
 }
 
+static const Token* findFileReadCall(const Token *start, const Token *end, int varid)
+{
+    const Token* found = Token::findmatch(start, "fgets|fgetc|getc|fread|fscanf (", end);
+    while (found) {
+        const std::vector<const Token*> args = getArguments(found);
+        if (!args.empty()) {
+            const bool match = (found->str() == "fscanf")
+                               ? args.front()->varId() == varid
+                               : args.back()->varId() == varid;
+            if (match)
+                return found;
+        }
+        found = Token::findmatch(found->next(), "fgets|fgetc|getc|fread|fscanf (", end);
+    }
+    return nullptr;
+}
+
+void CheckIOImpl::checkWrongfeofUsage()
+{
+    const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
+
+    logChecker("CheckIO::checkWrongfeofUsage");
+
+    for (const Scope * scope : symbolDatabase->functionScopes) {
+        for (const Token *tok = scope->bodyStart->next(); tok != scope->bodyEnd; tok = tok->next()) {
+            // TODO: Handle for loops
+            if (!Token::Match(tok, "while ( ! feof ( %var% )"))
+                continue;
+
+            // Bail out if we cannot identify file pointer
+            const int fpVarId = tok->tokAt(5)->varId();
+            if (fpVarId == 0)
+                continue;
+
+            const Token *endCond = tok->linkAt(1);
+            const Token *bodyStart;
+            const Token *bodyEnd;
+
+            if (Token::simpleMatch(tok->previous(), "}") && tok->previous()->scope()->type == ScopeType::eDo) {
+                bodyEnd = tok->previous();
+                bodyStart = bodyEnd->link();
+            } else {
+                if (!Token::simpleMatch(endCond, ") {"))
+                    continue;
+                bodyEnd = endCond->linkAt(1);
+                bodyStart = endCond->next();
+            }
+
+            // Bail out if the loop contains control flow (too complex to analyze)
+            if (Token::findmatch(bodyStart, "return|break|goto|continue|throw", bodyEnd))
+                continue;
+
+            // Bail out if fp is used outside of known file I/O functions.
+            // If it is passed to an unknown function, reads may occur there.
+            bool fpUsedElsewhere = false;
+            for (const Token *t = bodyStart->next(); t && t != bodyEnd; t = t->next()) {
+                if (t->varId() != fpVarId)
+                    continue;
+                const Token *p = t->astParent();
+                while (p && p->str() == ",")
+                    p = p->astParent();
+                if (!p || !Token::Match(p->astOperand1(), "fgets|fgetc|getc|fread|fscanf|fprintf|fwrite|fputs|fputc|putc")) {
+                    fpUsedElsewhere = true;
+                    break;
+                }
+            }
+            if (fpUsedElsewhere)
+                continue;
+
+            // No file read call in the loop: feof can never become true inside it
+            const Token *loopFileReadCallTok = findFileReadCall(bodyStart, bodyEnd, fpVarId);
+            if (!loopFileReadCallTok) {
+                // TODO: Warn about infinite loop
+                continue;
+            }
+
+            // Find last file read
+            const Token *lastLoopFileReadCallTok = loopFileReadCallTok;
+            while (loopFileReadCallTok) {
+                lastLoopFileReadCallTok = loopFileReadCallTok;
+                loopFileReadCallTok = findFileReadCall(lastLoopFileReadCallTok->next(), bodyEnd, fpVarId);
+            }
+
+            // Warn if the destination of the last file read is used after the call before bodyEnd.
+            // If it is not, the stale buffer is never accessed on the extra iteration at EOF.
+
+            if (lastLoopFileReadCallTok->str() == "fgetc" || lastLoopFileReadCallTok->str() == "getc") {
+                // Warn if the return value feeds into an expression (astParent of the call node)
+                if (lastLoopFileReadCallTok->astParent() && lastLoopFileReadCallTok->astParent()->astParent())
+                    wrongfeofUsage(getCondTok(tok));
+            } else {
+                const std::vector<const Token*> args = getArguments(lastLoopFileReadCallTok);
+                // Collect destination varIds
+                std::vector<nonneg int> destVarIds;
+                if (lastLoopFileReadCallTok->str() == "fscanf") {
+                    // args[0]=fp, args[1]=format, args[2+]=destinations (typically &var)
+                    for (std::size_t i = 2; i < args.size(); ++i) {
+                        const Token *destTok = Token::Match(args[i], "& %var%") ? args[i]->next() : args[i];
+                        if (destTok->varId() != 0)
+                            destVarIds.push_back(destTok->varId());
+                    }
+                } else {
+                    // Handle fgets, fread
+                    // First argument is the destination buffer
+                    if (!args.empty() && args.front()->varId() != 0)
+                        destVarIds.push_back(args.front()->varId());
+                }
+
+                // Search for any destination use between this call's ';' and endBody
+                const Token *semiColonTok = lastLoopFileReadCallTok->linkAt(1)->next();
+                for (const Token *t = semiColonTok; t && t != bodyEnd; t = t->next()) {
+                    if (std::find(destVarIds.begin(), destVarIds.end(), t->varId()) != destVarIds.end()) {
+                        wrongfeofUsage(getCondTok(tok));
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void CheckIOImpl::wrongfeofUsage(const Token * tok)
+{
+    reportError(tok, Severity::warning,
+                "wrongfeofUsage",
+                "Using feof() as a loop condition causes the last line to be processed twice.\n"
+                "feof() returns true only after a read has failed due to end-of-file, so the loop "
+                "body executes once more after the last successful read. Check the return value of "
+                "the read function instead (e.g. fgets, fread, fscanf).");
+}
+
 //---------------------------------------------------------------------------
 //    printf("%u", "xyz"); // Wrong argument type
 //    printf("%u%s", 1); // Too few arguments
 //    printf("", 1); // Too much arguments
 //---------------------------------------------------------------------------
 
-static bool findFormat(nonneg int arg, const Token *firstArg,
+static bool findFormat(nonneg int arg, nonneg int argc, const Token *firstArg,
                        const Token *&formatStringTok, const Token *&formatArgTok)
 {
+    formatArgTok = firstArg;
+
+    for (int i = 0; i < argc && formatArgTok; ++i)
+        formatArgTok = formatArgTok->nextArgument();
+
     const Token* argTok = firstArg;
 
     for (int i = 0; i < arg && argTok; ++i)
         argTok = argTok->nextArgument();
 
     if (Token::Match(argTok, "%str% [,)]")) {
-        formatArgTok = argTok->nextArgument();
         formatStringTok = argTok;
         return true;
     }
@@ -533,7 +690,6 @@ static bool findFormat(nonneg int arg, const Token *firstArg,
          (argTok->variable()->dimensions().size() == 1 &&
           argTok->variable()->dimensionKnown(0) &&
           argTok->variable()->dimension(0) != 0))) {
-        formatArgTok = argTok->nextArgument();
         if (!argTok->values().empty()) {
             const auto value = std::find_if(
                 argTok->values().cbegin(), argTok->values().cend(), std::mem_fn(&ValueFlow::Value::isTokValue));
@@ -553,6 +709,17 @@ static inline bool typesMatch(const std::string& iToTest, const std::string& iTy
     return (iToTest == iTypename) || (iToTest == iOptionalPrefix + iTypename);
 }
 
+static int getMaxArgNo(const Library::Function *func)
+{
+    const auto &checks = func->argumentChecks;
+    return std::max_element(checks.cbegin(), checks.cend(),
+                            [](const std::pair<int, Library::ArgumentChecks> &lhs,
+                               const std::pair<int, Library::ArgumentChecks> &rhs) {
+        return lhs.first < rhs.first;
+    }
+                            )->first;
+}
+
 void CheckIOImpl::checkWrongPrintfScanfArguments()
 {
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
@@ -570,8 +737,10 @@ void CheckIOImpl::checkWrongPrintfScanfArguments()
             bool scan = false;
             bool scanf_s = false;
             int formatStringArgNo = -1;
+            int argc = -1;
 
             if (tok->strAt(1) == "(" && mSettings.library.formatstr_function(tok)) {
+                argc = getMaxArgNo(mSettings.library.getFunction(tok));
                 formatStringArgNo = mSettings.library.formatstr_argno(tok);
                 scan = mSettings.library.formatstr_scan(tok);
                 scanf_s = mSettings.library.formatstr_secure(tok);
@@ -579,37 +748,37 @@ void CheckIOImpl::checkWrongPrintfScanfArguments()
 
             if (formatStringArgNo >= 0) {
                 // formatstring found in library. Find format string and first argument belonging to format string.
-                if (!findFormat(formatStringArgNo, tok->tokAt(2), formatStringTok, argListTok))
+                if (!findFormat(formatStringArgNo, argc, tok->tokAt(2), formatStringTok, argListTok))
                     continue;
             } else if (Token::simpleMatch(tok, "swprintf (")) {
                 if (Token::Match(tok->tokAt(2)->nextArgument(), "%str%")) {
                     // Find third parameter and format string
-                    if (!findFormat(1, tok->tokAt(2), formatStringTok, argListTok))
+                    if (!findFormat(1, 2, tok->tokAt(2), formatStringTok, argListTok))
                         continue;
                 } else {
                     // Find fourth parameter and format string
-                    if (!findFormat(2, tok->tokAt(2), formatStringTok, argListTok))
+                    if (!findFormat(2, 3, tok->tokAt(2), formatStringTok, argListTok))
                         continue;
                 }
             } else if (isWindows && Token::Match(tok, "sprintf_s|swprintf_s (")) {
                 // template <size_t size> int sprintf_s(char (&buffer)[size], const char *format, ...);
-                if (findFormat(1, tok->tokAt(2), formatStringTok, argListTok)) {
+                if (findFormat(1, 2, tok->tokAt(2), formatStringTok, argListTok)) {
                     if (!formatStringTok)
                         continue;
                 }
                 // int sprintf_s(char *buffer, size_t sizeOfBuffer, const char *format, ...);
-                else if (findFormat(2, tok->tokAt(2), formatStringTok, argListTok)) {
+                else if (findFormat(2, 3, tok->tokAt(2), formatStringTok, argListTok)) {
                     if (!formatStringTok)
                         continue;
                 }
             } else if (isWindows && Token::Match(tok, "_snprintf_s|_snwprintf_s (")) {
                 // template <size_t size> int _snprintf_s(char (&buffer)[size], size_t count, const char *format, ...);
-                if (findFormat(2, tok->tokAt(2), formatStringTok, argListTok)) {
+                if (findFormat(2, 3, tok->tokAt(2), formatStringTok, argListTok)) {
                     if (!formatStringTok)
                         continue;
                 }
                 // int _snprintf_s(char *buffer, size_t sizeOfBuffer, size_t count, const char *format, ...);
-                else if (findFormat(3, tok->tokAt(2), formatStringTok, argListTok)) {
+                else if (findFormat(3, 4, tok->tokAt(2), formatStringTok, argListTok)) {
                     if (!formatStringTok)
                         continue;
                 }
@@ -690,6 +859,8 @@ void CheckIOImpl::checkFormatString(const Token * const tok,
                 }
                 ++i;
             }
+            while (!width.empty() && width[0] == '0')
+                width = width.substr(1);
             auto bracketBeg = formatString.cend();
             if (i != formatString.cend() && *i == '[') {
                 bracketBeg = i;
@@ -724,7 +895,7 @@ void CheckIOImpl::checkFormatString(const Token * const tok,
                 // Perform type checks
                 ArgumentInfo argInfo(argListTok, mSettings, mTokenizer->isCPP());
 
-                if ((argInfo.typeToken && !argInfo.isLibraryType(mSettings)) || *i == ']') {
+                if ((argInfo.typeToken && !argInfo.isLibraryType(mSettings.library)) || *i == ']') {
                     if (scan) {
                         std::string specifier;
                         bool done = false;
@@ -1726,9 +1897,9 @@ bool CheckIOImpl::ArgumentInfo::isKnownType() const
     return typeToken->isStandardType() || Token::Match(typeToken, "std :: string|wstring");
 }
 
-bool CheckIOImpl::ArgumentInfo::isLibraryType(const Settings &settings) const
+bool CheckIOImpl::ArgumentInfo::isLibraryType(const Library &library) const
 {
-    return typeToken && typeToken->isStandardType() && settings.library.podtype(typeToken->str());
+    return typeToken && typeToken->isStandardType() && library.podtype(typeToken->str());
 }
 
 void CheckIOImpl::wrongPrintfScanfArgumentsError(const Token* tok,
@@ -2057,6 +2228,7 @@ void CheckIO::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
     checkIO.checkWrongPrintfScanfArguments();
     checkIO.checkCoutCerrMisusage();
     checkIO.checkFileUsage();
+    checkIO.checkWrongfeofUsage();
     checkIO.invalidScanf();
 }
 
@@ -2072,6 +2244,7 @@ void CheckIO::getErrorMessages(ErrorLogger& errorLogger, const Settings &setting
     c.fcloseInLoopConditionError(nullptr, "fp");
     c.seekOnAppendedFileError(nullptr);
     c.incompatibleFileOpenError(nullptr, "tmp");
+    c.wrongfeofUsage(nullptr);
     c.invalidScanfError(nullptr);
     c.wrongPrintfScanfArgumentsError(nullptr, "printf",3,2);
     c.invalidScanfArgTypeError_s(nullptr,  1, "s", nullptr);

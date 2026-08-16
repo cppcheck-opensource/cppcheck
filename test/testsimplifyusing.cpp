@@ -77,6 +77,8 @@ private:
         TEST_CASE(simplifyUsing37);
         TEST_CASE(simplifyUsing38);
         TEST_CASE(simplifyUsing39);
+        TEST_CASE(simplifyUsing40);
+        TEST_CASE(simplifyUsing41);
 
         TEST_CASE(simplifyUsing8970);
         TEST_CASE(simplifyUsing8971);
@@ -98,6 +100,7 @@ private:
         TEST_CASE(simplifyUsing10335);
         TEST_CASE(simplifyUsing10720);
         TEST_CASE(simplifyUsing13873); // function declaration
+        TEST_CASE(simplifyUsing14877);
 
         TEST_CASE(scopeInfo1);
         TEST_CASE(scopeInfo2);
@@ -939,6 +942,20 @@ private:
         ASSERT_EQUALS("", errout_str());
     }
 
+    void simplifyUsing40() {
+        const char code[] = "uint8_t f();\n" // #14876
+                            "using ::std::uint8_t;";
+        const char expected[] = "uint8_t f ( ) ;";
+        ASSERT_EQUALS(expected, tok(code));
+    }
+
+    void simplifyUsing41() {
+        const char code[] = "using FpHandler = void(*)(const SourceLocation&);\n"
+                            "inline FpHandler AssertImpl::m_fpHandler = nullptr;\n";
+        const char expected[] = "void ( * AssertImpl :: m_fpHandler ) ( const SourceLocation & ) ; m_fpHandler = nullptr ;";
+        ASSERT_EQUALS(expected, tok(code));
+    }
+
     void simplifyUsing8970() {
         const char code[] = "using V = std::vector<int>;\n"
                             "struct A {\n"
@@ -1665,6 +1682,12 @@ private:
         const char code3[] = "using NS1::f;\n"
                              "namespace NS1 { void* f(); }\n";
         ASSERT_EQUALS("namespace NS1 { void * f ( ) ; }", tok(code3));
+    }
+
+    void simplifyUsing14877() {
+        const char code[] = "using C = struct C { C() {} };";
+        const char expected[] = "struct C { C ( ) { } } ;";
+        ASSERT_EQUALS(expected, tok(code));
     }
 
     void scopeInfo1() {

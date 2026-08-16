@@ -456,7 +456,7 @@ void MainWindow::loadSettings()
                                "Please check (and fix) the editor application settings, otherwise the editor "
                                "program might not start correctly.");
         QMessageBox msgBox(QMessageBox::Warning,
-                           tr("Cppcheck"),
+                           "Cppcheck",
                            msg,
                            QMessageBox::Ok,
                            this);
@@ -666,7 +666,7 @@ void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLib, c
 
     if (fileNames.isEmpty()) {
         QMessageBox msg(QMessageBox::Warning,
-                        tr("Cppcheck"),
+                        "Cppcheck",
                         tr("No suitable files found to analyze!"),
                         QMessageBox::Ok,
                         this);
@@ -751,7 +751,7 @@ QStringList MainWindow::selectFilesToAnalyze(QFileDialog::FileMode mode)
 {
     if (mProjectFile) {
         QMessageBox msgBox(this);
-        msgBox.setWindowTitle(tr("Cppcheck"));
+        msgBox.setWindowTitle("Cppcheck");
         const QString msg(tr("You must close the project file before selecting new files or directories!"));
         msgBox.setText(msg);
         msgBox.setIcon(QMessageBox::Critical);
@@ -768,8 +768,8 @@ QStringList MainWindow::selectFilesToAnalyze(QFileDialog::FileMode mode)
         QMap<QString,QString> filters;
         filters[tr("C/C++ Source")] = FileList::getDefaultFilters().join(" ");
         filters[tr("Compile database")] = compile_commands_json;
-        filters[tr("Visual Studio")] = "*.sln *.slnx *.vcxproj";
-        filters[tr("Borland C++ Builder 6")] = "*.bpr";
+        filters["Visual Studio"] = "*.sln *.slnx *.vcxproj";
+        filters["Borland C++ Builder 6"] = "*.bpr";
         QString lastFilter = mSettings->value(SETTINGS_LAST_ANALYZE_FILES_FILTER).toString();
         selected = QFileDialog::getOpenFileNames(this,
                                                  tr("Select files to analyze"),
@@ -857,7 +857,7 @@ void MainWindow::analyzeDirectory()
         if (projFiles.size() == 1) {
             // If one project file found, suggest loading it
             QMessageBox msgBox(this);
-            msgBox.setWindowTitle(tr("Cppcheck"));
+            msgBox.setWindowTitle("Cppcheck");
             const QString msg(tr("Found project file: %1\n\nDo you want to "
                                  "load this project file instead?").arg(projFiles[0]));
             msgBox.setText(msg);
@@ -879,7 +879,7 @@ void MainWindow::analyzeDirectory()
             // If multiple project files found inform that there are project
             // files also available.
             QMessageBox msgBox(this);
-            msgBox.setWindowTitle(tr("Cppcheck"));
+            msgBox.setWindowTitle("Cppcheck");
             const QString msg(tr("Found project files from the directory.\n\n"
                                  "Do you want to proceed analysis without "
                                  "using any of these project files?"));
@@ -1466,7 +1466,7 @@ void MainWindow::openResults()
 {
     if (mUI->mResults->hasResults()) {
         QMessageBox msgBox(this);
-        msgBox.setWindowTitle(tr("Cppcheck"));
+        msgBox.setWindowTitle("Cppcheck");
         const QString msg(tr("Current results will be cleared.\n\n"
                              "Opening a new XML file will clear current results.\n"
                              "Do you want to proceed?"));
@@ -1591,7 +1591,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
                               "Do you want to stop the analysis and exit Cppcheck?"));
 
         QMessageBox msg(QMessageBox::Warning,
-                        tr("Cppcheck"),
+                        "Cppcheck",
                         text,
                         QMessageBox::Yes | QMessageBox::No,
                         this);
@@ -1886,7 +1886,7 @@ void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringLis
             buildDir = inf.canonicalPath() + '/' + buildDir;
         if (!QDir(buildDir).exists()) {
             QMessageBox msg(QMessageBox::Question,
-                            tr("Cppcheck"),
+                            "Cppcheck",
                             tr("Build dir '%1' does not exist, create it?").arg(buildDir),
                             QMessageBox::Yes | QMessageBox::No,
                             this);
@@ -1894,7 +1894,7 @@ void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringLis
                 QDir().mkpath(buildDir);
             } else if (!projectFile->getAddons().isEmpty()) {
                 QMessageBox m(QMessageBox::Critical,
-                              tr("Cppcheck"),
+                              "Cppcheck",
                               tr("To check the project using addons, you need a build directory."),
                               QMessageBox::Ok,
                               this);
@@ -1949,7 +1949,7 @@ void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringLis
 
             if (!errorMessage.isEmpty()) {
                 QMessageBox msg(QMessageBox::Critical,
-                                tr("Cppcheck"),
+                                "Cppcheck",
                                 tr("Failed to import '%1': %2\n\nAnalysis is stopped.").arg(prjfile).arg(errorMessage),
                                 QMessageBox::Ok,
                                 this);
@@ -1958,7 +1958,7 @@ void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringLis
             }
         } catch (InternalError &e) {
             QMessageBox msg(QMessageBox::Critical,
-                            tr("Cppcheck"),
+                            "Cppcheck",
                             tr("Failed to import '%1' (%2), analysis is stopped").arg(prjfile).arg(QString::fromStdString(e.errorMessage)),
                             QMessageBox::Ok,
                             this);
@@ -2030,7 +2030,7 @@ void MainWindow::editProjectFile()
 {
     if (!mProjectFile) {
         QMessageBox msg(QMessageBox::Critical,
-                        tr("Cppcheck"),
+                        "Cppcheck",
                         tr("No project file loaded"),
                         QMessageBox::Ok,
                         this);
@@ -2118,7 +2118,7 @@ void MainWindow::openRecentProject()
                               "used projects -list?").arg(project));
 
         QMessageBox msg(QMessageBox::Warning,
-                        tr("Cppcheck"),
+                        "Cppcheck",
                         text,
                         QMessageBox::Yes | QMessageBox::No,
                         this);

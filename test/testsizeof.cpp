@@ -334,6 +334,14 @@ private:
               "}");
         ASSERT_EQUALS("", errout_str());
 
+        check("int f(std::array<int, 2> a) {\n" // #14860
+              "    return sizeof(a);\n"
+              "}\n"
+              "int g(std::string a[2]) {\n"
+              "    return sizeof(a);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:12]: (warning) Using 'sizeof' on array given as function argument returns size of a pointer. [sizeofwithsilentarraypointer]\n",
+                      errout_str());
     }
 
     void sizeofForNumericParameter() {

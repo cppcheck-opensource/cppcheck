@@ -204,7 +204,6 @@ static const std::unordered_set<std::string> stdTypes = { "bool"
                                                           , "int"
                                                           , "long"
                                                           , "short"
-                                                          , "size_t"
                                                           , "void"
                                                           , "wchar_t"
                                                           , "signed"
@@ -1331,10 +1330,10 @@ std::string Token::stringifyList(const stringifyOptions& options, const std::vec
 
     std::string ret;
 
-    unsigned int lineNumber = mImpl->mLineNumber - (options.linenumbers ? 1U : 0U);
+    nonneg int lineNumber = mImpl->mLineNumber - (options.linenumbers ? 1 : 0);
     // cppcheck-suppress shadowFunction - TODO: fix this
-    unsigned int fileIndex = options.files ? ~0U : mImpl->mFileIndex;
-    std::map<int, unsigned int> lineNumbers;
+    nonneg int fileIndex = options.files ? ~0U : mImpl->mFileIndex;
+    std::map<nonneg int, nonneg int> lineNumbers;
     for (const Token *tok = this; tok != end; tok = tok->next()) {
         assert(tok && "end precedes token");
         if (!tok)
@@ -2434,6 +2433,7 @@ std::pair<const Token*, const Token*> Token::typeDecl(const Token* tok, bool poi
                     varTok = varTok->next();
                 while (Token::Match(varTok, "%name% ::"))
                     varTok = varTok->tokAt(2);
+                assert(varTok != tok);
                 std::pair<const Token*, const Token*> r = typeDecl(varTok);
                 if (r.first)
                     return r;

@@ -563,28 +563,50 @@ namespace {
             if (Token::simpleMatch(start, "typename"))
                 start = start->next();
 
+            const auto checkForRecursion = [this]() {
+                if (Token::Match(mTypedefToken, "typedef %name% %name% ;"))
+                    return;
+                int nBraces = 0;
+                for (const Token *tok = mTypedefToken; tok != mEndToken; tok = tok->next()) {
+                    if (tok->str() == "{")
+                        ++nBraces;
+                    else if (tok->str() == "}")
+                        --nBraces;
+                    if (tok == mNameToken)
+                        continue;
+                    if (tok->str() != mNameToken->str())
+                        continue;
+                    if (nBraces > 0 && Token::Match(tok->next(), "[;(]"))
+                        continue;
+                    if (Token::Match(tok->previous(), "struct|class|enum|union"))
+                        continue;
+                    throw InternalError(tok, "recursive typedef encountered");
+                }
+            };
+
             // TODO handle unnamed structs etc
             if (Token::Match(start, "const| enum|struct|union|class %name%| {")) {
                 const std::pair<const Token*, Token*> rangeBefore(start, Token::findsimplematch(start, "{"));
 
                 // find typedef name token
-                Token* nameToken = rangeBefore.second->link()->next();
-                while (Token::Match(nameToken, "%name%|* %name%|*"))
-                    nameToken = nameToken->next();
-                const std::pair<const Token*, Token*> rangeQualifiers(rangeBefore.second->link()->next(), nameToken);
+                Token* nameTok = rangeBefore.second->link()->next();
+                while (Token::Match(nameTok, "%name%|* %name%|*"))
+                    nameTok = nameTok->next();
+                const std::pair<const Token*, Token*> rangeQualifiers(rangeBefore.second->link()->next(), nameTok);
 
-                if (Token::Match(nameToken, "%name% ;")) {
+                if (Token::Match(nameTok, "%name% ;")) {
                     if (Token::Match(rangeBefore.second->previous(), "enum|struct|union|class {"))
-                        rangeBefore.second->previous()->insertToken(nameToken->str());
+                        rangeBefore.second->previous()->insertToken(nameTok->str());
                     mRangeType = rangeBefore;
                     mRangeTypeQualifiers = rangeQualifiers;
                     Token* typeName = rangeBefore.second->previous();
                     if (typeName->isKeyword()) {
                         // TODO typeName->insertToken("T:" + std::to_string(num++));
-                        typeName->insertToken(nameToken->str());
+                        typeName->insertToken(nameTok->str());
                     }
-                    mNameToken = nameToken;
-                    mEndToken = nameToken->next();
+                    mNameToken = nameTok;
+                    mEndToken = nameTok->next();
+                    checkForRecursion();
                     return;
                 }
             }
@@ -595,6 +617,7 @@ namespace {
                     mRangeType.second = type;
                     mNameToken = type;
                     mEndToken = mNameToken->next();
+                    checkForRecursion();
                     return;
                 }
                 if (type != start && Token::Match(type, "%name% [")) {
@@ -609,6 +632,7 @@ namespace {
                     mEndToken = end->next();
                     mRangeAfterVar.first = mNameToken->next();
                     mRangeAfterVar.second = mEndToken;
+                    checkForRecursion();
                     return;
                 }
                 if (Token::Match(type->next(), "( * const| %name% ) (") && Token::simpleMatch(type->linkAt(1)->linkAt(1), ") ;")) {
@@ -618,6 +642,7 @@ namespace {
                     mRangeType.second = mNameToken;
                     mRangeAfterVar.first = mNameToken->next();
                     mRangeAfterVar.second = mEndToken;
+                    checkForRecursion();
                     return;
                 }
                 if (type != start && Token::Match(type, "%name% ( !!(") && Token::simpleMatch(type->linkAt(1), ") ;") && !type->isStandardType()) {
@@ -627,6 +652,7 @@ namespace {
                     mRangeType.second = type;
                     mRangeAfterVar.first = mNameToken->next();
                     mRangeAfterVar.second = mEndToken;
+                    checkForRecursion();
                     return;
                 }
             }
@@ -2025,6 +2051,7 @@ void Tokenizer::simplifyTypedefCpp()
                         tok2->previous()->str("typedef");
                         tok2->insertToken(tok2->str());
                     }
+                    tok2->originalName(tok2->str());
                     tok2->str(typeStart->str());
 
                     // restore qualification if it was removed
@@ -2711,7 +2738,7 @@ namespace {
     {
         Token *tok1 = tok;
 
-        if (tok1 && tok1->str() != nameToken->str())
+        if (!tok1 || tok1->str() != nameToken->str())
             return false;
 
         // skip this using
@@ -2719,6 +2746,9 @@ namespace {
             tok = findSemicolon(tok1);
             return false;
         }
+
+        if (!tok->tokAt(-1))
+            return false;
 
         // skip other using with this name
         if (tok1->strAt(-1) == "using") {
@@ -3015,7 +3045,6 @@ bool Tokenizer::simplifyUsing()
                 Token::Match(tok->linkAt(2), "] ] = ::| %name%")))))
             continue;
 
-        const std::string& name = tok->strAt(1);
         const Token *nameToken = tok->next();
         std::string scope = currentScope->fullName;
         Token *usingStart = tok;
@@ -3064,7 +3093,7 @@ bool Tokenizer::simplifyUsing()
             if (!hasName) {
                 std::string newName;
                 if (structEnd->strAt(2) == ";")
-                    newName = name;
+                    newName = nameToken->str();
                 else
                     newName = "Unnamed" + std::to_string(mUnnamedCount++);
                 TokenList::copyTokens(structEnd->next(), tok, start);
@@ -3211,7 +3240,7 @@ bool Tokenizer::simplifyUsing()
             if (!isTypedefInfoAdded && Token::Match(tok1, "%name% (")) {
                 isTypedefInfoAdded = true;
                 TypedefInfo usingInfo;
-                usingInfo.name = name;
+                usingInfo.name = nameToken->str();
                 usingInfo.filename = list.file(nameToken);
                 usingInfo.lineNumber = nameToken->linenr();
                 usingInfo.column = nameToken->column();
@@ -3387,12 +3416,17 @@ bool Tokenizer::simplifyUsing()
                 } else if (fpArgList && fpQual && Token::Match(tok1->next(), "%name%")) {
                     // function pointer
                     const bool isFuncDecl = Token::simpleMatch(tok1->tokAt(2), "(");
-                    TokenList::copyTokens(tok1->next(), fpArgList, usingEnd->previous());
+                    Token *dest = tok1->next();
+                    while (Token::Match(dest, "%name% :: %name%"))
+                        dest = dest->tokAt(2);
+                    TokenList::copyTokens(dest, fpArgList, usingEnd->previous());
                     Token* const copyEnd = TokenList::copyTokens(tok1, start, fpQual->link()->previous());
                     Token* leftPar = copyEnd->previous();
                     while (leftPar->str() != "(")
                         leftPar = leftPar->previous();
-                    Token* const insertTok = isFuncDecl ? copyEnd->linkAt(2) : copyEnd->next();
+                    Token *insertTok = isFuncDecl ? copyEnd->linkAt(2) : copyEnd->next();
+                    while (Token::Match(insertTok, "%name% :: %name%"))
+                        insertTok = insertTok->tokAt(2);
                     Token* const rightPar = insertTok->insertToken(")");
                     Token::createMutualLinks(leftPar, rightPar);
                     tok1->deleteThis();
@@ -3468,6 +3502,8 @@ bool Tokenizer::simplifyUsing()
                 skip = true;
                 simplifyUsingError(usingStart, usingEnd);
             }
+            if (!after)
+                syntaxError(tok1);
             tok1 = after->previous();
         }
 
@@ -3862,7 +3898,8 @@ void Tokenizer::simplifyRedundantConsecutiveBraces()
     for (Token *tok = list.front(); tok;) {
         if (Token::simpleMatch(tok, "= {")) {
             tok = tok->linkAt(1);
-        } else if (Token::simpleMatch(tok, "{ {") && Token::simpleMatch(tok->linkAt(1), "} }")) {
+        } else if (Token::simpleMatch(tok, "{ {") && Token::simpleMatch(tok->linkAt(1), "} }") &&
+                   !Token::Match(tok->previous(), "%name%")) {
             //remove internal parentheses
             tok->linkAt(1)->deleteThis();
             tok->deleteNext();
@@ -4520,7 +4557,7 @@ static void setVarIdStructMembers(Token *&tok1,
         return;
     }
 
-    while (Token::Match(tok->next(), ")| . %name% !!(")) {
+    while (Token::Match(tok->next(), ")| . %name%")) {
         // Don't set varid for trailing return type
         if (tok->strAt(1) == ")" && Token::Match(tok->linkAt(1)->tokAt(-1), "%name%|]") && !tok->linkAt(1)->tokAt(-1)->isKeyword() &&
             TokenList::isFunctionHead(tok->linkAt(1), "{;")) {
@@ -4542,6 +4579,8 @@ static void setVarIdStructMembers(Token *&tok1,
         std::map<std::string, nonneg int>& members = structMembers[struct_varid];
         const auto it = utils::as_const(members).find(tok->str());
         if (it == members.cend()) {
+            if (Token::Match(tok, "%name% ("))
+                break;
             members[tok->str()] = ++varId;
             tok->varId(varId);
         } else {
@@ -5133,8 +5172,10 @@ static Token * matchMemberName(const std::list<std::string> &scope, const Token 
 
     // Current scope..
     for (auto it = scope.cbegin(); it != scope.cend(); ++it) {
-        if (scopeIt == scopeInfo.cend() || scopeIt->name != *it)
-            return nullptr;
+        if (scopeIt == scopeInfo.cend() || scopeIt->name != *it) {
+            scopeIt = scopeInfo.cbegin();
+            break;
+        }
         ++scopeIt;
     }
 
@@ -5238,7 +5279,16 @@ void Tokenizer::setVarIdPass2()
         std::map<const Token *, std::string> endOfScope;
         std::list<std::string> scope;
         std::list<const Token *> usingnamespaces;
+        const Token *enumEnd = nullptr;
         for (Token *tok = list.front(); tok; tok = tok->next()) {
+            if (isEnumStart(tok)) {
+                enumEnd = tok->link();
+                continue;
+            }
+            if (tok == enumEnd) {
+                enumEnd = nullptr;
+                continue;
+            }
             if (!tok->previous() || Token::Match(tok->previous(), "[;{}]")) {
                 if (Token::Match(tok, "using namespace %name% ::|;")) {
                     Token *endtok = tok->tokAt(2);
@@ -5268,7 +5318,8 @@ void Tokenizer::setVarIdPass2()
                 tok = tok->next()->findClosingBracket()->next();
             else if (usingnamespaces.empty() || tok->varId() || !tok->isName() || tok->isStandardType() || tok->tokType() == Token::eKeyword || tok->tokType() == Token::eBoolean ||
                      Token::Match(tok->previous(), ".|namespace|class|struct|&|&&|*|> %name%") || Token::Match(tok->previous(), "%type%| %name% ( %type%|)") || Token::Match(tok, "public:|private:|protected:") ||
-                     (!tok->next() && Token::Match(tok->previous(), "}|; %name%")))
+                     (!tok->next() && Token::Match(tok->previous(), "}|; %name%")) ||
+                     (enumEnd && Token::Match(tok->previous(), "{|, %name% =|,|}")))
                 continue;
 
             if (tok->strAt(-1) == "::" && tok->tokAt(-2) && tok->tokAt(-2)->isName())
@@ -6217,6 +6268,8 @@ void Tokenizer::dump(std::ostream &out) const
         }
         if (tok->isRemovedVoidParameter())
             outs += " isRemovedVoidParameter=\"true\"";
+        if (tok->isInsertedBrace())
+            outs += " isInsertedBrace=\"true\"";
         if (tok->isSplittedVarDeclComma())
             outs += " isSplittedVarDeclComma=\"true\"";
         if (tok->isSplittedVarDeclEq())
@@ -6890,7 +6943,7 @@ Token *Tokenizer::simplifyAddBracesToCommand(Token *tok)
             // before the "while"
             if (tokEnd) {
                 tokEnd=tokEnd->next();
-                if (!tokEnd || tokEnd->str()!="while") // no while
+                if (!Token::simpleMatch(tokEnd, "while (") || !Token::simpleMatch(tokEnd->linkAt(1), ") ;")) // no while
                     syntaxError(tok);
             }
         }
@@ -7002,10 +7055,13 @@ Token *Tokenizer::simplifyAddBracesPair(Token *tok, bool commandWithCondition)
 
         tokAfterCondition->previous()->insertToken("{");
         Token * tokOpenBrace=tokAfterCondition->previous();
+        tokOpenBrace->column(tokAfterCondition->column());
+        tokOpenBrace->isInsertedBrace(true);
 
         tokEnd->insertToken("}");
         Token * tokCloseBrace=tokEnd->next();
         tokCloseBrace->column(tokEnd->column());
+        tokCloseBrace->isInsertedBrace(true);
 
         Token::createMutualLinks(tokOpenBrace,tokCloseBrace);
         tokBracesEnd=tokCloseBrace;
@@ -7333,6 +7389,19 @@ void Tokenizer::simplifyVarDecl(const bool only_k_r_fpar)
     simplifyVarDecl(list.front(), nullptr, only_k_r_fpar);
 }
 
+static Token* isTrailingReturnType(Token* tok)
+{
+    while (Token::Match(tok, "%name%|::|>")) {
+        if (Token* open = tok->findOpeningBracket())
+            tok = open->tokAt(-1);
+        else
+            tok = tok->tokAt(-1);
+    }
+    if (tok && Token::simpleMatch(tok->tokAt(-1), ") ."))
+        return tok->tokAt(-1);
+    return nullptr;
+}
+
 // cppcheck-suppress functionConst - has side effects
 void Tokenizer::simplifyVarDecl(Token * tokBegin, const Token * const tokEnd, const bool only_k_r_fpar)
 {
@@ -7360,14 +7429,16 @@ void Tokenizer::simplifyVarDecl(Token * tokBegin, const Token * const tokEnd, co
                 if (!tok->linkAt(1))
                     syntaxError(tokBegin);
                 // Check for lambdas before skipping
-                if (Token::Match(tok->tokAt(-2), ") . %name%")) { // trailing return type
+                if (Token* trailingStart = isTrailingReturnType(tok)) {
                     // TODO: support lambda without parameter clause?
-                    Token* lambdaStart = tok->linkAt(-2)->previous();
+                    Token* lambdaStart = trailingStart->link()->tokAt(-1);
                     if (Token::simpleMatch(lambdaStart, "]"))
                         lambdaStart = lambdaStart->link();
                     Token* lambdaEnd = findLambdaEndScope(lambdaStart);
                     if (lambdaEnd)
                         simplifyVarDecl(lambdaEnd->link()->next(), lambdaEnd, only_k_r_fpar);
+                    else
+                        simplifyVarDecl(tok->tokAt(2), tok->linkAt(1), only_k_r_fpar);
                 } else {
                     for (Token* tok2 = tok->next(); tok2 != tok->linkAt(1); tok2 = tok2->next()) {
                         Token* lambdaEnd = findLambdaEndScope(tok2);
@@ -8021,8 +8092,8 @@ void Tokenizer::elseif()
 
             if (Token::Match(tok2, "}|;")) {
                 if (tok2->next() && tok2->strAt(1) != "else") {
-                    tok->insertToken("{")->isSimplifiedScope(true);
-                    tok2->insertToken("}")->isSimplifiedScope(true);
+                    tok->insertToken("{")->isInsertedBrace(true);
+                    tok2->insertToken("}")->isInsertedBrace(true);
                     Token::createMutualLinks(tok->next(), tok2->next());
                     break;
                 }
@@ -8088,7 +8159,8 @@ void Tokenizer::simplifyIfSwitchForInit()
         tok->str("{");
         endscope->insertToken("}");
         Token::createMutualLinks(tok, endscope->next());
-        tok->isSimplifiedScope(true);
+        tok->isInsertedBrace(true);
+        tok->isSimplifiedIfInitStmt(true);
     }
 }
 
@@ -8761,6 +8833,9 @@ void Tokenizer::findGarbageCode() const
             if (!cpp || mSettings.standards.cpp < Standards::CPP20 || !Token::Match(tok->previous(), "%name% : %num% ="))
                 syntaxError(tok, tok->strAt(1) + " " + tok->strAt(2));
         }
+        else if (!cpp && Token::Match(tok, "++|-- ++|--")) {
+            syntaxError(tok, tok->str() + tok->strAt(1));
+        }
         else if (Token::simpleMatch(tok, ") return") && !Token::Match(tok->link()->previous(), "if|while|for (")) {
             if (tok->link()->previous() && tok->link()->previous()->isUpperCaseName())
                 unknownMacroError(tok->link()->previous());
@@ -8936,6 +9011,8 @@ void Tokenizer::findGarbageCode() const
         const Token* const endTok = tok->linkAt(1);
         for (tok = tok->tokAt(2); tok != endTok; tok = tok->next()) {
             if (const Token* lam = findLambdaEndTokenWithoutAST(tok)) {
+                if (lam == endTok)
+                    break;
                 tok = lam;
                 continue;
             }
@@ -8945,7 +9022,7 @@ void Tokenizer::findGarbageCode() const
                 if (tok->strAt(-1) == ",")
                     syntaxError(tok);
                 colons++;
-            } else if (tok->str() == "(") { // skip pairs of ( )
+            } else if (tok->str() == "(" || tok->str() == "{") { // skip pairs of ( )
                 tok = tok->link();
             }
         }
@@ -9117,14 +9194,18 @@ void Tokenizer::findGarbageCode() const
                 }
                 if (!tok2->next() || tok2->isControlFlowKeyword() || Token::Match(tok2, "typedef|static|."))
                     syntaxError(tok);
-                if (Token::Match(tok2, "%name% %name%") && tok2->str() == tok2->strAt(1)) {
-                    if (Token::simpleMatch(tok2->tokAt(2), ";"))
-                        continue;
-                    if (tok2->isStandardType() && tok2->str() == "long")
-                        continue;
-                    if (Token::Match(tok2->tokAt(-1), "enum|struct|union") || (isCPP() && Token::Match(tok2->tokAt(-1), "class|::")))
-                        continue;
-                    syntaxError(tok2);
+                if (Token::Match(tok2, "%name% %name%")) {
+                    if (tok2->str() == tok2->strAt(1)) {
+                        if (Token::simpleMatch(tok2->tokAt(2), ";"))
+                            continue;
+                        if (tok2->isStandardType() && tok2->str() == "long")
+                            continue;
+                        if (Token::Match(tok2->tokAt(-1), "enum|struct|union") || (isCPP() && Token::Match(tok2->tokAt(-1), "class|::")))
+                            continue;
+                        syntaxError(tok2);
+                    }
+                    if (Token::Match(tok2->tokAt(2), "%name%") && tok2->isNameOnly() && tok2->tokAt(1)->isNameOnly() && tok2->tokAt(2)->isNameOnly())
+                        syntaxError(tok2);
                 }
             }
         }
@@ -9385,6 +9466,7 @@ void Tokenizer::simplifyStructDecl()
             if (Token::Match(after->next(), "const|static|volatile| *|&| const| (| %type% )| ,|;|[|=|(|{")) {
                 after->insertToken(";");
                 after = after->next();
+                Token *declEnd = after;
                 while (!Token::Match(start, "struct|class|union|enum")) {
                     after->insertToken(start->str());
                     after = after->next();
@@ -9426,6 +9508,16 @@ void Tokenizer::simplifyStructDecl()
                             after->linkAt(1)->str(")");
                         }
                     }
+                }
+
+                // pull declaration out of for loop
+                if (Token::simpleMatch(start->tokAt(-2), "for ( struct")) {
+                    Token *link = start->linkAt(-1);
+                    start->deletePrevious(2);
+                    declEnd->insertToken("(");
+                    declEnd->next()->link(link);
+                    link->link(declEnd->next());
+                    declEnd->insertToken("for");
                 }
             }
         }
@@ -9748,7 +9840,7 @@ void Tokenizer::simplifyCPPAttribute()
                 if (!head)
                     syntaxError(tok);
 
-                if (Token::simpleMatch(head, ";")) {
+                if (Token::Match(head, ";|,|)")) {
                     Token *backTok = tok;
                     while (Token::Match(backTok, "]|[|)")) {
                         if (Token::Match(backTok, "]|)"))

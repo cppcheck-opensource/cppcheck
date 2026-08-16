@@ -24,7 +24,7 @@ jobs:
       QT_VERSION: 6.10.0
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
@@ -64,7 +64,7 @@ jobs:
       # unusedFunction - start
       - name: CMake
         run: |
-          cmake -S . -B cmake.output -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=ON -DWITH_QCHART=ON -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCPPCHK_GLIBCXX_DEBUG=Off
+          cmake -S . -B cmake.output -Werror=dev --warn-uninitialized -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=ON -DWITH_QCHART=ON -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCPPCHK_GLIBCXX_DEBUG=Off
 
       - name: Generate dependencies
         run: |
@@ -90,7 +90,7 @@ jobs:
       # unusedFunction notest - start
       - name: CMake (no test)
         run: |
-          cmake -S . -B cmake.output.notest -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=Off -DBUILD_GUI=ON -DBUILD_TRIAGE=On -DWITH_QCHART=ON -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCPPCHK_GLIBCXX_DEBUG=Off
+          cmake -S . -B cmake.output.notest -Werror=dev --warn-uninitialized -DHAVE_RULES=On -DBUILD_TESTING=Off -DBUILD_GUI=ON -DBUILD_TRIAGE=On -DWITH_QCHART=ON -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCPPCHK_GLIBCXX_DEBUG=Off
 
       - name: Generate dependencies (no test)
         run: |
@@ -112,7 +112,7 @@ jobs:
       # unusedFunction notest nogui - start
       - name: CMake (no test / no gui)
         run: |
-          cmake -S . -B cmake.output.notest_nogui -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=Off -DENABLE_CHECK_INTERNAL=On -DCPPCHK_GLIBCXX_DEBUG=Off
+          cmake -S . -B cmake.output.notest_nogui -Werror=dev --warn-uninitialized -DHAVE_RULES=On -DBUILD_TESTING=Off -DENABLE_CHECK_INTERNAL=On -DCPPCHK_GLIBCXX_DEBUG=Off
 
       - name: Generate dependencies (no test / no gui)
         run: |
@@ -121,8 +121,25 @@ jobs:
 
       - name: Self check (unusedFunction / no test / no gui)
         run: |
-          supprs="--suppress=unusedFunction:lib/errorlogger.h:197 --suppress=unusedFunction:lib/importproject.cpp:1666 --suppress=unusedFunction:lib/importproject.cpp:1690"
-          ./cppcheck -q --template=selfcheck --error-exitcode=1 --library=cppcheck-lib -D__CPPCHECK__ -D__GNUC__ --enable=unusedFunction,information --exception-handling -rp=. --project=cmake.output.notest_nogui/compile_commands.json --suppressions-list=.selfcheck_unused_suppressions --inline-suppr $supprs
+          echo '<?xml version="1.0"?>
+                <suppressions>
+                  <suppress>
+                    <id>unusedFunction</id>
+                    <fileName>lib/errorlogger.h</fileName>
+                    <symbolName>verboseMessage</symbolName>
+                  </suppress>
+                  <suppress>
+                    <id>unusedFunction</id>
+                    <fileName>lib/importproject.cpp</fileName>
+                    <symbolName>selectVsConfigurations</symbolName>
+                  </suppress>
+                  <suppress>
+                    <id>unusedFunction</id>
+                    <fileName>lib/importproject.cpp</fileName>
+                    <symbolName>getVSConfigs</symbolName>
+                  </suppress>
+                </suppressions>' > supprs.xml
+          ./cppcheck -q --template=selfcheck --error-exitcode=1 --library=cppcheck-lib -D__CPPCHECK__ -D__GNUC__ --enable=unusedFunction,information --exception-handling -rp=. --project=cmake.output.notest_nogui/compile_commands.json --suppressions-list=.selfcheck_unused_suppressions --inline-suppr --suppress-xml=supprs.xml
         env:
           DISABLE_VALUEFLOW: 1
           UNUSEDFUNCTION_ONLY: 1
@@ -131,7 +148,7 @@ jobs:
       # unusedFunction notest nocli - start
       - name: CMake (no test / no cli)
         run: |
-          cmake -S . -B cmake.output.notest_nocli -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=Off -DBUILD_CLI=Off -DBUILD_GUI=ON -DWITH_QCHART=ON -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCPPCHK_GLIBCXX_DEBUG=Off
+          cmake -S . -B cmake.output.notest_nocli -Werror=dev --warn-uninitialized -DHAVE_RULES=On -DBUILD_TESTING=Off -DBUILD_CLI=Off -DBUILD_GUI=ON -DWITH_QCHART=ON -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCPPCHK_GLIBCXX_DEBUG=Off
 
       - name: Generate dependencies (no test / no cli)
         run: |
@@ -154,7 +171,7 @@ jobs:
       # unusedFunction notest nocli nogui - start
       - name: CMake (no test / no cli / no gui)
         run: |
-          cmake -S . -B cmake.output.notest_nocli_nogui -Werror=dev -DHAVE_RULES=On -DBUILD_TESTING=Off -DBUILD_CLI=Off -DBUILD_GUI=Off -DENABLE_CHECK_INTERNAL=On -DCPPCHK_GLIBCXX_DEBUG=Off
+          cmake -S . -B cmake.output.notest_nocli_nogui -Werror=dev --warn-uninitialized -DHAVE_RULES=On -DBUILD_TESTING=Off -DBUILD_CLI=Off -DBUILD_GUI=Off -DENABLE_CHECK_INTERNAL=On -DCPPCHK_GLIBCXX_DEBUG=Off
 
       - name: Generate dependencies (no test / no cli / no gui)
         run: |
@@ -198,7 +215,7 @@ jobs:
         env:
           DISABLE_VALUEFLOW: 1
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Callgrind Output
           path: ./callgrind.*
@@ -211,7 +228,7 @@ jobs:
         env:
           DISABLE_VALUEFLOW: 1
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Memcheck Output
           path: ./memcheck.*

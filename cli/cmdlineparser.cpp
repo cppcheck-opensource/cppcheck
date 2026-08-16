@@ -1159,7 +1159,10 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                 if (!parseNumberArg(argv[i], 31, tmp, true))
                     return Result::Fail;
             }
-            mSettings.premiumArgs += "--" + p;
+            if (p.find(' ') != std::string::npos)
+                mSettings.premiumArgs += "\"--" + p + "\"";
+            else
+                mSettings.premiumArgs += "--" + p;
             if (isCodingStandard) {
                 // All checkers related to the coding standard should be enabled. The coding standards
                 // do not all undefined behavior or portability issues.

@@ -92,7 +92,7 @@ public:
      */
     bool isPointerDeRef(const Token *tok, bool &unknown) const;
 
-    static bool isPointerDeRef(const Token *tok, bool &unknown, const Settings &settings, bool checkNullArg = true);
+    static bool isPointerDeRef(const Token *tok, bool &unknown, const Library &library, bool checkNullArg = true);
 
     /**
      * @brief parse a function call and extract information about variable usage

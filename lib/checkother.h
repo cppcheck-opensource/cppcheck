@@ -275,7 +275,7 @@ public:
     void suspiciousFloatingPointCastError(const Token *tok);
     void invalidPointerCastError(const Token* tok, const std::string& from, const std::string& to, bool inconclusive, bool toIsInt);
     void passedByValueError(const Variable* var, bool inconclusive, bool isRangeBasedFor = false);
-    void constVariableError(const Variable *var, const Function *function);
+    void constVariableError(const Variable *var, const Function *function, bool foundAllBaseClasses = true);
     void constStatementError(const Token *tok, const std::string &type, bool inconclusive);
     void signedCharArrayIndexError(const Token *tok);
     void unknownSignCharArrayIndexError(const Token *tok);
@@ -316,7 +316,7 @@ public:
     void unusedLabelError(const Token* tok, bool inSwitch, bool hasIfdef);
     void unknownEvaluationOrder(const Token* tok, bool isUnspecifiedBehavior = false);
     void accessMovedError(const Token *tok, const std::string &varname, const ValueFlow::Value *value, bool inconclusive);
-    void funcArgNamesDifferent(const std::string & functionName, nonneg int index, const Token* declaration, const Token* definition);
+    void funcArgNamesDifferent(const std::string & functionName, size_t index, const Token* declaration, const Token* definition);
     void funcArgOrderDifferent(const std::string & functionName, const Token * declaration, const Token * definition, const std::vector<const Token*> & declarations, const std::vector<const Token*> & definitions);
     void shadowError(const Token *shadows, const std::string &shadowsType, const Token *shadowed, const std::string &shadowedType);
     void knownArgumentError(const Token *tok, const Token *ftok, const ValueFlow::Value *value, const std::string &varexpr, bool isVariableExpressionHidden);

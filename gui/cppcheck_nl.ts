@@ -106,9 +106,8 @@ Parameters: -l(lijn) (bestand)</translation>
         <translation>Selecteer applicatie</translation>
     </message>
     <message>
-        <location filename="applicationdialog.cpp" line="83"/>
         <source>Cppcheck</source>
-        <translation>Cppcheck</translation>
+        <translation type="vanished">Cppcheck</translation>
     </message>
     <message>
         <location filename="applicationdialog.cpp" line="84"/>
@@ -126,10 +125,8 @@ Parameters: -l(lijn) (bestand)</translation>
         <translation>Kon het bestand niet vinden: %1</translation>
     </message>
     <message>
-        <location filename="fileviewdialog.cpp" line="57"/>
-        <location filename="fileviewdialog.cpp" line="71"/>
         <source>Cppcheck</source>
-        <translation>Cppcheck</translation>
+        <translation type="vanished">Cppcheck</translation>
     </message>
     <message>
         <location filename="fileviewdialog.cpp" line="67"/>
@@ -160,9 +157,8 @@ Parameters: -l(lijn) (bestand)</translation>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="helpdialog.cpp" line="87"/>
         <source>Cppcheck</source>
-        <translation type="unfinished">Cppcheck</translation>
+        <translation type="obsolete">Cppcheck</translation>
     </message>
 </context>
 <context>
@@ -282,11 +278,8 @@ Parameters: -l(lijn) (bestand)</translation>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="librarydialog.cpp" line="110"/>
-        <location filename="librarydialog.cpp" line="122"/>
-        <location filename="librarydialog.cpp" line="159"/>
         <source>Cppcheck</source>
-        <translation type="unfinished">Cppcheck</translation>
+        <translation type="obsolete">Cppcheck</translation>
     </message>
     <message>
         <location filename="librarydialog.cpp" line="111"/>
@@ -424,23 +417,8 @@ Parameters: -l(lijn) (bestand)</translation>
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="mainwindow.ui" line="26"/>
-        <location filename="mainwindow.ui" line="687"/>
-        <location filename="mainwindow.cpp" line="459"/>
-        <location filename="mainwindow.cpp" line="669"/>
-        <location filename="mainwindow.cpp" line="754"/>
-        <location filename="mainwindow.cpp" line="860"/>
-        <location filename="mainwindow.cpp" line="882"/>
-        <location filename="mainwindow.cpp" line="1469"/>
-        <location filename="mainwindow.cpp" line="1594"/>
-        <location filename="mainwindow.cpp" line="1889"/>
-        <location filename="mainwindow.cpp" line="1897"/>
-        <location filename="mainwindow.cpp" line="1952"/>
-        <location filename="mainwindow.cpp" line="1961"/>
-        <location filename="mainwindow.cpp" line="2033"/>
-        <location filename="mainwindow.cpp" line="2121"/>
         <source>Cppcheck</source>
-        <translation>Cppcheck</translation>
+        <translation type="vanished">Cppcheck</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="209"/>
@@ -953,31 +931,6 @@ Parameters: -l(lijn) (bestand)</translation>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="mainwindow.ui" line="995"/>
-        <source>Misra C</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="mainwindow.ui" line="1003"/>
-        <source>Misra C++ 2008</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="mainwindow.ui" line="1011"/>
-        <source>Cert C</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="mainwindow.ui" line="1019"/>
-        <source>Cert C++</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="mainwindow.ui" line="1027"/>
-        <source>Misra C++ 2023</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <location filename="mainwindow.ui" line="1035"/>
         <source>Autosar</source>
         <translation type="unfinished"></translation>
@@ -1225,16 +1178,6 @@ Dit is waarschijnlijk omdat de instellingen zijn gewijzigd tussen de versies van
     <message>
         <location filename="mainwindow.cpp" line="770"/>
         <source>Compile database</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="mainwindow.cpp" line="771"/>
-        <source>Visual Studio</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="mainwindow.cpp" line="772"/>
-        <source>Borland C++ Builder 6</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1492,31 +1435,6 @@ Options:
         <location filename="platforms.cpp" line="38"/>
         <source>Native</source>
         <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="platforms.cpp" line="39"/>
-        <source>Unix 32-bit</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="platforms.cpp" line="40"/>
-        <source>Unix 64-bit</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="platforms.cpp" line="41"/>
-        <source>Windows 32-bit ANSI</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="platforms.cpp" line="42"/>
-        <source>Windows 32-bit Unicode</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="platforms.cpp" line="43"/>
-        <source>Windows 64-bit</source>
-        <translation></translation>
     </message>
 </context>
 <context>
@@ -1905,16 +1823,6 @@ Options:
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="projectfile.ui" line="1020"/>
-        <source>Clang analyzer</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="projectfile.ui" line="1013"/>
-        <source>Clang-tidy</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <location filename="projectfile.ui" line="221"/>
         <source>Defines:</source>
         <translation>Omschrijft:</translation>
@@ -1953,18 +1861,8 @@ Options:
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="projectfiledialog.cpp" line="627"/>
-        <source>Visual Studio</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <location filename="projectfiledialog.cpp" line="628"/>
         <source>Compile database</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="projectfiledialog.cpp" line="629"/>
-        <source>Borland C++ Builder 6</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -2244,11 +2142,6 @@ Options:
         <source>Tags</source>
         <translation type="unfinished"></translation>
     </message>
-    <message>
-        <location filename="resultstree.cpp" line="125"/>
-        <source>CWE</source>
-        <translation type="unfinished"></translation>
-    </message>
 </context>
 <context>
     <name>QPlatformTheme</name>
@@ -2375,10 +2268,8 @@ Options:
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="resultstree.cpp" line="744"/>
-        <location filename="resultstree.cpp" line="758"/>
         <source>Cppcheck</source>
-        <translation>Cppcheck</translation>
+        <translation type="vanished">Cppcheck</translation>
     </message>
     <message>
         <location filename="resultstree.cpp" line="745"/>
@@ -2470,10 +2361,8 @@ Gelieve te controleren of de het pad en de parameters correct zijn.</translation
         <translation>%p% (%1 van %2 bestanden gecontroleerd)</translation>
     </message>
     <message>
-        <location filename="resultsview.cpp" line="348"/>
-        <location filename="resultsview.cpp" line="359"/>
         <source>Cppcheck</source>
-        <translation>Cppcheck</translation>
+        <translation type="vanished">Cppcheck</translation>
     </message>
     <message>
         <location filename="resultsview.cpp" line="349"/>
@@ -3143,9 +3032,8 @@ The user interface language has been reset to English. Open the Preferences-dial
 De gebruikerstaal is gereset naar Engels. Open het dialoogvenster om een van de beschikbare talen te selecteren.</translation>
     </message>
     <message>
-        <location filename="translationhandler.cpp" line="136"/>
         <source>Cppcheck</source>
-        <translation>Cppcheck</translation>
+        <translation type="vanished">Cppcheck</translation>
     </message>
 </context>
 <context>

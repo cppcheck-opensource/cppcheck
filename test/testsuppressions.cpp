@@ -119,6 +119,7 @@ private:
         TEST_CASE(addSuppressionLineMultiple);
 
         TEST_CASE(suppressionsParseXmlFile);
+        TEST_CASE(xmlMacroSuppressions);
 
         TEST_CASE(toString);
 
@@ -1705,6 +1706,25 @@ private:
             ASSERT_EQUALS("sym", suppr.symbolName);
         }
 
+        {
+            ScopedFile file("suppressparsexml.xml",
+                            "<suppressions>\n"
+                            "<suppress>\n"
+                            "<id>uninitvar</id>\n"
+                            "<macroName>MACRO_NAME</macroName>\n"
+                            "</suppress>\n"
+                            "</suppressions>");
+
+            SuppressionList supprList;
+            ASSERT_EQUALS("", supprList.parseXmlFile(file.path().c_str()));
+            const auto& supprs = supprList.getSuppressions();
+            ASSERT_EQUALS(1, supprs.size());
+            const auto& suppr = *supprs.cbegin();
+            ASSERT_EQUALS("uninitvar", suppr.errorId);
+            ASSERT_EQUALS("MACRO_NAME", suppr.macroName);
+            ASSERT_EQUALS_ENUM(SuppressionList::Type::macro, suppr.type);
+        }
+
         // no file specified
         {
             SuppressionList supprList;
@@ -1756,6 +1776,67 @@ private:
             SuppressionList supprList;
             ASSERT_EQUALS("unknown element 'eid' in suppressions XML 'suppressparsexml.xml', expected id/fileName/lineNumber/symbolName/hash.", supprList.parseXmlFile(file.path().c_str()));
         }
+    }
+
+    #define testXmlSuppressions(...) testXmlSuppressions_(__FILE__,__LINE__,__VA_ARGS__)
+    void testXmlSuppressions_(const char *thisfile,
+                              int thisline,
+                              const std::string &xml,
+                              const std::string &code,
+                              const std::string &expected)
+    {
+        const char *xmlpath = "testsupressions.xml";
+        const char *sourcepath = "test.c";
+
+        Suppressions supprs;
+        const ScopedFile xmlfile(xmlpath, xml);
+        ASSERT_EQUALS_LOC("", supprs.nomsg.parseXmlFile(xmlpath), thisfile, thisline);
+
+        Settings settings;
+        settings.templateFormat = templateFormat;
+        settings.quiet = true;
+
+        const FileWithDetails sourcefile(sourcepath, Standards::Language::C, 0);
+        CppCheck instance(settings, supprs, *this, nullptr, true, nullptr);
+        instance.checkBuffer(sourcefile, code.c_str(), code.size());
+
+        ASSERT_EQUALS_LOC(expected, errout_str(), thisfile, thisline);
+    }
+
+    void xmlMacroSuppressions()
+    {
+        testXmlSuppressions(
+            "<suppressions>\n"
+            "<suppress>\n"
+            "<id>uninitvar</id>\n"
+            "<macroName>VAR</macroName>\n"
+            "</suppress>\n"
+            "</suppressions>",
+
+            "#define VAR x\n"
+            "int f(void) {\n"
+            "    int VAR;\n"
+            "    return VAR;\n"
+            "}\n",
+
+            ""
+            );
+        testXmlSuppressions(
+            "<suppressions>\n"
+            "<suppress>\n"
+            "<id>uninitvar</id>\n"
+            "<macroName>WRONG</macroName>\n"
+            "</suppress>\n"
+            "</suppressions>",
+
+            "#define VAR x\n"
+            "int f(void) {\n"
+            "    int VAR;\n"
+            "    return VAR;\n"
+            "}\n",
+
+            "[test.c:4:12]: (error) Uninitialized variable: x [uninitvar]\n"
+            );
     }
 
     void addSuppressionDuplicate() const {

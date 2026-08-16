@@ -767,14 +767,14 @@ public:
 
     std::string fullName() const;
 
-    nonneg int argCount() const {
+    size_t argCount() const {
         return argumentList.size();
     }
-    nonneg int minArgCount() const {
+    size_t minArgCount() const {
         return argumentList.size() - initArgCount;
     }
-    const Variable* getArgumentVar(nonneg int num) const;
-    nonneg int initializedArgCount() const {
+    const Variable* getArgumentVar(size_t num) const;
+    size_t initializedArgCount() const {
         return initArgCount;
     }
     /**
@@ -928,7 +928,7 @@ public:
     const Scope* functionScope{};     ///< scope of function body
     const Scope* nestedIn{};          ///< Scope the function is declared in
     std::list<Variable> argumentList; ///< argument list, must remain list due to clangimport usage!
-    nonneg int initArgCount{};        ///< number of args with default values
+    size_t initArgCount{};            ///< number of args with default values
     FunctionType type = FunctionType::eFunction; ///< constructor, destructor, ...
     const Token* noexceptArg{};       ///< noexcept token
     const Token* throwArg{};          ///< throw token
@@ -945,6 +945,7 @@ public:
     static bool returnsStandardType(const Function* function, bool unknown = false);
 
     static bool returnsVoid(const Function* function, bool unknown = false);
+    static bool isCoroutine(const Function* function, const Standards &standards, const Tokenizer &tokens);
 
     static std::vector<const Token*> findReturns(const Function* f);
 
@@ -1143,9 +1144,14 @@ public:
      * @brief find a function
      * @param tok token of function call
      * @param requireConst if const refers to a const variable only const methods should be matched
+     * @param ref reference qualification of the object the function is called on
+     * @param funcName name to look up instead of tok->str(), e.g. "operator()" when tok is a variable that is called
      * @return pointer to function if found or NULL if not found
      */
-    const Function *findFunction(const Token *tok, bool requireConst=false, Reference ref=Reference::None) const;
+    const Function* findFunction(const Token* tok,
+                                 bool requireConst = false,
+                                 Reference ref = Reference::None,
+                                 const std::string& funcName = "") const;
 
     const Scope *findRecordInNestedList(const std::string & name, bool isC = false) const;
     Scope *findRecordInNestedList(const std::string & name, bool isC = false);
@@ -1209,7 +1215,10 @@ private:
      */
     bool isVariableDeclaration(const Token* tok, const Token*& vartok, const Token*& typetok) const;
 
-    void findFunctionInBase(const Token* tok, nonneg int args, std::vector<const Function *> & matches) const;
+    void findFunctionInBase(const std::string& name,
+                            const Token* tok,
+                            size_t args,
+                            std::vector<const Function*>& matches) const;
 
     /** @brief initialize varlist */
     void getVariableList(const Token *start, const Token *end);

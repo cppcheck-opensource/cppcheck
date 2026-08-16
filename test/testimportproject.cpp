@@ -73,11 +73,13 @@ private:
         TEST_CASE(importCompileCommands13); // #13333: duplicate file entries
         TEST_CASE(importCompileCommands14); // #14156
         TEST_CASE(importCompileCommands15); // #14306
+        TEST_CASE(importCompileCommandsForcedInclude); // -include / /FI force-include
         TEST_CASE(importCompileCommandsArgumentsSection); // Handle arguments section
         TEST_CASE(importCompileCommandsNoCommandSection); // gracefully handles malformed json
         TEST_CASE(importCompileCommandsDirectoryMissing); // 'directory' field missing
         TEST_CASE(importCompileCommandsDirectoryInvalid); // 'directory' field not a string
         TEST_CASE(importCppcheckGuiProject);
+        TEST_CASE(importCppcheckGuiProjectDuplicateSuppressions);
         TEST_CASE(importCppcheckGuiProjectPremiumMisra);
         TEST_CASE(ignorePaths);
         TEST_CASE(testVcxprojUnicode);
@@ -436,6 +438,24 @@ private:
         ASSERT_EQUALS("C:/Users/abcd/efg/hijk/path/123/", fs.includePaths.front());
     }
 
+    void importCompileCommandsForcedInclude() const { // -include / /FI force-include
+        REDIRECT;
+        constexpr char json[] =
+            R"([{
+               "file": "/x/a.c",
+               "directory": "/x",
+               "command": "cc -include prefix.h /FIplatform.h -c a.c"
+            }])";
+        std::istringstream istr(json);
+        TestImporter importer;
+        ASSERT_EQUALS(true, importer.importCompileCommands(istr));
+        ASSERT_EQUALS(1, importer.fileSettings.size());
+        const FileSettings &fs = importer.fileSettings.front();
+        ASSERT_EQUALS(2, fs.forcedIncludes.size());
+        ASSERT_EQUALS("prefix.h", fs.forcedIncludes.front()); // gcc/clang -include
+        ASSERT_EQUALS("platform.h", fs.forcedIncludes.back()); // MSVC/clang-cl /FI
+    }
+
     void importCompileCommandsArgumentsSection() const {
         REDIRECT;
         constexpr char json[] = "[ { \"directory\": \"/tmp/\","
@@ -515,6 +535,26 @@ private:
         ASSERT_EQUALS(1, s.userIncludes.size());
         ASSERT_EQUALS("gcc-macros.h", s.userIncludes.front());
         ASSERT_EQUALS(true, s.inlineSuppressions);
+    }
+
+    void importCppcheckGuiProjectDuplicateSuppressions() const {
+        REDIRECT;
+        constexpr char xml[] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                               "<project version=\"1\">\n"
+                               "    <root name=\".\"/>\n"
+                               "    <project-name>test test</project-name>\n"
+                               "    <suppressions>\n"
+                               "        <suppression>uninitvar</suppression>\n"
+                               "        <suppression>uninitvar</suppression>\n"
+                               "    </suppressions>\n"
+                               "</project>\n";
+        std::istringstream istr(xml);
+        Settings s;
+        Suppressions supprs;
+        TestImporter project;
+        ASSERT_EQUALS(false, project.importCppcheckGuiProject(istr, s, supprs));
+        ASSERT_EQUALS(1, project.errors.size());
+        ASSERT_EQUALS("suppression 'uninitvar' already exists", project.errors[0]);
     }
 
     void importCppcheckGuiProjectPremiumMisra() const {

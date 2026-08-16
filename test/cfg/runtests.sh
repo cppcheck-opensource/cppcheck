@@ -549,7 +549,7 @@ function check_file {
         kde.cpp)
             # TODO: "kde-4config" is no longer commonly available in recent distros
             #kde_fn
-           cppcheck_run --library="$lib" --library=qt "${DIR}""$f"
+            cppcheck_run --library="$lib" --library=qt "${DIR}""$f"
             ;;
         libcurl.c)
             libcurl_fn
@@ -562,6 +562,9 @@ function check_file {
         lua.c)
             lua_fn
             cppcheck_run --library="$lib" "${DIR}""$f"
+            ;;
+        microsoft_gsl.cpp)
+            cppcheck_run --suppress=autoNoType --library="$lib" "${DIR}""$f"
             ;;
         mfc.cpp)
             mfc_fn
