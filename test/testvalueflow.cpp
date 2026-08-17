@@ -7932,6 +7932,13 @@ private:
                "  return x;\n"
                "}";
         ASSERT_EQUALS(true, testValueOfX(code, 4U, 4, ValueFlow::Value::ValueType::BUFFER_SIZE, &settingsCfg));
+
+        code = "void f()\n"
+               "{\n"
+               "    void *x = ::operator new(0);\n"
+               "    (void) x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 0, ValueFlow::Value::ValueType::BUFFER_SIZE));
     }
 
     void valueFlowSafeFunctionParameterValues() {
