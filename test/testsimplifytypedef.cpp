@@ -3885,6 +3885,9 @@ private:
 
         const char code3[] = "typedef struct S { S() {} } S;"; // #14971
         ASSERT_EQUALS("struct S { S ( ) { } } ;", tok(code3));
+
+        const char code4[] = "typedef struct S { S& operator=(const S&) = delete; } S;"; // #14977
+        ASSERT_EQUALS("struct S { S & operator= ( const S & ) = delete ; } ;", tok(code4));
     }
 
     void simplifyTypedefFunction1() {

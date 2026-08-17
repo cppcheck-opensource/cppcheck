@@ -572,11 +572,11 @@ namespace {
                         ++nBraces;
                     else if (tok->str() == "}")
                         --nBraces;
+                    if (nBraces > 0)
+                        continue;
                     if (tok == mNameToken)
                         continue;
                     if (tok->str() != mNameToken->str())
-                        continue;
-                    if (nBraces > 0 && Token::Match(tok->next(), "[;(]"))
                         continue;
                     if (Token::Match(tok->previous(), "struct|class|enum|union"))
                         continue;
