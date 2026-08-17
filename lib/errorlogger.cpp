@@ -43,6 +43,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <numeric>
 
 #include "xml.h"
 
