@@ -29,11 +29,11 @@ template<class T> class ValuePtr;
 
 Analyzer::Result valueFlowGenericForward(Token* start,
                                          const Token* end,
-                                         const ValuePtr<Analyzer>& a,
+                                         ValuePtr<Analyzer> a,
                                          const TokenList& tokenList,
                                          ErrorLogger& errorLogger,
                                          const Settings& settings);
 
-Analyzer::Result valueFlowGenericForward(Token* start, const ValuePtr<Analyzer>& a, const TokenList& tokenList, ErrorLogger& errorLogger, const Settings& settings);
+Analyzer::Result valueFlowGenericForward(Token* start, ValuePtr<Analyzer> a, const TokenList& tokenList, ErrorLogger& errorLogger, const Settings& settings);
 
 #endif
