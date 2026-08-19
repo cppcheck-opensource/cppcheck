@@ -7077,7 +7077,7 @@ static void valueFlowDynamicBufferSize(const TokenList& tokenlist, const SymbolD
             if (!rhs)
                 continue;
 
-            const bool isNew = rhs->isCpp() && (rhs->str() == "new" || Token::Match(rhs->astOperand1(), "::| operatornew"));
+            const bool isNew = rhs->isCpp() && (rhs->str() == "new" || (rhs->str() == "(" && Token::Match(rhs->astOperand1(), "::| operatornew")));
             if (!isNew && !Token::Match(rhs->previous(), "%name% ("))
                 continue;
 

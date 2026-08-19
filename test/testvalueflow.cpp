@@ -8488,6 +8488,11 @@ private:
                "    };\n"
                "}\n";
         (void)valueOfTok(code, "E0");
+
+        code = "void f() {\n" // #14980
+               "    OpNew *newp = &operator new;\n"
+               "}\n";
+        (void)valueOfTok(code, "&");
     }
 
     void valueFlowHang() {
