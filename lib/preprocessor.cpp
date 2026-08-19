@@ -833,13 +833,20 @@ const simplecpp::Output* Preprocessor::handleErrors(const simplecpp::OutputList&
     return reportOutput(outputList, showerror);
 }
 
-bool Preprocessor::loadFiles(std::vector<std::string> &files)
+bool Preprocessor::loadAllIncludes(std::vector<std::string> &files)
 {
     const simplecpp::DUI dui = createDUI(mSettings, "", mLang);
 
     simplecpp::OutputList outputList;
     mFileCache = simplecpp::load(mTokens, files, dui, &outputList, std::move(mFileCache));
     return !handleErrors(outputList);
+}
+
+simplecpp::FileData *Preprocessor::loadFile(std::vector<std::string> &files, const std::string &file)
+{
+    const simplecpp::DUI dui = createDUI(mSettings, "", mLang);
+
+    return mFileCache.get("", file, dui, false, files, nullptr).first;
 }
 
 void Preprocessor::removeComments()

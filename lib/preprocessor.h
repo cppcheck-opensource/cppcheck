@@ -122,7 +122,9 @@ public:
 
     std::vector<RemarkComment> getRemarkComments(const simplecpp::TokenList &tokens) const;
 
-    bool loadFiles(std::vector<std::string> &files);
+    bool loadAllIncludes(std::vector<std::string> &files);
+
+    simplecpp::FileData *loadFile(std::vector<std::string> &files, const std::string &file);
 
     void removeComments();
 
@@ -163,6 +165,8 @@ public:
         mFileCache.set_load_callback(std::move(cb));
     }
 
+    simplecpp::FileDataCache mFileCache;
+
 private:
 
     /**
@@ -181,8 +185,6 @@ private:
 
     const Settings& mSettings;
     ErrorLogger &mErrorLogger;
-
-    simplecpp::FileDataCache mFileCache;
 
     /** filename for cpp/c file - useful when reporting errors */
     std::string mFile0; // TODO: this is never set
