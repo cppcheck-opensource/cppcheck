@@ -2080,6 +2080,45 @@ bool TokenList::validateToken(const Token* tok) const
     return false;
 }
 
+/** Return whether tok is the "{" that starts an enumerator list */
+static bool isEnumStart(const Token* tok)
+{
+    if (!Token::simpleMatch(tok, "{"))
+        return false;
+    tok = tok->previous();
+    while (tok && (!tok->isKeyword() || Token::isStandardType(tok->str())) && Token::Match(tok, "%name%|::|:"))
+        tok = tok->previous();
+    if (Token::simpleMatch(tok, "class"))
+        tok = tok->previous();
+    return Token::simpleMatch(tok, "enum");
+}
+
+// Collect the tokens that are enumerator names being declared in some enum's member list,
+// e.g. the HANDLE in "enum E { HANDLE, ... };". Each enum body is scanned once, jumping over
+// nested brackets in constant-expressions via link(), so the total cost is bounded by the
+// combined size of all enum bodies -- not by unrelated code elsewhere in the file.
+static std::unordered_set<const Token*> findEnumeratorNames(const Token* front)
+{
+    std::unordered_set<const Token*> result;
+    for (const Token* tok = front; tok; tok = tok->next()) {
+        if (!isEnumStart(tok))
+            continue;
+        const Token* const bodyEnd = tok->link();
+        for (const Token* nameTok = tok->next(); nameTok && nameTok != bodyEnd;) {
+            if (nameTok->isName())
+                result.insert(nameTok);
+            while (nameTok != bodyEnd && nameTok->str() != ",") {
+                if (Token::Match(nameTok, "(|[|{"))
+                    nameTok = nameTok->link();
+                nameTok = nameTok->next();
+            }
+            if (nameTok != bodyEnd) // skip the ","
+                nameTok = nameTok->next();
+        }
+    }
+    return result;
+}
+
 void TokenList::simplifyPlatformTypes()
 {
     const bool isCPP11 = isCPP() && (mSettings.standards.cpp >= Standards::CPP11);
@@ -2146,6 +2185,7 @@ void TokenList::simplifyPlatformTypes()
     }
 
     const std::string platform_type(mSettings.platform.toString());
+    const std::unordered_set<const Token*> enumeratorNames = findEnumeratorNames(front());
 
     for (Token *tok = front(); tok; tok = tok->next()) {
         if (tok->tokType() != Token::eType && tok->tokType() != Token::eName)
@@ -2154,6 +2194,9 @@ void TokenList::simplifyPlatformTypes()
         const Library::PlatformType * const platformtype = mSettings.library.platform_type(tok->str(), platform_type);
 
         if (platformtype) {
+            if (enumeratorNames.count(tok) != 0) // don't replace an enumerator's name, e.g. HANDLE in "enum E { HANDLE, ... };"
+                continue;
+
             // check for namespace
             if (tok->strAt(-1) == "::") {
                 const Token * tok1 = tok->tokAt(-2);
