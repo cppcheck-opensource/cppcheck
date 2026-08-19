@@ -59,7 +59,7 @@ private:
         std::vector<std::string> files;
         simplecpp::TokenList tokens1 = simplecpp::TokenList(code, files, "file.cpp", {}, &outputList);
         Preprocessor p(tokens1, settingsDefault, errorLogger, Path::identify(tokens1.getFiles()[0], false));
-        ASSERT_LOC(p.loadFiles(files), file, line);
+        ASSERT_LOC(p.loadAllIncludes(files), file, line);
         simplecpp::TokenList tokens2 = p.preprocess("", files, outputList);
         (void)p.reportOutput(outputList, true);
         return tokens2.stringify();
@@ -420,7 +420,7 @@ private:
         });
         preprocessor.removeComments();
         preprocessor.getConfigs(configDefines, configs);
-        ASSERT(preprocessor.loadFiles(files));
+        ASSERT(preprocessor.loadAllIncludes(files));
         ASSERT(!preprocessor.reportOutput(outputList, true));
         std::string ret;
         for (const std::string & config : configs)
@@ -439,7 +439,7 @@ private:
             }
         });
         preprocessor.removeComments();
-        ASSERT(preprocessor.loadFiles(files));
+        ASSERT(preprocessor.loadAllIncludes(files));
         return preprocessor.calculateHash("");
     }
 

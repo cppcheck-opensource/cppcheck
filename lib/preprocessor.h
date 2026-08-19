@@ -122,7 +122,9 @@ public:
 
     std::vector<RemarkComment> getRemarkComments(const simplecpp::TokenList &tokens) const;
 
-    bool loadFiles(std::vector<std::string> &files);
+    bool loadAllIncludes(std::vector<std::string> &files);
+
+    simplecpp::FileData *loadFile(std::vector<std::string> &files, const std::string &file);
 
     void removeComments();
 

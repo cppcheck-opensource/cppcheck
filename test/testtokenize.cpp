@@ -615,7 +615,7 @@ private:
             }
         });
         preprocessor.createDirectives(directives);
-        ASSERT(preprocessor.loadFiles(files));
+        ASSERT(preprocessor.loadAllIncludes(files));
         (void)preprocessor.reportOutput(outputList, true);
 
         TokenList tokenlist{settings, Path::identify(filename, false)};

@@ -58,6 +58,61 @@ void AnalyzerInformation::writeFilesTxt(const std::string &buildDir, const std::
     fout << getFilesTxt(sourcefiles, fileSettings);
 }
 
+void AnalyzerInformation::writeIncludes(const std::set<std::string> &files)
+{
+    if (mOutputStream.is_open()) {
+        mOutputStream << "  <includes>\n";
+        for (const std::string &file : files) {
+            mOutputStream << "    <filename>" << file << "</filename>\n";
+        }
+        mOutputStream << "  </includes>\n";
+    }
+}
+
+std::set<std::string> AnalyzerInformation::getIncludes(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId)
+{
+    if (mOutputStream.is_open())
+        throw std::runtime_error("analyzer information file is already open");
+
+    std::set<std::string> files;
+
+    if (buildDir.empty() || sourcefile.empty())
+        return files;
+
+    const std::string analyzerInfoFile = AnalyzerInformation::getAnalyzerInfoFile(buildDir, sourcefile, cfg, fsFileId);
+
+    tinyxml2::XMLDocument analyzerInfoDoc;
+    if (analyzerInfoDoc.LoadFile(analyzerInfoFile.c_str()) != tinyxml2::XML_SUCCESS)
+        return files;
+
+    const tinyxml2::XMLElement *const rootNode = analyzerInfoDoc.FirstChildElement();
+    if (rootNode == nullptr)
+        return files;
+
+    if (strcmp(rootNode->Name(), "analyzerinfo") != 0)
+        return files;
+
+    const tinyxml2::XMLElement *cachedfilesNode = nullptr;
+    for (const tinyxml2::XMLElement *e = rootNode->FirstChildElement(); e; e = e->NextSiblingElement()) {
+        if (strcmp(e->Name(), "includes") == 0) {
+            cachedfilesNode = e;
+            break;
+        }
+    }
+
+    if (cachedfilesNode == nullptr)
+        return files;
+
+    for (const tinyxml2::XMLElement *e = cachedfilesNode->FirstChildElement(); e; e = e->NextSiblingElement()) {
+        if (strcmp(e->Name(), "filename") != 0)
+            continue;
+
+        files.insert(e->GetText());
+    }
+
+    return files;
+}
+
 std::string AnalyzerInformation::getFilesTxt(const std::list<std::string> &sourcefiles, const std::list<FileSettings> &fileSettings) {
     std::ostringstream ret;
 
