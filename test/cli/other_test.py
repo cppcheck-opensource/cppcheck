@@ -142,7 +142,7 @@ def test_message_j(tmpdir):
     with open(test_file, 'wt') as f:
         f.write("")
 
-    args = ['-j2', test_file]
+    args = ['-j2', '--no-whole-program', test_file]
 
     _, stdout, _ = cppcheck(args)
     assert stdout == "Checking {} ...\n".format(test_file) # we were adding stray \0 characters at the end
@@ -250,7 +250,15 @@ def test_progress_j(tmpdir):
                 }
                 """)
 
-    args = ['--report-progress=0', '--enable=all', '--inconclusive', '-j2', '--disable=unusedFunction', test_file]
+    args = [
+        '--report-progress=0',
+        '--enable=all',
+        '--inconclusive',
+        '-j2',
+        '--disable=unusedFunction',
+        '--no-whole-program',
+        test_file
+    ]
 
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0, stdout if stdout else stderr
@@ -1302,7 +1310,7 @@ def test_markup_j(tmpdir):
     with open(test_file_4, 'wt'):
         pass
 
-    args = ['--library=qt', '-j2', test_file_1, test_file_2, test_file_3, test_file_4]
+    args = ['--library=qt', '-j2', '--no-whole-program', test_file_1, test_file_2, test_file_3, test_file_4]
 
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0, stdout if stdout else stderr
@@ -2538,7 +2546,7 @@ def test_inline_suppr(tmp_path):
 
 
 def test_inline_suppr_j(tmp_path):
-    __test_inline_suppr(tmp_path, ['-j2'])
+    __test_inline_suppr(tmp_path, ['-j2', '--no-whole-program'])
 
 
 def test_inline_suppr_builddir(tmp_path):
@@ -2767,7 +2775,7 @@ def test_addon_suppr_inline(tmp_path):
 
 # TODO: remove override when all issues are fixed
 def test_addon_suppr_inline_j(tmp_path):
-    __test_addon_suppr(tmp_path, ['--inline-suppr', '-j2'])
+    __test_addon_suppr(tmp_path, ['--inline-suppr', '-j2', '--no-whole-program'])
 
 
 def test_addon_suppr_cli_line(tmp_path):
@@ -4758,6 +4766,7 @@ def test_ipc(tmp_path):
         '-j2',
         '--executor=process',
         '--no-cppcheck-build-dir',
+        '--no-whole-program',
         str(test_file)
     ]
 
@@ -4790,6 +4799,7 @@ def test_ipc_suppressions(tmp_path):
         '-j2',
         '--executor=process',
         '--no-cppcheck-build-dir',
+        '--no-whole-program',
         '--suppress=id0:test1.c',
         str(tmp_path)
     ]
@@ -4834,6 +4844,7 @@ def test_ipc_inline_suppressions(tmp_path):
         '-j2',
         '--executor=process',
         '--no-cppcheck-build-dir',
+        '--no-whole-program',
         '--inline-suppr',
         str(tmp_path)
     ]
