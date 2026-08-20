@@ -214,5 +214,32 @@ void TestProjectFile::emptyUserInclude() const
     QCOMPARE(settings.userIncludes.size(), 0);
 }
 
+// Absolute path is made relative when it does not require walking up more than 2 parent folders
+void TestProjectFile::setExcludedPathsRelative() const
+{
+    ProjectFile projectFile;
+    projectFile.setFilename("/some/path/123.cppcheck");
+    projectFile.setExcludedPaths(QStringList() << "/some/externals/foo.cpp");
+    QCOMPARE(projectFile.getExcludedPaths()[0], QString("../externals/foo.cpp"));
+}
+
+// Absolute path is kept as-is when making it relative would require walking up more than 2 parent folders
+void TestProjectFile::setExcludedPathsTooFarUp() const
+{
+    ProjectFile projectFile;
+    projectFile.setFilename("/some/path/123.cppcheck");
+    projectFile.setExcludedPaths(QStringList() << "/other/deep/foo.cpp");
+    QCOMPARE(projectFile.getExcludedPaths()[0], QString("/other/deep/foo.cpp"));
+}
+
+// Paths that are already relative are kept unchanged
+void TestProjectFile::setExcludedPathsAlreadyRelative() const
+{
+    ProjectFile projectFile;
+    projectFile.setFilename("/some/path/123.cppcheck");
+    projectFile.setExcludedPaths(QStringList() << "gui/temp/");
+    QCOMPARE(projectFile.getExcludedPaths()[0], QString("gui/temp/"));
+}
+
 QTEST_MAIN(TestProjectFile)
 
