@@ -1654,7 +1654,7 @@ void CppCheck::executeAddons(const std::vector<std::string>& files, const std::s
     }
 }
 
-void CppCheck::executeAddonsWholeProgram(const std::list<FileWithDetails> &files, const std::list<FileSettings>& fileSettings, const std::string& ctuInfo)
+void CppCheck::executeAddonsWholeProgram(const std::list<FileWithDetails>& /*files*/, const std::list<FileSettings>& /*fileSettings*/, const std::string& ctuInfo)
 {
     if (mSettings.addons.empty())
         return;
@@ -1671,13 +1671,19 @@ void CppCheck::executeAddonsWholeProgram(const std::list<FileWithDetails> &files
     }
 
     std::vector<std::string> ctuInfoFiles;
-    for (const auto &f: files) {
-        const std::string &dumpFileName = getDumpFileName(mSettings, f);
-        ctuInfoFiles.push_back(getCtuInfoFileName(dumpFileName));
-    }
-
-    for (const auto &fs: fileSettings) {
-        const std::string &dumpFileName = getDumpFileName(mSettings, fs.file);
+    std::set<std::pair<std::string, std::size_t>> seen;
+    std::ifstream filesTxt(mSettings.buildDir + "/files.txt");
+    std::string line;
+    while (std::getline(filesTxt, line)) {
+        AnalyzerInformation::Info info;
+        if (!info.parse(line) || info.sourceFile.empty())
+            continue;
+        if (!seen.emplace(info.sourceFile, info.fsFileId).second)
+            continue;
+        std::string dumpFileName = AnalyzerInformation::getAnalyzerInfoFile(mSettings.buildDir, info.sourceFile, "", info.fsFileId);
+        if (info.fsFileId > 0)
+            dumpFileName += '.' + std::to_string(info.fsFileId);
+        dumpFileName += ".dump";
         ctuInfoFiles.push_back(getCtuInfoFileName(dumpFileName));
     }
 
