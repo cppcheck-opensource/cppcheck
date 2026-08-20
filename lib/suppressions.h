@@ -259,22 +259,10 @@ public:
     void dump(std::ostream &out, const std::string& filePath = {}) const;
 
     /**
-     * @brief Returns list of unmatched local (per-file) suppressions.
+     * @brief Returns list of unmatched suppressions.
      * @return list of unmatched suppressions
      */
-    std::list<Suppression> getUnmatchedLocalSuppressions(const FileWithDetails &file) const;
-
-    /**
-     * @brief Returns list of unmatched global (glob pattern) suppressions.
-     * @return list of unmatched suppressions
-     */
-    std::list<Suppression> getUnmatchedGlobalSuppressions() const;
-
-    /**
-     * @brief Returns list of unmatched inline suppressions.
-     * @return list of unmatched suppressions
-     */
-    std::list<Suppression> getUnmatchedInlineSuppressions() const;
+    std::list<Suppression> getUnmatchedSuppressions() const;
 
     /**
      * @brief Returns list of all suppressions.
