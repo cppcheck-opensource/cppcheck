@@ -7939,6 +7939,17 @@ private:
                "    (void) x;\n"
                "}\n";
         ASSERT_EQUALS(true, testValueOfX(code, 4U, 0, ValueFlow::Value::ValueType::BUFFER_SIZE));
+
+        code = "void f(int *x)\n"
+               "{\n"
+               "	*x = 1;\n"
+               "}\n"
+               "void g(void)\n"
+               "{\n"
+               "	int *ptr = malloc(1234);\n"
+               "	f(ptr);\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 3U, 1234, ValueFlow::Value::ValueType::BUFFER_SIZE));
     }
 
     void valueFlowSafeFunctionParameterValues() {
