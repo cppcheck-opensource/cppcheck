@@ -314,6 +314,7 @@ private:
         TEST_CASE(requires3);
         TEST_CASE(requires4);
         TEST_CASE(requires5);
+        TEST_CASE(requires6);
 
         TEST_CASE(explicitBool1);
         TEST_CASE(explicitBool2);
@@ -6693,6 +6694,22 @@ private:
                             "  T add(T a, T b) { return a + b; }\n"
                             "add<int>(123,456);";
         const char expected[] = "int add<int> ( int a , int b ) ; add<int> ( 123 , 456 ) ; int add<int> ( int a , int b ) { return a + b ; }";
+        ASSERT_EQUALS(expected, tok(code));
+    }
+
+    void requires6() {
+        const char code[] = "template <int N>\n" // #14982
+                            "struct S {\n"
+                            "  static void f() noexcept\n"
+                            "    requires(N >= 5) {}\n"
+                            "  void g() const\n"
+                            "    requires(N >= 5) {}\n"
+                            "};";
+        const char expected[] = "template < int N > "
+                                "struct S { "
+                                "static void f ( ) noexcept { } "
+                                "void g ( ) const { } "
+                                "} ;";
         ASSERT_EQUALS(expected, tok(code));
     }
 
