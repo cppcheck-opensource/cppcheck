@@ -23,6 +23,7 @@
 #include "path.h"
 #include "settings.h"
 #include "suppressions.h"
+#include "symboldatabase.h"
 #include "token.h"
 #include "tokenlist.h"
 #include "utils.h"
@@ -35,6 +36,7 @@
 #include <cstring>
 #include <fstream>
 #include <iomanip>
+#include <numeric>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -106,6 +108,8 @@ ErrorMessage::ErrorMessage(const std::list<const Token*>& callstack, const Token
         file0 = list->getFiles()[0];
 
     setmsg(msg);
+
+    calculateWarningHash(callstack);
 }
 
 
@@ -126,7 +130,7 @@ ErrorMessage::ErrorMessage(const std::list<const Token*>& callstack, const Token
 
     setmsg(msg);
 
-    // hash = calculateWarningHash(list, hashWarning.str());
+    calculateWarningHash(callstack);
 }
 
 ErrorMessage::ErrorMessage(ErrorPath errorPath, const TokenList *tokenList, Severity severity, const char id[], const std::string &msg, const CWE &cwe, Certainty certainty)
@@ -159,7 +163,12 @@ ErrorMessage::ErrorMessage(ErrorPath errorPath, const TokenList *tokenList, Seve
 
     setmsg(msg);
 
-    // hash = calculateWarningHash(tokenList, hashWarning.str());
+    std::list<const Token*> tokens;
+    std::transform(errorPath.cbegin(), errorPath.cend(), std::back_inserter(tokens),
+                   [](const ErrorPathItem& e) {
+        return e.first;
+    });
+    calculateWarningHash(tokens);
 }
 
 // TODO: improve errorhandling?
@@ -242,6 +251,58 @@ void ErrorMessage::setmsg(const std::string &msg)
         mShortMessage = replaceStr(msg.substr(0, pos), "$symbol", symbolName);
         mVerboseMessage = replaceStr(msg.substr(pos + 1), "$symbol", symbolName);
     }
+}
+
+void ErrorMessage::calculateWarningHash(const std::list<const Token*>& callstack)
+{
+    if (callstack.empty())
+        return;
+    // Calculate a hash for this warning message
+    std::string hashString;
+    for (const Token* tok: callstack) {
+        if (!tok)
+            continue;
+        if (!tok->scope())
+            return; // might be a syntax error before scope info has been set
+        if (tok->scope()->isExecutable()) {
+            // Executable scope => include all tokens in the function => if the
+            // function is changed the hash is changed
+            for (const Token* t = tok; t; t = t->previous()) {
+                if (!t->scope()->isExecutable())
+                    break;
+                hashString += " " + t->str();
+            }
+            for (const Token* t = tok->next(); t; t = t->next()) {
+                if (!t->scope()->isExecutable())
+                    break;
+                hashString += " " + t->str();
+            }
+        } else {
+            // Non executable scope => include tokens in current statement => if the current statement is changed the hash is changed
+            for (const Token* t = tok; t; t = t->previous()) {
+                if (t->str() == ";")
+                    break;
+                if (t->scope() != tok->scope()) // stop on {} unless its an initializer
+                    break;
+                hashString += " " + t->str();
+            }
+            for (const Token* t = tok->next(); t; t = t->next()) {
+                hashString += " " + t->str();
+                if (t->str() == ";")
+                    break;
+                if (t->scope() != tok->scope()) // stop on {} unless its an initializer
+                    break;
+            }
+        }
+    }
+
+    hashString = id + '\n' + mShortMessage + '\n' + hashString;
+
+    // hash algorithm: sdbm
+    // any hash algorithm can be used but it has to be the same hash on different platforms and compilers
+    hash = std::accumulate(hashString.cbegin(), hashString.cend(), std::size_t{0}, [](std::size_t h, unsigned char c) {
+        return static_cast<std::size_t>(c) + (h << 6) + (h << 16) - h;
+    });
 }
 
 static void serializeString(std::string &oss, const std::string & str)
@@ -821,7 +882,7 @@ std::string ErrorLogger::toxml(const std::string &str)
     return xml;
 }
 
-std::string ErrorLogger::plistHeader(const std::string &version, const std::vector<std::string> &files)
+std::string ErrorLogger::plistHeader(const std::string &version)
 {
     std::ostringstream ostr;
     ostr << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"
@@ -829,12 +890,7 @@ std::string ErrorLogger::plistHeader(const std::string &version, const std::vect
          << "<plist version=\"1.0\">\r\n"
          << "<dict>\r\n"
          << " <key>clang_version</key>\r\n"
-         << "<string>cppcheck version " << version << "</string>\r\n"
-         << " <key>files</key>\r\n"
-         << " <array>\r\n";
-    for (const std::string & file : files)
-        ostr << "  <string>" << ErrorLogger::toxml(file) << "</string>\r\n";
-    ostr << " </array>\r\n"
+         << " <string>cppcheck version " << version << "</string>\r\n"
          << " <key>diagnostics</key>\r\n"
          << " <array>\r\n";
     return ostr.str();

@@ -336,67 +336,49 @@ static void addInlineSuppressions(const simplecpp::TokenList &tokens, const Sett
     }
 }
 
-void Preprocessor::inlineSuppressions(SuppressionList &suppressions)
+void Preprocessor::inlineSuppressions(SuppressionList &suppressions) const
+{
+    inlineSuppressions(mTokens, suppressions);
+}
+
+void Preprocessor::inlineSuppressions(const simplecpp::TokenList &tokens, SuppressionList &suppressions) const
 {
     if (!mSettings.inlineSuppressions)
         return;
     std::list<BadInlineSuppression> err;
-    ::addInlineSuppressions(mTokens, mSettings, suppressions, err);
-    for (const auto &filedata : mFileCache) {
-        ::addInlineSuppressions(filedata->tokens, mSettings, suppressions, err);
-    }
+    ::addInlineSuppressions(tokens, mSettings, suppressions, err);
     for (const BadInlineSuppression &bad : err) {
         invalidSuppression(bad.location, bad.errmsg);
     }
 }
 
-std::vector<RemarkComment> Preprocessor::getRemarkComments() const
+void Preprocessor::createDirectives(std::list<Directive> &directives) const
 {
-    std::vector<RemarkComment> ret;
-    addRemarkComments(mTokens, ret);
-    for (const auto &filedata : mFileCache) {
-        addRemarkComments(filedata->tokens, ret);
-    }
-    return ret;
+    createDirectives(mTokens, directives);
 }
 
-std::list<Directive> Preprocessor::createDirectives() const
+void Preprocessor::createDirectives(const simplecpp::TokenList &tokens, std::list<Directive> &directives)
 {
-    // directive list..
-    std::list<Directive> directives;
-
-    std::vector<const simplecpp::TokenList *> list;
-    list.reserve(1U + mFileCache.size());
-    list.push_back(&mTokens);
-    std::transform(mFileCache.cbegin(), mFileCache.cend(), std::back_inserter(list),
-                   [](const std::unique_ptr<simplecpp::FileData> &filedata) {
-        return &filedata->tokens;
-    });
-
-    for (const simplecpp::TokenList *tokenList : list) {
-        for (const simplecpp::Token *tok = tokenList->cfront(); tok; tok = tok->next) {
-            if ((tok->op != '#') || (tok->previous && tok->previous->location.line == tok->location.line))
+    for (const simplecpp::Token *tok = tokens.cfront(); tok; tok = tok->next) {
+        if ((tok->op != '#') || (tok->previous && tok->previous->location.line == tok->location.line))
+            continue;
+        if (tok->next && tok->next->str() == "endfile")
+            continue;
+        Directive directive(tokens, tok->location, "");
+        for (const simplecpp::Token *tok2 = tok; tok2 && tok2->location.line == directive.linenr; tok2 = tok2->next) {
+            if (tok2->comment)
                 continue;
-            if (tok->next && tok->next->str() == "endfile")
-                continue;
-            Directive directive(mTokens, tok->location, "");
-            for (const simplecpp::Token *tok2 = tok; tok2 && tok2->location.line == directive.linenr; tok2 = tok2->next) {
-                if (tok2->comment)
-                    continue;
-                if (!directive.str.empty() && (tok2->location.col > tok2->previous->location.col + tok2->previous->str().size()))
-                    directive.str += ' ';
-                if (directive.str == "#" && tok2->str() == "file")
-                    directive.str += "include";
-                else
-                    directive.str += tok2->str();
+            if (!directive.str.empty() && (tok2->location.col > tok2->previous->location.col + tok2->previous->str().size()))
+                directive.str += ' ';
+            if (directive.str == "#" && tok2->str() == "file")
+                directive.str += "include";
+            else
+                directive.str += tok2->str();
 
-                directive.strTokens.emplace_back(*tok2);
-            }
-            directives.push_back(std::move(directive));
+            directive.strTokens.emplace_back(*tok2);
         }
+        directives.push_back(std::move(directive));
     }
-
-    return directives;
 }
 
 static std::string readcondition(const simplecpp::Token *iftok, const std::set<std::string> &defined, const std::set<std::string> &undefined)
@@ -769,36 +751,21 @@ static void getConfigs(const simplecpp::TokenList &tokens, std::set<std::string>
         ret.insert(std::move(elseError));
 }
 
-
-std::set<std::string> Preprocessor::getConfigs() const
+void Preprocessor::getConfigs(std::set<std::string> &defined, std::set<std::string> &configs) const
 {
-    std::set<std::string> ret = { "" };
     if (!mTokens.cfront())
-        return ret;
+        return;
 
-    std::set<std::string> defined = { "__cplusplus" };
+    ::getConfigs(mTokens, defined, mSettings.userDefines, mSettings.userUndefs, configs);
+}
 
-    // Insert library defines
-    for (const auto &define : mSettings.library.defines()) {
+void Preprocessor::getConfigs(const std::string &filename, const simplecpp::TokenList &tokens, std::set<std::string> &defined, std::set<std::string> &configs) const
+{
+    if (!tokens.cfront())
+        return;
 
-        const std::string::size_type paren = define.find("(");
-        const std::string::size_type space = define.find(" ");
-        std::string::size_type end = space;
-
-        if (paren != std::string::npos && paren < space)
-            end = paren;
-
-        defined.insert(define.substr(0, end));
-    }
-
-    ::getConfigs(mTokens, defined, mSettings.userDefines, mSettings.userUndefs, ret);
-
-    for (const auto &filedata : mFileCache) {
-        if (!mSettings.configurationExcluded(filedata->filename))
-            ::getConfigs(filedata->tokens, defined, mSettings.userDefines, mSettings.userUndefs, ret);
-    }
-
-    return ret;
+    if (!mSettings.configurationExcluded(filename))
+        ::getConfigs(tokens, defined, mSettings.userDefines, mSettings.userUndefs, configs);
 }
 
 static void splitcfg(const std::string &cfgStr, std::list<std::string> &defines, const std::string &defaultValue)
@@ -871,16 +838,18 @@ bool Preprocessor::loadFiles(std::vector<std::string> &files)
     const simplecpp::DUI dui = createDUI(mSettings, "", mLang);
 
     simplecpp::OutputList outputList;
-    mFileCache = simplecpp::load(mTokens, files, dui, &outputList);
+    mFileCache = simplecpp::load(mTokens, files, dui, &outputList, std::move(mFileCache));
     return !handleErrors(outputList);
 }
 
 void Preprocessor::removeComments()
 {
-    mTokens.removeComments();
-    for (const auto &filedata : mFileCache) {
-        filedata->tokens.removeComments();
-    }
+    removeComments(mTokens);
+}
+
+void Preprocessor::removeComments(simplecpp::TokenList &tokens)
+{
+    tokens.removeComments();
 }
 
 void Preprocessor::setPlatformInfo()
@@ -1016,12 +985,12 @@ static std::string simplecppErrToId(simplecpp::Output::Type type)
     cppcheck::unreachable();
 }
 
-void Preprocessor::error(const simplecpp::Location& loc, const std::string &msg, simplecpp::Output::Type type)
+void Preprocessor::error(const simplecpp::Location& loc, const std::string &msg, simplecpp::Output::Type type) const
 {
     error(loc, msg, simplecppErrToId(type));
 }
 
-void Preprocessor::error(const simplecpp::Location& loc, const std::string &msg, const std::string& id)
+void Preprocessor::error(const simplecpp::Location& loc, const std::string &msg, const std::string& id) const
 {
     std::list<ErrorMessage::FileLocation> locationList;
     if (!mTokens.file(loc).empty()) {
@@ -1059,7 +1028,7 @@ void Preprocessor::missingInclude(const simplecpp::Location& loc, const std::str
     mErrorLogger.reportErr(errmsg);
 }
 
-void Preprocessor::invalidSuppression(const simplecpp::Location& loc, const std::string &msg)
+void Preprocessor::invalidSuppression(const simplecpp::Location& loc, const std::string &msg) const
 {
     error(loc, msg, "invalidSuppression");
 }
@@ -1143,13 +1112,10 @@ std::size_t Preprocessor::calculateHash(const std::string &toolinfo) const
 
 void Preprocessor::simplifyPragmaAsm()
 {
-    Preprocessor::simplifyPragmaAsmPrivate(mTokens);
-    for (const auto &filedata : mFileCache) {
-        Preprocessor::simplifyPragmaAsmPrivate(filedata->tokens);
-    }
+    simplifyPragmaAsm(mTokens);
 }
 
-void Preprocessor::simplifyPragmaAsmPrivate(simplecpp::TokenList &tokenList)
+void Preprocessor::simplifyPragmaAsm(simplecpp::TokenList &tokenList)
 {
     // assembler code..
     for (simplecpp::Token *tok = tokenList.front(); tok; tok = tok->next) {
@@ -1196,9 +1162,15 @@ void Preprocessor::simplifyPragmaAsmPrivate(simplecpp::TokenList &tokenList)
     }
 }
 
-
-void Preprocessor::addRemarkComments(const simplecpp::TokenList &tokens, std::vector<RemarkComment> &remarkComments) const
+std::vector<RemarkComment> Preprocessor::getRemarkComments() const
 {
+    return getRemarkComments(mTokens);
+}
+
+std::vector<RemarkComment> Preprocessor::getRemarkComments(const simplecpp::TokenList &tokens) const
+{
+    std::vector<RemarkComment> remarkComments;
+
     for (const simplecpp::Token *tok = tokens.cfront(); tok; tok = tok->next) {
         if (!tok->comment)
             continue;
@@ -1245,4 +1217,6 @@ void Preprocessor::addRemarkComments(const simplecpp::TokenList &tokens, std::ve
         // Add the suppressions.
         remarkComments.emplace_back(relativeFilename, remarkedToken->location.line, remarkText);
     }
+
+    return remarkComments;
 }

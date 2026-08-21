@@ -98,23 +98,35 @@ public:
  * configurations that exist in a source file.
  */
 class CPPCHECKLIB WARN_UNUSED Preprocessor {
+    friend class TestPreprocessor;
+
 public:
     /** character that is inserted in expanded macros */
     static char macroChar;
 
     Preprocessor(simplecpp::TokenList& tokens, const Settings& settings, ErrorLogger &errorLogger, Standards::Language lang);
 
-    void inlineSuppressions(SuppressionList &suppressions);
+    void inlineSuppressions(SuppressionList &suppressions) const;
 
-    std::list<Directive> createDirectives() const;
+    void inlineSuppressions(const simplecpp::TokenList &tokens, SuppressionList &suppressions) const;
 
-    std::set<std::string> getConfigs() const;
+    void createDirectives(std::list<Directive> &directives) const;
+
+    static void createDirectives(const simplecpp::TokenList &tokens, std::list<Directive> &directives);
+
+    void getConfigs(std::set<std::string> &defined, std::set<std::string> &configs) const;
+
+    void getConfigs(const std::string &filename, const simplecpp::TokenList &tokens, std::set<std::string> &defined, std::set<std::string> &configs) const;
 
     std::vector<RemarkComment> getRemarkComments() const;
+
+    std::vector<RemarkComment> getRemarkComments(const simplecpp::TokenList &tokens) const;
 
     bool loadFiles(std::vector<std::string> &files);
 
     void removeComments();
+
+    static void removeComments(simplecpp::TokenList &tokens);
 
     void setPlatformInfo();
 
@@ -132,6 +144,8 @@ public:
 
     void simplifyPragmaAsm();
 
+    static void simplifyPragmaAsm(simplecpp::TokenList &tokenList);
+
     static void getErrorMessages(ErrorLogger &errorLogger, const Settings &settings);
 
     /**
@@ -141,12 +155,15 @@ public:
 
     const simplecpp::Output* reportOutput(const simplecpp::OutputList &outputList, bool showerror);
 
-    void error(const simplecpp::Location& loc, const std::string &msg, simplecpp::Output::Type type);
+    void error(const simplecpp::Location& loc, const std::string &msg, simplecpp::Output::Type type) const;
 
     const simplecpp::Output* handleErrors(const simplecpp::OutputList &outputList);
 
+    void setLoadCallback(simplecpp::FileDataCache::load_callback_type cb) {
+        mFileCache.set_load_callback(std::move(cb));
+    }
+
 private:
-    static void simplifyPragmaAsmPrivate(simplecpp::TokenList &tokenList);
 
     /**
      * Include file types.
@@ -157,17 +174,13 @@ private:
     };
 
     void missingInclude(const simplecpp::Location& loc, const std::string &header, HeaderTypes headerType);
-    void invalidSuppression(const simplecpp::Location& loc, const std::string &msg);
-    void error(const simplecpp::Location& loc, const std::string &msg, const std::string& id);
-
-    void addRemarkComments(const simplecpp::TokenList &tokens, std::vector<RemarkComment> &remarkComments) const;
+    void invalidSuppression(const simplecpp::Location& loc, const std::string &msg) const;
+    void error(const simplecpp::Location& loc, const std::string &msg, const std::string& id) const;
 
     simplecpp::TokenList& mTokens;
 
     const Settings& mSettings;
     ErrorLogger &mErrorLogger;
-
-    /** list of all directives met while preprocessing file */
 
     simplecpp::FileDataCache mFileCache;
 

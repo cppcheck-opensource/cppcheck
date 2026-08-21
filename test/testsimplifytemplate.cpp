@@ -320,6 +320,8 @@ private:
 
         TEST_CASE(templateArgPreserveType); // #13882 - type of template argument
 
+        TEST_CASE(template_shift_negative); // shift folding with a negative operand
+
         TEST_CASE(dumpTemplateArgFrom);
     }
 
@@ -6713,6 +6715,21 @@ private:
                       "Test<64> test ; "
                       "class Test<64> { uint32_t i ; i = ( uint32_t ) 64 ; } ;",
                       tok(code));
+    }
+
+    void template_shift_negative() {
+        // a large hex literal is not negative as a string but parses to a negative
+        // bigint, so folding the shift in simplifyNumericCalculations would left-shift
+        // a negative value / shift by a negative count, both UB. the operand must be
+        // returned unchanged. parentheses are needed so the numeric folding is reached.
+        const char code[] = "template <long long> struct S { };\n"
+                            "S<(0x8000000000000000 << 1)> s1;\n"
+                            "S<(1 << 0x8000000000000000)> s2;\n"
+                            "S<(1 >> 0x8000000000000000)> s3;";
+        const char expected[] = "struct S<9223372036854775808U> ; struct S<1> ; "
+                                "S<9223372036854775808U> s1 ; S<1> s2 ; S<1> s3 ; "
+                                "struct S<9223372036854775808U> { } ; struct S<1> { } ;";
+        ASSERT_EQUALS(expected, tok(code));
     }
 
     void dumpTemplateArgFrom() {

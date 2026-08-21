@@ -130,10 +130,10 @@ namespace {
 
 bool CheckNullPointerImpl::isPointerDeRef(const Token *tok, bool &unknown) const
 {
-    return isPointerDeRef(tok, unknown, mSettings);
+    return isPointerDeRef(tok, unknown, mSettings.library);
 }
 
-bool CheckNullPointerImpl::isPointerDeRef(const Token *tok, bool &unknown, const Settings &settings, bool checkNullArg)
+bool CheckNullPointerImpl::isPointerDeRef(const Token *tok, bool &unknown, const Library &library, bool checkNullArg)
 {
     unknown = false;
 
@@ -146,7 +146,7 @@ bool CheckNullPointerImpl::isPointerDeRef(const Token *tok, bool &unknown, const
             ftok = ftok->previous();
         }
         if (ftok && ftok->previous()) {
-            const std::list<const Token *> varlist = CheckNullPointerImpl::parseFunctionCall(*ftok->previous(), settings.library, checkNullArg);
+            const std::list<const Token *> varlist = CheckNullPointerImpl::parseFunctionCall(*ftok->previous(), library, checkNullArg);
             if (std::find(varlist.cbegin(), varlist.cend(), tok) != varlist.cend()) {
                 return true;
             }
@@ -161,7 +161,7 @@ bool CheckNullPointerImpl::isPointerDeRef(const Token *tok, bool &unknown, const
         return false;
     const bool addressOf = parent->astParent() && parent->astParent()->str() == "&";
     if (parent->str() == "." && astIsRHS(tok))
-        return isPointerDeRef(parent, unknown, settings);
+        return isPointerDeRef(parent, unknown, library);
     const bool firstOperand = parent->astOperand1() == tok;
     parent = astParentSkipParens(tok);
     if (!parent)
@@ -298,7 +298,7 @@ void CheckNullPointerImpl::nullPointerByDeRefAndCheck()
 
             // Pointer dereference.
             bool unknown = false;
-            if (!CheckNullPointerImpl::isPointerDeRef(tok, unknown, mSettings)) {
+            if (!CheckNullPointerImpl::isPointerDeRef(tok, unknown, mSettings.library)) {
                 if (unknown)
                     nullPointerError(tok, tok->expressionString(), value, true);
                 continue;
@@ -578,7 +578,7 @@ static bool isUnsafeUsage(const Settings &settings, const Token *vartok, CTU::Fi
 {
     (void)value;
     bool unknown = false;
-    return CheckNullPointerImpl::isPointerDeRef(vartok, unknown, settings);
+    return CheckNullPointerImpl::isPointerDeRef(vartok, unknown, settings.library);
 }
 
 // a Clang-built executable will crash when using the anonymous MyFileInfo later on - so put it in a unique namespace for now

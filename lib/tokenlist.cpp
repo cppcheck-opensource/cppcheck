@@ -1947,12 +1947,18 @@ void TokenList::validateAst(bool print) const
         if ((tok->isAssignmentOp() || tok->isComparisonOp() || Token::Match(tok,"[|^/%]")) && tok->astOperand1() && !tok->astOperand2())
             throw InternalError(tok, "Syntax Error: AST broken, binary operator has only one operand.", InternalError::AST);
 
+        if (!(tok->astOperand1() && tok->astOperand2()) && ((isC() && tok->str() == "&&") || Token::Match(tok, "%or%|%oror%")))
+            throw InternalError(tok, "Syntax Error: AST broken, binary operator is missing operand(s).", InternalError::AST);
+
         // Syntax error if we encounter "?" with operand2 that is not ":"
         if (tok->str() == "?") {
             if (!tok->astOperand1() || !tok->astOperand2())
                 throw InternalError(tok, "AST broken, ternary operator missing operand(s)", InternalError::AST);
-            if (tok->astOperand2()->str() != ":")
+            const Token* colon = tok->astOperand2();
+            if (colon->str() != ":")
                 throw InternalError(tok, "Syntax Error: AST broken, ternary operator lacks ':'.", InternalError::AST);
+            if ((colon->astOperand1() && !precedes(colon->astOperand1(), colon)) || !succeeds(colon->astOperand2(), colon))
+                throw InternalError(tok, "AST broken, ternary operator has bad operand(s)", InternalError::AST);
         }
 
         // Check for endless recursion
@@ -2002,7 +2008,7 @@ void TokenList::validateAst(bool print) const
             if (Token::simpleMatch(tok->previous(), "operator"))
                 continue;
             // Skip incomplete code
-            if (!tok->astOperand1() && !tok->astOperand2() && !tok->astParent())
+            if (!tok->astOperand1() && !tok->astOperand2() && !tok->astParent() && !(tok->str().size() == 2 && tok->str()[1] == '='))
                 continue;
             // Skip lambda assignment and/or initializer
             if (Token::Match(tok, "= {|^|["))
@@ -2026,9 +2032,9 @@ void TokenList::validateAst(bool print) const
                                     "' doesn't have two operands.",
                                     InternalError::AST);
         }
-        if (tok->str() == "case" && !tok->astOperand1()) {
+        if (!tok->astOperand1() && Token::Match(tok, "case|!")) {
             throw InternalError(tok,
-                                "Syntax Error: AST broken, 'case' doesn't have an operand.",
+                                "Syntax Error: AST broken, '" + tok->str() + "' doesn't have an operand.",
                                 InternalError::AST);
         }
 

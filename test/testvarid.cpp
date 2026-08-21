@@ -102,6 +102,7 @@ private:
         TEST_CASE(varid70); // #12660 - function
         TEST_CASE(varid71); // #12676 - wrong varid in uninstantiated templated constructor
         TEST_CASE(varid72);
+        TEST_CASE(varid73);
         TEST_CASE(varid_for_1);
         TEST_CASE(varid_for_2);
         TEST_CASE(varid_for_3);
@@ -1407,6 +1408,14 @@ private:
         const char code1[] = "static_assert(true && true);\n"; // #14386
         const char expected1[] = "1: static_assert ( true && true ) ;\n";
         ASSERT_EQUALS(expected1, tokenize(code1));
+    }
+
+    void varid73() {
+        const char code[] = "namespace a { int x; };\n"
+                            "namespace b { int x = a::x; };\n";
+        const char expected[]  = "1: namespace a { int x@1 ; } ;\n"
+                                 "2: namespace b { int x@2 ; x@2 = a :: x@1 ; } ;\n";
+        ASSERT_EQUALS(expected, tokenize(code));
     }
 
     void varid_for_1() {

@@ -529,27 +529,51 @@ bool ImportProject::importSlnx(const std::string& filename, const std::vector<st
         return false;
     }
 
+    if (std::strcmp(rootnode->Name(), "Solution") != 0) {
+        errors.emplace_back("Invalid Visual Studio solution file format");
+        return false;
+    }
+
     std::map<std::string, std::string, cppcheck::stricmp> variables;
     variables["SolutionDir"] = Path::simplifyPath(Path::getPathFromFilename(filename));
 
     bool found = false;
     std::vector<SharedItemsProject> sharedItemsProjects;
 
+    auto processProject = [&](const tinyxml2::XMLElement* projectNode) {
+        const char* pathAttribute = projectNode->Attribute("Path");
+        if (pathAttribute == nullptr)
+            return true;
+
+        std::string vcxproj(pathAttribute);
+        vcxproj = Path::toNativeSeparators(std::move(vcxproj));
+
+        if (Path::getFilenameExtensionInLowerCase(vcxproj) != ".vcxproj")
+            return true; // skip other project types
+
+        if (!Path::isAbsolute(vcxproj))
+            vcxproj = variables["SolutionDir"] + vcxproj;
+
+        vcxproj = Path::fromNativeSeparators(std::move(vcxproj));
+        if (!importVcxproj(vcxproj, variables, "", fileFilters, sharedItemsProjects)) {
+            errors.emplace_back("failed to load '" + vcxproj + "' from Visual Studio solution");
+            return false;
+        }
+        found = true;
+        return true;
+    };
+
     for (const tinyxml2::XMLElement* node = rootnode->FirstChildElement(); node; node = node->NextSiblingElement()) {
         const char* name = node->Name();
         if (std::strcmp(name, "Project") == 0) {
-            const char* labelAttribute = node->Attribute("Path");
-            if (labelAttribute) {
-                std::string vcxproj(labelAttribute);
-                vcxproj = Path::toNativeSeparators(std::move(vcxproj));
-                if (!Path::isAbsolute(vcxproj))
-                    vcxproj = variables["SolutionDir"] + vcxproj;
-                vcxproj = Path::fromNativeSeparators(std::move(vcxproj));
-                if (!importVcxproj(vcxproj, variables, "", fileFilters, sharedItemsProjects)) {
-                    errors.emplace_back("failed to load '" + vcxproj + "' from Visual Studio solution");
-                    return false;
+            if (!processProject(node))
+                return false;
+        } else if (std::strcmp(name, "Folder") == 0) {
+            for (const tinyxml2::XMLElement* childNode = node->FirstChildElement(); childNode; childNode = childNode->NextSiblingElement()) {
+                if (std::strcmp(childNode->Name(), "Project") == 0) {
+                    if (!processProject(childNode))
+                        return false;
                 }
-                found = true;
             }
         }
     }
@@ -593,12 +617,13 @@ namespace {
         std::string platformStr;
     };
 
-    struct ConditionalGroup {
-        explicit ConditionalGroup(const tinyxml2::XMLElement *idg){
+    struct Conditional {
+        explicit Conditional(const tinyxml2::XMLElement *idg){
             const char *condAttr = idg->Attribute("Condition");
             if (condAttr)
                 mCondition = condAttr;
         }
+        explicit Conditional(std::string condition) : mCondition(std::move(condition)) {}
 
         static void replaceAll(std::string &c, const std::string &from, const std::string &to) {
             std::string::size_type pos;
@@ -727,8 +752,8 @@ namespace {
         std::string mCondition;
     };
 
-    struct ItemDefinitionGroup : ConditionalGroup {
-        explicit ItemDefinitionGroup(const tinyxml2::XMLElement *idg, std::string includePaths) : ConditionalGroup(idg), additionalIncludePaths(std::move(includePaths)) {
+    struct ItemDefinitionGroup : Conditional {
+        explicit ItemDefinitionGroup(const tinyxml2::XMLElement *idg, std::string includePaths) : Conditional(idg), additionalIncludePaths(std::move(includePaths)) {
             for (const tinyxml2::XMLElement *e1 = idg->FirstChildElement(); e1; e1 = e1->NextSiblingElement()) {
                 const char* name = e1->Name();
                 if (std::strcmp(name, "ClCompile") == 0) {
@@ -778,8 +803,8 @@ namespace {
         Standards::cppstd_t cppstd = Standards::CPPLatest;
     };
 
-    struct ConfigurationPropertyGroup : ConditionalGroup {
-        explicit ConfigurationPropertyGroup(const tinyxml2::XMLElement *idg) : ConditionalGroup(idg) {
+    struct ConfigurationPropertyGroup : Conditional {
+        explicit ConfigurationPropertyGroup(const tinyxml2::XMLElement *idg) : Conditional(idg) {
             for (const tinyxml2::XMLElement *e = idg->FirstChildElement(); e; e = e->NextSiblingElement()) {
                 if (std::strcmp(e->Name(), "UseOfMfc") == 0) {
                     useOfMfc = true;
@@ -791,6 +816,37 @@ namespace {
 
         bool useOfMfc = false;
         bool useUnicode = false;
+    };
+
+    struct ItemGroupClCompile {
+        explicit ItemGroupClCompile(std::string filename) : mFilename(std::move(filename)) {}
+        ItemGroupClCompile(const tinyxml2::XMLElement *element, std::string file) : mFilename(std::move(file)) {
+            for (const tinyxml2::XMLElement* childElement = element->FirstChildElement(); childElement; childElement = childElement->NextSiblingElement()) {
+                const char *name = childElement->Name();
+                if (!name)
+                    continue;
+                if (std::strcmp(name, "ExcludedFromBuild") == 0) {
+                    const char *condition = childElement->Attribute("Condition");
+                    const char *text = childElement->GetText();
+                    if (!condition || !text || std::strcmp(text, "true") != 0)
+                        continue;
+                    mConditions.emplace_back(condition);
+                }
+                // TODO: ForcedIncludeFiles and PrecompiledHeaderFile
+            }
+        }
+        bool exclude(const ProjectConfiguration& p, std::vector<std::string>& errors) const {
+            if (mConditions.empty())
+                return false;
+            for (const std::string& condition : mConditions) {
+                Conditional conditional(condition);
+                if (conditional.conditionIsTrue(p, mFilename, errors))
+                    return true;
+            }
+            return false;
+        }
+        std::string mFilename;
+        std::list<std::string> mConditions;
     };
 }
 
@@ -899,7 +955,7 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
     variables["ProjectDir"] = Path::simplifyPath(Path::getPathFromFilename(filename));
 
     std::list<ProjectConfiguration> projectConfigurationList;
-    std::list<std::string> compileList;
+    std::list<ItemGroupClCompile> compileList;
     std::list<ItemDefinitionGroup> itemDefinitionGroupList;
     std::vector<ConfigurationPropertyGroup> configurationPropertyGroups;
     std::string includePath;
@@ -930,7 +986,8 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
                         const char *include = e->Attribute("Include");
                         if (include && Path::acceptFile(include)) {
                             std::string toInclude = Path::simplifyPath(Path::isAbsolute(include) ? include : Path::getPathFromFilename(filename) + include);
-                            compileList.emplace_back(toInclude);
+                            findAndReplace(toInclude, "$(MSBuildThisFileDirectory)", "./");
+                            compileList.emplace_back(e, toInclude);
                         }
                     }
                 }
@@ -992,7 +1049,7 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
     for (const auto& sharedProject : sharedItemsProjects) {
         for (const auto &file : sharedProject.sourceFiles) {
             std::string pathToFile = Path::simplifyPath(Path::getPathFromFilename(sharedProject.pathToProjectFile) + file);
-            compileList.emplace_back(std::move(pathToFile));
+            compileList.emplace_back(pathToFile);
         }
         for (const auto &p : sharedProject.includePaths) {
             std::string path = Path::simplifyPath(Path::getPathFromFilename(sharedProject.pathToProjectFile) + p);
@@ -1002,8 +1059,8 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
 
     // Project files
     PathMatch filtermatcher(fileFilters, Path::getCurrentPath());
-    for (const std::string &cfilename : compileList) {
-        if (!fileFilters.empty() && !filtermatcher.match(cfilename))
+    for (const ItemGroupClCompile& compile : compileList) {
+        if (!fileFilters.empty() && !filtermatcher.match(compile.mFilename))
             continue;
 
         for (const ProjectConfiguration &p : projectConfigurationList) {
@@ -1016,7 +1073,11 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
                     continue;
             }
 
-            FileSettings fs{cfilename, Standards::Language::None, 0}; // file will be identified later on
+            // check if the file should be excluded for this configuration
+            if (compile.exclude(p, errors))
+                continue;
+
+            FileSettings fs{ compile.mFilename, Standards::Language::None, 0}; // file will be identified later on
             fs.cfg = p.name;
             // TODO: detect actual MSC version
             fs.msc = true;
@@ -1029,7 +1090,7 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
             }
             std::string additionalIncludePaths;
             for (const ItemDefinitionGroup &i : itemDefinitionGroupList) {
-                if (!i.conditionIsTrue(p, cfilename, errors))
+                if (!i.conditionIsTrue(p, compile.mFilename, errors))
                     continue;
                 fs.standard = Standards::getCPP(i.cppstd);
                 fs.defines += ';' + i.preprocessorDefinitions;
@@ -1047,7 +1108,7 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
             }
             bool useUnicode = false;
             for (const ConfigurationPropertyGroup &c : configurationPropertyGroups) {
-                if (!c.conditionIsTrue(p, cfilename, errors))
+                if (!c.conditionIsTrue(p, compile.mFilename, errors))
                     continue;
                 // in msbuild the last definition wins
                 useUnicode = c.useUnicode;
@@ -1057,7 +1118,7 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
                 fs.defines += ";UNICODE=1;_UNICODE=1";
             }
             fsSetDefines(fs, fs.defines);
-            fsSetIncludePaths(fs, Path::getPathFromFilename(filename), toStringList(includePath + ';' + additionalIncludePaths), variables);
+            fsSetIncludePaths(fs, Path::getPathFromFilename(compile.mFilename), toStringList(includePath + ';' + additionalIncludePaths), variables);
             for (const auto &path : sharedItemsIncludePaths) {
                 fs.includePaths.emplace_back(path);
             }
@@ -1629,7 +1690,18 @@ bool ImportProject::importCppcheckGuiProject(std::istream &istr, Settings &setti
 
     for (const std::string &p : paths)
         guiProject.pathNames.push_back(Path::fromNativeSeparators(p));
-    supprs.nomsg.addSuppressions(std::move(suppressions)); // TODO: check result
+
+    bool ok = true;
+    for (const auto &suppression : suppressions) {
+        const std::string addError = supprs.nomsg.addSuppression(suppression);
+        if (!addError.empty()) {
+            errors.emplace_back(addError);
+            ok = false;
+        }
+    }
+    if (!ok)
+        return false;
+
     settings.checkHeaders = temp.checkHeaders;
     settings.checkUnusedTemplates = temp.checkUnusedTemplates;
     settings.maxCtuDepth = temp.maxCtuDepth;
@@ -1719,5 +1791,5 @@ bool cppcheck::testing::evaluateVcxprojCondition(const std::string& condition, c
     ProjectConfiguration p;
     p.configuration = configuration;
     p.platformStr = platform;
-    return ConditionalGroup::evalCondition(condition, p);
+    return Conditional::evalCondition(condition, p);
 }

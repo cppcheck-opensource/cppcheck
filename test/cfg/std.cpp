@@ -5071,6 +5071,11 @@ int f_constVariable_std_begin() {
     return arr[0];
 }
 
+std::size_t uninitvar_std_size() { // #14976
+    int a[3];
+    return std::size(a);
+}
+
 void smartPtr_get()
 {
     std::unique_ptr<int> p;

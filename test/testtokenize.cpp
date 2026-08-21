@@ -92,6 +92,8 @@ private:
         TEST_CASE(tokenize40);  // #13181
         TEST_CASE(tokenize41);  // #13847
         TEST_CASE(tokenize42);  // #13861
+        TEST_CASE(tokenize43);  // #13861
+        TEST_CASE(tokenize44);  // #14955
 
         TEST_CASE(validate);
 
@@ -240,6 +242,7 @@ private:
         TEST_CASE(vardecl_stl_3);
         TEST_CASE(vardecl_template_1);
         TEST_CASE(vardecl_template_2);
+        TEST_CASE(vardecl_template_3);
         TEST_CASE(vardecl_union);
         TEST_CASE(vardecl_par);     // #2743 - set links if variable type contains parentheses
         TEST_CASE(vardecl_par2);    // #3912 - set correct links
@@ -290,6 +293,7 @@ private:
         TEST_CASE(cppMaybeUnusedBefore);
         TEST_CASE(cppMaybeUnusedAfter1);
         TEST_CASE(cppMaybeUnusedAfter2);
+        TEST_CASE(cppMaybeUnusedAfter3);
         TEST_CASE(cppMaybeUnusedStructuredBinding);
 
         TEST_CASE(attributeAlignasBefore);
@@ -603,9 +607,13 @@ private:
         std::vector<std::string> files;
         simplecpp::TokenList tokens1(code, files, filename, &outputList);
         Preprocessor preprocessor(tokens1, settings, *this, Path::identify(tokens1.getFiles()[0], false));
-        (void)preprocessor.reportOutput(outputList, true);
+        std::list<Directive> directives;
+        preprocessor.setLoadCallback([&](const simplecpp::FileData &data) {
+            Preprocessor::createDirectives(data.tokens, directives);
+        });
+        preprocessor.createDirectives(directives);
         ASSERT(preprocessor.loadFiles(files));
-        std::list<Directive> directives = preprocessor.createDirectives();
+        (void)preprocessor.reportOutput(outputList, true);
 
         TokenList tokenlist{settings, Path::identify(filename, false)};
         Tokenizer tokenizer(std::move(tokenlist), *this);
@@ -934,6 +942,27 @@ private:
                       "x [ 1 ] . a = 2 ;\n"
                       "}", tokenizeAndStringify(code));
         (void)errout_str();
+    }
+
+    void tokenize43() {
+        const char code[] = "void f(int i) { do if (i &= 1) {} while (0); }";
+        ASSERT_NO_THROW(tokenizeAndStringify(code));
+        (void)errout_str();
+    }
+
+    void tokenize44() { // #14955
+        const char code[] = "namespace O {}\n"
+                            "namespace N {\n"
+                            "    using namespace O;\n"
+                            "    enum class E { E0 };\n"
+                            "    E E0 = E::E0;\n"
+                            "}\n";
+        const char expected[] = "2: namespace N {\n"
+                                "3: using namespace O ;\n"
+                                "4: enum class E { E0 } ;\n"
+                                "5: E E0@1 ; E0@1 = E :: E0 ;\n"
+                                "6: }\n";
+        ASSERT_EQUALS(expected, tokenizeDebugListing(code));
     }
 
     void validate() {
@@ -2269,6 +2298,11 @@ private:
         const char code4[] = "union U { struct { int a; int b; }; int ab[2]; };";
         const char expected4[] = "union U { struct { int a ; int b ; } ; int ab [ 2 ] ; } ;";
         ASSERT_EQUALS(expected4, tokenizeAndStringify(code4));
+
+        // #14836: FP syntaxError for anonymous struct in for loop
+        const char code5[] = "void f(void) { for (struct { int a; } it = {0}; it.a < 10; it.a++) {} }";
+        const char expected5[] = "void f ( ) { struct Anonymous0 { int a ; } ; for ( struct Anonymous0 it = { 0 } ; it . a < 10 ; it . a ++ ) { } }";
+        ASSERT_EQUALS(expected5, tokenizeAndStringify(code5));
     }
 
     void vardecl1() {
@@ -2375,6 +2409,19 @@ private:
         const char code[] = "const string str = x<8,int>();";
         const char expected[]  = "const string str = x < 8 , int > ( ) ;";
         ASSERT_EQUALS(expected, tokenizeAndStringify(code));
+    }
+
+    void vardecl_template_3() {
+        const char code[] = "template <class T>\n" // #14909
+                            "void f(T x) {\n"
+                            "    const auto y = h<T, x.size()>;\n"
+                            "}";
+        const char expected[]  = "template < class T >\n"
+                                 "void f ( T x ) {\n"
+                                 "const auto y = h < T , x . size ( ) > ;\n"
+                                 "}";
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
+        ASSERT_EQUALS("[test.cpp:3:11]: (debug) auto token with no type. [autoNoType]\n", errout_str());
     }
 
     void vardecl_union() {
@@ -4375,6 +4422,19 @@ private:
 
         const Token *var = Token::findsimplematch(tokenizer.tokens(), "var");
         ASSERT(var && var->isAttributeMaybeUnused());
+    }
+
+    void cppMaybeUnusedAfter3() {
+        const char code[] = "void foo(int x [[maybe_unused]]) {}";
+        const char expected[] = "void foo ( int x ) { }";
+
+        SimpleTokenizer tokenizer(settingsDefault, *this);
+        ASSERT(tokenizer.tokenize(code));
+
+        ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
+
+        const Token *x = Token::findsimplematch(tokenizer.tokens(), "x");
+        ASSERT(x && x->isAttributeMaybeUnused());
     }
 
     void cppMaybeUnusedStructuredBinding() {

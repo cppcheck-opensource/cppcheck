@@ -147,6 +147,16 @@ def test_slnx_no_xml_root(tmpdir):
     __test_project_error(tmpdir, "slnx", content, expected)
 
 
+def test_slnx_invalid_xml_root(tmpdir):
+    content = '<?xml version="1.0" encoding="UTF-8"?>\r\n' \
+              "<Invalid>\r\n" \
+              "</Invalid>\r\n"
+
+    expected = "Invalid Visual Studio solution file format"
+
+    __test_project_error(tmpdir, "slnx", content, expected)
+
+
 def test_slnx_no_projects(tmpdir):
     content = '<?xml version="1.0" encoding="UTF-8"?>\r\n' \
               "<Solution>\r\n" \
@@ -155,6 +165,22 @@ def test_slnx_no_projects(tmpdir):
               '    <Platform Name="x86" />\r\n' \
               "  </Configurations>\r\n" \
               "</Solution>\r\n"
+
+    expected = "no projects found in Visual Studio solution file"
+
+    __test_project_error(tmpdir, "slnx", content, expected)
+
+
+def test_slnx_no_projects_in_folder(tmpdir):
+    content = '<?xml version="1.0" encoding="UTF-8"?>\r\n' \
+              "<Solution>\r\n" \
+              "  <Configurations>\r\n" \
+              '    <Platform Name="x64" />\r\n' \
+              '    <Platform Name="x86" />\r\n' \
+              "  </Configurations>\r\n" \
+              '  <Folder Name="/common/">\r\n' \
+              '  </Folder>\r\n' \
+          "</Solution>\r\n"
 
     expected = "no projects found in Visual Studio solution file"
 
@@ -173,6 +199,26 @@ def test_slnx_project_file_not_found(tmpdir):
 
     expected = "Visual Studio project file is not a valid XML - XML_ERROR_FILE_NOT_FOUND\n" \
                "cppcheck: error: failed to load '{}' from Visual Studio solution".format(os.path.join(tmpdir, "test.vcxproj"))
+    if sys.platform == "win32":
+        expected = expected.replace('\\', '/')
+
+    __test_project_error(tmpdir, "slnx", content, expected)
+
+
+def test_slnx_project_file_in_folder_not_found(tmpdir):
+    content = '<?xml version="1.0" encoding="UTF-8"?>\r\n' \
+              "<Solution>\r\n" \
+              "  <Configurations>\r\n" \
+              '    <Platform Name="x64" />\r\n' \
+              '    <Platform Name="x86" />\r\n' \
+              "  </Configurations>\r\n" \
+              '  <Folder Name="/common/">\r\n' \
+              '    <Project Path="common/test.vcxproj" />\r\n' \
+              '  </Folder>\r\n' \
+              "</Solution>\r\n"
+
+    expected = "Visual Studio project file is not a valid XML - XML_ERROR_FILE_NOT_FOUND\n" \
+               "cppcheck: error: failed to load '{}' from Visual Studio solution".format(os.path.join(tmpdir, "common/test.vcxproj"))
     if sys.platform == "win32":
         expected = expected.replace('\\', '/')
 

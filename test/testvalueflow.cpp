@@ -43,16 +43,9 @@ public:
     TestValueFlow() : TestFixture("TestValueFlow") {}
 
 private:
-    /*const*/ Settings settings = settingsBuilder().library("std.cfg").build();
+    const Settings settings = settingsBuilder().library("std.cfg").build();
 
     void run() override {
-        // strcpy, abort cfg
-        constexpr char cfg[] = "<?xml version=\"1.0\"?>\n"
-                               "<def>\n"
-                               "  <function name=\"strcpy\"> <arg nr=\"1\"><not-null/></arg> </function>\n"
-                               "  <function name=\"abort\"> <noreturn>true</noreturn> </function>\n" // abort is a noreturn function
-                               "</def>";
-        settings = settingsBuilder(settings).libraryxml(cfg).build();
 
         mNewTemplate = true;
         TEST_CASE(valueFlowNumber);
@@ -137,6 +130,7 @@ private:
         TEST_CASE(valueFlowConditionExpressions);
 
         TEST_CASE(valueFlowContainerSize);
+        TEST_CASE(valueFlowContainerSizeIterator);
         TEST_CASE(valueFlowContainerElement);
 
         TEST_CASE(valueFlowDynamicBufferSize);
@@ -436,9 +430,10 @@ private:
         return false;
     }
 
-    bool testValueOfX_(const char* file, int line, const char code[], unsigned int linenr, int value, ValueFlow::Value::ValueType type) {
+    bool testValueOfX_(const char* file, int line, const char code[], unsigned int linenr, int value, ValueFlow::Value::ValueType type, const Settings* s = nullptr) {
+        const Settings& curSettings = s ? *s : settings;
         // Tokenize..
-        SimpleTokenizer tokenizer(settings, *this);
+        SimpleTokenizer tokenizer(curSettings, *this);
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         for (const Token *tok = tokenizer.tokens(); tok; tok = tok->next()) {
@@ -514,6 +509,22 @@ private:
             return v.valueType != vt;
         });
         return values;
+    }
+
+    // The expression of the container recorded by the container size value of the token. The
+    // container token has to be resolved while the tokenizer is alive.
+#define containerOfSizeValue(...) containerOfSizeValue_(__FILE__, __LINE__, __VA_ARGS__)
+    std::string containerOfSizeValue_(const char* file, int line, const char code[], const char tokstr[]) {
+        SimpleTokenizer tokenizer(settings, *this);
+        ASSERT_LOC(tokenizer.tokenize(code), file, line);
+        const Token* tok = Token::findmatch(tokenizer.tokens(), tokstr);
+        if (!tok)
+            return "";
+        const std::list<ValueFlow::Value>& values = tok->values();
+        const auto it = std::find_if(values.cbegin(), values.cend(), [](const ValueFlow::Value& v) {
+            return v.isContainerSizeValue() && v.container;
+        });
+        return it == values.cend() ? "" : it->container->expressionString();
     }
 
 #define lifetimeValues(...) lifetimeValues_(__FILE__, __LINE__, __VA_ARGS__)
@@ -1811,6 +1822,20 @@ private:
         values = tokenValues(code, "( a");
         ASSERT_EQUALS(1U, values.size());
         ASSERT_EQUALS(2 * settings.platform.sizeof_pointer, values.back().intvalue);
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueKind::Known, values.back().valueKind);
+
+        code = "struct S { std::array<int, 3> a; };\n"
+               "x = sizeof(S);\n";
+        values = tokenValues(code, "( S");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(3 * settings.platform.sizeof_int, values.back().intvalue);
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueKind::Known, values.back().valueKind);
+
+        code = "std::array<int, 3> a;\n"
+               "x = sizeof(a);\n";
+        values = tokenValues(code, "( a");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(3 * settings.platform.sizeof_int, values.back().intvalue);
         ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueKind::Known, values.back().valueKind);
     }
 
@@ -3200,6 +3225,38 @@ private:
                "    return x;\n"
                "}\n";
         ASSERT_EQUALS(true, testValueOfXKnown(code, 3U, 0));
+
+        code = "bool f();\n" // a modification after a conditional escape must still be seen
+               "void g() {\n"
+               "    bool x = false;\n"
+               "    if (f()) {\n"
+               "        if (f()) return;\n"
+               "        if (f()) x = true;\n"
+               "    }\n"
+               "    if (x) {}\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 8U, 0));
+        ASSERT_EQUALS(false, testValueOfXKnown(code, 8U, 0));
+
+        code = "bool f();\n"
+               "void g() {\n"
+               "    bool x = false;\n"
+               "    if (f()) {\n"
+               "        if (f()) return;\n"
+               "        x = true;\n"
+               "    }\n"
+               "    if (x) {}\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 8U, 0));
+        ASSERT_EQUALS(false, testValueOfXKnown(code, 8U, 0));
+
+        code = "bool f();\n" // the branch always escapes - keep the known value
+               "void g() {\n"
+               "    bool x = false;\n"
+               "    if (f()) { x = true; return; }\n"
+               "    if (x) {}\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXKnown(code, 5U, 0));
     }
 
     void valueFlowAfterSwap()
@@ -3820,6 +3877,44 @@ private:
                "    return x;\n"
                "}\n";
         ASSERT_EQUALS(true, testValueOfX(code, 4U, 0));
+
+        // if the guarded block calls an unknown, possibly noreturn function
+        // then the condition value is lowered to inconclusive after the block
+        code = "int f(int x) {\n"
+               "    if (x == 0)\n"
+               "        g();\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXInconclusive(code, 4U, 0));
+
+        // .. also when the guard is in the else branch
+        code = "int f(int x) {\n"
+               "    if (x != 0)\n"
+               "        ;\n"
+               "    else\n"
+               "        g();\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXInconclusive(code, 6U, 0));
+
+        // a declared function is assumed to return
+        code = "void g();\n"
+               "int f(int x) {\n"
+               "    if (x == 0)\n"
+               "        g();\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 5U, 0));
+        ASSERT_EQUALS(false, testValueOfXInconclusive(code, 5U, 0));
+
+        // a noreturn function conclusively escapes
+        code = "int f(int x) {\n"
+               "    if (x == 0)\n"
+               "        abort();\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(false, testValueOfX(code, 4U, 0));
+        ASSERT_EQUALS(true, testValueOfXImpossible(code, 4U, 0));
     }
 
     void valueFlowAfterConditionTernary()
@@ -5027,6 +5122,27 @@ private:
         ++it;
         ASSERT_EQUALS(0, it->intvalue);
         ASSERT(it->isPossible());
+
+        code = "void g(int*);\n"
+               "void f(int* a) {\n"
+               "    for (int i = 0; i < 5; ++i) {\n"
+               "        g(&a[i]);\n"
+               "    }\n"
+               "}\n";
+        values = tokenValues(code, "i ]");
+        ASSERT_EQUALS(4, values.size());
+        it = values.begin();
+        ASSERT_EQUALS(0, it->intvalue);
+        ASSERT(it->isPossible());
+        ++it;
+        ASSERT_EQUALS(-1, it->intvalue);
+        ASSERT(it->isImpossible());
+        ++it;
+        ASSERT_EQUALS(4, it->intvalue);
+        ASSERT(it->isPossible());
+        ++it;
+        ASSERT_EQUALS(5, it->intvalue);
+        ASSERT(it->isImpossible());
     }
 
     void valueFlowSubFunction() {
@@ -5765,21 +5881,19 @@ private:
         ASSERT_EQUALS(false, value.isKnown());
 
         // #13959
-        const Settings settingsOld = settings;
-        settings.standards.c = Standards::C23;
+        const Settings settingsC23 = settingsBuilder(settings).c(Standards::C23).build();
         code = "void f(int* p) {\n"
                "    if (p == nullptr)\n"
                "        return;\n"
                "    if (p) {}\n"
                "}\n";
-        value = valueOfTok(code, "p ) { }", &settings, /*cpp*/ false);
+        value = valueOfTok(code, "p ) { }", &settingsC23, /*cpp*/ false);
         ASSERT_EQUALS(1, value.intvalue);
         ASSERT_EQUALS(true, value.isKnown());
 
-        settings.standards.c = Standards::C17;
-        value = valueOfTok(code, "p ) { }", &settings, /*cpp*/ false);
+        const Settings settingsC17 = settingsBuilder(settings).c(Standards::C17).build();
+        value = valueOfTok(code, "p ) { }", &settingsC17, /*cpp*/ false);
         ASSERT(value == ValueFlow::Value());
-        settings = settingsOld;
     }
 
     void valueFlowSizeofForwardDeclaredEnum() {
@@ -6109,9 +6223,9 @@ private:
                "  c++;\n"
                "}\n";
         values = tokenValues(code, "c ++ ; }");
-        TODO_ASSERT_EQUALS(true, false, values.size() == 2);
-        // ASSERT_EQUALS(true, values.front().isUninitValue() || values.back().isUninitValue());
-        // ASSERT_EQUALS(true, values.front().isPossible() || values.back().isPossible());
+        ASSERT_EQUALS(true, values.size() == 2);
+        ASSERT_EQUALS(true, values.front().isUninitValue() || values.back().isUninitValue());
+        ASSERT_EQUALS(true, values.front().isPossible() || values.back().isPossible());
         // ASSERT_EQUALS(true, values.front().intvalue == 0 || values.back().intvalue == 0);
 
         code = "void b(bool d, bool e) {\n"
@@ -7576,6 +7690,157 @@ private:
                "    if (m.empty()) {}\n"
                "}\n";
         ASSERT(!isKnownContainerSizeValue(tokenValues(code, "m ."), 0).empty());
+
+        // the pointer returned by data() carries the container size
+        code = "int f() {\n"
+               "    std::vector<int> v(3);\n"
+               "    int* p = v.data();\n"
+               "    return p[1];\n"
+               "}";
+        ASSERT_EQUALS("",
+                      isKnownContainerSizeValue(tokenValues(code, "p [", ValueFlow::Value::ValueType::CONTAINER_SIZE), 3));
+
+        // ..which is invalidated when the container size changes
+        code = "int f() {\n"
+               "    std::vector<int> v(3);\n"
+               "    int* p = v.data();\n"
+               "    v.push_back(1);\n"
+               "    return p[1];\n"
+               "}";
+        ASSERT_EQUALS(0U, tokenValues(code, "p [", ValueFlow::Value::ValueType::CONTAINER_SIZE).size());
+
+        // the buffer of c_str() includes the null terminator
+        code = "const char* f() {\n"
+               "    std::string s = \"abc\";\n"
+               "    const char* p = s.c_str();\n"
+               "    return p + 3;\n"
+               "}";
+        ASSERT_EQUALS("",
+                      isKnownContainerSizeValue(tokenValues(code, "p +", ValueFlow::Value::ValueType::CONTAINER_SIZE), 4));
+
+        code = "const char* f() {\n"
+               "    std::string s = \"abc\";\n"
+               "    return s.c_str();\n"
+               "}";
+        ASSERT_EQUALS(
+            "",
+            isKnownContainerSizeValue(tokenValues(code, "( ) ;", ValueFlow::Value::ValueType::CONTAINER_SIZE), 4));
+
+        // the size value of a data() pointer records the container the size belongs to
+        code = "int* f() {\n"
+               "    std::vector<int> v(3);\n"
+               "    return v.data();\n"
+               "}";
+        ASSERT_EQUALS("",
+                      isKnownContainerSizeValue(tokenValues(code, "( ) ;", ValueFlow::Value::ValueType::CONTAINER_SIZE),
+                                                3));
+        ASSERT_EQUALS("v", containerOfSizeValue(code, "( ) ;"));
+
+        // an empty associative container implies that its default-inserted elements are empty as well
+        code = "void f(const std::string& k) {\n"
+               "    std::map<std::string, std::vector<int>> m;\n"
+               "    m[k].front();\n"
+               "}";
+        ASSERT_EQUALS(
+            "",
+            isKnownContainerSizeValue(tokenValues(code, "[ k ] . front", ValueFlow::Value::ValueType::CONTAINER_SIZE),
+                                      0));
+        ASSERT_EQUALS("m[k]", containerOfSizeValue(code, "[ k ] . front"));
+
+        // ..also for nested associative containers..
+        code = "void f(int a, int b) {\n"
+               "    std::map<int, std::map<int, std::vector<int>>> m;\n"
+               "    m[a][b].front();\n"
+               "}";
+        ASSERT_EQUALS(
+            "",
+            isKnownContainerSizeValue(tokenValues(code, "[ b ] . front", ValueFlow::Value::ValueType::CONTAINER_SIZE), 0));
+
+        // ..but not for non-associative containers..
+        code = "void f(int i) {\n"
+               "    std::vector<std::vector<int>> v;\n"
+               "    v[i].front();\n"
+               "}";
+        ASSERT_EQUALS(0U, tokenValues(code, "[ i ] . front", ValueFlow::Value::ValueType::CONTAINER_SIZE).size());
+
+        // ..nor when the container is not empty..
+        code = "void f(std::map<std::string, std::vector<int>>& m, const std::string& k) {\n"
+               "    if (m.size() == 1)\n"
+               "        m[k].front();\n"
+               "}";
+        ASSERT_EQUALS(0U, tokenValues(code, "[ k ] . front", ValueFlow::Value::ValueType::CONTAINER_SIZE).size());
+
+        // ..nor when the container was modified
+        code = "void f(const std::string& k) {\n"
+               "    std::map<std::string, std::vector<int>> m;\n"
+               "    m[\"a\"].push_back(1);\n"
+               "    m[k].front();\n"
+               "}";
+        ASSERT_EQUALS(0U, tokenValues(code, "[ k ] . front", ValueFlow::Value::ValueType::CONTAINER_SIZE).size());
+    }
+
+    void valueFlowContainerSizeIterator() {
+        const char* code;
+
+        // valueFlowForwardConst: the container size is added to iterators of a const container
+        code = "void f() {\n"
+               "    const std::vector<int> v{1, 2, 3};\n"
+               "    auto it = v.begin();\n"
+               "    if (it != v.end()) {}\n"
+               "}";
+        ASSERT_EQUALS(
+            "",
+            isKnownContainerSizeValue(tokenValues(code, "it !=", ValueFlow::Value::ValueType::CONTAINER_SIZE), 3));
+
+        // ..also to iterators created in place
+        code = "void f() {\n"
+               "    const std::deque<int> d{1, 2, 3, 4, 5, 6};\n"
+               "    if (std::equal(d.cbegin(), d.cend(), d.cbegin())) {}\n"
+               "}";
+        ASSERT_EQUALS(
+            "",
+            isKnownContainerSizeValue(tokenValues(code, "( ) ,", ValueFlow::Value::ValueType::CONTAINER_SIZE), 6));
+
+        // ..and to iterators of containers with a static size
+        code = "void f() {\n"
+               "    std::array<int, 5> a;\n"
+               "    auto it = a.begin();\n"
+               "    if (it != a.end()) {}\n"
+               "}";
+        ASSERT_EQUALS(
+            "",
+            isKnownContainerSizeValue(tokenValues(code, "it !=", ValueFlow::Value::ValueType::CONTAINER_SIZE), 5));
+
+        // the size of another container is not added to the iterator
+        code = "void f(std::vector<int>& w) {\n"
+               "    const std::vector<int> v{1, 2, 3};\n"
+               "    auto it = w.begin();\n"
+               "    if (it != w.end()) {}\n"
+               "}";
+        ASSERT(tokenValues(code, "it !=", ValueFlow::Value::ValueType::CONTAINER_SIZE).empty());
+
+        // iterators created from the container carry the container size
+        code = "bool f() {\n"
+               "    std::vector<int> v(3);\n"
+               "    return v.begin() != v.end();\n"
+               "}";
+        ASSERT_EQUALS(
+            "",
+            isKnownContainerSizeValue(tokenValues(code, "( ) !=", ValueFlow::Value::ValueType::CONTAINER_SIZE), 3));
+        ASSERT_EQUALS(
+            "",
+            isKnownContainerSizeValue(tokenValues(code, "( ) ;", ValueFlow::Value::ValueType::CONTAINER_SIZE), 3));
+
+        // the size value records the container it belongs to
+        code = "void f() {\n"
+               "    std::vector<int> v(3);\n"
+               "    auto it = v.begin();\n"
+               "    if (it != v.end()) {}\n"
+               "}";
+        ASSERT_EQUALS(
+            "",
+            isKnownContainerSizeValue(tokenValues(code, "it !=", ValueFlow::Value::ValueType::CONTAINER_SIZE), 3));
+        ASSERT_EQUALS("v", containerOfSizeValue(code, "it !="));
     }
 
     void valueFlowContainerElement()
@@ -7607,48 +7872,47 @@ private:
     void valueFlowDynamicBufferSize() {
         const char *code;
 
-        const Settings settingsOld = settings; // TODO: get rid of this
-        settings = settingsBuilder(settings).library("posix.cfg").library("bsd.cfg").build();
+        const Settings settingsCfg = settingsBuilder(settings).library("posix.cfg").library("bsd.cfg").build();
 
         code = "void* f() {\n"
                "  void* x = malloc(10);\n"
                "  return x;\n"
                "}";
-        ASSERT_EQUALS(true, testValueOfX(code, 3U, 10,  ValueFlow::Value::ValueType::BUFFER_SIZE));
+        ASSERT_EQUALS(true, testValueOfX(code, 3U, 10, ValueFlow::Value::ValueType::BUFFER_SIZE, &settingsCfg));
 
         code = "void* f() {\n"
                "  void* x = calloc(4, 5);\n"
                "  return x;\n"
                "}";
-        ASSERT_EQUALS(true, testValueOfX(code, 3U, 20,  ValueFlow::Value::ValueType::BUFFER_SIZE));
+        ASSERT_EQUALS(true, testValueOfX(code, 3U, 20,  ValueFlow::Value::ValueType::BUFFER_SIZE, &settingsCfg));
 
         code = "void* f() {\n"
                "  const char* y = \"abcd\";\n"
                "  const char* x = strdup(y);\n"
                "  return x;\n"
                "}";
-        ASSERT_EQUALS(true, testValueOfX(code, 4U, 5,  ValueFlow::Value::ValueType::BUFFER_SIZE));
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 5,  ValueFlow::Value::ValueType::BUFFER_SIZE, &settingsCfg));
 
         code = "void* f() {\n"
                "  void* y = malloc(10);\n"
                "  void* x = realloc(y, 20);\n"
                "  return x;\n"
                "}";
-        ASSERT_EQUALS(true, testValueOfX(code, 4U, 20,  ValueFlow::Value::ValueType::BUFFER_SIZE));
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 20,  ValueFlow::Value::ValueType::BUFFER_SIZE, &settingsCfg));
 
         code = "void* f() {\n"
                "  void* y = calloc(10, 4);\n"
                "  void* x = reallocarray(y, 20, 5);\n"
                "  return x;\n"
                "}";
-        ASSERT_EQUALS(true, testValueOfX(code, 4U, 100,  ValueFlow::Value::ValueType::BUFFER_SIZE));
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 100,  ValueFlow::Value::ValueType::BUFFER_SIZE, &settingsCfg));
 
         code = "struct A {};\n" // #14305
                "void* f() {\n"
                "  A* x = new A();\n"
                "  return x;\n"
                "}";
-        ASSERT_EQUALS(true, testValueOfX(code, 4U, 1, ValueFlow::Value::ValueType::BUFFER_SIZE));
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 1, ValueFlow::Value::ValueType::BUFFER_SIZE, &settingsCfg));
 
         code = "struct A {};\n"
                "void* f() {\n"
@@ -7656,7 +7920,7 @@ private:
                "  return x;\n"
                "}";
         {
-            auto values = tokenValues(code, "x ; }");
+            auto values = tokenValues(code, "x ; }", &settingsCfg);
             ASSERT_EQUALS(1, values.size());
             ASSERT(values.front().isSymbolicValue());
             // TODO: add BUFFER_SIZE value = 1
@@ -7667,9 +7931,14 @@ private:
                "  B* x = new B();\n"
                "  return x;\n"
                "}";
-        ASSERT_EQUALS(true, testValueOfX(code, 4U, 4, ValueFlow::Value::ValueType::BUFFER_SIZE));
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 4, ValueFlow::Value::ValueType::BUFFER_SIZE, &settingsCfg));
 
-        settings = settingsOld;
+        code = "void f()\n"
+               "{\n"
+               "    void *x = ::operator new(0);\n"
+               "    (void) x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 0, ValueFlow::Value::ValueType::BUFFER_SIZE));
     }
 
     void valueFlowSafeFunctionParameterValues() {
@@ -8208,6 +8477,17 @@ private:
                "    auto b = a;\n"
                "}\n";
         (void)valueOfTok(code, "b");
+
+        code = "namespace O {}\n" // #14952
+               "namespace N {\n"
+               "    using namespace O;\n"
+               "    enum class E { E0 };\n"
+               "    auto E0 = E::E0;\n"
+               "    struct S {\n"
+               "        E f() const { return E0; }\n"
+               "    };\n"
+               "}\n";
+        (void)valueOfTok(code, "E0");
     }
 
     void valueFlowHang() {
@@ -8432,6 +8712,75 @@ private:
                "    static T f[64];\n"
                "};\n";
         (void)valueOfTok(code, "(");
+
+        // fork explosion on many opaque conditions; bounded by maxForwardConditionForks
+        code = "int g(int);\n"
+               "bool h(int);\n"
+               "void f() {\n"
+               "    int x = 0;\n"
+               "    if (h(0)) g(x);\n"
+               "    if (h(1)) g(x);\n"
+               "    if (h(2)) g(x);\n"
+               "    if (h(3)) g(x);\n"
+               "    if (h(4)) g(x);\n"
+               "    if (h(5)) g(x);\n"
+               "    if (h(6)) g(x);\n"
+               "    if (h(7)) g(x);\n"
+               "    if (h(8)) g(x);\n"
+               "    if (h(9)) g(x);\n"
+               "    if (h(10)) g(x);\n"
+               "    if (h(11)) g(x);\n"
+               "    if (h(12)) g(x);\n"
+               "    if (h(13)) g(x);\n"
+               "    if (h(14)) g(x);\n"
+               "    if (h(15)) g(x);\n"
+               "    if (h(16)) g(x);\n"
+               "    if (h(17)) g(x);\n"
+               "    if (h(18)) g(x);\n"
+               "    if (h(19)) g(x);\n"
+               "    if (h(20)) g(x);\n"
+               "    if (h(21)) g(x);\n"
+               "    if (h(22)) g(x);\n"
+               "    if (h(23)) g(x);\n"
+               "    if (h(24)) g(x);\n"
+               "    if (h(25)) g(x);\n"
+               "    if (h(26)) g(x);\n"
+               "    if (h(27)) g(x);\n"
+               "    if (h(28)) g(x);\n"
+               "    if (h(29)) g(x);\n"
+               "    if (h(30)) g(x);\n"
+               "    if (h(31)) g(x);\n"
+               "    if (h(32)) g(x);\n"
+               "    if (h(33)) g(x);\n"
+               "    if (h(34)) g(x);\n"
+               "    if (h(35)) g(x);\n"
+               "    if (h(36)) g(x);\n"
+               "    if (h(37)) g(x);\n"
+               "    if (h(38)) g(x);\n"
+               "    if (h(39)) g(x);\n"
+               "    if (h(40)) g(x);\n"
+               "    if (h(41)) g(x);\n"
+               "    if (h(42)) g(x);\n"
+               "    if (h(43)) g(x);\n"
+               "    if (h(44)) g(x);\n"
+               "    if (h(45)) g(x);\n"
+               "    if (h(46)) g(x);\n"
+               "    if (h(47)) g(x);\n"
+               "    if (h(48)) g(x);\n"
+               "    if (h(49)) g(x);\n"
+               "    if (h(50)) g(x);\n"
+               "    if (h(51)) g(x);\n"
+               "    if (h(52)) g(x);\n"
+               "    if (h(53)) g(x);\n"
+               "    if (h(54)) g(x);\n"
+               "    if (h(55)) g(x);\n"
+               "    if (h(56)) g(x);\n"
+               "    if (h(57)) g(x);\n"
+               "    if (h(58)) g(x);\n"
+               "    if (h(59)) g(x);\n"
+               "    (void)x;\n"
+               "}\n";
+        (void)valueOfTok(code, "x");
     }
 
     void valueFlowCrashConstructorInitialization() { // #9577
@@ -9009,6 +9358,15 @@ private:
                "    return x;\n"
                "}\n";
         ASSERT_EQUALS(false, testValueOfX(code, 3U, "malloc(10)", 0));
+
+        code = "struct S {\n" // #14891
+               "    void f() const {\n"
+               "        const int* p = a;\n"
+               "        if (*p) {}\n"
+               "    }\n"
+               "    int a[3];\n"
+               "};\n";
+        ASSERT(tokenValues(code, "* p )").empty());
     }
 
     void valueFlowSymbolicIdentity()

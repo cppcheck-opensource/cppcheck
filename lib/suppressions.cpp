@@ -136,7 +136,10 @@ std::string SuppressionList::parseXmlFile(const char *filename)
                 s.lineNumber = strToInt<int>(text);
             else if (std::strcmp(name, "symbolName") == 0)
                 s.symbolName = text;
-            else if (*text && std::strcmp(name, "hash") == 0)
+            else if (std::strcmp(name, "macroName") == 0) {
+                s.macroName = text;
+                s.type = SuppressionList::Type::macro;
+            } else if (*text && std::strcmp(name, "hash") == 0)
                 s.hash = strToInt<std::size_t>(text);
             else
                 return std::string("unknown element '") + name + "' in suppressions XML '" + filename + "', expected id/fileName/lineNumber/symbolName/hash.";

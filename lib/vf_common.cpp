@@ -165,7 +165,8 @@ namespace ValueFlow
             if (obj && !obj->isLiteral() && obj->valueType() &&
                 (obj->valueType()->pointer == 0 || // <- TODO this is a bailout, abort when there are array->pointer conversions
                  (obj->variable() && !obj->variable()->isArray())) &&
-                !obj->valueType()->isEnum()) { // <- TODO this is a bailout, handle enum with non-int types
+                !obj->valueType()->isEnum() && // <- TODO this is a bailout, handle enum with non-int types
+                !(obj->valueType()->container && obj->valueType()->container->startPattern == "std :: array <")) {
                 const auto ptrPointee = obj->valueType()->pointer > 0 ? ValueType::SizeOf::Pointer : ValueType::SizeOf::Pointee;
                 const size_t sz = obj->valueType()->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ptrPointee);
                 if (sz) {
@@ -246,7 +247,12 @@ namespace ValueFlow
                         if (var->type()->classScope && var->type()->classScope->enumType)
                             size = getSizeOfType(var->type()->classScope->enumType, settings);
                     } else if (var->valueType()) {
-                        size = var->valueType()->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
+                        if (var->valueType()->container && var->valueType()->container->startPattern == "std :: array <") {
+                            const ValueType vtElement = ValueType::parseDecl(var->valueType()->containerTypeToken, settings);
+                            size = vtElement.getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
+                        }
+                        else
+                            size = var->valueType()->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
                     } else if (!var->type()) {
                         size = getSizeOfType(var->typeStartToken(), settings);
                     }
@@ -392,20 +398,24 @@ namespace ValueFlow
         v.debugPath.emplace_back(tok, std::move(s));
     }
 
-    MathLib::bigint valueFlowGetStrLength(const Token* tok, const Settings& settings)
+    MathLib::bigint valueFlowGetStrLength(const Token* tok, const Library& library)
     {
         if (tok->tokType() == Token::eString)
             return Token::getStrLength(tok);
         if (astIsGenericChar(tok) || tok->tokType() == Token::eChar)
             return 1;
-        if (const Value* v = tok->getKnownValue(Value::ValueType::CONTAINER_SIZE))
-            return v->intvalue;
+        if (const Value* v = tok->getKnownValue(Value::ValueType::CONTAINER_SIZE)) {
+            // on a pointer the size is the number of elements in the buffer (possibly including
+            // a null terminator), not the length of the string
+            if (!astIsPointer(tok))
+                return v->intvalue;
+        }
         if (const Value* v = tok->getKnownValue(Value::ValueType::TOK)) {
             if (v->tokvalue != tok)
-                return valueFlowGetStrLength(v->tokvalue, settings);
+                return valueFlowGetStrLength(v->tokvalue, library);
         }
-        if (const Token* cont = settings.library.getContainerFromYield(tok, Library::Container::Yield::BUFFER_NT))
-            return valueFlowGetStrLength(cont, settings);
+        if (const Token* cont = library.getContainerFromYield(tok, Library::Container::Yield::BUFFER_NT))
+            return valueFlowGetStrLength(cont, library);
         return 0;
     }
 }

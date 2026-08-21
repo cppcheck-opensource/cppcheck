@@ -47,6 +47,8 @@ if (BUILD_TESTING)
     if (REGISTER_TESTS)
         # CMAKE_MATCH_<n> usage for if (MATCHES) requires CMake 3.9
 
+        add_subdirectory(addon)
+
         find_package(Threads REQUIRED)
         include(ProcessorCount)
         ProcessorCount(N)

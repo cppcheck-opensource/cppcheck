@@ -38,7 +38,7 @@ private:
     const Settings settings0_i = settingsBuilder(settings0).certainty(Certainty::inconclusive).build();
     const Settings settings1 = settingsBuilder().severity(Severity::warning).library("std.cfg").build();
     const Settings settings2 = settingsBuilder().severity(Severity::style).library("std.cfg").certainty(Certainty::inconclusive).build();
-    const Settings settings3 = settingsBuilder().severity(Severity::style).library("std.cfg").severity(Severity::warning).build();
+    const Settings settings3 = settingsBuilder().severity(Severity::style).library("std.cfg").severity(Severity::warning).library("posix.cfg").build();
     const Settings settings3_i = settingsBuilder(settings3).certainty(Certainty::inconclusive).build();
     const Settings settings4 = settingsBuilder().severity(Severity::warning).severity(Severity::portability).library("std.cfg").library("posix.cfg").build();
 
@@ -62,6 +62,8 @@ private:
         TEST_CASE(copyConstructor4); // base class with private constructor
         TEST_CASE(copyConstructor5); // multiple inheritance
         TEST_CASE(copyConstructor6); // array of pointers
+        TEST_CASE(copyConstructor7); // ticket #14954
+        TEST_CASE(copyConstructor8);
         TEST_CASE(deletedMemberPointer); // deleted member pointer in destructor
         TEST_CASE(noOperatorEq); // class with memory management should have operator eq
         TEST_CASE(noDestructor); // class with memory management should have destructor
@@ -196,6 +198,7 @@ private:
         TEST_CASE(const99);
         TEST_CASE(const100);
         TEST_CASE(const101);
+        TEST_CASE(const102);
 
         TEST_CASE(const_handleDefaultParameters);
         TEST_CASE(const_passThisToMemberOfOtherClass);
@@ -1093,6 +1096,25 @@ private:
                            errout_str());
     }
 
+    void copyConstructor7() { // ticket #14954
+        checkCopyConstructor("struct S {\n"
+                             "    explicit S(char *name) { m_fd = mkstemp(name); }\n"
+                             "    ~S() { /* close(m_fd); */ }\n"
+                             "    S &operator =(const S&);\n"
+                             "    int m_fd;\n"
+                             "};\n");
+        ASSERT_EQUALS("[test.cpp:2:30]: (warning) Struct 'S' does not have a copy constructor which is recommended since it has dynamic memory/resource management. [noCopyConstructor]\n", errout_str());
+    }
+
+    void copyConstructor8() {
+        checkCopyConstructor("struct S {\n"
+                             "    S() : m_ptr(new int) {}\n"
+                             "    ~S();\n"
+                             "    std::unique_ptr<int> m_ptr;\n"
+                             "};\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
     void deletedMemberPointer() {
 
         // delete ...
@@ -1157,6 +1179,15 @@ private:
                              "   ~F();\n"
                              "};");
         ASSERT_EQUALS("", errout_str());
+
+        checkCopyConstructor("struct S {\n"
+                             "    explicit S(char *name) { m_fd = mkstemp(name); }\n"
+                             "    S(const S&);\n"
+                             "    ~S() { /* close(m_fd); */ }\n"
+                             "    int m_fd;\n"
+                             "};\n");
+        ASSERT_EQUALS("[test.cpp:2:30]: (warning) Struct 'S' does not have a operator= which is recommended since it has dynamic memory/resource management. [noOperatorEq]\n", errout_str());
+
     }
 
     void noDestructor() {
@@ -6996,6 +7027,22 @@ private:
                    "    }\n"
                    "};\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void const102() {
+        checkConst("struct S {\n" // #14888
+                   "    void f() {\n"
+                   "        int *p = a;\n"
+                   "        *p = 0;\n"
+                   "    }\n"
+                   "    void g() {\n"
+                   "        const int *p = a;\n"
+                   "        if (*p) {}\n"
+                   "    }\n"
+                   "    int a[3];\n"
+                   "};\n");
+        ASSERT_EQUALS("[test.cpp:6:10]: (style, inconclusive) Technically the member function 'S::g' can be const. [functionConst]\n",
+                      errout_str());
     }
 
     void const_handleDefaultParameters() {

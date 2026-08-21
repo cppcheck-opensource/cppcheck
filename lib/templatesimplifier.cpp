@@ -170,8 +170,12 @@ TemplateSimplifier::TokenAndName::TokenAndName(Token *token, std::string scope, 
                 if (isFunction())
                     tok1 = tok1->link()->next();
                 while (tok1 && !Token::Match(tok1, ";|{")) {
-                    if (tok1->str() == "<")
-                        tok1 = tok1->findClosingBracket();
+                    if (tok1->str() == "<") {
+                        if (const Token* closing = tok1->findClosingBracket())
+                            tok1 = closing;
+                        else
+                            syntaxError(tok1);
+                    }
                     else if (Token::Match(tok1, "(|[") && tok1->link())
                         tok1 = tok1->link();
                     if (tok1)
@@ -492,7 +496,7 @@ unsigned int TemplateSimplifier::templateParameters(const Token *tok)
             return 0;
 
         // num/type ..
-        if (!tok->isNumber() && tok->tokType() != Token::eChar && tok->tokType() != Token::eString && !tok->isName() && !tok->isOp())
+        if (!tok->isNumber() && tok->tokType() != Token::eChar && tok->tokType() != Token::eString && !tok->isName() && !tok->isOp() && tok->str() != ".")
             return 0;
         tok = tok->next();
         if (!tok)

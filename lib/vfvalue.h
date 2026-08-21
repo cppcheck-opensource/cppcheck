@@ -322,6 +322,10 @@ namespace ValueFlow
         /** token value - the token that has the value. this is used for pointer aliases, strings, etc. */
         const Token* tokvalue{};
 
+        /** For CONTAINER_SIZE values: the container the size belongs to, when the value is
+         * attached to a token that is not the container itself (an iterator or a pointer) */
+        const Token* container = nullptr;
+
         /** float value */
         double floatValue{};
 

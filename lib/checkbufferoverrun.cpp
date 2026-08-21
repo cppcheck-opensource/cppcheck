@@ -65,7 +65,12 @@ static const CWE CWE_BUFFER_OVERRUN(788U);   // Access of Memory Location After 
 static const ValueFlow::Value *getBufferSizeValue(const Token *tok)
 {
     const std::list<ValueFlow::Value> &tokenValues = tok->values();
-    const auto it = std::find_if(tokenValues.cbegin(), tokenValues.cend(), std::mem_fn(&ValueFlow::Value::isBufferSizeValue));
+    auto it = std::find_if(tokenValues.cbegin(), tokenValues.cend(), std::mem_fn(&ValueFlow::Value::isBufferSizeValue));
+    if (it != tokenValues.cend())
+        return &*it;
+    it = std::find_if(tokenValues.cbegin(), tokenValues.cend(), [](const ValueFlow::Value& v) {
+        return v.isContainerSizeValue() && !v.isImpossible();
+    });
     return it == tokenValues.cend() ? nullptr : &*it;
 }
 
@@ -133,7 +138,7 @@ static int getMinFormatStringOutputLength(const std::vector<const Token*> &param
             case 's':
                 parameterLength = 0;
                 if (inputArgNr < parameters.size())
-                    parameterLength = ValueFlow::valueFlowGetStrLength(parameters[inputArgNr], settings);
+                    parameterLength = ValueFlow::valueFlowGetStrLength(parameters[inputArgNr], settings.library);
 
                 handleNextParameter = true;
                 break;
@@ -227,7 +232,8 @@ static bool getDimensionsEtc(const Token * const arrayToken, const Settings &set
         const size_t typeSize = array->valueType()->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, sizeOf);
         if (typeSize == 0)
             return false;
-        dim.num = value->intvalue / typeSize;
+        // a container size counts elements, a buffer size counts bytes
+        dim.num = value->isContainerSizeValue() ? value->intvalue : value->intvalue / typeSize;
         dimensions.emplace_back(dim);
     }
     return !dimensions.empty();
@@ -552,26 +558,53 @@ void CheckBufferOverrunImpl::pointerArithmeticError(const Token *tok, const Toke
 
 //---------------------------------------------------------------------------
 
-ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok) const
+ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok, const Settings& settings) const
 {
     if (!bufTok->valueType())
         return ValueFlow::Value(-1);
 
+    MathLib::bigint index = 0;
     if (bufTok->isUnaryOp("&")) {
         bufTok = bufTok->astOperand1();
         if (Token::simpleMatch(bufTok, "[")) {
-            const Token* index = bufTok->astOperand2();
-            if (!(index && index->hasKnownIntValue() && index->getKnownIntValue() == 0))
-                return ValueFlow::Value(-1);
+            if (const Token* indexTok = bufTok->astOperand2()) {
+                if (indexTok->hasKnownIntValue())
+                    index = indexTok->getKnownIntValue();
+                else if (const ValueFlow::Value* maxValue = indexTok->getMaxValue(false))
+                    index = maxValue->intvalue;
+                else
+                    return ValueFlow::Value(-1);
+            }
             bufTok = bufTok->astOperand1();
         }
     }
     const Variable *var = bufTok->variable();
 
     if (!var || var->dimensions().empty()) {
-        const ValueFlow::Value *value = getBufferSizeValue(bufTok);
-        if (value)
-            return *value;
+        if (const ValueFlow::Value *value = getBufferSizeValue(bufTok)) {
+            if (value->isBufferSizeValue())
+                return *value;
+            if (value->isContainerSizeValue() && bufTok->valueType()) {
+                size_t elementSize = 0;
+                if (bufTok->valueType()->containerTypeToken) {
+                    const ValueType vtElement = ValueType::parseDecl(bufTok->valueType()->containerTypeToken, settings);
+                    elementSize =
+                        vtElement.getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
+                } else if (bufTok->valueType()->pointer == 1) {
+                    elementSize = bufTok->valueType()->getSizeOf(settings,
+                                                                 ValueType::Accuracy::ExactOrZero,
+                                                                 ValueType::SizeOf::Pointee);
+                }
+                if (elementSize > 0) {
+                    ValueFlow::Value bufSizeVal;
+                    bufSizeVal.valueType = ValueFlow::Value::ValueType::BUFFER_SIZE;
+                    bufSizeVal.intvalue = value->intvalue * elementSize;
+                    bufSizeVal.valueKind = value->valueKind;
+                    bufSizeVal.errorPath = value->errorPath;
+                    return bufSizeVal;
+                }
+            }
+        }
     }
 
     if (!var || var->isPointer() || (astIsContainer(bufTok) && var->getTypeName() != "std::array"))
@@ -586,10 +619,10 @@ ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok) cons
     v.valueType = ValueFlow::Value::ValueType::BUFFER_SIZE;
 
     if (var->isPointerArray())
-        v.intvalue = dim * mSettings.platform.sizeof_pointer;
+        v.intvalue = (dim - index) * mSettings.platform.sizeof_pointer;
     else {
         const size_t typeSize = bufTok->valueType()->getSizeOf(mSettings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointee);
-        v.intvalue = dim * typeSize;
+        v.intvalue = (dim - index) * typeSize;
     }
 
     return v;
@@ -671,7 +704,7 @@ void CheckBufferOverrunImpl::bufferOverflow()
                 if (argtok->valueType() && argtok->valueType()->pointer == 0)
                     continue;
                 // TODO: strcpy(buf+10, "hello");
-                const ValueFlow::Value bufferSize = getBufferSize(argtok);
+                const ValueFlow::Value bufferSize = getBufferSize(argtok, mSettings);
                 if (bufferSize.intvalue <= 0)
                     continue;
                 // buffer size == 1 => do not warn for dynamic memory
@@ -701,7 +734,10 @@ void CheckBufferOverrunImpl::bufferOverflow()
 
 void CheckBufferOverrunImpl::bufferOverflowError(const Token *tok, const ValueFlow::Value *value, Certainty certainty)
 {
-    reportError(getErrorPath(tok, value, "Buffer overrun"), Severity::error, "bufferAccessOutOfBounds", "Buffer is accessed out of bounds: " + (tok ? getRealBufferTok(tok)->expressionString() : "buf"), CWE_BUFFER_OVERRUN, certainty);
+    const auto errorPath = getErrorPath(tok, value, "Buffer overrun");
+    const auto severity = !value || value->isKnown() ? Severity::error : Severity::warning;
+    const std::string msg = "Buffer is accessed out of bounds: " + (tok ? getRealBufferTok(tok)->expressionString() : "buf");
+    reportError(errorPath, severity, "bufferAccessOutOfBounds", msg, CWE_BUFFER_OVERRUN, certainty);
 }
 
 //---------------------------------------------------------------------------
@@ -782,7 +818,7 @@ void CheckBufferOverrunImpl::stringNotZeroTerminated()
             const Token *sizeToken = args[2];
             if (!sizeToken->hasKnownIntValue())
                 continue;
-            const ValueFlow::Value &bufferSize = getBufferSize(args[0]);
+            const ValueFlow::Value &bufferSize = getBufferSize(args[0], mSettings);
             if (bufferSize.intvalue < 0 || sizeToken->getKnownIntValue() < bufferSize.intvalue)
                 continue;
             if (Token::simpleMatch(args[1], "(") && Token::simpleMatch(args[1]->astOperand1(), ". c_str") && args[1]->astOperand1()->astOperand1()) {
@@ -1086,9 +1122,15 @@ void CheckBufferOverrunImpl::objectIndex()
 
             std::vector<ValueFlow::Value> values = ValueFlow::getLifetimeObjValues(obj, false, -1);
             for (const ValueFlow::Value& v:values) {
-                if (v.lifetimeKind != ValueFlow::Value::LifetimeKind::Address)
+                if (v.lifetimeKind != ValueFlow::Value::LifetimeKind::Address && v.lifetimeKind != ValueFlow::Value::LifetimeKind::Object)
                     continue;
-                const Variable *var = v.tokvalue->variable();
+                const Token* varTok = v.tokvalue;
+                if (Token::simpleMatch(varTok->astParent(), ".")) {
+                    varTok = varTok->astParent();
+                    while (Token::simpleMatch(varTok, "."))
+                        varTok = varTok->astOperand2();
+                }
+                const Variable *var = varTok ? varTok->variable() : nullptr;
                 if (!var)
                     continue;
                 if (var->isReference())

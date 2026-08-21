@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 19 # max + 3*std of the last 7K runs
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 

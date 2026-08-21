@@ -30,6 +30,7 @@
 class Token;
 class Settings;
 class Platform;
+class Library;
 
 namespace ValueFlow
 {
@@ -53,7 +54,7 @@ namespace ValueFlow
                            const Token* tok,
                            SourceLocation local = SourceLocation::current());
 
-    MathLib::bigint valueFlowGetStrLength(const Token* tok, const Settings& settings);
+    MathLib::bigint valueFlowGetStrLength(const Token* tok, const Library& library);
 }
 
 #endif // vfCommonH

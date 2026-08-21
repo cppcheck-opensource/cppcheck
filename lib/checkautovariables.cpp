@@ -139,14 +139,14 @@ static bool isAutoVarArray(const Token *tok)
     return false;
 }
 
-static bool isLocalContainerBuffer(const Token* tok, const Settings& settings)
+static bool isLocalContainerBuffer(const Token* tok, const Library& library)
 {
     if (!tok)
         return false;
 
     // x+y
     if (tok->str() == "+")
-        return isLocalContainerBuffer(tok->astOperand1(), settings) || isLocalContainerBuffer(tok->astOperand2(), settings);
+        return isLocalContainerBuffer(tok->astOperand1(), library) || isLocalContainerBuffer(tok->astOperand2(), library);
 
     if (tok->str() != "(" || !Token::simpleMatch(tok->astOperand1(), "."))
         return false;
@@ -157,7 +157,7 @@ static bool isLocalContainerBuffer(const Token* tok, const Settings& settings)
     if (!var || !var->isLocal() || var->isStatic())
         return false;
 
-    const Library::Container::Yield yield = astContainerYield(tok, settings.library);
+    const Library::Container::Yield yield = astContainerYield(tok, library);
 
     return yield == Library::Container::Yield::BUFFER || yield == Library::Container::Yield::BUFFER_NT;
 }
@@ -233,8 +233,8 @@ void CheckAutoVariablesImpl::assignFunctionArg()
     }
 }
 
-static bool isAutoVariableRHS(const Token* tok, const Settings& settings) {
-    return isAddressOfLocalVariable(tok) || isAutoVarArray(tok) || isLocalContainerBuffer(tok, settings);
+static bool isAutoVariableRHS(const Token* tok, const Library& library) {
+    return isAddressOfLocalVariable(tok) || isAutoVarArray(tok) || isLocalContainerBuffer(tok, library);
 }
 
 static bool hasOverloadedAssignment(const Token* tok, bool& inconclusive)
@@ -257,7 +257,7 @@ static bool hasOverloadedAssignment(const Token* tok, bool& inconclusive)
     return true;
 }
 
-static bool isMemberAssignment(const Token* tok, const Token*& rhs, const Settings& settings)
+static bool isMemberAssignment(const Token* tok, const Token*& rhs, const Library& library)
 {
     const Token *endBracket = nullptr;
     if (!Token::Match(tok, "[;{}] %var% . %var%")) {
@@ -274,7 +274,7 @@ static bool isMemberAssignment(const Token* tok, const Token*& rhs, const Settin
         assign = assign->astParent();
     if (!Token::simpleMatch(assign, "="))
         return false;
-    if (!isAutoVariableRHS(assign->astOperand2(), settings))
+    if (!isAutoVariableRHS(assign->astOperand2(), library))
         return false;
     rhs = assign->astOperand2();
     return true;
@@ -295,15 +295,15 @@ void CheckAutoVariablesImpl::autoVariables()
             }
             // Critical assignment
             const Token* rhs{};
-            if (Token::Match(tok, "[;{}] %var% =") && isRefPtrArg(tok->next()) && isAutoVariableRHS(tok->tokAt(2)->astOperand2(), mSettings)) {
+            if (Token::Match(tok, "[;{}] %var% =") && isRefPtrArg(tok->next()) && isAutoVariableRHS(tok->tokAt(2)->astOperand2(), mSettings.library)) {
                 checkAutoVariableAssignment(tok->next(), false);
-            } else if (Token::Match(tok, "[;{}] * %var% =") && isPtrArg(tok->tokAt(2)) && isAutoVariableRHS(tok->tokAt(3)->astOperand2(), mSettings)) {
+            } else if (Token::Match(tok, "[;{}] * %var% =") && isPtrArg(tok->tokAt(2)) && isAutoVariableRHS(tok->tokAt(3)->astOperand2(), mSettings.library)) {
                 const Token* lhs = tok->tokAt(2);
                 bool inconclusive = false;
                 if (!hasOverloadedAssignment(lhs, inconclusive) || (printInconclusive && inconclusive))
                     checkAutoVariableAssignment(tok->next(), inconclusive);
                 tok = tok->tokAt(4);
-            } else if (isMemberAssignment(tok, rhs, mSettings)) {
+            } else if (isMemberAssignment(tok, rhs, mSettings.library)) {
                 const Token* lhs = tok->tokAt(3);
                 bool inconclusive = false;
                 if (!hasOverloadedAssignment(lhs, inconclusive) || (printInconclusive && inconclusive))
@@ -311,7 +311,7 @@ void CheckAutoVariablesImpl::autoVariables()
                 tok = rhs;
             } else if (Token::Match(tok, "[;{}] %var% [") && Token::simpleMatch(tok->linkAt(2), "] =") &&
                        (isPtrArg(tok->next()) || isArrayArg(tok->next(), mSettings)) &&
-                       isAutoVariableRHS(tok->linkAt(2)->next()->astOperand2(), mSettings)) {
+                       isAutoVariableRHS(tok->linkAt(2)->next()->astOperand2(), mSettings.library)) {
                 errorAutoVariableAssignment(tok->next(), false);
             }
             // Invalid pointer deallocation

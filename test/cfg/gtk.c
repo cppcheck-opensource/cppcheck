@@ -59,6 +59,14 @@ void validCode(int argInt, GHashTableIter * hash_table_iter, GHashTable * hash_t
     g_string_free(pGStr1, TRUE);
 
     gchar * pGchar1 = g_strconcat("a", "b", NULL);
+
+    // g_str_has_prefix and g_str_has_suffix can have side effects because they use
+    // g_return_val_if_fail, which logs to the console upon failure
+    // cppcheck-suppress assertWithSideEffect
+    g_assert_true(g_str_has_prefix(pGchar1, "a"));
+    // cppcheck-suppress assertWithSideEffect
+    g_assert_true(g_str_has_suffix(pGchar1, "b"));
+
     printf("%s", pGchar1);
     g_free(pGchar1);
 
@@ -406,6 +414,7 @@ void g_error_new_test()
     g_error_new(1, -2, "a %d", 1);
 
     const GError * pNew2 = g_error_new(1, -2, "a %d", 1);
+    g_assert_true(g_error_matches(pNew2, 1, -2));
     printf("%p", pNew2);
     // cppcheck-suppress memleak
 }
@@ -528,6 +537,16 @@ void g_variant_test() {
 
     // leak from pGvariant1
     // cppcheck-suppress memleak
+}
+
+void g_list_test() {
+    GList *list1 = NULL;
+    gchar *c = "c";
+
+    list1 = g_list_append(list1, c);
+    g_assert_true(g_list_find(list1, c) != NULL);
+
+    g_list_free(list1);
 }
 
 void g_queue_test() {

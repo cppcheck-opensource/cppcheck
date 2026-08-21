@@ -25,7 +25,7 @@ jobs:
   build:
     runs-on: ubuntu-24.04 # run on the latest image only
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
@@ -60,13 +60,13 @@ jobs:
           #sed -i 's|"security-severity":.*||' results.sarif
           cat results.sarif
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: results
           path: results.sarif
 
       - name: Upload report
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: results.sarif
           category: cppcheckpremium

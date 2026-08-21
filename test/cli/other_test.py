@@ -1,4 +1,3 @@
-
 # python -m pytest test-other.py
 
 import os
@@ -2667,7 +2666,7 @@ void f(const void* p)
 <results version="2">
     <cppcheck version="{}"/>
     <errors>
-        <error id="nullPointerRedundantCheck" severity="warning" msg="Either the condition &apos;p&apos; is redundant or there is possible null pointer dereference: p." verbose="Either the condition &apos;p&apos; is redundant or there is possible null pointer dereference: p." cwe="476" file0="{}" remark="boom">
+        <error id="nullPointerRedundantCheck" severity="warning" msg="Either the condition &apos;p&apos; is redundant or there is possible null pointer dereference: p." verbose="Either the condition &apos;p&apos; is redundant or there is possible null pointer dereference: p." cwe="476" hash="2884341854190588507" file0="{}" remark="boom">
             <location file="{}" line="5" column="12" info="Null pointer dereference"/>
             <location file="{}" line="4" column="8" info="Assuming that condition &apos;p&apos; is not redundant"/>
             <symbol>p</symbol>
@@ -4429,25 +4428,25 @@ def __test_active_checkers(tmp_path, active_cnt, total_cnt, use_misra=False, use
 
 
 def test_active_unusedfunction_only(tmp_path):
-    __test_active_checkers(tmp_path, 1, 187, use_unusedfunction_only=True)
+    __test_active_checkers(tmp_path, 1, 188, use_unusedfunction_only=True)
 
 
 def test_active_unusedfunction_only_builddir(tmp_path):
     checkers_exp = [
         'CheckUnusedFunctions::check'
     ]
-    __test_active_checkers(tmp_path, 1, 187, use_unusedfunction_only=True, checkers_exp=checkers_exp)
+    __test_active_checkers(tmp_path, 1, 188, use_unusedfunction_only=True, checkers_exp=checkers_exp)
 
 
 def test_active_unusedfunction_only_misra(tmp_path):
-    __test_active_checkers(tmp_path, 1, 387, use_unusedfunction_only=True, use_misra=True)
+    __test_active_checkers(tmp_path, 1, 388, use_unusedfunction_only=True, use_misra=True)
 
 
 def test_active_unusedfunction_only_misra_builddir(tmp_path):
     checkers_exp = [
         'CheckUnusedFunctions::check'
     ]
-    __test_active_checkers(tmp_path, 1, 387, use_unusedfunction_only=True, use_misra=True, checkers_exp=checkers_exp)
+    __test_active_checkers(tmp_path, 1, 388, use_unusedfunction_only=True, use_misra=True, checkers_exp=checkers_exp)
 
 
 def test_analyzerinfo(tmp_path):

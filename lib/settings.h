@@ -512,6 +512,15 @@ public:
         /** @brief Maximum performed forward branches */
         int maxForwardBranches = -1;
 
+        /** @brief Maximum depth of nested condition-fork continuations in the forward analyzer.
+            Bounds the exponential fan-out of carrying condition state forward at exhaustive level (where
+            maxForwardBranches is unlimited); past it the forward analysis continues on a single linear path
+            without skipping any branch. 0 disables forking (linear); a negative value means unlimited. */
+        int maxForwardConditionForkDepth = 4;
+
+        /** @brief Maximum total condition-fork continuations in one forward traversal. */
+        int maxForwardConditionForks = 256;
+
         /** @brief Maximum performed alignof recursion */
         int maxAlignOfRecursion = 100;
 

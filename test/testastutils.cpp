@@ -259,7 +259,7 @@ private:
         const Token * const argtok = Token::findmatch(tokenizer.tokens(), pattern);
         ASSERT_LOC(argtok, file, line);
         int indirect = (argtok->variable() && argtok->variable()->isArray());
-        return (isVariableChangedByFunctionCall)(argtok, indirect, settingsDefault, inconclusive);
+        return (isVariableChangedByFunctionCall)(argtok, indirect, settingsDefault.library, inconclusive);
     }
 
     void isVariableChangedByFunctionCallTest() {

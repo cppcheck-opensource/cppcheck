@@ -201,6 +201,7 @@ private:
         TEST_CASE(duplicateExpression19);
         TEST_CASE(duplicateExpression20);
         TEST_CASE(duplicateExpression21);
+        TEST_CASE(duplicateExpression22);
         TEST_CASE(duplicateExpressionLoop);
         TEST_CASE(duplicateValueTernary);
         TEST_CASE(duplicateValueTernarySizeof); // #13773
@@ -3914,7 +3915,9 @@ private:
               "    (void)(true);\n"
               "    if (r) {}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:1:13]: (style) Parameter 'r' can be declared as reference to const [constParameterReference]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:5]: (warning) Redundant code: Found unused cast in expression '(void)(true)'. [constStatement]\n"
+                      "[test.cpp:1:13]: (style) Parameter 'r' can be declared as reference to const [constParameterReference]\n",
+                      errout_str());
 
         check("struct S { void f(int&); };\n" // #12216
               "void g(S& s, int& r, void (S::* p2m)(int&)) {\n"
@@ -4142,6 +4145,25 @@ private:
 
         check("void f(std::optional<int>& o) {\n"
               "    *o = 1;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("int f() {\n"
+              "  int x = 0;\n"
+              "  int& r(x);\n"
+              "  r = x;\n"
+              "  return r;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Item { int state; };\n"
+              "void foo(std::vector<Item> &items) {\n"
+              "    for (auto &item : items) {\n"
+              "        switch (auto &s = item.state) {\n"
+              "        case 0: s = 1; break;\n"
+              "        default: break;\n"
+              "        }\n"
+              "    }\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
     }
@@ -4913,6 +4935,18 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:2:14]: (style) Parameter 's' can be declared as pointer to const [constParameterPointer]\n"
                       "[test.cpp:2:46]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n",
+                      errout_str());
+
+        check("struct S : U {\n" // #13944
+              "    void f(int* p) const {\n"
+              "        if (m == p) {}\n"
+              "    }\n"
+              "    void g(int* p) final {\n"
+              "        if (m == p) {}\n"
+              "    }\n"
+              "    int* m;\n"
+              "};\n");
+        ASSERT_EQUALS("[test.cpp:2:17]: (style) Either there is a missing override/final keyword, or the parameter 'p' can be declared as pointer to const [constParameterPointer]\n",
                       errout_str());
     }
 
@@ -7000,7 +7034,8 @@ private:
               "    std::pair<int, int>(1, 2);\n"
               "    (void)0;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:10]: (style) Instance of 'std::string' object is destroyed immediately. [unusedScopedObject]\n"
+        ASSERT_EQUALS("[test.cpp:5:5]: (warning) Redundant code: Found unused cast in expression '(void)0'. [constStatement]\n"
+                      "[test.cpp:2:10]: (style) Instance of 'std::string' object is destroyed immediately. [unusedScopedObject]\n"
                       "[test.cpp:3:10]: (style) Instance of 'std::string' object is destroyed immediately. [unusedScopedObject]\n"
                       "[test.cpp:4:10]: (style) Instance of 'std::pair' object is destroyed immediately. [unusedScopedObject]\n",
                       errout_str());
@@ -8339,6 +8374,35 @@ private:
               "    const int o = p->i;\n"
               "    t.modify();\n"
               "    if (p->i == o) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void duplicateExpression22() {
+        check("int f() {\n" // #14913
+              "    return 0x1 | (0x2 | 0x4) | 0x1;\n"
+              "}\n"
+              "int g() {\n"
+              "    return 0x1 | (0x2 | 0x1);\n"
+              "}\n"
+              "int h() {\n"
+              "    return 0x1 | (0x1 | 0x2);\n"
+              "}\n"
+              "int i() {\n"
+              "    return 0x2 | (0x4 | 0x1) | 0x1;\n"
+              "}\n"
+              "int j() {\n"
+              "    return 0x2 | (0x1 | 0x4) | 0x1;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:30]: (style) Same expression '0x1' found multiple times in chain of '|' operators. [duplicateExpression]\n"
+                      "[test.cpp:5:23]: (style) Same expression '0x1' found multiple times in chain of '|' operators. [duplicateExpression]\n"
+                      "[test.cpp:8:23]: (style) Same expression '0x1' found multiple times in chain of '|' operators. [duplicateExpression]\n"
+                      "[test.cpp:11:23]: (style) Same expression '0x1' found multiple times in chain of '|' operators. [duplicateExpression]\n"
+                      "[test.cpp:14:23]: (style) Same expression '0x1' found multiple times in chain of '|' operators. [duplicateExpression]\n",
+                      errout_str());
+
+        check("bool f(const int** a, const int** b) {\n"
+              "    return (a[0] != nullptr) != (b[0] != nullptr);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
     }
@@ -11040,6 +11104,48 @@ private:
               "    Dst.s->y = Src.s->y;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        // Ticket #14371 "redundantAssignment when using a union"
+        check("union U {\n"
+              "    struct {\n"
+              "        unsigned int abcd;\n"
+              "    } u32;\n"
+              "    struct {\n"
+              "        unsigned short ab;\n"
+              "        unsigned short cd;\n"
+              "    } u16;\n"
+              "};\n"
+              "void f1() {\n"
+              "    U m;\n"
+              "    m.u32.abcd = 1234;\n"
+              "    m.u32.abcd = 5 * m.u16.ab;\n"
+              "}\n"
+              "void f2(unsigned int a, unsigned short b) {\n"
+              "    U m;\n"
+              "    m.u32.abcd = a;\n"
+              "    m.u32.abcd += 0x8000;\n"
+              "    m.u32.abcd = m.u16.ab * b;\n"
+              "}\n"
+              "void f3(unsigned int seed) {\n"
+              "    U m, other;\n"
+              "    other.u32.abcd = seed;\n"
+              "    m.u32.abcd = 1234;\n"
+              "    m.u32.abcd = other.u16.ab * 2;\n"
+              "}\n"
+              "void f4(unsigned short x) {\n"
+              "    U m;\n"
+              "    m.u16.ab = x;\n"
+              "    m.u16.cd = 0;\n"
+              "    m.u16.ab = m.u32.abcd / 53;\n"
+              "}\n"
+              "void f5(unsigned short x, unsigned int y) {\n"
+              "    U m;\n"
+              "    m.u16.ab = x;\n"
+              "    m.u16.cd = 0;\n"
+              "    m.u16.ab = y;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = false));
+        ASSERT_EQUALS("[test.cpp:24:16] -> [test.cpp:25:16]: (style) Variable 'm.u32.abcd' is reassigned a value before the old one has been used. [redundantAssignment]\n"
+                      "[test.cpp:35:14] -> [test.cpp:37:14]: (style) Variable 'm.u16.ab' is reassigned a value before the old one has been used. [redundantAssignment]\n", errout_str());
     }
 
     void redundantVarAssignment_7133() {
@@ -11499,8 +11605,9 @@ private:
               "        x = a + b;\n"
               "    return x;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:11] -> [test.cpp:4:9]: (style) Variable 'x' is assigned an expression that holds the same value. [redundantAssignment]\n",
-                      errout_str());
+        ASSERT_EQUALS(
+            "[test.cpp:2:11] -> [test.cpp:3:9] -> [test.cpp:4:9]: (style) Variable 'x' is assigned an expression that holds the same value. [redundantAssignment]\n",
+            errout_str());
     }
 
     void varFuncNullUB() { // #4482
@@ -12879,6 +12986,13 @@ private:
               "    cif::condition mWhere;\n"
               "};\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("void g(std::string);\n" // #14928
+              "void f(std::string s) {\n"
+              "    g(std::move(s));\n"
+              "    for (char c : s) {}\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:19]: (warning) Access of moved variable 's'. [accessMoved]\n", errout_str());
     }
 
     void moveTernary()
@@ -13194,6 +13308,9 @@ private:
 
         check("struct S { static int i(); static void f(int i) {} };\n");
         ASSERT_EQUALS("[test.cpp:1:23] -> [test.cpp:1:46]: (style) Argument 'i' shadows outer function [shadowFunction]\n", errout_str());
+
+        check("struct S { void g(float f) {} void f() {} };\n");
+        ASSERT_EQUALS("[test.cpp:1:36] -> [test.cpp:1:25]: (style) Argument 'f' shadows outer function [shadowFunction]\n", errout_str());
     }
 
     void knownArgument() {

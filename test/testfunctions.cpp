@@ -86,6 +86,8 @@ private:
         TEST_CASE(checkMissingReturn5);
         TEST_CASE(checkMissingReturn6); // #13180
         TEST_CASE(checkMissingReturn7); // #14370 - FN try/catch
+        TEST_CASE(checkMissingReturn8);
+        TEST_CASE(checkMissingReturn9);
         TEST_CASE(checkMissingReturnStdInt); // #14482 - FN std::int32_t
 
         // std::move for locar variable
@@ -1925,6 +1927,24 @@ private:
               "    try { return readData(); }\n"
               "    catch (...) { }\n");
         ASSERT_EQUALS("[test.cpp:3:19]: (error) Found an exit path from function with non-void return type that has missing return statement [missingReturn]\n", errout_str());
+    }
+
+    void checkMissingReturn8() {
+        const Settings s = settingsBuilder(settings).cpp(Standards::CPP20).build();
+        check("boost::asio::awaitable<void> test() {\n"
+              "        co_return;\n"
+              "}\n",s);
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void checkMissingReturn9() {
+        check("struct S { int v; };\n"
+              " S operator/(S x, S y) { return { x.v / y.v }; }\n"
+              " S f(int a, int b) {\n"
+              "    if (b) { return S{ a } / S{ b }; }\n"
+              "    else { return {}; }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void checkMissingReturnStdInt() {// #14482 - FN

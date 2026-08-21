@@ -24,12 +24,12 @@ jobs:
       UNCRUSTIFY_VERSION: 0.80.1
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
       - name: Cache uncrustify
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: cache-uncrustify
         with:
           path: |

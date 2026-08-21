@@ -80,6 +80,7 @@ private:
         TEST_CASE(structmember32); // #14483
         TEST_CASE(structmember33);
         TEST_CASE(structmember34);
+        TEST_CASE(structmember35);
         TEST_CASE(structmember_macro);
         TEST_CASE(structmember_template_argument); // #13887 - do not report that member used in template argument is unused
         TEST_CASE(classmember);
@@ -156,6 +157,8 @@ private:
         TEST_CASE(localvar70);
         TEST_CASE(localvar71);
         TEST_CASE(localvar72);
+        TEST_CASE(localvar73);
+        TEST_CASE(localvar74);
         TEST_CASE(localvarloops); // loops
         TEST_CASE(localvaralias1);
         TEST_CASE(localvaralias2); // ticket #1637
@@ -2099,6 +2102,20 @@ private:
                                "  std::unique_ptr<int> p;\n"
                                "};\n");
         ASSERT_EQUALS("[test.cpp:2:24]: (style) struct member 'S::p' is never used. [unusedStructMember]\n", errout_str());
+    }
+
+    void structmember35() {
+        checkStructMemberUsage("struct S { int i; };\n"
+                               "int f() { return g<S>(); }\n");
+        ASSERT_EQUALS("", errout_str());
+
+        checkStructMemberUsage("struct S { int i; };\n"
+                               "int f() { A<S> *a = nullptr; (void) a; }\n");
+        ASSERT_EQUALS("", errout_str());
+
+        checkStructMemberUsage("struct S { int i; };\n"
+                               "int f() { const std::vector<S> a {}; (void) a; }\n");
+        ASSERT_EQUALS("[test.cpp:1:16]: (style) struct member 'S::i' is never used. [unusedStructMember]\n", errout_str());
     }
 
     void structmember_macro() {
@@ -4072,6 +4089,27 @@ private:
                               "  int S::* mp;\n"
                               "}\n");
         ASSERT_EQUALS("[test.cpp:4:12]: (style) Unused variable: mp [unusedVariable]\n", errout_str());
+    }
+
+    void localvar73() {
+        functionVariableUsage("struct S { S(); ~S(); };\n"
+                              "void f() {\n"
+                              "    auto a{ S() };\n"
+                              "    auto const &b{ S() };\n"
+                              "    const auto &&c{ S() };\n"
+                              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void localvar74() {
+        functionVariableUsage("struct S { void (*fp)(); };\n"
+                              "void g();\n"
+                              "void f() {\n"
+                              "    S s;\n"
+                              "    s.fp = g;\n"
+                              "    s.fp();\n"
+                              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void localvarloops() {

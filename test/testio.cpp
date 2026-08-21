@@ -44,6 +44,7 @@ private:
         TEST_CASE(fileIOwithoutPositioning);
         TEST_CASE(seekOnAppendedFile);
         TEST_CASE(fflushOnInputStream);
+        TEST_CASE(ftellCompatibility);
         TEST_CASE(incompatibleFileOpen);
         TEST_CASE(testWrongfeofUsage); // #958
 
@@ -52,6 +53,7 @@ private:
         TEST_CASE(testScanf3); // #3494
         TEST_CASE(testScanf4); // #ticket 2553
         TEST_CASE(testScanf5); // #10632
+        TEST_CASE(testScanf6);
 
         mNewTemplate = false;
         TEST_CASE(testScanfArgument);
@@ -692,6 +694,23 @@ private:
               "    fwrite(X::data(), sizeof(char), buffer.size(), d->file);\n"
               "}");
         ASSERT_EQUALS("[test.cpp:9:5]: (error) Read and write operations without a call to a positioning function (fseek, fsetpos or rewind) or fflush in between result in undefined behaviour. [IOWithoutPositioning]\n", errout_str());
+
+        check("struct MemStream {\n"
+              "    char buf[1024];\n"
+              "    int pos = 0;\n"
+              "    void fwrite(const void *ptr, size_t n) { memcpy(buf + pos, ptr, n); pos += (int)n; }\n"
+              "};\n"
+              "struct FileStream {\n"
+              "    FILE *fp;\n"
+              "    size_t _fread(void *ptr, size_t n) { return ::fread(ptr, 1, n, fp); }\n"
+              "    size_t fread(void *ptr, size_t n) { return _fread(ptr, n); }\n"
+              "    void copy_to(MemStream *dst, size_t n) {\n"
+              "        char tmp[256];\n"
+              "        fread(tmp, n);\n"
+              "        dst->fwrite(tmp, n);\n"
+              "    }\n"
+              "};\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void seekOnAppendedFile() {
@@ -727,6 +746,22 @@ private:
               "}");
         ASSERT_EQUALS("", errout_str()); // #6566
     }
+
+    void ftellCompatibility() {
+
+        check("void foo() {\n"
+              "     FILE *f = fopen(\"\", \"rt\");\n"
+              "     if (f)\n"
+              "     {\n"
+              "         extern long position;\n"
+              "         fseek(f, 0, SEEK_END);\n"
+              "         position = ftell(f);\n"
+              "         fclose(f);\n"
+              "     }\n"
+              "}\n", dinit(CheckOptions, $.portability = true));
+        ASSERT_EQUALS("[test.cpp:7:21]: (portability) ftell() result is unspecified when file is opened in mode \"t\" [ftellTextModeFile]\n", errout_str());
+    }
+
 
     void fflushOnInputStream() {
         check("void foo()\n"
@@ -873,6 +908,14 @@ private:
               "}");
         ASSERT_EQUALS("[test.cpp:3:5]: (error) Width 42 given in format string (no. 1) is larger than destination buffer 's1[42]', use %41s to prevent overflowing it. [invalidScanfFormatWidth]\n"
                       "[test.cpp:3:5]: (error) Width 42 given in format string (no. 2) is larger than destination buffer 's2[42]', use %41[a-z] to prevent overflowing it. [invalidScanfFormatWidth]\n", errout_str());
+    }
+
+    void testScanf6() {
+        ASSERT_NO_THROW(check("int f(const char *p) {\n"
+                              "        char a[3];\n"
+                              "        return sscanf(p, \"%02s\", a);\n"
+                              "}\n"));
+        ASSERT_EQUALS("", errout_str());
     }
 
 
@@ -4748,6 +4791,18 @@ private:
                       "[test.cpp:17:5]: (warning) %s in format string (no. 5) requires 'char *' but the argument type is 'signed int'. [invalidPrintfArgType_s]\n"
                       "[test.cpp:17:5]: (warning) sprintf_s format string requires 5 parameters but 6 are given. [wrongPrintfScanfArgNum]\n", errout_str());
 
+        check("int main()\n"
+              "{\n"
+              "    double value = 3.14;\n"
+              "    const size_t buffer_size = 64;\n"
+              "    char buffer[buffer_size];\n"
+              "    int precision = 2;\n"
+              "    _locale_t locale = _create_locale(LC_ALL, \"C\");\n"
+              "    _sprintf_s_l(buffer, buffer_size, \"%.*f\", locale, precision, value);\n"
+              "    _free_locale(locale);\n"
+              "    return 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void testMicrosoftSecureScanfArgument() {

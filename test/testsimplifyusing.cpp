@@ -78,6 +78,7 @@ private:
         TEST_CASE(simplifyUsing38);
         TEST_CASE(simplifyUsing39);
         TEST_CASE(simplifyUsing40);
+        TEST_CASE(simplifyUsing41);
 
         TEST_CASE(simplifyUsing8970);
         TEST_CASE(simplifyUsing8971);
@@ -945,6 +946,13 @@ private:
         const char code[] = "uint8_t f();\n" // #14876
                             "using ::std::uint8_t;";
         const char expected[] = "uint8_t f ( ) ;";
+        ASSERT_EQUALS(expected, tok(code));
+    }
+
+    void simplifyUsing41() {
+        const char code[] = "using FpHandler = void(*)(const SourceLocation&);\n"
+                            "inline FpHandler AssertImpl::m_fpHandler = nullptr;\n";
+        const char expected[] = "void ( * AssertImpl :: m_fpHandler ) ( const SourceLocation & ) ; m_fpHandler = nullptr ;";
         ASSERT_EQUALS(expected, tok(code));
     }
 

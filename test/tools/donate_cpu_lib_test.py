@@ -58,6 +58,7 @@ def test_library_includes(tmpdir):
     _test_library_includes(tmpdir, ['posix', 'gnu', 'bsd', 'opengl'], '#include\t  <GL/glut.h>')
     _test_library_includes(tmpdir, ['posix', 'gnu', 'bsd', 'nspr'], '#include\t"prtypes.h"')
     _test_library_includes(tmpdir, ['posix', 'gnu', 'bsd', 'lua'], '#include  \t<lua.h>')
+    _test_library_includes(tmpdir, ['posix', 'gnu', 'bsd', 'microsoft_gsl'], '#include <gsl/gsl>')
 
 def test_match_multiple_time(tmpdir):
     libinc = LibraryIncludes()

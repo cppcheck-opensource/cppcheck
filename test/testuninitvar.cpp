@@ -4265,7 +4265,7 @@ private:
                         "    else {}\n"
                         "    return y;\n"
                         "}");
-        TODO_ASSERT_EQUALS("", "[test.cpp:5:9] -> [test.cpp:7:12]: (warning) Uninitialized variable: y [uninitvar]\n", errout_str());
+        ASSERT_EQUALS("", errout_str()); // #4560: escaping else keeps x known, so x is true and y is initialized
 
         valueFlowUninit("int f(int a) {\n" // #6583
                         "    int x;\n"
@@ -4284,7 +4284,8 @@ private:
                         "    else y = 123;\n" // <- y is always initialized
                         "    return y;\n"
                         "}");
-        TODO_ASSERT_EQUALS("", "[test.cpp:5:9] -> [test.cpp:7:12]: (warning) Uninitialized variable: y [uninitvar]\n", errout_str());
+        ASSERT_EQUALS("",
+                      errout_str()); // #4560: fork-based condition analysis tracks x==0 -> else branch -> y initialized
 
         valueFlowUninit("void f(int x) {\n" // #3948
                         "  int value;\n"
@@ -5613,6 +5614,47 @@ private:
                         "    bar(&s);\n"
                         "}");
         ASSERT_EQUALS("[test.cpp:18:9] -> [test.cpp:12:13] -> [test.cpp:8:15]: (warning) Uninitialized variable: s->flag [uninitvar]\n", errout_str());
+
+        // A value narrowed by a nested condition (dimensions < 1 here) must survive the enclosing
+        // 'if' so a later correlated condition can be resolved: dimensions == 1 is then false, the
+        // function does not return, and the uninitialized read is reached.
+        valueFlowUninit("unsigned int g();\n"
+                        "void f(bool a) {\n"
+                        "    unsigned int dimensions = 0;\n"
+                        "    bool mightBeLarger;\n"
+                        "    if (a) {\n"
+                        "        dimensions = g();\n"
+                        "        if (dimensions >= 1)\n"
+                        "            mightBeLarger = false;\n"
+                        "    } else {\n"
+                        "        mightBeLarger = false;\n"
+                        "    }\n"
+                        "    if (dimensions == 1)\n"
+                        "        return;\n"
+                        "    if (!mightBeLarger) {}\n"
+                        "}");
+        ASSERT_EQUALS(
+            "[test.cpp:5:9] -> [test.cpp:7:24] -> [test.cpp:14:10]: (warning) Uninitialized variable: mightBeLarger [uninitvar]\n",
+            errout_str());
+
+        // Same shape, but the later condition (dimensions == 0) is implied by the narrowing, so the
+        // early return fires on the uninitialized path and there must be no warning.
+        valueFlowUninit("unsigned int g();\n"
+                        "void f(bool a) {\n"
+                        "    unsigned int dimensions = 0;\n"
+                        "    bool mightBeLarger;\n"
+                        "    if (a) {\n"
+                        "        dimensions = g();\n"
+                        "        if (dimensions >= 1)\n"
+                        "            mightBeLarger = false;\n"
+                        "    } else {\n"
+                        "        mightBeLarger = false;\n"
+                        "    }\n"
+                        "    if (dimensions == 0)\n"
+                        "        return;\n"
+                        "    if (!mightBeLarger) {}\n"
+                        "}");
+        ASSERT_EQUALS("", errout_str());
 
         // Ticket #2207 - False negative
         valueFlowUninit("void foo() {\n"
