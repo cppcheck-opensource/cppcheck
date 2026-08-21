@@ -1631,7 +1631,7 @@ static Token * createAstAtToken(Token *tok)
         do {
             tok2 = tok2->next();
             tok2->setCpp11init(false);
-            if (Token::Match(tok2, "decltype|noexcept (")) {
+            if (Token::Match(tok2, "decltype|noexcept|requires (")) {
                 AST_state state(cpp);
                 Token *tok3 = tok2->tokAt(2);
                 compileExpression(tok3, state);
