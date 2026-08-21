@@ -233,9 +233,10 @@ public:
      * @brief Returns true if this message should not be shown to the user.
      * @param errmsg error message
      * @param global use global suppressions
+     * @param inlineSupressed is true if there exists an inline suppression for this error
      * @return true if this error is suppressed.
      */
-    bool isSuppressed(const ErrorMessage &errmsg, bool global = true);
+    bool isSuppressed(const ErrorMessage &errmsg, bool global = true, bool *inlineSupressed = nullptr);
 
     /**
      * @brief Returns true if this message is "explicitly" suppressed. The suppression "id" must match textually exactly.

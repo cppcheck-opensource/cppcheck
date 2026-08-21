@@ -189,8 +189,9 @@ private:
         const auto errorMessage = SuppressionList::ErrorMessage::fromErrorMessage(msg, macroNames);
 
         bool suppressed = false;
+        bool inlineSupressed;
 
-        if (mSuppressions.nomsg.isSuppressed(errorMessage, mUseGlobalSuppressions)) {
+        if (mSuppressions.nomsg.isSuppressed(errorMessage, mUseGlobalSuppressions, &inlineSupressed)) {
             // Safety: Report critical errors to ErrorLogger
             if (mSettings.safety && ErrorLogger::isCriticalErrorId(msg.id)) {
                 mExitCode = 1;
@@ -220,7 +221,7 @@ private:
         if (!mSettings.emitDuplicates && !mErrorList.emplace(std::move(errmsg)).second)
             return;
 
-        if (mAnalyzerInformation)
+        if (mAnalyzerInformation && !inlineSupressed)
             mAnalyzerInformation->reportErr(msg);
 
         if (suppressed)
