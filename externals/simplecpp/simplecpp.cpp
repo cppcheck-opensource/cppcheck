@@ -3154,13 +3154,10 @@ std::pair<simplecpp::FileData *, bool> simplecpp::FileDataCache::tryload(FileDat
     mImpl->mIdMap.emplace(fileId, data);
     mData.emplace_back(data);
 
-    if (mLoadCallback)
-        mLoadCallback(*data);
-
     return {data, true};
 }
 
-std::pair<simplecpp::FileData *, bool> simplecpp::FileDataCache::get(const std::string &sourcefile, const std::string &header, const simplecpp::DUI &dui, bool systemheader, std::vector<std::string> &filenames, simplecpp::OutputList *outputList)
+std::pair<simplecpp::FileData *, bool> simplecpp::FileDataCache::get_private(const std::string &sourcefile, const std::string &header, const simplecpp::DUI &dui, bool systemheader, std::vector<std::string> &filenames, simplecpp::OutputList *outputList)
 {
     if (isAbsolutePath(header)) {
         auto ins = mNameMap.emplace(simplecpp::simplifyPath(header), nullptr);
@@ -3204,6 +3201,16 @@ std::pair<simplecpp::FileData *, bool> simplecpp::FileDataCache::get(const std::
     }
 
     return {nullptr, false};
+}
+
+std::pair<simplecpp::FileData *, bool> simplecpp::FileDataCache::get(const std::string &sourcefile, const std::string &header, const simplecpp::DUI &dui, bool systemheader, std::vector<std::string> &filenames, simplecpp::OutputList *outputList)
+{
+    auto ret = get_private(sourcefile, header, dui, systemheader, filenames, outputList);
+
+    if (mLoadCallback && ret.first)
+        mLoadCallback(*ret.first, ret.second);
+
+    return ret;
 }
 
 void simplecpp::FileDataCache::clear()

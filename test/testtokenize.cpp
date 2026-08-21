@@ -608,11 +608,11 @@ private:
         simplecpp::TokenList tokens1(code, files, filename, &outputList);
         Preprocessor preprocessor(tokens1, settings, *this, Path::identify(tokens1.getFiles()[0], false));
         std::list<Directive> directives;
-        preprocessor.setLoadCallback([&](const simplecpp::FileData &data) {
+        preprocessor.setLoadCallback([&](const simplecpp::FileData &data, bool) {
             Preprocessor::createDirectives(data.tokens, directives);
         });
         preprocessor.createDirectives(directives);
-        ASSERT(preprocessor.loadFiles(files));
+        ASSERT(preprocessor.loadAllIncludes(files));
         (void)preprocessor.reportOutput(outputList, true);
 
         TokenList tokenlist{settings, Path::identify(filename, false)};

@@ -499,7 +499,7 @@ namespace simplecpp {
             return mData.cend();
         }
 
-        using load_callback_type = std::function<void (FileData &)>;
+        using load_callback_type = std::function<void (FileData &, bool)>;
 
         void set_load_callback(load_callback_type cb) {
             mLoadCallback = std::move(cb);
@@ -512,6 +512,7 @@ namespace simplecpp {
         using name_map_type = std::unordered_map<std::string, FileData *>;
 
         std::pair<FileData *, bool> tryload(name_map_type::iterator &name_it, const DUI &dui, std::vector<std::string> &filenames, OutputList *outputList);
+        std::pair<FileData *, bool> get_private(const std::string &sourcefile, const std::string &header, const DUI &dui, bool systemheader, std::vector<std::string> &filenames, OutputList *outputList);
 
         container_type mData;
         name_map_type mNameMap;

@@ -27,6 +27,7 @@
 #include <fstream>
 #include <functional>
 #include <list>
+#include <set>
 #include <string>
 
 class ErrorMessage;
@@ -67,6 +68,8 @@ public:
     bool analyzeFile(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId, std::size_t hash, std::list<ErrorMessage> &errors, bool debug = false);
     void reportErr(const ErrorMessage &msg);
     void setFileInfo(const std::string &check, const std::string &fileInfo);
+    void writeIncludes(const std::set<std::string> &files);
+    std::set<std::string> getIncludes(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId);
     static std::string getAnalyzerInfoFile(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId);
 
     void reopen(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId);
