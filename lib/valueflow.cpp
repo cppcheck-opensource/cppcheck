@@ -1087,6 +1087,24 @@ static void valueFlowImpossibleValues(TokenList& tokenList, const Settings& sett
             upper.bound = ValueFlow::Value::Bound::Lower;
             upper.setImpossible();
             setTokenValue(tok, std::move(upper), settings);
+        } else if (tok->isCast() && tok->valueType() && tok->valueType()->isIntegral() && !tok->valueType()->pointer) {
+            MathLib::bigint minValue;
+            MathLib::bigint maxValue;
+            if (!ValueFlow::getMinMaxValues(tok->valueType(), settings.platform, minValue, maxValue))
+                continue;
+
+            if (minValue > std::numeric_limits<MathLib::bigint>::min()) {
+                ValueFlow::Value lower{minValue - 1};
+                lower.bound = ValueFlow::Value::Bound::Upper;
+                lower.setImpossible();
+                setTokenValue(tok, std::move(lower), settings);
+            }
+            if (maxValue < std::numeric_limits<MathLib::bigint>::max()) {
+                ValueFlow::Value upper{maxValue + 1};
+                upper.bound = ValueFlow::Value::Bound::Lower;
+                upper.setImpossible();
+                setTokenValue(tok, std::move(upper), settings);
+            }
         } else if (astIsUnsigned(tok) && !astIsPointer(tok)) {
             std::vector<MathLib::bigint> minvalue = minUnsignedValue(tok);
             if (minvalue.empty())
@@ -5138,6 +5156,26 @@ static bool isIntegralOrPointer(const Token* tok)
     return false;
 }
 
+/**
+ * @brief Check if the token is an arithmetic operation whose result type is
+ * an unsigned integer, i.e. arithmetic that may wrap around.
+ *
+ * Impossible bounds cannot be propagated through such arithmetic because
+ * wrap-around invalidates the bounds.
+ */
+static bool isUnsignedArithmeticResult(const Token* tok)
+{
+    if (!Token::Match(tok, "+|-|*"))
+        return false;
+    const ValueType* vt = tok->valueType();
+    return vt && vt->isIntegral() && vt->pointer == 0 &&
+           vt->sign == ValueType::Sign::UNSIGNED &&
+           (vt->type == ValueType::Type::INT ||
+            vt->type == ValueType::Type::LONG ||
+            vt->type == ValueType::Type::LONGLONG ||
+            vt->type == ValueType::Type::UNKNOWN_INT);
+}
+
 static void valueFlowInferCondition(TokenList& tokenlist, const Settings& settings)
 {
     for (Token* tok = tokenlist.front(); tok; tok = tok->next()) {
@@ -5158,8 +5196,31 @@ static void valueFlowInferCondition(TokenList& tokenlist, const Settings& settin
                     }
                 }
             } else if (isIntegralOrPointer(tok->astOperand1()) && isIntegralOrPointer(tok->astOperand2())) {
+                std::list<ValueFlow::Value> lhsValues = tok->astOperand1()->values();
+                std::list<ValueFlow::Value> rhsValues = tok->astOperand2()->values();
+                // Impossible bounds cannot be propagated through arithmetic whose
+                // result type is unsigned because wrap-around invalidates the bound
+                const bool isUnsignedArith = isUnsignedArithmeticResult(tok);
+                const auto isImpossibleIntegralBound = [](const ValueFlow::Value& v) {
+                    return v.isIntValue() && v.isImpossible() && v.bound != ValueFlow::Value::Bound::Point;
+                };
+                if (isUnsignedArith) {
+                    lhsValues.remove_if(isImpossibleIntegralBound);
+                    rhsValues.remove_if(isImpossibleIntegralBound);
+                    // When the impossible bounds are removed, a conditionally
+                    // derived value (e.g. an interprocedural or branch-possible
+                    // value with a different path) could collapse the interval to
+                    // a scalar and produce a point value that loses its condition
+                    // and path provenance. Drop those values as well so only
+                    // unconditional knowledge is used to infer a point value.
+                    const auto isConditionalPossibleValue = [](const ValueFlow::Value& v) {
+                        return v.isIntValue() && !v.isKnown() && (v.condition != nullptr || v.path != 0);
+                    };
+                    lhsValues.remove_if(isConditionalPossibleValue);
+                    rhsValues.remove_if(isConditionalPossibleValue);
+                }
                 std::vector<ValueFlow::Value> result =
-                    infer(makeIntegralInferModel(), tok->str(), tok->astOperand1()->values(), tok->astOperand2()->values());
+                    infer(makeIntegralInferModel(), tok->str(), lhsValues, rhsValues);
                 for (ValueFlow::Value& value : result) {
                     setTokenValue(tok, std::move(value), settings);
                 }

@@ -164,6 +164,7 @@ private:
         TEST_CASE(array_index_74); // #11088
         TEST_CASE(array_index_75);
         TEST_CASE(array_index_76);
+        TEST_CASE(array_index_77);
         TEST_CASE(array_index_multidim);
         TEST_CASE(array_index_switch_in_for);
         TEST_CASE(array_index_for_in_for);   // FP: #2634
@@ -2009,6 +2010,34 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:3:12]: (error) Array 's[1]' accessed at index 1, which is out of bounds. [arrayIndexOutOfBounds]\n"
                       "[test.cpp:7:12]: (error) Array 's[1]' accessed at index 1, which is out of bounds. [arrayIndexOutOfBounds]\n",
+                      errout_str());
+    }
+
+    void array_index_77()
+    {
+        // The loop index x is at least colsToTranslate, and the cast range of
+        // (int)cloudDx only provides the trivial floor of int. x - colsToTranslate
+        // must not be reported as a negative index.
+        check("static float cloudDx;\n"
+              "static int g_dst[400];\n"
+              "static int g_src[400];\n"
+              "void updateClouds(float elapsedTime) {\n"
+              "  cloudDx += elapsedTime * 5;\n"
+              "  if (cloudDx >= 1.0f) {\n"
+              "    const int colsToTranslate = (int)cloudDx;\n"
+              "    for (int x = colsToTranslate; x < 400; ++x) {\n"
+              "      g_dst[x - colsToTranslate] = g_src[x];\n"
+              "    }\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // A genuinely negative literal index must still be reported
+        check("static int a[10];\n"
+              "void f() {\n"
+              "  a[-1] = 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:4]: (error) Array 'a[10]' accessed at index -1, which is out of bounds. [negativeIndex]\n",
                       errout_str());
     }
 

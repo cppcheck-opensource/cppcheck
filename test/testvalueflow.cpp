@@ -9613,6 +9613,49 @@ private:
                "}\n";
         ASSERT_EQUALS(true, testValueOfXImpossible(code, 3U, "a", -1));
         ASSERT_EQUALS(true, testValueOfXImpossible(code, 3U, -1));
+
+        const Settings settingsUnix64 = settingsBuilder().platform(Platform::Type::Unix64).build();
+        code = "void f(unsigned long long x) {\n"
+               "    return (unsigned int)x;\n"
+               "}\n";
+        SimpleTokenizer tokenizer(settingsUnix64, *this);
+        ASSERT(tokenizer.tokenize(code));
+        const Token* returnTok = Token::findmatch(tokenizer.tokens(), "return (");
+        ASSERT(returnTok && returnTok->next());
+        const std::list<ValueFlow::Value>& castValues = returnTok->next()->values();
+        ASSERT(std::any_of(castValues.cbegin(), castValues.cend(), [](const ValueFlow::Value& value) {
+            return value.isImpossible() && value.intvalue == -1;
+        }));
+        ASSERT(std::any_of(castValues.cbegin(), castValues.cend(), [](const ValueFlow::Value& value) {
+            return value.isImpossible() && value.intvalue == 4294967296;
+        }));
+
+        // Impossible bounds on a cast must not be propagated through
+        // arithmetic with unsigned result type, since wrap-around invalidates the bound
+        code = "void f(int x) {\n"
+               "    return (unsigned int)x - 1u;\n"
+               "}\n";
+        SimpleTokenizer tokenizer2(settingsUnix64, *this);
+        ASSERT(tokenizer2.tokenize(code));
+        const Token* minusTok = Token::findsimplematch(tokenizer2.tokens(), "-");
+        ASSERT(minusTok);
+        for (const ValueFlow::Value& value : minusTok->values()) {
+            ASSERT(!(value.isImpossible() && value.isIntValue() &&
+                     value.bound != ValueFlow::Value::Bound::Point && value.intvalue == 4294967295));
+        }
+
+        // Known values are still propagated through unsigned arithmetic
+        code = "void f(int x) {\n"
+               "    unsigned int y = 5u;\n"
+               "    return y - 1u;\n"
+               "}\n";
+        SimpleTokenizer tokenizer3(settingsUnix64, *this);
+        ASSERT(tokenizer3.tokenize(code));
+        const Token* minusTok3 = Token::findsimplematch(tokenizer3.tokens(), "-");
+        ASSERT(minusTok3);
+        ASSERT(std::any_of(minusTok3->values().cbegin(), minusTok3->values().cend(), [](const ValueFlow::Value& value) {
+            return value.isKnown() && value.isIntValue() && value.intvalue == 4;
+        }));
     }
 
     void valueFlowImpossibleIncDec()
