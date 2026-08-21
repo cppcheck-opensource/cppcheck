@@ -435,6 +435,7 @@ private:
         TEST_CASE(astthrowdelete);
         TEST_CASE(asttrailingdecltype);
         TEST_CASE(astnoexcept);
+        TEST_CASE(astnoexceptrequires);
         TEST_CASE(astvardecl);
         TEST_CASE(astnewscoped);
         TEST_CASE(astdecltypescope);
@@ -7581,6 +7582,9 @@ private:
     void astnoexcept() {
         ASSERT_EQUALS("noexceptaswap.b((", testAst("void f() noexcept(noexcept(a.swap(b))) {}"));
         ASSERT_EQUALS("{([ noexceptaswap.b((", testAst("[]() noexcept(noexcept(a.swap(b))) {}"));
+    }
+    void astnoexceptrequires() {
+        ASSERT_EQUALS("N5>=", testAst("void f() noexcept requires (N >= 5) {}"));
     }
 
     //Verify that returning a newly constructed object generates the correct AST even when the class name is scoped
