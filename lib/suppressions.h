@@ -168,6 +168,12 @@ public:
         bool isPolyspace{};
 
         enum : std::int8_t { NO_LINE = -1 };
+
+    private:
+        bool isFileNameMatch(const std::string &errorFileName) const;
+
+        static constexpr std::size_t mFileNameMatchCacheMaxEntries = 256;
+        mutable std::map<std::string, bool> mFileNameMatchCache;
     };
 
     /**
