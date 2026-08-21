@@ -888,7 +888,9 @@ void ProjectFileDialog::addExcludeFile()
     QMap<QString,QString> filters;
     filters[tr("Source files")] = "*.c *.cpp";
     filters[tr("All files")] = "*.*";
-    addExcludePath(QFileDialog::getOpenFileName(this, tr("Exclude file"), dir.canonicalPath(), toFilterString(filters)));
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Exclude file"), dir.canonicalPath(), toFilterString(filters));
+    if (!fileName.isEmpty())
+        addExcludePath(mProjectFile->getRelativePath(fileName));
 }
 
 void ProjectFileDialog::editExcludePath()

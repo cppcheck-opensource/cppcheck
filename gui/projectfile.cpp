@@ -751,9 +751,7 @@ void ProjectFile::setCheckPaths(const QStringList &paths)
 
 void ProjectFile::setExcludedPaths(const QStringList &paths)
 {
-    mExcludedPaths.clear();
-    for (const QString &path : paths)
-        mExcludedPaths << (QFileInfo(path).isAbsolute() ? getRelativePath(path) : path);
+    mExcludedPaths = paths;
 }
 
 void ProjectFile::setLibraries(const QStringList &libraries)
@@ -1199,7 +1197,7 @@ QString ProjectFile::getRelativePath(const QString &absolutePath) const
 {
     const QDir dir(QFileInfo(mFilename).absolutePath());
     const QString relativePath(dir.relativeFilePath(absolutePath));
-    if (relativePath.startsWith("../.."))
+    if (relativePath.startsWith("../../..") || absolutePath.length() < relativePath.length())
         return absolutePath;
     return relativePath;
 }

@@ -39,7 +39,9 @@ private slots:
 
     void emptyUserInclude() const;
 
-    void setExcludedPathsRelative() const;
-    void setExcludedPathsTooFarUp() const;
-    void setExcludedPathsAlreadyRelative() const;
+    void getRelativePathRelative() const;
+    void getRelativePathTwoUp() const;
+    void getRelativePathTooFarUp() const;
+    void getRelativePathSubfolder() const;
+    void getRelativePathAbsoluteShorter() const;
 };
