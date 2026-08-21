@@ -6546,6 +6546,79 @@ private:
                       "[test.cpp:4:13]: (style) Comparing expression of type 'const unsigned int &' against value 4294967295. Condition is always false. [compareValueOutOfTypeRangeError]\n",
                       errout_str());
 
+        check("typedef unsigned int uint32;\n"
+              "typedef unsigned long long uint64;\n"
+              "typedef long long sint64;\n"
+              "void f(uint32 x) {\n"
+              "    uint64 tmp = ((uint64)x) + 1ULL;\n"
+              "    if (tmp > 4294967295ULL)\n"
+              "        tmp = 4294967295ULL;\n"
+              "    if ((((sint64)((uint32)tmp)) - 1LL) < 0LL) {}\n"
+              "    if ((((sint64)((uint32)tmp)) - 1LL) > 4294967295LL) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:9:41]: (style) Condition '(((long long)((unsigned int)tmp))-1LL)>4294967295LL' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        check("typedef unsigned int uint32;\n"
+              "typedef unsigned long long uint64;\n"
+              "typedef long long sint64;\n"
+              "void f(uint64 tmp) {\n"
+              "    if (tmp > 4294967295ULL)\n"
+              "        tmp = 4294967295ULL;\n"
+              "    if (static_cast<sint64>(static_cast<uint32>(tmp)) - 1LL > 4294967295LL) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:7:61]: (style) Condition 'static_cast<long long>(static_cast<unsigned int>(tmp))-1LL>4294967295LL' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        // cast directly around variable: both the range-based and the declared-type
+        // analysis can prove the condition invariant; diag() must prevent duplicates
+        check("void f(unsigned char c) {\n"
+              "    if ((unsigned char)c > 255) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:28]: (style) Comparing expression of type 'unsigned char' against value 255. Condition is always false. [compareValueOutOfTypeRangeError]\n",
+                      errout_str());
+
+        check("void f(unsigned char c) {\n"
+              "    if ((unsigned char)c == 256) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:29]: (style) Comparing expression of type 'unsigned char' against value 256. Condition is always false. [compareValueOutOfTypeRangeError]\n",
+                      errout_str());
+
+        check("void f(unsigned int u) {\n"
+              "    if ((unsigned int)u > 4294967295ULL) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:27]: (style) Comparing expression of type 'unsigned int' against value 4294967295. Condition is always false. [compareValueOutOfTypeRangeError]\n",
+                      errout_str());
+
+        check("void f(unsigned short s) {\n"
+              "    if ((unsigned int)s > 4294967295ULL) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:27]: (style) Comparing expression of type 'unsigned int' against value 4294967295. Condition is always false. [compareValueOutOfTypeRangeError]\n",
+                      errout_str());
+
+        // wchar_t range is derived through ValueType::getSizeOf()
+        check("void f(wchar_t c) {\n"
+              "    if ((wchar_t)c > 0x7fffffff) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:20]: (style) Condition '(wchar_t)c>0x7fffffff' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        check("void f(unsigned int x) {\n"
+              "    if (-(signed char)x < -129) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:25]: (style) Condition '-(char)x<-129' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        check("void f(int x) {\n"
+              "    if ((x) > 0) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f(unsigned int x) {\n"
+              "    if ((unsigned int)x > 0) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
         check("void f() {\n"
               "    long long ll = 1024 * 1024 * 1024;\n"
               "    if (ll * 8 < INT_MAX) {}\n"

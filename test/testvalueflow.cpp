@@ -9572,6 +9572,22 @@ private:
                "}\n";
         ASSERT_EQUALS(true, testValueOfXImpossible(code, 3U, "a", -1));
         ASSERT_EQUALS(true, testValueOfXImpossible(code, 3U, -1));
+
+        const Settings settingsUnix64 = settingsBuilder().platform(Platform::Type::Unix64).build();
+        code = "void f(unsigned long long x) {\n"
+               "    return (unsigned int)x;\n"
+               "}\n";
+        SimpleTokenizer tokenizer(settingsUnix64, *this);
+        ASSERT(tokenizer.tokenize(code));
+        const Token* returnTok = Token::findmatch(tokenizer.tokens(), "return (");
+        ASSERT(returnTok && returnTok->next());
+        const std::list<ValueFlow::Value>& castValues = returnTok->next()->values();
+        ASSERT(std::any_of(castValues.cbegin(), castValues.cend(), [](const ValueFlow::Value& value) {
+            return value.isImpossible() && value.intvalue == -1;
+        }));
+        ASSERT(std::any_of(castValues.cbegin(), castValues.cend(), [](const ValueFlow::Value& value) {
+            return value.isImpossible() && value.intvalue == 4294967296;
+        }));
     }
 
     void valueFlowImpossibleIncDec()
