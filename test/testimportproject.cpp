@@ -23,10 +23,8 @@
 #include "settings.h"
 #include "standards.h"
 #include "suppressions.h"
-#include "xml.h"
 
 #include <list>
-#include <map>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -37,8 +35,6 @@ class TestImporter final : public ImportProject {
 public:
     using ImportProject::importCompileCommands;
     using ImportProject::importCppcheckGuiProject;
-    using ImportProject::importVcxproj;
-    using ImportProject::SharedItemsProject;
     using ImportProject::collectArgs;
     using ImportProject::fsSetDefines;
     using ImportProject::fsSetIncludePaths;
@@ -82,7 +78,6 @@ private:
         TEST_CASE(importCppcheckGuiProjectDuplicateSuppressions);
         TEST_CASE(importCppcheckGuiProjectPremiumMisra);
         TEST_CASE(ignorePaths);
-        TEST_CASE(testVcxprojUnicode);
         TEST_CASE(testCollectArgs1);
         TEST_CASE(testCollectArgs2);
         TEST_CASE(testCollectArgs3);
@@ -112,7 +107,7 @@ private:
     void setIncludePaths1() const {
         FileSettings fs{"test.cpp", Standards::Language::CPP, 0};
         std::list<std::string> in(1, "../include");
-        std::map<std::string, std::string, cppcheck::stricmp> variables;
+        VariablesMap variables;
         TestImporter::fsSetIncludePaths(fs, "abc/def/", in, variables);
         ASSERT_EQUALS(1U, fs.includePaths.size());
         ASSERT_EQUALS("abc/include/", fs.includePaths.front());
@@ -121,7 +116,7 @@ private:
     void setIncludePaths2() const {
         FileSettings fs{"test.cpp", Standards::Language::CPP, 0};
         std::list<std::string> in(1, "$(SolutionDir)other");
-        std::map<std::string, std::string, cppcheck::stricmp> variables;
+        VariablesMap variables;
         variables["SolutionDir"] = "c:/abc/";
         TestImporter::fsSetIncludePaths(fs, "/home/fred", in, variables);
         ASSERT_EQUALS(1U, fs.includePaths.size());
@@ -131,7 +126,7 @@ private:
     void setIncludePaths3() const { // macro names are case insensitive
         FileSettings fs{"test.cpp", Standards::Language::CPP, 0};
         std::list<std::string> in(1, "$(SOLUTIONDIR)other");
-        std::map<std::string, std::string, cppcheck::stricmp> variables;
+        VariablesMap variables;
         variables["SolutionDir"] = "c:/abc/";
         TestImporter::fsSetIncludePaths(fs, "/home/fred", in, variables);
         ASSERT_EQUALS(1U, fs.includePaths.size());
@@ -595,59 +590,6 @@ private:
         ASSERT_EQUALS(0, project.fileSettings.size());
     }
 
-    void testVcxprojUnicode() const
-    {
-        const char vcxproj[] = R"-(
-<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|Win32">
-      <Configuration>Debug</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|Win32">
-      <Configuration>Release</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-  </ItemGroup>
-  <PropertyGroup Label="Configuration">
-    <!-- Only to test that the last configuration entry overwrites this -->
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
-    <CharacterSet>NotSet</CharacterSet>
-    <UseOfMfc>Static</UseOfMfc>
-  </PropertyGroup>
-  <ItemGroup>
-    <ClCompile Include="main.cpp" />
-  </ItemGroup>
-</Project>
-)-";
-        tinyxml2::XMLDocument doc;
-        ASSERT_EQUALS(tinyxml2::XML_SUCCESS, doc.Parse(vcxproj, sizeof(vcxproj)));
-        TestImporter project;
-        std::map<std::string, std::string, cppcheck::stricmp> variables;
-        std::vector<TestImporter::SharedItemsProject> cache;
-        ASSERT_EQUALS(project.importVcxproj("test.vcxproj", doc, variables, {}, {}, cache), true);
-        ASSERT_EQUALS(project.fileSettings.size(), 2);
-        ASSERT(project.fileSettings.front().defines.find(";UNICODE=1;") != std::string::npos);
-        ASSERT(project.fileSettings.front().defines.find(";_UNICODE=1") != std::string::npos);
-        ASSERT(project.fileSettings.front().defines.find(";_UNICODE=1;") == std::string::npos); // No duplicates
-        ASSERT_EQUALS(project.fileSettings.front().useMfc, false);
-        ASSERT(project.fileSettings.back().defines.find(";UNICODE=1;") == std::string::npos);
-        ASSERT(project.fileSettings.back().defines.find(";_UNICODE=1") == std::string::npos);
-        ASSERT_EQUALS(project.fileSettings.back().useMfc, true);
-    }
-
     void testCollectArgs1() const
     {
         std::vector<std::string> args;
@@ -756,8 +698,26 @@ private:
         ASSERT(cppcheck::testing::evaluateVcxprojCondition(" $(Configuration.EndsWith('AddressSanitizer'))", "Debug-AddressSanitizer", "Win32"));
         ASSERT(cppcheck::testing::evaluateVcxprojCondition(" $(Configuration.Contains('Address'))", "Debug-AddressSanitizer", "Win32"));
         ASSERT(cppcheck::testing::evaluateVcxprojCondition(" $(Configuration.Contains ( 'Address'  ) )", "Debug-AddressSanitizer", "Win32"));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition(" $(Configuration.StartsWith('Release'))", "Debug-AddressSanitizer", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition(" $(Platform.Contains('32'))", "Debug", "Win32"));
         ASSERT(cppcheck::testing::evaluateVcxprojCondition(" $(Configuration.Contains('Address')) And '$(Platform)' == 'Win32'", "Debug-AddressSanitizer", "Win32"));
         ASSERT(cppcheck::testing::evaluateVcxprojCondition(" ($(Configuration.Contains('Address')) ) And ( '$(Platform)' == 'Win32')", "Debug-AddressSanitizer", "Win32"));
+        // Relational operators - integer
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("'14' >= '14'", "", ""));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("'15' > '14'", "", ""));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("'13' > '14'", "", ""));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("'13' < '14'", "", ""));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("'15' < '14'", "", ""));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("'13' <= '14'", "", ""));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("'14' <= '14'", "", ""));
+        // Relational operators - version
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("'14.0' >= '14.0'", "", ""));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("'14.1' >= '14.0'", "", ""));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("'13.0' >= '14.0'", "", ""));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("'1.10.0.0' > '1.9.0.0'", "", ""));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("'v14.0' >= '14.0'", "", ""));
+        // Relational operators - error case
+        ASSERT_THROW_EQUALS(cppcheck::testing::evaluateVcxprojCondition("'14.0' >= ''", "", ""), std::runtime_error, "Cannot compare '14.0' and ''");
         ASSERT_THROW_EQUALS(cppcheck::testing::evaluateVcxprojCondition("And", "", ""), std::runtime_error, "Invalid condition: 'And'");
         ASSERT_THROW_EQUALS(cppcheck::testing::evaluateVcxprojCondition("Or", "", ""), std::runtime_error, "Invalid condition: 'Or'");
         ASSERT_THROW_EQUALS(cppcheck::testing::evaluateVcxprojCondition("!", "", ""), std::runtime_error, "Invalid condition: '!'");
@@ -766,7 +726,11 @@ private:
         ASSERT_THROW_EQUALS(cppcheck::testing::evaluateVcxprojCondition("'' == '')", "", ""), std::runtime_error, "unmatched ')' in condition '' == '')");
         ASSERT_THROW_EQUALS(cppcheck::testing::evaluateVcxprojCondition("''", "", ""), std::runtime_error, "Invalid condition: ''''");
         ASSERT_THROW_EQUALS(cppcheck::testing::evaluateVcxprojCondition("'' == '", "", ""), std::runtime_error, "Can not tokenize condition");
-        ASSERT_THROW_EQUALS(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.Lower())", "", ""), std::runtime_error, "Missing operator");
+        // ToUpper / ToLower
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.ToUpper()) == 'DEBUG'", "Debug", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.ToLower()) == 'debug'", "Debug", "Win32"));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("$(Configuration.ToUpper()) == 'debug'", "Debug", "Win32"));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("$(Configuration.ToUpper()) == 'RELEASE'", "Debug", "Win32"));
         // invalid expression in => no error. We are ok with that as long as we don't crash
         ASSERT(!cppcheck::testing::evaluateVcxprojCondition("' ' && ' '", "", ""));
     }
