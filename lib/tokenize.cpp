@@ -5241,7 +5241,7 @@ static Token * matchMemberVarName(const Member &var, const std::list<ScopeInfo2>
 {
     Token *tok = matchMemberName(var, scopeInfo);
     if (Token::Match(tok, "%name%")) {
-        if (!tok->next() || tok->strAt(1) != "(" || (tok->tokAt(2) && tok->tokAt(2)->isLiteral()))
+        if (!tok->next() || tok->strAt(1) != "(" || (tok->tokAt(2) && (tok->tokAt(2)->isLiteral() || tok->tokAt(2)->isOp())))
             return tok;
     }
     return nullptr;
@@ -5341,7 +5341,7 @@ void Tokenizer::setVarIdPass2()
             }
             if (!tok->next())
                 syntaxError(tok);
-            if (Token::Match(tok, "%name% (") && !(tok->tokAt(2) && tok->tokAt(2)->isLiteral()))
+            if (Token::Match(tok, "%name% (") && !(tok->tokAt(2) && (tok->tokAt(2)->isLiteral() || tok->tokAt(2)->isOp())))
                 allMemberFunctions.emplace_back(scope, usingnamespaces, tok1);
             else
                 allMemberVars.emplace_back(scope, usingnamespaces, tok1);
