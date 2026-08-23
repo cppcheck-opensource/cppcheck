@@ -647,8 +647,8 @@ static bool checkBufferSize(const Token *ftok, const Library::ArgumentChecks::Mi
     case Library::ArgumentChecks::MinSize::Type::ARGVALUE: {
         if (arg) {
             const ValueFlow::Value* argVal = arg->hasKnownIntValue() ?
-                arg->getKnownValue(ValueFlow::Value::ValueType::INT) :
-                arg->getMaxValue(/*condition*/ true);
+                                             arg->getKnownValue(ValueFlow::Value::ValueType::INT) :
+                                             arg->getMaxValue(/*condition*/ true);
             if (!argVal)
                 break;
             MathLib::bigint myMinsize = argVal->intvalue;
