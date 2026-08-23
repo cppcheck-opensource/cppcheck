@@ -84,6 +84,7 @@ private:
         TEST_CASE(checkPlistOutput);
         TEST_CASE(premiumResultsCache);
         TEST_CASE(purgedConfiguration);
+        TEST_CASE(cmdFileName);
     }
 
     void getErrorMessages() const {
@@ -619,6 +620,20 @@ private:
         auto it = errorLogger.errmsgs.cbegin();
         ASSERT_EQUALS("test.cpp:0:0: information: The configuration 'X=X' was not checked because its code equals another one. [purgedConfiguration]",
                       it->toString(false, templateFormat, ""));
+    }
+
+    void cmdFileName() const {
+        ASSERT_EQUALS("x", CppCheck::cmdFileName("x"));
+        ASSERT_EQUALS("\" \"", CppCheck::cmdFileName(" "));
+        ASSERT_THROW_EQUALS(CppCheck::cmdFileName("\t"), std::runtime_error, "Cppcheck does not allow character <tab> in filename \t");
+        ASSERT_THROW_EQUALS(CppCheck::cmdFileName("\r"), std::runtime_error, "Cppcheck does not allow character <carriage-return> in filename \r");
+        ASSERT_THROW_EQUALS(CppCheck::cmdFileName("\n"), std::runtime_error, "Cppcheck does not allow character <new-line> in filename \n");
+        ASSERT_THROW_EQUALS(CppCheck::cmdFileName(";"), std::runtime_error, "Cppcheck does not allow character ; in filename ;");
+        ASSERT_THROW_EQUALS(CppCheck::cmdFileName(">"), std::runtime_error, "Cppcheck does not allow character > in filename >");
+        ASSERT_THROW_EQUALS(CppCheck::cmdFileName("<"), std::runtime_error, "Cppcheck does not allow character < in filename <");
+        ASSERT_THROW_EQUALS(CppCheck::cmdFileName("|"), std::runtime_error, "Cppcheck does not allow character | in filename |");
+        ASSERT_THROW_EQUALS(CppCheck::cmdFileName("`"), std::runtime_error, "Cppcheck does not allow character ` in filename `");
+        ASSERT_THROW_EQUALS(CppCheck::cmdFileName("$"), std::runtime_error, "Cppcheck does not allow character $ in filename $");
     }
 
     // TODO: test suppressions
