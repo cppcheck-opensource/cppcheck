@@ -760,9 +760,9 @@ namespace {
 
         // Replace "And" and "Or" with "&&" and "||"
         for (Token *tok = tokenlist.front(); tok; tok = tok->next()) {
-            if (tok->str() == "And")
+            if (caseInsensitiveStringCompare(tok->str(), "and") == 0)
                 tok->str("&&");
-            else if (tok->str() == "Or")
+            else if (caseInsensitiveStringCompare(tok->str(), "or") == 0)
                 tok->str("||");
         }
 
