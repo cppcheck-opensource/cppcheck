@@ -399,8 +399,7 @@ private:
             ASSERT(settings.library.load("", library, false).errorcode == Library::ErrorCode::OK);
         std::vector<std::string> files;
         simplecpp::OutputList outputList;
-        simplecpp::DUI dui;
-        simplecpp::TokenList tokens(code,files,"test.c",dui,&outputList);
+        simplecpp::TokenList tokens(code, files, "test.c", {}, &outputList);
         Preprocessor preprocessor(tokens, settings, *this, Standards::Language::C);
         std::set<std::string> configs = { "" };
         std::set<std::string> configDefines = { "__cplusplus" };
