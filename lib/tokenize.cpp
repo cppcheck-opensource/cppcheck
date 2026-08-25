@@ -5647,6 +5647,8 @@ void Tokenizer::createLinks2()
                 const Token* end = type.top()->findClosingBracket();
                 if (Token::Match(end, "> %comp%|;|.|=|{|}|(|)|::"))
                     break;
+                if (Token::Match(end, "> %name% ("))
+                    break;
                 // Variable declaration
                 if (Token::Match(end, "> %var% ;") && (type.top()->tokAt(-2) == nullptr || Token::Match(type.top()->tokAt(-2), ";|}|{")))
                     break;
