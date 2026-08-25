@@ -3935,13 +3935,18 @@ private:
         }
 
         {
-            const char code[] = "std::enable_if_t<0 || 1, void> f() {}\n"; // #14982
+            const char code[] = "std::enable_if_t<0 || 1, void> f() {}\n" // #14982
+                                "std::enable_if_t<0 || 1, void> S::g() {}\n";
             SimpleTokenizer tokenizer(settingsDefault, *this);
             ASSERT(tokenizer.tokenize(code));
             const Token* tok1 = Token::findsimplematch(tokenizer.tokens(), "< 0");
             const Token* tok2 = Token::findsimplematch(tok1, "> f");
             ASSERT_EQUALS(true, tok1->link() == tok2);
             ASSERT_EQUALS(true, tok2->link() == tok1);
+            const Token* tok3 = Token::findsimplematch(tok2, "< 0");
+            const Token* tok4 = Token::findsimplematch(tok3, "> S");
+            ASSERT_EQUALS(true, tok3->link() == tok4);
+            ASSERT_EQUALS(true, tok4->link() == tok3);
         }
     }
 
