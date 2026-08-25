@@ -411,9 +411,11 @@ private:
                        settings.library.defines().end(),
                        std::inserter(configDefines, configDefines.end()),
                        getDefineName);
-        preprocessor.setLoadCallback([&](simplecpp::FileData &data) {
-            Preprocessor::removeComments(data.tokens);
-            preprocessor.getConfigs(data.filename, data.tokens, configDefines, configs);
+        preprocessor.setLoadCallback([&](simplecpp::FileData &data, bool loaded) {
+            if (loaded) {
+                Preprocessor::removeComments(data.tokens);
+                preprocessor.getConfigs(data.filename, data.tokens, configDefines, configs);
+            }
         });
         preprocessor.removeComments();
         preprocessor.getConfigs(configDefines, configs);
@@ -430,8 +432,10 @@ private:
         std::vector<std::string> files;
         simplecpp::TokenList tokens(code,files,"test.c");
         Preprocessor preprocessor(tokens, settingsDefault, *this, Standards::Language::C);
-        preprocessor.setLoadCallback([](simplecpp::FileData &data) {
-            Preprocessor::removeComments(data.tokens);
+        preprocessor.setLoadCallback([](simplecpp::FileData &data, bool loaded) {
+            if (loaded) {
+                Preprocessor::removeComments(data.tokens);
+            }
         });
         preprocessor.removeComments();
         ASSERT(preprocessor.loadFiles(files));

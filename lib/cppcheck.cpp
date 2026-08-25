@@ -1062,16 +1062,18 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
                        std::inserter(configDefines, configDefines.end()),
                        getDefineName);
 
-        preprocessor.setLoadCallback([&](simplecpp::FileData &data) {
-            // Do preprocessing on included file
-            mLogger->addRemarkComments(preprocessor.getRemarkComments(data.tokens));
-            preprocessor.inlineSuppressions(data.tokens, mSuppressions.nomsg);
-            Preprocessor::removeComments(data.tokens);
-            Preprocessor::createDirectives(data.tokens, directives);
-            Preprocessor::simplifyPragmaAsm(data.tokens);
-            // Discover new configurations from included file
-            if (configurations.size() < maxConfigs)
-                preprocessor.getConfigs(data.filename, data.tokens, configDefines, configurations);
+        preprocessor.setLoadCallback([&](simplecpp::FileData &data, bool loaded) {
+            if (loaded) {
+                // Do preprocessing on included file
+                mLogger->addRemarkComments(preprocessor.getRemarkComments(data.tokens));
+                preprocessor.inlineSuppressions(data.tokens, mSuppressions.nomsg);
+                Preprocessor::removeComments(data.tokens);
+                Preprocessor::createDirectives(data.tokens, directives);
+                Preprocessor::simplifyPragmaAsm(data.tokens);
+                // Discover new configurations from included file
+                if (configurations.size() < maxConfigs)
+                    preprocessor.getConfigs(data.filename, data.tokens, configDefines, configurations);
+            }
         });
 
         preprocessor.setPlatformInfo();

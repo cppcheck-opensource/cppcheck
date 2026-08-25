@@ -1595,7 +1595,7 @@ namespace simplecpp {
          * @throws std::runtime_error thrown on bad macro syntax
          */
         Macro(const std::string &name, const std::string &value, std::vector<std::string> &f) : nameTokDef(nullptr), files(f), tokenListDefine(f), valueDefinedInCode_(false) {
-            const std::string def(name + ' ' + value);
+            const std::string def(name + ' ' + value + '\n');
             StdCharBufStream stream(reinterpret_cast<const unsigned char*>(def.data()), def.size());
             tokenListDefine.readfile(stream);
             if (!parseDefine(tokenListDefine.cfront()))
@@ -1707,7 +1707,7 @@ namespace simplecpp {
                 if (output2.cfront() != output2.cback() && macro2tok->str() == this->name())
                     break;
                 const MacroMap::const_iterator macro = macros.find(macro2tok->str());
-                if (macro == macros.end() || !macro->second.functionLike())
+                if (macro == macros.end() || !macro->second.functionLike() || macro2tok->isExpandedFrom(&macro->second))
                     break;
                 TokenList rawtokens2(inputFiles);
                 const Location loc(macro2tok->location);
@@ -1771,7 +1771,7 @@ namespace simplecpp {
         };
 
         struct invalidDirectiveAsMacroParameter : public Error {
-            invalidDirectiveAsMacroParameter(const Location &loc)
+            explicit invalidDirectiveAsMacroParameter(const Location &loc)
                 : Error(loc, "it is invalid to use a preprocessor directive as macro parameter") {}
         };
 
@@ -1994,14 +1994,17 @@ namespace simplecpp {
 
             if (nameTokInst->str() == "__FILE__") {
                 output.push_back(new Token('\"'+output.file(loc)+'\"', loc));
+                output.back()->macro = "__FILE__";
                 return nameTokInst->next;
             }
             if (nameTokInst->str() == "__LINE__") {
                 output.push_back(new Token(toString(loc.line), loc));
+                output.back()->macro = "__LINE__";
                 return nameTokInst->next;
             }
             if (nameTokInst->str() == "__COUNTER__") {
                 output.push_back(new Token(toString(usageList.size()-1U), loc));
+                output.back()->macro = "__COUNTER__";
                 return nameTokInst->next;
             }
 
@@ -2161,39 +2164,37 @@ namespace simplecpp {
             return functionLike() ? parametertokens2.back()->next : nameTokInst->next;
         }
 
-        const Token *recursiveExpandToken(TokenList &output, TokenList &temp, const Location &loc, const Token *tok, const MacroMap &macros, const std::set<TokenString> &expandedmacros, const std::vector<const Token*> &parametertokens) const {
-            if (!temp.cback() || !temp.cback()->name || !tok->next || tok->next->op != '(') {
-                output.takeTokens(temp);
-                return tok->next;
-            }
-
-            if (!sameline(tok, tok->next)) {
-                output.takeTokens(temp);
-                return tok->next;
-            }
-
+        /** Returns the macro to expand when the last token of @p temp is the name of a
+         *  function-like macro and the tokens after @p tok supply its arguments; nullptr otherwise */
+        static const Macro *rescanMacro(const TokenList &temp, const Token *tok, const MacroMap &macros, const std::set<TokenString> &expandedmacros) {
+            if (!temp.cback() || !temp.cback()->name || !sameline(tok, tok->next) || tok->next->op != '(')
+                return nullptr;
             const MacroMap::const_iterator it = macros.find(temp.cback()->str());
-            if (it == macros.end() || expandedmacros.find(temp.cback()->str()) != expandedmacros.end()) {
+            if (it == macros.end() || expandedmacros.find(temp.cback()->str()) != expandedmacros.end())
+                return nullptr;
+            if (!it->second.functionLike() || temp.cback()->isExpandedFrom(&it->second))
+                return nullptr;
+            return &it->second;
+        }
+
+        const Token *recursiveExpandToken(TokenList &output, TokenList &temp, const Location &loc, const Token *tok, const MacroMap &macros, const std::set<TokenString> &expandedmacros, const std::vector<const Token*> &parametertokens) const {
+            // Expand while the expansion result ends with the name of a function-like
+            // macro whose arguments are supplied by the tokens that follow it. Each round
+            // consumes that macro call from the token stream, so tok always advances.
+            while (const Macro * const calledMacro = rescanMacro(temp, tok, macros, expandedmacros)) {
+                TokenList temp2(files);
+                temp2.push_back(new Token(temp.cback()->str(), tok->location));
+
+                const Token * const tok2 = appendTokens(temp2, loc, tok->next, macros, expandedmacros, parametertokens);
+                if (!tok2)
+                    break;
                 output.takeTokens(temp);
-                return tok->next;
+                output.deleteToken(output.back());
+                calledMacro->expand(temp, loc, temp2.cfront(), macros, expandedmacros);
+                tok = tok2;
             }
-
-            const Macro &calledMacro = it->second;
-            if (!calledMacro.functionLike()) {
-                output.takeTokens(temp);
-                return tok->next;
-            }
-
-            TokenList temp2(files);
-            temp2.push_back(new Token(temp.cback()->str(), tok->location));
-
-            const Token * const tok2 = appendTokens(temp2, loc, tok->next, macros, expandedmacros, parametertokens);
-            if (!tok2)
-                return tok->next;
             output.takeTokens(temp);
-            output.deleteToken(output.back());
-            calledMacro.expand(output, loc, temp2.cfront(), macros, expandedmacros);
-            return tok2->next;
+            return tok->next;
         }
 
         const Token *expandToken(TokenList &output, const Location &loc, const Token *tok, const MacroMap &macros, const std::set<TokenString> &expandedmacros, const std::vector<const Token*> &parametertokens) const {
@@ -3231,13 +3232,10 @@ std::pair<simplecpp::FileData *, bool> simplecpp::FileDataCache::tryload(FileDat
     mImpl->mIdMap.emplace(fileId, data);
     mData.emplace_back(data);
 
-    if (mLoadCallback)
-        mLoadCallback(*data);
-
     return {data, true};
 }
 
-std::pair<simplecpp::FileData *, bool> simplecpp::FileDataCache::get(const std::string &sourcefile, const std::string &header, const simplecpp::DUI &dui, bool systemheader, std::vector<std::string> &filenames, simplecpp::OutputList *outputList)
+std::pair<simplecpp::FileData *, bool> simplecpp::FileDataCache::get_private(const std::string &sourcefile, const std::string &header, const simplecpp::DUI &dui, bool systemheader, std::vector<std::string> &filenames, simplecpp::OutputList *outputList)
 {
     if (isAbsolutePath(header)) {
         auto ins = mNameMap.emplace(simplecpp::simplifyPath(header), nullptr);
@@ -3281,6 +3279,16 @@ std::pair<simplecpp::FileData *, bool> simplecpp::FileDataCache::get(const std::
     }
 
     return {nullptr, false};
+}
+
+std::pair<simplecpp::FileData *, bool> simplecpp::FileDataCache::get(const std::string &sourcefile, const std::string &header, const simplecpp::DUI &dui, bool systemheader, std::vector<std::string> &filenames, simplecpp::OutputList *outputList)
+{
+    auto ret = get_private(sourcefile, header, dui, systemheader, filenames, outputList);
+
+    if (mLoadCallback && ret.first)
+        mLoadCallback(*ret.first, ret.second);
+
+    return ret;
 }
 
 void simplecpp::FileDataCache::clear()
