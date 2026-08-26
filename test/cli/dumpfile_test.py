@@ -132,3 +132,17 @@ def test_container_methods(tmpdir):
     with open(dumpfile, 'rt') as f:
         dump = f.read()
     assert '<f name="emplace" action="push" yield="iterator"/>' in dump
+
+def test_line_macro(tmpdir):
+    test_file = str(tmpdir / 'test.cpp')
+    with open(test_file, 'wt') as f:
+        f.write('#define MACRO() __LINE__\n')
+        f.write('int x = MACRO();\n')
+
+    exitcode, _, stderr = cppcheck(['--dump', test_file])
+    assert exitcode == 0, stderr
+
+    dumpfile = test_file + '.dump'
+    with open(dumpfile, 'rt') as f:
+        dump = f.read()
+    assert 'type="number" isInt="true" macroName="__LINE__"' in dump
