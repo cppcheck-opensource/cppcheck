@@ -1067,10 +1067,10 @@ void Preprocessor::dump(std::ostream &out) const
         for (const simplecpp::MacroUsage &macroUsage: mMacroUsage) {
             out << "    <macro"
                 << " name=\"" << macroUsage.macroName << "\""
-                << " file=\"" << ErrorLogger::toxml(mTokens.file(macroUsage.macroLocation)) << "\""
+                << " file=\"" << ErrorLogger::toxml(mSettings.relativePaths ? Path::getRelativePath(mTokens.file(macroUsage.macroLocation), mSettings.basePaths) : mTokens.file(macroUsage.macroLocation)) << "\""
                 << " line=\"" << macroUsage.macroLocation.line << "\""
                 << " column=\"" << macroUsage.macroLocation.col << "\""
-                << " usefile=\"" << ErrorLogger::toxml(mTokens.file(macroUsage.useLocation)) << "\""
+                << " usefile=\"" << ErrorLogger::toxml(mSettings.relativePaths ? Path::getRelativePath(mTokens.file(macroUsage.useLocation), mSettings.basePaths) : mTokens.file(macroUsage.useLocation)) << "\""
                 << " useline=\"" << macroUsage.useLocation.line << "\""
                 << " usecolumn=\"" << macroUsage.useLocation.col << "\""
                 << " is-known-value=\"" << bool_to_string(macroUsage.macroValueKnown) << "\""
@@ -1083,7 +1083,7 @@ void Preprocessor::dump(std::ostream &out) const
         out << "  <simplecpp-if-cond>" << std::endl;
         for (const simplecpp::IfCond &ifCond: mIfCond) {
             out << "    <if-cond"
-                << " file=\"" << ErrorLogger::toxml(mTokens.file(ifCond.location)) << "\""
+                << " file=\"" << ErrorLogger::toxml(mSettings.relativePaths ? Path::getRelativePath(mTokens.file(ifCond.location), mSettings.basePaths) : mTokens.file(ifCond.location)) << "\""
                 << " line=\"" << ifCond.location.line << "\""
                 << " column=\"" << ifCond.location.col << "\""
                 << " E=\"" << ErrorLogger::toxml(ifCond.E) << "\""
