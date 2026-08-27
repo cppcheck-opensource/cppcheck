@@ -894,16 +894,20 @@ std::size_t CppCheck::calculateHash(const Preprocessor& preprocessor, const std:
 
 unsigned int CppCheck::checkBuffer(const FileWithDetails &file, const std::string &cfgname, const char* data, std::size_t size)
 {
-    const auto f = [&file, data, size](std::vector<std::string>& files, simplecpp::OutputList* outputList) {
-        return simplecpp::TokenList{{data, size}, files, file.spath(), outputList};
+    const auto f = [&file, data, size, this](std::vector<std::string>& files, simplecpp::OutputList* outputList) {
+        simplecpp::DUI dui;
+        dui.std = mSettings.standards.getStdForLanguage(file.lang());
+        return simplecpp::TokenList{{data, size}, files, file.spath(), dui, outputList};
     };
     return checkInternal(file, cfgname, f);
 }
 
 unsigned int CppCheck::checkFile(const FileWithDetails& file, const std::string &cfgname)
 {
-    const auto f = [&file](std::vector<std::string>& files, simplecpp::OutputList* outputList) {
-        return simplecpp::TokenList{file.spath(), files, outputList};
+    const auto f = [&file, this](std::vector<std::string>& files, simplecpp::OutputList* outputList) {
+        simplecpp::DUI dui;
+        dui.std = mSettings.standards.getStdForLanguage(file.lang());
+        return simplecpp::TokenList{file.spath(), files, dui, outputList};
     };
     return checkInternal(file, cfgname, f);
 }
@@ -1058,16 +1062,18 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
                        std::inserter(configDefines, configDefines.end()),
                        getDefineName);
 
-        preprocessor.setLoadCallback([&](simplecpp::FileData &data) {
-            // Do preprocessing on included file
-            mLogger->addRemarkComments(preprocessor.getRemarkComments(data.tokens));
-            preprocessor.inlineSuppressions(data.tokens, mSuppressions.nomsg);
-            Preprocessor::removeComments(data.tokens);
-            Preprocessor::createDirectives(data.tokens, directives);
-            Preprocessor::simplifyPragmaAsm(data.tokens);
-            // Discover new configurations from included file
-            if (configurations.size() < maxConfigs)
-                preprocessor.getConfigs(data.filename, data.tokens, configDefines, configurations);
+        preprocessor.setLoadCallback([&](simplecpp::FileData &data, bool loaded) {
+            if (loaded) {
+                // Do preprocessing on included file
+                mLogger->addRemarkComments(preprocessor.getRemarkComments(data.tokens));
+                preprocessor.inlineSuppressions(data.tokens, mSuppressions.nomsg);
+                Preprocessor::removeComments(data.tokens);
+                Preprocessor::createDirectives(data.tokens, directives);
+                Preprocessor::simplifyPragmaAsm(data.tokens);
+                // Discover new configurations from included file
+                if (configurations.size() < maxConfigs)
+                    preprocessor.getConfigs(data.filename, data.tokens, configDefines, configurations);
+            }
         });
 
         preprocessor.setPlatformInfo();

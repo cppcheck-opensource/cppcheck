@@ -354,7 +354,9 @@ bool TokenList::createTokensFromBufferInternal(const char* data, size_t size, co
 #endif
 
     simplecpp::OutputList outputList;
-    simplecpp::TokenList tokens({data, size}, mFiles, file0, &outputList);
+    simplecpp::DUI dui;
+    dui.std = mSettings.standards.getStdForLanguage(mLang);
+    simplecpp::TokenList tokens({data, size}, mFiles, file0, dui, &outputList);
 
     createTokens(std::move(tokens));
 
@@ -461,7 +463,7 @@ static Token* skipDecl(Token* tok, std::vector<Token*>* inner = nullptr)
         return Token::Match(tok, "%name%| ,|)");
     };
 
-    if (!Token::Match(tok->previous(), "( %name%"))
+    if (tok->varId() || !Token::Match(tok->previous(), "( %name%"))
         return tok;
     Token *vartok = tok;
     while (Token::Match(vartok, "%name%|*|&|&&|::|<")) {

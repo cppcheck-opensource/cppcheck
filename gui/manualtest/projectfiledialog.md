@@ -4,6 +4,20 @@
 Some manual testing in the project file dialog interface
 
 
+## Test: Relative paths
+
+Ticket: #14983
+
+1. Configure files/paths in project folder:
+ * import a projectfile
+ * add include paths in project folder
+ * exclude file/folder
+
+2. Save project
+
+EXPECTED: Relative paths should be used in the XML
+
+
 ## Test: Platform file pic8.xml
 
 Ticket: #14489

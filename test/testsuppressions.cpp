@@ -747,7 +747,7 @@ private:
                                         "    int a;\n"
                                         "    // cppcheck-suppress uninitvar\n"
                                         "    a++;\n"
-                                        "}",
+                                        "}\n",
                                         ""));
         ASSERT_EQUALS("", errout_str());
 
@@ -969,7 +969,7 @@ private:
                                         "    b++;\n"
                                         "    // cppcheck-suppress-end uninitvar\n"
                                         "}\n"
-                                        "// cppcheck-suppress-end [uninitvar, syntaxError]",
+                                        "// cppcheck-suppress-end [uninitvar, syntaxError]\n",
                                         ""));
         ASSERT_EQUALS("[test.cpp:1:1]: (information) Unmatched suppression: syntaxError [unmatchedSuppression]\n", errout_str());
 
@@ -1401,8 +1401,8 @@ private:
 
         CppCheck cppCheck(settings, supprs, *this, nullptr, false, nullptr); // <- do not "use global suppressions". pretend this is a thread that just checks a file.
 
-        const char code[] = "int f() { int a; return a; }";
-        ASSERT_EQUALS(0, cppCheck.checkBuffer(FileWithDetails("test.c", Standards::Language::C, 0),code, sizeof(code))); // <- no unsuppressed error is seen
+        const char code[] = "int f() { int a; return a; }\n";
+        ASSERT_EQUALS(0, cppCheck.checkBuffer(FileWithDetails("test.c", Standards::Language::C, 0),code, sizeof(code)-1)); // <- no unsuppressed error is seen
         ASSERT_EQUALS("[test.c:1:25]: (error) Uninitialized variable: a [uninitvar]\n", errout_str()); // <- report error so ThreadExecutor can suppress it and make sure the global suppression is matched.
     }
 
@@ -1440,9 +1440,9 @@ private:
             "    int x;\n"
             "    // cppcheck-suppress unusedStructMember\n"
             "    int y;\n"
-            "};";
+            "};\n";
         CppCheck cppCheck(settings, supprs, *this, nullptr, true, nullptr);
-        ASSERT_EQUALS(0, cppCheck.checkBuffer(FileWithDetails("/somewhere/test.cpp", Standards::Language::CPP, 0), code, sizeof(code)));
+        ASSERT_EQUALS(0, cppCheck.checkBuffer(FileWithDetails("/somewhere/test.cpp", Standards::Language::CPP, 0), code, sizeof(code)-1));
         ASSERT_EQUALS("",errout_str());
     }
 
@@ -1471,7 +1471,7 @@ private:
                             "   fld   TBYTE PTR [EAX]   ; load an extended real (10 bytes)\n"
                             "   fstp  QWORD PTR result  ; store a double (8 bytes)\n"
                             "   pop   EAX               ; restore EAX\n"
-                            "}";
+                            "}\n";
         ASSERT_EQUALS(0, (this->*check)(code, ""));
         ASSERT_EQUALS("", errout_str());
     }
@@ -1537,7 +1537,7 @@ private:
     }
 
     void unusedFunctionInternal(unsigned int (TestSuppressions::*check)(const char[], const std::string &)) {
-        ASSERT_EQUALS(0, (this->*check)("void f() {}", "unusedFunction"));
+        ASSERT_EQUALS(0, (this->*check)("void f() {}\n", "unusedFunction"));
     }
 
     void unusedFunctionFiles() {
@@ -1549,7 +1549,7 @@ private:
     }
 
     void suppressingSyntaxErrorAndExitCodeInternal(unsigned int (TestSuppressions::*check)(const char[], const std::string &)) {
-        const char code[] = "fi if;";
+        const char code[] = "fi if;\n";
 
         ASSERT_EQUALS(0, (this->*check)(code, "*:test.cpp"));
         ASSERT_EQUALS("", errout_str());
@@ -1582,8 +1582,8 @@ private:
     void suppressingSyntaxErrorAndExitCodeMultiFileInternal(unsigned int (TestSuppressions::*check)(std::map<std::string, std::string> &f, const std::string &)) {
         // multi files, but only suppression one
         std::map<std::string, std::string> mfiles;
-        mfiles["test.cpp"] = "fi if;";
-        mfiles["test2.cpp"] = "fi if";
+        mfiles["test.cpp"] = "fi if;\n";
+        mfiles["test2.cpp"] = "fi if\n";
         ASSERT_EQUALS(1, (this->*check)(mfiles, "*:test.cpp"));
         ASSERT_EQUALS("[test2.cpp:1:4]: (error) syntax error [syntaxError]\n", errout_str());
     }

@@ -58,6 +58,7 @@ struct CPPCHECKLIB Standards {
     static std::string getCPP(cppstd_t std);
     static cppstd_t getCPP(const std::string &std);
     bool setStd(const std::string& str);
+    std::string getStdForLanguage(Language language) const;
 };
 
 /// @}

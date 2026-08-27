@@ -61,7 +61,7 @@ private:
             "   if (b) { a = 1+2 };\n"
             "   return a;\n"
             "}\n"
-            "assert(foo() == 3);");
+            "assert(foo() == 3);\n");
         ASSERT_EQUALS("", errout_str());
 
         check(
@@ -69,7 +69,7 @@ private:
             "    int b=a+1;\n"
             "    return b;\n"
             "}\n"
-            "assert(foo(1) == 2);");
+            "assert(foo(1) == 2);\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -80,7 +80,7 @@ private:
             "    a = 1+2;\n"
             "    return a;\n"
             "}\n"
-            "assert(foo() == 3);");
+            "assert(foo() == 3);\n");
         ASSERT_EQUALS("[test.cpp:6:8]: (warning) Assert statement calls a function which may have desired side effects: 'foo'. [assertWithSideEffect]\n", errout_str());
 
         //  Ticket #4937 "false positive: Assert calls a function which may have desired side effects"
@@ -92,7 +92,7 @@ private:
               "};\n"
               "void foo() {\n"
               "   assert( !SquarePack::isRank1Or8(push2) );\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("struct SquarePack {\n"
@@ -103,7 +103,7 @@ private:
               "};\n"
               "void foo() {\n"
               "   assert( !SquarePack::isRank1Or8(push2) );\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:8:25]: (warning) Assert statement calls a function which may have desired side effects: 'isRank1Or8'. [assertWithSideEffect]\n", errout_str());
 
         check("struct SquarePack {\n"
@@ -114,7 +114,7 @@ private:
               "};\n"
               "void foo() {\n"
               "   assert( !SquarePack::isRank1Or8(push2) );\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:8:25]: (warning) Assert statement calls a function which may have desired side effects: 'isRank1Or8'. [assertWithSideEffect]\n", errout_str());
 
         check("struct SquarePack {\n"
@@ -125,7 +125,7 @@ private:
               "};\n"
               "void foo() {\n"
               "   assert( !SquarePack::isRank1Or8(push2) );\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("struct Geometry {\n"
@@ -136,7 +136,7 @@ private:
               "\n"
               "void Geometry::ReadGeometry() {\n"
               "    assert(empty());\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("struct S {\n" // #4811
@@ -166,7 +166,7 @@ private:
               "};\n"
               "void foo(SquarePack s) {\n"
               "   assert( s.Foo() );\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:5:14]: (warning) Assert statement calls a function which may have desired side effects: 'Foo'. If there are no side effects, consider declaring the method const. [assertWithSideEffect]\n", errout_str());
 
         check("struct SquarePack {\n"
@@ -174,7 +174,7 @@ private:
               "};\n"
               "void foo(SquarePack* s) {\n"
               "   assert( s->Foo() );\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("struct SquarePack {\n"
@@ -182,14 +182,14 @@ private:
               "};\n"
               "void foo(SquarePack* s) {\n"
               "   assert( s->Foo() );\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("struct SquarePack {\n"
               "};\n"
               "void foo(SquarePack* s) {\n"
               "   assert( s->Foo() );\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -198,54 +198,54 @@ private:
               "    int a; a = 0;\n"
               "    assert(a = 2);\n"
               "    return a;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:14]: (warning) Assert statement modifies 'a'. [assignmentInAssert]\n", errout_str());
 
         check("void f(int a) {\n"
               "    assert(a == 2);\n"
               "    return a;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void f(int a, int b) {\n"
               "    assert(a == 2 && (b = 1));\n"
               "    return a;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:25]: (warning) Assert statement modifies 'b'. [assignmentInAssert]\n", errout_str());
 
         check("void f() {\n"
               "    int a; a = 0;\n"
               "    assert(a += 2);\n"
               "    return a;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:14]: (warning) Assert statement modifies 'a'. [assignmentInAssert]\n", errout_str());
 
         check("void f() {\n"
               "    int a; a = 0;\n"
               "    assert(a *= 2);\n"
               "    return a;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:14]: (warning) Assert statement modifies 'a'. [assignmentInAssert]\n", errout_str());
 
         check("void f() {\n"
               "    int a; a = 0;\n"
               "    assert(a -= 2);\n"
               "    return a;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:14]: (warning) Assert statement modifies 'a'. [assignmentInAssert]\n", errout_str());
 
         check("void f() {\n"
               "    int a = 0;\n"
               "    assert(a--);\n"
               "    return a;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:13]: (warning) Assert statement modifies 'a'. [assignmentInAssert]\n", errout_str());
 
         check("void f() {\n"
               "    int a = 0;\n"
               "    assert(--a);\n"
               "    return a;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:12]: (warning) Assert statement modifies 'a'. [assignmentInAssert]\n", errout_str());
 
         check("void f() {\n"
@@ -254,19 +254,19 @@ private:
               "                  auto const expected = someOtherValue;\n"
               "                  return tmp == expected;\n"
               "                }));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
     void crash() {
         check("void foo() {\n"
               "  assert(sizeof(struct { int a[x++]; })==sizeof(int));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void foo() {\n" // #9790
               "  assert(kad_bucket_hash(&(kad_guid) { .bytes = { 0 } }, & (kad_guid){.bytes = { 0 }}) == -1);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 };

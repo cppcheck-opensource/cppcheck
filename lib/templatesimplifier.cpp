@@ -3831,7 +3831,7 @@ void TemplateSimplifier::simplifyTemplates(const std::time_t maxtime)
         // Remove concepts/requires
         // TODO concepts are not removed yet
         for (Token *tok = mTokenList.front(); tok; tok = tok->next()) {
-            if (!Token::Match(tok, ")|>|>> requires %name%|("))
+            if (!Token::Match(tok, ")|>|>>|const|noexcept requires %name%|("))
                 continue;
             const Token* end = skipRequires(tok->next());
             if (end)
