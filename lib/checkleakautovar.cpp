@@ -1073,9 +1073,8 @@ void CheckLeakAutoVarImpl::changeAllocStatus(VarInfo &varInfo, const VarInfo::Al
 
 void CheckLeakAutoVarImpl::functionCall(const Token *tokName, const Token *tokOpeningPar, VarInfo &varInfo, const VarInfo::AllocInfo& allocation, const Library::AllocFunc* af)
 {
-    // Ignore function call?
-    const bool isLeakIgnore = mSettings.library.isLeakIgnore(mSettings.library.getFunctionName(tokName));
-    if (mSettings.library.getReallocFuncInfo(tokName))
+    const bool isLeakIgnore = tokName ? mSettings.library.isLeakIgnore(mSettings.library.getFunctionName(tokName)) : false;
+    if (tokName && mSettings.library.getReallocFuncInfo(tokName))
         return;
     if (tokName && tokName->next()->valueType() && tokName->next()->valueType()->container && tokName->next()->valueType()->container->stdStringLike)
         return;
@@ -1126,26 +1125,30 @@ void CheckLeakAutoVarImpl::functionCall(const Token *tokName, const Token *tokOp
 
             // Is variable allocated?
             if (!isnull && (!af || af->arg == argNr)) {
-                const Library::AllocFunc* deallocFunc = mSettings.library.getDeallocFuncInfo(tokName);
+                const Library::AllocFunc* deallocFunc = tokName ? mSettings.library.getDeallocFuncInfo(tokName) : nullptr;
                 VarInfo::AllocInfo dealloc(deallocFunc ? deallocFunc->groupId : 0, VarInfo::DEALLOC, tokName);
-                if (const Library::AllocFunc* allocFunc = mSettings.library.getAllocFuncInfo(tokName)) {
-                    if (mSettings.library.getDeallocFuncInfo(tokName)) {
+                if (tokName) {
+                    if (const Library::AllocFunc* allocFunc = mSettings.library.getAllocFuncInfo(tokName)) {
+                        if (mSettings.library.getDeallocFuncInfo(tokName)) {
+                            changeAllocStatus(varInfo, dealloc.type == 0 ? allocation : dealloc, tokName, arg);
+                        }
+                        if (allocFunc->arg == argNr &&
+                            !(arg->variable() && arg->variable()->isArgument() && arg->valueType() && arg->valueType()->pointer > 1) &&
+                            (isAddressOf || (arg->valueType() && arg->valueType()->pointer == 2))) {
+                            leakIfAllocated(arg, varInfo);
+                            VarInfo::AllocInfo& varAlloc = varInfo.alloctype[arg->varId()];
+                            varAlloc.type = allocFunc->groupId;
+                            varAlloc.status = VarInfo::ALLOC;
+                            varAlloc.allocTok = arg;
+                        }
+                    }
+                    else if (isLeakIgnore)
+                        checkTokenInsideExpression(arg, varInfo);
+                    else
                         changeAllocStatus(varInfo, dealloc.type == 0 ? allocation : dealloc, tokName, arg);
-                    }
-                    if (allocFunc->arg == argNr &&
-                        !(arg->variable() && arg->variable()->isArgument() && arg->valueType() && arg->valueType()->pointer > 1) &&
-                        (isAddressOf || (arg->valueType() && arg->valueType()->pointer == 2))) {
-                        leakIfAllocated(arg, varInfo);
-                        VarInfo::AllocInfo& varAlloc = varInfo.alloctype[arg->varId()];
-                        varAlloc.type = allocFunc->groupId;
-                        varAlloc.status = VarInfo::ALLOC;
-                        varAlloc.allocTok = arg;
-                    }
+                } else {
+                    changeAllocStatus(varInfo, allocation, nullptr, arg);
                 }
-                else if (isLeakIgnore)
-                    checkTokenInsideExpression(arg, varInfo);
-                else
-                    changeAllocStatus(varInfo, dealloc.type == 0 ? allocation : dealloc, tokName, arg);
             }
         }
         // Check smart pointer
