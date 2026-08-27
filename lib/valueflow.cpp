@@ -1817,7 +1817,8 @@ static bool isNotEqual(std::pair<const Token*, const Token*> x, std::pair<const 
 static bool isNotEqual(std::pair<const Token*, const Token*> x, const std::string& y, bool cpp, const Settings& settings)
 {
     TokenList tokenList(settings, cpp ? Standards::Language::CPP : Standards::Language::C);
-    tokenList.createTokensFromBuffer(y.data(), y.size()); // TODO: check result?
+    const std::string str(y + "\n");
+    tokenList.createTokensFromBuffer(str.data(), str.size()); // TODO: check result?
     return isNotEqual(x, std::make_pair(tokenList.front(), tokenList.back()));
 }
 static bool isNotEqual(std::pair<const Token*, const Token*> x, const ValueType* y, bool cpp, const Settings& settings)
@@ -7077,7 +7078,7 @@ static void valueFlowDynamicBufferSize(const TokenList& tokenlist, const SymbolD
             if (!rhs)
                 continue;
 
-            const bool isNew = rhs->isCpp() && (rhs->str() == "new" || Token::Match(rhs->astOperand1(), "::| operatornew"));
+            const bool isNew = rhs->isCpp() && (rhs->str() == "new" || (rhs->str() == "(" && Token::Match(rhs->astOperand1(), "::| operatornew")));
             if (!isNew && !Token::Match(rhs->previous(), "%name% ("))
                 continue;
 
@@ -7101,7 +7102,7 @@ static bool getMinMaxValues(const std::string& typestr,
                             MathLib::bigint& maxvalue)
 {
     TokenList typeTokens(settings, cpp ? Standards::Language::CPP : Standards::Language::C);
-    const std::string str(typestr + ";");
+    const std::string str(typestr + ";\n");
     if (!typeTokens.createTokensFromBuffer(str.data(), str.size()))
         return false;
     typeTokens.simplifyPlatformTypes();
@@ -7541,6 +7542,7 @@ void ValueFlow::setValues(TokenList& tokenlist,
         VFA(valueFlowInferCondition(tokenlist, settings)),
         VFA(valueFlowSwitchVariable(tokenlist, symboldatabase, errorLogger, settings)),
         VFA(valueFlowForLoop(tokenlist, symboldatabase, errorLogger, settings)),
+        VFA(valueFlowDynamicBufferSize(tokenlist, symboldatabase, errorLogger, settings)),
         VFA(valueFlowSubFunction(tokenlist, symboldatabase, errorLogger, settings)),
         VFA(valueFlowFunctionReturn(tokenlist, errorLogger, settings)),
         VFA(valueFlowLifetime(tokenlist, errorLogger, settings)),
@@ -7557,7 +7559,6 @@ void ValueFlow::setValues(TokenList& tokenlist,
     });
 
     runner.run_once({
-        VFA(valueFlowDynamicBufferSize(tokenlist, symboldatabase, errorLogger, settings)),
         VFA(valueFlowDebug(tokenlist, errorLogger, settings)), // TODO: add option to print it after each step/iteration
     });
 }

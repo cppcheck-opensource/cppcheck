@@ -210,6 +210,8 @@ def test_progress(tmpdir):
             "progress: ValueFlow::valueFlowSwitchVariable(tokenlist, symboldatabase, errorLogger, settings) 1 100%\n"
             "progress: ValueFlow::valueFlowForLoop(tokenlist, symboldatabase, errorLogger, settings) 1 0%\n"
             "progress: ValueFlow::valueFlowForLoop(tokenlist, symboldatabase, errorLogger, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowDynamicBufferSize(tokenlist, symboldatabase, errorLogger, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowDynamicBufferSize(tokenlist, symboldatabase, errorLogger, settings) 1 100%\n"
             "progress: ValueFlow::valueFlowSubFunction(tokenlist, symboldatabase, errorLogger, settings) 1 0%\n"
             "progress: ValueFlow::valueFlowSubFunction(tokenlist, symboldatabase, errorLogger, settings) 1 100%\n"
             "progress: ValueFlow::valueFlowFunctionReturn(tokenlist, errorLogger, settings) 1 0%\n"

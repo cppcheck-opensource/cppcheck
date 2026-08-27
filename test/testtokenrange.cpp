@@ -67,19 +67,19 @@ private:
     }
 
     void enumerationToEnd() const {
-        const char code[] = "void a(){} void main(){ if(true){a();} }";
+        const char code[] = "void a(){} void main(){ if(true){a();} }\n";
         const SimpleTokenList tokenList(code);
         ASSERT_EQUALS("", testTokenRange(ConstTokenRange{ tokenList.front(), nullptr }, tokenList.front(), nullptr));
     }
 
     void untilHelperToEnd() const {
-        const char code[] = "void a(){} void main(){ if(true){a();} }";
+        const char code[] = "void a(){} void main(){ if(true){a();} }\n";
         const SimpleTokenList tokenList(code);
         ASSERT_EQUALS("", testTokenRange(tokenList.front()->until(nullptr), tokenList.front(), nullptr));
     }
 
     void untilHelperPartWay() const {
-        const char code[] = "void a(){} void main(){ if(true){a();} }";
+        const char code[] = "void a(){} void main(){ if(true){a();} }\n";
         const SimpleTokenList tokenList(code);
         const Token* start = tokenList.front()->tokAt(4);
         const Token* end = start->tokAt(8);
@@ -87,7 +87,7 @@ private:
     }
 
     void partialEnumeration() const {
-        const char code[] = "void a(){} void main(){ if(true){a();} }";
+        const char code[] = "void a(){} void main(){ if(true){a();} }\n";
         const SimpleTokenList tokenList(code);
         const Token* start = tokenList.front()->tokAt(4);
         const Token* end = tokenList.front()->tokAt(10);
@@ -96,7 +96,7 @@ private:
 
     void scopeExample() {
         SimpleTokenizer tokenizer(settingsDefault, *this);
-        const char code[] = "void a(){} void main(){ if(true){a();} }";
+        const char code[] = "void a(){} void main(){ if(true){a();} }\n";
         ASSERT(tokenizer.tokenize(code));
 
         const SymbolDatabase* sd = tokenizer.getSymbolDatabase();
@@ -110,7 +110,7 @@ private:
     }
 
     void exampleAlgorithms() const {
-        const char code[] = "void a(){} void main(){ if(true){a();} }";
+        const char code[] = "void a(){} void main(){ if(true){a();} }\n";
         const SimpleTokenList tokenList(code);
         ConstTokenRange range{ tokenList.front(), nullptr };
         ASSERT_EQUALS(true, std::all_of(range.begin(), range.end(), [](const Token*) {

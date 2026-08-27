@@ -175,7 +175,7 @@ private:
                         "void f()\n"
                         "{\n"
                         "  (void)(*((int*)0));\n"
-                        "}");
+                        "}\n");
 
         int called = 0;
         std::unordered_set<std::string> addons;
@@ -259,7 +259,7 @@ private:
                         "void f()\n"
                         "{\n"
                         "  (void)(*((int*)0));\n"
-                        "}");
+                        "}\n");
 
         int called = 0;
         std::unordered_set<std::string> addons;
@@ -342,7 +342,7 @@ private:
                         "void f()\n"
                         "{\n"
                         "  (void)(*((int*)0));\n"
-                        "}");
+                        "}\n");
 
         const char xmldata[] = R"(<def format="2"><markup ext=".c" reporterrors="false"/></def>)";
         const Settings s = settingsBuilder().libraryxml(xmldata).build();
@@ -364,11 +364,11 @@ private:
                         "inline void f()\n"
                         "{\n"
                         "  (void)(*((int*)0));\n"
-                        "}");
+                        "}\n");
         ScopedFile test_file_a("a.c",
-                               "#include \"inc.h\"");
+                               "#include \"inc.h\"\n");
         ScopedFile test_file_b("b.c",
-                               "#include \"inc.h\"");
+                               "#include \"inc.h\"\n");
 
         // this is the "simple" format
         const auto s = dinit(Settings, $.templateFormat = templateFormat); // TODO: remove when we only longer rely on toString() in unique message handling
@@ -400,7 +400,7 @@ private:
                              "long a=m[9], b=m[9];\n"
                              "(void)a;\n"
                              "(void)b;\n"
-                             "}");
+                             "}\n");
 
         // this is the "simple" format
         const auto s = dinit(Settings, $.templateFormat = templateFormat); // TODO: remove when we only longer rely on toString() in unique message handling?
@@ -490,7 +490,7 @@ private:
                             ";\n";
 
         simplecpp::OutputList outputList;
-        const simplecpp::TokenList tokens2(code, files, "", &outputList);
+        const simplecpp::TokenList tokens2(code, files, "", {}, &outputList);
         const std::string expected2 = "  <rawtokens>\n"
                                       "    <file index=\"0\" name=\"test.c\"/>\n"
                                       "    <file index=\"1\" name=\"\"/>\n"
