@@ -154,7 +154,7 @@ private:
         std::string languageStandard;
     };
 
-    bool importSln(std::istream &istr, const std::string &path, const std::vector<std::string> &fileFilters);
+    bool importSln(std::istream &istr, const std::string &filename, const std::vector<std::string> &fileFilters);
     bool importSlnx(const std::string& filename, const std::vector<std::string>& fileFilters);
     bool importVcxproj(const std::string &filename, VariablesMap &variables, const std::vector<std::string> &fileFilters);
 

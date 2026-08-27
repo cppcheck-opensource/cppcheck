@@ -299,7 +299,7 @@ ImportProject::Type ImportProject::import(const std::string &filename, Settings 
             return ImportProject::Type::COMPILE_DB;
         }
     } else if (endsWith(filename, ".sln")) {
-        if (importSln(fin, mPath, fileFilters)) {
+        if (importSln(fin, filename, fileFilters)) {
             setRelativePaths(filename);
             return ImportProject::Type::VS_SLN;
         }
@@ -440,7 +440,7 @@ void ImportProject::setSolution(const std::string &filename, VariablesMap &varia
     variables["SolutionName"] = temp;
 }
 
-bool ImportProject::importSln(std::istream &istr, const std::string &path, const std::vector<std::string> &fileFilters)
+bool ImportProject::importSln(std::istream &istr, const std::string &filename, const std::vector<std::string> &fileFilters)
 {
     std::string line;
 
@@ -460,7 +460,7 @@ bool ImportProject::importSln(std::istream &istr, const std::string &path, const
     }
 
     VariablesMap solutionVariables;
-    setSolution(path, solutionVariables);
+    setSolution(filename, solutionVariables);
 
     solutionVariables["VisualStudioVersion"] = "17.0";
 
