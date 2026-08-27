@@ -995,7 +995,6 @@ const Token * CheckLeakAutoVarImpl::checkTokenInsideExpression(const Token * con
             alloc.status = VarInfo::NOALLOC;
         functionCall(tok, openingPar, varInfo, alloc, nullptr);
         const std::string &returnValue = mSettings.library.returnValue(tok);
-
         if (startsWith(returnValue, "arg"))
             // the function returns one of its argument, we need to process a potential assignment
             return openingPar;
