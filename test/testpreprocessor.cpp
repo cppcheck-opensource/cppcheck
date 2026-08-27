@@ -386,6 +386,8 @@ private:
         TEST_CASE(writeLocations);
 
         TEST_CASE(pragmaAsm);
+
+        TEST_CASE(dumpPreprocessor);
     }
 
     template<size_t size>
@@ -3203,6 +3205,30 @@ private:
     {
         const char code[] = "#pragma asm\n";
         ASSERT_THROW_INTERNAL(getcodeforcfg(settingsDefault, *this, code, "", "test.cpp"), InternalError::SYNTAX);
+    }
+
+    void dumpPreprocessor() {
+        const char code[] = "#if M == 0\n"
+                            "#endif\n;\n";
+        std::vector<std::string> files;
+        simplecpp::OutputList outputList;
+
+        Settings settings;
+        settings.relativePaths = true;
+        settings.basePaths.emplace_back("/some/path");
+
+        simplecpp::TokenList tokens1(code, files, "/some/path/test.cpp", {}, &outputList);
+        Preprocessor preprocessor(tokens1, settings, *this, Standards::Language::CPP);
+        (void)preprocessor.preprocess("", files, outputList);
+        (void)preprocessor.reportOutput(outputList, true);
+
+        std::ostringstream ostr;
+        preprocessor.dump(ostr);
+        ASSERT_EQUALS(
+            "  <simplecpp-if-cond>\n"
+            "    <if-cond file=\"test.cpp\" line=\"1\" column=\"2\" E=\"M == 0\" result=\"1\"/>\n"
+            "  </simplecpp-if-cond>\n",
+            ostr.str());
     }
 };
 
