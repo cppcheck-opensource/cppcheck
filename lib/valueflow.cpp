@@ -7234,6 +7234,17 @@ static void valueFlowUnknownFunctionReturn(TokenList& tokenlist, const Settings&
             }
         }
 
+        const Token *ftok = tok->astOperand1();
+        while (ftok && Token::simpleMatch(ftok, "::"))
+            ftok = ftok->astOperand2() ? ftok->astOperand2() : ftok->astOperand1();
+        const Library::Function *func = ftok ? settings.library.getFunction(ftok) : nullptr;
+        if (func && func->isPossibleNull) {
+            ValueFlow::Value value(0);
+            value.setPossible();
+            value.errorPath.emplace_back(tok, "Assuming function returns NULL");
+            setTokenValue(tok, std::move(value), settings);
+        }
+
         if (settings.checkUnknownFunctionReturn.find(tok->strAt(-1)) == settings.checkUnknownFunctionReturn.end())
             continue;
         std::vector<MathLib::bigint> unknownValues = settings.library.unknownReturnValues(tok->astOperand1());
