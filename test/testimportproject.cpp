@@ -108,7 +108,8 @@ private:
         FileSettings fs{"test.cpp", Standards::Language::CPP, 0};
         std::list<std::string> in(1, "../include");
         VariablesMap variables;
-        TestImporter::fsSetIncludePaths(fs, "abc/def/", in, variables);
+        TestImporter importer;
+        importer.fsSetIncludePaths(fs, "abc/def/", in, variables);
         ASSERT_EQUALS(1U, fs.includePaths.size());
         ASSERT_EQUALS("abc/include/", fs.includePaths.front());
     }
@@ -118,7 +119,8 @@ private:
         std::list<std::string> in(1, "$(SolutionDir)other");
         VariablesMap variables;
         variables["SolutionDir"] = "c:/abc/";
-        TestImporter::fsSetIncludePaths(fs, "/home/fred", in, variables);
+        TestImporter importer;
+        importer.fsSetIncludePaths(fs, "/home/fred", in, variables);
         ASSERT_EQUALS(1U, fs.includePaths.size());
         ASSERT_EQUALS("c:/abc/other/", fs.includePaths.front());
     }
@@ -128,7 +130,8 @@ private:
         std::list<std::string> in(1, "$(SOLUTIONDIR)other");
         VariablesMap variables;
         variables["SolutionDir"] = "c:/abc/";
-        TestImporter::fsSetIncludePaths(fs, "/home/fred", in, variables);
+        TestImporter importer;
+        importer.fsSetIncludePaths(fs, "/home/fred", in, variables);
         ASSERT_EQUALS(1U, fs.includePaths.size());
         ASSERT_EQUALS("c:/abc/other/", fs.includePaths.front());
     }
@@ -694,9 +697,8 @@ private:
         ASSERT(!cppcheck::testing::evaluateVcxprojCondition("!('$(Configuration)|$(Platform)' == 'Debug|Win32' )", "Debug", "Win32"));
         ASSERT(cppcheck::testing::evaluateVcxprojCondition(" '$(Configuration)' == 'Debug' And '$(Platform)' == 'Win32'", "Debug", "Win32"));
         ASSERT(cppcheck::testing::evaluateVcxprojCondition(" '$(Configuration)' == 'Debug' Or '$(Platform)' == 'Win32'", "Release", "Win32"));
-        ASSERT(cppcheck::testing::evaluateVcxprojCondition(" '$(Configuration)' == 'Debug' and '$(Platform)' == 'Win32'", "Debug", "Win32"));
-        ASSERT(cppcheck::testing::evaluateVcxprojCondition(" '$(Configuration)' == 'Debug' or '$(Platform)' == 'Win32'", "Release", "Win32"));
         ASSERT(cppcheck::testing::evaluateVcxprojCondition(" $(Configuration.StartsWith('Debug'))", "Debug-AddressSanitizer", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition(" $(Configuration.ToUpper().StartsWith('DEBUG'))", "Debug", "Win32"));
         ASSERT(cppcheck::testing::evaluateVcxprojCondition(" $(Configuration.EndsWith('AddressSanitizer'))", "Debug-AddressSanitizer", "Win32"));
         ASSERT(cppcheck::testing::evaluateVcxprojCondition(" $(Configuration.Contains('Address'))", "Debug-AddressSanitizer", "Win32"));
         ASSERT(cppcheck::testing::evaluateVcxprojCondition(" $(Configuration.Contains ( 'Address'  ) )", "Debug-AddressSanitizer", "Win32"));
@@ -718,6 +720,9 @@ private:
         ASSERT(!cppcheck::testing::evaluateVcxprojCondition("'13.0' >= '14.0'", "", ""));
         ASSERT(cppcheck::testing::evaluateVcxprojCondition("'1.10.0.0' > '1.9.0.0'", "", ""));
         ASSERT(cppcheck::testing::evaluateVcxprojCondition("'v14.0' >= '14.0'", "", ""));
+        // Unknown variable
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("'$(DoesNotExist)' == ''", "", ""));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("'$(PATH)' != ''", "", ""));
         // Relational operators - error case
         ASSERT_THROW_EQUALS(cppcheck::testing::evaluateVcxprojCondition("'14.0' >= ''", "", ""), std::runtime_error, "Cannot compare '14.0' and ''");
         ASSERT_THROW_EQUALS(cppcheck::testing::evaluateVcxprojCondition("And", "", ""), std::runtime_error, "Invalid condition: 'And'");
@@ -731,10 +736,81 @@ private:
         // ToUpper / ToLower
         ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.ToUpper()) == 'DEBUG'", "Debug", "Win32"));
         ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.ToLower()) == 'debug'", "Debug", "Win32"));
-        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("$(Configuration.ToUpper()) == 'debug'", "Debug", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.ToUpper()) == 'debug'", "Debug", "Win32"));
         ASSERT(!cppcheck::testing::evaluateVcxprojCondition("$(Configuration.ToUpper()) == 'RELEASE'", "Debug", "Win32"));
         // invalid expression in => no error. We are ok with that as long as we don't crash
         ASSERT(!cppcheck::testing::evaluateVcxprojCondition("' ' && ' '", "", ""));
+        // case insensitive
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("'Debug' == 'DEBUG'", "", ""));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("'Debug' != 'DEBUG'", "", ""));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(configuration) == 'Debug'", "Debug", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(configuration) == 'Debug'", "Debug", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(CONFIGURATION) == 'Debug'", "Debug", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration) == 'Debug'", "Debug", "Win32"));
+
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("true", "", ""));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("TRUE", "", ""));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("false", "", ""));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("FALSE", "", ""));
+
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("true And true", "", ""));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("true Or false", "", ""));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("true And false", "", ""));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("false Or false", "", ""));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("!false", "", ""));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("!true", "", ""));
+
+        // HasTrailingSlash
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("HasTrailingSlash('foo/')", "", ""));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("HasTrailingSlash('foo\\')", "", ""));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("HasTrailingSlash('foo')", "", ""));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("HasTrailingSlash('')", "", ""));
+
+        // string manipulation
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.Trim()) == 'Debug'", "  Debug  ", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.TrimStart()) == 'Debug  '", "  Debug  ", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.TrimEnd()) == '  Debug'", "  Debug  ", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.Substring(0, 5)) == 'Debug'", "Debug-Test", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.Substring(6)) == 'Test'", "Debug-Test", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.Replace('-', '_')) == 'Debug_Test'", "Debug-Test", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition( "$(Configuration.Trim().ToUpper()) == 'DEBUG'", "  Debug  ", "Win32"));
+
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("true", "", ""));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("false", "", ""));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("true And false", "", ""));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("!false", "", ""));
+
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition( "$(Configuration.Substring(5)) == ''", "Debug", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition( "$(Configuration.Substring(5, 0)) == ''", "Debug", "Win32"));
+        ASSERT_THROW_EQUALS(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.Substring(-1)) == ''", "Debug", "Win32"), std::runtime_error, "Substring start index out of range");
+        ASSERT_THROW_EQUALS(cppcheck::testing::evaluateVcxprojCondition( "$(Configuration.Substring(4, 2)) == ''", "Debug", "Win32"), std::runtime_error, "Substring length out of range");
+
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.Trim()) == 'Debug'", " \tDebug\r\n", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.TrimStart()) == 'Debug  '", "  Debug  ", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.TrimEnd()) == '  Debug'", "  Debug  ", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.Trim('-')) == 'Debug'", "--Debug--", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.TrimStart('-')) == 'Debug--'", "--Debug--", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.TrimEnd('-')) == '--Debug'", "--Debug--", "Win32"));
+
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.Replace('-', '_')) == 'Debug_Test'","Debug-Test", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.Replace('Debug', 'Release')) == 'Release-Test'", "Debug-Test", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.Replace('x', 'y')) == 'Debug-Test'", "Debug-Test", "Win32"));
+        ASSERT_THROW_EQUALS(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.Replace('', 'x')) == 'Debug'", "Debug", "Win32"), std::runtime_error, "Replace search string cannot be empty");
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration.Replace('Debug', 'Release')) == 'Release-Test'", "Debug-Test", "Win32"));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("$(Configuration.Replace('debug', 'Release')) == 'Release-Test'", "Debug-Test", "Win32"));
+
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(Configuration) == DEBUG", "Debug", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("$(configuration) == 'Debug'", "Debug", "Win32"));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("'0x10' > '0x0F'", "", ""));
+
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("'0x0F' < '0x10'", "", ""));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("'0x10' < '0x0F'", "", ""));
+
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("'0x10' > '0x0F'", "", ""));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("'0x0F' < '0x10'", "", ""));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("'0x10' < '0x0F'", "", ""));
+        ASSERT(cppcheck::testing::evaluateVcxprojCondition("'010' > '9'", "", ""));
+        ASSERT(!cppcheck::testing::evaluateVcxprojCondition("'0x10' == '16'", "", ""));
     }
 
     // TODO: test fsParseCommand()
