@@ -1915,16 +1915,16 @@ private:
     void anonymousFunctionCall1() { // #14990
         // function pointer
         check("void f(void (*fptr)(void *)) {\n"
-                  "void *buf = malloc(1);\n"
-                  "(*fptr)(buf);\n"
+              "void *buf = malloc(1);\n"
+              "(*fptr)(buf);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
-        
+
         // lambda
         check("void f() {\n"
-                  "auto x = [](void *ptr) { g(ptr) };\n"
-                  "void *p = malloc(1);\n"
-                  "(x)(p);\n"
+              "auto x = [](void *ptr) { g(ptr) };\n"
+              "void *p = malloc(1);\n"
+              "(x)(p);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
@@ -1942,9 +1942,9 @@ private:
               "    foo(get_function()(buf));\n"
               "}\n");
         ASSERT_EQUALS("[test.c:3:29]: (information) --check-library: Function foo() should have <noreturn> configuration [checkLibraryNoReturn]\n"
-                      "[test.c:4:1]: (information) --check-library: Function foo() should have <use>/<leak-ignore> configuration [checkLibraryUseIgnore]\n", 
+                      "[test.c:4:1]: (information) --check-library: Function foo() should have <use>/<leak-ignore> configuration [checkLibraryUseIgnore]\n",
                       errout_str());
-        
+
         // Function returning a function pointer, passed as an arg to another
         // function returning a function pointer
         check("void f() {\n"
