@@ -277,7 +277,7 @@ static const Token * isFunctionCall(const Token * nameToken)
  * or
  *      get_function()(arg)
  *
- * @param token on the LHS of a function call
+ * @param tok on the LHS of a function call
  * @return opening parenthesis token or nullptr if not a function call
  */
 static const Token * isAnonymousFunctionCall(const Token * tok)
@@ -832,9 +832,9 @@ bool CheckLeakAutoVarImpl::checkScope(const Token * const startToken,
             continue;
 
             // top level call to an anonymous function
-        } else if (const Token *openingPar = isAnonymousFunctionCall(tok)) {
-            functionCall(nullptr, openingPar, varInfo, VarInfo::AllocInfo(0, VarInfo::NOALLOC), nullptr);
-            tok = openingPar->link();
+        } else if (const Token *lpar = isAnonymousFunctionCall(tok)) {
+            functionCall(nullptr, lpar, varInfo, VarInfo::AllocInfo(0, VarInfo::NOALLOC), nullptr);
+            tok = lpar->link();
 
             // goto => weird execution path
         } else if (tok->str() == "goto") {
