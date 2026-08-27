@@ -529,7 +529,7 @@ bool ImportProject::importSlnx(const std::string& filename, const std::vector<st
     VariablesMap solutionVariables;
     setSolution(filename, solutionVariables);
 
-    solutionVariables["VisualStudioVersion"] = "19.0";
+    solutionVariables["VisualStudioVersion"] = "18.0";
 
     bool found = false;
 
