@@ -166,22 +166,6 @@ private:
     const std::string mFullPath;
 };
 
-namespace {
-    class FilesDeleter {
-    public:
-        FilesDeleter() = default;
-        ~FilesDeleter() {
-            for (const std::string& fileName: mFilenames)
-                std::remove(fileName.c_str());
-        }
-        void addFile(const std::string& fileName) {
-            mFilenames.push_back(fileName);
-        }
-    private:
-        std::vector<std::string> mFilenames;
-    };
-}
-
 namespace cppcheck {
     template<typename T>
     std::size_t count_all_of(const std::string& str, T sub) {

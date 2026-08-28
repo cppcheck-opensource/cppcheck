@@ -43,6 +43,22 @@
 
 #include <simplecpp.h>
 
+namespace {
+    class FilesDeleter {
+    public:
+        FilesDeleter() = default;
+        ~FilesDeleter() {
+            for (const std::string& fileName: mFilenames)
+                std::remove(fileName.c_str());
+        }
+        void addFile(const std::string& fileName) {
+            mFilenames.push_back(fileName);
+        }
+    private:
+        std::vector<std::string> mFilenames;
+    };
+}
+
 class TestCppcheck : public TestFixture {
 public:
     TestCppcheck() : TestFixture("TestCppcheck") {}
