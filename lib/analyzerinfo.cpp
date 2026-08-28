@@ -60,7 +60,7 @@ void AnalyzerInformation::writeFilesTxt(const std::string &buildDir, const std::
 
 void AnalyzerInformation::writeIncludes(const std::set<std::string> &files)
 {
-    if (mOutputStream.is_open()) {
+    if (!files.empty() && mOutputStream.is_open()) {
         mOutputStream << "  <includes>\n";
         for (const std::string &file : files) {
             mOutputStream << "    <filename>" << file << "</filename>\n";
