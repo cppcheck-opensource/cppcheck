@@ -37,6 +37,7 @@
 #include <strings.h>
 #if defined(__APPLE__)
 #include <xlocale.h>
+#include <limits.h>
 #endif
 #if !defined(__APPLE__)
 #include <mqueue.h>
