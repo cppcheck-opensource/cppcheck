@@ -2320,7 +2320,7 @@ void f(bool b)
     cache_file = (build_dir / 'test.a1')
 
     root = ElementTree.fromstring(cache_file.read_text())
-    hash_1 = root.get('hash')
+    hash_1 = root.findtext('hash', 'hash0')
 
     args += ['--check-level=exhaustive']
 
@@ -2329,7 +2329,7 @@ void f(bool b)
     assert stderr == ''
 
     root = ElementTree.fromstring(cache_file.read_text())
-    hash_2 = root.get('hash')
+    hash_2 = root.findtext('hash', 'hash1')
 
     assert hash_1 != hash_2
 
@@ -4531,17 +4531,17 @@ def test_analyzerinfo(tmp_path):
         "discarding cached result from '{}' for '{}' - unexpected root node".format(test_a1_file_s, test_file_s)
     ])
 
-    # missing 'hash' attribute
+    # missing 'hash' node
     with open(test_a1_file, 'w') as f:
         f.write('<?xml version="1.0"?><analyzerinfo/>')
 
     run_and_assert_cppcheck([
-        "discarding cached result from '{}' for '{}' - no 'hash' attribute found".format(test_a1_file_s, test_file_s)
+        "discarding cached result from '{}' for '{}' - no 'hash' node found".format(test_a1_file_s, test_file_s)
     ])
 
-    # invalid 'hash' attribute
+    # invalid 'hash' node
     with open(test_a1_file, 'w') as f:
-        f.write('<?xml version="1.0"?><analyzerinfo hash="hash"/>')
+        f.write('<?xml version="1.0"?><analyzerinfo><hash>hash<hash/></analyzerinfo>')
 
     run_and_assert_cppcheck([
         "discarding cached result from '{}' for '{}' - hash mismatch".format(test_a1_file_s, test_file_s)

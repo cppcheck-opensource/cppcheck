@@ -259,7 +259,7 @@ private:
             ASSERT_EQUALS(0, errorList.size());
         }
 
-        // No 'hash' attribute found
+        // No 'hash' node found
         {
             std::list<ErrorMessage> errorList;
             tinyxml2::XMLDocument doc;
