@@ -248,6 +248,30 @@ def test_build_dir(tmpdir):
     assert stdout == ''
     assert ret == 0, stdout
 
+
+def test_build_dir_include(tmpdir):
+    args = [
+        '-q',
+        '--template=simple',
+        '--cppcheck-build-dir={}'.format(tmpdir),
+        '--enable=all',
+        '--inline-suppr',
+        '{}5.c'.format(__proj_inline_suppres_path)
+    ]
+
+    ret, stdout, stderr = cppcheck(args, cwd=__script_dir)
+    lines = stderr.splitlines()
+    assert lines == []
+    assert stdout == ''
+    assert ret == 0, stdout
+
+    ret, stdout, stderr = cppcheck(args, cwd=__script_dir)
+    lines = stderr.splitlines()
+    assert lines == []
+    assert stdout == ''
+    assert ret == 0, stdout
+
+
 def test_build_dir_jobs_suppressions(tmpdir): #14064
     args = [
         '-q',
