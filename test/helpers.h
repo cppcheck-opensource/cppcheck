@@ -27,6 +27,7 @@
 #include "tokenlist.h"
 
 #include <cstddef>
+#include <cstdio>
 #include <stdexcept>
 #include <sstream>
 #include <string>
@@ -163,6 +164,24 @@ private:
     const std::string mName;
     const std::string mPath;
     const std::string mFullPath;
+};
+
+// File deleter
+class FilesDeleter {
+public:
+    ~FilesDeleter()
+    {
+        for (const std::string &fileName: mFilenames)
+            std::remove(fileName.c_str());
+    }
+
+    void addFile(const std::string &fileName)
+    {
+        mFilenames.push_back(fileName);
+    }
+
+private:
+    std::vector<std::string> mFilenames;
 };
 
 namespace cppcheck {

@@ -17,6 +17,7 @@
  */
 
 #include "addoninfo.h"
+#include "analyzerinfo.h"
 #include "color.h"
 #include "cppcheck.h"
 #include "errorlogger.h"
@@ -84,6 +85,7 @@ private:
         TEST_CASE(checkPlistOutput);
         TEST_CASE(premiumResultsCache);
         TEST_CASE(purgedConfiguration);
+        TEST_CASE(recheckInclude);
     }
 
     void getErrorMessages() const {
@@ -619,6 +621,124 @@ private:
         auto it = errorLogger.errmsgs.cbegin();
         ASSERT_EQUALS("test.cpp:0:0: information: The configuration 'X=X' was not checked because its code equals another one. [purgedConfiguration]",
                       it->toString(false, templateFormat, ""));
+    }
+
+    void recheckInclude() const
+    {
+        const auto settings = dinit(Settings,
+                                    $.templateFormat = templateFormat,
+                                    $.debugainfo = true,
+                                    $.buildDir = "test-build-dir");
+
+        ScopedFile build_dir("empty", "", "test-build-dir");
+
+        FilesDeleter filesDeleter;
+        filesDeleter.addFile("test-build-dir/files.txt");
+        filesDeleter.addFile("test-build-dir/test.a1");
+        filesDeleter.addFile("test-build-dir/test.s1");
+
+        AnalyzerInformation::writeFilesTxt(settings.buildDir, {"test.cpp"}, {});
+
+        // First check
+        {
+            REDIRECT;
+
+            ScopedFile source_file("test.cpp",
+                                   "#include \"test1.h\"\n"
+                                   "#include \"test2.h\"\n");
+            ScopedFile header1_file("test1.h",
+                                    "class TestClass1 {};\n");
+            ScopedFile header2_file("test2.h",
+                                    "class TestClass2 {};\n");
+
+            Suppressions suppressions;
+            ErrorLogger2 errorLogger;
+            CppCheck cppcheck(settings, suppressions, errorLogger, nullptr, false, {});
+
+            const auto ret = cppcheck.check(FileWithDetails(source_file.path(), Standards::Language::CPP, 0));
+            const auto out = GET_REDIRECT_OUTPUT;
+
+            ASSERT_EQUALS(0, ret);
+            ASSERT_EQUALS("no cached result 'test-build-dir/test.a1' for 'test.cpp' found\n", out);
+        }
+
+        // No change, don't recheck
+        {
+            REDIRECT;
+
+            ScopedFile source_file("test.cpp",
+                                   "#include \"test1.h\"\n"
+                                   "#include \"test2.h\"\n");
+            ScopedFile header1_file("test1.h",
+                                    "class TestClass1 {};\n");
+            ScopedFile header2_file("test2.h",
+                                    "class TestClass2 {};\n");
+
+            Suppressions suppressions;
+            ErrorLogger2 errorLogger;
+            CppCheck cppcheck(settings, suppressions, errorLogger, nullptr, false, {});
+
+            const auto ret = cppcheck.check(FileWithDetails(source_file.path(), Standards::Language::CPP, 0));
+            const auto out = GET_REDIRECT_OUTPUT;
+
+            ASSERT_EQUALS(0, ret);
+            ASSERT_EQUALS("skipping analysis - loaded 0 cached finding(s) from 'test-build-dir/test.a1' for 'test.cpp'\n", out);
+        }
+
+        // Header changed, recheck
+        {
+            REDIRECT;
+
+            ScopedFile source_file("test.cpp",
+                                   "#include \"test1.h\"\n"
+                                   "#include \"test2.h\"\n");
+            ScopedFile header1_file("test1.h",
+                                    "class TestClass1 {};\n");
+            ScopedFile header2_file("test2.h",
+                                    "class TestClass2 { int a; };\n");
+
+            Suppressions suppressions;
+            ErrorLogger2 errorLogger;
+            CppCheck cppcheck(settings, suppressions, errorLogger, nullptr, false, {});
+
+            const auto ret = cppcheck.check(FileWithDetails(source_file.path(), Standards::Language::CPP, 0));
+            const auto out = GET_REDIRECT_OUTPUT;
+
+            ASSERT_EQUALS(0, ret);
+            ASSERT_EQUALS("discarding cached result from 'test-build-dir/test.a1' for 'test.cpp' - hash mismatch\n", out);
+        }
+
+        // Source changed, recheck
+        {
+            REDIRECT;
+
+            // Inclusion removed
+            ScopedFile source_file("test.cpp",
+                                   "#include \"test1.h\"\n");
+            ScopedFile header1_file("test1.h",
+                                    "class TestClass1 {};\n");
+            ScopedFile header2_file("test2.h",
+                                    "class TestClass2 { int a; };\n");
+
+            Suppressions suppressions;
+            ErrorLogger2 errorLogger;
+            CppCheck cppcheck(settings, suppressions, errorLogger, nullptr, false, {});
+
+            const auto ret = cppcheck.check(FileWithDetails(source_file.path(), Standards::Language::CPP, 0));
+            const auto out = GET_REDIRECT_OUTPUT;
+
+            ASSERT_EQUALS(0, ret);
+            ASSERT_EQUALS("discarding cached result from 'test-build-dir/test.a1' for 'test.cpp' - hash mismatch\n", out);
+        }
+
+        // Inclusion removed from source, check that it's removed from analyzer info
+        {
+            AnalyzerInformation analyzerInfo;
+            const auto includes = analyzerInfo.getIncludes("test-build-dir", "test.cpp", "", 0);
+
+            ASSERT_EQUALS(1, includes.size());
+            ASSERT_EQUALS("test1.h", *includes.begin());
+        }
     }
 
     // TODO: test suppressions
