@@ -4541,7 +4541,7 @@ def test_analyzerinfo(tmp_path):
 
     # invalid 'hash' node
     with open(test_a1_file, 'w') as f:
-        f.write('<?xml version="1.0"?><analyzerinfo><hash>hash<hash/></analyzerinfo>')
+        f.write('<?xml version="1.0"?><analyzerinfo><hash>hash</hash></analyzerinfo>')
 
     run_and_assert_cppcheck([
         "discarding cached result from '{}' for '{}' - hash mismatch".format(test_a1_file_s, test_file_s)
