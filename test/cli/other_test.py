@@ -2320,7 +2320,7 @@ void f(bool b)
     cache_file = (build_dir / 'test.a1')
 
     root = ElementTree.fromstring(cache_file.read_text())
-    hash_1 = root.findtext('hash', 'hash0')
+    hash_1 = root.findtext('hash')
 
     args += ['--check-level=exhaustive']
 
@@ -2329,7 +2329,7 @@ void f(bool b)
     assert stderr == ''
 
     root = ElementTree.fromstring(cache_file.read_text())
-    hash_2 = root.findtext('hash', 'hash1')
+    hash_2 = root.findtext('hash')
 
     assert hash_1 != hash_2
 
