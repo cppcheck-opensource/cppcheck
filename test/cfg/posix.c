@@ -1508,3 +1508,100 @@ void invalidFunctionArg_nice(int inc)
     // cppcheck-suppress invalidFunctionArg
     nice(+20);
 }
+
+void pthread_cond_wait_test(pthread_cond_t *cond, pthread_mutex_t *mutex)
+{
+    (void)pthread_cond_wait(cond, mutex);
+}
+
+void pthread_cond_timedwait_test(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime)
+{
+    // cppcheck-suppress nullPointer
+    (void)pthread_cond_timedwait(cond, mutex, NULL);
+    (void)pthread_cond_timedwait(cond, mutex, abstime);
+}
+
+void pthread_cond_init_test(pthread_cond_t *cond, const pthread_condattr_t *attr)
+{
+    // cppcheck-suppress nullPointer
+    (void)pthread_cond_init(cond, NULL);
+    (void)pthread_cond_init(cond, attr);
+}
+
+void pthread_cond_destroy_test(pthread_cond_t *cond)
+{
+    (void)pthread_cond_destroy(cond);
+}
+
+void pthread_cleanup_push_test(void (*routine)(void *), void *arg)
+{
+    pthread_cleanup_push(routine, arg);
+    pthread_cleanup_pop(0);
+}
+
+void pthread_mutexattr_init_test(pthread_mutexattr_t *attr)
+{
+    (void)pthread_mutexattr_init(attr);
+}
+
+void pthread_mutexattr_destroy_test(pthread_mutexattr_t *attr)
+{
+    (void)pthread_mutexattr_destroy(attr);
+}
+
+void pthread_mutexattr_settype_test(pthread_mutexattr_t *attr, int type)
+{
+    (void)pthread_mutexattr_settype(attr, type);
+}
+
+void pthread_mutexattr_gettype_test(pthread_mutexattr_t *attr, int *type)
+{
+    (void)pthread_mutexattr_gettype(attr, type);
+}
+
+void pthread_setcancelstate_test(int state, int *oldstate)
+{
+    (void)pthread_setcancelstate(state, oldstate);
+}
+
+void pthread_setcanceltype_test(int type, int *oldtype)
+{
+    (void)pthread_setcanceltype(type, oldtype);
+}
+
+void pthread_cancel_test(pthread_t thread)
+{
+    (void)pthread_cancel(thread);
+}
+
+void pthread_define_test()
+{
+    PTHREAD_STACK_MIN;
+    PTHREAD_CANCEL_ASYNCHRONOUS;
+    PTHREAD_CANCEL_ENABLE;
+    PTHREAD_CANCEL_DEFERRED;
+    PTHREAD_CANCEL_DISABLE;
+    PTHREAD_CANCELED;
+    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+    (void)cond;
+    PTHREAD_CREATE_DETACHED;
+    PTHREAD_CREATE_JOINABLE;
+    PTHREAD_EXPLICIT_SCHED;
+    PTHREAD_INHERIT_SCHED;
+    PTHREAD_MUTEX_DEFAULT;
+    PTHREAD_MUTEX_ERRORCHECK;
+    PTHREAD_MUTEX_NORMAL;
+    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+    (void)mutex;
+    PTHREAD_MUTEX_RECURSIVE;
+    PTHREAD_ONCE_INIT;
+    PTHREAD_PRIO_INHERIT;
+    PTHREAD_PRIO_NONE;
+    PTHREAD_PRIO_PROTECT;
+    PTHREAD_PROCESS_SHARED;
+    PTHREAD_PROCESS_PRIVATE;
+    pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
+    (void)rwlock;
+    PTHREAD_SCOPE_PROCESS;
+    PTHREAD_SCOPE_SYSTEM;
+}
