@@ -69,7 +69,7 @@ public:
     void reportErr(const ErrorMessage &msg);
     void setFileInfo(const std::string &check, const std::string &fileInfo);
     void writeIncludes(const std::set<std::string> &files);
-    std::set<std::string> getIncludes(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId);
+    std::set<std::string> getIncludes(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId) const;
     static std::string getAnalyzerInfoFile(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId);
 
     void reopen(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId);

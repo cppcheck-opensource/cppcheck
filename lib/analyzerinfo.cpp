@@ -69,7 +69,7 @@ void AnalyzerInformation::writeIncludes(const std::set<std::string> &files)
     }
 }
 
-std::set<std::string> AnalyzerInformation::getIncludes(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId)
+std::set<std::string> AnalyzerInformation::getIncludes(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId) const
 {
     if (mOutputStream.is_open())
         throw std::runtime_error("analyzer information file is already open");
