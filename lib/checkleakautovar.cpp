@@ -268,6 +268,40 @@ static const Token * isFunctionCall(const Token * nameToken)
     return nullptr;
 }
 
+/** checks if tok is part of the LHS of an anonymous function call:
+ *  tok should be the first token in a unary expression that evaluates to a
+ *  function pointer, or the name of a lambda or function
+ *      (*func_ptr)(arg)
+ * or
+ *      (lambda)(arg)
+ * or
+ *      get_function()(arg)
+ *
+ * @param token on the LHS of a function call
+ * @return opening parenthesis token or nullptr if not a function call
+ */
+static const Token * isAnonymousFunctionCall(const Token * tok) 
+{
+    // match one of the supported LHS patterns
+    if (tok->previous()->str() == "(" && !tok->previous()->isBinaryOp() && tok->linkAt(-1)) {
+        tok = tok->linkAt(-1)->next();
+    } else if (!tok->isStandardType() && tok->isName() && tok->linkAt(1)) {
+        tok = tok->linkAt(1)->next();
+    } else {
+        return nullptr;
+    }
+
+    // skip over potential template arguments
+    if (tok->link() && tok->str() == "<")
+        tok = tok->link()->next();
+
+    // return the opening parenthesis
+    if (tok && tok->link() && !tok->isCast() && tok->str() == "(")
+        return tok;
+
+    return nullptr;
+}
+
 static const Token* getOutparamAllocation(const Token* tok, const Library& library)
 {
     if (!tok)
@@ -788,11 +822,22 @@ bool CheckLeakAutoVarImpl::checkScope(const Token * const startToken,
                 }
             }
 
+            // a regular function call can return an anonymous function
+            openingPar = isAnonymousFunctionCall(ftok);
+            if (openingPar) {
+                functionCall(nullptr, openingPar, varInfo, VarInfo::AllocInfo(0, VarInfo::NOALLOC), nullptr);
+                tok = openingPar->link();
+            }
+
             continue;
-        }
+        
+        // top level call to an anonymous function
+        } else if (const Token *openingPar = isAnonymousFunctionCall(tok)) {
+            functionCall(nullptr, openingPar, varInfo, VarInfo::AllocInfo(0, VarInfo::NOALLOC), nullptr);
+            tok = openingPar->link();
 
         // goto => weird execution path
-        else if (tok->str() == "goto") {
+        } else if (tok->str() == "goto") {
             varInfo.clear();
             return false;
         }
@@ -942,6 +987,7 @@ const Token * CheckLeakAutoVarImpl::checkTokenInsideExpression(const Token * con
 
     // check for function call
     const Token * const openingPar = inFuncCall ? nullptr : isFunctionCall(tok);
+    const Token * const anonOpeningPar = isAnonymousFunctionCall(tok);
     if (openingPar) {
         const Library::AllocFunc* allocFunc = mSettings.library.getDeallocFuncInfo(tok);
         VarInfo::AllocInfo alloc(allocFunc ? allocFunc->groupId : 0, VarInfo::DEALLOC, tok);
@@ -949,10 +995,19 @@ const Token * CheckLeakAutoVarImpl::checkTokenInsideExpression(const Token * con
             alloc.status = VarInfo::NOALLOC;
         functionCall(tok, openingPar, varInfo, alloc, nullptr);
         const std::string &returnValue = mSettings.library.returnValue(tok);
+
         if (startsWith(returnValue, "arg"))
             // the function returns one of its argument, we need to process a potential assignment
             return openingPar;
-        return isCPPCast(tok->astParent()) ? openingPar : openingPar->link();
+
+        if (!anonOpeningPar)
+            return isCPPCast(tok->astParent()) ? openingPar : openingPar->link();
+    }
+
+    // check for anonymous function call
+    if (anonOpeningPar) {
+        functionCall(nullptr, anonOpeningPar, varInfo, VarInfo::AllocInfo(0, VarInfo::NOALLOC), nullptr);
+        return anonOpeningPar->link();
     }
 
     return nullptr;
@@ -1023,7 +1078,7 @@ void CheckLeakAutoVarImpl::functionCall(const Token *tokName, const Token *tokOp
     const bool isLeakIgnore = mSettings.library.isLeakIgnore(mSettings.library.getFunctionName(tokName));
     if (mSettings.library.getReallocFuncInfo(tokName))
         return;
-    if (tokName->next()->valueType() && tokName->next()->valueType()->container && tokName->next()->valueType()->container->stdStringLike)
+    if (tokName && tokName->next()->valueType() && tokName->next()->valueType()->container && tokName->next()->valueType()->container->stdStringLike)
         return;
 
     const Token * const tokFirstArg = tokOpeningPar->next();
@@ -1270,7 +1325,7 @@ void CheckLeakAutoVarImpl::ret(const Token *tok, VarInfo &varInfo, const bool is
                 const auto use = possibleUsage.find(varid);
                 if (use == possibleUsage.end()) {
                     leakError(tok, var->name(), it->second.type);
-                } else if (!use->second.first->variable()) { // TODO: handle constructors
+                } else if (use->second.first && !use->second.first->variable()) { // TODO: handle constructors
                     configurationInfo(tok, use->second);
                 }
             }
