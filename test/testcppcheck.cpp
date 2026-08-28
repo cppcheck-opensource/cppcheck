@@ -627,8 +627,8 @@ private:
     {
         const auto settings = dinit(Settings,
                                     $.templateFormat = templateFormat,
-                                    $.debugainfo = true,
-                                    $.buildDir = "test-build-dir");
+                                        $.debugainfo = true,
+                                        $.buildDir = "test-build-dir");
 
         ScopedFile build_dir("empty", "", "test-build-dir");
 
