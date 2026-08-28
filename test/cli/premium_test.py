@@ -88,11 +88,11 @@ def test_build_dir_hash_cppcheck_product(tmpdir):
     assert exitcode == 0
 
     def _get_hash(s:str):
-        i = s.find(' hash="')
+        i = s.find('<hash>')
         if i <= -1:
             return ''
         i += 7
-        return s[i:s.find('"', i)]
+        return s[i:s.find('</hash>', i)]
 
     with open(build_dir.join('test.a1'), 'rt') as f:
         f1 = f.read()

@@ -256,7 +256,7 @@ def test_build_dir_include(tmpdir):
         '--cppcheck-build-dir={}'.format(tmpdir),
         '--enable=all',
         '--inline-suppr',
-        '{}5.c'.format(__proj_inline_suppres_path)
+        '{}5.cpp'.format(__proj_inline_suppres_path)
     ]
 
     ret, stdout, stderr = cppcheck(args, cwd=__script_dir)
