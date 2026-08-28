@@ -1043,11 +1043,13 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
                        std::inserter(configDefines, configDefines.end()),
                        getDefineName);
 
-        // Keep track of all included files
+        // Keep track of all included files when using build dir
         std::set<std::string> includedFiles;
 
         preprocessor.setLoadCallback([&](simplecpp::FileData &data, bool loaded) {
-            includedFiles.insert(data.filename);
+            if (analyzerInformation) {
+                includedFiles.insert(data.filename);
+            }
             if (loaded) {
                 // Do preprocessing on included file
                 mLogger->addRemarkComments(preprocessor.getRemarkComments(data.tokens));
@@ -1318,6 +1320,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
 
         if (analyzerInformation) {
             analyzerInformation->writeIncludes(includedFiles);
+            analyzerInformation->writeHash(calculateHash(preprocessor, file.spath()));
         }
 
         executeAddons(dumpFile, file);

@@ -92,18 +92,18 @@ std::set<std::string> AnalyzerInformation::getIncludes(const std::string &buildD
     if (strcmp(rootNode->Name(), "analyzerinfo") != 0)
         return files;
 
-    const tinyxml2::XMLElement *cachedfilesNode = nullptr;
+    const tinyxml2::XMLElement *includesNode = nullptr;
     for (const tinyxml2::XMLElement *e = rootNode->FirstChildElement(); e; e = e->NextSiblingElement()) {
         if (strcmp(e->Name(), "includes") == 0) {
-            cachedfilesNode = e;
+            includesNode = e;
             break;
         }
     }
 
-    if (cachedfilesNode == nullptr)
+    if (includesNode == nullptr)
         return files;
 
-    for (const tinyxml2::XMLElement *e = cachedfilesNode->FirstChildElement(); e; e = e->NextSiblingElement()) {
+    for (const tinyxml2::XMLElement *e = includesNode->FirstChildElement(); e; e = e->NextSiblingElement()) {
         if (strcmp(e->Name(), "filename") != 0)
             continue;
 
@@ -111,6 +111,13 @@ std::set<std::string> AnalyzerInformation::getIncludes(const std::string &buildD
     }
 
     return files;
+}
+
+void AnalyzerInformation::writeHash(std::size_t hash)
+{
+    if (mOutputStream.is_open()) {
+        mOutputStream << "  <hash>" << hash << "</hash>\n";
+    }
 }
 
 std::string AnalyzerInformation::getFilesTxt(const std::list<std::string> &sourcefiles, const std::list<FileSettings> &fileSettings) {
@@ -149,10 +156,17 @@ std::string AnalyzerInformation::skipAnalysis(const tinyxml2::XMLDocument &analy
     if (strcmp(rootNode->Name(), "analyzerinfo") != 0)
         return "unexpected root node";
 
-    const char * const attr = rootNode->Attribute("hash");
-    if (!attr)
-        return "no 'hash' attribute found";
-    if (attr != std::to_string(hash))
+    const tinyxml2::XMLElement *hashNode = nullptr;
+    for (const tinyxml2::XMLElement *e = rootNode->FirstChildElement(); e; e = e->NextSiblingElement()) {
+        if (strcmp(e->Name(), "hash") == 0) {
+            hashNode = e;
+            break;
+        }
+    }
+
+    if (!hashNode)
+        return "no 'hash' node found";
+    if (hashNode->GetText() != std::to_string(hash))
         return "hash mismatch";
 
     for (const tinyxml2::XMLElement *e = rootNode->FirstChildElement(); e; e = e->NextSiblingElement()) {
@@ -249,7 +263,7 @@ bool AnalyzerInformation::analyzeFile(const std::string &buildDir, const std::st
     if (!mOutputStream.is_open())
         throw std::runtime_error("failed to open '" + analyzerInfoFile + "'");
     mOutputStream << "<?xml version=\"1.0\"?>\n";
-    mOutputStream << "<analyzerinfo hash=\"" << hash << "\">\n";
+    mOutputStream << "<analyzerinfo>\n";
 
     return true;
 }

@@ -70,6 +70,7 @@ public:
     void setFileInfo(const std::string &check, const std::string &fileInfo);
     void writeIncludes(const std::set<std::string> &files);
     std::set<std::string> getIncludes(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId) const;
+    void writeHash(std::size_t hash);
     static std::string getAnalyzerInfoFile(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId);
 
     void reopen(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId);
