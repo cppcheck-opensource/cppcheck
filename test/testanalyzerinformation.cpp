@@ -118,7 +118,8 @@ private:
 
             const tinyxml2::XMLError xmlError = doc.Parse(
                 "<?xml version=\"1.0\"?>"
-                "<analyzerinfo hash=\"100\">"
+                "<analyzerinfo>"
+                "<hash>100</hash>"
                 "<error id=\"premium-invalidLicense\" severity=\"error\" msg=\"Invalid license: No license file was found, contact sales@cppchecksolutions.com\" verbose=\"Invalid license: No license file was found, contact sales@cppchecksolutions.com\" file0=\"test.c\">"
                 "<location file=\"Cppcheck Premium\" line=\"0\" column=\"0\"/>"
                 "</error>"
@@ -137,7 +138,8 @@ private:
 
             const tinyxml2::XMLError xmlError = doc.Parse(
                 "<?xml version=\"1.0\"?>"
-                "<analyzerinfo hash=\"100\">"
+                "<analyzerinfo>"
+                "<hash>100</hash>"
                 "<error id=\"premium-internalError\" severity=\"error\" msg=\"Something went wrong\" verbose=\"Something went wrong\" file0=\"test.c\">"
                 "<location file=\"Cppcheck\" line=\"0\" column=\"0\"/>"
                 "</error>"
@@ -156,7 +158,8 @@ private:
 
             const tinyxml2::XMLError xmlError = doc.Parse(
                 "<?xml version=\"1.0\"?>"
-                "<analyzerinfo hash=\"100\">"
+                "<analyzerinfo>"
+                "<hash>100</hash>"
                 "<error id=\"internalError\" severity=\"error\" msg=\"Something went wrong\" verbose=\"Something went wrong\" file0=\"test.c\">"
                 "<location file=\"Cppcheck\" line=\"0\" column=\"0\"/>"
                 "</error>"
@@ -175,7 +178,8 @@ private:
 
             const tinyxml2::XMLError xmlError = doc.Parse(
                 "<?xml version=\"1.0\"?>"
-                "<analyzerinfo hash=\"100\">"
+                "<analyzerinfo>"
+                "<hash>100</hash>"
                 "<error id=\"nullPointer\" severity=\"error\" msg=\"Null pointer dereference: ptr\" verbose=\"Null pointer dereference: ptr\" cwe=\"476\" file0=\"test.c\">"
                 "<location file=\"test.c\" line=\"4\" column=\"3\" info=\"Null pointer dereference\"/>"
                 "<location file=\"test.c\" line=\"3\" column=\"12\" info=\"Assignment &apos;ptr=NULL&apos;, assigned value is 0\"/>"
@@ -196,7 +200,8 @@ private:
 
             const tinyxml2::XMLError xmlError = doc.Parse(
                 "<?xml version=\"1.0\"?>"
-                "<analyzerinfo hash=\"100\">"
+                "<analyzerinfo>"
+                "<hash>100</hash>"
                 "</analyzerinfo>"
                 );
             ASSERT_EQUALS(tinyxml2::XML_SUCCESS, xmlError);
@@ -212,7 +217,8 @@ private:
 
             const tinyxml2::XMLError xmlError = doc.Parse(
                 "<?xml version=\"1.0\"?>"
-                "<analyzerinfo hash=\"100\">"
+                "<analyzerinfo>"
+                "<hash>100</hash>"
                 "<error id=\"nullPointer\" severity=\"error\" msg=\"Null pointer dereference: ptr\" verbose=\"Null pointer dereference: ptr\" cwe=\"476\" file0=\"test.c\">"
                 "<location file=\"test.c\" line=\"4\" column=\"3\" info=\"Null pointer dereference\"/>"
                 "<location file=\"test.c\" line=\"3\" column=\"12\" info=\"Assignment &apos;ptr=NULL&apos;, assigned value is 0\"/>"
@@ -264,7 +270,7 @@ private:
                 );
             ASSERT_EQUALS(tinyxml2::XML_SUCCESS, xmlError);
 
-            ASSERT_EQUALS("no 'hash' attribute found", AnalyzerInformationTest::skipAnalysis(doc, 99, errorList));
+            ASSERT_EQUALS("no 'hash' node found", AnalyzerInformationTest::skipAnalysis(doc, 99, errorList));
             ASSERT_EQUALS(0, errorList.size());
         }
     }
