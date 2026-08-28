@@ -1528,7 +1528,7 @@ void pthread_cond_init_test(pthread_cond_t *cond, const pthread_condattr_t *attr
     (void)pthread_cond_init(cond, attr);
 }
 
-void pthread_cond_destroy_test(pthread_cond_t *cond)
+void pthread_cond_destroy_test(const pthread_cond_t *cond)
 {
     (void)pthread_cond_destroy(cond);
 }
@@ -1549,12 +1549,12 @@ void pthread_mutexattr_destroy_test(pthread_mutexattr_t *attr)
     (void)pthread_mutexattr_destroy(attr);
 }
 
-void pthread_mutexattr_settype_test(pthread_mutexattr_t *attr, int type)
+void pthread_mutexattr_settype_test(const pthread_mutexattr_t *attr, int type)
 {
     (void)pthread_mutexattr_settype(attr, type);
 }
 
-void pthread_mutexattr_gettype_test(pthread_mutexattr_t *attr, int *type)
+void pthread_mutexattr_gettype_test(const pthread_mutexattr_t *attr, int *type)
 {
     (void)pthread_mutexattr_gettype(attr, type);
 }
