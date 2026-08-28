@@ -1595,7 +1595,8 @@ void pthread_define_test()
     pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
     (void)mutex;
     PTHREAD_MUTEX_RECURSIVE;
-    PTHREAD_ONCE_INIT;
+    pthread_once_t once_block = PTHREAD_ONCE_INIT;
+    (void)once_block;
     PTHREAD_PRIO_INHERIT;
     PTHREAD_PRIO_NONE;
     PTHREAD_PRIO_PROTECT;
