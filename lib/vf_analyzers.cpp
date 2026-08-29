@@ -892,7 +892,7 @@ static bool isAliasOf(const Variable * var, const Token *tok, nonneg int varid, 
             return false;
         if (val.isLifetimeValue() && !val.isLocalLifetimeValue())
             return false;
-        if (val.isLifetimeValue() && val.lifetimeKind != ValueFlow::Value::LifetimeKind::Address)
+        if (val.isLifetimeValue() && val.lifetimeKind != ValueFlow::Value::LifetimeKind::Address && val.lifetimeKind != ValueFlow::Value::LifetimeKind::SubObject)
             return false;
         if (!Token::Match(val.tokvalue, ".|&|*|%var%"))
             return false;
@@ -1167,7 +1167,7 @@ struct SingleValueFlowAnalyzer : ValueFlowAnalyzer {
     }
 
     bool isAlias(const Token* tok, bool& inconclusive) const override {
-        if (value.isLifetimeValue())
+        if (value.isLifetimeValue() && value.lifetimeKind != ValueFlow::Value::LifetimeKind::SubObject)
             return false;
         for (const auto& m: {
             std::ref(getVars()), std::ref(getAliasedVars())
