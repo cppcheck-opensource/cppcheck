@@ -97,7 +97,7 @@ def man_search(manpage):
             dprint(1, 'function_names 1a:\n\t%s\n' % (function_names))
             function_names = function_names.replace(r'\n', '')
             dprint(1, 'function_names 2:\n\t%s\n' % (function_names))
-            function_names = re.sub(r"[~() ']+", '', function_names)
+            function_names = re.sub(r"[~() '\\\n]+", '', function_names)
             dprint(1, 'function_names 3:\n\t%s\n' % (function_names))
             function_names = re.split(',', function_names)
             dprint(1, 'function_names split:\n\t%s\n' % (function_names))
@@ -105,6 +105,7 @@ def man_search(manpage):
             for fn in function_names:
                 if fn:
                     apis.add(fn)
+                    dprint(1, 'added function "%s"' % fn)
 
         if 'MT-Unsafe' in lineread:
             resUnsafe = re.search("MT-Unsafe\\s+(.*)(\\n\'|$)", lineread)
