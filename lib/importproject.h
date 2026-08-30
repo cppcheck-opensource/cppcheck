@@ -55,10 +55,14 @@ namespace cppcheck {
     namespace testing
     {
         CPPCHECKLIB bool evaluateVcxprojCondition(const std::string& condition, const std::string& configuration, const std::string& platform);
+        /** Expand MSBuild property expressions ($(Name), $([Class]::Method(args))) in \p expr
+         *  against an empty property map and return the result. Intended for unit tests. */
+        CPPCHECKLIB std::string expandMSBuildExpression(const std::string& expr);
     }
 }
 
-using VariablesMap = std::map<std::string, std::string, cppcheck::stricmp>;
+using PropertiesMap = std::map<std::string, std::string, cppcheck::stricmp>;
+using MetadataMap = std::map<std::string, std::string, cppcheck::stricmp>;
 
 /**
  * @brief Importing project settings.
@@ -88,7 +92,7 @@ public:
 
 protected:
     static void fsSetDefines(FileSettings& fs, std::string defs);
-    void fsSetIncludePaths(FileSettings& fs, const std::string &basepath, const std::list<std::string> &in, VariablesMap &variables);
+    void fsSetIncludePaths(FileSettings& fs, const std::string &basepath, const std::list<std::string> &in, PropertiesMap &properties);
 
 public:
     std::list<FileSettings> fileSettings;
@@ -128,9 +132,6 @@ protected:
     static std::string collectArgs(const std::string &cmd, std::vector<std::string> &args);
     void setRelativePaths(const std::string &filename);
 
-    VariablesMap mVariables;
-
-
 private:
     static void parseArgs(FileSettings &fs, const std::vector<std::string> &args);
 
@@ -141,48 +142,56 @@ private:
 
         std::string name;
         std::string configuration;
-        enum : std::uint8_t { Win32, x64, Unknown } platform = Unknown;
+        enum : std::uint8_t { Win32, x64, ARM64, ARM, Unknown } platform = Unknown;
         std::string platformStr;
     };
 
     struct ItemGroupClCompile {
         explicit ItemGroupClCompile(std::string filename) : filename(std::move(filename)) {}
         std::string filename;
-        std::string additionalIncludeDirectories;
-        std::string forcedIncludeFiles;
-        std::string preprocessorDefinitions;
-        std::string languageStandard;
+        MetadataMap metadata;
+        const std::string &get(const std::string &key) const {
+            static const std::string empty;
+            const auto it = metadata.find(key);
+            return (it != metadata.end()) ? it->second : empty;
+        }
     };
 
     bool importSln(std::istream &istr, const std::string &filename, const std::vector<std::string> &fileFilters);
     bool importSlnx(const std::string& filename, const std::vector<std::string>& fileFilters);
-    bool importVcxproj(const std::string &filename, VariablesMap &variables, const std::vector<std::string> &fileFilters);
+    bool importDirectorySolutionProps(PropertiesMap &properties);
+    bool importVcxproj(const std::string &filename, PropertiesMap &properties, const std::vector<std::string> &fileFilters);
 
     ImportResult importPropsOrTargets(const std::string &file,
-                                      VariablesMap &variables,
+                                      PropertiesMap &properties,
+                                      MetadataMap &metadata,
                                       std::list<ProjectConfiguration> &projectConfigurationList,
                                       std::unordered_set<std::string> &importStack);
     ImportResult importVcxitems(const std::string &items,
-                                VariablesMap &variables,
+                                PropertiesMap &properties,
+                                MetadataMap &metadata,
                                 std::list<ItemGroupClCompile> &compileList,
                                 std::list<ProjectConfiguration> &projectConfigurationList,
                                 std::unordered_set<std::string> &importStack);
     ImportResult importProject(const tinyxml2::XMLElement *node,
                                const std::string &projectDir,
-                               VariablesMap &variables,
+                               PropertiesMap &properties,
+                               MetadataMap &metadata,
                                std::list<ProjectConfiguration> &projectConfigurationList,
                                std::unordered_set<std::string> &importStack);
     ImportResult importCompile(const tinyxml2::XMLElement *node,
                                const std::string &projectDir,
-                               VariablesMap &variables,
+                               PropertiesMap &properties,
+                               const MetadataMap &metadata,
                                std::list<ItemGroupClCompile> &compileList);
     void checkUnexpandedExpressions(const std::string &text, const char *context);
-    bool simplifyPathWithVariables(std::string &s, VariablesMap &variables);
-    void addProperty(const tinyxml2::XMLElement *node, VariablesMap &variables);
-    std::string getProperty(const tinyxml2::XMLElement *node, VariablesMap &variables, const std::string &original);
-    std::string toAbsolute(const std::string &filename, const std::string &baseDir, VariablesMap &variables);
+    bool simplifyPathWithVariables(std::string &s, PropertiesMap &properties);
+    void addProperty(const tinyxml2::XMLElement *node, PropertiesMap &properties);
+    void addMetadata(const tinyxml2::XMLElement *node, PropertiesMap &properties, MetadataMap &metadata);
+    std::string getMetadata(const tinyxml2::XMLElement *node, PropertiesMap &properties, const MetadataMap &metadata, const std::string &original);
+    std::string toAbsolute(const std::string &filename, const std::string &baseDir, PropertiesMap &properties);
     static std::string toAbsolute(const std::string &path);
-    static void setSolution(const std::string &filename, VariablesMap &variables);
+    static void setSolution(const std::string &filename, PropertiesMap &properties);
 
 
     std::string mPath;
