@@ -295,7 +295,7 @@ static const Token * isAnonymousFunctionCall(const Token * tok)
     if (tok->previous()->str() == "(" && !tok->previous()->isBinaryOp() &&
         tok->linkAt(-1) && !tok->isStandardType()) {
         tok = tok->linkAt(-1)->next();
-    } else if (!tok->isStandardType() && tok->isName() && tok->linkAt(1)) {
+    } else if (!tok->isStandardType() && tok->isName() && tok->next()->str() == "(") {
         tok = tok->linkAt(1)->next();
     } else {
         return nullptr;
