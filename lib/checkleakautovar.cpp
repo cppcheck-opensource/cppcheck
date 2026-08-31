@@ -292,10 +292,11 @@ static const Token * isAnonymousFunctionCall(const Token * tok)
     // the lpar surrounding x has isCast() == true, so checking isCast() would
     // have false positive leaks, while allowing casts to take ownership of
     // resources is instead a false negative
-    if (tok->previous()->str() == "(" && !tok->previous()->isBinaryOp() &&
+    if (tok->strAt(-1) == "(" && !tok->previous()->isBinaryOp() &&
         tok->linkAt(-1) && !tok->isStandardType()) {
         tok = tok->linkAt(-1)->next();
-    } else if (!tok->isStandardType() && tok->isName() && tok->next()->str() == "(") {
+    } else if (!tok->isStandardType() && tok->isName() &&
+               tok->strAt(1) == "(") {
         tok = tok->linkAt(1)->next();
     } else {
         return nullptr;
