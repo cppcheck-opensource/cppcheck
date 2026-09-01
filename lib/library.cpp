@@ -898,28 +898,47 @@ Library::Error Library::loadFunction(const tinyxml2::XMLElement * const node, co
         } else if (functionnodename == "returnValue") {
             if (const char *expr = functionnode->GetText())
                 mData->mReturnValue[name] = expr;
-            if (const char *type = functionnode->Attribute("type"))
-                mData->mReturnValueType[name] = type;
-            if (const char *container = functionnode->Attribute("container"))
-                mData->mReturnValueContainer[name] = strToInt<int>(container);
-            // cppcheck-suppress shadowFunction - TODO: fix this
-            if (const char *unknownReturnValues = functionnode->Attribute("unknownValues")) {
-                if (std::strcmp(unknownReturnValues, "all") == 0) {
-                    std::vector<MathLib::bigint> values{LLONG_MIN, LLONG_MAX};
-                    mData->mUnknownReturnValues[name] = std::move(values);
+            for (const auto* attr = functionnode->FirstAttribute(); attr; attr = attr->Next())
+            {
+                const char* const attr_n = attr->Name();
+                if (strcmp(attr_n, "type") == 0)
+                    mData->mReturnValueType[name] = attr->Value();
+                else if (strcmp(attr_n, "container") == 0)
+                    mData->mReturnValueContainer[name] = strToInt<int>(attr->Value()); // TODO: use IntValue()?
+                else if (strcmp(attr_n, "unknownValues") == 0) {
+                    if (std::strcmp(attr->Value(), "all") == 0) {
+                        std::vector<MathLib::bigint> values{LLONG_MIN, LLONG_MAX};
+                        mData->mUnknownReturnValues[name] = std::move(values);
+                    }
                 }
             }
         } else if (functionnodename == "arg") {
-            const char* argNrString = functionnode->Attribute("nr");
+            const char* argNrString = nullptr;
+            const char* defaultString = nullptr;
+            const char* argDirection = nullptr;
+            const char* argIndirect = nullptr;
+
+            for (const auto* attr = functionnode->FirstAttribute(); attr; attr = attr->Next())
+            {
+                const char* const attr_n = attr->Name();
+                if (strcmp(attr_n, "nr") == 0)
+                    argNrString = attr->Value();
+                else if (strcmp(attr_n, "default") == 0)
+                    defaultString = attr->Value();
+                else if (strcmp(attr_n, "direction") == 0)
+                    argDirection = attr->Value();
+                else if (strcmp(attr_n, "indirect") == 0)
+                    argIndirect = attr->Value();
+            }
+
             if (!argNrString)
                 return Error(ErrorCode::MISSING_ATTRIBUTE, "nr");
             const bool bAnyArg = strcmp(argNrString, "any") == 0;
             const bool bVariadicArg = strcmp(argNrString, "variadic") == 0;
             const int nr = (bAnyArg || bVariadicArg) ? -1 : strToInt<int>(argNrString);
             ArgumentChecks &ac = func.argumentChecks[nr];
-            ac.optional  = functionnode->Attribute("default") != nullptr;
+            ac.optional = defaultString != nullptr;
             ac.variadic = bVariadicArg;
-            const char * const argDirection = functionnode->Attribute("direction");
             if (argDirection) {
                 const size_t argDirLen = strlen(argDirection);
                 ArgumentChecks::Direction dir = ArgumentChecks::Direction::DIR_UNKNOWN;
@@ -930,8 +949,8 @@ Library::Error Library::loadFunction(const tinyxml2::XMLElement * const node, co
                 } else if (!strncmp(argDirection, "inout", argDirLen)) {
                     dir = ArgumentChecks::Direction::DIR_INOUT;
                 }
-                if (const char* const argIndirect = functionnode->Attribute("indirect")) {
-                    const int indirect = strToInt<int>(argIndirect);
+                if (argIndirect) {
+                    const int indirect = strToInt<int>(argIndirect); // TODO: use IntValue()?
                     ac.direction[indirect] = dir; // TODO: handle multiple directions/indirect levels
                 }
                 else
