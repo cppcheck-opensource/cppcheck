@@ -146,6 +146,7 @@ public:
 
 private:
     void purgedConfigurationMessage(const std::string &file, const std::string& configuration);
+    void skippedConfigurationMessage(const std::string &file, const std::string& configuration);
 
     bool isPremiumCodingStandardId(const std::string& id) const;
 
