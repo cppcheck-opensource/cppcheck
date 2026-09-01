@@ -37,7 +37,7 @@ class Settings;
  */
 class FwdAnalysis {
 public:
-    explicit FwdAnalysis(const Settings &settings) : mSettings(settings) {}
+    explicit FwdAnalysis(const Settings &settings LIFETIMEBOUND) : mSettings(settings) {}
 
     bool hasOperand(const Token *tok, const Token *lhs) const;
 

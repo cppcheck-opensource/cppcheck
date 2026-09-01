@@ -28,7 +28,7 @@ class Settings;
 
 class CPPCHECKLIB CheckersReport {
 public:
-    CheckersReport(const Settings& settings, const std::set<std::string>& activeCheckers);
+    CheckersReport(const Settings& settings LIFETIMEBOUND, const std::set<std::string>& activeCheckers LIFETIMEBOUND);
 
     int getActiveCheckersCount();
     int getAllCheckersCount();
