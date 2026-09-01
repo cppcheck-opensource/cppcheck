@@ -162,7 +162,9 @@ MainWindow::MainWindow(TranslationHandler* th, QSettings* settings) :
     connect(mUI->mActionAnalyzeFiles, &QAction::triggered, this, &MainWindow::analyzeFiles);
     connect(mUI->mActionAnalyzeDirectory, &QAction::triggered, this, &MainWindow::analyzeDirectory);
     connect(mUI->mActionSettings, &QAction::triggered, this, &MainWindow::programSettings);
-    connect(mUI->mActionClearResults, &QAction::triggered, this, &MainWindow::clearResults);
+    connect(mUI->mActionClearResults, &QAction::triggered, this, [this]() {
+        clearResults();
+    });
     connect(mUI->mActionOpenXML, &QAction::triggered, this, &MainWindow::openResults);
 
     connect(mUI->mActionShowStyle, &QAction::toggled, this, &MainWindow::showStyle);
@@ -573,7 +575,7 @@ void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLib, const bo
         });
     }
 
-    clearResults();
+    clearResults(recheckFiles);
 
     mIsLogfileLoaded = false;
     if (mProjectFile) {
@@ -619,7 +621,7 @@ void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLib, const bo
     if (!checkSettings.buildDir.empty()) {
         checkSettings.loadSummaries();
         std::list<std::string> sourcefiles;
-        AnalyzerInformation::writeFilesTxt(checkSettings.buildDir, sourcefiles, p.fileSettings);
+        AnalyzerInformation::writeFilesTxt(checkSettings.buildDir, sourcefiles, p.fileSettings, !recheckFiles.isEmpty());
     }
 
     //mThread->SetanalyzeProject(true);
@@ -638,7 +640,7 @@ void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLib, const bo
     mUI->mResults->setCheckSettings(checkSettings);
 }
 
-void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLib, const bool checkConfig)
+void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLib, const bool checkConfig, const bool partialRecheck)
 {
     if (files.isEmpty())
         return;
@@ -648,7 +650,7 @@ void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLib, c
     if (!getCppcheckSettings(checkSettings, *supprs))
         return;
 
-    clearResults();
+    clearResults(partialRecheck ? files : QStringList());
 
     mIsLogfileLoaded = false;
     FileList pathList;
@@ -660,7 +662,6 @@ void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLib, c
     }
     QStringList fileNames = pathList.getFileList();
 
-    mUI->mResults->clear(true);
     mUI->mResults->setResultsSource(ResultsTree::ResultsSource::Analysis);
     mThread->clearFiles();
 
@@ -701,7 +702,7 @@ void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLib, c
         std::transform(fileNames.cbegin(), fileNames.cend(), std::back_inserter(sourcefiles), [](const QString& s) {
             return s.toStdString();
         });
-        AnalyzerInformation::writeFilesTxt(checkSettings.buildDir, sourcefiles, {});
+        AnalyzerInformation::writeFilesTxt(checkSettings.buildDir, sourcefiles, {}, partialRecheck);
     }
 
     mThread->setCheckFiles(true);
@@ -1445,8 +1446,14 @@ void MainWindow::reAnalyze(bool all)
     mUI->mResults->setCheckSettings(checkSettings);
 }
 
-void MainWindow::clearResults()
+void MainWindow::clearResults(const QStringList& selectedFiles)
 {
+    if (!selectedFiles.isEmpty()) {
+        mUI->mResults->clear(false);
+        for (const QString& f : selectedFiles)
+            mUI->mResults->clearRecheckFile(f);
+        return;
+    }
     if (mProjectFile && !mProjectFile->getBuildDir().isEmpty()) {
         QDir dir(QFileInfo(mProjectFile->getFilename()).absolutePath() + '/' + mProjectFile->getBuildDir());
         for (const QString& f: dir.entryList(QDir::Files)) {
@@ -1978,7 +1985,7 @@ void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringLis
     if (paths.isEmpty()) {
         paths << mCurrentDirectory;
     }
-    doAnalyzeFiles(paths, checkLib, checkConfig);
+    doAnalyzeFiles(paths, checkLib, checkConfig, !recheckFiles.isEmpty());
 }
 
 void MainWindow::newProjectFile()
