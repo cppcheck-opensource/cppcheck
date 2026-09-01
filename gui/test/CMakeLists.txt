@@ -1,8 +1,12 @@
 add_custom_target(gui-tests)
 
+add_subdirectory(codeeditorstyle)
 add_subdirectory(cppchecklibrarydata)
+add_subdirectory(erroritem)
 add_subdirectory(filelist)
+add_subdirectory(platforms)
 add_subdirectory(projectfile)
 add_subdirectory(resultstree)
+add_subdirectory(showtypes)
 add_subdirectory(translationhandler)
 add_subdirectory(xmlreportv2)
