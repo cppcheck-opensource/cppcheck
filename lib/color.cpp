@@ -72,6 +72,10 @@ std::ostream& operator<<(std::ostream & os, Color c)
 
 std::string toString(Color c)
 {
+
+    std::string st;
+    st[0] = 'x';
+
     std::ostringstream ss;
     ss << c;
     return ss.str();
