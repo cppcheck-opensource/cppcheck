@@ -295,6 +295,14 @@ Example: '-UDEBUG'</para>
       </varlistentry>
       <varlistentry>
         <term>
+          <option>-E</option>
+        </term>
+        <listitem>
+          <para>Print preprocessor output on stdout and don't do any further processing.</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
           <option>-C</option>
         </term>
         <listitem>
