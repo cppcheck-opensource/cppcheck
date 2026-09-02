@@ -3836,16 +3836,16 @@ private:
 
     void keepComments() {
         REDIRECT;
-        const char *const argv[] = { "cppcheck", "-E", "-C", "file.cpp" };
+        const char *const argv[] = { "cppcheck", "-E", "-CC", "file.cpp" };
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT(settings->keepComments);
     }
 
     void keepCommentsNoDashE() {
         REDIRECT;
-        const char *const argv[] = { "cppcheck", "-C", "file.cpp" };
+        const char *const argv[] = { "cppcheck", "-CC", "file.cpp" };
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, parseFromArgs(argv));
-        ASSERT_EQUALS("cppcheck: error: -C may only be used on conjunciton with -E\n", logger->str());
+        ASSERT_EQUALS("cppcheck: error: -CC may only be used on conjunciton with -E\n", logger->str());
     }
 };
 

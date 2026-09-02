@@ -303,7 +303,7 @@ Example: '-UDEBUG'</para>
       </varlistentry>
       <varlistentry>
         <term>
-          <option>-C</option>
+          <option>-CC</option>
         </term>
         <listitem>
           <para>Do not remove comments during preprocessing (requires -E).</para>
