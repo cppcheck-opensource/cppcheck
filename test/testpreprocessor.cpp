@@ -374,6 +374,7 @@ private:
         TEST_CASE(testMissingIncludeCheckConfig);
 
         TEST_CASE(testLazyInclude);
+        TEST_CASE(testKeepComments);
 
         TEST_CASE(hasInclude);
 
@@ -3090,6 +3091,35 @@ private:
         ASSERT_EQUALS(1, outputList.size());
         ASSERT_EQUALS("Header not found: \"missing1.h\"", outputList.begin()->msg);
         ASSERT_EQUALS(1, cache.size());
+    }
+
+    void testKeepComments() {
+        const char *code = "#include \"header.h\"\n"
+                           "// source file comment\n"
+                           "/* source file comment */\n";
+        std::vector<std::string> files;
+        simplecpp::TokenList tokens(code, files, "test.c");
+
+        ScopedFile header("header.h",
+                          "// header comment\n"
+                          "/* header comment */\n");
+
+        Settings settings;
+        settings.keepComments = true;
+        Preprocessor preprocessor(tokens, settings, *this, Standards::Language::CPP);
+
+        simplecpp::OutputList outputList;
+        simplecpp::TokenList tokens2 = preprocessor.preprocess("", files, outputList);
+        std::string out = tokens2.stringify();
+
+        const char *expected = "\n"
+                               "#line 1 \"header.h\"\n"
+                               "// header comment\n"
+                               "/* header comment */\n"
+                               "#line 2 \"test.c\"\n"
+                               "// source file comment\n"
+                               "/* source file comment */";
+        ASSERT_EQUALS(expected, out);
     }
 
     void hasInclude() {
