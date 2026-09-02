@@ -890,7 +890,8 @@ simplecpp::TokenList Preprocessor::preprocess(const std::string &cfgStr, std::ve
     mMacroUsage = std::move(macroUsage);
     mIfCond = std::move(ifCond);
 
-    tokens2.removeComments();
+    if (!mSettings.keepComments)
+        tokens2.removeComments();
 
     return tokens2;
 }
