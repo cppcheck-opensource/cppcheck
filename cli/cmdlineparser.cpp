@@ -1818,6 +1818,7 @@ void CmdLineParser::printHelp() const
         "                         Example: '-DDEBUG=1 -D__cplusplus'.\n"
         "    -E                   Print preprocessor output on stdout and don't do any\n"
         "                         further processing.\n"
+        "    -C                   Do not remove comments during preprocessing (requires -E).\n"
         "    --enable=<severity>  Enable additional checks grouped by severity. The available\n"
         "                         severities are:\n"
         "                          * warning\n"
