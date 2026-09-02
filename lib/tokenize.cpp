@@ -9986,6 +9986,8 @@ void Tokenizer::simplifyKeyword()
     const bool c99 = isC() && mSettings.standards.c >= Standards::C99;
     const bool cpp11 = isCPP() && mSettings.standards.cpp >= Standards::CPP11;
     const bool cpp20 = isCPP() && mSettings.standards.cpp >= Standards::CPP20;
+    const bool have_Noreturn = isC() && mSettings.standards.c >= Standards::C11
+                               && mSettings.standards.c < Standards::C23;
 
     for (Token *tok = list.front(); tok; tok = tok->next()) {
         if (keywords.find(tok->str()) != keywords.end()) {
@@ -10003,6 +10005,15 @@ void Tokenizer::simplifyKeyword()
                 }
                 tok->deleteThis(); // Simplify..
             }
+        }
+
+        if (have_Noreturn && tok->str() == "_Noreturn") {
+            Token *nameTok = tok;
+            while (Token::Match(nameTok, "%name%|*"))
+                nameTok = nameTok->next();
+            if (nameTok && nameTok->str() == "(" && TokenList::isFunctionHead(nameTok, "{;"))
+                nameTok->previous()->isAttributeNoreturn(true);
+            tok->deleteThis();
         }
 
         if (isC() || mSettings.standards.cpp == Standards::CPP03) {
