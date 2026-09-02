@@ -461,6 +461,11 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
             mSettings.quiet = true;
         }
 
+        // -C
+        else if (std::strcmp(argv[i], "-C") == 0) {
+            mSettings.keepComments = true;
+        }
+
         // Include paths
         else if (std::strncmp(argv[i], "-I", 2) == 0) {
             std::string path;
@@ -1736,6 +1741,12 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
     // Use paths _pathnames if no base paths for relative path output are given
     if (mSettings.basePaths.empty() && mSettings.relativePaths)
         mSettings.basePaths = mPathNames;
+
+    if (mSettings.keepComments && !mSettings.preprocessOnly) {
+        mLogger.printError("-C may only be used on conjunciton with -E");
+        return Result::Fail;
+    }
+
 
     return Result::Success;
 }
