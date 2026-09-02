@@ -375,6 +375,7 @@ private:
 
         TEST_CASE(testLazyInclude);
         TEST_CASE(testKeepComments);
+        TEST_CASE(testKeepCommentsMultiline);
 
         TEST_CASE(hasInclude);
 
@@ -3120,6 +3121,23 @@ private:
                                "// source file comment\n"
                                "/* source file comment */";
         ASSERT_EQUALS(expected, out);
+    }
+
+    void testKeepCommentsMultiline() {
+        const char *code = "/* multi...\n"
+                           "   ...line */\n"
+                           "int x;\n";
+        std::vector<std::string> files;
+        simplecpp::TokenList tokens(code, files, "test.c");
+
+        Settings settings;
+        settings.keepComments = true;
+        Preprocessor preprocessor(tokens, settings, *this, Standards::Language::C);
+
+        const char *expected = "/* multi...\n"
+                               "   ...line */\n"
+                               "int x ;";
+        ASSERT_EQUALS(expected, preprocessor.getcode("", files, false));
     }
 
     void hasInclude() {
