@@ -924,7 +924,9 @@ std::string Preprocessor::getcode(const std::string &cfgStr, std::vector<std::st
         if (tok->comment)
             line += std::count_if(tok->str().cbegin(),
                                   tok->str().cend(),
-                                  [](char c) { return c == '\n'; });
+                                  [](char c) {
+                return c == '\n';
+            });
     }
 
     return ret.str();
