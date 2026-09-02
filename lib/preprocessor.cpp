@@ -920,6 +920,13 @@ std::string Preprocessor::getcode(const std::string &cfgStr, std::vector<std::st
         if (!tok->macro.empty())
             ret << Preprocessor::macroChar;
         ret << tok->str();
+
+        if (tok->comment) {
+            for (auto c : tok->str()) {
+                if (c == '\n')
+                    line++;
+            }
+        }
     }
 
     return ret.str();
