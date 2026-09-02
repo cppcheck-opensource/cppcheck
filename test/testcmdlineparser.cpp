@@ -550,6 +550,8 @@ private:
         TEST_CASE(reportTypeMisraCpp2023);
         TEST_CASE(invalidReportType);
         TEST_CASE(defaultReportType);
+        TEST_CASE(keepComments);
+        TEST_CASE(keepCommentsNoDashE);
     }
 
     void nooptions() {
@@ -3830,6 +3832,20 @@ private:
         const char *const argv[] = { "cppcheck", "file.cpp" };
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS_ENUM(ReportType::normal, settings->reportType);
+    }
+
+    void keepComments() {
+        REDIRECT;
+        const char *const argv[] = { "cppcheck", "-E", "-C", "file.cpp" };
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
+        ASSERT(settings->keepComments);
+    }
+
+    void keepCommentsNoDashE() {
+        REDIRECT;
+        const char *const argv[] = { "cppcheck", "-C", "file.cpp" };
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, parseFromArgs(argv));
+        ASSERT_EQUALS("cppcheck: error: -C may only be used on conjunciton with -E\n", logger->str());
     }
 };
 
