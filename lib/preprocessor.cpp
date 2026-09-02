@@ -921,12 +921,10 @@ std::string Preprocessor::getcode(const std::string &cfgStr, std::vector<std::st
             ret << Preprocessor::macroChar;
         ret << tok->str();
 
-        if (tok->comment) {
-            for (auto c : tok->str()) {
-                if (c == '\n')
-                    line++;
-            }
-        }
+        if (tok->comment)
+            line += std::count_if(tok->str().cbegin(),
+                                  tok->str().cend(),
+                                  [](char c) { return c == '\n'; });
     }
 
     return ret.str();
