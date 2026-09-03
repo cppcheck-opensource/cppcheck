@@ -1972,6 +1972,172 @@ void CheckConditionImpl::assignmentInCondition(const Token *eq)
         Certainty::normal);
 }
 
+static bool getIntegerTypeRange(const Token* tok,
+                                const Settings& settings,
+                                MathLib::bigint& lower,
+                                MathLib::bigint& upper)
+{
+    if (!tok || !tok->valueType() || tok->valueType()->pointer)
+        return false;
+
+    const ValueType* const valueType = tok->valueType();
+    if (!valueType->isIntegral())
+        return false;
+
+    // bool can only hold 0 or 1, regardless of signedness
+    if (valueType->type == ValueType::Type::BOOL) {
+        lower = 0;
+        upper = 1;
+        return true;
+    }
+
+    const std::size_t bits = settings.platform.char_bit *
+                             valueType->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointee);
+    if (bits == 0 || bits > 64)
+        return false;
+
+    if (bits == 64 && valueType->sign == ValueType::Sign::UNSIGNED)
+        return false;
+    const MathLib::bigint max = bits == 64 ? std::numeric_limits<MathLib::bigint>::max() : (MathLib::bigint(1) << bits) - 1;
+    if (valueType->sign == ValueType::Sign::SIGNED) {
+        if (bits == 64) {
+            lower = std::numeric_limits<MathLib::bigint>::min();
+            upper = std::numeric_limits<MathLib::bigint>::max();
+        } else {
+            lower = -(MathLib::bigint(1) << (bits - 1));
+            upper = max / 2;
+        }
+    } else if (valueType->sign == ValueType::Sign::UNSIGNED) {
+        lower = 0;
+        upper = max;
+    } else {
+        return false; // unknown sign: do not guess the range
+    }
+    return true;
+}
+
+static bool getIntegerExpressionRange(const Token* tok,
+                                      const Settings& settings,
+                                      MathLib::bigint& lower,
+                                      MathLib::bigint& upper)
+{
+    if (!tok)
+        return false;
+    if (tok->hasKnownIntValue()) {
+        lower = upper = tok->getKnownIntValue();
+        return true;
+    }
+
+    if (tok->isCast() && tok->astOperand1()) {
+        MathLib::bigint typeLower;
+        MathLib::bigint typeUpper;
+        const bool hasSourceRange = getIntegerExpressionRange(tok->astOperand1(), settings, lower, upper);
+        const bool hasTypeRange = getIntegerTypeRange(tok, settings, typeLower, typeUpper);
+        if (!hasSourceRange && !hasTypeRange)
+            return false;
+        if (!hasSourceRange) {
+            lower = typeLower;
+            upper = typeUpper;
+            return true;
+        }
+        if (!hasTypeRange)
+            return true;
+        lower = std::max(lower, typeLower);
+        upper = std::min(upper, typeUpper);
+        return lower <= upper;
+    }
+
+    if (Token::simpleMatch(tok, "(") && tok->astOperand1())
+        return getIntegerExpressionRange(tok->astOperand1(), settings, lower, upper);
+
+    if (Token::Match(tok, "+|-")) {
+        MathLib::bigint operandLower;
+        MathLib::bigint operandUpper;
+        MathLib::bigint constantLower;
+        MathLib::bigint constantUpper;
+        if (!getIntegerExpressionRange(tok->astOperand1(), settings, operandLower, operandUpper) ||
+            !getIntegerExpressionRange(tok->astOperand2(), settings, constantLower, constantUpper) ||
+            constantLower != constantUpper)
+            return false;
+        const MathLib::bigint minimum = std::numeric_limits<MathLib::bigint>::min();
+        const MathLib::bigint maximum = std::numeric_limits<MathLib::bigint>::max();
+        if (tok->str() == "+" &&
+            ((constantLower > 0 && operandUpper > maximum - constantLower) ||
+             (constantLower < 0 && operandLower < minimum - constantLower)))
+            return false;
+        if (tok->str() == "-" &&
+            ((constantUpper > 0 && operandLower < minimum + constantUpper) ||
+             (constantUpper < 0 && operandUpper > maximum + constantUpper)))
+            return false;
+        if (tok->str() == "+") {
+            lower = operandLower + constantLower;
+            upper = operandUpper + constantUpper;
+        } else {
+            lower = operandLower - constantUpper;
+            upper = operandUpper - constantLower;
+        }
+        return true;
+    }
+
+    return getIntegerTypeRange(tok, settings, lower, upper);
+}
+
+static bool compareIntegerRange(const Token* comparison,
+                                MathLib::bigint lower,
+                                MathLib::bigint upper,
+                                MathLib::bigint value,
+                                bool& result)
+{
+    if (!comparison || !comparison->isComparisonOp())
+        return false;
+    if (comparison->str() == "<") {
+        if (upper < value)
+            result = true;
+        else if (lower >= value)
+            result = false;
+        else
+            return false;
+    } else if (comparison->str() == "<=") {
+        if (upper <= value)
+            result = true;
+        else if (lower > value)
+            result = false;
+        else
+            return false;
+    } else if (comparison->str() == ">") {
+        if (lower > value)
+            result = true;
+        else if (upper <= value)
+            result = false;
+        else
+            return false;
+    } else if (comparison->str() == ">=") {
+        if (lower >= value)
+            result = true;
+        else if (upper < value)
+            result = false;
+        else
+            return false;
+    } else if (comparison->str() == "==") {
+        if (lower == upper)
+            result = (lower == value);
+        else if (value < lower || value > upper)
+            result = false;
+        else
+            return false;
+    } else if (comparison->str() == "!=") {
+        if (lower == upper)
+            result = (lower != value);
+        else if (value < lower || value > upper)
+            result = true;
+        else
+            return false;
+    } else {
+        return false;
+    }
+    return true;
+}
+
 void CheckConditionImpl::checkCompareValueOutOfTypeRange()
 {
     if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("compareValueOutOfTypeRangeError"))
@@ -1987,6 +2153,26 @@ void CheckConditionImpl::checkCompareValueOutOfTypeRange()
         for (const Token* tok = scope->bodyStart; tok != scope->bodyEnd; tok = tok->next()) {
             if (!tok->isComparisonOp() || !tok->isBinaryOp())
                 continue;
+
+            for (int i = 0; i < 2; ++i) {
+                const Token* const expressionTok = (i == 0) ? tok->astOperand2() : tok->astOperand1();
+                const Token* const valueTok = (i == 0) ? tok->astOperand1() : tok->astOperand2();
+                if (!expressionTok || !valueTok || !valueTok->hasKnownIntValue() || expressionTok->hasKnownIntValue())
+                    continue;
+                if (expressionTok->str() != "(" && !expressionTok->isCast() && !expressionTok->isArithmeticalOp())
+                    continue;
+                MathLib::bigint lower;
+                MathLib::bigint upper;
+                if (!getIntegerExpressionRange(expressionTok, mSettings, lower, upper))
+                    continue;
+                bool result;
+                if (!compareIntegerRange(tok, lower, upper, valueTok->getKnownIntValue(), result) || diag(tok))
+                    continue;
+                compareValueOutOfTypeRangeError(valueTok,
+                                                expressionTok->valueType() ? expressionTok->valueType()->str() : "",
+                                                valueTok->getKnownIntValue(),
+                                                result);
+            }
 
             for (int i = 0; i < 2; ++i) {
                 const Token * const valueTok = (i == 0) ? tok->astOperand1() : tok->astOperand2();
