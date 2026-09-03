@@ -154,6 +154,7 @@ private:
 
         TEST_CASE(simplifyExternC);
         TEST_CASE(simplifyKeyword); // #5842 - remove C99 static keyword between []
+        TEST_CASE(simplifyKeywordNoreturn);
 
         TEST_CASE(isOneNumber);
 
@@ -3092,6 +3093,19 @@ private:
         }
 
         ASSERT_EQUALS("class Fred { } ;", tokenizeAndStringify("class DLLEXPORT Fred final { };\n"));
+    }
+
+    void simplifyKeywordNoreturn() {
+        const char code[] = "_Noreturn void f(void) {}\n";
+        const char expected[] = "void f ( ) { }";
+        SimpleTokenizer tokenizer(settings2 /* C11 */, *this, false);
+        ASSERT(tokenizer.tokenize(code));
+
+        ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
+
+        const Token *f = Token::findsimplematch(tokenizer.tokens(), "f");
+        ASSERT(f);
+        ASSERT(f->isAttributeNoreturn());
     }
 
     void implicitIntConst() {
