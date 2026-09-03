@@ -3304,12 +3304,12 @@ static T* findLambdaEndTokenGeneric(T* first)
         return nullptr;
     if (!maybeLambda(first->previous()))
         return nullptr;
-    if (!Token::Match(first->link(), "] (|{|<"))
+    if (!Token::Match(first->link(), "] [({<.]"))
         return nullptr;
     const Token* roundOrCurly = first->link()->next();
     if (roundOrCurly->link() && roundOrCurly->str() == "<")
         roundOrCurly = roundOrCurly->link()->next();
-    if (first->astOperand1() != roundOrCurly)
+    if (first->astOperand1() != roundOrCurly && roundOrCurly->str() != ".")
         return nullptr;
     T * tok = first;
 

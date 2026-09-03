@@ -8097,7 +8097,7 @@ private:
         code = "void f(int& r) {\n" // #13515
                "    [0].p = &r;\n"
                "}\n";
-        (void)valueOfTok(code, "=");
+        ASSERT_THROW_INTERNAL(valueOfTok(code, "="), AST);
     }
 
     void valueFlowCrash() {

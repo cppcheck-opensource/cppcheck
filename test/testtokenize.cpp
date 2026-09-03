@@ -7647,6 +7647,8 @@ private:
         ASSERT_EQUALS("sf.{(i[{={", testAst("void g(int i) { S s{ .f = { [i]() {} } }; }\n"));
 
         ASSERT_EQUALS("{([", testAst("void f() { []() {}; }\n")); // #13471
+
+        ASSERT_EQUALS("x{=[= 0return", testAst("void f() { auto x = [=] -> int { return 0; }; }\n")); // #15008
     }
 
     void astcase() {
