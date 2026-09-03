@@ -1323,6 +1323,10 @@ private:
                       "return ; } }\n\n"
                       "return ;\n"
                       "}", tokenizeAndStringify(code));
+        ASSERT_EQUALS_WITHOUT_LINENUMBERS(
+            "[test.cpp:5:1]: (debug) valueflow.cpp:5427:valueFlowForLoopSimplifyAfter bailout: For loop variable bailout on escape statement [valueFlowBailout]\n"
+            "[test.cpp:5:1]: (debug) valueflow.cpp:5427:valueFlowForLoopSimplifyAfter bailout: For loop variable bailout on escape statement [valueFlowBailout]\n",
+            errout_str());
     }
 
     void ifAddBraces7() {

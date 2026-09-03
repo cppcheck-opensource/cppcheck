@@ -5143,6 +5143,18 @@ private:
         ++it;
         ASSERT_EQUALS(5, it->intvalue);
         ASSERT(it->isImpossible());
+
+        code = "int a[5];\n" // #14998
+               "int f() {\n"
+               "    int i;\n"
+               "    for (i = 0; true; ++i) {\n"
+               "        if (i == 4)\n"
+               "            break;\n"
+               "    }\n"
+               "    return a[i];\n"
+               "}\n";
+        values = tokenValues(code, "i ]");
+        ASSERT(values.empty());
     }
 
     void valueFlowSubFunction() {
