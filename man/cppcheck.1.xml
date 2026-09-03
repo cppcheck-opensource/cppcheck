@@ -261,6 +261,14 @@ man(1), man(7), http://www.tldp.org/HOWTO/Man-Page/
            control the term elements. -->
       <varlistentry>
         <term>
+          <option>-CC</option>
+        </term>
+        <listitem>
+          <para>Do not remove comments during preprocessing (requires -E).</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
           <option>--check-config</option>
         </term>
         <listitem>
@@ -299,14 +307,6 @@ Example: '-UDEBUG'</para>
         </term>
         <listitem>
           <para>Print preprocessor output on stdout and don't do any further processing.</para>
-        </listitem>
-      </varlistentry>
-      <varlistentry>
-        <term>
-          <option>-CC</option>
-        </term>
-        <listitem>
-          <para>Do not remove comments during preprocessing (requires -E).</para>
         </listitem>
       </varlistentry>
       <varlistentry>
