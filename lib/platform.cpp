@@ -97,6 +97,42 @@ bool Platform::set(Type t)
         char_bit = 8;
         calculateBitMembers();
         return true;
+    case Type::WinARM64:
+        type = t;
+        windows = true;
+        sizeof_bool = 1;
+        sizeof_short = 2;
+        sizeof_int = 4;
+        sizeof_long = 4;
+        sizeof_long_long = 8;
+        sizeof_float = 4;
+        sizeof_double = 8;
+        sizeof_long_double = 8;
+        sizeof_wchar_t = 2;
+        sizeof_size_t = 8;
+        sizeof_pointer = 8;
+        defaultSign = 's';
+        char_bit = 8;
+        calculateBitMembers();
+        return true;
+    case Type::WinARM:
+        type = t;
+        windows = true;
+        sizeof_bool = 1;
+        sizeof_short = 2;
+        sizeof_int = 4;
+        sizeof_long = 4;
+        sizeof_long_long = 8;
+        sizeof_float = 4;
+        sizeof_double = 8;
+        sizeof_long_double = 8;
+        sizeof_wchar_t = 2;
+        sizeof_size_t = 4;
+        sizeof_pointer = 4;
+        defaultSign = 's';
+        char_bit = 8;
+        calculateBitMembers();
+        return true;
     case Type::Unix32:
         type = t;
         windows = false;
@@ -150,6 +186,10 @@ bool Platform::set(const std::string& platformstr, std::string& errstr, const st
         set(Type::Win32W);
     else if (platformstr == "win64")
         set(Type::Win64);
+    else if (platformstr == "winARM64")
+        set(Type::WinARM64);
+    else if (platformstr == "winARM")
+        set(Type::WinARM);
     else if (platformstr == "unix32")
         set(Type::Unix32);
     else if (platformstr == "unix64")
