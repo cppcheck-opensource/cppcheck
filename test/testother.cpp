@@ -142,6 +142,7 @@ private:
         TEST_CASE(switchRedundantOperationTest);
         TEST_CASE(switchRedundantBitwiseOperationTest);
         TEST_CASE(unreachableCode);
+        TEST_CASE(unreachableSwitchCase); // #8442
         TEST_CASE(redundantContinue);
 
         TEST_CASE(suspiciousCase);
@@ -6346,6 +6347,61 @@ private:
               "    usleep(10000);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void unreachableSwitchCase() {
+        check("enum T { A, B};\n"
+              "void f(const T &t) {\n"
+              "    if (t == A) {\n"
+              "        switch (t) {\n"
+              "        case A:\n"
+              "            break;\n"
+              "        case B:\n"
+              "            break;\n"
+              "        }\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:7:9]: (style) Switch case 'B' can never be selected because the switch condition is known to be 0. [unreachableSwitchCase]\n", errout_str());
+
+        check("void f(int t) {\n"
+              "    if (t == 0) {\n"
+              "        switch (t) {\n"
+              "        case 0:\n"
+              "            break;\n"
+              "        case 1:\n"
+              "            break;\n"
+              "        }\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:6:9]: (style) Switch case '1' can never be selected because the switch condition is known to be 0. [unreachableSwitchCase]\n", errout_str());
+
+        check("void f(int t) {\n"
+              "    switch (t) {\n"
+              "    case 0:\n"
+              "        break;\n"
+              "    case 1:\n"
+              "        break;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f(int x, int y) {\n"
+              "    if (x == 0) {\n"
+              "        switch (x) {\n"
+              "        case 0:\n"
+              "            switch (y) {\n"
+              "            case 1:\n"
+              "                break;\n"
+              "            case 2:\n"
+              "                break;\n"
+              "            }\n"
+              "            break;\n"
+              "        case 1:\n"
+              "            break;\n"
+              "        }\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:12:9]: (style) Switch case '1' can never be selected because the switch condition is known to be 0. [unreachableSwitchCase]\n", errout_str());
     }
 
     void redundantContinue() {

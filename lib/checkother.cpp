@@ -968,6 +968,66 @@ void CheckOtherImpl::suspiciousCaseInSwitchError(const Token* tok, const std::st
                 "Using an operator like '" + operatorString + "' in a case label is suspicious. Did you intend to use a bitwise operator, multiple case labels or if/else instead?", CWE398, Certainty::inconclusive);
 }
 
+void CheckOtherImpl::checkUnreachableSwitchCase()
+{
+    if (!mSettings.severity.isEnabled(Severity::style))
+        return;
+
+    logChecker("CheckOther::checkUnreachableSwitchCase"); // style
+
+    const SymbolDatabase* symbolDatabase = mTokenizer->getSymbolDatabase();
+
+    for (const Scope& scope : symbolDatabase->scopeList) {
+        if (scope.type != ScopeType::eSwitch || !scope.bodyStart)
+            continue;
+        const Token* rpar = scope.bodyStart->previous();
+        if (!Token::simpleMatch(rpar, ")"))
+            continue;
+        const Token* lpar = rpar->link();
+        if (!lpar)
+            continue;
+        const Token* condition = lpar->astOperand2();
+        if (!condition)
+            continue;
+        const ValueFlow::Value* switchValue =
+            condition->getKnownValue(ValueFlow::Value::ValueType::INT);
+        if (!switchValue)
+            continue;
+
+        for (const Token* tok = scope.bodyStart->next();
+             tok && tok != scope.bodyEnd;
+             tok = tok->next()) {
+
+            // Do not inspect cases belonging to a nested switch.
+            if (Token::simpleMatch(tok, "{") &&
+                tok->scope()->type == ScopeType::eSwitch) {
+                tok = tok->link();
+                continue;
+            }
+            if (!Token::simpleMatch(tok, "case"))
+                continue;
+            const Token* caseExpression = tok->astOperand1();
+            if (!caseExpression)
+                continue;
+            const ValueFlow::Value* caseValue =
+                caseExpression->getKnownValue(ValueFlow::Value::ValueType::INT);
+            if (!caseValue)
+                continue;
+            if (switchValue->intvalue == caseValue->intvalue)
+                continue;
+            unreachableSwitchCaseError(tok, caseExpression->expressionString(), MathLib::toString(switchValue->intvalue));
+        }
+    }
+}
+
+void CheckOtherImpl::unreachableSwitchCaseError(const Token* tok, const std::string& caseExpression, const std::string& switchValue)
+{
+    reportError(tok, Severity::style, "unreachableSwitchCase",
+                "Switch case '" + caseExpression +
+                "' can never be selected because the switch condition is known to be " + switchValue + ".",
+                CWE561, Certainty::normal);
+}
+
 static bool isNestedInSwitch(const Scope* scope)
 {
     while (scope) {
@@ -4820,6 +4880,7 @@ void CheckOther::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
     checkOther.checkCharVariable();
     checkOther.redundantBitwiseOperationInSwitchError();
     checkOther.checkSuspiciousCaseInSwitch();
+    checkOther.checkUnreachableSwitchCase();
     checkOther.checkDuplicateBranch();
     checkOther.checkDuplicateExpression();
     checkOther.checkRedundantAssignment();
@@ -4907,6 +4968,7 @@ void CheckOther::getErrorMessages(ErrorLogger& errorLogger, const Settings &sett
     c.duplicateExpressionTernaryError(nullptr, ErrorPath{});
     c.duplicateBreakError(nullptr,  false);
     c.unreachableCodeError(nullptr, nullptr,  false);
+    c.unreachableSwitchCaseError(nullptr, "case", "0");
     c.unsignedLessThanZeroError(nullptr, nullptr, "varname");
     c.unsignedPositiveError(nullptr, nullptr, "varname");
     c.pointerLessThanZeroError(nullptr, nullptr);
