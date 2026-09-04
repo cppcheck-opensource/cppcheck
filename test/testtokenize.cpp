@@ -3077,7 +3077,7 @@ private:
     void simplifyKeywordNoreturn() {
         const char code[] = "_Noreturn void f(void) {}\n";
         const char expected[] = "void f ( ) { }";
-        SimpleTokenizer tokenizer(settings2 /* C11 */, *this, false);
+        SimpleTokenizer tokenizer(*this, false);
         ASSERT(tokenizer.tokenize(code));
 
         ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
