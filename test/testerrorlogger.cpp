@@ -55,6 +55,7 @@ private:
         TEST_CASE(ErrorMessageVerboseNewline);
         TEST_CASE(ErrorMessageFromInternalError);
         TEST_CASE(ErrorMessageCode);
+        TEST_CASE(ErrorMessageNoCode);
         TEST_CASE(CustomFormat);
         TEST_CASE(CustomFormat2);
         TEST_CASE(CustomFormatLocations);
@@ -384,6 +385,22 @@ private:
                       "int i3;\n"
                       "    ^",
                       msg.toString(false, "{file}:{line}:{column}: {severity}:{inconclusive:inconclusive:} {message} [{id}]\n{code}", ""));
+    }
+
+    void ErrorMessageNoCode() const {
+        ScopedFile file("code.cpp",
+                        "int i;\n"
+                        "int i2;\n"
+                        "int i3;\n"
+                        );
+
+        ErrorMessage::FileLocation code{"code.cpp", 3, 5};
+        std::list<ErrorMessage::FileLocation> locs = { code };
+        ErrorMessage msg(std::move(locs), "", Severity::error, "Programming error.\nVerbose error", "errorId", Certainty::normal);
+        ASSERT_EQUALS(1, msg.callStack.size());
+        const bool noCode = true;
+        ASSERT_EQUALS("code.cpp:3:5: error: Programming error. [errorId]\n",
+                      msg.toString(false, "{file}:{line}:{column}: {severity}:{inconclusive:inconclusive:} {message} [{id}]\n{code}", "", noCode));
     }
 
     void CustomFormat() const {

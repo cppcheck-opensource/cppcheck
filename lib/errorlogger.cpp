@@ -696,7 +696,7 @@ static void replaceColors(std::string& source, bool erase) {
         replace(source, substitutionMapErase);
 }
 
-std::string ErrorMessage::toString(bool verbose, const std::string &templateFormat, const std::string &templateLocation) const
+std::string ErrorMessage::toString(bool verbose, const std::string &templateFormat, const std::string &templateLocation, bool noCode) const
 {
     assert(!templateFormat.empty());
 
@@ -737,7 +737,8 @@ std::string ErrorMessage::toString(bool verbose, const std::string &templateForm
                 endl = "\r\n";
             else
                 endl = "\r";
-            findAndReplace(result, "{code}", readCode(callStack.back().getOrigFile(), callStack.back().line, callStack.back().column, endl));
+            const std::string code = noCode ? "" : readCode(callStack.back().getOrigFile(), callStack.back().line, callStack.back().column, endl);
+            findAndReplace(result, "{code}", code);
         }
     } else {
         static const std::unordered_map<std::string, std::string> callStackSubstitutionMap =
@@ -768,7 +769,8 @@ std::string ErrorMessage::toString(bool verbose, const std::string &templateForm
                     endl = "\r\n";
                 else
                     endl = "\r";
-                findAndReplace(text, "{code}", readCode(fileLocation.getOrigFile(), fileLocation.line, fileLocation.column, endl));
+                const std::string code = noCode ? "" : readCode(fileLocation.getOrigFile(), fileLocation.line, fileLocation.column, endl);
+                findAndReplace(text, "{code}", code);
             }
             result += '\n' + text;
         }
