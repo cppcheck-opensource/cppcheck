@@ -10005,7 +10005,7 @@ void Tokenizer::simplifyKeyword()
             }
         }
 
-        if (isC() && tok->str() == "_Noreturn") {
+        if (isC() && (tok->str() == "_Noreturn" || tok->str() == "noreturn")) {
             Token *nameTok = tok;
             while (Token::Match(nameTok, "%name%|*"))
                 nameTok = nameTok->next();
