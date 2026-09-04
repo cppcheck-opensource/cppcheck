@@ -6406,6 +6406,50 @@ private:
                       "[test.cpp:7:19]: note: Assignment 'b=false'\n"
                       "[test.cpp:7:13]: note: Condition '!b' is redundant\n",
                       errout_str());
+
+        check("void f(bool& b) {\n" // #14915
+              "    if (b == true)\n"
+              "        b = false;\n"
+              "}\n"
+              "void g(bool& b) {\n"
+              "    if (b == false)\n"
+              "        b = false;\n"
+              "}\n"
+              "void h(bool& b) {\n"
+              "    if (b != true)\n"
+              "        b = false;\n"
+              "}\n"
+              "void i(bool& b) {\n"
+              "    if (b != false)\n"
+              "        b = false;\n"
+              "}\n"
+              "void j(bool& b) {\n"
+              "    if (b == true)\n"
+              "        b = true;\n"
+              "}\n"
+              "void k(bool& b) {\n"
+              "    if (true == b)\n"
+              "        b = false;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:11]: style: The statement 'if (b==true) b=false' is logically equivalent to 'b=false'. [duplicateConditionalAssign]\n"
+                      "[test.cpp:3:11]: note: Assignment 'b=false'\n"
+                      "[test.cpp:2:11]: note: Condition 'b==true' is redundant\n"
+                      "[test.cpp:6:11]: style: The statement 'if (b==false) b=false' is redundant. [duplicateConditionalAssign]\n"
+                      "[test.cpp:7:11]: note: Assignment 'b=false'\n"
+                      "[test.cpp:6:11]: note: Condition 'b==false' is redundant\n"
+                      "[test.cpp:10:11]: style: The statement 'if (b!=true) b=false' is redundant. [duplicateConditionalAssign]\n"
+                      "[test.cpp:11:11]: note: Assignment 'b=false'\n"
+                      "[test.cpp:10:11]: note: Condition 'b!=true' is redundant\n"
+                      "[test.cpp:14:11]: style: The statement 'if (b!=false) b=false' is logically equivalent to 'b=false'. [duplicateConditionalAssign]\n"
+                      "[test.cpp:15:11]: note: Assignment 'b=false'\n"
+                      "[test.cpp:14:11]: note: Condition 'b!=false' is redundant\n"
+                      "[test.cpp:18:11]: style: The statement 'if (b==true) b=true' is redundant. [duplicateConditionalAssign]\n"
+                      "[test.cpp:19:11]: note: Assignment 'b=true'\n"
+                      "[test.cpp:18:11]: note: Condition 'b==true' is redundant\n"
+                      "[test.cpp:22:14]: style: The statement 'if (true==b) b=false' is logically equivalent to 'b=false'. [duplicateConditionalAssign]\n"
+                      "[test.cpp:23:11]: note: Assignment 'b=false'\n"
+                      "[test.cpp:22:14]: note: Condition 'true==b' is redundant\n",
+                      errout_str());
     }
 
     void checkAssignmentInCondition() {
