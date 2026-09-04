@@ -1769,7 +1769,7 @@ void TemplateSimplifier::expandTemplate(
                         --typeindentlevel;
                     else if (typetok->str() == "(")
                         ++typeindentlevel;
-                    else if (typetok->str() == ")")
+                    else if (typeindentlevel > 0 && typetok->str() == ")")
                         --typeindentlevel;
                     dst->insertTokenBefore(typetok->str(), typetok->originalName(), typetok->getMacroName());
                     dst->previous()->linenr(start->linenr());
@@ -2155,7 +2155,7 @@ void TemplateSimplifier::expandTemplate(
                             ++typeindentlevel;
                         } else if (typetok->str() == "(")
                             ++typeindentlevel;
-                        else if (typetok->str() == ")")
+                        else if (typeindentlevel > 0 && typetok->str() == ")")
                             --typeindentlevel;
                         Token *back;
                         if (copy) {

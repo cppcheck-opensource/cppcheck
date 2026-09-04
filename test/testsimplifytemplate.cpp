@@ -4950,6 +4950,41 @@ private:
                           "return 0 ; "
                           "}", tok(code));
         }
+        {
+            // #14975
+            const char code[] = "template <typename T, int N>\n"
+                                "struct I;\n"
+                                "template <typename T,\n"
+                                "    int N = (sizeof(T) > 8 ? 8 : sizeof(T))>\n"
+                                "    struct A {\n"
+                                "    I<T, N> begin() { return I<T, N>(this); }\n"
+                                "};\n"
+                                "template <typename T, int N>\n"
+                                "struct I {\n"
+                                "    I(A<T, N>* a);\n"
+                                "    A<T, N>* p;\n"
+                                "};\n"
+                                "template <typename T, int N>\n"
+                                "inline I<T, N>::I(A<T, N>* a) : p(a) {}\n"
+                                "void f() { A<X> x; }\n";
+            TODO_ASSERT_EQUALS(
+                "Fix template arg",
+                "template < typename T , int N > struct I ; "
+                "struct A<X,(sizeof(X)>8)> ; "
+                "template < typename T , int N > struct I { "
+                "I ( A < T , N > * a ) ; "
+                "A < T , N > * p ; "
+                "} ; "
+                "I<X,(sizeof(X)>8)> :: I<X,(sizeof(X)>8)> ( A < X , ( sizeof ( X ) > 8 ) > * a ) ; "
+                "void f ( ) { "
+                "A<X,(sizeof(X)>8)> x ; "
+                "} "
+                "struct A<X,(sizeof(X)>8)> { "
+                "I<X,(sizeof(X)>8)> begin ( ) { return I<X,(sizeof(X)>8)> ( this ) ; } "
+                "} ; "
+                "I<X,(sizeof(X)>8)> :: I<X,(sizeof(X)>8)> ( A < X , ( sizeof ( X ) > 8 ) > * a ) : p ( a ) { }",
+                tok(code));
+        }
     }
 
     void template_forward_declared_default_parameter() {
