@@ -7064,6 +7064,77 @@ static void valueFlowDynamicBufferSize(const TokenList& tokenlist, const SymbolD
         return sizeValue;
     };
 
+    std::map<const Variable*, ValueFlow::Value> globalBufferSizes;
+
+    // Get buffer sizes for global pointers initialized with new
+    for (const Variable* var : symboldatabase.variableList()) {
+        if (!var || !var->isGlobal() || !var->isPointer() || var->isExtern())
+            continue;
+
+        const Token* nameTok = var->nameToken();
+        if (!Token::Match(nameTok, "%var% ; %var% ="))
+            continue;
+
+        const Token* initLhs = nameTok->tokAt(2);
+        if (!initLhs || initLhs->variable() != var)
+            continue;
+
+        const Token* assignTok = initLhs->next();
+        const Token* rhs = assignTok->astOperand2();
+        while (rhs && rhs->isCast())
+            rhs = rhs->astOperand2() ? rhs->astOperand2() : rhs->astOperand1();
+
+        if (!rhs || !rhs->isCpp() || rhs->str() != "new")
+            continue;
+
+        const MathLib::bigint sizeValue = getBufferSizeFromNew(rhs);
+        if (sizeValue < 0)
+            continue;
+
+        ValueFlow::Value value(sizeValue);
+        value.errorPath.emplace_back(assignTok, "Assign " + initLhs->str() + ", buffer with size " + MathLib::toString(sizeValue));
+        value.valueType = ValueFlow::Value::ValueType::BUFFER_SIZE;
+        value.setKnown();
+        globalBufferSizes.emplace(var, std::move(value));
+    }
+
+    // Remove initial buffer sizes if the pointers are changed later
+    for (const Token* tok = tokenlist.front(); tok && !globalBufferSizes.empty(); tok = tok->next()) {
+        const Variable* var = tok->variable();
+        if (!var)
+            continue;
+
+        const auto it = globalBufferSizes.find(var);
+        if (it == globalBufferSizes.end())
+            continue;
+
+        const Token* nameTok = var->nameToken();
+        const Token* initLhs = Token::Match(nameTok, "%var% ; %var% =") ? nameTok->tokAt(2) : nullptr;
+        if (tok == nameTok || tok == initLhs)
+            continue;
+
+        if (isVariableChanged(tok, 0, settings))
+            globalBufferSizes.erase(it);
+    }
+
+    // Propagate the buffer size through main()
+    for (const auto& entry : globalBufferSizes) {
+        const Variable* var = entry.first;
+        const ValueFlow::Value& value = entry.second;
+        const Token* nameTok = var->nameToken();
+        const Token* initLhs = nameTok->tokAt(2);
+
+        for (const Scope* functionScope : symboldatabase.functionScopes) {
+            if (functionScope->className != "main")
+                continue;
+            if (!functionScope->bodyStart || !functionScope->bodyEnd)
+                continue;
+
+            valueFlowForward(const_cast<Token*>(functionScope->bodyStart->next()), functionScope->bodyEnd, initLhs, value, tokenlist, errorLogger, settings);
+            break;
+        }
+    }
+
     for (const Scope *functionScope : symboldatabase.functionScopes) {
         for (const Token *tok = functionScope->bodyStart; tok != functionScope->bodyEnd; tok = tok->next()) {
             if (!Token::Match(tok, "[;{}] %var% ="))
