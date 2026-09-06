@@ -327,7 +327,10 @@ void ErrorMessage::calculateWarningHashFromLocations()
     // used. Instead hash the id, message and all filenames/notes in the callstack.
     std::string hashString = id + '\n' + mShortMessage;
     for (const FileLocation &loc : callStack) {
-        hashString += '\n' + loc.getfile(false) + '\n' + loc.getinfo();
+        std::string fileName = loc.getfile(false);
+        if (Path::isAbsolute(fileName))
+            fileName = fileName.substr(fileName.rfind('/') + 1);
+        hashString += '\n' + fileName + '\n' + loc.getinfo();
     }
 
     // hash algorithm: sdbm
