@@ -211,6 +211,13 @@ private:
 
     void calculateWarningHash(const std::list<const Token*>& callstack);
 
+    /**
+     * Fallback hash calculation for warnings that have no token information
+     * (e.g. whole-program/CTU checks, unusedFunction, staticFunction). Hashes
+     * the id, message and all filenames/notes in the callstack instead.
+     */
+    void calculateWarningHashFromLocations();
+
     /** Short message */
     std::string mShortMessage;
 

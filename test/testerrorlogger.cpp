@@ -49,6 +49,7 @@ private:
         TEST_CASE(FileLocationSetFile2);
         TEST_CASE(ErrorMessageConstruct);
         TEST_CASE(ErrorMessageConstructLocations);
+        TEST_CASE(ErrorMessageHashFallback);
         TEST_CASE(ErrorMessageVerbose);
         TEST_CASE(ErrorMessageVerboseLocations);
         TEST_CASE(ErrorMessageVerboseSymbol);
@@ -265,6 +266,77 @@ private:
         ASSERT_EQUALS("Programming error.", msg.verboseMessage());
         ASSERT_EQUALS("[foo.cpp:5] -> [bar.cpp:8]: (error) Programming error.", msg.toString(false, templateFormat, ""));
         ASSERT_EQUALS("[foo.cpp:5] -> [bar.cpp:8]: (error) Programming error.", msg.toString(true, templateFormat, ""));
+    }
+
+    // unusedFunction/staticFunction/ctu* warnings carry no token information, so
+    // ErrorMessage::calculateWarningHash() (which needs tokens) can't compute a
+    // hash for them. calculateWarningHashFromLocations() is the fallback used
+    // instead - it hashes the id, message and all location filenames/notes.
+    void ErrorMessageHashFallback() const {
+        // ids that don't need a fallback hash still get none
+        {
+            std::list<ErrorMessage::FileLocation> locs(1, fooCpp5);
+            ErrorMessage msg(std::move(locs), "", Severity::style, "Some warning.", "someOtherId", Certainty::normal);
+            ASSERT_EQUALS(0, msg.hash);
+        }
+
+        // unusedFunction, staticFunction and any ctu* id get a non-zero fallback hash
+        for (const std::string& id : { std::string("unusedFunction"), std::string("staticFunction"), std::string("ctuOneDefinitionRuleViolation") }) {
+            std::list<ErrorMessage::FileLocation> locs(1, fooCpp5);
+            ErrorMessage msg(std::move(locs), "", Severity::style, "Some warning.", id, Certainty::normal);
+            ASSERT(msg.hash != 0);
+        }
+
+        // same id/message/locations => same hash
+        {
+            std::list<ErrorMessage::FileLocation> locs1(1, fooCpp5);
+            ErrorMessage msg1(std::move(locs1), "", Severity::style, "Some warning.", "unusedFunction", Certainty::normal);
+
+            std::list<ErrorMessage::FileLocation> locs2(1, fooCpp5);
+            ErrorMessage msg2(std::move(locs2), "", Severity::style, "Some warning.", "unusedFunction", Certainty::normal);
+
+            ASSERT_EQUALS(msg1.hash, msg2.hash);
+        }
+
+        // different message => different hash
+        {
+            std::list<ErrorMessage::FileLocation> locs1(1, fooCpp5);
+            ErrorMessage msg1(std::move(locs1), "", Severity::style, "Some warning.", "unusedFunction", Certainty::normal);
+
+            std::list<ErrorMessage::FileLocation> locs2(1, fooCpp5);
+            ErrorMessage msg2(std::move(locs2), "", Severity::style, "Some other warning.", "unusedFunction", Certainty::normal);
+
+            ASSERT(msg1.hash != msg2.hash);
+        }
+
+        // different location filename => different hash
+        {
+            std::list<ErrorMessage::FileLocation> locs1(1, fooCpp5);
+            ErrorMessage msg1(std::move(locs1), "", Severity::style, "Some warning.", "unusedFunction", Certainty::normal);
+
+            std::list<ErrorMessage::FileLocation> locs2(1, barCpp8);
+            ErrorMessage msg2(std::move(locs2), "", Severity::style, "Some warning.", "unusedFunction", Certainty::normal);
+
+            ASSERT(msg1.hash != msg2.hash);
+        }
+
+        // different location note (info) => different hash
+        {
+            std::list<ErrorMessage::FileLocation> locs1(1, barCpp8);
+            ErrorMessage msg1(std::move(locs1), "", Severity::error, "Some warning.", "ctuOneDefinitionRuleViolation", Certainty::normal);
+
+            std::list<ErrorMessage::FileLocation> locs2(1, barCpp8_i);
+            ErrorMessage msg2(std::move(locs2), "", Severity::error, "Some warning.", "ctuOneDefinitionRuleViolation", Certainty::normal);
+
+            ASSERT(msg1.hash != msg2.hash);
+        }
+
+        // hash shows up in the XML output
+        {
+            std::list<ErrorMessage::FileLocation> locs(1, fooCpp5);
+            ErrorMessage msg(std::move(locs), "", Severity::style, "Some warning.", "unusedFunction", Certainty::normal);
+            ASSERT(msg.toXML().find(" hash=\"") != std::string::npos);
+        }
     }
 
     void ErrorMessageVerbose() const {

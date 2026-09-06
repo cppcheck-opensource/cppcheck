@@ -65,6 +65,11 @@ ErrorMessage::ErrorMessage()
     : severity(Severity::none), cwe(0U), certainty(Certainty::normal)
 {}
 
+static bool needsFallbackHash(const std::string &id)
+{
+    return startsWith(id, "ctu") || id == "unusedFunction" || id == "staticFunction";
+}
+
 // TODO: id and msg are swapped compared to other calls
 ErrorMessage::ErrorMessage(std::list<FileLocation> callStack, std::string file1, Severity severity, const std::string &msg, std::string id, Certainty certainty) :
     callStack(std::move(callStack)), // locations for this error message
@@ -76,6 +81,9 @@ ErrorMessage::ErrorMessage(std::list<FileLocation> callStack, std::string file1,
 {
     // set the summary and verbose messages
     setmsg(msg);
+
+    if (hash == 0 && needsFallbackHash(this->id))
+        calculateWarningHashFromLocations();
 }
 
 
@@ -90,6 +98,9 @@ ErrorMessage::ErrorMessage(std::list<FileLocation> callStack, std::string file1,
 {
     // set the summary and verbose messages
     setmsg(msg);
+
+    if (hash == 0 && needsFallbackHash(this->id))
+        calculateWarningHashFromLocations();
 }
 
 ErrorMessage::ErrorMessage(const std::list<const Token*>& callstack, const TokenList* list, Severity severity, std::string id, const std::string& msg, Certainty certainty)
@@ -297,6 +308,23 @@ void ErrorMessage::calculateWarningHash(const std::list<const Token*>& callstack
     }
 
     hashString = id + '\n' + mShortMessage + '\n' + hashString;
+
+    // hash algorithm: sdbm
+    // any hash algorithm can be used but it has to be the same hash on different platforms and compilers
+    hash = std::accumulate(hashString.cbegin(), hashString.cend(), std::size_t{0}, [](std::size_t h, unsigned char c) {
+        return static_cast<std::size_t>(c) + (h << 6) + (h << 16) - h;
+    });
+}
+
+void ErrorMessage::calculateWarningHashFromLocations()
+{
+    // No token information is available for this warning (e.g. whole-program/CTU
+    // checks, unusedFunction, staticFunction) so calculateWarningHash() can't be
+    // used. Instead hash the id, message and all filenames/notes in the callstack.
+    std::string hashString = id + '\n' + mShortMessage;
+    for (const FileLocation &loc : callStack) {
+        hashString += '\n' + loc.getfile(false) + '\n' + loc.getinfo();
+    }
 
     // hash algorithm: sdbm
     // any hash algorithm can be used but it has to be the same hash on different platforms and compilers
