@@ -61,6 +61,12 @@ const std::set<std::string> ErrorLogger::mCriticalErrorIds{
     "unknownMacro"
 };
 
+static std::size_t sdbm(const std::string& hashString) {
+    return std::accumulate(hashString.cbegin(), hashString.cend(), std::size_t{0}, [](std::size_t h, unsigned char c) {
+        return static_cast<std::size_t>(c) + (h << 6) + (h << 16) - h;
+    });
+}
+
 ErrorMessage::ErrorMessage()
     : severity(Severity::none), cwe(0U), certainty(Certainty::normal)
 {}
@@ -311,9 +317,7 @@ void ErrorMessage::calculateWarningHash(const std::list<const Token*>& callstack
 
     // hash algorithm: sdbm
     // any hash algorithm can be used but it has to be the same hash on different platforms and compilers
-    hash = std::accumulate(hashString.cbegin(), hashString.cend(), std::size_t{0}, [](std::size_t h, unsigned char c) {
-        return static_cast<std::size_t>(c) + (h << 6) + (h << 16) - h;
-    });
+    hash = sdbm(hashString);
 }
 
 void ErrorMessage::calculateWarningHashFromLocations()
@@ -328,9 +332,7 @@ void ErrorMessage::calculateWarningHashFromLocations()
 
     // hash algorithm: sdbm
     // any hash algorithm can be used but it has to be the same hash on different platforms and compilers
-    hash = std::accumulate(hashString.cbegin(), hashString.cend(), std::size_t{0}, [](std::size_t h, unsigned char c) {
-        return static_cast<std::size_t>(c) + (h << 6) + (h << 16) - h;
-    });
+    hash = sdbm(hashString);
 }
 
 static void serializeString(std::string &oss, const std::string & str)
