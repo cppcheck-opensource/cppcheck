@@ -164,6 +164,7 @@ private:
         TEST_CASE(array_index_74); // #11088
         TEST_CASE(array_index_75);
         TEST_CASE(array_index_76);
+        TEST_CASE(array_index_77); // loop that always exits through a break
         TEST_CASE(array_index_multidim);
         TEST_CASE(array_index_switch_in_for);
         TEST_CASE(array_index_for_in_for);   // FP: #2634
@@ -2010,6 +2011,68 @@ private:
         ASSERT_EQUALS("[test.cpp:3:12]: (error) Array 's[1]' accessed at index 1, which is out of bounds. [arrayIndexOutOfBounds]\n"
                       "[test.cpp:7:12]: (error) Array 's[1]' accessed at index 1, which is out of bounds. [arrayIndexOutOfBounds]\n",
                       errout_str());
+    }
+
+    // loop that always exits through a break -> the counter does not reach its final value
+    void array_index_77()
+    {
+        check("void f() {\n"
+              "    int idx;\n"
+              "    int arr[3];\n"
+              "    for (idx = 0; idx < 3; idx++) {\n"
+              "        break;\n"
+              "    }\n"
+              "    arr[idx] = 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f() {\n" // multiple counters -> handled by valueFlowForLoop2
+              "    int i, j;\n"
+              "    int arr[3];\n"
+              "    for (i = 0, j = 0; i < 3; i++, j++) {\n"
+              "        break;\n"
+              "    }\n"
+              "    arr[i] = 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f() {\n"
+              "    int idx = 0;\n"
+              "    int arr[3];\n"
+              "    while (idx < 3) {\n"
+              "        idx++;\n"
+              "        break;\n"
+              "    }\n"
+              "    arr[idx] = 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f(bool c) {\n" // conditional break -> the loop can run to completion
+              "    int idx;\n"
+              "    int arr[3];\n"
+              "    for (idx = 0; idx < 3; idx++) {\n"
+              "        if (c)\n"
+              "            break;\n"
+              "    }\n"
+              "    arr[idx] = 0;\n"
+              "}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:8:8]: (error) Array 'arr[3]' accessed at index 3, which is out of bounds. [arrayIndexOutOfBounds]\n",
+            errout_str());
+
+        check("void f(bool c) {\n" // continue -> the loop condition can be evaluated again
+              "    int idx;\n"
+              "    int arr[3];\n"
+              "    for (idx = 0; idx < 3; idx++) {\n"
+              "        if (c)\n"
+              "            continue;\n"
+              "        break;\n"
+              "    }\n"
+              "    arr[idx] = 0;\n"
+              "}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:9:8]: (error) Array 'arr[3]' accessed at index 3, which is out of bounds. [arrayIndexOutOfBounds]\n",
+            errout_str());
     }
 
     void array_index_multidim() {
