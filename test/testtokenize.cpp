@@ -8080,6 +8080,10 @@ private:
                                              "    for (int i : [](int a, int b) { ++a; ++b; return std::vector<int>{a, b}; }(1, 2)) {}\n"
                                              "}\n"));
 
+        ASSERT_NO_THROW(tokenizeAndStringify("void f(int* p) {\n" // #15014
+                                             "    *p = -*p;\n"
+                                             "}\n"));
+
         ignore_errout();
 
         ASSERT_EQUALS(";", tokenizeAndStringify("typedef std::size_t size_t;\n")); // #14809
