@@ -900,6 +900,8 @@ Library::Error Library::loadFunction(const tinyxml2::XMLElement * const node, co
                 mData->mReturnValue[name] = expr;
             if (const char *type = functionnode->Attribute("type"))
                 mData->mReturnValueType[name] = type;
+            if (functionnode->BoolAttribute("possible-null", false))
+                func.isPossibleNull = true;
             if (const char *container = functionnode->Attribute("container"))
                 mData->mReturnValueContainer[name] = strToInt<int>(container);
             // cppcheck-suppress shadowFunction - TODO: fix this

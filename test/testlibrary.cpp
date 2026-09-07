@@ -57,6 +57,7 @@ private:
         TEST_CASE(function_method);
         TEST_CASE(function_baseClassMethod); // calling method in base class
         TEST_CASE(function_warn);
+        TEST_CASE(function_possible_null);
         TEST_CASE(memory);
         TEST_CASE(memory2); // define extra "free" allocation functions
         TEST_CASE(memory3);
@@ -641,6 +642,24 @@ private:
             ASSERT_EQUALS(Standards::C89, b->standards.c);
             ASSERT_EQUALS(Standards::CPP11, b->standards.cpp);
         }
+    }
+
+    void function_possible_null() const {
+        constexpr char xmldata[] = "<?xml version=\"1.0\"?>\n"
+                                   "<def>\n"
+                                   "  <function name=\"a\">\n"
+                                   "    <returnValue type=\"void *\" possible-null=\"true\"/>\n"
+                                   "  </function>\n"
+                                   "</def>";
+
+        Library library;
+        ASSERT(LibraryHelper::loadxmldata(library, xmldata, sizeof(xmldata)));
+
+        const char code[] = "a();\n";
+        const SimpleTokenList tokenList(code);
+
+        const Library::Function *a = library.getFunction(tokenList.front());
+        ASSERT(a->isPossibleNull);
     }
 
     void memory() const {
