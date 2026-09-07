@@ -4865,7 +4865,6 @@ def test_ipc_inline_suppressions(tmp_path):
 
 def __count_openat_calls(tmpdir, flags, expected):
     source_pathname = os.path.join(tmpdir, 'test.c')
-    strace_pathname = os.path.join(tmpdir, 'strace.txt')
     content = """
 void f(int x) {
     int y = x / 0;
@@ -4883,7 +4882,6 @@ void f(int x) {
          '--summary-columns=count',
          '--trace=openat',
          '--follow-forks',
-         f'--output={strace_pathname}',
          f'--trace-path={source_pathname}',
          cppcheck_path,
          '-q',
@@ -4891,14 +4889,12 @@ void f(int x) {
     ]
 
     args += flags
-    proc = subprocess.run(args, check=False)
+    proc = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+
+    _, stderr = proc.communicate()
 
     assert proc.returncode == 0
-
-    with open(strace_pathname, 'r') as f:
-        strace_content = f.read()
-
-    assert strace_content.splitlines()[-1].strip() == f'{expected} total'
+    assert stderr.splitlines()[-1].strip() == f'{expected} total'.encode('utf-8')
 
 __strace_decorator = pytest.mark.skipif(
     sys.platform != 'linux' or 'ASAN_OPTIONS' in os.environ,
