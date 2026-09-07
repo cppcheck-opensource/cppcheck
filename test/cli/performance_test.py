@@ -441,7 +441,7 @@ def test_slow_many_headers(tmpdir):
 
 
 @pytest.mark.skipif(sys.platform == 'darwin', reason='GitHub macOS runners are too slow')
-@pytest.mark.timeout(10)
+@pytest.mark.timeout(5)
 def test_large_number_of_violations_and_suppressions(tmpdir):
     filename_main = os.path.join(tmpdir, 'main.c')
     # This name causes the PathMatch::match() to iterate ~70 times, which is not unrealistic for a header file placed in subdirs.
