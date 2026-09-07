@@ -584,7 +584,7 @@ void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLib, const bo
         });
         p.ignorePaths(v);
 
-        if (!mProjectFile->getAnalyzeAllVsConfigs()) {
+        if (checkSettings.platform.type == Platform::Native && !mProjectFile->getAnalyzeAllVsConfigs()) {
             const Platform::Type platform = static_cast<Platform::Type>(mSettings->value(SETTINGS_CHECKED_PLATFORM, 0).toInt());
             std::vector<std::string> configurations;
             const QStringList configs = mProjectFile->getVsConfigurations();
@@ -1155,10 +1155,9 @@ bool MainWindow::getCppcheckSettings(Settings& settings, Suppressions& supprs)
 
         const QString platform = mProjectFile->getPlatform();
         if (platform.endsWith(".xml")) {
-            const std::vector<std::string> paths = {
-                Path::getCurrentPath(), // TODO: do we want to look in CWD?
-                QCoreApplication::applicationFilePath().toStdString(),
-            };
+            std::vector<std::string> paths;
+            for (const QString& p: mProjectFile->getSearchPaths("platform"))
+                paths.emplace_back(p.toStdString());
             settings.platform.loadFromFile(paths, platform.toStdString());
         } else {
             for (int i = Platform::Type::Native; i <= Platform::Type::Unix64; i++) {
