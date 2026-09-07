@@ -12163,6 +12163,13 @@ private:
               "   return  name.startswith(SRCDIR \"/com/\") || name.startswith(SRCDIR \"/uno/\");\n"
               "};\n", dinit(CheckOptions, $.inconclusive = false));
         ASSERT_EQUALS("", errout_str());
+
+        check("bool isInUnoIncludeFile(StringRef name) {\n"
+              "    return isInMainFile()\n"
+              "        ? (name == SRCDIR \"/cppu/compat.cxx\" || name == SRCDIR \"/sal/compat.cxx\")\n"
+              "        : (name.startswith(SRCDIR \"/com/\") || name.startswith(SRCDIR \"/uno/\"));\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = false));
+        ASSERT_EQUALS("", errout_str());
     }
 
     void raceAfterInterlockedDecrement() {

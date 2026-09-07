@@ -1607,6 +1607,11 @@ bool isSameExpression(bool macro, const Token *tok1, const Token *tok2, const Se
         return true;
     if (tok1 == nullptr || tok2 == nullptr)
         return false;
+    // An unknown string-prefix macro leaves the literal outside the AST.
+    // Comparing only the macro name would ignore the rest of the expression.
+    if ((!tok1->isKeyword() && Token::Match(tok1, "%name% %str%")) ||
+        (!tok2->isKeyword() && Token::Match(tok2, "%name% %str%")))
+        return false;
     // tokens needs to be from the same TokenList so no need check standard on both of them
     if (tok1->isCpp()) {
         if (tok1->str() == "." && tok1->astOperand1() && tok1->astOperand1()->str() == "this")
