@@ -4863,7 +4863,16 @@ def test_ipc_inline_suppressions(tmp_path):
     assert stdout_lines == stdout_exp
     assert stderr.splitlines() == []
 
-def __count_openat_calls(tmpdir, flags, expected):
+test_redundant_file_reads_params = [
+    ([],                       3),
+    (['--suppress=zerodiv'],   1),
+    (['--template=cppcheck1'], 1),
+    (['--xml'],                1),
+]
+
+@pytest.mark.skipif(sys.platform != 'linux' or 'ASAN_OPTIONS' in os.environ, reason="uses strace")
+@pytest.mark.parametrize('flags,expected', test_redundant_file_reads_params)
+def test_redundant_file_reads(tmpdir, flags, expected):
     source_pathname = os.path.join(tmpdir, 'test.c')
     content = """
 void f(int x) {
@@ -4895,24 +4904,3 @@ void f(int x) {
 
     assert proc.returncode == 0
     assert stderr.splitlines()[-1].strip() == f'{expected} total'.encode('utf-8')
-
-__strace_decorator = pytest.mark.skipif(
-    sys.platform != 'linux' or 'ASAN_OPTIONS' in os.environ,
-    reason="uses strace"
-)
-
-@__strace_decorator
-def test_redundant_file_reads(tmpdir):
-    __count_openat_calls(tmpdir, [], 3)
-
-@__strace_decorator
-def test_redundant_file_reads_suppress(tmpdir):
-    __count_openat_calls(tmpdir, [ '--suppress=zerodiv' ], 1)
-
-@__strace_decorator
-def test_redundant_file_reads_template_cppcheck1(tmpdir):
-    __count_openat_calls(tmpdir, [ '--template=cppcheck1' ], 1)
-
-@__strace_decorator
-def test_redundant_file_reads_xml(tmpdir):
-    __count_openat_calls(tmpdir, [ '--xml' ], 1)
