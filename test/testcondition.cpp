@@ -129,6 +129,7 @@ private:
         TEST_CASE(knownConditionAfterBailout); // #12526
         TEST_CASE(knownConditionIncDecOperator);
         TEST_CASE(knownConditionFloating);
+        TEST_CASE(knownConditionShiftAssignment);
     }
 
     struct CheckOptions
@@ -6685,6 +6686,40 @@ private:
             "    }\n"
             "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void knownConditionShiftAssignment() { // #6552
+        check("struct Value { void operator>>=(double&) const; };\n"
+              "bool f(const Value& value, bool extract) {\n"
+              "    double x = 0.5;\n"
+              "    if (extract) value >>= x;\n"
+              "    return x < 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Value { void operator>>=(double) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    return x < 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:14]: (style) Return value 'x<0' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("struct Value { void operator>>=(const double&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    return x < 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:14]: (style) Return value 'x<0' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("struct Value { void operator>>=(const double&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    const double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    return x < 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:14]: (style) Return value 'x<0' is always false [knownConditionTrueFalse]\n", errout_str());
     }
 
     void knownConditionFloating() {

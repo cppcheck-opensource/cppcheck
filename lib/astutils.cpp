@@ -2712,6 +2712,20 @@ bool isVariableChanged(const Token *tok, int indirect, const Settings &settings,
     if (tok2->isCpp() && Token::Match(tok2->astParent(), ">>|&") && astIsRHS(tok2) && isLikelyStreamRead(tok2->astParent()))
         return true;
 
+    // An overloaded >>= can extract into its right-hand operand by reference.
+    if (tok2->isCpp() && Token::simpleMatch(tok2->astParent(), ">>=") && astIsRHS(tok2) &&
+        !astIsIntegral(tok2->astParent()->astOperand1(), false)) {
+        const ValueType* lhsType = tok2->astParent()->astOperand1()->valueType();
+        if (!lhsType || !lhsType->typeScope)
+            return true;
+        const auto operators = lhsType->typeScope->functionMap.equal_range("operator>>=");
+        for (auto it = operators.first; it != operators.second; ++it) {
+            const Variable* arg = it->second->getArgumentVar(0);
+            if (!arg || (!arg->isConst() && arg->isReference()))
+                return true;
+        }
+    }
+
     if (isLikelyStream(tok2))
         return true;
 
