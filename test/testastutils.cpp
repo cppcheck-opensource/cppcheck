@@ -202,6 +202,11 @@ private:
         ASSERT_EQUALS(false, isSameExpression("x == PREFIX \"/a\" || x == PREFIX \"/b\";\n", "==", "==", cpp));
         ASSERT_EQUALS(false, isSameExpression("x == PREFIX \"/a\" || x == PREFIX;\n", "==", "==", cpp));
         ASSERT_EQUALS(false, isSameExpression("x == PREFIX || x == PREFIX \"/a\";\n", "==", "==", cpp));
+        ASSERT_EQUALS(true,  isSameExpression("x == PREFIX \"/a\" || x == PREFIX \"/a\";\n", "==", "==", cpp));
+        ASSERT_EQUALS(true,  isSameExpression("x == PREFIX \"/a\" \"/b\" || x == PREFIX \"/a\" \"/b\";\n", "==", "==", cpp));
+        ASSERT_EQUALS(false, isSameExpression("x == PREFIX \"/a\" \"/b\" || x == PREFIX \"/a\" \"/c\";\n", "==", "==", cpp));
+        ASSERT_EQUALS(false, isSameExpression("x == FIRST \"/a\" || x == SECOND \"/a\";\n", "==", "==", cpp));
+        ASSERT_EQUALS(false, isSameExpression("x == PREFIX L\"/a\" || x == PREFIX \"/a\";\n", "==", "==", cpp));
 
         // the remaining test cases are not valid C code
         if (!cpp)
