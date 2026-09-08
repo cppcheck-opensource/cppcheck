@@ -1608,10 +1608,20 @@ bool isSameExpression(bool macro, const Token *tok1, const Token *tok2, const Se
     if (tok1 == nullptr || tok2 == nullptr)
         return false;
     // An unknown string-prefix macro leaves the literal outside the AST.
-    // Comparing only the macro name would ignore the rest of the expression.
-    if ((!tok1->isKeyword() && Token::Match(tok1, "%name% %str%")) ||
-        (!tok2->isKeyword() && Token::Match(tok2, "%name% %str%")))
-        return false;
+    // Compare the literal text as well so identical literals still compare equal.
+    const bool stringPrefix1 = !tok1->isKeyword() && Token::Match(tok1, "%name% %str%");
+    const bool stringPrefix2 = !tok2->isKeyword() && Token::Match(tok2, "%name% %str%");
+    if (stringPrefix1 || stringPrefix2) {
+        if (!stringPrefix1 || !stringPrefix2)
+            return false;
+        for (const Token* str1 = tok1->next(), *str2 = tok2->next();
+             Token::Match(str1, "%str%") || Token::Match(str2, "%str%");
+             str1 = str1->next(), str2 = str2->next()) {
+            if (!Token::Match(str1, "%str%") || !Token::Match(str2, "%str%") ||
+                str1->str() != str2->str() || !compareTokenFlags(str1, str2, macro))
+                return false;
+        }
+    }
     // tokens needs to be from the same TokenList so no need check standard on both of them
     if (tok1->isCpp()) {
         if (tok1->str() == "." && tok1->astOperand1() && tok1->astOperand1()->str() == "this")

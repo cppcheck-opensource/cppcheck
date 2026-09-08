@@ -12170,6 +12170,11 @@ private:
               "        : (name.startswith(SRCDIR \"/com/\") || name.startswith(SRCDIR \"/uno/\"));\n"
               "}\n", dinit(CheckOptions, $.inconclusive = false));
         ASSERT_EQUALS("", errout_str());
+
+        check("bool f(StringRef name) {\n"
+              "    return name == SRCDIR \"/a\" || name == SRCDIR \"/a\";\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = false));
+        ASSERT_EQUALS("[test.cpp:2:32]: (style) Same expression on both sides of '||'. [duplicateExpression]\n", errout_str());
     }
 
     void raceAfterInterlockedDecrement() {
