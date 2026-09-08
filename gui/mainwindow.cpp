@@ -706,7 +706,7 @@ void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLib, c
 
     if (!checkSettings.buildDir.empty()) {
         checkSettings.loadSummaries();
-        const std::list<std::string> sourcefiles = toStdStringList<std::list<std::string>>(fileNames);
+        const auto& sourcefiles = toStdStringList<std::list<std::string>>(fileNames);
         AnalyzerInformation::writeFilesTxt(checkSettings.buildDir, sourcefiles, {});
     }
 
