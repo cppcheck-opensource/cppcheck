@@ -130,6 +130,7 @@ private:
         TEST_CASE(knownConditionIncDecOperator);
         TEST_CASE(knownConditionFloating);
         TEST_CASE(knownConditionShiftAssignment);
+        TEST_CASE(knownConditionShiftAssignmentOverloads);
     }
 
     struct CheckOptions
@@ -6716,6 +6717,204 @@ private:
         check("struct Value { void operator>>=(const double&) const; };\n"
               "bool f(const Value& value) {\n"
               "    const double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    return x < 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:14]: (style) Return value 'x<0' is always false [knownConditionTrueFalse]\n", errout_str());
+    }
+
+    void knownConditionShiftAssignmentOverloads() {
+        check("struct Value { void operator>>=(double) const; void operator>>=(int&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    return x < 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:14]: (style) Return value 'x<0' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("struct Value { void operator>>=(double) const; void operator>>=(float&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    return x < 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:14]: (style) Return value 'x<0' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("struct Value { void operator>>=(int) const; void operator>>=(unsigned int&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    int x = 1;\n"
+              "    value >>= x;\n"
+              "    return x < 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:14]: (style) Return value 'x<0' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("enum E { A };\n"
+              "struct Value { void operator>>=(int) const; void operator>>=(E&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    int x = 1;\n"
+              "    value >>= x;\n"
+              "    return x < 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:6:14]: (style) Return value 'x<0' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("struct Value { void operator>>=(double) const; void operator>>=(double&); };\n"
+              "bool f(const Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    return x < 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:14]: (style) Return value 'x<0' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("struct Value { void operator>>=(double) volatile; void operator>>=(double&); };\n"
+              "bool f(volatile Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    return x < 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:14]: (style) Return value 'x<0' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("struct Value { void operator>>=(double) const &; void operator>>=(double&) &&; };\n"
+              "bool f(Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    return x < 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:14]: (style) Return value 'x<0' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("struct Value { void operator>>=(const double&) const; void operator>>=(double&&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    return x < 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:14]: (style) Return value 'x<0' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("struct Value { void operator>>=(int) const; void operator>>=(double&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    return x < 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Value { void operator>>=(int) const; void operator>>=(volatile double&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    return x < 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Value { void operator>>=(double) const; void operator>>=(double&); };\n"
+              "bool f(Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    return x < 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Value { template<class T> void operator>>=(T&& x) const { x = -1; } };\n"
+              "bool f(const Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    return x < 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Value { void operator>>=(double*) const; void operator>>=(int*&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    double* x = nullptr;\n"
+              "    value >>= x;\n"
+              "    return x == nullptr;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:14]: (style) Return value 'x==nullptr' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("struct Value { void operator>>=(double*) const; void operator>>=(void*&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    double* x = nullptr;\n"
+              "    value >>= x;\n"
+              "    return x == nullptr;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:14]: (style) Return value 'x==nullptr' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("struct Value { void operator>>=(double*) const; void operator>>=(const double*&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    double* x = nullptr;\n"
+              "    value >>= x;\n"
+              "    return x == nullptr;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:14]: (style) Return value 'x==nullptr' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("struct Value { void operator>>=(double*) const; void operator>>=(double**&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    double* x = nullptr;\n"
+              "    value >>= x;\n"
+              "    return x == nullptr;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:14]: (style) Return value 'x==nullptr' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("struct Value { void operator>>=(int*) const; void operator>>=(double*&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    double* x = nullptr;\n"
+              "    value >>= x;\n"
+              "    return x == nullptr;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Value { void operator>>=(int*) const; void operator>>=(const double*&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    const double* x = nullptr;\n"
+              "    value >>= x;\n"
+              "    return x == nullptr;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct A {}; struct B {};\n"
+              "struct Value { void operator>>=(A*) const; void operator>>=(B*&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    A* x = nullptr;\n"
+              "    value >>= x;\n"
+              "    return x == nullptr;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:6:14]: (style) Return value 'x==nullptr' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("struct Base {}; struct A : Base {};\n"
+              "struct Value { void operator>>=(A*) const; void operator>>=(Base*&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    A* x = nullptr;\n"
+              "    value >>= x;\n"
+              "    return x == nullptr;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:6:14]: (style) Return value 'x==nullptr' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("struct A {}; struct B {};\n"
+              "struct Value { void operator>>=(B*) const; void operator>>=(A*&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    A* x = nullptr;\n"
+              "    value >>= x;\n"
+              "    return x == nullptr;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Value { void operator>>=(double) ; void operator>>=(double&) const; };\n"
+              "bool f(Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    return x < 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:14]: (style) Return value 'x<0' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("struct Value { void operator>>=(double) const; void operator>>=(double&) const volatile; };\n"
+              "bool f(const Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    return x < 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:14]: (style) Return value 'x<0' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("struct Value { void operator>>=(double) volatile; void operator>>=(double&) const volatile; };\n"
+              "bool f(volatile Value& value) {\n"
+              "    double x = 0.5;\n"
               "    value >>= x;\n"
               "    return x < 0;\n"
               "}\n");
