@@ -118,6 +118,15 @@ static QString fromNativePath(const QString& p) {
 #endif
 }
 
+template<typename T = std::vector<std::string>>
+static T toStdStringList(const QStringList& stringList) {
+    T ret;
+    std::transform(stringList.cbegin(), stringList.cend(), std::back_inserter(ret), [](const QString& s) {
+        return s.toStdString();
+    });
+    return ret;
+}
+
 MainWindow::MainWindow(TranslationHandler* th, QSettings* settings) :
     mSettings(settings),
     mApplications(new ApplicationList(this)),
@@ -697,10 +706,7 @@ void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLib, c
 
     if (!checkSettings.buildDir.empty()) {
         checkSettings.loadSummaries();
-        std::list<std::string> sourcefiles;
-        std::transform(fileNames.cbegin(), fileNames.cend(), std::back_inserter(sourcefiles), [](const QString& s) {
-            return s.toStdString();
-        });
+        const std::list<std::string> sourcefiles = toStdStringList<std::list<std::string>>(fileNames);
         AnalyzerInformation::writeFilesTxt(checkSettings.buildDir, sourcefiles, {});
     }
 
@@ -1155,9 +1161,7 @@ bool MainWindow::getCppcheckSettings(Settings& settings, Suppressions& supprs)
 
         const QString platform = mProjectFile->getPlatform();
         if (platform.endsWith(".xml")) {
-            std::vector<std::string> paths;
-            for (const QString& p: mProjectFile->getSearchPaths("platform"))
-                paths.emplace_back(p.toStdString());
+            const std::vector<std::string> paths = toStdStringList(mProjectFile->getSearchPaths("platform"));
             settings.platform.loadFromFile(paths, platform.toStdString());
         } else {
             for (int i = Platform::Type::Native; i <= Platform::Type::Unix64; i++) {
