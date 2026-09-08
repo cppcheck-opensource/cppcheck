@@ -861,7 +861,10 @@ namespace {
             }
 
             if (isFunctionPointer) {
-                if (Token::Match(after, "( * %name% ) ("))
+                // Keep the argument list for a parenthesized pointer declarator: fp *(name).
+                if (after->previous() != tok3 && Token::Match(after->previous(), "* ( %name% ) ;|,|="))
+                    after = after->link()->next();
+                else if (Token::Match(after, "( * %name% ) ("))
                     after = after->link()->linkAt(1)->next();
                 else if (after->str() == "(") {
                     useAfterVarRange = false;
