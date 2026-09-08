@@ -209,6 +209,14 @@ public:
      * @param varname name of variable
      */
     void memleakError(const Token *tok, const std::string &varname) const;
+    /**
+     * Check if a class member is deallocated in a function scope
+     * @param member member variable
+     * @param scope the scope
+     * @param alloc allocation type
+     */
+    bool isMemberDeallocated(const Variable *member, const Scope *scope, AllocType alloc) const;
+
 
     /**
      * Report that there is a resource leak (fopen/popen/etc)
