@@ -28,6 +28,7 @@
 #include "settings.h"
 #include "standards.h"
 #include "suppressions.h"
+#include "token.h"
 #include "utils.h"
 
 #include <algorithm>
@@ -893,7 +894,228 @@ simplecpp::TokenList Preprocessor::preprocess(const std::string &cfgStr, std::ve
     if (!mSettings.keepComments)
         tokens2.removeComments();
 
+    mExportedFunctions.clear();
+    mExportedLocations.clear();
+    if (mSettings.library.isexporter("Q_PROPERTY"))
+        readQtAnnotations(tokens2);
+
     return tokens2;
+}
+
+static const simplecpp::Token* qtPropertyAttributes(const simplecpp::Token* tok)
+{
+    while (tok && (tok->str() == "const" || tok->str() == "volatile"))
+        tok = tok->next;
+    if (!tok)
+        return nullptr;
+    if (Token::isStandardType(tok->str())) {
+        do {
+            tok = tok->next;
+        } while (tok && Token::isStandardType(tok->str()));
+    } else {
+        if (tok->str() == "::")
+            tok = tok->next;
+        if (!tok || !tok->name)
+            return nullptr;
+        for (;;) {
+            tok = tok->next;
+            if (tok && tok->str() == "<") {
+                unsigned int depth = 1;
+                unsigned int parentheses = 0;
+                do {
+                    tok = tok->next;
+                    if (!tok)
+                        return nullptr;
+                    if (tok->str() == "(")
+                        ++parentheses;
+                    else if (tok->str() == ")" && parentheses)
+                        --parentheses;
+                    else if (!parentheses) {
+                        if (tok->str() == "<")
+                            ++depth;
+                        else if (tok->str() == ">")
+                            --depth;
+                        else if (tok->str() == ">>") {
+                            if (depth < 2)
+                                return nullptr;
+                            depth -= 2;
+                        }
+                    }
+                } while (depth);
+                tok = tok->next;
+            }
+            if (!tok || tok->str() != "::" || !tok->next || !tok->next->name)
+                break;
+            tok = tok->next;
+        }
+    }
+    while (tok && (tok->str() == "*" || tok->str() == "&" || tok->str() == "&&" ||
+                   tok->str() == "const" || tok->str() == "volatile"))
+        tok = tok->next;
+    // The property name is not a function reference.
+    return tok && tok->name ? tok->next : nullptr;
+}
+
+static std::set<std::string> qtPropertyFunctions(const simplecpp::Token* tok, const Library& library)
+{
+    std::set<std::string> functions;
+    tok = qtPropertyAttributes(tok);
+    while (tok && tok->str() != ")") {
+        const std::string attribute = tok->str();
+        tok = tok->next;
+        if (attribute == "CONSTANT" || attribute == "FINAL" || attribute == "REQUIRED" ||
+            attribute == "VIRTUAL" || attribute == "OVERRIDE")
+            continue;
+        if (!tok)
+            return {};
+        if (attribute == "REVISION") {
+            if (tok->number)
+                tok = tok->next;
+            else if (tok->str() == "(") {
+                do {
+                    tok = tok->next;
+                } while (tok && (tok->number || tok->str() == ","));
+                if (!tok || tok->str() != ")")
+                    return {};
+                tok = tok->next;
+            } else
+                return {};
+        } else if (attribute == "MEMBER") {
+            if (!tok->name)
+                return {};
+            tok = tok->next;
+        } else if (library.isexportedprefix("Q_PROPERTY", attribute)) {
+            const bool parenthesized = tok->str() == "(";
+            if (parenthesized)
+                tok = tok->next;
+            if (!tok)
+                return {};
+            if (tok->str() == "::")
+                tok = tok->next;
+            if (!tok)
+                return {};
+            if (!tok->name)
+                return {};
+            std::string function = tok->str();
+            tok = tok->next;
+            while (tok && tok->str() == "::" && tok->next && tok->next->name) {
+                function = tok->next->str();
+                tok = tok->next->next;
+            }
+            if (function != "true" && function != "false" && function != "default")
+                functions.insert(function);
+            if (parenthesized) {
+                if (!tok || tok->str() != ")")
+                    return {};
+                tok = tok->next;
+            }
+            if (tok && tok->str() == "(") {
+                tok = tok->next;
+                if (!tok || tok->str() != ")")
+                    return {};
+                tok = tok->next;
+            }
+        } else
+            return {};
+    }
+    return tok ? functions : std::set<std::string>{};
+}
+
+void Preprocessor::readQtAnnotations(simplecpp::TokenList& tokens)
+{
+    std::set<simplecpp::Location> locations;
+    for (const simplecpp::MacroUsage& usage : mMacroUsage) {
+        if (usage.macroName == "QT_ANNOTATE_CLASS")
+            locations.insert(usage.useLocation);
+    }
+    for (simplecpp::Token* tok = tokens.front(); tok;) {
+        if (tok->str() != "__cppcheck_qt_annotation__" ||
+            (tok->macro != "QT_ANNOTATE_CLASS" && locations.find(tok->location) == locations.end()) ||
+            !tok->next || tok->next->str() != "(") {
+            tok = tok->next;
+            continue;
+        }
+        const simplecpp::Token* tag = tok->next->next;
+        if (!tag || tag->str() != "\"cppcheck-qt-annotation\"" || !tag->next || tag->next->str() != ",") {
+            tok = tok->next;
+            continue;
+        }
+        simplecpp::Token* end = tok->next;
+        unsigned int depth = 0;
+        do {
+            if (end->str() == "(")
+                ++depth;
+            else if (end->str() == ")")
+                --depth;
+            end = end->next;
+        } while (end && depth);
+        if (depth) {
+            tok = tok->next;
+            continue;
+        }
+        const simplecpp::Token* type = tag->next->next;
+        if (type && type->str() == "qt_property" && type->next && type->next->str() == ",") {
+            const auto functions = qtPropertyFunctions(type->next->next, mSettings.library);
+            mExportedFunctions.insert(functions.begin(), functions.end());
+            mExportedLocations.insert(tok->location);
+        }
+        // Qt's default annotation hook expands to nothing. Retain that C++
+        // token stream after recording the property metadata, including for
+        // annotations other than qt_property.
+        while (tok != end) {
+            simplecpp::Token* next = tok->next;
+            tokens.deleteToken(tok);
+            tok = next;
+        }
+    }
+}
+
+std::set<std::string> Preprocessor::getExportedFunctions() const
+{
+    std::set<simplecpp::Location> locations;
+    for (const simplecpp::MacroUsage& usage : mMacroUsage) {
+        if (mSettings.library.isexporter(usage.macroName) &&
+            mExportedLocations.find(usage.useLocation) == mExportedLocations.end())
+            locations.insert(usage.useLocation);
+    }
+
+    std::set<std::string> functions = mExportedFunctions;
+    if (locations.empty())
+        return functions;
+
+    // Source definitions can erase exporter macros without passing through the
+    // annotation hook. Inspect only invocations expanded in this configuration
+    // and not already handled by the hook, excluding inactive branches.
+    const auto collect = [&](const simplecpp::TokenList& tokens) {
+        for (const simplecpp::Token* tok = tokens.cfront(); tok; tok = tok->next) {
+            if (locations.find(tok->location) == locations.end() ||
+                !mSettings.library.isexporter(tok->str()) || !tok->next || tok->next->str() != "(")
+                continue;
+            if (tok->str() == "Q_PROPERTY") {
+                const auto accessors = qtPropertyFunctions(tok->next->next, mSettings.library);
+                functions.insert(accessors.begin(), accessors.end());
+                continue;
+            }
+            unsigned int depth = 1;
+            for (const simplecpp::Token* arg = tok->next->next; arg; arg = arg->next) {
+                if (arg->str() == "(")
+                    ++depth;
+                else if (arg->str() == ")") {
+                    if (--depth == 0)
+                        break;
+                } else if (depth == 1) {
+                    if (mSettings.library.isexportedprefix(tok->str(), arg->str()) && arg->next && arg->next->name)
+                        functions.insert(arg->next->str());
+                    if (mSettings.library.isexportedsuffix(tok->str(), arg->str()) && arg->previous && arg->previous->name)
+                        functions.insert(arg->previous->str());
+                }
+            }
+        }
+    };
+    collect(mTokens);
+    for (const auto& fileData : mFileCache)
+        collect(fileData->tokens);
+    return functions;
 }
 
 std::string Preprocessor::getcode(const std::string &cfgStr, std::vector<std::string> &files, const bool writeLocations)
