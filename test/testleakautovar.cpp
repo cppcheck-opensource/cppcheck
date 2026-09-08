@@ -1924,7 +1924,7 @@ private:
               "auto x = [](void *ptr) { g(ptr) };\n"
               "void *p = malloc(1);\n"
               "(x)(p);\n"
-              "}\n");
+              "}\n", dinit(CheckOptions, $.cpp = true));
         ASSERT_EQUALS("", errout_str());
 
         // Function returning a function pointer

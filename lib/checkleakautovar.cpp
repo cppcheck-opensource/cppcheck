@@ -279,36 +279,31 @@ static const Token * isFunctionCall(const Token * nameToken)
  * @param tok on the LHS of a function call
  * @return opening parenthesis token or nullptr if not a function call
  */
-static const Token * isAnonymousFunctionCall(const Token * tok)
+static const Token *isAnonymousFunctionCall(const Token *tok) 
 {
-    // match one of the supported LHS patterns
-    // TODO: check if tok->previous()->isCast(). can't right now because
-    //
-    // auto x = [](void *ptr) { g(ptr) };
-    // void *p = malloc(1);
-    // (x)(p);
-    // ^
-    // the lpar surrounding x has isCast() == true, so checking isCast() would
-    // have false positive leaks, while allowing casts to take ownership of
-    // resources is instead a false negative
-    if (tok->strAt(-1) == "(" && !tok->previous()->isBinaryOp() &&
-        tok->linkAt(-1) && !tok->isStandardType()) {
+    if (!tok || tok->isStandardType())
+        return nullptr;
+
+    auto isLparNotCast = [](const Token *lpar) -> bool {
+        return !lpar->isCast() && lpar->str() == "(";
+    };
+
+    // function pointer or lambda
+    if (isLparNotCast(tok->previous())) {
         tok = tok->linkAt(-1)->next();
-    } else if (!tok->isStandardType() && tok->isName() &&
-               tok->strAt(1) == "(") {
+    } else if (tok->isName() && isLparNotCast(tok->next())) {
+        // call to result of a function
         tok = tok->linkAt(1)->next();
     } else {
         return nullptr;
     }
 
-    // skip over potential template arguments
+    // < could be a less than, not a template operator
     if (tok->link() && tok->str() == "<")
         tok = tok->link()->next();
 
-    // return the opening parenthesis
-    if (tok && tok->link() && !tok->isCast() && tok->str() == "(")
+    if (isLparNotCast(tok))
         return tok;
-
     return nullptr;
 }
 
