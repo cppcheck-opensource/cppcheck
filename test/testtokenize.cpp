@@ -3098,7 +3098,7 @@ private:
 
     void simplifyKeywordNoreturn1() {
         const char code[] = "_Noreturn void f(void) {}\n";
-        const char expected[] = "void f ( ) { }";
+        const char expected[] = "_Noreturn void f ( ) { }";
         SimpleTokenizer tokenizer(*this, false);
         ASSERT(tokenizer.tokenize(code));
 
@@ -3111,7 +3111,7 @@ private:
 
     void simplifyKeywordNoreturn2() {
         const char code[] = "noreturn void f(void) {}\n";
-        const char expected[] = "void f ( ) { }";
+        const char expected[] = "noreturn void f ( ) { }";
         SimpleTokenizer tokenizer(*this, false);
         ASSERT(tokenizer.tokenize(code));
 

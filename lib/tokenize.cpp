@@ -10026,7 +10026,6 @@ void Tokenizer::simplifyKeyword()
                 nameTok = nameTok->next();
             if (nameTok && nameTok->str() == "(" && TokenList::isFunctionHead(nameTok, "{;")) {
                 nameTok->previous()->isAttributeNoreturn(true);
-                tok->deleteThis();
             }
         }
 
