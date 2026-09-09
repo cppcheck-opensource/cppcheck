@@ -80,7 +80,7 @@ public:
         (tmp_path / 'build').mkdir()
         args += ['--cppcheck-build-dir=' + str(tmp_path / 'build')]
     else:
-        args += ['--no-cppcheck-build-dir']
+        args += ['-j1', '--no-cppcheck-build-dir']
     # Also check the saved whole-program data when the build directory is reused.
     for _ in range(2 if builddir else 1):
         ret, stdout, stderr = cppcheck(args)
@@ -106,7 +106,7 @@ public:
 int main() { MyType t; }
 ''')
     args = ['-q', '--template={id}:{message}', '--enable=unusedFunction',
-            '--no-cppcheck-build-dir', str(source)]
+            '-j1', '--no-cppcheck-build-dir', str(source)]
     if library:
         args += ['--library=qt']
     ret, stdout, stderr = cppcheck(args)
@@ -135,7 +135,7 @@ int main() { MyType t; }
     # Both configurations have identical C++ tokens after Q_PROPERTY is erased.
     ret, stdout, stderr = cppcheck(['-q', '--template={id}:{message}',
                                    '--enable=unusedFunction', '--library=qt',
-                                   '--no-cppcheck-build-dir', str(source)])
+                                   '-j1', '--no-cppcheck-build-dir', str(source)])
     assert ret == 0, stdout
     assert stdout == ''
     assert stderr == "unusedFunction:The function 'unused' is never used.\n"
@@ -168,7 +168,7 @@ int main() { MyType t; }
                       .replace('@RETURN_TYPE@', '::READ' if property_type == 'READ' else property_type))
     ret, stdout, stderr = cppcheck(['-q', '--template={id}:{message}',
                                    '--enable=unusedFunction', '--library=qt',
-                                   '--no-cppcheck-build-dir', str(source)])
+                                   '-j1', '--no-cppcheck-build-dir', str(source)])
     assert ret == 0, stdout
     assert stderr == ("unusedFunction:The function 'property' is never used.\n"
                       "unusedFunction:The function 'NOTIFY' is never used.\n")
@@ -188,7 +188,7 @@ int main() { MyType t; }
     # The reset method named READ must not be read as another READ attribute.
     ret, stdout, stderr = cppcheck(['-q', '--template={id}:{message}',
                                    '--enable=unusedFunction', '--library=qt',
-                                   '--no-cppcheck-build-dir', str(source)])
+                                   '-j1', '--no-cppcheck-build-dir', str(source)])
     assert ret == 0, stdout
     assert stderr == "unusedFunction:The function 'property' is never used.\n"
 
@@ -226,7 +226,7 @@ int main() { MyType t; Other other; }
 '''.replace('@ATTRIBUTES@', attributes))
     ret, stdout, stderr = cppcheck(['-q', '--template={id}:{message}',
                                    '--enable=unusedFunction', '--library=qt',
-                                   '--no-cppcheck-build-dir', str(source)])
+                                   '-j1', '--no-cppcheck-build-dir', str(source)])
     assert ret == 0, stdout
     reported = re.findall(r"unusedFunction:The function '([^']+)' is never used\.", stderr)
     assert set(reported) == {'field', 'value', 'setValue', 'resetValue', 'bindValue', 'enabled', 'property'} - set(used)
@@ -261,7 +261,7 @@ int main() { MyType t; }
 '''.replace('@PROPERTY@', invocation))
     ret, stdout, stderr = cppcheck(['-q', '--template={id}:{message}',
                                    '--enable=unusedFunction', '--library=qt',
-                                   '--no-cppcheck-build-dir', str(source)])
+                                   '-j1', '--no-cppcheck-build-dir', str(source)])
     assert ret == 0, stdout
     assert stderr == "unusedFunction:The function 'property' is never used.\n"
 
@@ -283,7 +283,7 @@ int main() { MyType t; }
 '''.replace('@PROPERTY@', invocation))
     ret, stdout, stderr = cppcheck(['-q', '--template={id}:{message}',
                                    '--enable=unusedFunction', '--library=qt',
-                                   '--no-cppcheck-build-dir', str(source)])
+                                   '-j1', '--no-cppcheck-build-dir', str(source)])
     assert ret == 0, stdout
     assert stderr == "unusedFunction:The function 'value' is never used.\n"
 
@@ -343,7 +343,7 @@ int main() { MyType t; }
 ''')
     ret, stdout, stderr = cppcheck(['-q', '--template={id}:{message}',
                                    '--enable=unusedFunction', '--library=qt',
-                                   '--no-cppcheck-build-dir', str(source)])
+                                   '-j1', '--no-cppcheck-build-dir', str(source)])
     assert ret == 0, stdout
     assert stderr == "unusedFunction:The function 'unused' is never used.\n"
 

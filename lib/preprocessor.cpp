@@ -961,7 +961,7 @@ static std::set<std::string> qtPropertyFunctions(const simplecpp::Token* tok, co
     std::set<std::string> functions;
     tok = qtPropertyAttributes(tok);
     while (tok && tok->str() != ")") {
-        const std::string attribute = tok->str();
+        const std::string& attribute = tok->str();
         tok = tok->next;
         if (attribute == "CONSTANT" || attribute == "FINAL" || attribute == "REQUIRED" ||
             attribute == "VIRTUAL" || attribute == "OVERRIDE")
@@ -1040,7 +1040,7 @@ void Preprocessor::readQtAnnotations(simplecpp::TokenList& tokens)
             tok = tok->next;
             continue;
         }
-        simplecpp::Token* end = tok->next;
+        const simplecpp::Token* end = tok->next;
         unsigned int depth = 0;
         do {
             if (end->str() == "(")

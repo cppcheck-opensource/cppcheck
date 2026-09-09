@@ -1271,7 +1271,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
                 }
 
                 const std::set<std::string> exportedFunctions = mSettings.checks.isEnabled(Checks::unusedFunction) ?
-                                                               preprocessor.getExportedFunctions() : std::set<std::string>{};
+                                                                preprocessor.getExportedFunctions() : std::set<std::string>{};
 
                 // Macro-only references can differ even when the simplified tokens match.
                 if (maxConfigs > 1) {
@@ -1385,7 +1385,7 @@ void CppCheck::internalError(const std::string &filename, const std::string &msg
 //---------------------------------------------------------------------------
 
 void CppCheck::checkNormalTokens(const Tokenizer &tokenizer, AnalyzerInformation* analyzerInformation, const std::string& currentConfig,
-                               const std::set<std::string>& exportedFunctions)
+                                 const std::set<std::string>& exportedFunctions)
 {
     const ProgressReporter progressReporter(mErrorLogger, mSettings.reportProgress, tokenizer.list.getSourceFilePath(), "Run checkers");
 
