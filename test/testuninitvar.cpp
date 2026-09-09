@@ -2202,6 +2202,37 @@ private:
                        "    return i;\n"
                        "}\n");
         ASSERT_EQUALS("", errout_str());
+
+
+        checkUninitVar("void f() {\n"
+                       "    char *p = new char;\n"
+                       "    p += 1;\n"
+                       "    delete (p - 1);\n"
+                       "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        checkUninitVar("void f() {\n"
+                       "    char *buf = (char *)malloc(1);\n"
+                       "    if (!buf)\n"
+                       "        return NULL;\n"
+                       "    buf += buf[0];\n"
+                       "    free(buf);\n"
+                       "}\n");
+        ASSERT_EQUALS("[test.cpp:5:15]: (error) Memory is allocated but not initialized: buf[0] [uninitdata]\n", errout_str());
+
+        checkUninitVar("void g() {\n"
+                       "    int* p = new int;\n"
+                       "    p++;\n"
+                       "    delete (p - 1);\n"
+                       "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        checkUninitVar("void g() {\n"
+                       "    int* p = new int;\n"
+                       "    ++p; // FP\n"
+                       "    delete (p - 1);\n"
+                       "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     // class / struct..
