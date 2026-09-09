@@ -2754,8 +2754,8 @@ bool isVariableChanged(const Token *tok, int indirect, const Settings &settings,
                 // Pointee qualification conversions also create a temporary pointer.
                 if (rhsType->pointer > 0 && rhsType->pointer < std::numeric_limits<unsigned int>::digits) {
                     const unsigned int mask = (1U << rhsType->pointer) - 1;
-                    if (((rhsType->constness ^ argType->constness) & mask) ||
-                        ((rhsType->volatileness ^ argType->volatileness) & mask))
+                    if (((static_cast<unsigned int>(rhsType->constness) ^ static_cast<unsigned int>(argType->constness)) & mask) ||
+                        ((static_cast<unsigned int>(rhsType->volatileness) ^ static_cast<unsigned int>(argType->volatileness)) & mask))
                         continue;
                 }
             }
