@@ -3257,6 +3257,17 @@ private:
                "    if (x) {}\n"
                "}\n";
         ASSERT_EQUALS(true, testValueOfXKnown(code, 5U, 0));
+
+        code = "struct S {\n" // #13844
+               "    int x{};\n"
+               "    template <typename T>\n"
+               "    void f(T t) {\n"
+               "        x = 0;\n"
+               "        t();\n"
+               "        if (x == 0) {}\n"
+               "    }\n"
+               "};\n";
+        ASSERT_EQUALS(false, testValueOfXKnown(code, 7U, 0));
     }
 
     void valueFlowAfterSwap()

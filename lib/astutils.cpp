@@ -1159,6 +1159,8 @@ bool exprDependsOnThis(const Token* expr, bool onVar, nonneg int depth)
         }
         if (expr->isOperatorKeyword() && !Token::simpleMatch(expr->next()->astParent(), "."))
             return true;
+        if (expr->variable() && expr->variable()->isArgument() && !expr->variable()->type() && expr->variable()->scope()->function && expr->variable()->scope()->function->templateDef)
+            return true;
     }
     if (onVar && expr->variable()) {
         const Variable* var = expr->variable();
