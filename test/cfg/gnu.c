@@ -214,7 +214,7 @@ int invalidFunctionArgBool_ctzg(unsigned int a, unsigned int b) {
     return __builtin_ctzg(a, a % b == 0);
 }
 
-int useRetval_stdc_width(size_t n) {
+int ignoredReturnValue_stdc_width(size_t n) {
     // cppcheck-suppress ignoredReturnValue
     __builtin_stdc_bit_width(n);
     return 0;
