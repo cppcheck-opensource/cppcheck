@@ -214,11 +214,13 @@ int invalidFunctionArgBool_ctzg(unsigned int a, unsigned int b) {
     return __builtin_ctzg(a, a % b == 0);
 }
 
+#if __GNUC__ > 14
 int ignoredReturnValue_stdc_width(size_t n) {
     // cppcheck-suppress ignoredReturnValue
     __builtin_stdc_bit_width(n);
     return 0;
 }
+#endif
 
 #if !defined(__APPLE__)
 int nullPointer_semtimedop(int semid, struct sembuf *sops, size_t nsops, const struct timespec *timeout)
