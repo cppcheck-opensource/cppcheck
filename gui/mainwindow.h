@@ -107,8 +107,11 @@ public slots:
     /** @brief Slot to reanalyze modified files */
     void reAnalyzeModified();
 
-    /** @brief Slot to clear all search results */
-    void clearResults();
+    /**
+     * @brief Slot to clear all search results or selected
+     * @param selectedFiles list to clear, leave empty for all
+     */
+    void clearResults(const QStringList& selectedFiles = QStringList());
 
     /** @brief Slot to open XML report file */
     void openResults();
@@ -309,7 +312,7 @@ private:
      * @param checkLib Flag to indicate if library should be checked
      * @param checkConfig Flag to indicate if the configuration should be checked.
      */
-    void doAnalyzeProject(ImportProject p, bool checkLib = false, bool checkConfig = false, const QStringList& recheckFiles = QStringList());
+    void doAnalyzeProject(ImportProject p, bool checkLib = false, bool checkConfig = false, const QStringList &recheckFiles = QStringList());
 
     /**
      * @brief Analyze all files specified in parameter files
@@ -317,8 +320,9 @@ private:
      * @param files List of files and/or directories to analyze
      * @param checkLib Flag to indicate if library should be checked
      * @param checkConfig Flag to indicate if the configuration should be checked.
+     * @param partialRecheck Flag to indicate a partial recheck.
      */
-    void doAnalyzeFiles(const QStringList &files, bool checkLib = false, bool checkConfig = false);
+    void doAnalyzeFiles(const QStringList &files, bool checkLib = false, bool checkConfig = false, bool partialRecheck = false);
 
     /**
      * @brief Get our default cppcheck settings and read project file.
