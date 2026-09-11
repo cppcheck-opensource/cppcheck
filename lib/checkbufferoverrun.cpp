@@ -461,7 +461,7 @@ void CheckBufferOverrunImpl::negativeIndexError(const Token* tok,
     }
 
     reportError(getErrorPath(tok, negativeValue, "Negative array index"),
-                negativeValue->errorSeverity() ? Severity::error : Severity::warning,
+                (negativeValue->errorSeverity() && !negativeValue->conditional) ? Severity::error : Severity::warning,
                 "negativeIndex",
                 arrayIndexMessage(tok, dimensions, indexes, condition),
                 CWE_BUFFER_UNDERRUN,
