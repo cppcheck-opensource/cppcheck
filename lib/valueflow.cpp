@@ -1087,6 +1087,24 @@ static void valueFlowImpossibleValues(TokenList& tokenList, const Settings& sett
             upper.bound = ValueFlow::Value::Bound::Lower;
             upper.setImpossible();
             setTokenValue(tok, std::move(upper), settings);
+        } else if (tok->isCast() && tok->valueType() && tok->valueType()->isIntegral() && !tok->valueType()->pointer) {
+            MathLib::bigint minValue;
+            MathLib::bigint maxValue;
+            if (!ValueFlow::getMinMaxValues(tok->valueType(), settings.platform, minValue, maxValue))
+                continue;
+
+            if (minValue > std::numeric_limits<MathLib::bigint>::min()) {
+                ValueFlow::Value lower{minValue - 1};
+                lower.bound = ValueFlow::Value::Bound::Upper;
+                lower.setImpossible();
+                setTokenValue(tok, std::move(lower), settings);
+            }
+            if (maxValue < std::numeric_limits<MathLib::bigint>::max()) {
+                ValueFlow::Value upper{maxValue + 1};
+                upper.bound = ValueFlow::Value::Bound::Lower;
+                upper.setImpossible();
+                setTokenValue(tok, std::move(upper), settings);
+            }
         } else if (astIsUnsigned(tok) && !astIsPointer(tok)) {
             std::vector<MathLib::bigint> minvalue = minUnsignedValue(tok);
             if (minvalue.empty())

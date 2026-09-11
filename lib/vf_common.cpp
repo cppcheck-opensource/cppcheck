@@ -46,7 +46,7 @@ namespace ValueFlow
         if (!vt || !vt->isIntegral() || vt->pointer)
             return false;
 
-        std::uint8_t bits;
+        std::size_t bits;
         switch (vt->type) {
         case ValueType::Type::BOOL:
             bits = 1;
@@ -66,10 +66,16 @@ namespace ValueFlow
         case ValueType::Type::LONGLONG:
             bits = platform.long_long_bit;
             break;
+        case ValueType::Type::WCHAR_T:
+            bits = platform.sizeof_wchar_t * platform.char_bit;
+            break;
         default:
             return false;
         }
 
+        if (bits == 0) {
+            return false;
+        }
         if (bits == 1) {
             minValue = 0;
             maxValue = 1;
@@ -77,18 +83,20 @@ namespace ValueFlow
             if (vt->sign == ValueType::Sign::UNSIGNED) {
                 minValue = 0;
                 maxValue = (1LL << bits) - 1;
-            } else {
+            } else if (vt->sign == ValueType::Sign::SIGNED) {
                 minValue = -(1LL << (bits - 1));
                 maxValue = (1LL << (bits - 1)) - 1;
-            }
+            } else
+                return false;
         } else if (bits == 64) {
             if (vt->sign == ValueType::Sign::UNSIGNED) {
                 minValue = 0;
                 maxValue = LLONG_MAX; // todo max unsigned value
-            } else {
+            } else if (vt->sign == ValueType::Sign::SIGNED) {
                 minValue = LLONG_MIN;
                 maxValue = LLONG_MAX;
-            }
+            } else
+                return false;
         } else {
             return false;
         }
