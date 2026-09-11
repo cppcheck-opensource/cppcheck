@@ -30,6 +30,14 @@ The CI has an "always green" approach which means that failing tests are not all
 
 Note: Usually you can run the CI on your own fork to verify that it passes before even open an PR. Unfortunately some changes to avoid duplicated builds in our CI disabled this (TODO: file a ticket about this).
 
+### AI/LLM Disclosure
+
+If you choose to use AI/LLM to assist with your work please disclose this in the description of the PR (so it will be part of the commit message of the merged changes) by stating the name and the version of the model in question.
+
+Also please attribute any such changes with `Co-authored-by:` for the respective model (if available).
+
+PRs containing such changes should also be flagged with the [`ai-assisted`](https://github.com/cppcheck-opensource/cppcheck/issues?q=state%3Aopen%20label%3Aai-assisted) label.
+
 ### Targets
 
 Cppcheck is tracking its issues at https://trac.cppcheck.net.
