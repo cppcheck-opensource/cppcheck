@@ -3078,6 +3078,29 @@ private:
               "    delete[] z;\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:4:10]: (error) Array 'z[5]' accessed at index 7, which is out of bounds. [arrayIndexOutOfBounds]\n", errout_str());
+
+        // #14934
+        check("int *a = new int[2];\n"
+              "int main() {\n"
+              "    return a[5];\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:13]: (error) Array 'a[2]' accessed at index 5, which is out of bounds. [arrayIndexOutOfBounds]\n", errout_str());
+
+        check("int *a = new int[2];\n"
+              "int main() {\n"
+              "    a = new int[10];\n"
+              "    return a[5];\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("int *a = new int[2];\n"
+              "void reset();\n"
+              "int main() {\n"
+              "    reset();\n"
+              "    return a[5];\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
     }
 
     void buffer_overrun_2_struct() {
