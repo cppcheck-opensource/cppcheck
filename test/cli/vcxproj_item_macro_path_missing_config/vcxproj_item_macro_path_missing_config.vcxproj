@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{cccccccc-cccc-cccc-cccc-cccccccccccc}</ProjectGuid>
+    <RootNamespace>itemmacropathmissingconfigtest</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <!-- MyRoot is set ONLY for Debug|x64 -- Release|x64 has no PropertyGroup
+       for it at all (not even an empty one). A per-configuration analysis
+       that only records the values a property actually has in each
+       configuration it appears in would see exactly one recorded value
+       ("DebugDir", from Debug) and wrongly conclude MyRoot is
+       config-invariant. But $(MyRoot) genuinely resolves differently by
+       configuration -- to "DebugDir" under Debug, and to "" (no
+       PropertyGroup, no OS environment variable of that name) under
+       Release, exactly like real MSBuild property evaluation -- so this is
+       the same "Visual Studio can't reliably resolve this in an item path"
+       case vcxproj_item_macro_path_test.py covers with two DIFFERING
+       values, just with one of them being "unset" rather than a second
+       explicit value. See vcxproj_item_macro_path_missing_config_test.py. -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <MyRoot>DebugDir</MyRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MyRoot)\foo.cpp" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
