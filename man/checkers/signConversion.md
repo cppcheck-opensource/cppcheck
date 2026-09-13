@@ -7,13 +7,14 @@
 
 ## Description
 
-This checker uses ValueFlow analysis to detect arithmetic expressions (other than `+`/`-`) whose
-result type is unsigned, where one of the operands can have a negative value. When that happens,
-the negative operand is implicitly converted to an unsigned value before the calculation, which can
-produce a very large value instead of the intended negative one.
+This checker detects arithmetic expressions (other than `+`/`-`) whose result type is unsigned, where
+one of the operands can have a negative value. When that happens, the negative operand is implicitly
+converted to an unsigned value before the calculation, which can produce a very large value instead
+of the intended negative one.
 
 If the negative value is a known constant, the message states the operand "has" a negative value;
-otherwise it states the operand "can have" a negative value, based on ValueFlow analysis.
+otherwise it states the operand "can have" a negative value, based on cppcheck's analysis of the
+surrounding code.
 
 This checker only runs when the `warning` severity is enabled.
 
@@ -42,14 +43,6 @@ nothing for an explicit cast to fix or clarify, so a warning here would not be a
 arithmetic operators (`*`, `/`, `%`, shifts, etc.) do not have this property in the same way and are
 still checked.
 
-## Limitations / false negatives
-
-- Only the direct operands of the unsigned arithmetic operator are examined; a negative value that
-  is only reachable through a deeper subexpression is not specifically traced beyond what ValueFlow
-  already attaches to that immediate operand.
-- Detection depends on ValueFlow having a possible or known negative value for the operand; an
-  unconstrained parameter with no usable value information will not be flagged.
-
 ## How to fix
 
 You can fix these warnings by:
@@ -57,10 +50,10 @@ You can fix these warnings by:
 2. Using a signed type for the calculation
 3. Adding an explicit check or cast to make the intended behaviour clear
 
-Note: cppcheck only warns when ValueFlow can actually determine that the operand can be negative -
-either from a known/possible value at the call site (as below), or from a condition earlier in the
-same function. A plain `int` parameter with no callers and no surrounding condition gives ValueFlow
-no evidence that it can be negative, so it is not reported.
+Note: cppcheck only warns when it can actually determine that the operand can be negative - either
+from a known value at the call site (as below), or from a condition earlier in the same function. A
+plain `int` parameter with no callers and no surrounding condition gives cppcheck no evidence that it
+can be negative, so it is not reported.
 
 Before:
 ```cpp

@@ -23,30 +23,9 @@ However, no warning is generated when:
 
 The same value indicates that there might be some logic error or copy-paste mistake.
 
-## Examples
-
-### Problematic code
-
-```cpp
-// Different expressions, same value
-int result = condition ? (int)1 : 1;  // Warning: duplicateValueTernary
-
-// Different cast syntax, same value
-int result = condition ? 1 : (int)1;  // Warning: duplicateValueTernary
-```
-
-### Fixed code
-
-```cpp
-// Different values in branches
-int result = condition ? 1 : 2;  // OK
-
-// Simplified - condition doesn't matter
-int result = 1;  // OK - removed unnecessary ternary
-
-// Platform-dependent values are allowed
-int size = is_64bit ? sizeof(long) : sizeof(int);  // OK - may differ on platforms
-```
+Note that a ternary whose branches merely *could* differ depending on the platform, such as
+`is_64bit ? sizeof(long) : sizeof(int)`, is not flagged: cppcheck only warns when it can tell both
+branches are the same value on the platform being analyzed.
 
 ## How to fix
 
