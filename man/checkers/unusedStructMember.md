@@ -9,6 +9,10 @@
 
 A struct/class/union member is never referenced anywhere in the file.
 
+This checker performs a single-file analysis, it checks structs declared in the source file. This
+checker does not work properly if you analyze a header file directly. You are not recommended to
+run cppcheck on header files directly.
+
 ## Motivation
 
 An unused struct member usually means the field can be removed, or - just as often - that it *should*
