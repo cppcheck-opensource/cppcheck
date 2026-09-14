@@ -11462,6 +11462,30 @@ private:
               "    return i;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct S { int a, b; };\n" // #15021
+              "int f(S s) {\n"
+              "    auto [x, y] = s;\n"
+              "    x = 1;\n"
+              "    y = 2;\n"
+              "    return x + y;\n"
+              "}\n"
+              "struct T { int c; };\n"
+              "int g(T t) {\n"
+              "    auto [z] = t;\n"
+              "    z = 0;\n"
+              "    return z;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:7]: style: Variable 'x' is reassigned a value before the old one has been used. [redundantAssignment]\n"
+                      "[test.cpp:3:17]: note: x is assigned\n"
+                      "[test.cpp:4:7]: note: x is overwritten\n"
+                      "[test.cpp:5:7]: style: Variable 'y' is reassigned a value before the old one has been used. [redundantAssignment]\n"
+                      "[test.cpp:3:17]: note: y is assigned\n"
+                      "[test.cpp:5:7]: note: y is overwritten\n"
+                      "[test.cpp:11:7]: style: Variable 'z' is reassigned a value before the old one has been used. [redundantAssignment]\n"
+                      "[test.cpp:10:14]: note: z is assigned\n"
+                      "[test.cpp:11:7]: note: z is overwritten\n",
+                      errout_str());
     }
 
     // cppcheck-suppress unusedPrivateFunction
