@@ -1388,6 +1388,34 @@ private:
         suppressions=SuppressionList::parseMultiSuppressComment("/*cppcheck-suppress[errorId1, errorId2 symbolName=arr]*/", &errMsg);
         ASSERT_EQUALS(2, suppressions.size());
         ASSERT_EQUALS(true, errMsg.empty());
+
+        errMsg = "";
+        suppressions=SuppressionList::parseMultiSuppressComment("//cppcheck-suppress[errorId1, errorId2 symbolName=arr] ; extra comment", &errMsg);
+        ASSERT_EQUALS(2, suppressions.size());
+        ASSERT_EQUALS(true, errMsg.empty());
+        ASSERT_EQUALS("extra comment", suppressions[0].extraComment);
+        ASSERT_EQUALS("extra comment", suppressions[1].extraComment);
+
+        errMsg = "";
+        suppressions=SuppressionList::parseMultiSuppressComment("//cppcheck-suppress[errorId1, errorId2 symbolName=arr] // extra comment", &errMsg);
+        ASSERT_EQUALS(2, suppressions.size());
+        ASSERT_EQUALS(true, errMsg.empty());
+        ASSERT_EQUALS("extra comment", suppressions[0].extraComment);
+        ASSERT_EQUALS("extra comment", suppressions[1].extraComment);
+
+        errMsg = "";
+        suppressions=SuppressionList::parseMultiSuppressComment("/*cppcheck-suppress[errorId1, errorId2 symbolName=arr] ; extra comment */", &errMsg);
+        ASSERT_EQUALS(2, suppressions.size());
+        ASSERT_EQUALS(true, errMsg.empty());
+        ASSERT_EQUALS("extra comment", suppressions[0].extraComment);
+        ASSERT_EQUALS("extra comment", suppressions[1].extraComment);
+
+        errMsg = "";
+        suppressions=SuppressionList::parseMultiSuppressComment("/*cppcheck-suppress[errorId1, errorId2 symbolName=arr] // extra comment */", &errMsg);
+        ASSERT_EQUALS(2, suppressions.size());
+        ASSERT_EQUALS(true, errMsg.empty());
+        ASSERT_EQUALS("extra comment", suppressions[0].extraComment);
+        ASSERT_EQUALS("extra comment", suppressions[1].extraComment);
     }
 
     void globalSuppressions() { // Testing that Cppcheck::useGlobalSuppressions works (#8515)
