@@ -1556,7 +1556,7 @@ void CheckConditionImpl::alwaysTrueFalse()
                     condition = parent->astParent()->astParent()->previous();
                 else if (Token::Match(tok, "%comp%"))
                     condition = tok;
-                else if ((tok->str() == "(" || (hasComp && Token::Match(tok, "!|%var%"))) && astIsBool(parent) && Token::Match(parent, "%assign%"))
+                else if (hasComp && Token::Match(tok, "!|%var%") && astIsBool(parent) && Token::Match(parent, "%assign%"))
                     condition = tok;
                 else
                     continue;

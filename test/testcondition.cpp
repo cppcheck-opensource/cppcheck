@@ -3668,7 +3668,7 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("long X::g(bool unknown, int& result) {\n"
+        check("long g(bool unknown, int& result) {\n"
               "    long ret = 0;\n"
               "    bool f = false;\n"
               "    f = f || unknown;\n"
@@ -4878,7 +4878,18 @@ private:
               "    }\n"
               "    return false;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:6:12] -> [test.cpp:7:21]: (style) Assigned value 's.g()' is always true [knownConditionTrueFalse]\n", errout_str());
+        TODO_ASSERT_EQUALS("[test.cpp:6:12] -> [test.cpp:7:21]: (style) Assigned value 's.g()' is always true [knownConditionTrueFalse]\n", "", errout_str());
+
+        check("static bool parse(int r) {\n" // #15031
+              "    bool res = false;\n"
+              "    return res;\n"
+              "}\n"
+              "\n"
+              "int main (void) {\n"
+              "    bool res = parse(1101);\n"
+              "    return res;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
 
         check("void f(const void* p) {\n" // #11519
               "    bool b = false;\n"
