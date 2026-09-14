@@ -3676,6 +3676,34 @@ private:
                       "[test.cpp:8:12]: warning: Buffer is accessed out of bounds: a [bufferAccessOutOfBounds]\n"
                       "[test.cpp:7:11]: note: Assuming that condition 'i!=2' is not redundant\n"
                       "[test.cpp:8:12]: note: Buffer overrun\n", errout_str());
+
+        check("int a[3];\n"
+              "int f1(int i, bool b) {\n"
+              "    int j = b ? i : -1;\n"
+              "    return a[j];\n"
+              "}"
+              "int f2(int i, bool b) {\n"
+              "    int j = b ? -1 : i;\n"
+              "    return a[j];\n"
+              "}"
+              "int f3(int i, bool b) {\n"
+              "    int j = -1;\n"
+              "    if (b)\n"
+              "        j = i;\n"
+              "    return a[j];\n"
+              "}", s);
+        ASSERT_EQUALS("[test.cpp:4:13]: warning: Array 'a[3]' accessed at index -1, which is out of bounds. [negativeIndex]\n"
+                      "[test.cpp:3:13]: note: Assuming condition 'b' is false\n"
+                      "[test.cpp:3:15]: note: Assignment 'j=b?i:-1', assigned value is -1\n"
+                      "[test.cpp:4:13]: note: Negative array index\n"
+                      "[test.cpp:7:13]: warning: Array 'a[3]' accessed at index -1, which is out of bounds. [negativeIndex]\n"
+                      "[test.cpp:6:13]: note: Assuming condition 'b' is true\n"
+                      "[test.cpp:6:15]: note: Assignment 'j=b?-1:i', assigned value is -1\n"
+                      "[test.cpp:7:13]: note: Negative array index\n"
+                      "[test.cpp:12:13]: warning: Array 'a[3]' accessed at index -1, which is out of bounds. [negativeIndex]\n"
+                      "[test.cpp:9:14]: note: Assignment 'j=-1', assigned value is -1\n"
+                      "[test.cpp:10:9]: note: Assuming condition is false\n"
+                      "[test.cpp:12:13]: note: Negative array index\n", errout_str());
     }
 
     void buffer_overrun_bailoutIfSwitch() {

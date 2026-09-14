@@ -2570,8 +2570,8 @@ void CheckOtherImpl::zerodivError(const Token *tok, const ValueFlow::Value *valu
         errmsg << "Division by zero.";
 
     reportError(std::move(errorPath),
-                value->errorSeverity() ? Severity::error : Severity::warning,
-                value->condition ? "zerodivcond" : "zerodiv",
+                (value->errorSeverity() && !value->conditional) ? Severity::error : Severity::warning,
+                (value->condition || value->conditional) ? "zerodivcond" : "zerodiv",
                 errmsg.str(), CWE369, value->isInconclusive() ? Certainty::inconclusive : Certainty::normal);
 }
 
