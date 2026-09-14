@@ -2712,6 +2712,80 @@ bool isVariableChanged(const Token *tok, int indirect, const Settings &settings,
     if (tok2->isCpp() && Token::Match(tok2->astParent(), ">>|&") && astIsRHS(tok2) && isLikelyStreamRead(tok2->astParent()))
         return true;
 
+    // An overloaded >>= can extract into its right-hand operand by reference.
+    if (tok2->isCpp() && Token::simpleMatch(tok2->astParent(), ">>=") && astIsRHS(tok2) &&
+        !astIsIntegral(tok2->astParent()->astOperand1(), false)) {
+        const Token* lhs = tok2->astParent()->astOperand1();
+        const ValueType* lhsType = lhs->valueType();
+        if (!lhsType || !lhsType->typeScope)
+            return true;
+        const ValueType* rhsType = tok2->valueType();
+        const auto isKnownType = [](const ValueType* type) {
+            return type && type->type != ValueType::UNKNOWN_INT &&
+                   (type->isPrimitive() || (type->pointer && (type->type == ValueType::VOID || type->typeScope)));
+        };
+        const auto receiverCV = [](const Function* function) {
+            return (function->isConst() ? 1U : 0U) | (function->isVolatile() ? 2U : 0U);
+        };
+        const unsigned int lhsCV = (lhsType->isConst() ? 1U : 0U) | (lhsType->isVolatile() ? 2U : 0U);
+        const auto operators = lhsType->typeScope->functionMap.equal_range("operator>>=");
+        for (auto it = operators.first; it != operators.second; ++it) {
+            const Function* function = it->second;
+            if ((lhsType->isConst() && !function->isConst()) ||
+                (lhsType->isVolatile() && !function->isVolatile()) ||
+                (lhs->variable() && function->hasRvalRefQualifier()))
+                continue;
+            const Variable* arg = function->getArgumentVar(0);
+            if (!arg)
+                return true;
+            if (arg->isConst() || !arg->isReference())
+                continue;
+            // Named variables are lvalues, including named rvalue references.
+            if (tok2->variable() && arg->isRValueReference() && !function->templateDef)
+                continue;
+            const ValueType* argType = arg->valueType();
+            if (isKnownType(rhsType) && isKnownType(argType)) {
+                // Non-const references cannot bind via arithmetic or pointer conversions.
+                if (!rhsType->isTypeEqual(argType) ||
+                    (rhsType->sign != ValueType::UNKNOWN_SIGN && argType->sign != ValueType::UNKNOWN_SIGN &&
+                     rhsType->sign != argType->sign) ||
+                    (rhsType->isVolatile() && !argType->isVolatile()))
+                    continue;
+                // Pointee qualification conversions also create a temporary pointer.
+                if (rhsType->pointer > 0 && rhsType->pointer < std::numeric_limits<unsigned int>::digits) {
+                    const unsigned int mask = (1U << rhsType->pointer) - 1;
+                    if (((static_cast<unsigned int>(rhsType->constness) ^ static_cast<unsigned int>(argType->constness)) & mask) ||
+                        ((static_cast<unsigned int>(rhsType->volatileness) ^ static_cast<unsigned int>(argType->volatileness)) & mask))
+                        continue;
+                }
+            }
+            // An exact by-value argument can win on the receiver's cv conversion.
+            // Do not rank user-defined conversions or competing reference bindings.
+            if (lhs->variable() && isKnownType(rhsType) && isKnownType(argType) &&
+                rhsType->isTypeEqual(argType) && rhsType->sign == argType->sign &&
+                rhsType->constness == argType->constness && rhsType->volatileness == argType->volatileness &&
+                !function->templateDef) {
+                const unsigned int cv = receiverCV(function);
+                const bool hasBetterValueOverload = std::any_of(operators.first, operators.second, [&](const std::pair<const std::string, const Function*>& entry) {
+                    const Function* other = entry.second;
+                    const unsigned int otherCV = receiverCV(other);
+                    if (otherCV == cv || (otherCV & cv) != otherCV || (otherCV & lhsCV) != lhsCV ||
+                        other->hasLvalRefQualifier() != function->hasLvalRefQualifier() ||
+                        other->hasRvalRefQualifier() != function->hasRvalRefQualifier() || other->templateDef)
+                        return false;
+                    const Variable* otherArg = other->getArgumentVar(0);
+                    const ValueType* otherType = otherArg ? otherArg->valueType() : nullptr;
+                    return otherArg && !otherArg->isReference() && isKnownType(otherType) &&
+                           rhsType->isTypeEqual(otherType) && rhsType->sign == otherType->sign &&
+                           rhsType->constness == otherType->constness && rhsType->volatileness == otherType->volatileness;
+                });
+                if (hasBetterValueOverload)
+                    continue;
+            }
+            return true;
+        }
+    }
+
     if (isLikelyStream(tok2))
         return true;
 
