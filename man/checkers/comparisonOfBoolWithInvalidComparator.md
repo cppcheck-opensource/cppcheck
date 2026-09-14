@@ -11,9 +11,12 @@ A boolean literal (`true`/`false`) is compared to something using `<`, `>`, `<=`
 
 ## Motivation
 
-`bool` only has two values, so ordering comparisons against a literal `true`/`false` don't express
-anything an equality comparison (`==`/`!=`) wouldn't say more clearly - and are easy to get backwards,
-since `false < true` is not always the intuitive direction a reader expects.
+`<`, `>`, `<=` and `>=` are well-defined against a `bool` literal (`false` is `0`, `true` is `1`), so
+this code already compiles and evaluates correctly - there is no functional problem to fix. The reason
+to flag it is readability: `bool` only has two values, so an ordering comparison against `true`/`false`
+says nothing that `==`/`!=` wouldn't say more directly, and it forces the reader to work out which of
+`false`/`true` is "smaller" instead of just reading the equality check. Preferring `==`/`!=` for
+two-valued types is the clearer, more idiomatic style.
 
 ## How to fix
 

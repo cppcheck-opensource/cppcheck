@@ -13,9 +13,12 @@ when both sides are.
 
 ## Motivation
 
-`bool` only has two values, so ordering its result doesn't express anything `==`/`!=` wouldn't say more
-clearly, and is easy to get backwards since `false < true` is not always the intuitive direction a
-reader expects.
+`<`, `>`, `<=` and `>=` are well-defined for `bool` results (`false` is `0`, `true` is `1`), so this code
+already compiles and evaluates correctly - there is no functional problem to fix. The reason to flag it
+is readability: `bool` only has two values, so ordering the result of a bool-returning function says
+nothing that `==`/`!=` wouldn't say more directly, and it forces the reader to work out which of
+`false`/`true` is "smaller" instead of just reading the equality/logical check. Preferring `==`/`!=` (or
+plain `&&`/`!`) for two-valued results is the clearer, more idiomatic style.
 
 ## How to fix
 
