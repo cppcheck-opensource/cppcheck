@@ -11461,7 +11461,32 @@ private:
               "    i = std::distance(v.begin(), std::find_if(v.begin(), v.end(), [=](int j) { return i == j; }));\n"
               "    return i;\n"
               "}\n");
+
         ASSERT_EQUALS("", errout_str());
+
+        check("int g();\n" // #15023
+              "int f1() {\n"
+              "    int i{ g() };\n"
+              "    i = 0;\n"
+              "    return i;\n"
+              "}\n"
+              "int f2() {\n"
+              "    int i(g());\n"
+              "    i = 0;\n"
+              "    return i;\n"
+              "}\n"
+              "int f3() {\n"
+              "    int i{ 1 };\n"
+              "    i = 0;\n"
+              "    return i;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:7]: style: Redundant initialization for 'i'. The initialized value is overwritten before it is read. [redundantInitialization]\n"
+                      "[test.cpp:3:10]: note: i is initialized\n"
+                      "[test.cpp:4:7]: note: i is overwritten\n"
+                      "[test.cpp:9:7]: style: Redundant initialization for 'i'. The initialized value is overwritten before it is read. [redundantInitialization]\n"
+                      "[test.cpp:8:10]: note: i is initialized\n"
+                      "[test.cpp:9:7]: note: i is overwritten\n",
+                      errout_str());
     }
 
     // cppcheck-suppress unusedPrivateFunction
