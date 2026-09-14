@@ -1262,6 +1262,15 @@ private:
         ASSERT_EQUALS(1U, values.size());
         ASSERT_EQUALS(~0U, values.back().intvalue);
 
+        // #15015
+        code  = "void f(unsigned u) {\n"
+                "    if (~u) {}\n"
+                "}";
+        values = tokenValues(code, "~");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(-1, values.back().intvalue);
+        ASSERT(values.back().isImpossible());
+
         // !
         code  = "void f(int x) {\n"
                 "    a = !x;\n"

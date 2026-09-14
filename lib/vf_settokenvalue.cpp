@@ -615,7 +615,7 @@ namespace ValueFlow
         // ~
         else if (parent->str() == "~") {
             for (const Value &val : tok->values()) {
-                if (!val.isIntValue())
+                if (!val.isIntValue() || (val.isImpossible() && val.intvalue < 0))
                     continue;
                 Value v(val);
                 v.intvalue = ~v.intvalue;
