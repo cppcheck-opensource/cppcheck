@@ -2927,9 +2927,11 @@ isStaticAssert(const Settings &settings, const Token *tok)
         return true;
     }
 
-    if (tok->isC() && settings.standards.c >= Standards::C11 &&
-        Token::simpleMatch(tok, "_Static_assert")) {
-        return true;
+    if (tok->isC()) {
+        if (settings.standards.c >= Standards::C11 && Token::simpleMatch(tok, "_Static_assert"))
+            return true;
+        if (settings.standards.c >= Standards::C23 && Token::simpleMatch(tok, "static_assert"))
+            return true;
     }
 
     return false;

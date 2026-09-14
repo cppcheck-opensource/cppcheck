@@ -7756,6 +7756,12 @@ private:
               "}\n", dinit(CheckOptions, $.cpp = false));
         ASSERT_EQUALS("", errout_str());
 
+        check("void f() {\n" // #15020
+              "    enum { Four = 4 };\n"
+              "    static_assert(Four == 4, \"\");\n"
+              "}\n", dinit(CheckOptions, $.cpp = false));
+        ASSERT_EQUALS("", errout_str());
+
         check("void f() {\n"
               "    enum { Four = 4 };\n"
               "    static_assert(4 == Four, \"\");\n"
