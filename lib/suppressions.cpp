@@ -207,6 +207,30 @@ std::vector<SuppressionList::Suppression> SuppressionList::parseMultiSuppressCom
         suppressions.push_back(std::move(s));
     }
 
+    std::string::size_type extraPos = comment.find(';', end_position);
+    std::size_t delimSize = 1;
+
+    if (extraPos == std::string::npos) {
+        extraPos = comment.find("//", end_position);
+        delimSize = 2;
+    }
+
+    if (extraPos == std::string::npos)
+        return suppressions;
+
+    std::string extraComment = comment.substr(extraPos + delimSize);
+
+    if (extraComment.size() >= 2 && extraComment.compare(extraComment.size() - 2, 2, "*/") == 0)
+        extraComment.erase(extraComment.size() - 2, 2);
+
+    extraComment = trim(extraComment);
+
+    for (auto it = extraComment.begin(); it != extraComment.end();)
+        it = *it & 0x80 ? extraComment.erase(it) : it + 1;
+
+    for (auto &suppression : suppressions)
+        suppression.extraComment = extraComment;
+
     return suppressions;
 }
 
