@@ -1249,7 +1249,19 @@ private:
         }
         {
             SuppressionList::Suppression s;
+            ASSERT_EQUALS(true, s.parseComment("// cppcheck-suppress abc; some comment // extra stuff", &errMsg));
+            ASSERT_EQUALS("", errMsg);
+            ASSERT_EQUALS("some comment // extra stuff", s.extraComment);
+        }
+        {
+            SuppressionList::Suppression s;
             ASSERT_EQUALS(true, s.parseComment("// cppcheck-suppress abc // some comment ; extra stuff", &errMsg));
+            ASSERT_EQUALS("", errMsg);
+            ASSERT_EQUALS("some comment ; extra stuff", s.extraComment);
+        }
+        {
+            SuppressionList::Suppression s;
+            ASSERT_EQUALS(true, s.parseComment("// cppcheck-suppress abc// some comment ; extra stuff", &errMsg));
             ASSERT_EQUALS("", errMsg);
             ASSERT_EQUALS("some comment ; extra stuff", s.extraComment);
         }
