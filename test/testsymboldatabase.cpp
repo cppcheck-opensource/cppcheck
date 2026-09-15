@@ -3631,7 +3631,7 @@ private:
         ASSERT(fredScope != nullptr);
 
         // The struct Fred has two functions, a constructor and a destructor
-        ASSERT_EQUALS(2U, fredScope->functionList.size());
+        ASSERT_EQUALS(2U, fredScope->functionList.size()); // cppcheck-suppress nullPointer // see ticket #9747
 
         // Get linenumbers where the bodies for the constructor and destructor are..
         unsigned int constructor = 0;
