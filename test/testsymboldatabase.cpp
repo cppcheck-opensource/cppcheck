@@ -546,6 +546,7 @@ private:
         TEST_CASE(findFunction62); // #14272 - pointer passed to function is const
         TEST_CASE(findFunction63); // #14937 - member function of type returned by operator()
         TEST_CASE(findFunction64); // overloaded operator()
+        TEST_CASE(findFunction65);
         TEST_CASE(findFunctionRef1);
         TEST_CASE(findFunctionRef2); // #13328
         TEST_CASE(findFunctionContainer);
@@ -8987,6 +8988,20 @@ private:
             const Token* h = Token::findsimplematch(tokenizer.tokens(), "h ( 1 )");
             ASSERT(h && h->function());
             ASSERT_EQUALS(2, h->function()->tokenDef->linenr());
+        }
+    }
+
+    void findFunction65()
+    {
+        {
+            GET_SYMBOL_DB("bool g(char) { return true; }\n" // #15033
+                          "bool g(int) { return false; }\n"
+                          "void f(char c) {\n"
+                          "    if (g(+c)) {}\n"
+                          "}\n");
+            const Token* g = Token::findsimplematch(tokenizer.tokens(), "g ( +");
+            ASSERT(g && g->function());
+            ASSERT_EQUALS(2, g->function()->tokenDef->linenr());
         }
     }
 

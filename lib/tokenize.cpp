@@ -3774,7 +3774,8 @@ void Tokenizer::concatenateNegativeNumberAndAnyPositive()
         if (!tok->tokAt(2) || (tok->tokAt(2)->isOp() && !Token::Match(tok->tokAt(2), "[+-*]")))
             syntaxError(tok);
 
-        while (tok->str() != ">" && tok->next() && tok->strAt(1) == "+" && (!Token::Match(tok->tokAt(2), "%name% (|;") || Token::Match(tok, "%op%")))
+        while ((tok->isArithmeticalOp() || tok->isComparisonOp()) && tok->str() != ">" && tok->next() && tok->strAt(1) == "+" &&
+               (!Token::Match(tok->tokAt(2), "%name% (|;") || Token::Match(tok, "%op%")))
             tok->deleteNext();
 
         if (Token::Match(tok->next(), "+|- %num%")) {

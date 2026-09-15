@@ -1104,7 +1104,7 @@ private:
         ASSERT_EQUALS("int f ( ) { return -2 ; }", tokenizeAndStringify("int f(){return -2;}\n"));
         ASSERT_EQUALS("int x [ 2 ] = { -2 , 1 }", tokenizeAndStringify("int x[2] = {-2,1}\n"));
 
-        ASSERT_EQUALS("f ( 123 )", tokenizeAndStringify("f(+123)\n"));
+        ASSERT_EQUALS("f ( +123 )", tokenizeAndStringify("f(+123)\n"));
 
         ASSERT_EQUALS("std :: extent_v < A > - 1 ;", tokenizeAndStringify("std::extent_v<A> - 1;\n")); // #11341
     }
