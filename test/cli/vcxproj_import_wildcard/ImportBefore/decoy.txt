@@ -1,0 +1,2 @@
+Not a .props file -- the "*.props" wildcard pattern must not attempt to load
+this as XML. If it did, cppcheck would fail since this isn't valid XML.

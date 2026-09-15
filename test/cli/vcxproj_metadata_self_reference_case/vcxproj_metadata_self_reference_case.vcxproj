@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{cccccccc-dddd-eeee-ffff-000011112222}</ProjectGuid>
+    <RootNamespace>metadataselfreferencecasetest</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <!-- Regression coverage for addMetadata()'s "$(eName) self-reference"
+       accumulation idiom (lib/importproject.cpp) using plain, case-sensitive
+       findAndReplace() instead of findAndReplaceCaseInsensitive() -- the same
+       function already used everywhere else in this file for property/metadata
+       name comparisons, and MetadataMap itself is already case-insensitive
+       (cppcheck::stricmp). Item metadata names are case-insensitive in real
+       MSBuild, so a self-reference spelled with different casing than its own
+       element's tag name -- $(preprocessordefinitions) inside a
+       <PreprocessorDefinitions> element -- must still resolve to the value
+       accumulated by the preceding ItemDefinitionGroup ("BASE_DEFINE"), not be
+       left as literal, unresolved macro text. See
+       vcxproj_metadata_self_reference_case_test.py. -->
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>BASE_DEFINE</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>$(preprocessordefinitions);EXTRA_DEFINE</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="foo.cpp" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
