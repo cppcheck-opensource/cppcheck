@@ -153,6 +153,20 @@ std::string SuppressionList::parseXmlFile(const char *filename)
     return "";
 }
 
+static std::string::size_type findExtraCommentStart(const std::string &comment, std::string::size_type startPos)
+{
+    const std::string::size_type semiPos = comment.find(';', startPos);
+    const std::string::size_type slashPos = comment.find("//", startPos);
+
+    if (semiPos != std::string::npos && semiPos < slashPos)
+        return semiPos + 1;
+
+    if (slashPos != std::string::npos)
+        return slashPos + 2;
+
+    return std::string::npos;
+}
+
 std::vector<SuppressionList::Suppression> SuppressionList::parseMultiSuppressComment(const std::string &comment, std::string *errorMessage)
 {
     std::vector<Suppression> suppressions;
@@ -207,18 +221,12 @@ std::vector<SuppressionList::Suppression> SuppressionList::parseMultiSuppressCom
         suppressions.push_back(std::move(s));
     }
 
-    std::string::size_type extraPos = comment.find(';', end_position);
-    std::size_t delimSize = 1;
-
-    if (extraPos == std::string::npos) {
-        extraPos = comment.find("//", end_position);
-        delimSize = 2;
-    }
+    const std::string::size_type extraPos = findExtraCommentStart(comment, end_position);
 
     if (extraPos == std::string::npos)
         return suppressions;
 
-    std::string extraComment = comment.substr(extraPos + delimSize);
+    std::string extraComment = comment.substr(extraPos);
 
     if (extraComment.size() >= 2 && extraComment.compare(extraComment.size() - 2, 2, "*/") == 0)
         extraComment.erase(extraComment.size() - 2, 2);
@@ -384,16 +392,10 @@ bool SuppressionList::Suppression::parseComment(std::string comment, std::string
     if (comment.compare(comment.size() - 2, 2, "*/") == 0)
         comment.erase(comment.size() - 2, 2);
 
-    std::string::size_type extraPos = comment.find(';');
-    std::string::size_type extraDelimiterSize = 1;
-
-    if (extraPos == std::string::npos) {
-        extraPos = comment.find("//", 2);
-        extraDelimiterSize = 2;
-    }
+    const std::string::size_type extraPos = findExtraCommentStart(comment, 2);
 
     if (extraPos != std::string::npos) {
-        extraComment = trim(comment.substr(extraPos + extraDelimiterSize));
+        extraComment = trim(comment.substr(extraPos));
         for (auto it = extraComment.begin(); it != extraComment.end();)
             it = *it & 0x80 ? extraComment.erase(it) : it + 1;
         comment.erase(extraPos);
