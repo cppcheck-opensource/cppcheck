@@ -8,6 +8,9 @@
 # Review trac roadmap, are tickets closed properly?
 # Only tickets that should be retargeted should be open.
 #
+# Execute this script to check if trac tickets can be closed
+# tools/release-trac-fixed-open-tickets.py
+#
 # Versioning scheme
 # ========================
 # VERSION=2.22.0      # the new release tag created
