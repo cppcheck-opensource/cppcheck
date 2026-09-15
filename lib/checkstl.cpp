@@ -1986,9 +1986,11 @@ static bool isc_strCall(const Token* tok, const Library::Container* container)
 
 static bool isc_strConcat(const Token* tok)
 {
-    if (!tok->isBinaryOp() || !Token::simpleMatch(tok, "+"))
+    if (!tok->isBinaryOp() || !Token::Match(tok, "+|+="))
         return false;
     for (const Token* op : { tok->astOperand1(), tok->astOperand2() }) { // NOLINT(readability-use-anyofallof)
+        if (tok->isAssignmentOp() && astIsLHS(op))
+            continue;
         const Token* sibling = op->astSibling();
         if (!sibling->valueType())
             continue;
