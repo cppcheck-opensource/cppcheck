@@ -153,18 +153,35 @@ std::string SuppressionList::parseXmlFile(const char *filename)
     return "";
 }
 
-static std::string::size_type findExtraCommentStart(const std::string &comment, std::string::size_type startPos)
+static std::string getExtraComment(const std::string &comment, std::string::size_type startPos, std::string::size_type *delimPos = nullptr)
 {
     const std::string::size_type semiPos = comment.find(';', startPos);
     const std::string::size_type slashPos = comment.find("//", startPos);
+    std::string::size_type pos;
 
-    if (semiPos != std::string::npos && semiPos < slashPos)
-        return semiPos + 1;
+    if (semiPos != std::string::npos && semiPos < slashPos) {
+        pos = semiPos + 1;
+        if (delimPos)
+            *delimPos = semiPos;
+    } else if (slashPos != std::string::npos) {
+        pos = slashPos + 2;
+        if (delimPos)
+            *delimPos = slashPos;
+    } else {
+        return "";
+    }
 
-    if (slashPos != std::string::npos)
-        return slashPos + 2;
+    std::string extra = comment.substr(pos);
 
-    return std::string::npos;
+    if (extra.size() >= 2 && extra.compare(extra.size() - 2, 2, "*/") == 0)
+        extra.erase(extra.size() - 2, 2);
+
+    extra = trim(extra);
+
+    for (auto it = extra.begin(); it != extra.end();)
+        it = *it & 0x80 ? extra.erase(it) : it + 1;
+
+    return extra;
 }
 
 std::vector<SuppressionList::Suppression> SuppressionList::parseMultiSuppressComment(const std::string &comment, std::string *errorMessage)
@@ -221,20 +238,10 @@ std::vector<SuppressionList::Suppression> SuppressionList::parseMultiSuppressCom
         suppressions.push_back(std::move(s));
     }
 
-    const std::string::size_type extraPos = findExtraCommentStart(comment, end_position);
+    const std::string extraComment = getExtraComment(comment, end_position);
 
-    if (extraPos == std::string::npos)
+    if (extraComment.empty())
         return suppressions;
-
-    std::string extraComment = comment.substr(extraPos);
-
-    if (extraComment.size() >= 2 && extraComment.compare(extraComment.size() - 2, 2, "*/") == 0)
-        extraComment.erase(extraComment.size() - 2, 2);
-
-    extraComment = trim(extraComment);
-
-    for (auto it = extraComment.begin(); it != extraComment.end();)
-        it = *it & 0x80 ? extraComment.erase(it) : it + 1;
 
     for (auto &suppression : suppressions)
         suppression.extraComment = extraComment;
@@ -392,14 +399,11 @@ bool SuppressionList::Suppression::parseComment(std::string comment, std::string
     if (comment.compare(comment.size() - 2, 2, "*/") == 0)
         comment.erase(comment.size() - 2, 2);
 
-    const std::string::size_type extraPos = findExtraCommentStart(comment, 2);
+    std::string::size_type extraPos;
+    extraComment = getExtraComment(comment, 2, &extraPos);
 
-    if (extraPos != std::string::npos) {
-        extraComment = trim(comment.substr(extraPos));
-        for (auto it = extraComment.begin(); it != extraComment.end();)
-            it = *it & 0x80 ? extraComment.erase(it) : it + 1;
+    if (!extraComment.empty())
         comment.erase(extraPos);
-    }
 
     const std::set<std::string> cppchecksuppress{
         "cppcheck-suppress",
