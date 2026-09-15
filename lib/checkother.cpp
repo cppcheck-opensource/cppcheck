@@ -633,7 +633,7 @@ void CheckOtherImpl::checkRedundantAssignment()
                         if (Token::Match(rhs, ":: %name%") && rhs->hasKnownIntValue())
                             return ChildrenToVisit::none;
                         if (rhs->isCast())
-                            return ChildrenToVisit::op2;
+                            return rhs->astOperand2() ? ChildrenToVisit::op2 : ChildrenToVisit::op1;
                         trivial = false;
                         return ChildrenToVisit::done;
                     });

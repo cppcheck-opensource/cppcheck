@@ -11462,6 +11462,23 @@ private:
               "    return i;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("int f(char c) {\n" // #15037
+              "	   int i = (int)c;\n"
+              "	   i = 3;\n"
+              "	   return i;\n"
+              "}\n"
+              "int g(char c) {\n"
+              "     int i = static_cast<int>(c);\n"
+              "     i = 3;\n"
+              "     return i;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:7]: style: Redundant initialization for 'i'. The initialized value is overwritten before it is read. [redundantInitialization]\n"
+                      "[test.cpp:2:11]: note: i is initialized\n"
+                      "[test.cpp:3:7]: note: i is overwritten\n"
+                      "[test.cpp:8:8]: style: Redundant initialization for 'i'. The initialized value is overwritten before it is read. [redundantInitialization]\n"
+                      "[test.cpp:7:12]: note: i is initialized\n"
+                      "[test.cpp:8:8]: note: i is overwritten\n", errout_str());
     }
 
     // cppcheck-suppress unusedPrivateFunction
