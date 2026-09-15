@@ -34,7 +34,7 @@ PR_SUFFIX = re.compile(r'\s*\(#\d+\)\s*$')
 def latest_tag():
     r = subprocess.run(
         ['git', 'describe', '--tags', '--abbrev=0'],
-        capture_output=True, text=True,
+        capture_output=True, text=True, check=False,
     )
     if r.returncode == 0:
         return r.stdout.strip()
