@@ -2368,7 +2368,7 @@ bool SymbolDatabase::isRecordTypeWithoutSideEffects(const Type* type) const
     for (const Variable& var : type->classScope->varlist) {
         withoutSideEffects = isVariableWithoutSideEffects(var, type);
         if (!withoutSideEffects) {
-            return withoutSideEffects;
+            return false;
         }
     }
     return (withoutSideEffects = true);

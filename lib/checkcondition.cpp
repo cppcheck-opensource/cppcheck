@@ -1571,7 +1571,8 @@ void CheckConditionImpl::alwaysTrueFalse()
                 continue;
             if (Token::simpleMatch(condition, "return") && Token::Match(tok, "%assign%"))
                 continue;
-            if (Token::simpleMatch(tok->astParent(), "return") && Token::Match(tok, ".|%var%"))
+            if (Token::simpleMatch(tok->astParent(), "return") && Token::Match(tok, ".|%var%") &&
+                !(tok->hasKnownValue(ValueFlow::Value::ValueType::SYMBOLIC) && tok->getKnownValue(ValueFlow::Value::ValueType::SYMBOLIC)->tokvalue->str() == "("))
                 continue;
             bool warnForNumber = false;
             if (Token::Match(tok, "%num%|%bool%|%char%")) {
