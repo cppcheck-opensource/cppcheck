@@ -1240,14 +1240,25 @@ private:
     }
 
     void inlinesuppress_comment() const {
-        SuppressionList::Suppression s;
         std::string errMsg;
-        ASSERT_EQUALS(true, s.parseComment("// cppcheck-suppress abc ; some comment", &errMsg));
-        ASSERT_EQUALS("", errMsg);
-        ASSERT_EQUALS(true, s.parseComment("// cppcheck-suppress abc // some comment", &errMsg));
-        ASSERT_EQUALS("", errMsg);
-        ASSERT_EQUALS(true, s.parseComment("// cppcheck-suppress abc -- some comment", &errMsg));
-        ASSERT_EQUALS("", errMsg);
+        {
+            SuppressionList::Suppression s;
+            ASSERT_EQUALS(true, s.parseComment("// cppcheck-suppress abc ; some comment // extra stuff", &errMsg));
+            ASSERT_EQUALS("", errMsg);
+            ASSERT_EQUALS("some comment // extra stuff", s.extraComment);
+        }
+        {
+            SuppressionList::Suppression s;
+            ASSERT_EQUALS(true, s.parseComment("// cppcheck-suppress abc // some comment ; extra stuff", &errMsg));
+            ASSERT_EQUALS("", errMsg);
+            ASSERT_EQUALS("some comment ; extra stuff", s.extraComment);
+        }
+        {
+            SuppressionList::Suppression s;
+            ASSERT_EQUALS(true, s.parseComment("// cppcheck-suppress abc -- some comment", &errMsg));
+            ASSERT_EQUALS("", errMsg);
+            ASSERT_EQUALS("", s.extraComment);
+        }
     }
 
     // TODO: tests internal function - should it be private?
@@ -1416,6 +1427,20 @@ private:
         ASSERT_EQUALS(true, errMsg.empty());
         ASSERT_EQUALS("extra comment", suppressions[0].extraComment);
         ASSERT_EQUALS("extra comment", suppressions[1].extraComment);
+
+        errMsg = "";
+        suppressions=SuppressionList::parseMultiSuppressComment("/*cppcheck-suppress[errorId1, errorId2 symbolName=arr] ; extra comment // more */", &errMsg);
+        ASSERT_EQUALS(2, suppressions.size());
+        ASSERT_EQUALS(true, errMsg.empty());
+        ASSERT_EQUALS("extra comment // more", suppressions[0].extraComment);
+        ASSERT_EQUALS("extra comment // more", suppressions[1].extraComment);
+
+        errMsg = "";
+        suppressions=SuppressionList::parseMultiSuppressComment("/*cppcheck-suppress[errorId1, errorId2 symbolName=arr] // extra comment ; more */", &errMsg);
+        ASSERT_EQUALS(2, suppressions.size());
+        ASSERT_EQUALS(true, errMsg.empty());
+        ASSERT_EQUALS("extra comment ; more", suppressions[0].extraComment);
+        ASSERT_EQUALS("extra comment ; more", suppressions[1].extraComment);
     }
 
     void globalSuppressions() { // Testing that Cppcheck::useGlobalSuppressions works (#8515)
