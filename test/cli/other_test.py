@@ -4886,14 +4886,16 @@ def test_ipc_inline_suppressions(tmp_path):
     assert stdout_lines == stdout_exp
     assert stderr.splitlines() == []
 
+__strace_decorator = pytest.mark.skipif(sys.platform != 'linux' or 'ASAN_OPTIONS' in os.environ, reason="uses strace")
+
 test_redundant_file_reads_params = [
-    ([],                       3),
+    ([],                       2),
     (['--suppress=zerodiv'],   1),
     (['--template=cppcheck1'], 1),
     (['--xml'],                1),
 ]
 
-@pytest.mark.skipif(sys.platform != 'linux' or 'ASAN_OPTIONS' in os.environ, reason="uses strace")
+@__strace_decorator
 @pytest.mark.parametrize('flags,expected', test_redundant_file_reads_params)
 def test_redundant_file_reads(tmpdir, flags, expected):
     source_pathname = os.path.join(tmpdir, 'test.c')
@@ -4927,3 +4929,155 @@ void f(int x) {
 
     assert proc.returncode == 0
     assert stderr.splitlines()[-1].strip() == f'{expected} total'.encode('utf-8')
+
+test_errorlogger_sourcecache_params = [
+    ([]),
+    (["-j4", "--executor=process"]),
+    (["-j4", "--executor=thread"]),
+]
+
+@__strace_decorator
+@pytest.mark.parametrize('extra_flags', test_errorlogger_sourcecache_params)
+def test_errorlogger_sourcecache(tmpdir, extra_flags):
+    header_pathname = os.path.join(tmpdir, 'header.h')
+    file_1_pathname = os.path.join(tmpdir, 'file_1.c')
+    file_2_pathname = os.path.join(tmpdir, 'file_2.c')
+    file_3_pathname = os.path.join(tmpdir, 'file_3.c')
+    output_pathname = os.path.join(tmpdir, 'out.txt')
+    builddir_pathname = os.path.join(tmpdir, 'builddir')
+
+    os.mkdir(builddir_pathname)
+
+    # Project setup that results in error paths
+    # spanning multiple files (ctuuninitvar)
+
+    header_content = """
+int func_1(int *ptr);
+int func_2(int *ptr);
+"""
+
+    file_1_content = f"""
+#include "{header_pathname}"
+
+int func_1(int *ptr)
+{{
+    return *ptr;
+}}
+"""
+
+    file_2_content = f"""
+#include "{header_pathname}"
+
+int func_2(int *ptr)
+{{
+    return *ptr;
+}}
+"""
+
+    file_3_content = f"""
+#include "{header_pathname}"
+
+int func_3(void)
+{{
+    int x, y;
+    return func_1(&x) + func_2(&y);
+}}
+"""
+
+    with open(header_pathname, 'wt') as f:
+        f.write(header_content)
+
+    with open(file_1_pathname, 'wt') as f:
+        f.write(file_1_content)
+
+    with open(file_2_pathname, 'wt') as f:
+        f.write(file_2_content)
+
+    with open(file_3_pathname, 'wt') as f:
+        f.write(file_3_content)
+
+    cppcheck_path = __lookup_cppcheck_exe()
+
+    args = [
+        'strace',
+         '--summary-only',
+         '--summary-columns=count',
+         '--trace=openat',
+         '--follow-forks',
+         f'--trace-path={file_1_pathname}',
+         f'--trace-path={file_2_pathname}',
+         f'--trace-path={file_3_pathname}',
+         cppcheck_path,
+         '-q',
+         '--enable=all',
+         f'--output-file={output_pathname}',
+         f'--cppcheck-build-dir={builddir_pathname}',
+         file_1_pathname,
+         file_2_pathname,
+         file_3_pathname,
+    ] + extra_flags
+
+    proc = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    _, strace_output = proc.communicate()
+
+    expected_cppcheck_output = f"""{file_1_pathname}:4:17: style: Parameter 'ptr' can be declared as pointer to const [constParameterPointer]
+int func_1(int *ptr)
+                ^
+{file_2_pathname}:4:17: style: Parameter 'ptr' can be declared as pointer to const [constParameterPointer]
+int func_2(int *ptr)
+                ^
+{file_1_pathname}:6:13: error: Using argument ptr that points at uninitialized variable x [ctuuninitvar]
+    return *ptr;
+            ^
+{file_3_pathname}:7:18: note: Calling function func_1, 1st argument is uninitialized
+    return func_1(&x) + func_2(&y);
+                 ^
+{file_1_pathname}:6:13: note: Using argument ptr
+    return *ptr;
+            ^
+{file_2_pathname}:6:13: error: Using argument ptr that points at uninitialized variable y [ctuuninitvar]
+    return *ptr;
+            ^
+{file_3_pathname}:7:31: note: Calling function func_2, 1st argument is uninitialized
+    return func_1(&x) + func_2(&y);
+                              ^
+{file_2_pathname}:6:13: note: Using argument ptr
+    return *ptr;
+            ^
+{file_3_pathname}:4:5: style: The function 'func_3' is never used. [unusedFunction]
+int func_3(void)
+    ^
+
+"""
+
+    # Each source file is opened exactly twice: once for analysis,
+    # once for error reporting. If ErrorLogger::mSourceCacheSize
+    # is ever changed, this may have to be updated.
+    expected_strace_output = """    calls syscall
+--------- ----------------
+        6 openat
+--------- ----------------
+        6 total
+"""
+
+    with open(output_pathname, 'r') as f:
+        output_content = f.read()
+
+    output_content = output_content.split('\n')
+    expected_cppcheck_output = expected_cppcheck_output.split('\n')
+    strace_output = strace_output.decode('utf-8').split('\n')
+    expected_strace_output = expected_strace_output.split('\n')
+
+    # Order may be different with -j
+    output_content.sort()
+    expected_cppcheck_output.sort()
+    strace_output.sort()
+    expected_strace_output.sort()
+
+    # With -j, the number of active checkers is different, and strace prints info about child processes
+    filter_func = lambda line: 'Active checkers' not in line and 'strace: Process' not in line
+    output_content = list(filter(filter_func, output_content))
+    strace_output = list(filter(filter_func, strace_output))
+
+    assert output_content == expected_cppcheck_output
+    assert strace_output == expected_strace_output
