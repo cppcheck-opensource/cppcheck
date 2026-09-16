@@ -2,7 +2,7 @@
 
 ## NAME
 
-tweak-compile-commands.py - tweak `-isystem`/`--sysroot`/`-I` handling in a `compile_commands.json` file
+tweak-compile-commands.py - tweak `-isystem`/`--sysroot`/`-I` options in a `compile_commands.json` file
 
 ## SYNOPSIS
 
