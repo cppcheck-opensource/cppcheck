@@ -20,7 +20,8 @@ Changed interface:
 -
 
 Infrastructure & dependencies:
-- compile_commands.json - flexible handling of -isystem, --sysroot and -I flags through the script tweak-compile_commands.py.
+- flexible handling of -isystem, --sysroot and -I flags in compile_commands.json through the script tweak-compile_commands.py.
+- baseline functionality.
 
 Other:
 - Added configuration file for Microsoft.GSL (Guideline Support Library).

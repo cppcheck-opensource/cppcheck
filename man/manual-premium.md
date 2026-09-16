@@ -776,6 +776,120 @@ You can write comments about a suppression as follows:
     // cppcheck-suppress warningid ; some comment
     // cppcheck-suppress warningid // some comment
 
+# Generating and using a baseline
+
+When you first run Cppcheck on an existing codebase it's common to get a
+large number of warnings. A "baseline" lets you suppress all of today's
+warnings and see only *new* warnings introduced from now on.
+
+This works by asking Cppcheck to include a content-based `hash` for every warning
+(computed from the surrounding code, not the line number), then converting today's
+warnings into an XML suppressions file keyed on `id` + `fileName` + `hash`. Because
+the hash is based on content rather than line number, warnings stay suppressed even
+after unrelated lines above them are added or removed. A warning only reappears if
+the code it actually points at changes, or a new warning shows up elsewhere.
+
+## 1. Generate the baseline
+
+Run Cppcheck with `--xml` and capture stderr (where Cppcheck writes its XML) to a
+file:
+
+```sh
+cppcheck --enable=style --xml src 2> baseline-results.xml
+```
+
+Use whatever combination of `--enable`/defines/include paths you normally
+analyze the project with — the suppressions you get out only cover the
+checks you ran.
+
+## 2. Convert the results into a suppressions file
+
+A [script](https://github.com/cppcheck-opensource/cppcheck/blob/main/tools/generate-baseline-suppressions.py) can be used to generate the baseline:
+```sh
+python3 generate-baseline-suppressions.py baseline-results.xml suppressions.xml
+```
+
+This produces a `suppressions.xml` like:
+
+```xml
+<?xml version="1.0"?>
+<suppressions>
+  <suppress>
+    <id>uninitvar</id>
+    <fileName>src/file1.c</fileName>
+    <hash>12345678</hash>
+  </suppress>
+</suppressions>
+```
+
+`suppressions.xml` needs to be shared by everyone who runs Cppcheck on this
+codebase, including CI.
+
+Having a script instead of using some special cppcheck flags has the advantages:
+ * it's flexible. You can tweak it if needed.
+ * there is fewer flags for us to maintain and document, and for you to learn.
+
+## 3. Use the baseline on future runs
+
+```sh
+cppcheck --enable=style --xml --suppress-xml=suppressions.xml src
+```
+
+Only warnings that aren't in the baseline are reported: new warnings in changed
+code, and warnings for checks/files that weren't covered when the baseline was
+generated.
+
+## 4. Refreshing the baseline
+
+Re-run steps 1-2 whenever you want to accept the current state as the new
+baseline (e.g. after cleaning up a batch of warnings, or deliberately accepting a
+new one). Regenerating overwrites `suppressions.xml` with an entry for every
+warning present at that time.
+
+## The baseline doesn't need to be kept in sync
+
+Once code that a baselined warning pointed at is fixed, refactored away, or
+deleted, its `suppress` entry in `suppressions.xml` becomes dead: nothing will
+ever match it again. You don't need to go find and remove it.
+
+Cppcheck's `unmatchedSuppression` check (part of `--enable=all`) normally warns
+about suppressions that never matched anything, on the theory that a
+suppression nobody needs is probably a mistake. But it does *not* fire for
+`suppress` entries that carry a `<hash>` — which is every entry the baseline
+script generates. So a baseline file with plenty of dead entries produces no
+noise, and developers never need to prune it by hand — it only needs to be
+regenerated (step 4) when you deliberately want to reset what's accepted.
+
+## Caveats
+
+- A warning can only be suppressed this way if it carries a `hash` attribute in
+  the XML output. Almost all checks compute one. Critical errors, i.e. syntax
+  errors do not get hash and must be fixed. Certain information messages do not
+  get hash neither.
+- Changed Cppcheck options might produce new warnings that are not suppressed
+  by the baseline.
+- Cppcheck upgrades don't affect the hash directly (it isn't version-tagged),
+  but if a new release for instance changes a check's message wording, the hash
+  changes with it — so upgrading Cppcheck can resurrect baselined warnings for
+  checks whose messages were reworded, even though nothing in the analyzed code
+  changed.
+
+## Strategies for gradually shrinking the baseline
+
+A baseline makes it possible to adopt Cppcheck in CI immediately without
+fixing everything first, but nothing about it enforces that the accepted set
+of warnings actually shrinks over time.
+
+Generic advice:
+
+- **Prioritize by severity** Checks like `uninitvar` or
+  `nullPointer` are more valuable to clear than `style` warnings; a baseline
+  makes it possible to drive the highest-severity checks to zero first while
+  deliberately leaving lower-risk ones suppressed longer.
+- **Be careful** Every fix is a code change, and every code change carries some
+  risk of introducing a new bug. It can make sense to leave some things suppressed
+  to minimize the risk that bugs are introduced in working code.
+
 # XML output
 
 Cppcheck can generate output in XML format. Use `--xml` to enable this format.
