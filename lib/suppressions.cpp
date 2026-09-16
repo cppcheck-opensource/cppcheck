@@ -159,27 +159,26 @@ static std::string getExtraComment(const std::string &comment, std::string::size
     const std::string::size_type slashPos = comment.find("//", startPos);
     std::string::size_type pos;
 
-    if (semiPos != std::string::npos && semiPos < slashPos) {
+    if (delimPos)
+        *delimPos = std::min(semiPos, slashPos);
+
+    if (semiPos < slashPos) {
         pos = semiPos + 1;
-        if (delimPos)
-            *delimPos = semiPos;
-    } else if (slashPos != std::string::npos) {
+    } else if (slashPos < semiPos) {
         pos = slashPos + 2;
-        if (delimPos)
-            *delimPos = slashPos;
     } else {
         return "";
     }
 
     std::string extra = comment.substr(pos);
 
-    if (extra.size() >= 2 && extra.compare(extra.size() - 2, 2, "*/") == 0)
+    if (startsWith(comment, "/*") && endsWith(comment, "*/"))
         extra.erase(extra.size() - 2, 2);
 
     extra = trim(extra);
 
     for (auto it = extra.begin(); it != extra.end();)
-        it = *it & 0x80 ? extra.erase(it) : it + 1;
+        it = (*it & 0x80) ? extra.erase(it) : it + 1;
 
     return extra;
 }
