@@ -83,3 +83,9 @@ message.
 
 Script to compare the error IDs in the expected `testrunner` output (without executing it) with the `--errorlist` output.
 It will report missing test coverage for an ID and missing IDs in the `--errorlist` output.
+
+### * tools/tweak-compile-commands.py
+
+Script to tweak `-isystem`/`--sysroot`/`-I` options in a `compile_commands.json` file, for example to make
+implicit `--sysroot`-relative `-isystem` paths explicit, convert `-isystem` to `-I`, or remove unwanted include
+paths. See `tools/tweak-compile-commands.md` for details.
