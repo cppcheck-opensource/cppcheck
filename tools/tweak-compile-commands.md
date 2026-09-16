@@ -14,9 +14,6 @@ tools/tweak-compile-commands.py COMPILE_COMMANDS [-o OUTPUT | -i]
 
 ## DESCRIPTION
 
-Cppcheck internally does not have handling of `--sysroot` and skips
-`-isystem` paths.
-
 In many cases the system headers should not be included in Cppcheck
 analysis, it is preferable to use `--library` instead. The headers
 do not provide the knowledge needed for static analysis, i.e. they
@@ -47,8 +44,7 @@ existing `-isystem PATH` argument gets a matching, explicit
 ### ISYSTEM
 
 The script has an option `--isystem-to-i`, this tells the script to
-convert `-isystem` arguments to `-I`. This will effectively tell
-Cppcheck to not ignore the path.
+convert `-isystem` arguments to `-I`.
 
 The option `--exclude-folder` can be used to skip certain folders. Use
 that for a folder if Cppcheck option `--library` can be used instead.
