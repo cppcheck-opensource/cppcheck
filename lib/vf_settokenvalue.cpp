@@ -426,22 +426,6 @@ namespace ValueFlow
                         setTokenValue(parent, std::move(value), settings);
                 }
             } else if (!value.isImpossible()) {
-                // is condition only depending on 1 variable?
-                nonneg int varId = 0;
-                bool ret = false;
-                visitAstNodes(parent->astOperand1(),
-                              [&](const Token *t) {
-                    if (t->varId()) {
-                        if (varId > 0 || value.varId != 0)
-                            ret = true;
-                        varId = t->varId();
-                    } else if (t->str() == "(" && Token::Match(t->previous(), "%name%"))
-                        ret = true; // function call
-                    return ret ? ChildrenToVisit::done : ChildrenToVisit::op1_and_op2;
-                });
-                if (ret)
-                    return;
-
                 value.conditional = true;
                 value.changeKnownToPossible();
 

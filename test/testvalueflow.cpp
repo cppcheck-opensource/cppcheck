@@ -4286,6 +4286,26 @@ private:
                "}\n";
         auto values = tokenValues(code, "s :", ValueFlow::Value::ValueType::FLOAT);
         ASSERT_EQUALS(0, values.size());
+
+        code = "int a[5];\n" // 15034
+               "int g(int i) {\n"
+               "    return a[i < 0 ? -i : i];\n"
+               "}\n"
+               "int f() {\n"
+               "    return g(-5);\n"
+               "}\n";
+        values = tokenValues(code, "?");
+        ASSERT_EQUALS(2, values.size());
+        auto it = values.begin();
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueType::INT, it->valueType);
+        ASSERT_EQUALS(0, it->intvalue);
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::Bound::Lower, it->bound);
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueKind::Possible, it->valueKind);
+        ++it;
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueType::INT, it->valueType);
+        ASSERT_EQUALS(5, it->intvalue);
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::Bound::Point, it->bound);
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueKind::Possible, it->valueKind);
     }
 
     void valueFlowForwardLambda() {
