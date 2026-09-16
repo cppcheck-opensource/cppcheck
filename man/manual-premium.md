@@ -309,8 +309,12 @@ To ignore certain folders you can use `-i`. This will skip analysis of source fi
 
 ### `-isystem`, `-I`, `--sysroot`
 
-Cppcheck needs to have flexible handling of include paths from compile_commands.json, and this is achieved with a script
-that can tweak the compile_commands.json file.
+We have a [script](https://github.com/cppcheck-opensource/cppcheck/blob/main/tools/tweak-compile-commands.py) that tweaks compile_commands.json.
+
+You can use it to:
+ * use `--sysroot` flags in Cppcheck analysis
+ * use `-isystem` paths in Cppcheck analysis
+ * remove `-I` paths from the compile_commands.json
 
 See [script documentation](https://github.com/cppcheck-opensource/cppcheck/blob/main/tools/tweak-compile-commands.md).
 
