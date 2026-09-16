@@ -2,16 +2,17 @@
 #
 # Tweaks a compile_commands.json file: for every build command that has a
 # --sysroot argument, each existing -isystem argument gets a matching extra
-# -isystem argument pointing into the sysroot. This is useful when a
-# compiler resolves -isystem paths relative to --sysroot internally (as
-# part of its built-in search path handling) but a tool consuming
-# compile_commands.json (such as Cppcheck) does not, so the sysroot-relative
-# path needs to be spelled out explicitly.
+# -isystem argument pointing into the sysroot, and the --sysroot argument
+# itself is then removed. This is useful when a compiler resolves -isystem
+# paths relative to --sysroot internally (as part of its built-in search
+# path handling) but a tool consuming compile_commands.json (such as
+# Cppcheck) does not, so the sysroot-relative path needs to be spelled out
+# explicitly instead.
 #
 # Example:
 #   --sysroot /a/b -isystem /opt/x
 #   =>
-#   --sysroot /a/b -isystem /opt/x -isystem /a/b/opt/x
+#   -isystem /opt/x -isystem /a/b/opt/x
 #
 # Optionally, --isystem-to-i converts -isystem arguments to -I, which can be
 # useful since Cppcheck otherwise treats -isystem headers as "system"
@@ -53,6 +54,23 @@ def find_sysroot(tokens):
 
 def join_sysroot(sysroot, path):
     return sysroot.rstrip('/') + '/' + path.lstrip('/')
+
+
+def remove_sysroot_arg(tokens):
+    result = []
+    i = 0
+    n = len(tokens)
+    while i < n:
+        tok = tokens[i]
+        if tok == '--sysroot' and i + 1 < n:
+            i += 2
+            continue
+        if tok.startswith('--sysroot='):
+            i += 1
+            continue
+        result.append(tok)
+        i += 1
+    return result
 
 
 def add_isystem_sysroot(tokens, sysroot):
@@ -153,6 +171,7 @@ def tweak_entry(entry, isystem_to_i, exclude_folders, remove_include_path):
     sysroot = find_sysroot(tokens)
     if sysroot is not None:
         tokens = add_isystem_sysroot(tokens, sysroot)
+        tokens = remove_sysroot_arg(tokens)
         changed = True
 
     if isystem_to_i:

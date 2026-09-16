@@ -38,8 +38,10 @@ gcc searches both `/opt/x` *and* `/a/b/opt/x` for headers.
 `compile_commands.json` file so this implicit behaviour is spelled out
 explicitly: for every command that has a `--sysroot` argument, every
 existing `-isystem PATH` argument gets a matching, explicit
-`-isystem SYSROOT/PATH` argument added right after it. Commands without a
-`--sysroot` argument are left unchanged.
+`-isystem SYSROOT/PATH` argument added right after it, and the `--sysroot`
+argument is then removed (it is no longer needed since the sysroot-relative
+paths are now spelled out explicitly). Commands without a `--sysroot`
+argument are left unchanged.
 
 ### ISYSTEM
 
@@ -127,7 +129,7 @@ the last command above produces:
 
 ```json
 {
-  "command": "gcc --sysroot /a/b -I /opt/x -I /a/b/opt/x -isystem /path/lib1/include -isystem /a/b/path/lib1/include -c foo.c -o foo.o"
+  "command": "gcc -I /opt/x -I /a/b/opt/x -isystem /path/lib1/include -isystem /a/b/path/lib1/include -c foo.c -o foo.o"
 }
 ```
 
