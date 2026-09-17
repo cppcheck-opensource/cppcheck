@@ -3611,6 +3611,27 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:8:21] -> [test.cpp:10:18]: (warning) Either the condition 'tok=tok->next' is redundant or there is possible null pointer dereference: tok. [nullPointerRedundantCheck]\n",
                       errout_str());
+
+        check("void f(const A* a, const B* b) {\n" // #6282
+              "    if (b && a) {}\n"
+              "    if (a != b && b->value) {}\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:9] -> [test.cpp:3:19]: (warning) Either the condition 'b' is redundant or there is possible null pointer dereference: b. [nullPointerRedundantCheck]\n",
+                      errout_str());
+
+        check("void f(int* a) {\n" // #12859
+              "    if (!a)\n"
+              "        x;\n"
+              "    *a = 0;\n"
+              "}\n"
+              "void g(int* a) {\n"
+              "    if (!a)\n"
+              "        x();\n"
+              "    *a = 0;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:2:9] -> [test.cpp:4:6]: (warning, inconclusive) Either the condition '!a' is redundant or there is possible null pointer dereference: a. [nullPointerRedundantCheck]\n"
+                      "[test.cpp:7:9] -> [test.cpp:9:6]: (warning, inconclusive) Either the condition '!a' is redundant or there is possible null pointer dereference: a. [nullPointerRedundantCheck]\n",
+                      errout_str());
     }
 
     // Test CheckNullPointer::nullConstantDereference
