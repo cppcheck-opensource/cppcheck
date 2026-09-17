@@ -76,6 +76,7 @@ private:
         TEST_CASE(zeroDiv22);
 
         TEST_CASE(zeroDivCond); // division by zero / useless condition
+        TEST_CASE(zeroDivErrorPath);
 
         TEST_CASE(nanInArithmeticExpression);
 
@@ -895,6 +896,38 @@ private:
               "    if (!num) {}\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void zeroDivErrorPath() {
+        setMultiline();
+        Settings s = settings0;
+        s.templateLocation = "{file}:{line}:note:{info}\n";
+
+        check("int f1(int i, bool b) {\n"
+              "    int j = b ? i : 0;\n"
+              "    return 1 / j;\n"
+              "}\n"
+              "int f2(int i, bool b) {\n"
+              "    int j = b ? 0 : i;\n"
+              "    return 1 / j;\n"
+              "}\n"
+              "int f3(int i, bool b) {\n"
+              "    int j = 1;\n"
+              "    if (b)\n"
+              "        j = 0;\n"
+              "    return 1 / j;\n"
+              "}\n", dinit(CheckOptions, $.settings = &s));
+        ASSERT_EQUALS("[test.cpp:3:14]: warning: Division by zero. [zerodivcond]\n"
+                      "[test.cpp:2:13]: note: Assuming condition 'b' is false\n"
+                      "[test.cpp:2:15]: note: Assignment 'j=b?i:0', assigned value is 0\n"
+                      "[test.cpp:3:14]: note: Division by zero\n"
+                      "[test.cpp:7:14]: warning: Division by zero. [zerodivcond]\n"
+                      "[test.cpp:6:13]: note: Assuming condition 'b' is true\n"
+                      "[test.cpp:6:15]: note: Assignment 'j=b?0:i', assigned value is 0\n"
+                      "[test.cpp:7:14]: note: Division by zero\n"
+                      "[test.cpp:13:14]: warning: Division by zero. [zerodivcond]\n"
+                      "[test.cpp:12:13]: note: Assignment 'j=0', assigned value is 0\n"
+                      "[test.cpp:13:14]: note: Division by zero\n", errout_str());
     }
 
     void nanInArithmeticExpression() {
