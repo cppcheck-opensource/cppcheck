@@ -84,6 +84,18 @@ message.
 Script to compare the error IDs in the expected `testrunner` output (without executing it) with the `--errorlist` output.
 It will report missing test coverage for an ID and missing IDs in the `--errorlist` output.
 
+### * tools/generate-baseline-suppressions.py
+
+Script that converts a Cppcheck XML results file (`--xml`) into a Cppcheck XML suppressions file, so that
+existing warnings can be suppressed as a baseline and only new warnings are reported afterwards. For each
+`<error>` in the results file that has a non-zero `hash` attribute, it writes a `<suppress>` entry with the
+error's id, the file of its first `<location>` and the hash. Usage:
+```shell
+$ cppcheck --xml --xml-version=2 ./src 2> results.xml
+$ python tools/generate-baseline-suppressions.py results.xml suppressions.xml
+```
+The generated `suppressions.xml` can then be passed to Cppcheck with `--suppress-xml=suppressions.xml`.
+
 ### * tools/tweak-compile-commands.py
 
 Script to tweak `-isystem`/`--sysroot`/`-I` options in a `compile_commands.json` file, for example to make
