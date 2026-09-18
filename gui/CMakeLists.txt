@@ -15,9 +15,7 @@ CheckOptions:
     file(GLOB tss  "*.ts")
     QT_WRAP_UI(uis_hdrs ${uis})
     QT_ADD_RESOURCES(resources "gui.qrc")
-    # TODO: passing "-no-obsolete" here breaks the translations
-    QT_CREATE_TRANSLATION(qms ${CMAKE_CURRENT_SOURCE_DIR} ${tss})
-    list(APPEND cppcheck-gui-deps ${hdrs} ${uis_hdrs} ${resources} ${qms})
+    list(APPEND cppcheck-gui-deps ${hdrs} ${uis_hdrs} ${resources})
     add_custom_target(gui-build-deps SOURCES ${cppcheck-gui-deps})
 
     list(APPEND cppcheck-gui_SOURCES ${srcs})
@@ -27,6 +25,9 @@ CheckOptions:
 
     add_executable(cppcheck-gui ${cppcheck-gui-deps} ${cppcheck-gui_SOURCES})
     target_link_libraries(cppcheck-gui cppcheck-core simplecpp tinyxml2 picojson frontend)
+    qt_add_translations(cppcheck-gui
+      TS_FILES ${tss}
+      LUPDATE_OPTIONS "-no-obsolete")
 
     set_target_properties(cppcheck-gui PROPERTIES AUTOMOC ON)
     set_target_properties(cppcheck-gui PROPERTIES WIN32_EXECUTABLE ON)
