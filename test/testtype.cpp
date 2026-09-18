@@ -617,6 +617,13 @@ private:
                "    i << 2;\n"
                "}\n", dinit(CheckPOptions, $.settings = &s));
         ASSERT_EQUALS("[test.cpp:4:7]: (error) Signed integer overflow for expression 'i<<2'. [integerOverflow]\n", errout_str());
+
+        checkP("void g(int a) {\n" // #13342
+               "    int b = INT_MAX + a;\n"
+               "    printf(\"%d\", b); \n"
+               "}\n"
+               "void f() { g(1); }", dinit(CheckPOptions, $.settings = &s));
+        ASSERT_EQUALS("[test.cpp:2:21]: (error) Signed integer overflow for expression '2147483647+a'. [integerOverflow]\n", errout_str());
     }
 
     void shiftTooManyBits() { // #11496
