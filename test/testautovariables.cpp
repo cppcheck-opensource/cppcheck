@@ -3591,7 +3591,7 @@ private:
               "    }\n"
               "    *p = 0;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:5:13] -> [test.cpp:2:9] -> [test.cpp:7:6]: (error) Static variable 'p' will use pointer to local variable 'a'. [danglingLifetime]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:5:13] -> [test.cpp:4:9] -> [test.cpp:2:9] -> [test.cpp:7:6]: (error) Static variable 'p' will use pointer to local variable 'a'. [danglingLifetime]\n", errout_str());
 
         // #10902
         check("void f() {\n"
@@ -4330,7 +4330,7 @@ private:
               "    std::vector<char*> cargs = f({ \"0\", \"0\" });\n"
               "    (void)cargs;\n"
               "};\n");
-        ASSERT_EQUALS("[test.cpp:6:12] -> [test.cpp:4:47] -> [test.cpp:3:22] -> [test.cpp:1:58] -> [test.cpp:4:40] -> [test.cpp:9:34] -> [test.cpp:9:34] -> [test.cpp:10:11]: (error) Using object that is a temporary. [danglingTemporaryLifetime]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:6:12] -> [test.cpp:4:47] -> [test.cpp:3:22] -> [test.cpp:1:58] -> [test.cpp:4:40] -> [test.cpp:3:24] -> [test.cpp:9:34] -> [test.cpp:9:34] -> [test.cpp:10:11]: (error) Using object that is a temporary. [danglingTemporaryLifetime]\n", errout_str());
 
         check("struct C {\n" // #9194
               "    const int& m;\n"
@@ -4692,7 +4692,7 @@ private:
               "    }\n"
               "    f();\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:5:25] -> [test.cpp:4:13] -> [test.cpp:7:5]: (error) Using lambda that captures local variable 'b' that is out of scope. [invalidLifetime]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:5:25] -> [test.cpp:3:11] -> [test.cpp:4:13] -> [test.cpp:7:5]: (error) Using lambda that captures local variable 'b' that is out of scope. [invalidLifetime]\n", errout_str());
 
         check("void f(bool b)  {\n"
               "  int* x;\n"
@@ -4703,7 +4703,7 @@ private:
               "  x[3];\n"
               "}\n");
         ASSERT_EQUALS(
-            "[test.cpp:5:9] -> [test.cpp:4:9] -> [test.cpp:7:3]: (error) Using pointer to local variable 'y' that is out of scope. [invalidLifetime]\n",
+            "[test.cpp:5:9] -> [test.cpp:3:6] -> [test.cpp:4:9] -> [test.cpp:7:3]: (error) Using pointer to local variable 'y' that is out of scope. [invalidLifetime]\n",
             errout_str());
 
         check("void foo(int a) {\n"
@@ -4893,7 +4893,7 @@ private:
               "  }\n"
               "  *p = 0;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:5:9] -> [test.cpp:4:9] -> [test.cpp:7:4]: (error) Using pointer to local variable 'x' that is out of scope. [invalidLifetime]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:5:9] -> [test.cpp:3:7] -> [test.cpp:4:9] -> [test.cpp:7:4]: (error) Using pointer to local variable 'x' that is out of scope. [invalidLifetime]\n", errout_str());
 
         // FP: don't warn in subfunction
         check("void f(struct KEY *key) {\n"
@@ -4934,7 +4934,7 @@ private:
               "        dosth();\n"
               "}\n");
         ASSERT_EQUALS(
-            "[test.cpp:5:24] -> [test.cpp:3:47] -> [test.cpp:4:26] -> [test.cpp:7:9]: (error) Using pointer to local variable 'item' that is out of scope. [invalidLifetime]\n",
+            "[test.cpp:5:24] -> [test.cpp:3:47] -> [test.cpp:3:47] -> [test.cpp:4:26] -> [test.cpp:7:9]: (error) Using pointer to local variable 'item' that is out of scope. [invalidLifetime]\n",
             errout_str());
 
         // #6575
@@ -4960,7 +4960,7 @@ private:
               "    return 0;\n"
               "}\n");
         ASSERT_EQUALS(
-            "[test.cpp:5:16] -> [test.cpp:7:10] -> [test.cpp:4:13] -> [test.cpp:8:17]: (error) Using pointer to local variable 'x' that is out of scope. [invalidLifetime]\n",
+            "[test.cpp:5:16] -> [test.cpp:3:8] -> [test.cpp:7:10] -> [test.cpp:4:13] -> [test.cpp:8:17]: (error) Using pointer to local variable 'x' that is out of scope. [invalidLifetime]\n",
             errout_str());
 
         // #11753
@@ -4972,7 +4972,7 @@ private:
               "    }\n"
               "    std::cout << s;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:5:26] -> [test.cpp:4:14] -> [test.cpp:7:18]: (error) Using pointer to local variable 'buff' that is out of scope. [invalidLifetime]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:5:26] -> [test.cpp:3:14] -> [test.cpp:4:14] -> [test.cpp:7:18]: (error) Using pointer to local variable 'buff' that is out of scope. [invalidLifetime]\n", errout_str());
 
         check("char* f(char* dst) {\n"
               "    const char* src = \"abc\";\n"

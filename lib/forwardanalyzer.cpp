@@ -709,7 +709,7 @@ namespace {
                                     return Break();
                             }
                         }
-                        analyzer->assume(condTok, !inElse, Analyzer::Assume::Quiet);
+                        analyzer->assume(condTok, !inElse);
                         assert(!inDoWhile || Token::simpleMatch(tok, "} while ("));
                         if (hasElse || inDoWhile)
                             tok = tok->linkAt(2);
