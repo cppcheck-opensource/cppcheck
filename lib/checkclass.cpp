@@ -3860,7 +3860,7 @@ bool CheckClass::analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<c
 
     CheckClassImpl dummy(nullptr, settings, errorLogger);
     dummy.
-    logChecker("CheckClass::analyseWholeProgram");
+    logChecker("CheckClass::checkCtuOneDefinitionRule");
 
     if (fileInfo.empty())
         return false;
