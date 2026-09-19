@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{bbbbbbbb-cccc-dddd-eeee-ffffffffffff}</ProjectGuid>
+    <RootNamespace>itemmacropathhyphentest</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <!-- Regression coverage for hasOnlyInvariantItemPathVariables()'s inline
+       property-name scanner rejecting '-'. Real MSBuild property names are
+       [A-Za-z_][A-Za-z0-9_-]* -- '-' IS valid after the first character
+       (see lib/importproject.cpp's PropertyValueExpander::parseIdentifier()
+       and hasOnlyInvariantItemPathVariables() doc comments) -- so
+       <My-Root>foo</My-Root>, referenced below as $(My-Root), is one valid
+       property name to real Visual Studio, genuinely invariant (only one
+       configuration, and it's the only place this property is set).
+       Before the fix, the scanner stopped at the first '-', capturing only
+       "My" as the parsed name; since the character immediately after that
+       truncated name is '-' and not the required ')', the whole $(...)
+       reference was rejected as "not provably invariant" and left
+       unexpanded -- so cppcheck would report the literal, un-expandable
+       "$(My-Root)\foo.cpp" as a missing file instead of resolving and
+       checking the real HyphenDir/foo.cpp. See
+       vcxproj_item_macro_path_hyphen_test.py. -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <My-Root>HyphenDir</My-Root>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClCompile Include="$(My-Root)\foo.cpp" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

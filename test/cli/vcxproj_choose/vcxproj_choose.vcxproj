@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{33333333-3333-3333-3333-333333333333}</ProjectGuid>
+    <RootNamespace>choosetest</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <!-- Choose picks a branch based on a property that is only assigned by a
+       PropertyGroup positioned AFTER this Choose in the document -- the branch
+       selection itself must freeze during the Properties pass and replay
+       identically during ItemDefs/Items, exactly like an <Import>'s resolved
+       target file does (see vcxproj_property_order_test.py for that case). -->
+  <Choose>
+    <When Condition="'$(UseSpecialDefine)'=='true'">
+      <ItemDefinitionGroup>
+        <ClCompile>
+          <PreprocessorDefinitions>CHOSEN_BRANCH=When;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+        </ClCompile>
+      </ItemDefinitionGroup>
+      <PropertyGroup>
+        <FromWhenBranch>true</FromWhenBranch>
+      </PropertyGroup>
+    </When>
+    <Otherwise>
+      <ItemDefinitionGroup>
+        <ClCompile>
+          <PreprocessorDefinitions>CHOSEN_BRANCH=Otherwise;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+        </ClCompile>
+      </ItemDefinitionGroup>
+      <PropertyGroup>
+        <FromOtherwiseBranch>true</FromOtherwiseBranch>
+      </PropertyGroup>
+    </Otherwise>
+  </Choose>
+
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
+
+  <!-- Set after the Choose; must still be visible to the When Condition that
+       already ran during the Properties pass (i.e. must NOT flip the branch
+       that ItemDefs/Items replay just because it's now defined). -->
+  <PropertyGroup>
+    <UseSpecialDefine>true</UseSpecialDefine>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

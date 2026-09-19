@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{dddddddd-dddd-dddd-dddd-dddddddddddd}</ProjectGuid>
+    <RootNamespace>discoverchoosetest</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <!-- No inline <ItemGroup Label="ProjectConfigurations"> anywhere in this file, so
+       importVcxproj() must fall back to its Discovery bootstrap pass to find any
+       configuration at all. The only path to one is this top-level <Choose>: its
+       <When> is unconditionally true, and the <ImportGroup> inside it imports
+       Configs.props, which is what actually defines Debug|x64. The Discovery scan
+       used to walk PropertyGroup/ImportGroup/Import at the top level but never
+       looked inside <Choose>, so it silently found nothing here and cppcheck failed
+       outright with "no C or C++ source files found" despite the project being
+       well-formed. -->
+  <Choose>
+    <When Condition="true">
+      <ImportGroup>
+        <Import Project="Configs.props" />
+      </ImportGroup>
+    </When>
+  </Choose>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="ConfigDebug">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
