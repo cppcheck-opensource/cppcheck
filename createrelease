@@ -132,8 +132,8 @@
 # 2. scp -i ~/.ssh/osuosl_id_rsa tools/donate-cpu-server.py danielmarjamaki@cppcheck1.osuosl.org:/var/daca@home/
 #
 # Backup:
-# * trac: rm -f trac.db && cp /var/trac-cppcheck/db/trac.db . && nice tar -cJf trac.tar.xz trac.db
-# * daca: rm -rf daca@home && cp -R /var/daca@home . && nice tar -cJf daca.tar.xz daca@home
+# * trac: rm -f trac.db trac.tar.xz && cp /var/trac-cppcheck/db/trac.db . && nice tar -cJf trac.tar.xz trac.db
+# * daca: rm -rf daca@home daca.tar.xz && cp -R /var/daca@home . && nice tar -cJf daca.tar.xz daca@home
 # * git: git checkout -f && git checkout main && git pull && tar -cJf git.tar.xz .git
 # * git log $PREV..$VERSION > Changelog
 # * cd ~/cppcheck && mkdir -p out && python3 ~/cppchecksolutions/release/getWorkflowAndIssueLogs.py -r cppcheck-opensource/cppcheck -t $VERSION -p out
