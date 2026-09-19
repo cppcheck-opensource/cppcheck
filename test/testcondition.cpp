@@ -4878,7 +4878,7 @@ private:
               "    }\n"
               "    return false;\n"
               "}\n");
-        TODO_ASSERT_EQUALS("[test.cpp:6:12] -> [test.cpp:7:21]: (style) Assigned value 's.g()' is always true [knownConditionTrueFalse]\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:6:12] -> [test.cpp:8:16]: (style) Return value 'b' is always true [knownConditionTrueFalse]\n", errout_str());
 
         check("static bool parse(int r) {\n" // #15031
               "    bool res = false;\n"
