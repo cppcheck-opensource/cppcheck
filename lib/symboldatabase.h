@@ -1484,10 +1484,11 @@ private:
     /**
      * Find the scopes in the given token range (endToken is exclusive, nullptr means
      * the end of the token list) and add the symbols to the database. startScope is
-     * the scope the range is in.
+     * the scope the range is in and startAccess the access control that is in force
+     * at startToken when startScope is a class, struct or union.
      * @throws InternalError thrown on unhandled code
      */
-    void findAllScopes(const Token* startToken, const Token* endToken, Scope* startScope);
+    void findAllScopes(const Token* startToken, const Token* endToken, Scope* startScope, AccessControl startAccess);
     void createSymbolDatabaseClassInfo();
     void createSymbolDatabaseVariableInfo();
     void createSymbolDatabaseCopyAndMoveConstructors();

@@ -882,7 +882,7 @@ test/testsarifreport.o: test/testsarifreport.cpp externals/picojson/picojson.h l
 test/testsettings.o: test/testsettings.cpp lib/check.h lib/checkers.h lib/color.h lib/config.h lib/errorlogger.h lib/errortypes.h lib/library.h lib/mathlib.h lib/path.h lib/platform.h lib/settings.h lib/standards.h lib/suppressions.h lib/tokenize.h lib/tokenlist.h lib/utils.h test/fixture.h test/helpers.h
 	$(CXX) ${INCLUDE_FOR_TEST} ${CFLAGS_FOR_TEST} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ test/testsettings.cpp
 
-test/testsimplifytemplate.o: test/testsimplifytemplate.cpp lib/check.h lib/checkers.h lib/color.h lib/config.h lib/errorlogger.h lib/errortypes.h lib/library.h lib/mathlib.h lib/path.h lib/platform.h lib/settings.h lib/smallvector.h lib/standards.h lib/templatesimplifier.h lib/token.h lib/tokenize.h lib/tokenlist.h lib/utils.h lib/vfvalue.h test/fixture.h test/helpers.h
+test/testsimplifytemplate.o: test/testsimplifytemplate.cpp lib/check.h lib/checkers.h lib/color.h lib/config.h lib/errorlogger.h lib/errortypes.h lib/library.h lib/mathlib.h lib/path.h lib/platform.h lib/settings.h lib/smallvector.h lib/sourcelocation.h lib/standards.h lib/symboldatabase.h lib/templatesimplifier.h lib/token.h lib/tokenize.h lib/tokenlist.h lib/utils.h lib/vfvalue.h test/fixture.h test/helpers.h
 	$(CXX) ${INCLUDE_FOR_TEST} ${CFLAGS_FOR_TEST} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ test/testsimplifytemplate.cpp
 
 test/testsimplifytokens.o: test/testsimplifytokens.cpp lib/check.h lib/checkers.h lib/color.h lib/config.h lib/errorlogger.h lib/errortypes.h lib/library.h lib/mathlib.h lib/path.h lib/platform.h lib/settings.h lib/smallvector.h lib/standards.h lib/templatesimplifier.h lib/token.h lib/tokenize.h lib/tokenlist.h lib/utils.h lib/vfvalue.h test/fixture.h test/helpers.h

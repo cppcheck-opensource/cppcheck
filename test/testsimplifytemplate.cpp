@@ -21,12 +21,14 @@
 #include "helpers.h"
 #include "settings.h"
 #include "standards.h"
+#include "symboldatabase.h"
 #include "templatesimplifier.h"
 #include "token.h"
 #include "tokenize.h"
 #include "tokenlist.h"
 
 #include <cstring>
+#include <set>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -306,6 +308,9 @@ private:
         TEST_CASE(templateTypeDeduction15);          // final classes
         TEST_CASE(templateTypeDeduction16);          // template between two blocks of the same namespace
         TEST_CASE(templateTypeDeductionTokenTypes);  // standard types/keywords keep their token type
+        TEST_CASE(templateTypeDeductionVarIds);      // several instantiations in one round get separate variable ids
+        TEST_CASE(templateTypeDeductionAccess);      // instantiated member templates get the access specifier in force
+        TEST_CASE(templateTypeDeductionRedeclared);  // twice declared template: the surviving declaration stays valid
         TEST_CASE(templateTypeDeductionFullRebuild); // --template-full-rebuild gives the same result
 
         TEST_CASE(simplifyTemplateArgs1);
@@ -384,6 +389,52 @@ private:
         ASSERT_LOC(tokenizer.tokenize(code), file, line);
 
         return tokenizer.tokens()->stringifyList(nullptr, true);
+    }
+
+#define tokVarId(...) tokVarId_(__FILE__, __LINE__, __VA_ARGS__)
+    template<size_t size>
+    std::string tokVarId_(const char* file,
+                          int line,
+                          const char (&code)[size],
+                          const CheckOptions& options = make_default_obj())
+    {
+        const Settings& s = checkOptionsSettings(options);
+        SimpleTokenizer tokenizer(s, *this);
+
+        ASSERT_LOC(tokenizer.tokenize(code), file, line);
+
+        Token::stringifyOptions str_options = Token::stringifyOptions::forDebugVarId();
+        str_options.files = false;
+        str_options.linenumbers = false;
+        str_options.linebreaks = false;
+        return tokenizer.tokens()->stringifyList(str_options);
+    }
+
+    // the function with the given name that is declared in the scope with the given
+    // name, nullptr when there is none. Instantiated templates are named with spaces
+    // ("f < int >").
+    static const Function* findFunctionInScope(const Tokenizer& tokenizer,
+                                               const std::string& scopeName,
+                                               const std::string& functionName)
+    {
+        const Scope* scope = tokenizer.getSymbolDatabase()->findScopeByName(scopeName);
+        if (!scope)
+            return nullptr;
+        for (const Function& function : scope->functionList) {
+            if (function.name() == functionName)
+                return &function;
+        }
+        return nullptr;
+    }
+
+    // is the token in the token list of the tokenizer?
+    static bool isLiveToken(const Tokenizer& tokenizer, const Token* tok)
+    {
+        for (const Token* tok2 = tokenizer.tokens(); tok2; tok2 = tok2->next()) {
+            if (tok2 == tok)
+                return true;
+        }
+        return false;
     }
 
 #define dump(...) dump_(__FILE__, __LINE__, __VA_ARGS__)
@@ -6968,6 +7019,133 @@ private:
         }
     }
 
+    void templateTypeDeductionVarIds()
+    { // three instantiations are expanded in one deduction round. The incremental
+      // setVarId() keeps the variable ids of the existing tokens and the new tokens get
+      // new ids above them: every declaration in the instantiations gets its own id and
+      // the uses in each body bind to the declaration of that body
+        const char code[] = "template<class T> T f(T x) { T y = x; return y; }\n"
+                            "struct S {};\n"
+                            "void g(S s, int i, double d) { f(s); f(i); f(d); }";
+        const char exp[] =
+            "S f<S> ( S x@6 ) ; int f<int> ( int x@7 ) ; double f<double> ( double x@8 ) ; "
+            "struct S { } ; "
+            "void g ( S s@3 , int i@4 , double d@5 ) { f<S> ( s@3 ) ; f<int> ( i@4 ) ; f<double> ( d@5 ) ; } "
+            "S f<S> ( S x@9 ) { S y@10 ; y@10 = x@9 ; return y@10 ; } "
+            "int f<int> ( int x@11 ) { int y@12 ; y@12 = x@11 ; return y@12 ; } "
+            "double f<double> ( double x@13 ) { double y@14 ; y@14 = x@13 ; return y@14 ; }";
+        ASSERT_EQUALS(exp, tokVarId(code));
+        // the full rebuild assigns all ids again in token order - the ids differ but the
+        // structure is the same
+        const char expFullRebuild[] =
+            "S f<S> ( S x@1 ) ; int f<int> ( int x@2 ) ; double f<double> ( double x@3 ) ; "
+            "struct S { } ; "
+            "void g ( S s@4 , int i@5 , double d@6 ) { f<S> ( s@4 ) ; f<int> ( i@5 ) ; f<double> ( d@6 ) ; } "
+            "S f<S> ( S x@7 ) { S y@8 ; y@8 = x@7 ; return y@8 ; } "
+            "int f<int> ( int x@9 ) { int y@10 ; y@10 = x@9 ; return y@10 ; } "
+            "double f<double> ( double x@11 ) { double y@12 ; y@12 = x@11 ; return y@12 ; }";
+        ASSERT_EQUALS(expFullRebuild, tokVarId(code, dinit(CheckOptions, $.templateFullRebuild = true)));
+    }
+
+    void templateTypeDeductionAccess()
+    { // the instantiation of a member template is inserted into the class body next to
+      // the template: it must get the access specifier that is in force there, not the
+      // default access of the class
+        // a public member template of a class that is instantiated from a derived class
+        // (the instantiation was reported as an unused private function)
+        const char code1[] = "class A {\n"
+                             "public:\n"
+                             "    template<class T> void f(T x) { (void)x; }\n"
+                             "};\n"
+                             "struct B : A {\n"
+                             "    void g(int i) { f(i); }\n"
+                             "};";
+        // the last specifier before the template counts - not the specifiers in the
+        // nested class or the default access
+        const char code2[] = "struct A {\n"
+                             "public:\n"
+                             "    void h(int i) { f(i); }\n"
+                             "protected:\n"
+                             "    class Inner { public: int m; };\n"
+                             "    template<class T> void f(T x) { (void)x; }\n"
+                             "};";
+        // a private section of a struct
+        const char code3[] = "struct A {\n"
+                             "private:\n"
+                             "    template<class T> void f(T x) { (void)x; }\n"
+                             "public:\n"
+                             "    void h(int i) { f(i); }\n"
+                             "};";
+        for (const Settings* s : {&settings1, &settings1_fr}) {
+            {
+                SimpleTokenizer tokenizer(*s, *this);
+                ASSERT(tokenizer.tokenize(code1));
+                const Function* f = findFunctionInScope(tokenizer, "A", "f < int >");
+                ASSERT(f != nullptr);
+                ASSERT_EQUALS_ENUM(AccessControl::Public, f->access);
+            }
+            {
+                SimpleTokenizer tokenizer(*s, *this);
+                ASSERT(tokenizer.tokenize(code2));
+                const Function* f = findFunctionInScope(tokenizer, "A", "f < int >");
+                ASSERT(f != nullptr);
+                ASSERT_EQUALS_ENUM(AccessControl::Protected, f->access);
+            }
+            {
+                SimpleTokenizer tokenizer(*s, *this);
+                ASSERT(tokenizer.tokenize(code3));
+                const Function* f = findFunctionInScope(tokenizer, "A", "f < int >");
+                ASSERT(f != nullptr);
+                ASSERT_EQUALS_ENUM(AccessControl::Private, f->access);
+            }
+        }
+    }
+
+    void templateTypeDeductionRedeclared()
+    { // a function template that is declared twice before its definition: the symbol
+      // database merges the definition into the first declaration but the template
+      // simplifier only knows the second declaration, so it removes the second
+      // declaration and the definition. The first declaration remains and its function
+      // must not keep argument variables that were created from the removed definition
+      // (they referred to freed tokens and a freed scope - use after free in ValueFlow)
+        const char code[] = "template<class T> void f(T);\n"
+                            "template<class T> void f(T);\n"
+                            "template<class T> void f(T x) { (void)x; }\n"
+                            "void g(int i) { f(i); }";
+        for (const Settings* s : {&settings1, &settings1_fr}) {
+            SimpleTokenizer tokenizer(*s, *this);
+            ASSERT(tokenizer.tokenize(code));
+            const SymbolDatabase* symbolDatabase = tokenizer.getSymbolDatabase();
+
+            // every variable in the symbol table belongs to a scope of the database
+            std::set<const Scope*> scopes;
+            for (const Scope& scope : symbolDatabase->scopeList)
+                scopes.insert(&scope);
+            for (const Variable* var : symbolDatabase->variableList()) {
+                if (var && var->scope())
+                    ASSERT(scopes.count(var->scope()) != 0);
+            }
+
+            // the surviving declaration has no body and its argument is declared by a
+            // token that is still in the token list
+            const Function* decl = findFunctionInScope(tokenizer, "", "f");
+            ASSERT(decl != nullptr);
+            ASSERT_EQUALS(false, decl->hasBody());
+            ASSERT(decl->token == nullptr);
+            ASSERT(decl->functionScope == nullptr);
+            ASSERT_EQUALS(1U, decl->argumentList.size());
+            ASSERT(isLiveToken(tokenizer, decl->argumentList.front().typeStartToken()));
+            ASSERT(isLiveToken(tokenizer, decl->argumentList.front().typeEndToken()));
+
+            // the instantiation has a body and an argument
+            const Function* inst = findFunctionInScope(tokenizer, "", "f < int >");
+            ASSERT(inst != nullptr);
+            ASSERT_EQUALS(true, inst->hasBody());
+            ASSERT_EQUALS(1U, inst->argumentList.size());
+            ASSERT(isLiveToken(tokenizer, inst->argumentList.front().nameToken()));
+        }
+    }
+
     void templateTypeDeductionFullRebuild()
     { // --template-full-rebuild recreates the symbol database etc. after each type
       // deduction round instead of updating them incrementally - the result must be
@@ -7006,6 +7184,31 @@ private:
                                 "void use(long v) { sink(pass(v)); }";
             const std::string expected = tok(code);
             ASSERT(expected.find("sink<long>") != std::string::npos);
+            ASSERT_EQUALS(expected, tok(code, dinit(CheckOptions, $.templateFullRebuild = true)));
+        }
+        {
+            // a member template instantiated from a derived class - the instantiation is
+            // inserted into the class body
+            const char code[] = "class A {\n"
+                                "public:\n"
+                                "    template<class T> void f(T x) { (void)x; }\n"
+                                "};\n"
+                                "struct B : A {\n"
+                                "    void g(int i) { f(i); }\n"
+                                "};";
+            const std::string expected = tok(code);
+            ASSERT(expected.find("A :: f<int>") != std::string::npos);
+            ASSERT_EQUALS(expected, tok(code, dinit(CheckOptions, $.templateFullRebuild = true)));
+        }
+        {
+            // a twice declared function template - the definition and the second
+            // declaration are removed, the first declaration remains
+            const char code[] = "template<class T> void f(T);\n"
+                                "template<class T> void f(T);\n"
+                                "template<class T> void f(T x) { (void)x; }\n"
+                                "void g(int i) { f(i); }";
+            const std::string expected = tok(code);
+            ASSERT(expected.find("template < class T > void f ( T ) ; void f<int> ( int ) ;") != std::string::npos);
             ASSERT_EQUALS(expected, tok(code, dinit(CheckOptions, $.templateFullRebuild = true)));
         }
     }

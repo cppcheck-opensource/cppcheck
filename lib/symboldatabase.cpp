@@ -163,10 +163,13 @@ void SymbolDatabase::createSymbolDatabaseFindAllScopes()
     // create global scope
     scopeList.emplace_back(*this, nullptr, nullptr);
 
-    findAllScopes(mTokenizer.tokens(), nullptr, &scopeList.back());
+    findAllScopes(mTokenizer.tokens(), nullptr, &scopeList.back(), AccessControl::Public);
 }
 
-void SymbolDatabase::findAllScopes(const Token* startToken, const Token* endToken, Scope* startScope)
+void SymbolDatabase::findAllScopes(const Token* startToken,
+                                   const Token* endToken,
+                                   Scope* startScope,
+                                   AccessControl startAccess)
 {
     // pointer to current scope
     Scope* scope = startScope;
@@ -195,7 +198,7 @@ void SymbolDatabase::findAllScopes(const Token* startToken, const Token* endToke
     // Store current access in each scope (depends on evaluation progress)
     std::map<const Scope*, AccessControl> access;
     if (startScope->isClassOrStructOrUnion())
-        access[startScope] = startScope->type == ScopeType::eClass ? AccessControl::Private : AccessControl::Public;
+        access[startScope] = startAccess;
 
     std::map<const Scope *, std::set<std::string>> forwardDecls;
 
@@ -1902,20 +1905,30 @@ void SymbolDatabase::removeSymbolsForTokens(const std::unordered_set<const Token
         }
     }
     std::unordered_set<const Function*> removedFunctions;
+    // the functions whose definition is removed while their declaration remains, with
+    // the scope they are declared in. Their argument variables were created from the
+    // definition - they are recreated from the declaration when the removal is done.
+    std::vector<std::pair<Function*, Scope*>> functionsWithoutDefinition;
     for (Scope& scope : scopeList) {
         for (Function& function : scope.functionList) {
-            if (function.tokenDef && removedTokens.count(function.tokenDef) != 0) {
+            const bool declarationRemoved = function.tokenDef && removedTokens.count(function.tokenDef) != 0;
+            const bool definitionRemoved = function.token && removedTokens.count(function.token) != 0;
+            if (!declarationRemoved && !definitionRemoved)
+                continue;
+            std::transform(function.argumentList.cbegin(),
+                           function.argumentList.cend(),
+                           std::inserter(removedVariables, removedVariables.end()),
+                           [](const Variable& arg) {
+                return &arg;
+            });
+            if (declarationRemoved)
                 removedFunctions.insert(&function);
-                std::transform(function.argumentList.cbegin(),
-                               function.argumentList.cend(),
-                               std::inserter(removedVariables, removedVariables.end()),
-                               [](const Variable& arg) {
-                    return &arg;
-                });
-            } else if (function.token && removedTokens.count(function.token) != 0) {
-                // only the function definition is removed - the declaration remains
+            else {
+                // only the function definition is removed - the declaration remains,
+                // like a declaration that never had a definition
+                functionsWithoutDefinition.emplace_back(&function, &scope);
                 function.token = nullptr;
-                function.arg = function.argDef;
+                function.arg = scope.isClassOrStructOrUnion() ? function.argDef : nullptr;
                 function.functionScope = nullptr;
                 function.hasBody(false);
             }
@@ -1999,6 +2012,51 @@ void SymbolDatabase::removeSymbolsForTokens(const std::unordered_set<const Token
     scopeList.remove_if([&](const Scope& scope) {
         return removedScopes.count(&scope) != 0;
     });
+
+    // recreate the arguments of the functions that lost their definition from their
+    // declaration - the old argument variables were removed from the indexes above
+    for (const auto& f : functionsWithoutDefinition) {
+        f.first->argumentList.clear();
+        f.first->initArgCount = 0;
+        f.first->addArguments(f.second);
+        addArgumentsToSymbolTable(*f.first, *f.second);
+    }
+}
+
+// The access control that is in force at tok in the body of the given class, struct or
+// union scope: the last access specifier before tok at the level of the class body, or
+// the default access of the class kind
+static AccessControl accessControlAt(const Scope& classScope, const Token* tok)
+{
+    AccessControl access = classScope.type == ScopeType::eClass ? AccessControl::Private : AccessControl::Public;
+    if (!classScope.bodyStart)
+        return access;
+    int depth = 0;
+    for (const Token* tok2 = classScope.bodyStart->next(); tok2 && tok2 != tok && tok2 != classScope.bodyEnd;
+         tok2 = tok2->next()) {
+        if (tok2->str() == "{")
+            ++depth;
+        else if (tok2->str() == "}")
+            --depth;
+        if (depth != 0)
+            continue;
+        if (tok2->str() == "private:")
+            access = AccessControl::Private;
+        else if (tok2->str() == "protected:")
+            access = AccessControl::Protected;
+        else if (tok2->str() == "public:" || tok2->str() == "__published:")
+            access = AccessControl::Public;
+        else if (Token::Match(tok2, "public|protected|private %name% :")) {
+            if (tok2->str() == "private")
+                access = AccessControl::Private;
+            else if (tok2->str() == "protected")
+                access = AccessControl::Protected;
+            else
+                access = AccessControl::Public;
+            tok2 = tok2->tokAt(2);
+        }
+    }
+    return access;
 }
 
 void SymbolDatabase::addSymbolsForNewTokenRanges(const std::vector<std::pair<Token*, Token*>>& newRanges)
@@ -2037,7 +2095,10 @@ void SymbolDatabase::addSymbolsForNewTokenRanges(const std::vector<std::pair<Tok
         // latest block - so for namespaces any closing brace with the namespace scope closes it.
         if (anchor && anchor->str() == "}" && (anchor == enclosing->bodyEnd || enclosing->type == ScopeType::eNamespace))
             enclosing = enclosing->nestedIn ? enclosing->nestedIn : &scopeList.front();
-        findAllScopes(range.first, range.second->next(), const_cast<Scope*>(enclosing));
+        // in a class body the access specifier that is in force at the new tokens applies to them
+        const AccessControl startAccess =
+            enclosing->isClassOrStructOrUnion() ? accessControlAt(*enclosing, range.first) : AccessControl::Public;
+        findAllScopes(range.first, range.second->next(), const_cast<Scope*>(enclosing), startAccess);
     }
 
     // the scopes and functions that were added
