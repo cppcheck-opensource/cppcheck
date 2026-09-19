@@ -59,6 +59,10 @@ autoNoType:test/*.cpp
 autoNoType:tools/triage/mainwindow.cpp
 # ticket 11631
 templateInstantiation:test/testutils.cpp
+# the "calculate<T, T>(...)" call in the 1-arg overload cannot be instantiated by the template simplifier
+templateInstantiation:lib/calculate.h
+# used in a member initializer - the check does not see usage there
+unusedPrivateFunction:test/testsimplifytemplate.cpp
 
 naming-varname:externals/simplecpp/simplecpp.h
 naming-privateMemberVariable:externals/simplecpp/simplecpp.h
