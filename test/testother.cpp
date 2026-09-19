@@ -12713,6 +12713,16 @@ private:
         ASSERT_EQUALS("[test.c:8:11]: (style) Checking if unsigned expression 'd.n' is less than zero. [unsignedLessThanZero]\n"
                       "[test.c:12:9]: (style) Checking if unsigned expression 'd.n' is less than zero. [unsignedLessThanZero]\n",
                       errout_str());
+
+        check("int ifunc(int x);\n"
+              "unsigned int ufunc(unsigned int x);\n"
+              "void f(void)\n"
+              "{\n"
+              "    unsigned int x = 0;\n"
+              "    if (_Generic(x, int: ifunc, unsigned int: ufunc)(x) < 0) {}\n"
+              "}\n", dinit(CheckOptions, $.cpp = false));
+        ASSERT_EQUALS("[test.c:6:57]: (style) Checking if unsigned expression '_Generic(x,int:ifunc,unsigned int:ufunc)(x)' is less than zero. [unsignedLessThanZero]\n",
+                      errout_str());
     }
 
     void doubleMove1() {

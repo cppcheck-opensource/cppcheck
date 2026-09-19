@@ -595,6 +595,7 @@ private:
         TEST_CASE(valueTypeThis);
         TEST_CASE(valueTypeChar);
         TEST_CASE(valueTypeRValueReference);
+        TEST_CASE(valueTypeGeneric);
 
         TEST_CASE(variadic1); // #7453
         TEST_CASE(variadic2); // #7649
@@ -10399,6 +10400,72 @@ private:
 
     void valueTypeRValueReference() {
         TODO_ASSERT_EQUALS("", "bool", typeOf("void f(std::string&& s = {})\n", "&&"));
+    }
+
+    void valueTypeGeneric() {
+        ASSERT_EQUALS("float", typeOf(
+                          "float floatvar;\n"
+                          "int intvar;\n"
+                          "void testfunc() {\n"
+                          "    int controlvar;\n"
+                          "    auto testvar = _Generic(controlvar, int: floatvar, default: intvar);\n"
+                          "}\n", "testvar"));
+
+        ASSERT_EQUALS("signed int", typeOf(
+                          "float floatvar;\n"
+                          "int intvar;\n"
+                          "void testfunc() {\n"
+                          "    float controlvar;\n"
+                          "    auto testvar = _Generic(controlvar, int: floatvar, default: intvar);\n"
+                          "}\n", "testvar"));
+
+        ASSERT_EQUALS("float", typeOf(
+                          "float floatvar;\n"
+                          "int intvar;\n"
+                          "void testfunc() {\n"
+                          "    int *const controlvar;\n"
+                          "    auto testvar = _Generic(controlvar, int*: floatvar, default: intvar);\n"
+                          "}\n", "testvar"));
+
+        ASSERT_EQUALS("signed int", typeOf(
+                          "float floatvar;\n"
+                          "int intvar;\n"
+                          "void testfunc() {\n"
+                          "    const int *controlvar;\n"
+                          "    auto testvar = _Generic(controlvar, int*: floatvar, default: intvar);\n"
+                          "}\n", "testvar"));
+
+        ASSERT_EQUALS("float", typeOf(
+                          "float floatfunc();\n"
+                          "int intfunc();\n"
+                          "void testfunc() {\n"
+                          "    int controlvar;\n"
+                          "    auto testvar = _Generic(controlvar, int: floatfunc, default: intfunc)();\n"
+                          "}\n", "testvar"));
+
+        ASSERT_EQUALS("signed int", typeOf(
+                          "float floatfunc();\n"
+                          "int intfunc();\n"
+                          "void testfunc() {\n"
+                          "    float controlvar;\n"
+                          "    auto testvar = _Generic(controlvar, int: floatfunc, default: intfunc)();\n"
+                          "}\n", "testvar"));
+
+        ASSERT_EQUALS("float", typeOf(
+                          "float floatfunc();\n"
+                          "int intfunc();\n"
+                          "void testfunc() {\n"
+                          "    int *const controlvar;\n"
+                          "    auto testvar = _Generic(controlvar, int*: floatfunc, default: intfunc)();\n"
+                          "}\n", "testvar"));
+
+        ASSERT_EQUALS("signed int", typeOf(
+                          "float floatfunc();\n"
+                          "int intfunc();\n"
+                          "void testfunc() {\n"
+                          "    const int *controlvar;\n"
+                          "    auto testvar = _Generic(controlvar, int*: floatfunc, default: intfunc)();\n"
+                          "}\n", "testvar"));
     }
 
     void variadic1() { // #7453

@@ -1420,6 +1420,12 @@ public:
      */
     void validate() const;
 
+    /**
+     * Set value type for generic selection (_Generic).
+     * @param par The opening parenthesis of the _Generic expression.
+     */
+    void setGenericValueType(Token *par);
+
     /** Set valuetype in provided tokenlist */
     void setValueTypeInTokenList(bool reportDebugWarnings, Token *tokens=nullptr);
 
