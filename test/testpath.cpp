@@ -516,7 +516,8 @@ private:
         ASSERT_EQUALS(expected, Path::getAbsoluteFilePath(Path::join(cwd, "testabspath.txt")));
 
         std::string cwd_up = Path::getPathFromFilename(cwd);
-        cwd_up.pop_back(); // remove trailing slash
+        if (cwd_up != "/")
+            cwd_up.pop_back(); // remove trailing slash
         ASSERT_EQUALS(cwd_up, Path::getAbsoluteFilePath(Path::join(cwd, "..")));
         ASSERT_EQUALS(cwd_up, Path::getAbsoluteFilePath(Path::join(cwd, "../")));
         ASSERT_EQUALS(cwd_up, Path::getAbsoluteFilePath(Path::join(cwd, "..\\")));

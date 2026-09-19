@@ -214,5 +214,45 @@ void TestProjectFile::emptyUserInclude() const
     QCOMPARE(settings.userIncludes.size(), 0);
 }
 
+// Absolute path is made relative when it does not require walking up more than 3 parent folders
+void TestProjectFile::getRelativePathRelative() const
+{
+    ProjectFile projectFile;
+    projectFile.setFilename("/some/path/sub/123.cppcheck");
+    QCOMPARE(projectFile.getRelativePath("/some/path/externals/foo.cpp"), QString("../externals/foo.cpp"));
+}
+
+// Absolute path is made relative even when it requires walking up 2 parent folders
+void TestProjectFile::getRelativePathTwoUp() const
+{
+    ProjectFile projectFile;
+    projectFile.setFilename("/some/path/sub/123.cppcheck");
+    QCOMPARE(projectFile.getRelativePath("/some/externals/foo.cpp"), QString("../../externals/foo.cpp"));
+}
+
+// Absolute path is kept as-is when making it relative would require walking up more than 3 parent folders
+void TestProjectFile::getRelativePathTooFarUp() const
+{
+    ProjectFile projectFile;
+    projectFile.setFilename("/some/path/sub/123.cppcheck");
+    QCOMPARE(projectFile.getRelativePath("/other/deep/foo.cpp"), QString("/other/deep/foo.cpp"));
+}
+
+// Absolute path in a subfolder of the project path is made relative without walking up at all
+void TestProjectFile::getRelativePathSubfolder() const
+{
+    ProjectFile projectFile;
+    projectFile.setFilename("/some/path/sub/123.cppcheck");
+    QCOMPARE(projectFile.getRelativePath("/some/path/sub/src/file1.c"), QString("src/file1.c"));
+}
+
+// Absolute path is kept as-is when it is shorter than the relative path, even if it does not require walking up 3 or more parent folders
+void TestProjectFile::getRelativePathAbsoluteShorter() const
+{
+    ProjectFile projectFile;
+    projectFile.setFilename("/ab/path/sub/123.cppcheck");
+    QCOMPARE(projectFile.getRelativePath("/ab/foo.cpp"), QString("/ab/foo.cpp"));
+}
+
 QTEST_MAIN(TestProjectFile)
 

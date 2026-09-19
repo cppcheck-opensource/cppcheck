@@ -342,6 +342,8 @@ bool CheckLeakAutoVarImpl::checkScope(const Token * const startToken,
             }
         }
 
+        if (tok == tok->scope()->bodyEnd && tok->scope()->type == ScopeType::eUnconditional)
+            ret(tok, varInfo, /*isEndOfScope*/ true);
 
         // look for end of statement
         const bool isInit = Token::Match(tok->tokAt(-1), "%var% {|(") && tok->tokAt(-1)->variable() && tok->tokAt(-1) == tok->tokAt(-1)->variable()->nameToken();

@@ -1937,7 +1937,7 @@ static std::shared_ptr<Token> createTokenFromExpression(const std::string& retur
 {
     std::shared_ptr<TokenList> tokenList = std::make_shared<TokenList>(settings, cpp ? Standards::Language::CPP : Standards::Language::C);
     {
-        const std::string code = "return " + returnValue + ";";
+        const std::string code = "return " + returnValue + ";\n";
         if (!tokenList->createTokensFromBuffer(code.data(), code.size()))
             return nullptr;
     }

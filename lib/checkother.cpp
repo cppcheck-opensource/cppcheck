@@ -700,8 +700,12 @@ void CheckOtherImpl::checkRedundantAssignment()
                 // Get next assignment..
                 const Token *nextAssign = fwdAnalysis.reassign(tokenToCheck, start, scope->bodyEnd);
                 // extra check for union
-                if (nextAssign && tokenToCheck != tok->astOperand1())
+                if (nextAssign && tokenToCheck != tok->astOperand1()) {
                     nextAssign = fwdAnalysis.reassign(tok->astOperand1(), start, scope->bodyEnd);
+                    // reading another member of the same union in the rhs is a use through aliasing
+                    if (nextAssign && fwdAnalysis.hasOperand(nextAssign->astOperand2(), tokenToCheck))
+                        nextAssign = nullptr;
+                }
 
                 if (!nextAssign)
                     continue;
@@ -962,6 +966,66 @@ void CheckOtherImpl::suspiciousCaseInSwitchError(const Token* tok, const std::st
     reportError(tok, Severity::warning, "suspiciousCase",
                 "Found suspicious case label in switch(). Operator '" + operatorString + "' probably doesn't work as intended.\n"
                 "Using an operator like '" + operatorString + "' in a case label is suspicious. Did you intend to use a bitwise operator, multiple case labels or if/else instead?", CWE398, Certainty::inconclusive);
+}
+
+void CheckOtherImpl::checkUnreachableSwitchCase()
+{
+    if (!mSettings.severity.isEnabled(Severity::style))
+        return;
+
+    logChecker("CheckOther::checkUnreachableSwitchCase"); // style
+
+    const SymbolDatabase* symbolDatabase = mTokenizer->getSymbolDatabase();
+
+    for (const Scope& scope : symbolDatabase->scopeList) {
+        if (scope.type != ScopeType::eSwitch || !scope.bodyStart)
+            continue;
+        const Token* rpar = scope.bodyStart->previous();
+        if (!Token::simpleMatch(rpar, ")"))
+            continue;
+        const Token* lpar = rpar->link();
+        if (!lpar)
+            continue;
+        const Token* condition = lpar->astOperand2();
+        if (!condition)
+            continue;
+        const ValueFlow::Value* switchValue =
+            condition->getKnownValue(ValueFlow::Value::ValueType::INT);
+        if (!switchValue)
+            continue;
+
+        for (const Token* tok = scope.bodyStart->next();
+             tok && tok != scope.bodyEnd;
+             tok = tok->next()) {
+
+            // Do not inspect cases belonging to a nested switch.
+            if (Token::simpleMatch(tok, "{") &&
+                tok->scope()->type == ScopeType::eSwitch) {
+                tok = tok->link();
+                continue;
+            }
+            if (!Token::simpleMatch(tok, "case"))
+                continue;
+            const Token* caseExpression = tok->astOperand1();
+            if (!caseExpression)
+                continue;
+            const ValueFlow::Value* caseValue =
+                caseExpression->getKnownValue(ValueFlow::Value::ValueType::INT);
+            if (!caseValue)
+                continue;
+            if (switchValue->intvalue == caseValue->intvalue)
+                continue;
+            unreachableSwitchCaseError(tok, caseExpression->expressionString(), MathLib::toString(switchValue->intvalue));
+        }
+    }
+}
+
+void CheckOtherImpl::unreachableSwitchCaseError(const Token* tok, const std::string& caseExpression, const std::string& switchValue)
+{
+    reportError(tok, Severity::style, "unreachableSwitchCase",
+                "Switch case '" + caseExpression +
+                "' can never be selected because the switch condition is known to be " + switchValue + ".",
+                CWE561, Certainty::normal);
 }
 
 static bool isNestedInSwitch(const Scope* scope)
@@ -2863,9 +2927,11 @@ isStaticAssert(const Settings &settings, const Token *tok)
         return true;
     }
 
-    if (tok->isC() && settings.standards.c >= Standards::C11 &&
-        Token::simpleMatch(tok, "_Static_assert")) {
-        return true;
+    if (tok->isC()) {
+        if (settings.standards.c >= Standards::C11 && Token::simpleMatch(tok, "_Static_assert"))
+            return true;
+        if (settings.standards.c >= Standards::C23 && Token::simpleMatch(tok, "static_assert"))
+            return true;
     }
 
     return false;
@@ -3053,6 +3119,16 @@ void CheckOtherImpl::checkDuplicateExpression()
                             if (ast1->astOperand1() && ast1->astOperand1()->str() != tok->str()) // check first condition in the chain
                                 checkDuplicate(ast1->astOperand1(), tok->astOperand2(), ast1);
                             ast1 = ast1->astOperand1();
+                        }
+                        if (tok->str() != "=") {
+                            const Token* par = tok->astParent();
+                            while (par && tok->str() == par->str() && precedes(par->astOperand1(), tok)) { // chain of identical operators with parentheses
+                                checkDuplicate(par->astOperand1(), tok->astOperand1(), par);
+                                checkDuplicate(par->astOperand1(), tok->astOperand2(), par);
+                                checkDuplicate(par->astOperand2(), tok->astOperand1(), par);
+                                checkDuplicate(par->astOperand2(), tok->astOperand2(), par);
+                                par = par->astParent();
+                            }
                         }
                     }
                 }
@@ -4439,18 +4515,16 @@ void CheckOtherImpl::checkComparePointers()
             if (const Token* parent1 = getParentLifetime(v1.tokvalue, mSettings.library))
                 if (var2 == parent1->variable())
                     continue;
-            comparePointersError(tok, &v1, &v2);
+            comparePointersError(tok, &v1, &v2, Token::simpleMatch(tok, "-"));
         }
     }
 }
 
-void CheckOtherImpl::comparePointersError(const Token *tok, const ValueFlow::Value *v1, const ValueFlow::Value *v2)
+void CheckOtherImpl::comparePointersError(const Token *tok, const ValueFlow::Value *v1, const ValueFlow::Value *v2, bool subtract)
 {
     ErrorPath errorPath;
-    std::string verb = "Comparing";
-    if (Token::simpleMatch(tok, "-"))
-        verb = "Subtracting";
-    const char * const id = (verb[0] == 'C') ? "comparePointers" : "subtractPointers";
+    const std::string verb = subtract ? "Subtracting" : "Comparing";
+    const char * const id = subtract ? "subtractPointers" : "comparePointers";
     if (v1) {
         errorPath.emplace_back(v1->tokvalue->variable()->nameToken(), "Variable declared here.");
         errorPath.insert(errorPath.end(), v1->errorPath.cbegin(), v1->errorPath.cend());
@@ -4806,6 +4880,7 @@ void CheckOther::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
     checkOther.checkCharVariable();
     checkOther.redundantBitwiseOperationInSwitchError();
     checkOther.checkSuspiciousCaseInSwitch();
+    checkOther.checkUnreachableSwitchCase();
     checkOther.checkDuplicateBranch();
     checkOther.checkDuplicateExpression();
     checkOther.checkRedundantAssignment();
@@ -4893,6 +4968,7 @@ void CheckOther::getErrorMessages(ErrorLogger& errorLogger, const Settings &sett
     c.duplicateExpressionTernaryError(nullptr, ErrorPath{});
     c.duplicateBreakError(nullptr,  false);
     c.unreachableCodeError(nullptr, nullptr,  false);
+    c.unreachableSwitchCaseError(nullptr, "case", "0");
     c.unsignedLessThanZeroError(nullptr, nullptr, "varname");
     c.unsignedPositiveError(nullptr, nullptr, "varname");
     c.pointerLessThanZeroError(nullptr, nullptr);
@@ -4917,8 +4993,8 @@ void CheckOther::getErrorMessages(ErrorLogger& errorLogger, const Settings &sett
     c.shadowError(nullptr, "local variable", nullptr, "member");
     c.knownArgumentError(nullptr, nullptr, nullptr, "x", false);
     c.knownPointerToBoolError(nullptr, nullptr);
-    c.comparePointersError(nullptr, nullptr, nullptr);
-    // TODO: subtractPointers
+    c.comparePointersError(nullptr, nullptr, nullptr, false);
+    c.comparePointersError(nullptr, nullptr, nullptr, true);
     c.redundantAssignmentError(nullptr, nullptr, "var", false);
     c.redundantInitializationError(nullptr, nullptr, "var", false);
     c.redundantContinueError(nullptr);

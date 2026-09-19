@@ -23,6 +23,7 @@
 #include <wchar.h>
 #include <atlstr.h>
 #include <string>
+#include <locale.h>
 
 bool UpdateTraceACalled(TRACEHANDLE traceHandle, LPCSTR loggerName, EVENT_TRACE_PROPERTIES* pProperties)
 {
@@ -613,6 +614,27 @@ void memleak_malloca()
     // cppcheck-suppress [unusedAllocatedMemory, unreadVariable, constVariablePointer]
     void *pMem = _malloca(10);
     // cppcheck-suppress memleak
+}
+
+void memleak_create_locale()
+{
+    // cppcheck-suppress-begin valueFlowBailoutIncompleteVar
+    _locale_t locale = _create_locale(LC_ALL, "C");
+    _locale_t wlocale = _wcreate_locale(LC_ALL, L"C");
+    (void) locale;
+    (void) wlocale;
+    // cppcheck-suppress-end valueFlowBailoutIncompleteVar
+    // cppcheck-suppress memleak
+}
+
+void no_memleak_create_locale()
+{
+    // cppcheck-suppress-begin valueFlowBailoutIncompleteVar
+    _locale_t locale = _create_locale(LC_ALL, "C");
+    _locale_t wlocale = _wcreate_locale(LC_ALL, L"C");
+    _free_locale(locale);
+    _free_locale(wlocale);
+    // cppcheck-suppress-end valueFlowBailoutIncompleteVar
 }
 
 void memleak_AllocateAndInitializeSid()

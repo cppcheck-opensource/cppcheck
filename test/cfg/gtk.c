@@ -59,8 +59,14 @@ void validCode(int argInt, GHashTableIter * hash_table_iter, GHashTable * hash_t
     g_string_free(pGStr1, TRUE);
 
     gchar * pGchar1 = g_strconcat("a", "b", NULL);
+
+    // g_str_has_prefix and g_str_has_suffix can have side effects because they use
+    // g_return_val_if_fail, which logs to the console upon failure
+    // cppcheck-suppress assertWithSideEffect
     g_assert_true(g_str_has_prefix(pGchar1, "a"));
+    // cppcheck-suppress assertWithSideEffect
     g_assert_true(g_str_has_suffix(pGchar1, "b"));
+
     printf("%s", pGchar1);
     g_free(pGchar1);
 

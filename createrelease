@@ -8,6 +8,9 @@
 # Review trac roadmap, are tickets closed properly?
 # Only tickets that should be retargeted should be open.
 #
+# Execute this script to check if trac tickets can be closed
+# tools/release-trac-fixed-open-tickets.py
+#
 # Versioning scheme
 # ========================
 # VERSION=2.22.0      # the new release tag created
@@ -23,14 +26,12 @@
 # cd ~/cppchecksolutions/addon/coverage
 # CPPCHECK_REPO=~/cppchecksolutions/cppcheck python3 coverage.py --code
 #
-# Check every isPremiumEnabled call: TODO write helper script
-# - every id should be in --errorlist
-#   git grep 'isPremiumEnabled[(]"' | sed 's/.*isPremiumEnabled[(]"//' | sed 's/".*//' | sort | uniq > ids1.txt
-#   ./cppcheck --errorlist | grep ' id="' | sed 's/.* id="//' | sed 's/".*//' | sort | uniq > ids2.txt
-#   diff -y ids1.txt ids2.txt
-# - premiumaddon: check coverage.py
-#   python3 coverage.py --id ; sort ids-*.txt | uniq > ~/cppcheck/ids3.txt
-#   diff -y ids2.txt ids3.txt
+# Check that every premium check id is a real, known Cppcheck error id: every
+# id passed to isPremiumEnabled(...) and every id referenced by the premium
+# addon's MISRA/CERT/AUTOSAR/CWE coverage mapping (coverage.py) must show up
+# in `cppcheck --errorlist`, otherwise the id was renamed/removed and the
+# premium check or compliance mapping is silently broken.
+# tools/release-check-premium-ids.py
 #
 # Windows installer:
 # - ensure latest build was successful
@@ -44,7 +45,7 @@
 # cd ~/cppchecksolutions/cppcheck && python3 tools/get_checkers.py > lib/checkers.cpp
 #
 # Update copyright year: TODO release script
-# git diff $PREV -- */*.cpp */*.h | grep '^diff --git a/' | sed 's|.* b/||' | xargs sed -i "s/Copyright (C) 2007-20[12]./Copyright (C) 2007-$(date +%Y)/"
+# git grep -l 'Copyright (C) 2007-20' -- '*.cpp' '*.h' '*.py' | while read f; do y=$(git log -1 --format=%ad --date=format:%Y --invert-grep -i --grep=copyright -- "$f"); sed -i "s/Copyright (C) 2007-20[0-9][0-9]/Copyright (C) 2007-$y/" "$f"; done
 # git diff | grep '^diff --git a/'
 #
 # Make sure "cppcheck --errorlist" works:

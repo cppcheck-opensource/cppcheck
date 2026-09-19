@@ -386,7 +386,12 @@ static const Token *checkMissingReturnScope(const Token *tok, const Library &lib
                 if (!isExhaustiveSwitch(tok->link()))
                     return tok->link();
             } else if (tok->scope()->type == ScopeType::eIf) {
-                const Token *condition = tok->scope()->classDef->next()->astOperand2();
+                const Token *paren = tok->link()->linkAt(-1);
+                if (!paren || !Token::simpleMatch(paren->astOperand1(), "if")) {
+                    tok = tok->link();
+                    continue;
+                }
+                const Token *condition = paren->astOperand2();
                 if (condition && condition->hasKnownIntValue() && condition->getKnownIntValue() == 1)
                     return checkMissingReturnScope(tok, library);
                 return tok;
@@ -538,9 +543,9 @@ void CheckFunctionsImpl::memsetZeroBytes()
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope *scope : symbolDatabase->functionScopes) {
         for (const Token* tok = scope->bodyStart->next(); tok != scope->bodyEnd; tok = tok->next()) {
-            if (Token::Match(tok, "memset|wmemset (") && (numberOfArguments(tok)==3)) {
+            if (Token::Match(tok, "memset|wmemset (")) {
                 const std::vector<const Token *> &arguments = getArguments(tok);
-                if (WRONG_DATA(arguments.size() != 3U, tok))
+                if (arguments.size() != 3U)
                     continue;
                 const Token* lastParamTok = arguments[2];
                 if (MathLib::isNullValue(lastParamTok->str()))

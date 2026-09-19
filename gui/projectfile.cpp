@@ -1193,6 +1193,15 @@ QStringList ProjectFile::getSearchPaths(const QString& projectPath, const QStrin
     return ret;
 }
 
+QString ProjectFile::getRelativePath(const QString &absolutePath) const
+{
+    const QDir dir(QFileInfo(mFilename).absolutePath());
+    const QString relativePath(dir.relativeFilePath(absolutePath));
+    if (relativePath.startsWith("../../..") || absolutePath.length() < relativePath.length())
+        return absolutePath;
+    return relativePath;
+}
+
 QStringList ProjectFile::getSearchPaths(const QString& dir) const {
     const QFileInfo inf(mFilename);
     const QString applicationFilePath = QCoreApplication::applicationFilePath();

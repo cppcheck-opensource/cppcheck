@@ -354,7 +354,9 @@ bool TokenList::createTokensFromBufferInternal(const char* data, size_t size, co
 #endif
 
     simplecpp::OutputList outputList;
-    simplecpp::TokenList tokens({data, size}, mFiles, file0, &outputList);
+    simplecpp::DUI dui;
+    dui.std = mSettings.standards.getStdForLanguage(mLang);
+    simplecpp::TokenList tokens({data, size}, mFiles, file0, dui, &outputList);
 
     createTokens(std::move(tokens));
 
@@ -461,7 +463,7 @@ static Token* skipDecl(Token* tok, std::vector<Token*>* inner = nullptr)
         return Token::Match(tok, "%name%| ,|)");
     };
 
-    if (!Token::Match(tok->previous(), "( %name%"))
+    if (tok->varId() || !Token::Match(tok->previous(), "( %name%"))
         return tok;
     Token *vartok = tok;
     while (Token::Match(vartok, "%name%|*|&|&&|::|<")) {
@@ -967,6 +969,21 @@ static bool isPrefixUnary(const Token* tok, bool cpp)
     return tok->strAt(-1) == ")" && iscast(tok->linkAt(-1), cpp);
 }
 
+template<class T, REQUIRES("T must be a Token class", std::is_convertible<T*, const Token*> )>
+static T* skipTrailingReturnType(T* tok)
+{
+    if (!Token::Match(tok, ".|->")) // TODO: fix simplification (see garbageCode228)
+        return tok;
+    tok = tok->next();
+    while (Token::Match(tok, "%type%|%name%|::|&|&&|*|<|(")) {
+        if (tok->link())
+            tok = tok->link()->next();
+        else
+            tok = tok->next();
+    }
+    return tok;
+}
+
 /**
  * @throws InternalError thrown if unexpected tokens are encountered
  */
@@ -1011,7 +1028,7 @@ static void compilePrecedence2(Token *&tok, AST_state& state)
             else
                 compileUnaryOp(tok, state, compileScope);
         } else if (tok->str() == "[") {
-            if (state.cpp && isPrefixUnary(tok, /*cpp*/ true) && Token::Match(tok->link(), "] (|{|<")) { // Lambda
+            if (state.cpp && isPrefixUnary(tok, /*cpp*/ true) && Token::Match(tok->link(), "] [({<.]")) { // Lambda
                 // What we do here:
                 // - Nest the round bracket under the square bracket.
                 // - Nest what follows the lambda (if anything) with the lambda opening [
@@ -1060,7 +1077,10 @@ static void compilePrecedence2(Token *&tok, AST_state& state)
                         continue;
                     }
                 } else {
-                    Token* const curlyBracket = squareBracket->link()->next();
+                    Token* curlyBracket = squareBracket->link()->next();
+                    curlyBracket = skipTrailingReturnType(curlyBracket);
+                    if (!Token::simpleMatch(curlyBracket, "{"))
+                        throw InternalError(tok, "Syntax error in lambda", InternalError::AST);
                     squareBracket->astOperand1(curlyBracket);
                     state.op.push(squareBracket);
                     tok = curlyBracket->link() ? curlyBracket->link()->next() : nullptr;
@@ -1505,15 +1525,7 @@ const Token* findLambdaEndTokenWithoutAST(const Token* tok) {
         tok = tok->link()->next();
     if (Token::simpleMatch(tok, "mutable"))
         tok = tok->next();
-    if (Token::Match(tok, ".|->")) { // trailing return type
-        tok = tok->next();
-        while (Token::Match(tok, "%type%|%name%|::|&|&&|*|<|(")) {
-            if (tok->link())
-                tok = tok->link()->next();
-            else
-                tok = tok->next();
-        }
-    }
+    tok = skipTrailingReturnType(tok);
     if (!(Token::simpleMatch(tok, "{") && tok->link()))
         return nullptr;
     return tok->link()->next();

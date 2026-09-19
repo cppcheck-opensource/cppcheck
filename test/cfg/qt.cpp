@@ -894,6 +894,13 @@ int qdateIsValid()
     return qd.month(); 
 }
 
+void qAssertX()
+{
+    const char *where = "test";
+    const char *what = "assertion failed";
+    Q_ASSERT_X(false, where, what);
+}
+
 struct S_QTimer_connect : QObject { // #13846
     S_QTimer_connect() {
         // cppcheck-suppress checkLibraryFunction - timeout() is a signal from QTimer

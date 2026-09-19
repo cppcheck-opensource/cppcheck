@@ -1069,6 +1069,17 @@ bool isAliasOf(const Token *tok, nonneg int varid, bool* inconclusive)
     return false;
 }
 
+bool isIteratorOf(const Token* tok, nonneg int exprId)
+{
+    if (!astIsIterator(tok))
+        return false;
+    // An iterator into a subcontainer (e.g. c[0].begin()) aliases the container but iterates
+    // an unrelated range, so require an iterator value recording the container itself
+    return std::any_of(tok->values().cbegin(), tok->values().cend(), [&](const ValueFlow::Value& v) {
+        return v.isIteratorValue() && v.container && v.container->exprId() == exprId;
+    });
+}
+
 bool isAliasOf(const Token* tok, const Token* expr, nonneg int* indirect)
 {
     if (indirect)
@@ -1700,7 +1711,7 @@ bool isSameExpression(bool macro, const Token *tok1, const Token *tok2, const Se
                     compare = true;
                 }
             }
-            if (compare && astIsBoolLike(varTok1, settings) && astIsBoolLike(varTok2, settings))
+            if (compare && varTok1 != varTok2 && astIsBoolLike(varTok1, settings) && astIsBoolLike(varTok2, settings))
                 return isSameExpression(macro, varTok1, varTok2, settings, pure, followVar, errors);
 
         }
@@ -2778,7 +2789,7 @@ bool isVariableChanged(const Token *tok, int indirect, const Settings &settings,
         if (ftok->str() == "(" && Token::simpleMatch(ftok->astOperand1(), "[")) // operator() on array element, bail out
             return true;
         const Token * ptok = tok2;
-        while (Token::Match(ptok->astParent(), ".|::|["))
+        while (Token::Match(ptok->astParent(), ".|::"))
             ptok = ptok->astParent();
         int pindirect = indirect;
         if (indirect == 0 && astIsLHS(tok2) && Token::Match(ptok, ". %var%") && astIsPointer(ptok->next()))
@@ -3293,12 +3304,12 @@ static T* findLambdaEndTokenGeneric(T* first)
         return nullptr;
     if (!maybeLambda(first->previous()))
         return nullptr;
-    if (!Token::Match(first->link(), "] (|{|<"))
+    if (!Token::Match(first->link(), "] [({<.]"))
         return nullptr;
     const Token* roundOrCurly = first->link()->next();
     if (roundOrCurly->link() && roundOrCurly->str() == "<")
         roundOrCurly = roundOrCurly->link()->next();
-    if (first->astOperand1() != roundOrCurly)
+    if (first->astOperand1() != roundOrCurly && roundOrCurly->str() != ".")
         return nullptr;
     T * tok = first;
 

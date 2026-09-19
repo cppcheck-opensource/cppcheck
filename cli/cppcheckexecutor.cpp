@@ -661,8 +661,13 @@ void StdLogger::reportErr(const ErrorMessage &msg)
     msgCopy.classification = getClassification(msgCopy.guideline, mSettings.reportType);
 
     // TODO: there should be no need for verbose and default messages here
+    // Don't perform redundant reads for these formats, the code is not needed
+    // for deduplication
+    const bool noCode = mSettings.outputFormat == Settings::OutputFormat::xml ||
+                        mSettings.outputFormat == Settings::OutputFormat::sarif;
     const std::string msgStr =
-        msgCopy.toString(mSettings.verbose, mSettings.templateFormat, mSettings.templateLocation);
+        msgCopy.toString(mSettings.verbose, mSettings.templateFormat,
+                         mSettings.templateLocation, noCode);
 
     // Alert only about unique errors
     if (!mSettings.emitDuplicates && !mShownErrors.insert(msgStr).second)

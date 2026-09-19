@@ -79,6 +79,7 @@ private:
         TEST_CASE(importCompileCommandsDirectoryMissing); // 'directory' field missing
         TEST_CASE(importCompileCommandsDirectoryInvalid); // 'directory' field not a string
         TEST_CASE(importCppcheckGuiProject);
+        TEST_CASE(importCppcheckGuiProjectDuplicateSuppressions);
         TEST_CASE(importCppcheckGuiProjectPremiumMisra);
         TEST_CASE(ignorePaths);
         TEST_CASE(testVcxprojUnicode);
@@ -534,6 +535,26 @@ private:
         ASSERT_EQUALS(1, s.userIncludes.size());
         ASSERT_EQUALS("gcc-macros.h", s.userIncludes.front());
         ASSERT_EQUALS(true, s.inlineSuppressions);
+    }
+
+    void importCppcheckGuiProjectDuplicateSuppressions() const {
+        REDIRECT;
+        constexpr char xml[] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                               "<project version=\"1\">\n"
+                               "    <root name=\".\"/>\n"
+                               "    <project-name>test test</project-name>\n"
+                               "    <suppressions>\n"
+                               "        <suppression>uninitvar</suppression>\n"
+                               "        <suppression>uninitvar</suppression>\n"
+                               "    </suppressions>\n"
+                               "</project>\n";
+        std::istringstream istr(xml);
+        Settings s;
+        Suppressions supprs;
+        TestImporter project;
+        ASSERT_EQUALS(false, project.importCppcheckGuiProject(istr, s, supprs));
+        ASSERT_EQUALS(1, project.errors.size());
+        ASSERT_EQUALS("suppression 'uninitvar' already exists", project.errors[0]);
     }
 
     void importCppcheckGuiProjectPremiumMisra() const {

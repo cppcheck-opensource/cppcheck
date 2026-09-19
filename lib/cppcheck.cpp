@@ -210,7 +210,9 @@ private:
         }
 
         // TODO: there should be no need for the verbose and default messages here
-        std::string errmsg = msg.toString(mSettings.verbose, mSettings.templateFormat, mSettings.templateLocation);
+        // Code is not needed for deduplication
+        const bool noCode = true;
+        std::string errmsg = msg.toString(mSettings.verbose, mSettings.templateFormat, mSettings.templateLocation, noCode);
         if (errmsg.empty())
             return;
 
@@ -894,16 +896,20 @@ std::size_t CppCheck::calculateHash(const Preprocessor& preprocessor, const std:
 
 unsigned int CppCheck::checkBuffer(const FileWithDetails &file, const std::string &cfgname, const char* data, std::size_t size)
 {
-    const auto f = [&file, data, size](std::vector<std::string>& files, simplecpp::OutputList* outputList) {
-        return simplecpp::TokenList{{data, size}, files, file.spath(), outputList};
+    const auto f = [&file, data, size, this](std::vector<std::string>& files, simplecpp::OutputList* outputList) {
+        simplecpp::DUI dui;
+        dui.std = mSettings.standards.getStdForLanguage(file.lang());
+        return simplecpp::TokenList{{data, size}, files, file.spath(), dui, outputList};
     };
     return checkInternal(file, cfgname, f);
 }
 
 unsigned int CppCheck::checkFile(const FileWithDetails& file, const std::string &cfgname)
 {
-    const auto f = [&file](std::vector<std::string>& files, simplecpp::OutputList* outputList) {
-        return simplecpp::TokenList{file.spath(), files, outputList};
+    const auto f = [&file, this](std::vector<std::string>& files, simplecpp::OutputList* outputList) {
+        simplecpp::DUI dui;
+        dui.std = mSettings.standards.getStdForLanguage(file.lang());
+        return simplecpp::TokenList{file.spath(), files, dui, outputList};
     };
     return checkInternal(file, cfgname, f);
 }
@@ -1020,26 +1026,8 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         // Parse comments and then remove them
         mLogger->addRemarkComments(preprocessor.getRemarkComments());
         preprocessor.inlineSuppressions(mSuppressions.nomsg);
-        preprocessor.removeComments();
-
-        if (!mSettings.buildDir.empty()) {
-            analyzerInformation.reset(new AnalyzerInformation);
-            mLogger->setAnalyzerInfo(analyzerInformation.get());
-        }
-
-        if (analyzerInformation) {
-            // Calculate hash so it can be compared with old hash / future hashes
-            const std::size_t hash = calculateHash(preprocessor, file.spath());
-            std::list<ErrorMessage> errors;
-            if (!analyzerInformation->analyzeFile(mSettings.buildDir, file.spath(), cfgname, file.fsFileId(), hash, errors, mSettings.debugainfo)) {
-                while (!errors.empty()) {
-                    mErrorLogger.reportErr(errors.front());
-                    errors.pop_front();
-                }
-                mLogger->setAnalyzerInfo(nullptr);
-                return mLogger->exitcode();  // known results => no need to reanalyze file
-            }
-        }
+        if (!mSettings.keepComments)
+            preprocessor.removeComments();
 
         // Get directives
         std::list<Directive> directives;
@@ -1058,26 +1046,60 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
                        std::inserter(configDefines, configDefines.end()),
                        getDefineName);
 
-        preprocessor.setLoadCallback([&](simplecpp::FileData &data) {
-            // Do preprocessing on included file
-            mLogger->addRemarkComments(preprocessor.getRemarkComments(data.tokens));
-            preprocessor.inlineSuppressions(data.tokens, mSuppressions.nomsg);
-            Preprocessor::removeComments(data.tokens);
-            Preprocessor::createDirectives(data.tokens, directives);
-            Preprocessor::simplifyPragmaAsm(data.tokens);
-            // Discover new configurations from included file
-            if (configurations.size() < maxConfigs)
-                preprocessor.getConfigs(data.filename, data.tokens, configDefines, configurations);
+        // Keep track of all included files when using build dir
+        std::set<std::string> includedFiles;
+
+        preprocessor.setLoadCallback([&](simplecpp::FileData &data, bool loaded) {
+            if (analyzerInformation) {
+                includedFiles.insert(data.filename);
+            }
+            if (loaded) {
+                // Do preprocessing on included file
+                mLogger->addRemarkComments(preprocessor.getRemarkComments(data.tokens));
+                preprocessor.inlineSuppressions(data.tokens, mSuppressions.nomsg);
+                if (!mSettings.keepComments)
+                    Preprocessor::removeComments(data.tokens);
+                Preprocessor::createDirectives(data.tokens, directives);
+                Preprocessor::simplifyPragmaAsm(data.tokens);
+                // Discover new configurations from included file
+                if (configurations.size() < maxConfigs)
+                    preprocessor.getConfigs(data.filename, data.tokens, configDefines, configurations);
+            }
         });
 
         preprocessor.setPlatformInfo();
+
+        if (!mSettings.buildDir.empty()) {
+            analyzerInformation.reset(new AnalyzerInformation);
+            mLogger->setAnalyzerInfo(analyzerInformation.get());
+        }
+
+        if (analyzerInformation) {
+            // Load all included files to get correct hashes and suppressions
+            for (const std::string &filename : analyzerInformation->getIncludes(mSettings.buildDir, file.spath(), cfgname, file.fsFileId()))
+                preprocessor.loadFile(files, filename);
+            // Calculate hash so it can be compared with old hash / future hashes
+            const std::size_t hash = calculateHash(preprocessor, file.spath());
+            std::list<ErrorMessage> errors;
+            if (!analyzerInformation->analyzeFile(mSettings.buildDir, file.spath(), cfgname, file.fsFileId(), hash, errors, mSettings.debugainfo)) {
+                while (!errors.empty()) {
+                    mErrorLogger.reportErr(errors.front());
+                    errors.pop_front();
+                }
+                mLogger->setAnalyzerInfo(nullptr);
+                return mLogger->exitcode();  // known results => no need to reanalyze file
+            }
+            // Clear included file list; we don't want to keep includes that have been removed from the source
+            // Any includes that are still present will be readded
+            includedFiles.clear();
+        }
 
         // Get configurations..
         if (maxConfigs > 1) {
             Timer::run("Preprocessor::getConfigs", mTimerResults, [&]() {
                 configurations = { "" };
                 preprocessor.getConfigs(configDefines, configurations);
-                preprocessor.loadFiles(files);
+                preprocessor.loadAllIncludes(files);
             });
         } else {
             configurations = { mSettings.userDefines };
@@ -1298,6 +1320,11 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
 
         if (!mSettings.plistOutput.empty()) {
             mLogger->setPlistFilenames(std::move(files));
+        }
+
+        if (analyzerInformation) {
+            analyzerInformation->writeIncludes(includedFiles);
+            analyzerInformation->writeHash(calculateHash(preprocessor, file.spath()));
         }
 
         executeAddons(dumpFile, file);

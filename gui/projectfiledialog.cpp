@@ -571,10 +571,7 @@ QString ProjectFileDialog::getExistingDirectory(const QString &caption, bool tra
 
     // Check if the path is relative to project file's path and if so
     // make it a relative path instead of absolute path.
-    const QDir dir(projectPath);
-    const QString relpath(dir.relativeFilePath(selectedDir));
-    if (!relpath.startsWith("../.."))
-        selectedDir = relpath;
+    selectedDir = mProjectFile->getRelativePath(selectedDir);
 
     // Trailing slash..
     if (trailingSlash && !selectedDir.endsWith('/'))
@@ -631,7 +628,7 @@ void ProjectFileDialog::browseImportProject()
                                                     dir.canonicalPath(),
                                                     toFilterString(filters));
     if (!fileName.isEmpty()) {
-        mUI->mEditImportProject->setText(dir.relativeFilePath(fileName));
+        mUI->mEditImportProject->setText(mProjectFile->getRelativePath(fileName));
         updatePathsAndDefines();
         setProjectConfigurations(getProjectConfigs(fileName));
         for (int row = 0; row < mUI->mListVsConfigs->count(); ++row) {
@@ -652,7 +649,7 @@ void ProjectFileDialog::browseUserInclude()
                                                     dir.canonicalPath(),
                                                     toFilterString(filters));
     if (!fileName.isEmpty()) {
-        mUI->mEditUserInclude->setText(dir.relativeFilePath(fileName));
+        mUI->mEditUserInclude->setText(mProjectFile->getRelativePath(fileName));
     }
 }
 
@@ -891,7 +888,9 @@ void ProjectFileDialog::addExcludeFile()
     QMap<QString,QString> filters;
     filters[tr("Source files")] = "*.c *.cpp";
     filters[tr("All files")] = "*.*";
-    addExcludePath(QFileDialog::getOpenFileName(this, tr("Exclude file"), dir.canonicalPath(), toFilterString(filters)));
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Exclude file"), dir.canonicalPath(), toFilterString(filters));
+    if (!fileName.isEmpty())
+        addExcludePath(mProjectFile->getRelativePath(fileName));
 }
 
 void ProjectFileDialog::editExcludePath()

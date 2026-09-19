@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
@@ -31,7 +31,7 @@ jobs:
           key: ${{ github.workflow }}-${{ runner.os }}
 
       - name: Cache Cppcheck
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: cppcheck
           key: ${{ runner.os }}-scriptcheck-cppcheck-${{ github.sha }}
@@ -56,19 +56,19 @@ jobs:
       fail-fast: false
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
       # TODO: bailout on error
       - name: Restore Cppcheck
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: cppcheck
           key: ${{ runner.os }}-scriptcheck-cppcheck-${{ github.sha }}
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           check-latest: true
@@ -209,7 +209,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 

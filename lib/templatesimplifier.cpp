@@ -2278,7 +2278,7 @@ void TemplateSimplifier::expandTemplate(
                         --typeindentlevel;
                     else if (typetok->str() == "(")
                         ++typeindentlevel;
-                    else if (typetok->str() == ")")
+                    else if (typeindentlevel > 0 && typetok->str() == ")")
                         --typeindentlevel;
                     dst->insertTokenBefore(typetok->str(), typetok->originalName(), typetok->getMacroName());
                     dst->previous()->linenr(start->linenr());
@@ -2669,7 +2669,7 @@ void TemplateSimplifier::expandTemplate(
                             ++typeindentlevel;
                         } else if (typetok->str() == "(")
                             ++typeindentlevel;
-                        else if (typetok->str() == ")")
+                        else if (typeindentlevel > 0 && typetok->str() == ")")
                             --typeindentlevel;
                         Token *back;
                         if (copy) {
@@ -4381,7 +4381,7 @@ void TemplateSimplifier::simplifyTemplates(const std::time_t maxtime)
         // Remove concepts/requires
         // TODO concepts are not removed yet
         for (Token *tok = mTokenList.front(); tok; tok = tok->next()) {
-            if (!Token::Match(tok, ")|>|>> requires %name%|("))
+            if (!Token::Match(tok, ")|>|>>|const|noexcept requires %name%|("))
                 continue;
             const Token* end = skipRequires(tok->next());
             if (end)

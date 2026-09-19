@@ -518,6 +518,7 @@ void ResultsView::logCopyComplete()
         const QListWidgetItem * item = mUI->mListLog->item(i);
         if (nullptr != item) {
             logText += item->text();
+            logText += "\n";
         }
     }
     QClipboard *clipboard = QApplication::clipboard();

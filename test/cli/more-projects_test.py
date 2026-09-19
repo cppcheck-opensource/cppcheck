@@ -173,7 +173,6 @@ def test_project_empty_fields(tmpdir):
   </libraries>
   <suppressions/>
   <suppressions>
-    <suppression/>
   </suppressions>
   <vs-configurations/>
   <vs-configurations>
