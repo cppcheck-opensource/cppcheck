@@ -609,6 +609,7 @@ private:
         }
 
         ASSERT_EQUALS(63, valueOfTok("x = 3 * uint32_t{21};\n", "*").intvalue);
+        ASSERT_EQUALS(123, valueOfTok("x = +123;\n", "=").intvalue);
     }
 
     void valueFlowString() {
