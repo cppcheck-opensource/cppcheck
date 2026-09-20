@@ -1516,9 +1516,7 @@ void CheckConditionImpl::clarifyConditionError(const Token *tok, bool assign, bo
 
 void CheckConditionImpl::alwaysTrueFalse()
 {
-    const bool pedantic = mSettings.isPremiumEnabled("alwaysTrue") ||
-                          mSettings.isPremiumEnabled("alwaysFalse") ||
-                          mSettings.isPremiumEnabled("knownConditionTrueFalse");
+    const bool pedantic = mSettings.isPremiumEnabled("knownConditionTrueFalse");
 
     if (!pedantic && !mSettings.severity.isEnabled(Severity::style))
         return;
@@ -1534,7 +1532,7 @@ void CheckConditionImpl::alwaysTrueFalse()
                 tok = tok->link();
                 continue;
             }
-            if (!tok->hasKnownIntValue())
+            if (!tok->hasKnownIntValue() || !isConstExpression(tok, mSettings.library))
                 continue;
             const Token* condition = nullptr;
             {
@@ -1551,14 +1549,12 @@ void CheckConditionImpl::alwaysTrueFalse()
                     condition = parent;
                 else if (Token::Match(parent->previous(), "if|while ("))
                     condition = parent->previous();
-                else if (Token::simpleMatch(parent, "return"))
-                    condition = parent;
                 else if (parent->str() == ";" && parent->astParent() && parent->astParent()->astParent() &&
                          Token::simpleMatch(parent->astParent()->astParent()->previous(), "for ("))
                     condition = parent->astParent()->astParent()->previous();
-                else if (Token::Match(tok, "%comp%"))
+                else if ((Token::Match(tok, "%comp%|!") || isConstFunctionCall(tok->previous(), mSettings.library)) && Token::Match(tok->astParent(), "%oror%|&&"))
                     condition = tok;
-                else if ((tok->str() == "(" || (hasComp && Token::Match(tok, "!|%var%"))) && astIsBool(parent) && Token::Match(parent, "%assign%"))
+                else if (hasComp && Token::Match(tok, "!|%var%") && astIsBool(parent) && Token::Match(parent, "%assign%"))
                     condition = tok;
                 else
                     continue;

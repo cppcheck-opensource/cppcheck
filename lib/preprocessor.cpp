@@ -981,8 +981,9 @@ static std::string simplecppErrToId(simplecpp::Output::Type type)
     case simplecpp::Output::ERROR:
         return "preprocessorErrorDirective";
     case simplecpp::Output::SYNTAX_ERROR:
-    case simplecpp::Output::DIRECTIVE_AS_MACRO_PARAMETER:
         return "syntaxError";
+    case simplecpp::Output::DIRECTIVE_AS_MACRO_PARAMETER:
+        return "directiveAsMacroParameter";
     case simplecpp::Output::UNHANDLED_CHAR_ERROR:
         return "unhandledChar";
     case simplecpp::Output::INCLUDE_NESTED_TOO_DEEPLY:
@@ -1066,6 +1067,7 @@ void Preprocessor::getErrorMessages(ErrorLogger &errorLogger, const Settings &se
     preprocessor.missingInclude(loc, "", SystemHeader);
     preprocessor.error(loc, "message", simplecpp::Output::ERROR);
     preprocessor.error(loc, "message", simplecpp::Output::SYNTAX_ERROR);
+    preprocessor.error(loc, "message", simplecpp::Output::DIRECTIVE_AS_MACRO_PARAMETER);
     preprocessor.error(loc, "message", simplecpp::Output::UNHANDLED_CHAR_ERROR);
     preprocessor.error(loc, "message", simplecpp::Output::INCLUDE_NESTED_TOO_DEEPLY);
     preprocessor.error(loc, "message", simplecpp::Output::FILE_NOT_FOUND);

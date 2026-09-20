@@ -7790,6 +7790,12 @@ private:
               "}\n", dinit(CheckOptions, $.cpp = false));
         ASSERT_EQUALS("", errout_str());
 
+        check("void f() {\n" // #15020
+              "    enum { Four = 4 };\n"
+              "    static_assert(Four == 4, \"\");\n"
+              "}\n", dinit(CheckOptions, $.cpp = false));
+        ASSERT_EQUALS("", errout_str());
+
         check("void f() {\n"
               "    enum { Four = 4 };\n"
               "    static_assert(4 == Four, \"\");\n"
@@ -12546,7 +12552,7 @@ private:
               "    label:\n"
               "}\n", dinit(CheckOptions, $.settings = &s));
         ASSERT_EQUALS("", errout_str());
-        s.premiumArgs = "--premium=misra-c-2012"; // <- activates unusedLabel checking
+        s.premiumArgs = "--misra-c-2012"; // <- activates unusedLabel checking
         check("void f() {\n"
               "    label:\n"
               "}\n", dinit(CheckOptions, $.settings = &s));

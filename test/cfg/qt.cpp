@@ -206,7 +206,6 @@ void QString1(QString s)
 bool QString2()
 {
     QString s;
-    // cppcheck-suppress knownConditionTrueFalse
     return s.size();
 }
 

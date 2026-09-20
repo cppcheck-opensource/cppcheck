@@ -3841,6 +3841,18 @@ const Check::FileInfo * CheckClass::loadFileInfoFromXml(const tinyxml2::XMLEleme
     return fileInfo;
 }
 
+static ErrorMessage oneDefinitionRuleViolationErrorMessage(std::list<ErrorMessage::FileLocation> locationList, const std::string &file0, const std::string &symbolName)
+{
+    return ErrorMessage(std::move(locationList),
+                        file0,
+                        Severity::error,
+                        "$symbol:" + symbolName +
+                        "\nThe one definition rule is violated, different classes/structs have the same name '$symbol'",
+                        "ctuOneDefinitionRuleViolation",
+                        CWE_ONE_DEFINITION_RULE,
+                        Certainty::normal);
+}
+
 bool CheckClass::analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<const Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger)
 {
     (void)ctu;
@@ -3848,7 +3860,7 @@ bool CheckClass::analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<c
 
     CheckClassImpl dummy(nullptr, settings, errorLogger);
     dummy.
-    logChecker("CheckClass::analyseWholeProgram");
+    logChecker("CheckClass::checkCtuOneDefinitionRule");
 
     if (fileInfo.empty())
         return false;
@@ -3879,15 +3891,7 @@ bool CheckClass::analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<c
             locationList.emplace_back(nameLoc.fileName, nameLoc.lineNumber, nameLoc.column);
             locationList.emplace_back(it->second.fileName, it->second.lineNumber, it->second.column);
 
-            const ErrorMessage errmsg(std::move(locationList),
-                                      fi->file0,
-                                      Severity::error,
-                                      "$symbol:" + nameLoc.className +
-                                      "\nThe one definition rule is violated, different classes/structs have the same name '$symbol'",
-                                      "ctuOneDefinitionRuleViolation",
-                                      CWE_ONE_DEFINITION_RULE,
-                                      Certainty::normal);
-            errorLogger.reportErr(errmsg);
+            errorLogger.reportErr(oneDefinitionRuleViolationErrorMessage(std::move(locationList), fi->file0, nameLoc.className));
 
             foundErrors = true;
         }
@@ -3968,5 +3972,5 @@ void CheckClass::getErrorMessages(ErrorLogger& errorLogger, const Settings &sett
     c.virtualFunctionCallInConstructorError(nullptr, std::list<const Token *>(), "f");
     c.thisUseAfterFree(nullptr, nullptr, nullptr);
     c.unsafeClassRefMemberError(nullptr, "UnsafeClass::var");
-    // TODO: ctuOneDefinitionRuleViolation
+    errorLogger.reportErr(oneDefinitionRuleViolationErrorMessage({}, "", "classname"));
 }

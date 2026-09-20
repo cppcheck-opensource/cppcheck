@@ -1336,7 +1336,7 @@ private:
         check("int f(char c) {\n"
               "  return (c <= 'a' && c >= 'z');\n"
               "}\n"); // TODO: use s?
-        ASSERT_EQUALS("[test.cpp:2:13] -> [test.cpp:2:25]: (style) Return value 'c>='z'' is always false [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:13] -> [test.cpp:2:25]: (style) Condition 'c>='z'' is always false [knownConditionTrueFalse]\n", errout_str());
     }
 
     void incorrectLogicOperator7() { // opposite expressions
@@ -2181,7 +2181,7 @@ private:
               "    b = g();\n"
               "    return b;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:9] -> [test.cpp:3:16]: (style) Return value '!b' is always false [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void oppositeInnerConditionPointers() {
@@ -3362,16 +3362,21 @@ private:
               "  if(x == 0) { x++; return x == 0; }\n"
               "  return false;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:8] -> [test.cpp:2:30]: (style) Return value 'x==0' is always false [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("", errout_str());
 
         check("void f() {\n" // #6898 (Token::expressionString)
               "  int x = 0;\n"
               "  A(x++ == 1);\n"
               "  A(x++ == 2);\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:3:9]: (style) Condition 'x++==1' is always false [knownConditionTrueFalse]\n"
-                      "[test.cpp:4:9]: (style) Condition 'x++==2' is always false [knownConditionTrueFalse]\n",
-                      errout_str());
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f() {\n"
+              "  int x = 0;\n"
+              "  if (x++ == 1) {}\n" // <- no warning as there is a side effect
+              "  if (x++ == 2) {}\n" // <- no warning as there is a side effect
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
 
         check("bool foo(int bar) {\n"
               "  bool ret = false;\n"
@@ -3585,7 +3590,7 @@ private:
               "    const int b = 52;\n"
               "    return a+b;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:4:13]: (style) Return value 'a+b' is always true [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("", errout_str());
 
         check("int f() {\n"
               "    int a = 50;\n"
@@ -3668,7 +3673,7 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("long X::g(bool unknown, int& result) {\n"
+        check("long g(bool unknown, int& result) {\n"
               "    long ret = 0;\n"
               "    bool f = false;\n"
               "    f = f || unknown;\n"
@@ -4175,7 +4180,7 @@ private:
         check("bool f(bool a, bool b) {\n"
               "    return a || ! b || ! a;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:12] -> [test.cpp:2:24]: (style) Return value '!a' is always true [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:12] -> [test.cpp:2:24]: (style) Condition '!a' is always true [knownConditionTrueFalse]\n", errout_str());
 
         // #10148
         check("void f(int i) {\n"
@@ -4402,8 +4407,7 @@ private:
               "		if (w) {}\n"
               "	}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:4:24]: (style) Condition 'v<2' is always true [knownConditionTrueFalse]\n"
-                      "[test.cpp:5:7]: (style) Condition 'w' is always true [knownConditionTrueFalse]\n",
+        ASSERT_EQUALS("[test.cpp:5:7]: (style) Condition 'w' is always true [knownConditionTrueFalse]\n",
                       errout_str());
 
         check("void f(double d) {\n" // #10792
@@ -4506,9 +4510,12 @@ private:
               "void foo() {\n"
               "    if (bar(1) == 0 && bar(1) > 0) {}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:3:16]: (style) Condition 'bar(1)==0' is always false [knownConditionTrueFalse]\n"
-                      "[test.cpp:3:31]: (style) Condition 'bar(1)>0' is always true [knownConditionTrueFalse]\n",
-                      errout_str());
+        // TODO handle function calls without side effects better
+        // these warnings are shown if isConstExpression is removed from the checker
+        TODO_ASSERT_EQUALS("[test.cpp:3:16]: (style) Condition 'bar(1)==0' is always false [knownConditionTrueFalse]\n"
+                           "[test.cpp:3:31]: (style) Condition 'bar(1)>0' is always true [knownConditionTrueFalse]\n",
+                           "",
+                           errout_str());
 
         check("struct S { int bar(int i) const; };\n"
               "void foo(const S& s) {\n"
@@ -4583,9 +4590,12 @@ private:
               "void f() {\n"
               "    if (g() == 1 && g() == -1) {}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:3:13]: (style) Condition 'g()==1' is always false [knownConditionTrueFalse]\n"
-                      "[test.cpp:3:25]: (style) Condition 'g()==-1' is always true [knownConditionTrueFalse]\n",
-                      errout_str());
+        // TODO handle function calls without side effects better
+        // these warnings are shown if isConstExpression is removed from the checker
+        TODO_ASSERT_EQUALS("[test.cpp:3:13]: (style) Condition 'g()==1' is always false [knownConditionTrueFalse]\n"
+                           "[test.cpp:3:25]: (style) Condition 'g()==-1' is always true [knownConditionTrueFalse]\n",
+                           "",
+                           errout_str());
 
         // #9817
         check("void f(float x) {\n"
@@ -4606,8 +4616,7 @@ private:
         ASSERT_EQUALS("[test.cpp:3:12]: (style) Condition '!s.empty()' is always false [knownConditionTrueFalse]\n"
                       "[test.cpp:4:19]: (style) Condition 's.empty()' is always true [knownConditionTrueFalse]\n"
                       "[test.cpp:5:16]: (style) Condition 's.empty()' is always true [knownConditionTrueFalse]\n"
-                      "[test.cpp:6:9]: (style) Condition '(bool)0' is always false [knownConditionTrueFalse]\n"
-                      "[test.cpp:7:19]: (style) Return value 's.empty()' is always true [knownConditionTrueFalse]\n",
+                      "[test.cpp:6:9]: (style) Condition '(bool)0' is always false [knownConditionTrueFalse]\n",
                       errout_str());
 
         check("int f(bool b) {\n"
@@ -4618,17 +4627,17 @@ private:
               "    if (b) return static_cast<int>(1);\n"
               "    return (int)0;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:6:35]: (style) Return value 'static_cast<int>(1)' is always true [knownConditionTrueFalse]\n"
-                      "[test.cpp:7:12]: (style) Return value '(int)0' is always false [knownConditionTrueFalse]\n",
-                      errout_str());
+        ASSERT_EQUALS("", errout_str());
 
         check("int f() { return 3; }\n"
               "int g() { return f(); }\n"
               "int h() { if (f()) {} }\n"
               "int i() { return f() == 3; }\n");
-        ASSERT_EQUALS("[test.cpp:3:16]: (style) Condition 'f()' is always true [knownConditionTrueFalse]\n"
-                      "[test.cpp:4:22]: (style) Return value 'f()==3' is always true [knownConditionTrueFalse]\n",
-                      errout_str());
+        // TODO handle function calls without side effects better
+        // if the isConstExpression is removed from the checker then this warning is shown
+        TODO_ASSERT_EQUALS("[test.cpp:3:16]: (style) Condition 'f()' is always true [knownConditionTrueFalse]\n",
+                           "",
+                           errout_str());
 
         check("int f() {\n"
               "    const char *n;\n"
@@ -4695,12 +4704,10 @@ private:
               "void f() {\n"
               "    int i = 5;\n"
               "    int* p = &i;\n"
-              "    g(i == 7);\n"
-              "    g(p == nullptr);\n"
+              "    g(i == 7);\n" // <- argument is always false but cannot be removed therefore warning should NOT be written
+              "    g(p == nullptr);\n" // <- argument is always false but cannot be removed therefore warning should NOT be written
               "}\n");
-        ASSERT_EQUALS("[test.cpp:5:9]: (style) Condition 'i==7' is always false [knownConditionTrueFalse]\n"
-                      "[test.cpp:6:9]: (style) Condition 'p==nullptr' is always false [knownConditionTrueFalse]\n",
-                      errout_str());
+        ASSERT_EQUALS("", errout_str());
 
         check("enum E { E0, E1 };\n"
               "void f() {\n"
@@ -4745,7 +4752,8 @@ private:
               "    int i = 0;\n"
               "    if ((i = g(), 1) != 0) {}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:3:22]: (style) Condition '(i=g(),1)!=0' is always true [knownConditionTrueFalse]\n", errout_str());
+        // the condition is always true but we can't remove the condition therefore no warning is expected
+        ASSERT_EQUALS("", errout_str());
 
         check("void f(unsigned i) {\n"
               "    const int a[2] = {};\n"
@@ -4878,7 +4886,18 @@ private:
               "    }\n"
               "    return false;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:6:12] -> [test.cpp:7:21]: (style) Assigned value 's.g()' is always true [knownConditionTrueFalse]\n", errout_str());
+        TODO_ASSERT_EQUALS("[test.cpp:6:12] -> [test.cpp:7:21]: (style) Assigned value 's.g()' is always true [knownConditionTrueFalse]\n", "", errout_str());
+
+        check("static bool parse(int r) {\n" // #15031
+              "    bool res = false;\n"
+              "    return res;\n"
+              "}\n"
+              "\n"
+              "int main (void) {\n"
+              "    bool res = parse(1101);\n"
+              "    return res;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
 
         check("void f(const void* p) {\n" // #11519
               "    bool b = false;\n"
@@ -4908,9 +4927,12 @@ private:
               "    if (b()) {}\n"
               "    if (!b()) {}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:3:10]: (style) Condition 'b()' is always false [knownConditionTrueFalse]\n"
-                      "[test.cpp:4:9]: (style) Condition '!b()' is always true [knownConditionTrueFalse]\n",
-                      errout_str());
+        // TODO handle function calls without side effects better
+        // these warnings are shown if isConstExpression is removed from the checker
+        TODO_ASSERT_EQUALS("[test.cpp:3:10]: (style) Condition 'b()' is always false [knownConditionTrueFalse]\n"
+                           "[test.cpp:4:9]: (style) Condition '!b()' is always true [knownConditionTrueFalse]\n",
+                           "",
+                           errout_str());
 
         check("int g();\n" // a value modified inside a nested branch must be lowered to possible
               "void f(int outer, int inner) {\n"
@@ -5012,7 +5034,7 @@ private:
               "        return (index++) >= s;\n"
               "    }\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:15] -> [test.cpp:6:26]: (style) Return value '(index++)>=s' is always false [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("", errout_str());
 
         check("struct a {\n"
               "  a *b() const;\n"
@@ -5449,7 +5471,7 @@ private:
         check("bool f(const int *p, const int *q) {\n"
               "    return p != NULL && q != NULL && p == NULL;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:40]: (style) Return value 'p==NULL' is always false [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:40]: (style) Condition 'p==NULL' is always false [knownConditionTrueFalse]\n", errout_str());
 
         check("struct S {\n" // #11789
               "    std::vector<int> v;\n"
@@ -5577,7 +5599,7 @@ private:
         check("bool f(const std::string& a, const std::string& b) {\n"
               "    return a.empty() || (b.empty() && a.empty());\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:19] -> [test.cpp:2:46]: (style) Return value 'a.empty()' is always false [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:19] -> [test.cpp:2:46]: (style) Condition 'a.empty()' is always false [knownConditionTrueFalse]\n", errout_str());
 
         check("struct A {\n"
               "    struct iterator;\n"
@@ -6285,7 +6307,7 @@ private:
         check("bool f(const std::string &s) {\n"
               "        return s.size()>2U && s[0]=='4' && s[0]=='2';\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:35] -> [test.cpp:2:48]: (style) Return value 's[0]=='2'' is always false [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:35] -> [test.cpp:2:48]: (style) Condition 's[0]=='2'' is always false [knownConditionTrueFalse]\n", errout_str());
 
         check("void f(int i) { if (i == 1 || 2) {} }\n"); // #12487
         ASSERT_EQUALS("[test.cpp:1:28]: (style) Condition 'i==1||2' is always true [knownConditionTrueFalse]\n", errout_str());
@@ -6463,12 +6485,12 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
+        // the assignments are always false/true.. but "assignment in condition" would be a different checker
+        // knownConditionTrueFalse should only warn if code can be removed.
         check("void f(uint32_t u) {\n" // #2490
               "    if ((u = 0x00000000) || (u = 0xffffffff)) {}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:12]: (style) Condition 'u=0x00000000' is always false [knownConditionTrueFalse]\n"
-                      "[test.cpp:2:32]: (style) Condition 'u=0xffffffff' is always true [knownConditionTrueFalse]\n",
-                      errout_str());
+        ASSERT_EQUALS("", errout_str());
     }
 
     void compareOutOfTypeRange() {

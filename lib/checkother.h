@@ -325,7 +325,7 @@ public:
     void shadowError(const Token *shadows, const std::string &shadowsType, const Token *shadowed, const std::string &shadowedType);
     void knownArgumentError(const Token *tok, const Token *ftok, const ValueFlow::Value *value, const std::string &varexpr, bool isVariableExpressionHidden);
     void knownPointerToBoolError(const Token* tok, const ValueFlow::Value* value);
-    void comparePointersError(const Token *tok, const ValueFlow::Value *v1, const ValueFlow::Value *v2);
+    void comparePointersError(const Token *tok, const ValueFlow::Value *v1, const ValueFlow::Value *v2, bool subtract);
     void checkModuloOfOneError(const Token *tok);
     void unionZeroInitError(const Token *tok, const UnionMember& largestMember);
 

@@ -47,6 +47,7 @@
 const std::set<std::string> ErrorLogger::mCriticalErrorIds{
     "cppcheckError",
     "cppcheckLimit",
+    "directiveAsMacroParameter",
     "includeNestedTooDeeply",
     "internalAstError",
     "instantiationError",
