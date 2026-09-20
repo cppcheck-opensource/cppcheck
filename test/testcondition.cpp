@@ -4510,8 +4510,8 @@ private:
               "void foo() {\n"
               "    if (bar(1) == 0 && bar(1) > 0) {}\n"
               "}\n");
-        // TODO the isConstExpression returns false for the bar() function call
-        // these warnings are shown if the isConstExpression is removed from the checker
+        // TODO handle function calls without side effects better
+        // these warnings are shown if isConstExpression is removed from the checker
         TODO_ASSERT_EQUALS("[test.cpp:3:16]: (style) Condition 'bar(1)==0' is always false [knownConditionTrueFalse]\n"
                            "[test.cpp:3:31]: (style) Condition 'bar(1)>0' is always true [knownConditionTrueFalse]\n",
                            "",
@@ -4590,8 +4590,8 @@ private:
               "void f() {\n"
               "    if (g() == 1 && g() == -1) {}\n"
               "}\n");
-        // TODO the isConstExpression returns false for the bar() function call
-        // these warnings are shown if the isConstExpression is removed from the checker
+        // TODO handle function calls without side effects better
+        // these warnings are shown if isConstExpression is removed from the checker
         TODO_ASSERT_EQUALS("[test.cpp:3:13]: (style) Condition 'g()==1' is always false [knownConditionTrueFalse]\n"
                            "[test.cpp:3:25]: (style) Condition 'g()==-1' is always true [knownConditionTrueFalse]\n",
                            "",
@@ -4633,7 +4633,7 @@ private:
               "int g() { return f(); }\n"
               "int h() { if (f()) {} }\n"
               "int i() { return f() == 3; }\n");
-        // TODO the isConstExpression thinks that the f() function call is non-const
+        // TODO handle function calls without side effects better
         // if the isConstExpression is removed from the checker then this warning is shown
         TODO_ASSERT_EQUALS("[test.cpp:3:16]: (style) Condition 'f()' is always true [knownConditionTrueFalse]\n",
                            "",
@@ -4927,7 +4927,8 @@ private:
               "    if (b()) {}\n"
               "    if (!b()) {}\n"
               "}\n");
-        // TODO the isConstExpression thinks that b() is a non constant expression
+        // TODO handle function calls without side effects better
+        // these warnings are shown if isConstExpression is removed from the checker
         TODO_ASSERT_EQUALS("[test.cpp:3:10]: (style) Condition 'b()' is always false [knownConditionTrueFalse]\n"
                            "[test.cpp:4:9]: (style) Condition '!b()' is always true [knownConditionTrueFalse]\n",
                            "",
@@ -6485,7 +6486,7 @@ private:
         ASSERT_EQUALS("", errout_str());
 
         // the assignments are always false/true.. but "assignment in condition" would be a different checker
-	// knownConditionTrueFalse should only warn if code can be removed.
+        // knownConditionTrueFalse should only warn if code can be removed.
         check("void f(uint32_t u) {\n" // #2490
               "    if ((u = 0x00000000) || (u = 0xffffffff)) {}\n"
               "}\n");
