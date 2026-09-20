@@ -402,10 +402,14 @@ void ValueFlow::combineValueProperties(const ValueFlow::Value &value1, const Val
         result.valueType = value2.valueType;
         result.tokvalue = value2.tokvalue;
     }
-    if (value1.isIteratorValue())
+    if (value1.isIteratorValue()) {
         result.valueType = value1.valueType;
-    if (value2.isIteratorValue())
+        result.container = value1.container;
+    }
+    if (value2.isIteratorValue()) {
         result.valueType = value2.valueType;
+        result.container = value2.container;
+    }
     result.condition = value1.condition ? value1.condition : value2.condition;
     result.varId = (value1.varId != 0) ? value1.varId : value2.varId;
     result.varvalue = (result.varId == value1.varId) ? value1.varvalue : value2.varvalue;
@@ -1814,7 +1818,8 @@ static bool isNotEqual(std::pair<const Token*, const Token*> x, std::pair<const 
 static bool isNotEqual(std::pair<const Token*, const Token*> x, const std::string& y, bool cpp, const Settings& settings)
 {
     TokenList tokenList(settings, cpp ? Standards::Language::CPP : Standards::Language::C);
-    tokenList.createTokensFromBuffer(y.data(), y.size()); // TODO: check result?
+    const std::string str(y + "\n");
+    tokenList.createTokensFromBuffer(str.data(), str.size()); // TODO: check result?
     return isNotEqual(x, std::make_pair(tokenList.front(), tokenList.back()));
 }
 static bool isNotEqual(std::pair<const Token*, const Token*> x, const ValueType* y, bool cpp, const Settings& settings)
@@ -3143,7 +3148,7 @@ static void valueFlowLifetime(TokenList &tokenlist, ErrorLogger &errorLogger, co
             valueFlowLifetimeConstructor(tok->next(), tokenlist, errorLogger, settings);
         }
         // Check function calls
-        else if (Token::Match(tok, "%name% (") && !Token::simpleMatch(tok->linkAt(1), ") {")) {
+        else if (tok->scope()->isExecutable() && Token::Match(tok, "%name% (")) {
             valueFlowLifetimeFunction(tok, tokenlist, errorLogger, settings);
         }
         // Unique pointer lifetimes
@@ -3860,11 +3865,14 @@ static void valueFlowForwardConst(Token* start,
         } else {
             [&] {
                 // Add the container size to iterators of the container (mirrors ContainerExpressionAnalyzer::match)
-                if (hasContainerSizeValue && astIsIterator(tok) && isAliasOf(tok, var->declarationId())) {
+                if (hasContainerSizeValue && isIteratorOf(tok, var->declarationId())) {
                     for (const ValueFlow::Value& value : values) {
                         if (!value.isContainerSizeValue())
                             continue;
-                        setTokenValue(tok, value, settings);
+                        ValueFlow::Value sizeValue = value;
+                        if (!sizeValue.container)
+                            sizeValue.container = var->nameToken();
+                        setTokenValue(tok, std::move(sizeValue), settings);
                     }
                     return;
                 }
@@ -4213,11 +4221,15 @@ static void valueFlowAfterAssign(const TokenList &tokenlist,
             values.remove_if([&](const ValueFlow::Value& value) {
                 return types.count(value.valueType) > 0;
             });
-            // Remove container size if its not a container
-            if (!astIsContainer(tok->astOperand2()))
+            // Remove container size if its not a container - unless the size records its container
+            // and flows into a pointer to the container data (e.g. p = v.data())
+            if (!astIsContainer(tok->astOperand2())) {
+                const bool lhsIsPointer = astIsPointer(tok->astOperand1());
                 values.remove_if([&](const ValueFlow::Value& value) {
-                    return value.valueType == ValueFlow::Value::ValueType::CONTAINER_SIZE;
+                    return value.valueType == ValueFlow::Value::ValueType::CONTAINER_SIZE &&
+                           (!value.container || !lhsIsPointer);
                 });
+            }
             // Remove symbolic values that are the same as the LHS
             values.remove_if([&](const ValueFlow::Value& value) {
                 if (value.isSymbolicValue() && value.tokvalue)
@@ -4277,6 +4289,7 @@ static void valueFlowAfterAssign(const TokenList &tokenlist,
                         continue;
                     const Token* expr = value.tokvalue;
                     value.intvalue = -value.intvalue;
+                    value.invertBound();
                     value.tokvalue = tok->astOperand1();
 
                     // Skip if it intersects with an already assigned symbol
@@ -5410,6 +5423,11 @@ static void valueFlowForLoopSimplifyAfter(Token* fortok, nonneg int varid, const
         endToken = fortok->scope()->bodyEnd;
 
     Token* blockTok = fortok->linkAt(1)->linkAt(1);
+    if (const Token* escape = findEscapeStatement(blockTok->scope(), settings.library)) {
+        if (settings.debugwarnings)
+            bailout(tokenlist, errorLogger, escape, "For loop variable bailout on escape statement");
+        return;
+    }
     if (blockTok != endToken) {
         ValueFlow::Value v{num};
         v.errorPath.emplace_back(fortok,"After for loop, " + var->name() + " has value " + v.infoString());
@@ -6447,17 +6465,22 @@ static void valueFlowIterators(TokenList& tokenlist, const Settings& settings)
         const Library::Container::Yield yield = findIteratorYield(tok, ftok, settings.library);
         if (!ftok)
             continue;
-        if (yield == Library::Container::Yield::START_ITERATOR) {
-            ValueFlow::Value v(0);
-            v.setKnown();
-            v.valueType = ValueFlow::Value::ValueType::ITERATOR_START;
-            setTokenValue(const_cast<Token*>(ftok)->next(), std::move(v), settings);
-        } else if (yield == Library::Container::Yield::END_ITERATOR) {
-            ValueFlow::Value v(0);
-            v.setKnown();
-            v.valueType = ValueFlow::Value::ValueType::ITERATOR_END;
-            setTokenValue(const_cast<Token*>(ftok)->next(), std::move(v), settings);
+        if (yield != Library::Container::Yield::START_ITERATOR && yield != Library::Container::Yield::END_ITERATOR)
+            continue;
+        // The iterator value records the container it iterates. A pointer or a reference only
+        // transports the iterator, so record the container it refers to instead.
+        const Token* containerTok = tok;
+        if (astIsPointer(containerTok) || (containerTok->variable() && containerTok->variable()->isReference())) {
+            const ValueFlow::Value lifetime = ValueFlow::getLifetimeObjValue(containerTok);
+            if (lifetime.tokvalue && astIsContainer(lifetime.tokvalue) && !astIsPointer(lifetime.tokvalue))
+                containerTok = lifetime.tokvalue;
         }
+        ValueFlow::Value v(0);
+        v.setKnown();
+        v.valueType = yield == Library::Container::Yield::START_ITERATOR ? ValueFlow::Value::ValueType::ITERATOR_START
+                                                                         : ValueFlow::Value::ValueType::ITERATOR_END;
+        v.container = containerTok;
+        setTokenValue(const_cast<Token*>(ftok)->next(), std::move(v), settings);
     }
 }
 
@@ -7009,6 +7032,12 @@ static void valueFlowDynamicBufferSize(const TokenList& tokenlist, const SymbolD
     auto getBufferSizeFromNew = [&](const Token* newTok) -> MathLib::bigint {
         MathLib::bigint sizeValue = -1, numElem = -1;
 
+        // ::operator new(size_t size)
+        if (Token::Match(newTok->astOperand1(), "::| operatornew")) {
+            const Token *sizeTok = newTok->astOperand2();
+            return sizeTok->hasKnownIntValue() ? sizeTok->getKnownIntValue() : -1;
+        }
+
         if (newTok && newTok->astOperand1()) { // number of elements
             const Token* bracTok = nullptr, *typeTok = nullptr;
             if (newTok->astOperand1()->str() == "[")
@@ -7055,7 +7084,7 @@ static void valueFlowDynamicBufferSize(const TokenList& tokenlist, const SymbolD
             if (!rhs)
                 continue;
 
-            const bool isNew = rhs->isCpp() && rhs->str() == "new";
+            const bool isNew = rhs->isCpp() && (rhs->str() == "new" || (rhs->str() == "(" && Token::Match(rhs->astOperand1(), "::| operatornew")));
             if (!isNew && !Token::Match(rhs->previous(), "%name% ("))
                 continue;
 
@@ -7079,7 +7108,7 @@ static bool getMinMaxValues(const std::string& typestr,
                             MathLib::bigint& maxvalue)
 {
     TokenList typeTokens(settings, cpp ? Standards::Language::CPP : Standards::Language::C);
-    const std::string str(typestr + ";");
+    const std::string str(typestr + ";\n");
     if (!typeTokens.createTokensFromBuffer(str.data(), str.size()))
         return false;
     typeTokens.simplifyPlatformTypes();
@@ -7519,6 +7548,7 @@ void ValueFlow::setValues(TokenList& tokenlist,
         VFA(valueFlowInferCondition(tokenlist, settings)),
         VFA(valueFlowSwitchVariable(tokenlist, symboldatabase, errorLogger, settings)),
         VFA(valueFlowForLoop(tokenlist, symboldatabase, errorLogger, settings)),
+        VFA(valueFlowDynamicBufferSize(tokenlist, symboldatabase, errorLogger, settings)),
         VFA(valueFlowSubFunction(tokenlist, symboldatabase, errorLogger, settings)),
         VFA(valueFlowFunctionReturn(tokenlist, errorLogger, settings)),
         VFA(valueFlowLifetime(tokenlist, errorLogger, settings)),
@@ -7535,7 +7565,6 @@ void ValueFlow::setValues(TokenList& tokenlist,
     });
 
     runner.run_once({
-        VFA(valueFlowDynamicBufferSize(tokenlist, symboldatabase, errorLogger, settings)),
         VFA(valueFlowDebug(tokenlist, errorLogger, settings)), // TODO: add option to print it after each step/iteration
     });
 }

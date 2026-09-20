@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 19 # max + 3*std of the last 7K runs
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
@@ -63,7 +63,7 @@ jobs:
           cp /mingw64/bin/libstdc*.dll cppcheck-mingw/
           cp /mingw64/bin/libwinpthread-1.dll cppcheck-mingw/
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cppcheck-mingw
           path: cppcheck-mingw

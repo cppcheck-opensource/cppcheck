@@ -158,7 +158,7 @@ private:
 #define MatchCheck(...) MatchCheck_(__FILE__, __LINE__, __VA_ARGS__)
     bool MatchCheck_(const char* file, int line, const std::string& code, const std::string& pattern) {
         SimpleTokenizer tokenizer(settingsDefault, *this);
-        const std::string code2 = ";" + code + ";";
+        const std::string code2 = ";" + code + ";\n";
         try {
             ASSERT_LOC(tokenizer.tokenize(code2), file, line);
         } catch (...) {}
@@ -248,7 +248,7 @@ private:
 
     void multiCompare2() const { // #3294
         // Original pattern that failed: [[,(=<>+-*|&^] %num% [+-*/] %num% ]|,|)|;|=|%op%
-        const SimpleTokenList toks("a == 1");
+        const SimpleTokenList toks("a == 1\n");
         ASSERT_EQUALS(true, Token::Match(toks.front(), "a =|%op%"));
     }
 
@@ -257,28 +257,28 @@ private:
         // Code snippet that failed: "return lv@86 |= rv@87 ;"
 
         // Note: Also test "reverse" alternative pattern, two different code paths to handle it
-        const SimpleTokenList toks("return a |= b ;");
+        const SimpleTokenList toks("return a |= b ;\n");
         ASSERT_EQUALS(false, Token::Match(toks.front(), "return %name% xyz|%or% %name% ;"));
         ASSERT_EQUALS(false, Token::Match(toks.front(), "return %name% %or%|xyz %name% ;"));
 
-        const SimpleTokenList toks2("return a | b ;");
+        const SimpleTokenList toks2("return a | b ;\n");
         ASSERT_EQUALS(true, Token::Match(toks2.front(), "return %name% xyz|%or% %name% ;"));
         ASSERT_EQUALS(true, Token::Match(toks2.front(), "return %name% %or%|xyz %name% ;"));
 
-        const SimpleTokenList toks3("return a || b ;");
+        const SimpleTokenList toks3("return a || b ;\n");
         ASSERT_EQUALS(false, Token::Match(toks3.front(), "return %name% xyz|%or% %name% ;"));
         ASSERT_EQUALS(false, Token::Match(toks3.front(), "return %name% %or%|xyz %name% ;"));
 
         ASSERT_EQUALS(true, Token::Match(toks3.front(), "return %name% xyz|%oror% %name% ;"));
         ASSERT_EQUALS(true, Token::Match(toks3.front(), "return %name% %oror%|xyz %name% ;"));
 
-        const SimpleTokenList toks4("a % b ;");
+        const SimpleTokenList toks4("a % b ;\n");
         ASSERT_EQUALS(true, Token::Match(toks4.front(), "%name% >>|<<|&|%or%|^|% %name% ;"));
         ASSERT_EQUALS(true, Token::Match(toks4.front(), "%name% %|>>|<<|&|%or%|^ %name% ;"));
         ASSERT_EQUALS(true, Token::Match(toks4.front(), "%name% >>|<<|&|%or%|%|^ %name% ;"));
 
         //%name%|%num% support
-        const SimpleTokenList num("100");
+        const SimpleTokenList num("100\n");
         ASSERT_EQUALS(true, Token::Match(num.front(), "%num%|%name%"));
         ASSERT_EQUALS(true, Token::Match(num.front(), "%name%|%num%"));
         ASSERT_EQUALS(true, Token::Match(num.front(), "%name%|%num%|%bool%"));
@@ -288,7 +288,7 @@ private:
         ASSERT_EQUALS(false, Token::Match(num.front(), "%type%|%bool%|%char%"));
         ASSERT_EQUALS(true, Token::Match(num.front(), "%type%|%bool%|100"));
 
-        const SimpleTokenList numparen("( 100 )");
+        const SimpleTokenList numparen("( 100 )\n");
         ASSERT_EQUALS(true, Token::Match(numparen.front(), "(| %num%|%name% )|"));
         ASSERT_EQUALS(true, Token::Match(numparen.front(), "(| %name%|%num% )|"));
         ASSERT_EQUALS(true, Token::Match(numparen.front(), "(| %name%|%num%|%bool% )|"));
@@ -306,7 +306,7 @@ private:
 
     void multiCompare4() {
         SimpleTokenizer var(*this);
-        ASSERT(var.tokenize("std :: queue < int > foo ;"));
+        ASSERT(var.tokenize("std :: queue < int > foo ;\n"));
 
         ASSERT_EQUALS(Token::eBracket, var.tokens()->tokAt(3)->tokType());
         ASSERT_EQUALS(Token::eBracket, var.tokens()->tokAt(5)->tokType());
@@ -325,11 +325,11 @@ private:
 
     void multiCompare6() const {
         {
-            const SimpleTokenList stl("x %= y;");
+            const SimpleTokenList stl("x %= y;\n");
             ASSERT_EQUALS(true, Token::Match(stl.front(), "%name% %= %name%"));
         }
         {
-            const SimpleTokenList stl("x += y;");
+            const SimpleTokenList stl("x += y;\n");
             ASSERT_EQUALS(false, Token::Match(stl.front(), "%name% %= %name%"));
         }
     }
@@ -598,40 +598,40 @@ private:
 
     void nextArgument() {
         SimpleTokenizer example1(*this);
-        ASSERT(example1.tokenize("foo(1, 2, 3, 4);"));
+        ASSERT(example1.tokenize("foo(1, 2, 3, 4);\n"));
         ASSERT_EQUALS(true, Token::simpleMatch(example1.tokens()->tokAt(2)->nextArgument(), "2 , 3"));
         ASSERT_EQUALS(true, Token::simpleMatch(example1.tokens()->tokAt(4)->nextArgument(), "3 , 4"));
 
         SimpleTokenizer example2(*this);
-        ASSERT(example2.tokenize("foo();"));
+        ASSERT(example2.tokenize("foo();\n"));
         ASSERT_EQUALS(true, example2.tokens()->tokAt(2)->nextArgument() == nullptr);
 
         SimpleTokenizer example3(*this);
-        ASSERT(example3.tokenize("foo(bar(a, b), 2, 3);"));
+        ASSERT(example3.tokenize("foo(bar(a, b), 2, 3);\n"));
         ASSERT_EQUALS(true, Token::simpleMatch(example3.tokens()->tokAt(2)->nextArgument(), "2 , 3"));
 
         SimpleTokenizer example4(*this);
-        ASSERT(example4.tokenize("foo(x.i[1], \"\", 3);"));
+        ASSERT(example4.tokenize("foo(x.i[1], \"\", 3);\n"));
         ASSERT_EQUALS(true, Token::simpleMatch(example4.tokens()->tokAt(2)->nextArgument(), "\"\" , 3"));
     }
 
     void eraseTokens() const {
-        SimpleTokenList code("begin ; { this code will be removed } end", Standards::Language::C);
+        SimpleTokenList code("begin ; { this code will be removed } end\n", Standards::Language::C);
         Token::eraseTokens(code.front()->next(), code.front()->tokAt(9));
         ASSERT_EQUALS("begin ; end", code.front()->stringifyList(nullptr, false));
     }
 
 
     void matchAny() const {
-        const SimpleTokenList varBitOrVar("abc|def");
+        const SimpleTokenList varBitOrVar("abc|def\n");
         ASSERT_EQUALS(true, Token::Match(varBitOrVar.front(), "%name% %or% %name%"));
 
-        const SimpleTokenList varLogOrVar("abc||def");
+        const SimpleTokenList varLogOrVar("abc||def\n");
         ASSERT_EQUALS(true, Token::Match(varLogOrVar.front(), "%name% %oror% %name%"));
     }
 
     void matchSingleChar() const {
-        const SimpleTokenList singleChar("a");
+        const SimpleTokenList singleChar("a\n");
         ASSERT_EQUALS(true, Token::Match(singleChar.front(), "[a|bc]"));
         ASSERT_EQUALS(false, Token::Match(singleChar.front(), "[d|ef]"));
 
@@ -646,80 +646,80 @@ private:
         ASSERT_EQUALS(true, Token::Match(empty_String.front(), "!!else"));
         ASSERT_EQUALS(false, Token::Match(empty_String.front(), "!!else something"));
 
-        const SimpleTokenList ifSemicolon("if ;");
+        const SimpleTokenList ifSemicolon("if ;\n");
         ASSERT_EQUALS(true, Token::Match(ifSemicolon.front(), "if ; !!else"));
 
-        const SimpleTokenList ifSemicolonSomething("if ; something");
+        const SimpleTokenList ifSemicolonSomething("if ; something\n");
         ASSERT_EQUALS(true, Token::Match(ifSemicolonSomething.front(), "if ; !!else"));
 
-        const SimpleTokenList justElse("else");
+        const SimpleTokenList justElse("else\n");
         ASSERT_EQUALS(false, Token::Match(justElse.front(), "!!else"));
 
-        const SimpleTokenList ifSemicolonElse("if ; else");
+        const SimpleTokenList ifSemicolonElse("if ; else\n");
         ASSERT_EQUALS(false, Token::Match(ifSemicolonElse.front(), "if ; !!else"));
     }
 
     void matchType() {
-        const SimpleTokenList type("abc");
+        const SimpleTokenList type("abc\n");
         ASSERT_EQUALS(true, Token::Match(type.front(), "%type%"));
 
         SimpleTokenizer isVar(*this);
-        ASSERT(isVar.tokenize("int a = 3 ;"));
+        ASSERT(isVar.tokenize("int a = 3 ;\n"));
         ASSERT_EQUALS(true, Token::Match(isVar.tokens(), "%type%"));
         ASSERT_EQUALS(true, Token::Match(isVar.tokens(), "%type% %name%"));
         ASSERT_EQUALS(false, Token::Match(isVar.tokens(), "%type% %type%"));
 
         // TODO: %type% should not match keywords other than fundamental types
-        const SimpleTokenList noType1_cpp("delete");
+        const SimpleTokenList noType1_cpp("delete\n");
         ASSERT_EQUALS(true, Token::Match(noType1_cpp.front(), "%type%"));
 
-        const SimpleTokenList noType1_c("delete", Standards::Language::C);
+        const SimpleTokenList noType1_c("delete\n", Standards::Language::C);
         ASSERT_EQUALS(true, Token::Match(noType1_c.front(), "%type%"));
 
-        const SimpleTokenList noType2("void delete");
+        const SimpleTokenList noType2("void delete\n");
         ASSERT_EQUALS(true, Token::Match(noType2.front(), "!!foo %type%"));
     }
 
     void matchChar() const {
-        const SimpleTokenList chr1("'a'");
+        const SimpleTokenList chr1("'a'\n");
         ASSERT_EQUALS(true, Token::Match(chr1.front(), "%char%"));
 
-        const SimpleTokenList chr2("'1'");
+        const SimpleTokenList chr2("'1'\n");
         ASSERT_EQUALS(true, Token::Match(chr2.front(), "%char%"));
 
-        const SimpleTokenList noChr("\"10\"");
+        const SimpleTokenList noChr("\"10\"\n");
         ASSERT_EQUALS(false, Token::Match(noChr.front(), "%char%"));
     }
 
     void matchCompOp() const {
-        const SimpleTokenList comp1("<=");
+        const SimpleTokenList comp1("<=\n");
         ASSERT_EQUALS(true, Token::Match(comp1.front(), "%comp%"));
 
-        const SimpleTokenList comp2(">");
+        const SimpleTokenList comp2(">\n");
         ASSERT_EQUALS(true, Token::Match(comp2.front(), "%comp%"));
 
-        const SimpleTokenList noComp("=");
+        const SimpleTokenList noComp("=\n");
         ASSERT_EQUALS(false, Token::Match(noComp.front(), "%comp%"));
     }
 
     void matchStr() const {
-        const SimpleTokenList noStr1("abc");
+        const SimpleTokenList noStr1("abc\n");
         ASSERT_EQUALS(false, Token::Match(noStr1.front(), "%str%"));
 
-        const SimpleTokenList noStr2("'a'");
+        const SimpleTokenList noStr2("'a'\n");
         ASSERT_EQUALS(false, Token::Match(noStr2.front(), "%str%"));
 
-        const SimpleTokenList str("\"abc\"");
+        const SimpleTokenList str("\"abc\"\n");
         ASSERT_EQUALS(true, Token::Match(str.front(), "%str%"));
 
         // Empty string
-        const SimpleTokenList emptyStr("\"\"");
+        const SimpleTokenList emptyStr("\"\"\n");
         ASSERT_EQUALS(true, Token::Match(emptyStr.front(), "%str%"));
     }
 
     void matchVarid() {
         SimpleTokenizer var(*this);
-        ASSERT(var.tokenize("int a ; int b ;"));
+        ASSERT(var.tokenize("int a ; int b ;\n"));
 
         // Varid == 0 should throw exception
         ASSERT_THROW_INTERNAL_EQUALS((void)Token::Match(var.tokens(), "%type% %varid% ; %type% %name%", 0),INTERNAL,"Internal error. Token::Match called with varid 0.");
@@ -736,89 +736,89 @@ private:
     }
 
     void matchNumeric() const {
-        const SimpleTokenList nonNumeric("abc");
+        const SimpleTokenList nonNumeric("abc\n");
         ASSERT_EQUALS(false, Token::Match(nonNumeric.front(), "%num%"));
 
-        const SimpleTokenList msLiteral("5ms"); // #11438
+        const SimpleTokenList msLiteral("5ms\n"); // #11438
         ASSERT_EQUALS(false, Token::Match(msLiteral.front(), "%num%"));
 
-        const SimpleTokenList sLiteral("3s");
+        const SimpleTokenList sLiteral("3s\n");
         ASSERT_EQUALS(false, Token::Match(sLiteral.front(), "%num%"));
 
-        const SimpleTokenList octal("0123");
+        const SimpleTokenList octal("0123\n");
         ASSERT_EQUALS(true, Token::Match(octal.front(), "%num%"));
 
-        const SimpleTokenList decimal("4567");
+        const SimpleTokenList decimal("4567\n");
         ASSERT_EQUALS(true, Token::Match(decimal.front(), "%num%"));
 
-        const SimpleTokenList hexadecimal("0xDEADBEEF");
+        const SimpleTokenList hexadecimal("0xDEADBEEF\n");
         ASSERT_EQUALS(true, Token::Match(hexadecimal.front(), "%num%"));
 
-        const SimpleTokenList floatingPoint("0.0f");
+        const SimpleTokenList floatingPoint("0.0f\n");
         ASSERT_EQUALS(true, Token::Match(floatingPoint.front(), "%num%"));
 
-        const SimpleTokenList signedLong("0L");
+        const SimpleTokenList signedLong("0L\n");
         ASSERT_EQUALS(true, Token::Match(signedLong.front(), "%num%"));
 
-        const SimpleTokenList negativeSignedLong("-0L");
+        const SimpleTokenList negativeSignedLong("-0L\n");
         ASSERT_EQUALS(true, Token::Match(negativeSignedLong.front(), "- %num%"));
 
-        const SimpleTokenList positiveSignedLong("+0L");
+        const SimpleTokenList positiveSignedLong("+0L\n");
         ASSERT_EQUALS(true, Token::Match(positiveSignedLong.front(), "+ %num%"));
 
-        const SimpleTokenList unsignedInt("0U");
+        const SimpleTokenList unsignedInt("0U\n");
         ASSERT_EQUALS(true, Token::Match(unsignedInt.front(), "%num%"));
 
-        const SimpleTokenList unsignedLong("0UL");
+        const SimpleTokenList unsignedLong("0UL\n");
         ASSERT_EQUALS(true, Token::Match(unsignedLong.front(), "%num%"));
 
-        const SimpleTokenList unsignedLongLong("0ULL");
+        const SimpleTokenList unsignedLongLong("0ULL\n");
         ASSERT_EQUALS(true, Token::Match(unsignedLongLong.front(), "%num%"));
 
-        const SimpleTokenList positive("+666");
+        const SimpleTokenList positive("+666\n");
         ASSERT_EQUALS(true, Token::Match(positive.front(), "+ %num%"));
 
-        const SimpleTokenList negative("-42");
+        const SimpleTokenList negative("-42\n");
         ASSERT_EQUALS(true, Token::Match(negative.front(), "- %num%"));
 
-        const SimpleTokenList negativeNull("-.0");
+        const SimpleTokenList negativeNull("-.0\n");
         ASSERT_EQUALS(true, Token::Match(negativeNull.front(), "- %num%"));
 
-        const SimpleTokenList positiveNull("+.0");
+        const SimpleTokenList positiveNull("+.0\n");
         ASSERT_EQUALS(true, Token::Match(positiveNull.front(), "+ %num%"));
     }
 
 
     void matchBoolean() const {
-        const SimpleTokenList yes("YES");
+        const SimpleTokenList yes("YES\n");
         ASSERT_EQUALS(false, Token::Match(yes.front(), "%bool%"));
 
-        const SimpleTokenList positive("true");
+        const SimpleTokenList positive("true\n");
         ASSERT_EQUALS(true, Token::Match(positive.front(), "%bool%"));
 
-        const SimpleTokenList negative("false");
+        const SimpleTokenList negative("false\n");
         ASSERT_EQUALS(true, Token::Match(negative.front(), "%bool%"));
     }
 
     void matchOr() const {
-        const SimpleTokenList bitwiseOr(";|;");
+        const SimpleTokenList bitwiseOr(";|;\n");
         ASSERT_EQUALS(true,  Token::Match(bitwiseOr.front(), "; %or%"));
         ASSERT_EQUALS(true,  Token::Match(bitwiseOr.front(), "; %op%"));
         ASSERT_EQUALS(false, Token::Match(bitwiseOr.front(), "; %oror%"));
 
-        const SimpleTokenList bitwiseOrAssignment(";|=;");
+        const SimpleTokenList bitwiseOrAssignment(";|=;\n");
         ASSERT_EQUALS(false,  Token::Match(bitwiseOrAssignment.front(), "; %or%"));
         ASSERT_EQUALS(true,  Token::Match(bitwiseOrAssignment.front(), "; %op%"));
         ASSERT_EQUALS(false, Token::Match(bitwiseOrAssignment.front(), "; %oror%"));
 
-        const SimpleTokenList logicalOr(";||;");
+        const SimpleTokenList logicalOr(";||;\n");
         ASSERT_EQUALS(false, Token::Match(logicalOr.front(), "; %or%"));
         ASSERT_EQUALS(true,  Token::Match(logicalOr.front(), "; %op%"));
         ASSERT_EQUALS(true,  Token::Match(logicalOr.front(), "; %oror%"));
         ASSERT_EQUALS(true,  Token::Match(logicalOr.front(), "; &&|%oror%"));
         ASSERT_EQUALS(true,  Token::Match(logicalOr.front(), "; %oror%|&&"));
 
-        const SimpleTokenList logicalAnd(";&&;");
+        const SimpleTokenList logicalAnd(";&&;\n");
         ASSERT_EQUALS(true, Token::simpleMatch(logicalAnd.front(), "; &&"));
         ASSERT_EQUALS(true, Token::Match(logicalAnd.front(), "; &&|%oror%"));
         ASSERT_EQUALS(true, Token::Match(logicalAnd.front(), "; %oror%|&&"));
@@ -1144,7 +1144,7 @@ private:
 
     void canFindMatchingBracketsNeedsOpen() {
         SimpleTokenizer var(*this);
-        ASSERT(var.tokenize("std::deque<std::set<int> > intsets;"));
+        ASSERT(var.tokenize("std::deque<std::set<int> > intsets;\n"));
 
         const Token* const t = var.tokens()->findClosingBracket();
         ASSERT(t == nullptr);
@@ -1152,7 +1152,7 @@ private:
 
     void canFindMatchingBracketsInnerPair() {
         SimpleTokenizer var(*this);
-        ASSERT(var.tokenize("std::deque<std::set<int> > intsets;"));
+        ASSERT(var.tokenize("std::deque<std::set<int> > intsets;\n"));
 
         const Token * const t = var.tokens()->tokAt(7)->findClosingBracket();
         ASSERT_EQUALS(">", t->str());
@@ -1161,7 +1161,7 @@ private:
 
     void canFindMatchingBracketsOuterPair() {
         SimpleTokenizer var(*this);
-        ASSERT(var.tokenize("std::deque<std::set<int> > intsets;"));
+        ASSERT(var.tokenize("std::deque<std::set<int> > intsets;\n"));
 
         const Token* const t = var.tokens()->tokAt(3)->findClosingBracket();
         ASSERT_EQUALS(">", t->str());
@@ -1170,7 +1170,7 @@ private:
 
     void canFindMatchingBracketsWithTooManyClosing() {
         SimpleTokenizer var(*this);
-        ASSERT(var.tokenize("X< 1>2 > x1;"));
+        ASSERT(var.tokenize("X< 1>2 > x1;\n"));
 
         const Token* const t = var.tokens()->next()->findClosingBracket();
         ASSERT_EQUALS(">", t->str());
@@ -1179,7 +1179,7 @@ private:
 
     void canFindMatchingBracketsWithTooManyOpening() {
         SimpleTokenizer var(*this);
-        ASSERT(var.tokenize("X < (2 < 1) > x1;"));
+        ASSERT(var.tokenize("X < (2 < 1) > x1;\n"));
 
         const Token* t = var.tokens()->next()->findClosingBracket();
         ASSERT(t != nullptr && t->str() == ">");
@@ -1190,7 +1190,7 @@ private:
 
     void findClosingBracket() {
         SimpleTokenizer var(*this);
-        ASSERT(var.tokenize("template<typename X, typename...Y> struct S : public Fred<Wilma<Y...>> {}"));
+        ASSERT(var.tokenize("template<typename X, typename...Y> struct S : public Fred<Wilma<Y...>> {}\n"));
 
         const Token* const t = var.tokens()->next()->findClosingBracket();
         ASSERT(Token::simpleMatch(t, "> struct"));
@@ -1224,29 +1224,29 @@ private:
 
     void expressionString() {
         SimpleTokenizer var1(*this);
-        ASSERT(var1.tokenize("void f() { *((unsigned long long *)x) = 0; }"));
+        ASSERT(var1.tokenize("void f() { *((unsigned long long *)x) = 0; }\n"));
         const Token *const tok1 = Token::findsimplematch(var1.tokens(), "*");
         ASSERT_EQUALS("*((unsigned long long*)x)", tok1->expressionString());
 
         SimpleTokenizer var2(*this);
-        ASSERT(var2.tokenize("typedef unsigned long long u64; void f() { *((u64 *)x) = 0; }"));
+        ASSERT(var2.tokenize("typedef unsigned long long u64; void f() { *((u64 *)x) = 0; }\n"));
         const Token *const tok2 = Token::findsimplematch(var2.tokens(), "*");
         ASSERT_EQUALS("*((unsigned long long*)x)", tok2->expressionString());
 
         SimpleTokenizer data3(*this);
-        ASSERT(data3.tokenize("void f() { return (t){1,2}; }"));
+        ASSERT(data3.tokenize("void f() { return (t){1,2}; }\n"));
         ASSERT_EQUALS("return(t){1,2}", data3.tokens()->tokAt(5)->expressionString());
 
         SimpleTokenizer data4(*this);
-        ASSERT(data4.tokenize("void f() { return L\"a\"; }"));
+        ASSERT(data4.tokenize("void f() { return L\"a\"; }\n"));
         ASSERT_EQUALS("returnL\"a\"", data4.tokens()->tokAt(5)->expressionString());
 
         SimpleTokenizer data5(*this);
-        ASSERT(data5.tokenize("void f() { return U\"a\"; }"));
+        ASSERT(data5.tokenize("void f() { return U\"a\"; }\n"));
         ASSERT_EQUALS("returnU\"a\"", data5.tokens()->tokAt(5)->expressionString());
 
         SimpleTokenizer data6(*this);
-        ASSERT(data6.tokenize("x = \"\\0\\x1\\x2\\x3\\x4\\x5\\x6\\x7\";"));
+        ASSERT(data6.tokenize("x = \"\\0\\x1\\x2\\x3\\x4\\x5\\x6\\x7\";\n"));
         ASSERT_EQUALS("x=\"\\x00\\x01\\x02\\x03\\x04\\x05\\x06\\x07\"", data6.tokens()->next()->expressionString());
     }
 

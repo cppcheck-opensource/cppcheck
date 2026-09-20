@@ -11,6 +11,7 @@ from .util import dump_create, dump_remove, convert_json_output
 from addons.misra import C11_STDLIB_IDENTIFIERS, C99_STDLIB_IDENTIFIERS,C90_STDLIB_IDENTIFIERS, isStdLibId, isKeyword
 
 TEST_SOURCE_FILES = [os.path.join('addons','test','misra','misra-test.c')]
+REGRESSION_SOURCE_FILE = os.path.join('addons', 'test', 'misra', 'misra-regression-prototypes.c')
 
 
 def remove_misra_config(s:str):
@@ -92,6 +93,20 @@ def test_json_out(checker, capsys, test_files):
     assert("Mandatory" in json_output['c2012-10.4'][0]['extra'])
     assert("Required" in json_output['c2012-21.3'][0]['extra'])
     assert("Advisory" in json_output['c2012-20.1'][0]['extra'])
+
+def test_function_prototype_and_pointer_call_regressions(checker, capsys):
+    dump_create(REGRESSION_SOURCE_FILE)
+    sys.argv.append("--cli")
+    try:
+        checker.loadRuleTexts("./addons/test/misra/misra_rules_dummy.txt")
+        checker.parseDump(REGRESSION_SOURCE_FILE + ".dump")
+        captured = capsys.readouterr().out
+        json_output = convert_json_output(captured.splitlines())
+        assert "c2012-8.4" not in json_output
+        assert "c2012-17.3" not in json_output
+    finally:
+        sys.argv.remove("--cli")
+        dump_remove(REGRESSION_SOURCE_FILE)
 
 
 def test_rules_cppcheck_severity(checker, capsys, test_files):

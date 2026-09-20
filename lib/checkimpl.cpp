@@ -40,13 +40,6 @@ void CheckImpl::reportError(ErrorPath errorPath, Severity severity, const char i
     mErrorLogger.reportErr(errmsg);
 }
 
-bool CheckImpl::wrongData(const Token *tok, const char *str)
-{
-    if (mSettings.daca)
-        reportError(tok, Severity::debug, "DacaWrongData", "Wrong data detected by condition " + std::string(str));
-    return true;
-}
-
 ErrorPath CheckImpl::getErrorPath(const Token* errtok, const ValueFlow::Value* value, std::string bug) const
 {
     ErrorPath errorPath;

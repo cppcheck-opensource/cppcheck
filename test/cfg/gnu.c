@@ -197,6 +197,31 @@ void knownConditionTrueFalse_ffsll(long long i)
     if (ffsll(i) == 0) {}
 }
 
+int uninitvar_popcount() {
+    unsigned int a;
+    // cppcheck-suppress uninitvar
+    int b = __builtin_popcount(a); // popcount requires init arg
+    return b;
+}
+
+int invalidFunctionArg_clz() {
+    // cppcheck-suppress invalidFunctionArg
+    return __builtin_clz(0);
+}
+
+int invalidFunctionArgBool_ctzg(unsigned int a, unsigned int b) {
+    // cppcheck-suppress invalidFunctionArgBool
+    return __builtin_ctzg(a, a % b == 0);
+}
+
+#if __GNUC__ > 14
+int ignoredReturnValue_stdc_width(size_t n) {
+    // cppcheck-suppress ignoredReturnValue
+    __builtin_stdc_bit_width(n);
+    return 0;
+}
+#endif
+
 #if !defined(__APPLE__)
 int nullPointer_semtimedop(int semid, struct sembuf *sops, size_t nsops, const struct timespec *timeout)
 {

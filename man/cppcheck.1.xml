@@ -261,6 +261,14 @@ man(1), man(7), http://www.tldp.org/HOWTO/Man-Page/
            control the term elements. -->
       <varlistentry>
         <term>
+          <option>-CC</option>
+        </term>
+        <listitem>
+          <para>Do not remove comments during preprocessing (requires -E).</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
           <option>--check-config</option>
         </term>
         <listitem>
@@ -291,6 +299,14 @@ Example: -DDEBUG=1 -D__cplusplus</para>
         <listitem>
           <para>By default Cppcheck checks all configurations. Use '-U' to explicitly hide certain #ifdef &lt;id&gt; code paths from checking.
 Example: '-UDEBUG'</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          <option>-E</option>
+        </term>
+        <listitem>
+          <para>Print preprocessor output on stdout and don't do any further processing.</para>
         </listitem>
       </varlistentry>
       <varlistentry>

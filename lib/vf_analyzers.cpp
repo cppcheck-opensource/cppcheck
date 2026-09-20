@@ -893,7 +893,7 @@ static bool isAliasOf(const Variable * var, const Token *tok, nonneg int varid, 
             return false;
         if (val.isLifetimeValue() && !val.isLocalLifetimeValue())
             return false;
-        if (val.isLifetimeValue() && val.lifetimeKind != ValueFlow::Value::LifetimeKind::Address)
+        if (val.isLifetimeValue() && val.lifetimeKind != ValueFlow::Value::LifetimeKind::Address && val.lifetimeKind != ValueFlow::Value::LifetimeKind::SubObject)
             return false;
         if (!Token::Match(val.tokvalue, ".|&|*|%var%"))
             return false;
@@ -1168,7 +1168,7 @@ struct SingleValueFlowAnalyzer : ValueFlowAnalyzer {
     }
 
     bool isAlias(const Token* tok, bool& inconclusive) const override {
-        if (value.isLifetimeValue())
+        if (value.isLifetimeValue() && value.lifetimeKind != ValueFlow::Value::LifetimeKind::SubObject)
             return false;
         for (const auto& m: {
             std::ref(getVars()), std::ref(getAliasedVars())
@@ -1299,6 +1299,12 @@ struct ExpressionAnalyzer : SingleValueFlowAnalyzer {
         if (value.isSymbolicValue()) {
             dependOnThis |= exprDependsOnThis(value.tokvalue);
             setupExprVarIds(value.tokvalue);
+        }
+        if (value.isContainerSizeValue() && value.container) {
+            // a container size tracked through another expression (e.g. a pointer obtained from
+            // data()) is invalidated by writes to the container it belongs to
+            dependOnThis |= exprDependsOnThis(value.container);
+            setupExprVarIds(value.container);
         }
         uniqueExprId =
             expr->isUniqueExprId() && (Token::Match(expr, "%cop%") || !isVariableChanged(expr, 0, s));
@@ -1504,15 +1510,22 @@ ValuePtr<Analyzer> makeMemberExpressionAnalyzer(std::string varname, const Token
 struct ContainerExpressionAnalyzer : ExpressionAnalyzer {
     ContainerExpressionAnalyzer(const Token* expr, ValueFlow::Value val, const Settings& s)
         : ExpressionAnalyzer(expr, std::move(val), s)
-    {}
+    {
+        // The size of a container expression belongs to that expression. Through a pointer the
+        // size keeps belonging to the container the pointer was obtained from.
+        if (astIsContainer(expr) && !astIsPointer(expr))
+            value.container = expr;
+    }
 
     bool match(const Token* tok) const override {
-        return tok->exprId() == expr->exprId() || (astIsIterator(tok) && isAliasOf(tok, expr->exprId()));
+        return tok->exprId() == expr->exprId() || isIteratorOf(tok, expr->exprId());
     }
 
     Action isWritable(const Token* tok, Direction /*d*/) const override
     {
-        if (astIsIterator(tok))
+        // only writes to the container itself change its size - not writes through an iterator
+        // or to a default-inserted element
+        if (tok->exprId() != expr->exprId())
             return Action::None;
         if (!getValue(tok))
             return Action::None;

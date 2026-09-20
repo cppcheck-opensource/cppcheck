@@ -210,6 +210,8 @@ def test_progress(tmpdir):
             "progress: ValueFlow::valueFlowSwitchVariable(tokenlist, symboldatabase, errorLogger, settings) 1 100%\n"
             "progress: ValueFlow::valueFlowForLoop(tokenlist, symboldatabase, errorLogger, settings) 1 0%\n"
             "progress: ValueFlow::valueFlowForLoop(tokenlist, symboldatabase, errorLogger, settings) 1 100%\n"
+            "progress: ValueFlow::valueFlowDynamicBufferSize(tokenlist, symboldatabase, errorLogger, settings) 1 0%\n"
+            "progress: ValueFlow::valueFlowDynamicBufferSize(tokenlist, symboldatabase, errorLogger, settings) 1 100%\n"
             "progress: ValueFlow::valueFlowSubFunction(tokenlist, symboldatabase, errorLogger, settings) 1 0%\n"
             "progress: ValueFlow::valueFlowSubFunction(tokenlist, symboldatabase, errorLogger, settings) 1 100%\n"
             "progress: ValueFlow::valueFlowFunctionReturn(tokenlist, errorLogger, settings) 1 0%\n"
@@ -428,6 +430,29 @@ typedef int MISRA_5_6_VIOLATION;
         'Checking {} ...'.format(test_file)
     ]
     assert stderr == '{}:2:13: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-2.3]\ntypedef int MISRA_5_6_VIOLATION;\n            ^\n'.format(test_file)
+
+
+def test_report_type_misra_c_2025_20_6(tmpdir):  # #15017
+    """ using a preprocessor directive as a macro parameter is a MISRA C 20.6 violation """
+    test_file = os.path.join(tmpdir, 'test.c')
+    with open(test_file, 'wt') as f:
+        f.write("""
+#define A(X) X
+
+A(
+#ifdef __GNUC__
+    1
+#else
+    0
+#endif
+)
+""")
+
+    args = ['--template=simple', '--report-type=misra-c-2025', test_file]
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0, stdout if stdout else stderr
+    assert stderr == "{}:5:1: Required: failed to expand 'A', it is invalid to use a preprocessor directive as macro parameter [20.6]\n".format(test_file)
 
 
 def test_addon_y2038(tmpdir):
@@ -2318,7 +2343,7 @@ void f(bool b)
     cache_file = (build_dir / 'test.a1')
 
     root = ElementTree.fromstring(cache_file.read_text())
-    hash_1 = root.get('hash')
+    hash_1 = root.findtext('hash')
 
     args += ['--check-level=exhaustive']
 
@@ -2327,7 +2352,7 @@ void f(bool b)
     assert stderr == ''
 
     root = ElementTree.fromstring(cache_file.read_text())
-    hash_2 = root.get('hash')
+    hash_2 = root.findtext('hash')
 
     assert hash_1 != hash_2
 
@@ -2666,7 +2691,7 @@ void f(const void* p)
 <results version="2">
     <cppcheck version="{}"/>
     <errors>
-        <error id="nullPointerRedundantCheck" severity="warning" msg="Either the condition &apos;p&apos; is redundant or there is possible null pointer dereference: p." verbose="Either the condition &apos;p&apos; is redundant or there is possible null pointer dereference: p." cwe="476" file0="{}" remark="boom">
+        <error id="nullPointerRedundantCheck" severity="warning" msg="Either the condition &apos;p&apos; is redundant or there is possible null pointer dereference: p." verbose="Either the condition &apos;p&apos; is redundant or there is possible null pointer dereference: p." cwe="476" hash="2884341854190588507" file0="{}" remark="boom">
             <location file="{}" line="5" column="12" info="Null pointer dereference"/>
             <location file="{}" line="4" column="8" info="Assuming that condition &apos;p&apos; is not redundant"/>
             <symbol>p</symbol>
@@ -4428,25 +4453,25 @@ def __test_active_checkers(tmp_path, active_cnt, total_cnt, use_misra=False, use
 
 
 def test_active_unusedfunction_only(tmp_path):
-    __test_active_checkers(tmp_path, 1, 188, use_unusedfunction_only=True)
+    __test_active_checkers(tmp_path, 1, 189, use_unusedfunction_only=True)
 
 
 def test_active_unusedfunction_only_builddir(tmp_path):
     checkers_exp = [
         'CheckUnusedFunctions::check'
     ]
-    __test_active_checkers(tmp_path, 1, 188, use_unusedfunction_only=True, checkers_exp=checkers_exp)
+    __test_active_checkers(tmp_path, 1, 189, use_unusedfunction_only=True, checkers_exp=checkers_exp)
 
 
 def test_active_unusedfunction_only_misra(tmp_path):
-    __test_active_checkers(tmp_path, 1, 388, use_unusedfunction_only=True, use_misra=True)
+    __test_active_checkers(tmp_path, 1, 389, use_unusedfunction_only=True, use_misra=True)
 
 
 def test_active_unusedfunction_only_misra_builddir(tmp_path):
     checkers_exp = [
         'CheckUnusedFunctions::check'
     ]
-    __test_active_checkers(tmp_path, 1, 388, use_unusedfunction_only=True, use_misra=True, checkers_exp=checkers_exp)
+    __test_active_checkers(tmp_path, 1, 389, use_unusedfunction_only=True, use_misra=True, checkers_exp=checkers_exp)
 
 
 def test_analyzerinfo(tmp_path):
@@ -4529,17 +4554,17 @@ def test_analyzerinfo(tmp_path):
         "discarding cached result from '{}' for '{}' - unexpected root node".format(test_a1_file_s, test_file_s)
     ])
 
-    # missing 'hash' attribute
+    # missing 'hash' node
     with open(test_a1_file, 'w') as f:
         f.write('<?xml version="1.0"?><analyzerinfo/>')
 
     run_and_assert_cppcheck([
-        "discarding cached result from '{}' for '{}' - no 'hash' attribute found".format(test_a1_file_s, test_file_s)
+        "discarding cached result from '{}' for '{}' - no 'hash' node found".format(test_a1_file_s, test_file_s)
     ])
 
-    # invalid 'hash' attribute
+    # invalid 'hash' node
     with open(test_a1_file, 'w') as f:
-        f.write('<?xml version="1.0"?><analyzerinfo hash="hash"/>')
+        f.write('<?xml version="1.0"?><analyzerinfo><hash>hash</hash></analyzerinfo>')
 
     run_and_assert_cppcheck([
         "discarding cached result from '{}' for '{}' - hash mismatch".format(test_a1_file_s, test_file_s)
@@ -4860,3 +4885,45 @@ def test_ipc_inline_suppressions(tmp_path):
     stdout_lines.sort()
     assert stdout_lines == stdout_exp
     assert stderr.splitlines() == []
+
+test_redundant_file_reads_params = [
+    ([],                       3),
+    (['--suppress=zerodiv'],   1),
+    (['--template=cppcheck1'], 1),
+    (['--xml'],                1),
+]
+
+@pytest.mark.skipif(sys.platform != 'linux' or 'ASAN_OPTIONS' in os.environ, reason="uses strace")
+@pytest.mark.parametrize('flags,expected', test_redundant_file_reads_params)
+def test_redundant_file_reads(tmpdir, flags, expected):
+    source_pathname = os.path.join(tmpdir, 'test.c')
+    content = """
+void f(int x) {
+    int y = x / 0;
+    int z = x / 0;
+}
+"""
+    cppcheck_path = __lookup_cppcheck_exe()
+
+    with open(source_pathname, 'wt') as f:
+        f.write(content)
+
+    args = [
+        'strace',
+         '--summary-only',
+         '--summary-columns=count',
+         '--trace=openat',
+         '--follow-forks',
+         f'--trace-path={source_pathname}',
+         cppcheck_path,
+         '-q',
+         source_pathname,
+    ]
+
+    args += flags
+    proc = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+
+    _, stderr = proc.communicate()
+
+    assert proc.returncode == 0
+    assert stderr.splitlines()[-1].strip() == f'{expected} total'.encode('utf-8')

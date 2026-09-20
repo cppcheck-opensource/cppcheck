@@ -153,11 +153,13 @@ public:
      * or template to be used. E.g. "{file}:{line},{severity},{id},{message}"
      * @param templateLocation Format Empty string to use default output format
      * or template to be used. E.g. "{file}:{line},{info}"
+     * @param noCode Always replace {code} with an empty string
      * @return formatted string
      */
     std::string toString(bool verbose,
                          const std::string &templateFormat,
-                         const std::string &templateLocation) const;
+                         const std::string &templateLocation,
+                         bool noCode = false) const;
 
     std::string serialize() const;
     /**
@@ -209,6 +211,15 @@ public:
 
 private:
     static std::string fixInvalidChars(const std::string& raw);
+
+    void calculateWarningHash(const std::list<const Token*>& callstack);
+
+    /**
+     * Fallback hash calculation for warnings that have no token information
+     * (e.g. whole-program/CTU checks, unusedFunction, staticFunction). Hashes
+     * the id, message and all filenames/notes in the callstack instead.
+     */
+    void calculateWarningHashFromLocations();
 
     /** Short message */
     std::string mShortMessage;

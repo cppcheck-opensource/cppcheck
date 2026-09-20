@@ -78,6 +78,11 @@ void CheckAssertImpl::assertWithSideEffects()
                 continue;
             }
 
+            const Token* parent = tmp->astParent();
+            while (Token::Match(parent, ".|::"))
+                parent = parent->astParent();
+            if (!Token::simpleMatch(parent, "("))
+                continue;
             const Function* f = tmp->function();
             const Scope* scope = f->functionScope;
             if (!scope) {

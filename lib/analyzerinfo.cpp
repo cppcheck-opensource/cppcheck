@@ -58,6 +58,68 @@ void AnalyzerInformation::writeFilesTxt(const std::string &buildDir, const std::
     fout << getFilesTxt(sourcefiles, fileSettings);
 }
 
+void AnalyzerInformation::writeIncludes(const std::set<std::string> &files)
+{
+    if (!files.empty() && mOutputStream.is_open()) {
+        mOutputStream << "  <includes>\n";
+        for (const std::string &file : files) {
+            mOutputStream << "    <filename>" << file << "</filename>\n";
+        }
+        mOutputStream << "  </includes>\n";
+    }
+}
+
+std::set<std::string> AnalyzerInformation::getIncludes(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId) const
+{
+    if (mOutputStream.is_open())
+        throw std::runtime_error("analyzer information file is already open");
+
+    std::set<std::string> files;
+
+    if (buildDir.empty() || sourcefile.empty())
+        return files;
+
+    const std::string analyzerInfoFile = AnalyzerInformation::getAnalyzerInfoFile(buildDir, sourcefile, cfg, fsFileId);
+
+    tinyxml2::XMLDocument analyzerInfoDoc;
+    if (analyzerInfoDoc.LoadFile(analyzerInfoFile.c_str()) != tinyxml2::XML_SUCCESS)
+        return files;
+
+    const tinyxml2::XMLElement *const rootNode = analyzerInfoDoc.FirstChildElement();
+    if (rootNode == nullptr)
+        return files;
+
+    if (strcmp(rootNode->Name(), "analyzerinfo") != 0)
+        return files;
+
+    const tinyxml2::XMLElement *includesNode = nullptr;
+    for (const tinyxml2::XMLElement *e = rootNode->FirstChildElement(); e; e = e->NextSiblingElement()) {
+        if (strcmp(e->Name(), "includes") == 0) {
+            includesNode = e;
+            break;
+        }
+    }
+
+    if (includesNode == nullptr)
+        return files;
+
+    for (const tinyxml2::XMLElement *e = includesNode->FirstChildElement(); e; e = e->NextSiblingElement()) {
+        if (strcmp(e->Name(), "filename") != 0)
+            continue;
+
+        files.insert(e->GetText());
+    }
+
+    return files;
+}
+
+void AnalyzerInformation::writeHash(std::size_t hash)
+{
+    if (mOutputStream.is_open()) {
+        mOutputStream << "  <hash>" << hash << "</hash>\n";
+    }
+}
+
 std::string AnalyzerInformation::getFilesTxt(const std::list<std::string> &sourcefiles, const std::list<FileSettings> &fileSettings) {
     std::ostringstream ret;
 
@@ -94,10 +156,17 @@ std::string AnalyzerInformation::skipAnalysis(const tinyxml2::XMLDocument &analy
     if (strcmp(rootNode->Name(), "analyzerinfo") != 0)
         return "unexpected root node";
 
-    const char * const attr = rootNode->Attribute("hash");
-    if (!attr)
-        return "no 'hash' attribute found";
-    if (attr != std::to_string(hash))
+    const tinyxml2::XMLElement *hashNode = nullptr;
+    for (const tinyxml2::XMLElement *e = rootNode->FirstChildElement(); e; e = e->NextSiblingElement()) {
+        if (strcmp(e->Name(), "hash") == 0) {
+            hashNode = e;
+            break;
+        }
+    }
+
+    if (!hashNode)
+        return "no 'hash' node found";
+    if (hashNode->GetText() != std::to_string(hash))
         return "hash mismatch";
 
     for (const tinyxml2::XMLElement *e = rootNode->FirstChildElement(); e; e = e->NextSiblingElement()) {
@@ -194,7 +263,7 @@ bool AnalyzerInformation::analyzeFile(const std::string &buildDir, const std::st
     if (!mOutputStream.is_open())
         throw std::runtime_error("failed to open '" + analyzerInfoFile + "'");
     mOutputStream << "<?xml version=\"1.0\"?>\n";
-    mOutputStream << "<analyzerinfo hash=\"" << hash << "\">\n";
+    mOutputStream << "<analyzerinfo>\n";
 
     return true;
 }

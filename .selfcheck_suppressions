@@ -76,7 +76,6 @@ funcArgNamesDifferent:externals/tinyxml2/tinyxml2.cpp
 funcArgNamesDifferentUnnamed:externals/tinyxml2/tinyxml2.cpp
 funcArgNamesDifferentUnnamed:externals/tinyxml2/tinyxml2.h
 nullPointerRedundantCheck:externals/tinyxml2/tinyxml2.cpp
-knownConditionTrueFalse:externals/tinyxml2/tinyxml2.cpp
 useStlAlgorithm:externals/simplecpp/simplecpp.cpp
 funcArgNamesDifferentUnnamed:externals/simplecpp/simplecpp.h
 missingMemberCopy:externals/simplecpp/simplecpp.h

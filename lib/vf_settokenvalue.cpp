@@ -231,6 +231,11 @@ namespace ValueFlow
         if (!value.isImpossible() && value.isIntValue())
             value = truncateImplicitConversion(tok->astParent(), value, settings);
 
+        // a container size value on a container expression belongs to that expression, while a
+        // pointer or an iterator only transports the size of the container it was obtained from
+        if (value.isContainerSizeValue() && !astIsPointer(tok) && astIsContainer(tok))
+            value.container = tok;
+
         if (settings.debugnormal)
             setSourceLocation(value, loc, tok);
 
@@ -300,15 +305,32 @@ namespace ValueFlow
                     }
                 }
             }
+            // an empty associative container implies that its default-inserted elements are empty as well
+            if (Token::simpleMatch(parent, "[") && astIsLHS(tok) && astIsContainer(parent) &&
+                tok->valueType()->container && tok->valueType()->container->stdAssociativeLike &&
+                !value.isImpossible() && value.intvalue == 0)
+                setTokenValue(parent, value, settings);
             Token* next = nullptr;
             const Library::Container::Yield yields = getContainerYield(parent, settings.library, next);
             if (yields == Library::Container::Yield::SIZE) {
                 value.valueType = Value::ValueType::INT;
+                value.container = nullptr;
+                setTokenValue(next, std::move(value), settings);
+            } else if (contains({Library::Container::Yield::BUFFER,
+                                 Library::Container::Yield::BUFFER_NT,
+                                 Library::Container::Yield::START_ITERATOR,
+                                 Library::Container::Yield::END_ITERATOR,
+                                 Library::Container::Yield::ITERATOR},
+                                yields)) {
+                // The returned pointer or iterator has as many elements available as the container
+                if (yields == Library::Container::Yield::BUFFER_NT)
+                    value.intvalue += 1; // ..plus the null terminator
                 setTokenValue(next, std::move(value), settings);
             } else if (yields == Library::Container::Yield::EMPTY) {
                 const Value::Bound bound = value.bound;
                 const long long intvalue = value.intvalue;
                 value.valueType = Value::ValueType::INT;
+                value.container = nullptr;
                 value.bound = Value::Bound::Point;
                 if (value.isImpossible()) {
                     if (intvalue == 0)

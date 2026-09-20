@@ -39,7 +39,7 @@ jobs:
       QT_VERSION: 6.10.0
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
@@ -160,13 +160,13 @@ jobs:
           IWYU: include-what-you-use
           IWYU_CLANG_INC: ${{ matrix.clang_inc }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: success() || failure()
         with:
           name: Compilation Database (include-what-you-use - ${{ matrix.os }} ${{ matrix.stdlib }})
           path: ./cmake.output/compile_commands.json
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: ${{ contains(matrix.os, 'macos') && (success() || failure()) }}
         with:
           name: macOS Mappings
@@ -174,7 +174,7 @@ jobs:
             ./iwyu-mapgen-apple-libc.py
             ./macos.imp
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: success() || failure()
         with:
           name: Logs (include-what-you-use - ${{ matrix.os }} ${{ matrix.stdlib }})
@@ -199,7 +199,7 @@ jobs:
       QT_VERSION: 6.10.0
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
@@ -256,13 +256,13 @@ jobs:
           # TODO: run multi-threaded
           find $PWD/cli $PWD/lib $PWD/test $PWD/gui -maxdepth 1 -name "*.cpp" | xargs -t -n 1 clang-include-cleaner-22 --print=changes --extra-arg=-w --extra-arg=-stdlib=${{ matrix.stdlib }} -p cmake.output > clang-include-cleaner.log 2>&1
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: success() || failure()
         with:
           name: Compilation Database (clang-include-cleaner - ${{ matrix.stdlib }})
           path: ./cmake.output/compile_commands.json
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: success() || failure()
         with:
           name: Logs (clang-include-cleaner - ${{ matrix.stdlib }})

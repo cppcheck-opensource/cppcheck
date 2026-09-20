@@ -153,6 +153,36 @@ std::string SuppressionList::parseXmlFile(const char *filename)
     return "";
 }
 
+static std::string getExtraComment(const std::string &comment, std::string::size_type startPos, std::string::size_type *delimPos = nullptr)
+{
+    const std::string::size_type semiPos = comment.find(';', startPos);
+    const std::string::size_type slashPos = comment.find("//", startPos);
+    std::string::size_type pos;
+
+    if (delimPos)
+        *delimPos = std::min(semiPos, slashPos);
+
+    if (semiPos < slashPos) {
+        pos = semiPos + 1;
+    } else if (slashPos < semiPos) {
+        pos = slashPos + 2;
+    } else {
+        return "";
+    }
+
+    std::string extra = comment.substr(pos);
+
+    if (startsWith(comment, "/*") && endsWith(comment, "*/"))
+        extra.erase(extra.size() - 2, 2);
+
+    extra = trim(extra);
+
+    for (auto it = extra.begin(); it != extra.end();)
+        it = (*it & 0x80) ? extra.erase(it) : it + 1;
+
+    return extra;
+}
+
 std::vector<SuppressionList::Suppression> SuppressionList::parseMultiSuppressComment(const std::string &comment, std::string *errorMessage)
 {
     std::vector<Suppression> suppressions;
@@ -206,6 +236,14 @@ std::vector<SuppressionList::Suppression> SuppressionList::parseMultiSuppressCom
 
         suppressions.push_back(std::move(s));
     }
+
+    const std::string extraComment = getExtraComment(comment, end_position);
+
+    if (extraComment.empty())
+        return suppressions;
+
+    for (auto &suppression : suppressions)
+        suppression.extraComment = extraComment;
 
     return suppressions;
 }
@@ -360,20 +398,11 @@ bool SuppressionList::Suppression::parseComment(std::string comment, std::string
     if (comment.compare(comment.size() - 2, 2, "*/") == 0)
         comment.erase(comment.size() - 2, 2);
 
-    std::string::size_type extraPos = comment.find(';');
-    std::string::size_type extraDelimiterSize = 1;
+    std::string::size_type extraPos;
+    extraComment = getExtraComment(comment, 2, &extraPos);
 
-    if (extraPos == std::string::npos) {
-        extraPos = comment.find("//", 2);
-        extraDelimiterSize = 2;
-    }
-
-    if (extraPos != std::string::npos) {
-        extraComment = trim(comment.substr(extraPos + extraDelimiterSize));
-        for (auto it = extraComment.begin(); it != extraComment.end();)
-            it = *it & 0x80 ? extraComment.erase(it) : it + 1;
+    if (!extraComment.empty())
         comment.erase(extraPos);
-    }
 
     const std::set<std::string> cppchecksuppress{
         "cppcheck-suppress",
@@ -423,7 +452,7 @@ SuppressionList::Suppression::Result SuppressionList::Suppression::isSuppressed(
             if (!thisAndNextLine || lineNumber + 1 != errmsg.lineNumber)
                 return Result::None;
         }
-        if (!fileName.empty() && !PathMatch::match(fileName, errmsg.getFileName()))
+        if (!fileName.empty() && !isFileNameMatch(errmsg.getFileName()))
             return Result::None;
         if (hash > 0 && hash != errmsg.hash)
             return Result::Checked;
@@ -454,6 +483,21 @@ SuppressionList::Suppression::Result SuppressionList::Suppression::isSuppressed(
             return Result::Checked;
     }
     return Result::Matched;
+}
+
+bool SuppressionList::Suppression::isFileNameMatch(const std::string &errorFileName) const
+{
+    const auto it = mFileNameMatchCache.find(errorFileName);
+    if (it != mFileNameMatchCache.end())
+        return it->second;
+
+    const bool result = PathMatch::match(fileName, errorFileName);
+
+    if (mFileNameMatchCache.size() >= mFileNameMatchCacheMaxEntries)
+        mFileNameMatchCache.clear();
+
+    mFileNameMatchCache.emplace(errorFileName, result);
+    return result;
 }
 
 bool SuppressionList::Suppression::isMatch(const SuppressionList::ErrorMessage &errmsg)

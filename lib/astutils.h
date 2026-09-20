@@ -386,6 +386,9 @@ bool isAliasOf(const Token *tok, nonneg int varid, bool* inconclusive = nullptr)
 
 bool isAliasOf(const Token* tok, const Token* expr, nonneg int* indirect = nullptr);
 
+/// If token is an iterator into the container expression with the given expression id
+bool isIteratorOf(const Token* tok, nonneg int exprId);
+
 const Token* getArgumentStart(const Token* ftok);
 
 /** Determines the number of arguments - if token is a function call or macro
