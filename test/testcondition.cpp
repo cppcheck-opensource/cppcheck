@@ -3373,8 +3373,8 @@ private:
 
         check("void f() {\n"
               "  int x = 0;\n"
-              "  if (x++ == 1) {}\n"
-              "  if (x++ == 2) {}\n"
+              "  if (x++ == 1) {}\n" // <- no warning as there is a side effect
+              "  if (x++ == 2) {}\n" // <- no warning as there is a side effect
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
@@ -4510,7 +4510,7 @@ private:
               "void foo() {\n"
               "    if (bar(1) == 0 && bar(1) > 0) {}\n"
               "}\n");
-        // TODO the isConstExpression returns true for the bar() function call
+        // TODO the isConstExpression returns false for the bar() function call
         // these warnings are shown if the isConstExpression is removed from the checker
         TODO_ASSERT_EQUALS("[test.cpp:3:16]: (style) Condition 'bar(1)==0' is always false [knownConditionTrueFalse]\n"
                            "[test.cpp:3:31]: (style) Condition 'bar(1)>0' is always true [knownConditionTrueFalse]\n",
@@ -4590,7 +4590,7 @@ private:
               "void f() {\n"
               "    if (g() == 1 && g() == -1) {}\n"
               "}\n");
-        // TODO the isConstExpression returns true for the bar() function call
+        // TODO the isConstExpression returns false for the bar() function call
         // these warnings are shown if the isConstExpression is removed from the checker
         TODO_ASSERT_EQUALS("[test.cpp:3:13]: (style) Condition 'g()==1' is always false [knownConditionTrueFalse]\n"
                            "[test.cpp:3:25]: (style) Condition 'g()==-1' is always true [knownConditionTrueFalse]\n",
@@ -6485,7 +6485,7 @@ private:
         ASSERT_EQUALS("", errout_str());
 
         // the assignments are always false/true.. but "assignment in condition" would be a different checker
-	// knownConditionTrueFalse only warns about const code that can be removed.
+	// knownConditionTrueFalse should only warn if code can be removed.
         check("void f(uint32_t u) {\n" // #2490
               "    if ((u = 0x00000000) || (u = 0xffffffff)) {}\n"
               "}\n");
