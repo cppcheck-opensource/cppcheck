@@ -1169,8 +1169,14 @@ def numberOfParentheses(tok1, tok2):
 def findGotoLabel(gotoToken):
     label = gotoToken.next.str
     tok = gotoToken.next.next
+    functionScope = gotoToken.scope
+    while functionScope and functionScope.type != 'Function':
+        functionScope = functionScope.nestedIn
+    functionEnd = functionScope.bodyEnd if functionScope else None
     while tok:
-        if tok.str == '}' and tok.scope.type == 'Function':
+        if tok is functionEnd:
+            break
+        if functionEnd is None and tok.str == '}' and tok.scope and tok.scope.type == 'Function':
             break
         if tok.str == label and tok.next.str == ':':
             return tok
