@@ -1549,12 +1549,12 @@ void CheckConditionImpl::alwaysTrueFalse()
                     condition = parent;
                 else if (Token::Match(parent->previous(), "if|while ("))
                     condition = parent->previous();
-                else if (Token::simpleMatch(parent, "return"))
-                    condition = parent;
+                //else if (Token::simpleMatch(parent, "return"))
+                //    condition = parent;
                 else if (parent->str() == ";" && parent->astParent() && parent->astParent()->astParent() &&
                          Token::simpleMatch(parent->astParent()->astParent()->previous(), "for ("))
                     condition = parent->astParent()->astParent()->previous();
-                else if (Token::Match(tok, "%comp%"))
+                else if (Token::Match(tok, "%comp%") && Token::Match(tok->astParent(), "%oror%|&&|(|;"))
                     condition = tok;
                 else if (hasComp && Token::Match(tok, "!|%var%") && astIsBool(parent) && Token::Match(parent, "%assign%"))
                     condition = tok;
