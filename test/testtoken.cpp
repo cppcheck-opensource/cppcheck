@@ -20,6 +20,7 @@
 #include "helpers.h"
 #include "settings.h"
 #include "standards.h"
+#include "symboldatabase.h"
 #include "token.h"
 #include "tokenlist.h"
 #include "vfvalue.h"
@@ -131,6 +132,7 @@ private:
         TEST_CASE(update_property_info_etype_c);
         TEST_CASE(update_property_info_etype_cpp);
         TEST_CASE(update_property_info_replace); // #13743
+        TEST_CASE(update_property_info_symbol_cleared);
 
         TEST_CASE(varid_reset);
     }
@@ -1502,6 +1504,76 @@ private:
         Token tok(list, std::move(tokensFrontBack));
         tok.str("long");
         assert_tok(&tok, Token::Type::eType, false, true);
+    }
+
+    void update_property_info_symbol_cleared() const
+    {
+        // clearing the symbol association of a token must restore the token type that
+        // follows from the string. The compiled Token::Match variants (MATCHCOMPILER)
+        // check the token type for literal patterns, so a standard type or keyword left
+        // as eName makes the compiled and the parsed pattern matching disagree.
+        const ::Type type;
+        {
+            // a standard type is eType again after the associated type is cleared
+            TokenList list_cpp{settingsDefault, Standards::Language::CPP};
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list_cpp, std::move(tokensFrontBack));
+            tok.str("void");
+            assert_tok(&tok, Token::Type::eType, /*l=*/ false, /*std=*/ true);
+            tok.type(&type);
+            assert_tok(&tok, Token::Type::eType, /*l=*/ false, /*std=*/ true);
+            tok.type(nullptr);
+            assert_tok(&tok, Token::Type::eType, /*l=*/ false, /*std=*/ true);
+        }
+        {
+            // a keyword is eKeyword again after the associated type is cleared
+            // ("auto" gets the deduced type attached and cleared)
+            TokenList list_cpp{settingsDefault, Standards::Language::CPP};
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list_cpp, std::move(tokensFrontBack));
+            tok.str("auto");
+            assert_tok(&tok, Token::Type::eKeyword);
+            tok.type(&type);
+            assert_tok(&tok, Token::Type::eType);
+            tok.type(nullptr);
+            assert_tok(&tok, Token::Type::eKeyword);
+        }
+        {
+            // a plain name is eName again after the associated type is cleared
+            TokenList list_cpp{settingsDefault, Standards::Language::CPP};
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list_cpp, std::move(tokensFrontBack));
+            tok.str("MyClass");
+            assert_tok(&tok, Token::Type::eName);
+            tok.type(&type);
+            assert_tok(&tok, Token::Type::eType);
+            tok.type(nullptr);
+            assert_tok(&tok, Token::Type::eName);
+        }
+        {
+            // a plain name is eName again after the associated function is cleared
+            TokenList list_cpp{settingsDefault, Standards::Language::CPP};
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list_cpp, std::move(tokensFrontBack));
+            tok.str("f");
+            const Function function(&tok, "");
+            tok.function(&function);
+            assert_tok(&tok, Token::Type::eFunction);
+            tok.function(nullptr);
+            assert_tok(&tok, Token::Type::eName);
+        }
+        {
+            // a plain name is eName again after the associated variable is cleared
+            TokenList list_cpp{settingsDefault, Standards::Language::CPP};
+            auto tokensFrontBack = std::make_shared<TokensFrontBack>();
+            Token tok(list_cpp, std::move(tokensFrontBack));
+            tok.str("x");
+            const Variable var(&tok, nullptr, nullptr, 0, AccessControl::Public, nullptr, nullptr, settingsDefault);
+            tok.variable(&var);
+            assert_tok(&tok, Token::Type::eVariable);
+            tok.variable(nullptr);
+            assert_tok(&tok, Token::Type::eName);
+        }
     }
 
     void varid_reset() const
