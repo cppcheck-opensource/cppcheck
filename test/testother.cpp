@@ -10070,6 +10070,22 @@ private:
         ASSERT_EQUALS(
             "[test.cpp:2:9]: (style) Variable 'ptr' can be declared as pointer to const [constVariablePointer]\n",
             errout_str());
+
+        check("void f() {\n"
+              "    char *p = new char[1];\n"
+              "    ++p;\n"
+              "    delete [] (p - 1);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:11]: (style) Variable 'p' can be declared as pointer to const [constVariablePointer]\n",
+                      errout_str());
+
+        check("void f() {\n"
+              "    char *p = new char[1];\n"
+              "    delete [] (p - 1);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:11]: (style) Variable 'p' can be declared as pointer to const [constVariablePointer]\n"
+                      "[test.cpp:3:5]: (error) Mismatching address is deleted. The address you get from new must be deleted without offset. [invalidFree]\n"
+                      , errout_str());
     }
 
     void checkRedundantCopy() {
