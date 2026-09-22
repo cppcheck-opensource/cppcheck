@@ -371,7 +371,7 @@ private:
                     "    return s[x];\n"
                     "}\n");
         ASSERT_EQUALS(
-            "[test.cpp:5:13]: error: Out of bounds access in 's[x]', if 's' size is 6 and 'x' is 7 [containerOutOfBounds]\n",
+            "[test.cpp:5:13]: warning: Out of bounds access in 's[x]', if 's' size is 6 and 'x' is 7 [containerOutOfBounds]\n",
             errout_str());
 
         checkNormal("void f() {\n"
@@ -534,7 +534,7 @@ private:
                     "        v.resize(entries);\n"
                     "    v[0] = 1;\n"
                     "}\n");
-        ASSERT_EQUALS("[test.cpp:5:6]: error: Out of bounds access in expression 'v[0]' because 'v' is empty. [containerOutOfBounds]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:5:6]: warning: Out of bounds access in expression 'v[0]' because 'v' is empty. [containerOutOfBounds]\n", errout_str());
 
         checkNormal("void f(size_t entries) {\n"
                     "    if (entries < 2) return;\n"
@@ -760,7 +760,7 @@ private:
               "        v[i] = 42;\n"
               "    return v;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:4:10]: error: Out of bounds access in 'v[i]', if 'v' size is 10 and 'i' is 10 [containerOutOfBounds]\n",
+        ASSERT_EQUALS("[test.cpp:4:10]: warning: Out of bounds access in 'v[i]', if 'v' size is 10 and 'i' is 10 [containerOutOfBounds]\n",
                       errout_str());
 
         check("void f() {\n"
@@ -1139,6 +1139,27 @@ private:
         ASSERT_EQUALS("[test.cpp:5:13]: warning: Either the condition 'i>5' is redundant or 'i' can have the value 5. Expression 's[i]' causes access out of bounds. [containerOutOfBounds]\n"
                       "[test.cpp:3:11]: note: Assuming that condition 'i>5' is not redundant\n"
                       "[test.cpp:5:13]: note: Access out of bounds\n",
+                      errout_str());
+
+        check("char f(std::string& s, bool b) {\n"
+              "    if (b)\n"
+              "        s.clear();\n"
+              "    return s[0];\n"
+              "}\n"
+              "char g(bool b) {\n"
+              "    std::string s = \"abc\";\n"
+              "    int i = 0;\n"
+              "    if (b)\n"
+              "        i = 5;\n"
+              "    return s[i];\n"
+              "}\n", s);
+        ASSERT_EQUALS("[test.cpp:4:13]: warning: Out of bounds access in expression 's[0]' because 's' is empty. [containerOutOfBounds]\n"
+                      "[test.cpp:2:9]: note: Assuming condition is true\n"
+                      "[test.cpp:4:13]: note: Access out of bounds\n"
+                      "[test.cpp:11:13]: warning: Out of bounds access in 's[i]', if 's' size is 3 and 'i' is 5 [containerOutOfBounds]\n"
+                      "[test.cpp:10:13]: note: Assignment 'i=5', assigned value is 5\n"
+                      "[test.cpp:9:9]: note: Assuming condition is true\n"
+                      "[test.cpp:11:13]: note: Access out of bounds\n",
                       errout_str());
     }
 

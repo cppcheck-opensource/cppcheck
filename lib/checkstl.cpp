@@ -267,7 +267,8 @@ void CheckStlImpl::outOfBoundsError(const Token *tok, const std::string &contain
     }
 
     reportError(std::move(errorPath),
-                (containerSize && !containerSize->errorSeverity()) || (indexValue && !indexValue->errorSeverity()) ? Severity::warning : Severity::error,
+                (containerSize && (!containerSize->errorSeverity() || containerSize->conditional)) ||
+                (indexValue && (!indexValue->errorSeverity() || indexValue->conditional)) ? Severity::warning : Severity::error,
                 "containerOutOfBounds",
                 "$symbol:" + containerName +"\n" + errmsg,
                 CWE398,
