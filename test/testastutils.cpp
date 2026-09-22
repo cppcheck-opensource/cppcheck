@@ -198,10 +198,21 @@ private:
         ASSERT_EQUALS(!cpp,  isSameExpression("void f() {double y = 1e1; (x + 10.0) < (y + x); } \n", "+", "+", cpp));
         ASSERT_EQUALS(true,  isSameExpression("void f() {double y = 1e1; double z = 10.0; (x + y) < (x + z); } \n", "+", "+", cpp));
         ASSERT_EQUALS(true,  isSameExpression("A + A\n", "A", "A", cpp));
+        // An unknown string-prefix macro leaves the literal outside the AST. #5738
+        ASSERT_EQUALS(false, isSameExpression("x == PREFIX \"/a\" || x == PREFIX \"/b\";\n", "==", "==", cpp));
+        ASSERT_EQUALS(false, isSameExpression("x == PREFIX \"/a\" || x == PREFIX;\n", "==", "==", cpp));
+        ASSERT_EQUALS(false, isSameExpression("x == PREFIX || x == PREFIX \"/a\";\n", "==", "==", cpp));
+        ASSERT_EQUALS(true,  isSameExpression("x == PREFIX \"/a\" || x == PREFIX \"/a\";\n", "==", "==", cpp));
+        ASSERT_EQUALS(true,  isSameExpression("x == PREFIX \"/a\" \"/b\" || x == PREFIX \"/a\" \"/b\";\n", "==", "==", cpp));
+        ASSERT_EQUALS(false, isSameExpression("x == PREFIX \"/a\" \"/b\" || x == PREFIX \"/a\" \"/c\";\n", "==", "==", cpp));
+        ASSERT_EQUALS(false, isSameExpression("x == FIRST \"/a\" || x == SECOND \"/a\";\n", "==", "==", cpp));
+        ASSERT_EQUALS(false, isSameExpression("x == PREFIX L\"/a\" || x == PREFIX \"/a\";\n", "==", "==", cpp));
 
         // the remaining test cases are not valid C code
         if (!cpp)
             return;
+
+        ASSERT_EQUALS(true, isSameExpression("void f(int x) { x ? throw \"a\" : throw \"a\"; }\n", "throw", "throw", cpp));
 
         //https://trac.cppcheck.net/ticket/9700
         ASSERT_EQUALS(true, isSameExpression("A::B + A::B;\n", "::", "::", cpp));
