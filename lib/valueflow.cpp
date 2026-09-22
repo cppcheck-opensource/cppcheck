@@ -3737,6 +3737,20 @@ static void valueFlowSymbolicOperators(const SymbolDatabase& symboldatabase, con
                     continue;
                 if (Token::Match(tok, "<<|>>|/|-") && !astIsLHS(vartok))
                     continue;
+                if (Token::Match(tok, "+|-") && constant->intvalue != 0) {
+                    std::unordered_set<nonneg int> ids;
+                    for (const auto &value : vartok->values()) {
+                        if (!value.isSymbolicValue())
+                            continue;
+                        if (!value.tokvalue)
+                            continue;
+                        if (!ids.insert(value.tokvalue->exprId()).second)
+                            continue;
+                        ValueFlow::Value newValue(value);
+                        newValue.intvalue += tok->str() == "-" ? -constant->intvalue : constant->intvalue;
+                        setTokenValue(tok, std::move(newValue), settings);
+                    }
+                }
                 if (Token::Match(tok, "<<|>>|^|+|-|%or%") && constant->intvalue != 0)
                     continue;
                 if (Token::Match(tok, "*|/") && constant->intvalue != 1)
