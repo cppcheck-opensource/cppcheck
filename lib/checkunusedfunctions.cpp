@@ -65,7 +65,7 @@ static bool isRecursiveCall(const Token* ftok)
     return ftok->function() && ftok->function() == Scope::nestedInFunction(ftok->scope());
 }
 
-void CheckUnusedFunctions::parseTokens(const Tokenizer &tokenizer, const Library &library)
+void CheckUnusedFunctions::parseTokens(const Tokenizer &tokenizer, const Library &library, const std::set<std::string>& exportedFunctions)
 {
     const char * const FileName = tokenizer.list.getFiles().front().c_str();
 
@@ -127,6 +127,11 @@ void CheckUnusedFunctions::parseTokens(const Tokenizer &tokenizer, const Library
                 usage.usedOtherFile |= usage.usedSameFile;
             }
         }
+    }
+
+    for (const std::string& name : exportedFunctions) {
+        mFunctions[name].usedOtherFile = true;
+        mFunctionCalls.insert(name);
     }
 
     // Function usage..
