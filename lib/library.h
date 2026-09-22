@@ -314,6 +314,7 @@ public:
         bool leakignore{};
         bool isconst{};
         bool ispure{};
+        bool isPossibleNull{};
         UseRetValType useretval = UseRetValType::NONE;
         bool ignore{};  // ignore functions/macros from a library (gtk, qt etc)
         bool formatstr{};

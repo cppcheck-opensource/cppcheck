@@ -148,6 +148,9 @@ private:
         TEST_CASE(nullpointer108);
         TEST_CASE(nullpointer109);
         TEST_CASE(nullpointer110); // #14937
+        TEST_CASE(nullpointer111);
+        TEST_CASE(nullpointer112);
+        TEST_CASE(nullpointer113);
         TEST_CASE(nullpointer_addressOf); // address of
         TEST_CASE(nullpointerSwitch); // #2626
         TEST_CASE(nullpointer_cast); // #4692
@@ -3144,6 +3147,34 @@ private:
               "    *p = 1;\n"
               "}\n",
               dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void nullpointer111()
+    {
+        check("void f(void) {\n"
+              "    char *str = getenv(\"TMP\");\n"
+              "    char *c = *str;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:16]: (warning) Possible null pointer dereference: str [nullPointer]\n", errout_str());
+    }
+
+    void nullpointer112()
+    {
+        check("void f(void) {\n"
+              "    char *str = std::getenv(\"TMP\");\n"
+              "    char *c = *str;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:16]: (warning) Possible null pointer dereference: str [nullPointer]\n", errout_str());
+    }
+
+    void nullpointer113()
+    {
+        check("void f(void) {\n"
+              "    char *str = std::getenv(\"TMP\");\n"
+              "    if (!str) return;\n"
+              "    char *c = *str;\n"
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
