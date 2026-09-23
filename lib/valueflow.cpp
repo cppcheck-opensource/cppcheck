@@ -7069,6 +7069,133 @@ static void valueFlowDynamicBufferSize(const TokenList& tokenlist, const SymbolD
         return sizeValue;
     };
 
+    // Get buffer sizes for static global pointers
+    std::map<const Variable*, ValueFlow::Value> globalBufferSizes;
+
+    for (const Variable* var : symboldatabase.variableList()) {
+        if (!var || !var->isGlobal() || !var->isStatic() || var->isExtern() || !var->isPointer())
+            continue;
+
+        const Token* nameTok = var->nameToken();
+        if (!nameTok)
+            continue;
+
+        const Token* assignTok = nameTok->astParent();
+        if (!assignTok || !assignTok->isAssignmentOp() || assignTok->astOperand1() != nameTok)
+            continue;
+
+        const Token* rhs = assignTok->astOperand2();
+        while (rhs && rhs->isCast())
+            rhs = rhs->astOperand2() ? rhs->astOperand2() : rhs->astOperand1();
+
+        if (!rhs)
+            continue;
+
+        const bool isNew = rhs->isCpp() && (rhs->str() == "new" || (rhs->str() == "(" && Token::Match(rhs->astOperand1(), "::| operatornew")));
+        if (!isNew && !Token::Match(rhs->previous(), "%name% ("))
+            continue;
+
+        const MathLib::bigint sizeValue = isNew ? getBufferSizeFromNew(rhs) : getBufferSizeFromAllocFunc(rhs->previous());
+        if (sizeValue < 0)
+            continue;
+
+        ValueFlow::Value value(sizeValue);
+        value.errorPath.emplace_back(assignTok, "Assign " + var->name() + ", buffer with size " + MathLib::toString(sizeValue));
+        value.valueType = ValueFlow::Value::ValueType::BUFFER_SIZE;
+        value.setKnown();
+
+        globalBufferSizes.emplace(var, std::move(value));
+    }
+
+    // Remove buffer sizes if the pointer is modified or escapes
+    for (const Token* tok = tokenlist.front(); tok && !globalBufferSizes.empty(); tok = tok->next()) {
+        const Variable* var = tok->variable();
+        if (!var)
+            continue;
+
+        const auto it = globalBufferSizes.find(var);
+        if (it == globalBufferSizes.end())
+            continue;
+
+        // Ignore the initialization itself
+        if (tok == var->nameToken())
+            continue;
+
+        const Token* parent = tok->astParent();
+        if (!parent) {
+            globalBufferSizes.erase(it);
+            continue;
+        }
+
+        bool invalidate = false;
+        // Direct modification of the pointer object or its lifetime.
+        if (Token::Match(parent, "++|--|&") && !parent->astOperand2()) {
+            invalidate = true;
+        } else if (Token::simpleMatch(parent, "delete")) {
+            invalidate = true;
+        } else {
+            // Follow expressions that preserve or derive the pointer value.
+            const Token* expr = tok;
+            while (expr->astParent()) {
+                const Token* exprParent = expr->astParent();
+                if (exprParent->isCast()) {
+                    expr = exprParent;
+                    continue;
+                }
+
+                if (Token::Match(exprParent, "+|-") && exprParent->valueType() && exprParent->valueType()->pointer > 0) {
+                    expr = exprParent;
+                    continue;
+                }
+
+                // Follow a pointer value through the result of a conditional expression.
+                if (Token::simpleMatch(exprParent, ":") && Token::simpleMatch(exprParent->astParent(), "?") && exprParent == exprParent->astParent()->astOperand2()) {
+                    expr = exprParent->astParent();
+                    continue;
+                }
+
+                // &p[index] creates a pointer alias, whereas p[index] itself does not.
+                if (Token::simpleMatch(exprParent, "[") && expr == exprParent->astOperand1() && exprParent->astParent() && exprParent->astParent()->isUnaryOp("&")) {
+                    expr = exprParent->astParent();
+                    continue;
+                }
+
+                break;
+            }
+
+            int argn = -1;
+            if (getTokenArgumentFunction(expr, argn)) {
+                invalidate = true;
+            } else {
+                const Token* context = expr->astParent();
+                // Reassigning the pointer, or storing the pointer value elsewhere,
+                // invalidates the whole-TU buffer-size assumption.
+                if (context && context->isAssignmentOp()) {
+                    invalidate = true;
+                } else if (Token::simpleMatch(context, "return")) {
+                    invalidate = true;
+                } else if (context && isLikelyStreamRead(context)) {
+                    invalidate = true;
+                }
+            }
+        }
+
+        if (invalidate)
+            globalBufferSizes.erase(it);
+    }
+
+    // Set buffer sizes for stable static global pointers
+    for (const Token* tok = tokenlist.front(); tok; tok = tok->next()) {
+        if (!tok->variable())
+            continue;
+
+        const auto it = globalBufferSizes.find(tok->variable());
+        if (it == globalBufferSizes.end())
+            continue;
+
+        setTokenValue(const_cast<Token*>(tok), it->second, settings);
+    }
+
     for (const Scope *functionScope : symboldatabase.functionScopes) {
         for (const Token *tok = functionScope->bodyStart; tok != functionScope->bodyEnd; tok = tok->next()) {
             if (!Token::Match(tok, "[;{}] %var% ="))
