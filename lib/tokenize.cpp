@@ -4835,7 +4835,7 @@ void Tokenizer::setVarIdPass1()
 
             // parse anonymous namespaces as part of the current scope
             if (!Token::Match(startToken->previous(), "union|struct|enum|namespace {") &&
-                !(initlist && Token::Match(startToken->previous(), "%name%|>|>>|(") && Token::Match(startToken->link(), "} ,|{|)|..."))) {
+                !(initlist && Token::Match(startToken->previous(), "%name%|>|>>|(|,|{") && Token::Match(startToken->link(), "} ,|{|)|}|..."))) {
 
                 if (tok->str() == "{") {
                     bool isExecutable;
