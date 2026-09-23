@@ -7144,7 +7144,7 @@ static void valueFlowDynamicBufferSize(const TokenList& tokenlist, const SymbolD
                 }
 
                 // Follow a pointer value through the result of a conditional expression.
-                if (Token::simpleMatch(exprParent, ":") && exprParent->astParent() && Token::simpleMatch(exprParent->astParent(), "?") && exprParent == exprParent->astParent()->astOperand2()) {
+                if (Token::simpleMatch(exprParent, ":") && Token::simpleMatch(exprParent->astParent(), "?") && exprParent == exprParent->astParent()->astOperand2()) {
                     expr = exprParent->astParent();
                     continue;
                 }
