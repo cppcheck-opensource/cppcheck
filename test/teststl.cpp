@@ -5161,6 +5161,12 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:2:17]: (performance) Constructing a std::string from the result of c_str() is slow and redundant. [stlcstrConstructor]\n",
                       errout_str());
+
+        check("void f(std::string& a, const std::string& b) {\n"
+              "    a += b.c_str();\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:7]: (performance) Concatenating the result of c_str() and a std::string is slow and redundant. [stlcstrConcat]\n",
+                      errout_str());
     }
 
     void uselessCalls() {
