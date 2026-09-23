@@ -3513,9 +3513,11 @@ void CheckOtherImpl::redundantCopyError(const Token *tok,const std::string& varn
 // Checking for shift by negative values
 //---------------------------------------------------------------------------
 
-static bool isNegative(const Token *tok, const Settings &settings)
+static const ValueFlow::Value* isNegative(const Token *tok, const Settings &settings)
 {
-    return tok->valueType() && tok->valueType()->sign == ValueType::SIGNED && tok->getValueLE(-1LL, settings);
+    if (!tok->valueType() || tok->valueType()->sign != ValueType::SIGNED)
+        return nullptr;
+    return tok->getValueLE(-1LL, settings);
 }
 
 void CheckOtherImpl::checkNegativeBitwiseShift()
@@ -3551,24 +3553,28 @@ void CheckOtherImpl::checkNegativeBitwiseShift()
         if (ternary)
             continue;
 
-        // Get negative rhs value. preferably a value which doesn't have 'condition'.
-        if (portability && isNegative(tok->astOperand1(), mSettings))
-            negativeBitwiseShiftError(tok, 1);
-        else if (isNegative(tok->astOperand2(), mSettings))
-            negativeBitwiseShiftError(tok, 2);
+        const ValueFlow::Value* value = isNegative(tok->astOperand1(), mSettings); // lhs
+        if (portability && value)
+            negativeBitwiseShiftError(tok, true, value);
+        else {
+            value = isNegative(tok->astOperand2(), mSettings); // rhs
+            if (value)
+                negativeBitwiseShiftError(tok, false, value);
+        }
     }
 }
 
 
-void CheckOtherImpl::negativeBitwiseShiftError(const Token *tok, int op)
+void CheckOtherImpl::negativeBitwiseShiftError(const Token *tok, bool isLHS, const ValueFlow::Value* v)
 {
-    if (op == 1)
-        // LHS - this is used by intention in various software, if it
-        // is used often in a project and works as expected then this is
-        // a portability issue
-        reportError(tok, Severity::portability, "shiftNegativeLHS", "Shifting a negative value is technically undefined behaviour", CWE758, Certainty::normal);
-    else // RHS
-        reportError(tok, Severity::error, "shiftNegative", "Shifting by a negative value is undefined behaviour", CWE758, Certainty::normal);
+    // LHS - this is used by intention in various software, if it
+    // is used often in a project and works as expected then this is
+    // a portability issue
+    const char* id = isLHS ? "shiftNegativeLHS" : "shiftNegative";
+    const std::string msg = isLHS ? "Shifting a negative value is technically undefined behaviour" : "Shifting by a negative value is undefined behaviour";
+    const Severity severity = isLHS ? Severity::portability : (v && v->errorSeverity() && !v->conditional ? Severity::error : Severity::warning);
+    const ErrorPath errorPath = getErrorPath(tok, v, msg);
+    reportError(errorPath, severity, id, msg, CWE758, Certainty::normal);
 }
 
 //---------------------------------------------------------------------------
@@ -4928,8 +4934,8 @@ void CheckOther::getErrorMessages(ErrorLogger& errorLogger, const Settings &sett
     c.zerodivError(nullptr, nullptr);
     c.misusedScopeObjectError(nullptr, "varname");
     c.invalidPointerCastError(nullptr,  "float *", "double *", false, false);
-    c.negativeBitwiseShiftError(nullptr, 1);
-    c.negativeBitwiseShiftError(nullptr, 2);
+    c.negativeBitwiseShiftError(nullptr, true);
+    c.negativeBitwiseShiftError(nullptr, false);
     c.raceAfterInterlockedDecrementError(nullptr);
     c.invalidFreeError(nullptr, "malloc", false);
     c.overlappingWriteUnion(nullptr);
