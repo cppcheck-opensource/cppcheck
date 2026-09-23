@@ -127,8 +127,12 @@ namespace {
             Interval result;
             const ValueFlow::Value* minValue = getCompareValue(values, predicate, std::less<MathLib::bigint>{});
             if (minValue) {
-                if (minValue->isImpossible() && minValue->bound == ValueFlow::Value::Bound::Upper)
-                    result.setMinValue(minValue->intvalue + 1, minValue);
+                if (minValue->isImpossible() && minValue->bound == ValueFlow::Value::Bound::Upper) {
+                    if (std::numeric_limits<MathLib::bigint>::max() == minValue->intvalue)
+                        result.setMinValue(minValue->intvalue, minValue);
+                    else
+                        result.setMinValue(minValue->intvalue + 1, minValue);
+                }
                 if (minValue->isPossible() && minValue->bound == ValueFlow::Value::Bound::Lower)
                     result.setMinValue(minValue->intvalue, minValue);
                 if (!minValue->isImpossible() && (minValue->bound == ValueFlow::Value::Bound::Point || minValue->isKnown()) &&
@@ -137,8 +141,12 @@ namespace {
             }
             const ValueFlow::Value* maxValue = getCompareValue(values, predicate, std::greater<MathLib::bigint>{});
             if (maxValue) {
-                if (maxValue->isImpossible() && maxValue->bound == ValueFlow::Value::Bound::Lower)
-                    result.setMaxValue(maxValue->intvalue - 1, maxValue);
+                if (maxValue->isImpossible() && maxValue->bound == ValueFlow::Value::Bound::Lower) {
+                    if (std::numeric_limits<MathLib::bigint>::min() == maxValue->intvalue)
+                        result.setMaxValue(minValue->intvalue, maxValue);
+                    else
+                        result.setMaxValue(maxValue->intvalue - 1, maxValue);
+                }
                 if (maxValue->isPossible() && maxValue->bound == ValueFlow::Value::Bound::Upper)
                     result.setMaxValue(maxValue->intvalue, maxValue);
                 assert(!maxValue->isKnown());
@@ -312,14 +320,20 @@ std::vector<ValueFlow::Value> infer(const ValuePtr<InferModel>& model,
             result.push_back(std::move(value));
         } else {
             if (!diff.minvalue.empty()) {
-                ValueFlow::Value value(diff.minvalue.front() - 1);
+                int adder(0);
+                if (std::numeric_limits<MathLib::bigint>::min() < diff.minvalue.front())
+                    adder = -1;
+                ValueFlow::Value value(diff.minvalue.front() + adder);
                 value.setImpossible();
                 value.bound = ValueFlow::Value::Bound::Upper;
                 addToErrorPath(value, diff.minRef);
                 result.push_back(std::move(value));
             }
             if (!diff.maxvalue.empty()) {
-                ValueFlow::Value value(diff.maxvalue.front() + 1);
+                int adder(0);
+                if (std::numeric_limits<MathLib::bigint>::max() > diff.maxvalue.front())
+                    adder = 1;
+                ValueFlow::Value value(diff.maxvalue.front() + adder);
                 value.setImpossible();
                 value.bound = ValueFlow::Value::Bound::Lower;
                 addToErrorPath(value, diff.maxRef);
