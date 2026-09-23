@@ -3079,27 +3079,41 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:4:10]: (error) Array 'z[5]' accessed at index 7, which is out of bounds. [arrayIndexOutOfBounds]\n", errout_str());
 
-        // #14934
-        check("int *a = new int[2];\n"
-              "int main() {\n"
+        // Global dynamic buffers with internal linkage
+        check("static int *a = new int[2];\n"
+              "int f() {\n"
               "    return a[5];\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:3:13]: (error) Array 'a[2]' accessed at index 5, which is out of bounds. [arrayIndexOutOfBounds]\n", errout_str());
 
-        check("int *a = new int[2];\n"
-              "int main() {\n"
+        check("static int *a = (int *)malloc(2 * sizeof(int));\n"
+              "int f() {\n"
+              "    return a[5];\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:13]: (error) Array 'a[2]' accessed at index 5, which is out of bounds. [arrayIndexOutOfBounds]\n", errout_str());
+
+        check("static int *a = new int[2];\n"
+              "int f() {\n"
               "    a = new int[10];\n"
               "    return a[5];\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("int *a = new int[2];\n"
-              "void reset();\n"
-              "int main() {\n"
-              "    reset();\n"
+        check("void use(int *);\n"
+              "static int *a = new int[2];\n"
+              "int f() {\n"
+              "    use(a);\n"
               "    return a[5];\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("void unrelated();\n"
+              "static int *a = new int[2];\n"
+              "int f() {\n"
+              "    unrelated();\n"
+              "    return a[5];\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:13]: (error) Array 'a[2]' accessed at index 5, which is out of bounds. [arrayIndexOutOfBounds]\n", errout_str());
 
     }
 
