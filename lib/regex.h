@@ -41,12 +41,20 @@ public:
     enum class Engine : std::uint8_t
     {
         Unknown = 0,
-        Pcre = 1
+#if defined(HAVE_PCRE)
+        Pcre = 1,
+#endif
+#if defined(HAVE_STD_REGEX)
+        Std = 2
+#endif
     };
 
     virtual Engine engine() const = 0;
 
     static std::shared_ptr<Regex> create(std::string pattern, Engine engine, std::string& err);
+
+    static bool stringToEngine(const char* engine, Regex::Engine& regexEngine);
+    static Engine defaultEngine();
 };
 
 #endif // HAVE_RULES
