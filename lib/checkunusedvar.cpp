@@ -1288,6 +1288,11 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage()
             while (Token::Match(op1tok, ".|[|*"))
                 op1tok = op1tok->astOperand1();
 
+            // Bail out for overloaded indexing
+            if (op1tok && op1tok->valueType() && op1tok->valueType()->pointer == 0 &&
+                op1tok->valueType()->type == ValueType::Type::RECORD && Token::simpleMatch(op1tok->astParent(), "["))
+                continue;
+
             // Assignment in macro => do not warn
             if (isAssignment && tok->isExpandedMacro() && op1tok && op1tok->isExpandedMacro())
                 continue;
