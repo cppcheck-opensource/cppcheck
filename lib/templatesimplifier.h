@@ -23,6 +23,7 @@
 //---------------------------------------------------------------------------
 
 #include "config.h"
+#include "refthunk.h"
 
 #include <cstdint>
 #include <ctime>
@@ -58,7 +59,7 @@ public:
 
     /**
      */
-    void checkComplicatedSyntaxErrorsInTemplates();
+    void checkComplicatedSyntaxErrorsInTemplates() const;
 
     /**
      * is the token pointing at a template parameters block
@@ -333,7 +334,7 @@ private:
      * @return true if modifications to token-list are done.
      *         false if no modifications are done.
      */
-    bool simplifyCalculations(Token* frontToken = nullptr, const Token *backToken = nullptr, bool isTemplate = true);
+    bool simplifyCalculations(Token* frontToken = nullptr, const Token *backToken = nullptr, bool isTemplate = true) const;
 
     /** Simplify template instantiation arguments.
      * @param start first token of arguments
@@ -504,10 +505,10 @@ private:
         const std::string &indent = "    ") const;
     void printOut(const std::string &text = "") const;
 
-    Tokenizer &mTokenizer;
-    TokenList &mTokenList;
-    const Settings &mSettings;
-    ErrorLogger &mErrorLogger;
+    RefThunk<Tokenizer> mTokenizer;
+    RefThunk<TokenList> mTokenList;
+    RefThunk<const Settings> mSettings;
+    RefThunk<ErrorLogger> mErrorLogger;
     bool mChanged{};
 
     std::list<TokenAndName> mTemplateDeclarations;
