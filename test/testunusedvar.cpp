@@ -225,6 +225,7 @@ private:
         TEST_CASE(localvarStruct13); // #10398
         TEST_CASE(localvarStruct14);
         TEST_CASE(localvarStructArray);
+        TEST_CASE(localvarOverloadedSubscript);
         TEST_CASE(localvarUnion1);
 
         TEST_CASE(localvarOp);          // Usage with arithmetic operators
@@ -5664,6 +5665,16 @@ private:
                               "    x[0].a = 5;\n"
                               "}\n");
         ASSERT_EQUALS("[test.cpp:3:12]: (style) Variable 'x[0].a' is assigned a value that is never used. [unreadVariable]\n", errout_str());
+    }
+
+    void localvarOverloadedSubscript() {
+        functionVariableUsage("struct A { B &operator [](size_t i); }\n"
+                              "struct B { int x; };\n"
+                              "void f(B *b) {\n"
+                              "    A a(b);\n"
+                              "    a[0].b = 0;\n"
+                              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void localvarUnion1() {
