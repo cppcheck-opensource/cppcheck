@@ -1178,6 +1178,10 @@ static void valueFlowImpossibleValues(TokenList& tokenList, const Settings& sett
             ValueFlow::Value value{0};
             value.setImpossible();
             setTokenValue(tok, std::move(value), settings);
+        } else if (tok->function() && tok->scope()->isExecutable()) {
+            ValueFlow::Value value{0};
+            value.setImpossible();
+            setTokenValue(tok, std::move(value), settings);
         }
     }
 }
@@ -5162,7 +5166,7 @@ static void valueFlowInferCondition(TokenList& tokenlist, const Settings& settin
             }
         } else if (Token::Match(tok->astParent(), "?|&&|!|%oror%") ||
                    Token::Match(tok->astParent()->previous(), "if|while (") ||
-                   (astIsPointer(tok) && isUsedAsBool(tok, settings))) {
+                   ((astIsPointer(tok) || tok->function()) && isUsedAsBool(tok, settings))) {
             std::vector<ValueFlow::Value> result = infer(makeIntegralInferModel(), "!=", tok->values(), 0);
             if (result.size() != 1)
                 continue;

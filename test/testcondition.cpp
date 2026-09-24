@@ -5503,6 +5503,13 @@ private:
               "    std::size_t x;\n"
               "};\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("int g();\n" // #13441
+              "void f() {\n"
+              "    int (*p)() = g;\n"
+              "    if (p == nullptr) {}\n"
+              "};\n");
+        ASSERT_EQUALS("[test.cpp:4:11]: (style) Condition 'p==nullptr' is always false [knownConditionTrueFalse]\n", errout_str());
     }
 
     void alwaysTrueContainer() {

@@ -14055,6 +14055,12 @@ private:
               "    g(b);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("void g(bool);\n" // #14303
+              "void f() {\n"
+              "    g(g);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:7]: (style) Pointer expression 'g' converted to bool is always true. [knownPointerToBool]\n", errout_str());
     }
 
     void iterateByValue() {
