@@ -3774,9 +3774,8 @@ private:
     }
 
     void symboldatabase35() { // ticket #4806 and #4841
-        check("class FragmentQueue : public CL_NS(util)::PriorityQueue<CL_NS(util)::Deletor::Object<TextFragment> >\n"
-              "{};\n");
-        ASSERT_EQUALS("", errout_str());
+        ASSERT_THROW_INTERNAL(check("class FragmentQueue : public CL_NS(util)::PriorityQueue<CL_NS(util)::Deletor::Object<TextFragment> >\n"
+                                    "{};\n"), UNKNOWN_MACRO);
     }
 
     void symboldatabase36() { // ticket #4892

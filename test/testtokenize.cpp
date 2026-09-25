@@ -7910,6 +7910,16 @@ private:
                                                    "    return std::string{ g() + \"abc\" MACRO \"def\" };\n"
                                                    "}\n"), UNKNOWN_MACRO);
 
+        ASSERT_THROW_INTERNAL(tokenizeAndStringify("namespace N {\n"
+                                                   "    struct C {\n"
+                                                   "        void f();\n"
+                                                   "    };\n"
+                                                   "    void C(abc)::f() {\n"
+                                                   "        X x;\n"
+                                                   "        N::Y([&] { x(); })->g();\n"
+                                                   "    }\n"
+                                                   "}\n"), UNKNOWN_MACRO);
+
         ASSERT_THROW_INTERNAL_EQUALS(tokenizeAndStringify("static void handle_toggle(void (*proc) PROTO_XT_CALLBACK_ARGS, int var) {}\n"), // #13198
                                      UNKNOWN_MACRO,
                                      "There is an unknown macro here somewhere. Configuration is required. If PROTO_XT_CALLBACK_ARGS is a macro then please configure it.");
