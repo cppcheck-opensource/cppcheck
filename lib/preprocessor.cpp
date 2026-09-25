@@ -1133,15 +1133,89 @@ std::size_t Preprocessor::calculateHash(const std::string &toolinfo) const
     return (std::hash<std::string>{})(hashData);
 }
 
-void Preprocessor::simplifyPragmaAsm()
+static simplecpp::Token* simplifySdccAsm(simplecpp::TokenList& tokenList, simplecpp::Token* start)
 {
-    simplifyPragmaAsm(mTokens);
+    const simplecpp::Token* previous = start->previousSkipComments();
+    if (sameline(start, previous) && previous->op != '{' && previous->op != '}' && previous->op != ';')
+        return nullptr;
+    // Do not rewrite a macro definition or a GNU/MS-style asm statement.
+    for (const simplecpp::Token* tok = previous; sameline(start, tok); tok = tok->previous) {
+        if (tok->op == '#')
+            return nullptr;
+    }
+    const simplecpp::Token* first = start->nextSkipComments();
+    if (!first || (sameline(start, first) && first->op != ';') ||
+        first->op == '(' || first->op == '{' || first->str() == "volatile" ||
+        first->str() == "__volatile" || first->str() == "__volatile__" ||
+        first->str() == "goto" || first->str() == "inline")
+        return nullptr;
+
+    simplecpp::Token* end = start->next;
+    const simplecpp::Token* comment = nullptr;
+    bool nestedAsm = false;
+    for (; end; end = end->next) {
+        if (end->comment || sameline(end, comment))
+            continue;
+        if (end->op == ';') {
+            comment = end;
+            continue;
+        }
+        if (end->str() == "__endasm" && !sameline(end, end->previousSkipComments())) {
+            const simplecpp::Token* next = end->nextSkipComments();
+            if (!sameline(end, next) || next->op == ';')
+                break;
+        }
+        // An incomplete block must not consume C code or a different conditional
+        // branch. Leave such input to the normal preprocessor/tokenizer.
+        if (end->str() == "__asm")
+            nestedAsm = true;
+        if (end->op == '{' || end->op == '}' ||
+            (end->op == '#' && !sameline(end, end->previousSkipComments())))
+            return end->previous;
+    }
+    if (!end)
+        return tokenList.back();
+    // Do not normalize an inner block after rejecting an ambiguous outer one.
+    if (nestedAsm)
+        return end;
+
+    // Preserve an asm statement as an analysis barrier, including for empty
+    // blocks. Hide assembler # operands before simplecpp stringifies them.
+    std::unique_ptr<simplecpp::Token> open(new simplecpp::Token("(", start->location));
+    std::unique_ptr<simplecpp::Token> close(new simplecpp::Token(")", start->location));
+    // A second terminator would break an unbraced do/while or if/else body.
+    simplecpp::Token* terminator = end->next;
+    while (terminator && terminator->comment)
+        terminator = terminator->next;
+    if (terminator && terminator->op == ';')
+        tokenList.deleteToken(terminator);
+    start->setstr("asm");
+    end->setstr(";");
+    while (start->next != end)
+        tokenList.deleteToken(start->next);
+    open->previous = start;
+    open->next = close.get();
+    close->previous = open.get();
+    close->next = end;
+    start->next = open.release();
+    end->previous = close.release();
+    return end;
 }
 
-void Preprocessor::simplifyPragmaAsm(simplecpp::TokenList &tokenList)
+void Preprocessor::simplifyAsm()
+{
+    simplifyAsm(mTokens);
+}
+
+void Preprocessor::simplifyAsm(simplecpp::TokenList &tokenList)
 {
     // assembler code..
     for (simplecpp::Token *tok = tokenList.front(); tok; tok = tok->next) {
+        if (tok->str() == "__asm") {
+            if (simplecpp::Token* end = simplifySdccAsm(tokenList, tok))
+                tok = end;
+            continue;
+        }
         if (tok->op != '#')
             continue;
         if (sameline(tok, tok->previousSkipComments()))

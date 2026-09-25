@@ -136,7 +136,7 @@ private:
         if (inlineSuppression)
             preprocessor.inlineSuppressions(*inlineSuppression);
         preprocessor.removeComments();
-        preprocessor.simplifyPragmaAsm();
+        preprocessor.simplifyAsm();
 
         std::map<std::string, std::string> cfgcode;
         if (cfgs.empty()) {
@@ -255,6 +255,13 @@ private:
         TEST_CASE(pragma);
         TEST_CASE(pragma_asm_1);
         TEST_CASE(pragma_asm_2);
+        TEST_CASE(sdccAsmOperands);
+        TEST_CASE(sdccAsmEmptyAndAdjacent);
+        TEST_CASE(sdccAsmComments);
+        TEST_CASE(sdccAsmIncomplete);
+        TEST_CASE(sdccAsmOtherSyntax);
+        TEST_CASE(sdccAsmConditional);
+        TEST_CASE(sdccAsmControlFlow);
         TEST_CASE(endifsemicolon);
         TEST_CASE(missing_doublequote);
         TEST_CASE(handle_error);
@@ -1560,6 +1567,151 @@ private:
         // Compare results..
         ASSERT_EQUALS(1, actual.size());
         ASSERT_EQUALS("asm ( )\n;\n\nbbb", actual.at(""));
+    }
+
+    void sdccAsmOperands() { // #6028
+        {
+            const char code[] = "void f() {\n"
+                                "__asm\n"
+                                "    movx @dptr,a\n"
+                                "__endasm;\n"
+                                "}\n";
+            ASSERT_EQUALS("void f ( ) {\nasm ( )\n\n;\n}", getcode(settings0, *this, code).at(""));
+        }
+        {
+            const char code[] = "__asm\n"
+                                "    mov b,#(s_XINIT>>8)\n"
+                                "__endasm";
+            ASSERT_EQUALS("asm ( )\n\n;", getcode(settings0, *this, code).at(""));
+        }
+        {
+            const char code[] = "int f(int x) {\n"
+                                "    ++x;\n"
+                                "    __asm\n"
+                                "        anl a,#0x0f\n"
+                                "        inc a\n"
+                                "        movc a,@a+pc\n"
+                                "        ret\n"
+                                "    __endasm;\n"
+                                "    return x;\n"
+                                "}\n";
+            ASSERT_EQUALS("int f ( int x ) {\n++ x ;\nasm ( )\n\n\n\n\n;\nreturn x ;\n}",
+                          getcode(settings0, *this, code).at(""));
+        }
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void sdccAsmEmptyAndAdjacent() {
+        ASSERT_EQUALS("asm ( )\n;", getcode(settings0, *this, "__asm\n__endasm").at(""));
+        const char code[] = "__asm\n"
+                            "__endasm;\n"
+                            "__asm\n"
+                            "    nop\n"
+                            "__endasm;\n"
+                            "int after;\n";
+        ASSERT_EQUALS("asm ( )\n;\nasm ( )\n\n;\nint after ;", getcode(settings0, *this, code).at(""));
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void sdccAsmComments() {
+        const char code[] = "/* __asm */\n"
+                            "const char *s = \"__asm __endasm\";\n"
+                            "__asm ; __endasm } #error ignored\n"
+                            "    ; __asm {\n"
+                            "    mov a,b ; __endasm\n"
+                            "    /* __endasm */ nop\n"
+                            "    mov a,__endasm\n"
+                            "__endasm;\n"
+                            "int after; // __asm\n";
+        ASSERT_EQUALS("\nconst char * s = \"__asm __endasm\" ;\nasm ( )\n\n\n\n\n;\nint after ;",
+                      getcode(settings0, *this, code).at(""));
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void sdccAsmIncomplete() {
+        ASSERT_EQUALS("__asm\nnop", getcode(settings0, *this, "__asm\nnop").at(""));
+        ASSERT_EQUALS("__asm\nnop\n__asm\nnop", getcode(settings0, *this, "__asm\nnop\n__asm\nnop").at(""));
+        ASSERT_EQUALS("__asm\nnop\n__asm\nnop\n__endasm ;\nint after ;",
+                      getcode(settings0, *this, "__asm\nnop\n__asm\nnop\n__endasm;\nint after;").at(""));
+        {
+            const char code[] = "void f() {\n"
+                                "__asm\n"
+                                "    nop\n"
+                                "}\n"
+                                "int after;\n"
+                                "__endasm;\n";
+            ASSERT_EQUALS("void f ( ) {\n__asm\nnop\n}\nint after ;\n__endasm ;",
+                          getcode(settings0, *this, code).at(""));
+        }
+        {
+            const char code[] = "__asm\n"
+                                "    nop\n"
+                                "#define N 1\n"
+                                "__endasm;\n"
+                                "int after;\n";
+            ASSERT_EQUALS("__asm\nnop\n\n__endasm ;\nint after ;", getcode(settings0, *this, code).at(""));
+        }
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void sdccAsmOtherSyntax() {
+        const char code[] = "void f() {\n"
+                            "    __asm (\"nop\");\n"
+                            "    __asm\n"
+                            "        (\"nop\");\n"
+                            "    __asm volatile (\"nop\");\n"
+                            "    __asm goto (\"\" : : : : label);\n"
+                            "label: ;\n"
+                            "    __asm { nop }\n"
+                            "}\n"
+                            "__asm void g(void) {\n"
+                            "    nop\n"
+                            "}\n";
+        ASSERT_EQUALS("void f ( ) {\n__asm ( \"nop\" ) ;\n__asm\n( \"nop\" ) ;\n"
+                      "__asm volatile ( \"nop\" ) ;\n__asm goto ( \"\" : : : : label ) ;\n"
+                      "label : ;\n__asm { nop }\n}\n__asm void g ( void ) {\nnop\n}",
+                      getcode(settings0, *this, code).at(""));
+        ASSERT_EQUALS("\nvoid f ( ) { $__asm ( \"nop\" ) ; }",
+                      getcode(settings0, *this, "#define ASM __asm\nvoid f() { ASM(\"nop\"); }").at(""));
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void sdccAsmConditional() {
+        const char code[] = "void f() {\n"
+                            "#ifdef USE_ASM\n"
+                            "    __asm\n"
+                            "        mov b,#(s_XINIT>>8)\n"
+                            "        movx @dptr,a\n"
+                            "    __endasm;\n"
+                            "#else\n"
+                            "    fallback();\n"
+                            "#endif\n"
+                            "    after();\n"
+                            "}\n";
+        ASSERT_EQUALS("void f ( ) {\n\nasm ( )\n\n\n;\n\n\n\nafter ( ) ;\n}",
+                      getcodeforcfg(settings0, *this, code, "USE_ASM", "file.c"));
+        ASSERT_EQUALS("void f ( ) {\n\n\n\n\n\n\nfallback ( ) ;\n\nafter ( ) ;\n}",
+                      getcodeforcfg(settings0, *this, code, "", "file.c"));
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void sdccAsmControlFlow() {
+        const char code[] = "void f(int x) {\n"
+                            "    if (x)\n"
+                            "        __asm\n"
+                            "            nop\n"
+                            "        __endasm;\n"
+                            "    else\n"
+                            "        fallback();\n"
+                            "    do\n"
+                            "        __asm\n"
+                            "            nop\n"
+                            "        __endasm /* comment */;\n"
+                            "    while (x);\n"
+                            "}\n";
+        ASSERT_EQUALS("void f ( int x ) {\nif ( x )\nasm ( )\n\n;\nelse\nfallback ( ) ;\n"
+                      "do\nasm ( )\n\n;\nwhile ( x ) ;\n}", getcode(settings0, *this, code).at(""));
+        ASSERT_EQUALS("", errout_str());
     }
 
     void endifsemicolon() {
