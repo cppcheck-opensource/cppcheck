@@ -274,6 +274,16 @@ int CppCheckExecutor::check(int argc, const char* const argv[])
 
     settings.loadSummaries();
 
+    if (settings.addonPython.empty())
+    {
+        std::string detectedPythonExe = CppCheck::detectPython(executeCommand);
+        if (detectedPythonExe.empty()) {
+            //throw InternalError(nullptr, "Failed to auto detect python");
+            return EXIT_SUCCESS;
+        }
+        settings.addonPython = std::move(detectedPythonExe);
+    }
+
     mFiles = parser.getFiles();
     mFileSettings = parser.getFileSettings();
 
