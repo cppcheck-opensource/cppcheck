@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{77777777-7777-7777-7777-777777777777}</ProjectGuid>
+    <RootNamespace>itemmacropathtest</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <!-- SomeDir is an ordinary, user-defined property (not one of the fixed
+       "this file"/"this project" location properties Visual Studio's Shared
+       Items mechanism relies on), and -- unlike a property a property sheet
+       sets once, unconditionally -- it genuinely differs between this
+       project's two configurations. Microsoft documents that the Visual
+       Studio C++ project system does not support a macro whose value could
+       differ by configuration in a project item path: real Visual Studio
+       would show this ClCompile item as unresolved, not silently expand
+       $(SomeDir) to whichever configuration's value happened to be active
+       and pick up foo.cpp. See vcxproj_item_macro_path_invariant_test.py for
+       the opposite case, where the macro's value is the same in every
+       configuration and Visual Studio does expand it. -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <SomeDir>SomeDir</SomeDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <SomeDir>SomeOtherDir</SomeDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClCompile Include="$(SomeDir)\foo.cpp" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
