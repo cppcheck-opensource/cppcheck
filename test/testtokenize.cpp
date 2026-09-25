@@ -342,6 +342,7 @@ private:
         TEST_CASE(bitfields19); // ticket #13733
         TEST_CASE(bitfields20);
         TEST_CASE(bitfields21);
+        TEST_CASE(bitfields22);
 
         TEST_CASE(simplifyNamespaceStd);
 
@@ -5369,6 +5370,14 @@ private:
         ASSERT_EQUALS(1, a->bits());
         const Token *b = Token::findsimplematch(tokenizer.tokens(), "b");
         ASSERT_EQUALS(1, b->bits());
+    }
+
+    void bitfields22() {
+        const char code[] = "constexpr int BITS{4};\n"
+                            "struct Struct { unsigned int m_data : BITS; };\n";
+        const char expected[] = "constexpr int BITS { 4 } ;\n"
+                                "struct Struct { unsigned int m_data ; } ;";
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
     }
 
     void simplifyNamespaceStd() {
