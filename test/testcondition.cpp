@@ -3449,6 +3449,12 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
+        check("std::string a[3];\n" // #15065
+              "void f() {\n"
+              "   if (a) {}\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:8]: (style) Condition 'a' is always true [knownConditionTrueFalse]\n", errout_str());
+
         // Avoid FP when condition comes from macro
         check("#define NOT !\n"
               "void f() {\n"
