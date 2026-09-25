@@ -10414,6 +10414,7 @@ void Tokenizer::simplifyBitfields()
         while (Token::Match(typeTok, "%name% :: %name%"))
             typeTok = typeTok->tokAt(2);
         if (Token::Match(typeTok, "%type% %name% :") &&
+            typeTok->str() != "enum" &&
             !Token::Match(tok->next(), "case|public|protected|private|class|struct") &&
             !Token::simpleMatch(tok->tokAt(2), "default :")) {
             Token *tok1 = typeTok->next();
@@ -10422,7 +10423,7 @@ void Tokenizer::simplifyBitfields()
                     tooLargeError(tok1->tokAt(2));
             if (tok1 && tok1->tokAt(2) &&
                 (Token::Match(tok1->tokAt(2), "%bool%|%num%") ||
-                 !Token::Match(tok1->tokAt(2), "public|protected|private| %type% ::|<|,|{|;"))) {
+                 !Token::Match(tok1->tokAt(2), "public|protected|private| %type% ::|<|,|{"))) {
                 while (tok1->next() && !Token::Match(tok1->next(), "[;,)]{}=]")) {
                     if (Token::Match(tok1->next(), "[([]"))
                         Token::eraseTokens(tok1, tok1->linkAt(1));
