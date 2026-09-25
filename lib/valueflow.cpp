@@ -1246,6 +1246,7 @@ static void valueFlowGlobalStaticVar(TokenList& tokenList, const Settings& setti
 {
     // Get variable values...
     std::map<const Variable*, ValueFlow::Value> vars;
+    std::unordered_set<const Variable*> modified;
     for (const Token* tok = tokenList.front(); tok; tok = tok->next()) {
         if (!tok->variable())
             continue;
@@ -1254,22 +1255,30 @@ static void valueFlowGlobalStaticVar(TokenList& tokenList, const Settings& setti
             tok->valueType() && tok->valueType()->isIntegral() && tok->valueType()->pointer == 0 &&
             tok->valueType()->constness == 0 && Token::Match(tok, "%name% =") && tok->next()->astOperand2() &&
             tok->next()->astOperand2()->hasKnownIntValue()) {
-            vars[tok->variable()] = *tok->next()->astOperand2()->getKnownValue(ValueFlow::Value::ValueType::INT);
+            // A C definition can follow uses of a tentative declaration.
+            // Do not forget writes encountered before the initializer.
+            if (modified.count(tok->variable()) == 0)
+                vars[tok->variable()] = *tok->next()->astOperand2()->getKnownValue(ValueFlow::Value::ValueType::INT);
         } else {
             // If variable is written anywhere in TU then remove it from vars
             if (!tok->astParent())
                 continue;
+            bool changed = false;
             if (Token::Match(tok->astParent(), "++|--|&") && !tok->astParent()->astOperand2())
-                vars.erase(tok->variable());
+                changed = true;
             else if (tok->astParent()->isAssignmentOp()) {
                 if (tok == tok->astParent()->astOperand1())
-                    vars.erase(tok->variable());
+                    changed = true;
                 else if (tok->isCpp() && Token::Match(tok->astParent()->tokAt(-2), "& %name% ="))
-                    vars.erase(tok->variable());
+                    changed = true;
             } else if (isLikelyStreamRead(tok->astParent())) {
-                vars.erase(tok->variable());
+                changed = true;
             } else if (Token::Match(tok->astParent(), "[(,]"))
+                changed = true;
+            if (changed) {
                 vars.erase(tok->variable());
+                modified.insert(tok->variable());
+            }
         }
     }
 

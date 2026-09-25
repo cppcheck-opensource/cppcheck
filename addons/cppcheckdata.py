@@ -702,6 +702,26 @@ class Function:
     #symboldatabase.cpp/SymbolDatabase::printXml
 
 
+class VariableDeclaration:
+    """One source declaration of a variable with shared object identity."""
+
+    def __init__(self, element):
+        self.nameTokenId = element.get('nameToken')
+        self.nameToken = None
+        self.typeStartTokenId = element.get('typeStartToken')
+        self.typeStartToken = None
+        self.typeEndTokenId = element.get('typeEndToken')
+        self.typeEndToken = None
+        self.isExtern = element.get('isExtern') == 'true'
+        self.isStatic = element.get('isStatic') == 'true'
+        self.isInit = element.get('isInit') == 'true'
+
+    def setId(self, IdMap):
+        self.nameToken = IdMap[self.nameTokenId]
+        self.typeStartToken = IdMap[self.typeStartTokenId]
+        self.typeEndToken = IdMap[self.typeEndTokenId]
+
+
 class Variable:
     """
     Information about a variable
@@ -726,6 +746,8 @@ class Variable:
         isReference     Is this variable a reference
         isStatic        Is this variable static?
         isVolatile      Is this variable volatile?
+        declarations    Original declarations when several declarations name this object.
+                        Empty for older dumps and variables without merged declarations.
     """
     #symboldatabase.cpp/SymbolDatabase::printXml
 
@@ -753,6 +775,7 @@ class Variable:
     constness = 0
 
     def __init__(self, element):
+        self.declarations = []
         self.Id = element.get('id')
         self.nameTokenId = element.get('nameToken')
         self.nameToken = None
@@ -791,6 +814,8 @@ class Variable:
         self.typeStartToken = IdMap[self.typeStartTokenId]
         self.typeEndToken = IdMap[self.typeEndTokenId]
         self.scope = IdMap[self.scopeId]
+        for declaration in self.declarations:
+            declaration.setId(IdMap)
 
 class Container:
     """
@@ -1282,6 +1307,7 @@ class CppcheckData:
         cfg = None
         cfg_arguments = []  # function arguments for Configuration node initialization
         cfg_function = None
+        cfg_variable = None
         cfg_valueflow = None
 
         # Iterating <varlist> in a <scope>.
@@ -1378,10 +1404,15 @@ class CppcheckData:
                     cfg.scopes[-1].varlistId.append(node.get('id'))
                 else:
                     var = Variable(node)
+                    cfg_variable = var
                     if var.nameTokenId:
                         cfg.variables.append(var)
                     else:
                         cfg_arguments.append(var)
+            elif node.tag == 'var' and event == 'end':
+                cfg_variable = None
+            elif node.tag == 'declaration' and event == 'start' and cfg_variable is not None:
+                cfg_variable.declarations.append(VariableDeclaration(node))
 
             # Parse containers
             elif node.tag == 'containers' and event == 'start':

@@ -120,6 +120,7 @@ private:
         TEST_CASE(valueFlowGlobalConstVar);
 
         TEST_CASE(valueFlowGlobalStaticVar);
+        TEST_CASE(valueFlowGlobalStaticRedeclarationC);
 
         TEST_CASE(valueFlowInlineAssembly);
 
@@ -6025,6 +6026,26 @@ private:
                "}\n"
                "void other() { x += b; }\n";
         ASSERT_EQUALS(false, testValueOfX(code, 3U, 1));
+    }
+
+    void valueFlowGlobalStaticRedeclarationC() {
+        for (const std::string change : {"", "x = 2;", "++x;", "int *p = &x; *p = 2;"}) {
+            const std::string code = "static int x;\n"
+                                     "void update(void) { " + change + " }\n"
+                                     "int f(void) { update(); return x - 1; }\n"
+                                     "static int x = 1;\n";
+            SimpleTokenizer tokenizer(settings, *this, false);
+            ASSERT(tokenizer.tokenize(code));
+            const Token* ret = Token::findsimplematch(tokenizer.tokens(), "return x -");
+            ASSERT(ret);
+            const Token* use = ret->next();
+            if (change.empty()) {
+                ASSERT(use->hasKnownIntValue());
+                ASSERT_EQUALS(1, use->getKnownIntValue());
+            } else {
+                ASSERT(!use->hasKnownIntValue());
+            }
+        }
     }
 
     void valueFlowInlineAssembly() {

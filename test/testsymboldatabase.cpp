@@ -282,6 +282,10 @@ private:
         TEST_CASE(hasGlobalVariables1);
         TEST_CASE(hasGlobalVariables2);
         TEST_CASE(hasGlobalVariables3);
+        TEST_CASE(globalVariableRedeclarations); // #6418
+        TEST_CASE(globalVariableRedeclarationMetadata);
+        TEST_CASE(globalVariableRedeclarationArrayBounds);
+        TEST_CASE(globalVariableRedeclarationScopes);
 
         TEST_CASE(checkTypeStartEndToken1);
         TEST_CASE(checkTypeStartEndToken2); // handling for unknown macro: 'void f() MACRO {..'
@@ -1858,9 +1862,11 @@ private:
         GET_SYMBOL_DB_C("extern alignas(16) int x;\n"
                         "alignas(16) int x;\n");
         ASSERT(db);
-        ASSERT_EQUALS(2, db->scopeList.front().varlist.size());
+        ASSERT_EQUALS(1, db->scopeList.front().varlist.size());
         const Variable *x1 = Token::findsimplematch(tokenizer.tokens(), "x")->variable();
         ASSERT(x1 && Token::simpleMatch(x1->typeStartToken(), "int x ;"));
+        const Token *x2 = findToken(tokenizer, "x ;", 2);
+        ASSERT(x2 && x2->variable() == x1);
     }
 
     void memberVar1() {
@@ -2694,6 +2700,196 @@ private:
         const auto var = it->varlist.cbegin();
         ASSERT(var->name() == "array");
         ASSERT(var->typeStartToken()->str() == "int");
+    }
+
+    void globalVariableRedeclarations() { // #6418
+        GET_SYMBOL_DB_C("int tentative;\n"
+                        "int tentative;\n"
+                        "extern int defined;\n"
+                        "int before(void) { return defined; }\n"
+                        "int defined;\n"
+                        "extern int defined;\n"
+                        "int after(void) { return defined; }\n"
+                        "int reverse;\n"
+                        "extern int reverse;\n");
+        ASSERT(db);
+        ASSERT_EQUALS(3, db->scopeList.front().varlist.size());
+        for (const Variable& var : db->scopeList.front().varlist) {
+            ASSERT(var.isGlobal());
+            ASSERT(!var.isExtern());
+            ASSERT(var.declarationId() != 0);
+            ASSERT(db->getVariableFromVarId(var.declarationId()) == &var);
+            for (const Token* tok = tokenizer.tokens(); tok; tok = tok->next()) {
+                if (tok->str() != var.name())
+                    continue;
+                ASSERT_EQUALS(var.declarationId(), tok->varId());
+                ASSERT(tok->variable() == &var);
+            }
+        }
+    }
+
+    void globalVariableRedeclarationMetadata() {
+        GET_SYMBOL_DB_C("extern int value;\n"
+                        "int value = 7;\n"
+                        "extern int value;\n"
+                        "int reverse = 9;\n"
+                        "extern int reverse;\n"
+                        "extern int data[];\n"
+                        "int before(void) { return data[0]; }\n"
+                        "int data[4];\n"
+                        "extern int data[];\n"
+                        "int after(void) { return data[0]; }\n"
+                        "static int internal;\n"
+                        "extern int internal = 1;\n"
+                        "extern int chained;\n"
+                        "int chained;\n"
+                        "int chained = 3;\n"
+                        "extern int chained;\n");
+        ASSERT(db);
+        ASSERT_EQUALS(5, db->scopeList.front().varlist.size());
+
+        const Variable* value = Token::findsimplematch(tokenizer.tokens(), "value")->variable();
+        ASSERT(value && value->isInit() && !value->isExtern());
+        ASSERT_EQUALS(2, value->nameToken()->linenr());
+        ASSERT_EQUALS(3U, value->declarations().size());
+        for (std::size_t i = 0; i < value->declarations().size(); ++i) {
+            const Variable::Declaration& declaration = value->declarations()[i];
+            ASSERT_EQUALS(i + 1, declaration.nameToken->linenr());
+            ASSERT_EQUALS(i != 1, declaration.isExtern);
+            ASSERT_EQUALS(i == 1, declaration.isInit);
+            ASSERT(!declaration.isStatic);
+            ASSERT_EQUALS("int", declaration.typeStartToken->str());
+            ASSERT_EQUALS("int", declaration.typeEndToken->str());
+            ASSERT(declaration.nameToken->variable() == value);
+        }
+        const Variable copy(*value);
+        ASSERT_EQUALS(value->declarations().size(), copy.declarations().size());
+        ASSERT(copy.declarations().front().nameToken == value->declarations().front().nameToken);
+        const Variable* reverse = Token::findsimplematch(tokenizer.tokens(), "reverse")->variable();
+        ASSERT(reverse && reverse->isInit() && !reverse->isExtern());
+        ASSERT_EQUALS(4, reverse->nameToken()->linenr());
+
+        const Variable* data = Token::findsimplematch(tokenizer.tokens(), "data")->variable();
+        ASSERT(data && data->isArray() && !data->isExtern());
+        ASSERT_EQUALS(1U, data->dimensions().size());
+        ASSERT(data->dimensions()[0].known);
+        ASSERT_EQUALS(4, data->dimension(0));
+        const Variable* internal = Token::findsimplematch(tokenizer.tokens(), "internal")->variable();
+        ASSERT(internal && internal->isStatic() && internal->isInit());
+        ASSERT_EQUALS(12, internal->nameToken()->linenr());
+        ASSERT_EQUALS(2U, internal->declarations().size());
+        ASSERT(internal->declarations()[0].isStatic);
+        ASSERT(!internal->declarations()[0].isExtern);
+        ASSERT(!internal->declarations()[0].isInit);
+        ASSERT(!internal->declarations()[1].isStatic);
+        ASSERT(internal->declarations()[1].isExtern);
+        ASSERT(internal->declarations()[1].isInit);
+
+        const Variable* chained = Token::findsimplematch(tokenizer.tokens(), "chained")->variable();
+        ASSERT(chained && chained->isInit() && !chained->isExtern());
+        ASSERT_EQUALS(15, chained->nameToken()->linenr());
+        ASSERT_EQUALS(4U, chained->declarations().size());
+        for (std::size_t i = 0; i < chained->declarations().size(); ++i) {
+            const Variable::Declaration& declaration = chained->declarations()[i];
+            ASSERT_EQUALS(13 + i, declaration.nameToken->linenr());
+            ASSERT_EQUALS(i == 0 || i == 3, declaration.isExtern);
+            ASSERT_EQUALS(i == 2, declaration.isInit);
+            ASSERT(declaration.nameToken->variable() == chained);
+        }
+
+        for (const Variable& var : db->scopeList.front().varlist) {
+            ASSERT(db->getVariableFromVarId(var.declarationId()) == &var);
+            for (const Token* tok = tokenizer.tokens(); tok; tok = tok->next()) {
+                if (tok->str() == var.name())
+                    ASSERT(tok->variable() == &var);
+            }
+        }
+    }
+
+    void globalVariableRedeclarationArrayBounds() {
+        GET_SYMBOL_DB_C("int a[4];\n"
+                        "int a[] = { 1 };\n"
+                        "extern int b[4];\n"
+                        "int b[] = { 1 };\n");
+        ASSERT(db);
+        ASSERT_EQUALS(2, db->scopeList.front().varlist.size());
+        for (const Variable& var : db->scopeList.front().varlist) {
+            ASSERT(var.isArray() && var.isInit() && !var.isExtern());
+            ASSERT_EQUALS(1U, var.dimensions().size());
+            ASSERT(var.dimensions()[0].known);
+            ASSERT_EQUALS(4, var.dimension(0));
+            for (const Token* tok = tokenizer.tokens(); tok; tok = tok->next()) {
+                if (tok->str() == var.name())
+                    ASSERT(tok->variable() == &var);
+            }
+        }
+    }
+
+    void globalVariableRedeclarationScopes() {
+        {
+            GET_SYMBOL_DB_C("int x;\n"
+                            "struct A { int x; };\n"
+                            "struct B { int x; };\n"
+                            "void f(void) { int x; { int x; } }\n"
+                            "void g(void) { int x; }\n"
+                            "int x;\n");
+            ASSERT(db);
+            ASSERT_EQUALS(1, db->scopeList.front().varlist.size());
+            const Variable* global = &db->scopeList.front().varlist.front();
+            std::set<const Variable*> variables;
+            for (const Token* tok = tokenizer.tokens(); tok; tok = tok->next()) {
+                if (tok->str() != "x")
+                    continue;
+                ASSERT(tok->variable());
+                variables.insert(tok->variable());
+                if (tok->linenr() == 1 || tok->linenr() == 6)
+                    ASSERT(tok->variable() == global);
+                else
+                    ASSERT(tok->variable() != global);
+            }
+            ASSERT_EQUALS(6, variables.size());
+        }
+        {
+            GET_SYMBOL_DB_C("int x;\n"
+                            "int f(int x);\n"
+                            "int f(int x) { return x; }\n"
+                            "int x;\n");
+            ASSERT(db);
+            ASSERT_EQUALS(1, db->scopeList.front().varlist.size());
+            const Variable* global = &db->scopeList.front().varlist.front();
+            const Token* prototypeArg = findToken(tokenizer, "x )", 2);
+            ASSERT(prototypeArg && prototypeArg->varId() != 0);
+            ASSERT(prototypeArg->varId() != global->declarationId());
+            const Token* arg = findToken(tokenizer, "x )", 3);
+            const Token* use = findToken(tokenizer, "x ;", 3);
+            ASSERT(arg && arg->variable() && arg->variable()->isArgument());
+            ASSERT(arg->variable() != global);
+            ASSERT(use && use->variable() == arg->variable());
+        }
+        {
+            GET_SYMBOL_DB_C("int x;\n"
+                            "struct { int x; } s;\n"
+                            "int x;\n");
+            ASSERT(db);
+            ASSERT_EQUALS(2, db->scopeList.front().varlist.size());
+            const Token* global = findToken(tokenizer, "x ;", 1);
+            const Token* member = findToken(tokenizer, "x ;", 2);
+            const Token* redeclaration = findToken(tokenizer, "x ;", 3);
+            ASSERT(global && global->variable() && global->variable()->isGlobal());
+            ASSERT(member && member->variable() && member->variable()->isMember());
+            ASSERT(redeclaration && redeclaration->variable() == global->variable());
+            ASSERT(member->variable() != global->variable());
+        }
+        {
+            // Preserve the existing C++ handling.
+            GET_SYMBOL_DB("extern int x; int x;\n");
+            ASSERT_EQUALS(2, db->scopeList.front().varlist.size());
+            const Token* first = Token::findsimplematch(tokenizer.tokens(), "x ;");
+            ASSERT(first && first->variable());
+            const Token* second = Token::findsimplematch(first->next(), "x ;");
+            ASSERT(second && second->variable());
+            ASSERT(first->variable() != second->variable());
+        }
     }
 
     void checkTypeStartEndToken1() {

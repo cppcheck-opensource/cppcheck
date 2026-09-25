@@ -893,6 +893,60 @@ void SymbolDatabase::createSymbolDatabaseVariableInfo()
     for (Scope& scope : scopeList) {
         // find variables
         scope.getVariableList();
+
+        if (mTokenizer.isC() && scope.type == ScopeType::eGlobal) {
+            // Canonicalize before assigning Variable pointers to tokens. C
+            // declarations may contribute an initializer or complete an array
+            // type without introducing another object.
+            std::unordered_map<nonneg int, Variable*> variables;
+            nonneg int index = 0;
+            for (auto it = scope.varlist.begin(); it != scope.varlist.end();) {
+                const nonneg int id = it->declarationId();
+                const auto previous = variables.find(id);
+                if (id == 0 || previous == variables.end()) {
+                    it->mIndex = index++;
+                    if (id != 0)
+                        variables.emplace(id, &*it);
+                    ++it;
+                    continue;
+                }
+
+                Variable& var = *previous->second;
+                auto declarations = std::move(var.mDeclarations);
+                if (declarations.empty())
+                    declarations.push_back({var.nameToken(), var.typeStartToken(), var.typeEndToken(),
+                                            var.isExtern(), var.isStatic(), var.isInit()});
+                declarations.push_back({it->nameToken(), it->typeStartToken(), it->typeEndToken(),
+                                        it->isExtern(), it->isStatic(), it->isInit()});
+                const bool isStatic = var.isStatic() || it->isStatic();
+                const bool isExtern = var.isExtern() && it->isExtern();
+                const bool maybeUnused = var.isMaybeUnused() || it->isMaybeUnused();
+                auto dimensions = var.dimensions();
+                if (dimensions.size() == it->dimensions().size()) {
+                    for (std::size_t i = 0; i < dimensions.size(); ++i) {
+                        const Dimension& dimension = it->dimensions()[i];
+                        if (!dimensions[i].known && !dimensions[i].tok)
+                            dimensions[i] = dimension;
+                    }
+                }
+
+                // Keep the initialized definition, or a tentative definition
+                // in preference to an extern-only declaration.
+                if ((!var.isInit() && it->isInit()) ||
+                    (!var.isInit() && var.isExtern() && !it->isExtern())) {
+                    const nonneg int originalIndex = var.index();
+                    var = *it;
+                    var.mIndex = originalIndex;
+                }
+                var.setFlag(Variable::fIsStatic, isStatic);
+                var.setFlag(Variable::fIsExtern, isExtern);
+                var.setFlag(Variable::fIsMaybeUnused, maybeUnused);
+                if (dimensions.size() == var.dimensions().size())
+                    var.setDimensions(dimensions);
+                var.mDeclarations = std::move(declarations);
+                it = scope.varlist.erase(it);
+            }
+        }
     }
 
     // fill in function arguments
@@ -2503,6 +2557,7 @@ Variable& Variable::operator=(const Variable &var) &
     mType = var.mType;
     mScope = var.mScope;
     mDimensions = var.mDimensions;
+    mDeclarations = var.mDeclarations;
     delete mValueType;
     mValueType = vt;
 
@@ -4679,7 +4734,27 @@ void SymbolDatabase::printXml(std::ostream &out) const
         outs += " isVolatile=\"";
         outs += bool_to_string(var->isVolatile());
         outs += '\"';
-        outs += "/>\n";
+        if (var->declarations().empty()) {
+            outs += "/>\n";
+        } else {
+            outs += ">\n";
+            for (const Variable::Declaration& declaration : var->declarations()) {
+                outs += "      <declaration nameToken=\"";
+                outs += id_string(declaration.nameToken);
+                outs += "\" typeStartToken=\"";
+                outs += id_string(declaration.typeStartToken);
+                outs += "\" typeEndToken=\"";
+                outs += id_string(declaration.typeEndToken);
+                outs += "\" isExtern=\"";
+                outs += bool_to_string(declaration.isExtern);
+                outs += "\" isStatic=\"";
+                outs += bool_to_string(declaration.isStatic);
+                outs += "\" isInit=\"";
+                outs += bool_to_string(declaration.isInit);
+                outs += "\"/>\n";
+            }
+            outs += "    </var>\n";
+        }
     }
     outs += "  </variables>\n";
 

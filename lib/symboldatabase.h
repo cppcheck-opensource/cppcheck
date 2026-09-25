@@ -219,6 +219,15 @@ class CPPCHECKLIB Variable {
     bool arrayDimensions(const Settings& settings, bool& isContainer);
 
 public:
+    struct Declaration {
+        const Token* nameToken;
+        const Token* typeStartToken;
+        const Token* typeEndToken;
+        bool isExtern;
+        bool isStatic;
+        bool isInit;
+    };
+
     Variable(const Token *name_, const Token *start_, const Token *end_,
              nonneg int index_, AccessControl access_, const Type *type_,
              const Scope *scope_, const Settings& settings)
@@ -251,6 +260,12 @@ public:
      */
     const Token *nameToken() const {
         return mNameToken;
+    }
+
+    // Original occurrences for a merged C declaration. Empty for an unmerged
+    // variable, whose declaration is described by its ordinary accessors.
+    const std::vector<Declaration>& declarations() const {
+        return mDeclarations;
     }
 
     /**
@@ -699,6 +714,8 @@ private:
 
     /** @brief array dimensions */
     std::vector<Dimension> mDimensions;
+
+    std::vector<Declaration> mDeclarations;
 
     /** @brief fill in information, depending on Tokens given at instantiation */
     void evaluate(const Settings& settings);

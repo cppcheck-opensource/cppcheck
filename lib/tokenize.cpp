@@ -4042,6 +4042,10 @@ void Tokenizer::arraySizeAfterValueFlow()
             continue;
         if (!Token::Match(var->nameToken(), "%name% [ ] = { ["))
             continue;
+        // A C redeclaration may inherit a complete bound from an earlier
+        // declaration. The initializer does not shrink that composite type.
+        if (!var->dimensions().empty() && (var->dimensions().front().known || var->dimensions().front().tok))
+            continue;
         MathLib::bigint maxIndex = -1;
         const Token* const startToken = var->nameToken()->tokAt(4);
         const Token* const endToken = startToken->link();
@@ -4324,7 +4328,7 @@ namespace {
         VariableMap() = default;
         void enterScope();
         bool leaveScope();
-        void addVariable(const std::string& varname, bool globalNamespace);
+        void addVariable(const std::string& varname, bool globalNamespace, bool reuseGlobal = false);
         bool hasVariable(const std::string& varname) const {
             return mVariableId.find(varname) != mVariableId.end();
         }
@@ -4362,9 +4366,13 @@ bool VariableMap::leaveScope()
     return true;
 }
 
-void VariableMap::addVariable(const std::string& varname, bool globalNamespace)
+void VariableMap::addVariable(const std::string& varname, bool globalNamespace, bool reuseGlobal)
 {
     if (mScopeInfo.empty()) {
+        // C file-scope redeclarations name the same object. Parameters and
+        // local declarations enter their own VariableMap scope.
+        if (reuseGlobal && globalNamespace && hasVariable(varname))
+            return;
         mVariableId[varname].id = ++mVarId;
         if (globalNamespace)
             mVariableId_global[varname] = mVariableId[varname];
@@ -5039,7 +5047,7 @@ void Tokenizer::setVarIdPass1()
                 if (decl) {
                     if (isC() && Token::Match(prev2->previous(), "&|&&"))
                         syntaxErrorC(prev2, prev2->strAt(-2) + prev2->strAt(-1) + " " + prev2->str());
-                    variableMap.addVariable(prev2->str(), scopeStack.size() <= 1);
+                    variableMap.addVariable(prev2->str(), scopeStack.size() <= 1, isC());
 
                     if (Token::simpleMatch(tok->previous(), "for (") && Token::Match(prev2, "%name% [=[({,]")) {
                         for (const Token *tok3 = prev2->next(); tok3 && tok3->str() != ";"; tok3 = tok3->next()) {

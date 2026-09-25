@@ -93,6 +93,7 @@ private:
         TEST_CASE(sizeof3);
 
         TEST_CASE(array_index_1);
+        TEST_CASE(array_redeclaration_c);
         TEST_CASE(array_index_2);
         TEST_CASE(array_index_3);
         TEST_CASE(array_index_4);
@@ -383,6 +384,30 @@ private:
               "    struct group *gr;\n"
               "    snprintf(group, 32, \"%u\", gr->gr_gid);\n"
               "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void array_redeclaration_c() {
+        check("extern int a[];\n"
+              "int before(void) { return a[4]; }\n"
+              "int a[4];\n"
+              "int after(void) { return a[4]; }\n", dinit(CheckOptions, $.cpp = false));
+        ASSERT_EQUALS("[test.c:2:28]: (error) Array 'a[4]' accessed at index 4, which is out of bounds. [arrayIndexOutOfBounds]\n"
+                      "[test.c:4:27]: (error) Array 'a[4]' accessed at index 4, which is out of bounds. [arrayIndexOutOfBounds]\n", errout_str());
+
+        check("int a[4];\n"
+              "int a[] = {1};\n"
+              "int f(void) { return a[3]; }\n", dinit(CheckOptions, $.cpp = false));
+        ASSERT_EQUALS("", errout_str());
+
+        check("extern int a[4];\n"
+              "int a[] = {1};\n"
+              "int f(void) { return a[3]; }\n", dinit(CheckOptions, $.cpp = false));
+        ASSERT_EQUALS("", errout_str());
+
+        check("enum { I = 0 }; int a[4];\n"
+              "int a[] = {[I] = 1};\n"
+              "int f(void) { return a[3]; }\n", dinit(CheckOptions, $.cpp = false));
         ASSERT_EQUALS("", errout_str());
     }
 
