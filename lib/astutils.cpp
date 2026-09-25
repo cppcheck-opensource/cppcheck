@@ -3512,6 +3512,88 @@ bool isLeafDot(const Token* tok)
     return isLeafDot(parent);
 }
 
+static const Variable* singlePlainDataMember(const Scope* scope)
+{
+    if (!scope || (scope->type != ScopeType::eStruct && scope->type != ScopeType::eClass) ||
+        !scope->definedType || !scope->definedType->derivedFrom.empty() || scope->numConstructors != 0)
+        return nullptr;
+    if (std::any_of(scope->functionList.cbegin(), scope->functionList.cend(), [](const Function& function) {
+        return function.hasVirtualSpecifier() || function.hasOverrideSpecifier();
+    }))
+        return nullptr;
+    if (std::any_of(scope->nestedList.cbegin(), scope->nestedList.cend(), [](const Scope* nested) {
+        return nested->type == ScopeType::eUnion;
+    }))
+        return nullptr;
+    const Variable* member = nullptr;
+    for (const Variable& var : scope->varlist) {
+        if (var.isStatic())
+            continue;
+        if (member || !var.isPublic() || var.isArray() || var.isPointer() || var.isReference() ||
+            var.isRValueReference() || var.isVolatile() || var.hasDefault())
+            return nullptr;
+        member = &var;
+    }
+    return member;
+}
+
+const Variable* getSingleMemberArrowWriteTarget(const Token* tok)
+{
+    if (!Token::Match(tok, ". %name%") || tok->originalName() != "->" || !tok->astOperand1())
+        return nullptr;
+    // Exclude bindings, conditional/unevaluated operands and nested writes
+    // whose evaluation order is not established by this projection.
+    const Token* operation = tok->astParent();
+    if (!operation || operation->astParent() || operation->astOperand1() != tok ||
+        (!operation->isAssignmentOp() && !Token::Match(operation, "++|--")))
+        return nullptr;
+    const Variable* receiver = tok->astOperand1()->variable();
+    if (!receiver || !receiver->isLocal() || receiver->isPointer() || receiver->isArray() || receiver->isReference() ||
+        receiver->isRValueReference() || receiver->isVolatile())
+        return nullptr;
+    // A deferred lambda body does not initialize a captured outer object.
+    for (const Scope* enclosing = tok->scope(); enclosing && enclosing != receiver->scope(); enclosing = enclosing->nestedIn) {
+        if (enclosing->type == ScopeType::eLambda || enclosing->type == ScopeType::eFunction)
+            return nullptr;
+    }
+    const Scope* scope = receiver->typeScope();
+    const Variable* member = singlePlainDataMember(scope);
+    if (!member)
+        return nullptr;
+    const Variable* leaf = singlePlainDataMember(member->typeScope());
+    if (!leaf || !leaf->valueType() || !leaf->valueType()->isPrimitive() ||
+        tok->astOperand2() != tok->next() || tok->strAt(1) != leaf->name() ||
+        (tok->next()->variable() && tok->next()->variable() != leaf))
+        return nullptr;
+
+    const auto operators = scope->functionMap.equal_range("operator->");
+    if (operators.first == operators.second)
+        return nullptr;
+    for (auto it = operators.first; it != operators.second; ++it) {
+        const Function* function = it->second;
+        if (!function->functionScope || !Function::returnsPointer(function) ||
+            function->retType != member->type() || function->argCount() != 0 || function->isVolatile())
+            return nullptr;
+        const Token* body = function->functionScope->bodyStart;
+        if (!Token::simpleMatch(body, "{ return &") || !body->tokAt(2)->isUnaryOp("&"))
+            return nullptr;
+        const Token* memberToken = body->tokAt(3);
+        if (Token::simpleMatch(memberToken, "this ."))
+            memberToken = memberToken->tokAt(2);
+        if (!Token::Match(memberToken, "%var% ; }") || memberToken->variable() != member ||
+            memberToken->tokAt(2) != function->functionScope->bodyEnd)
+            return nullptr;
+    }
+
+    // A member, free or friend operator& can change the returned address.
+    // Keep the proof independent of overload resolution for address-of.
+    if (std::any_of(scope->symdb.scopeList.cbegin(), scope->symdb.scopeList.cend(), [](const Scope& candidate) {
+        return candidate.functionMap.count("operator&") != 0;
+    }))
+        return nullptr;
+    return member;
+}
+
 ExprUsage getExprUsage(const Token* tok, int indirect, const Settings& settings)
 {
     const Token* parent = tok->astParent();

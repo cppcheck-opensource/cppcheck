@@ -164,6 +164,8 @@ private:
 
         TEST_CASE(dereferenceInvalidIterator);
         TEST_CASE(dereferenceInvalidIterator2); // #6572
+        TEST_CASE(dereferenceSelfContainedIterator);
+        TEST_CASE(dereferenceSelfContainedIteratorOperators);
         TEST_CASE(dereference_auto);
 
         TEST_CASE(loopAlgoElementAssign);
@@ -5779,7 +5781,7 @@ private:
               "    it->m_place = 0;\n"
               "    return it;\n"
               "}\n", dinit(CheckOptions, $.inconclusive = true));
-        ASSERT_EQUALS("[test.cpp:18:5]: (error, inconclusive) Invalid iterator 'it' used. [eraseDereference]\n", errout_str());
+        ASSERT_EQUALS("", errout_str());
 
         check("int f(const std::vector<int>& v) {\n" // #11895
               "    auto it = v.end();\n"
@@ -5787,6 +5789,165 @@ private:
               "    return *it;\n"
               "}\n", dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void dereferenceSelfContainedIterator() {
+        check("struct Value { int field; };\n"
+              "struct iterator {\n"
+              "    Value item;\n"
+              "    Value& operator*() { return item; }\n"
+              "    Value* operator->() { return &this->item; }\n"
+              "    const Value* operator->() const { return &item; }\n"
+              "    iterator& operator++();\n"
+              "};\n"
+              "iterator f() {\n"
+              "    iterator it;\n"
+              "    it->field = 0;\n"
+              "    return it;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
+
+        // Safe arrow access must not validate a different dereference operator.
+        check("struct Value { int field; };\n"
+              "struct iterator {\n"
+              "    Value item; Value* ptr;\n"
+              "    Value& operator*() { return *ptr; }\n"
+              "    Value* operator->() { return &item; }\n"
+              "    iterator& operator++();\n"
+              "};\n"
+              "void f() {\n"
+              "    iterator it;\n"
+              "    it->field = 0;\n"
+              "    *it;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:11:5]: (error, inconclusive) Invalid iterator 'it' used. [eraseDereference]\n", errout_str());
+
+        check("struct Value { int field; };\n"
+              "struct iterator {\n"
+              "    Value* ptr;\n"
+              "    Value& operator*() { return *ptr; }\n"
+              "    Value* operator->() { return ptr; }\n"
+              "    iterator& operator++();\n"
+              "};\n"
+              "void f() {\n"
+              "    iterator it;\n"
+              "    it->field = 0;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:10:5]: (error, inconclusive) Invalid iterator 'it' used. [eraseDereference]\n", errout_str());
+
+        // One safe overload is insufficient when another overload has unknown semantics.
+        check("struct Value { int field; };\n"
+              "struct iterator {\n"
+              "    Value item; Value* ptr;\n"
+              "    Value& operator*() { return *ptr; }\n"
+              "    Value* operator->() { return &item; }\n"
+              "    const Value* operator->() const;\n"
+              "    iterator& operator++();\n"
+              "};\n"
+              "void f() {\n"
+              "    iterator it;\n"
+              "    it->field = 0;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:11:5]: (error, inconclusive) Invalid iterator 'it' used. [eraseDereference]\n", errout_str());
+
+        // The address-of operator can itself be overloaded.
+        check("struct Value { int field; Value* operator&(); };\n"
+              "struct iterator {\n"
+              "    Value item;\n"
+              "    Value& operator*() { return item; }\n"
+              "    Value* operator->() { return &item; }\n"
+              "    iterator& operator++();\n"
+              "};\n"
+              "void f() {\n"
+              "    iterator it;\n"
+              "    it->field = 0;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:10:5]: (error, inconclusive) Invalid iterator 'it' used. [eraseDereference]\n", errout_str());
+
+        // Keep the existing invalidation heuristic after an erase operation.
+        check("struct Value { int field; };\n"
+              "struct iterator {\n"
+              "    Value item;\n"
+              "    Value& operator*() { return item; }\n"
+              "    Value* operator->() { return &item; }\n"
+              "    iterator& operator++();\n"
+              "};\n"
+              "struct Container { void erase(iterator); };\n"
+              "void f(Container& c) {\n"
+              "    iterator it{};\n"
+              "    c.erase(it);\n"
+              "    it->field = 0;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:12:5] -> [test.cpp:11:5]: (error, inconclusive) Iterator 'it' used after element has been erased. [eraseDereference]\n", errout_str());
+    }
+
+    void dereferenceSelfContainedIteratorOperators() {
+        // free address of
+        check("struct Value { int field; };\n"
+              "Value* operator&(Value&) { return nullptr; }\n"
+              "struct iterator {\n"
+              "    Value item;\n"
+              "    Value& operator*() { return item; }\n"
+              "    Value* operator->() { return &item; }\n"
+              "    iterator& operator++();\n"
+              "};\n"
+              "void f() {\n"
+              "    iterator it;\n"
+              "    it->field = 0;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:11:5]: (error, inconclusive) Invalid iterator 'it' used. [eraseDereference]\n", errout_str());
+
+        // inherited arrow
+        check("struct Value { int field; };\n"
+              "struct Base {\n"
+              "    Value* operator->() const { return nullptr; }\n"
+              "};\n"
+              "struct iterator : Base {\n"
+              "    using Base::operator->;\n"
+              "    Value item;\n"
+              "    iterator() {}\n"
+              "    Value& operator*() { return item; }\n"
+              "    Value* operator->() { return &item; }\n"
+              "    iterator& operator++();\n"
+              "};\n"
+              "void f() {\n"
+              "    const iterator it;\n"
+              "    it->field = 0;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:15:5]: (error, inconclusive) Invalid iterator 'it' used. [eraseDereference]\n", errout_str());
+
+        // arrow proxy
+        check("struct Value { int field; };\n"
+              "struct Proxy {\n"
+              "    Proxy(Value*) {}\n"
+              "    Value* operator->() { return nullptr; }\n"
+              "};\n"
+              "struct iterator {\n"
+              "    Value item;\n"
+              "    Value& operator*() { return item; }\n"
+              "    Proxy operator->() { return &item; }\n"
+              "    iterator& operator++();\n"
+              "};\n"
+              "void f() {\n"
+              "    iterator it;\n"
+              "    it->field = 0;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:14:5]: (error, inconclusive) Invalid iterator 'it' used. [eraseDereference]\n", errout_str());
+
+        // friend unary address of overload
+        check("struct Value { int field; friend Value* operator&(Value&) { return nullptr; } };\n"
+              "struct iterator {\n"
+              "    Value item;\n"
+              "    Value& operator*() { return item; }\n"
+              "    Value* operator->() { return &item; }\n"
+              "    iterator& operator++();\n"
+              "};\n"
+              "void f() {\n"
+              "    iterator it;\n"
+              "    it->field = 0;\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:10:5]: (error, inconclusive) Invalid iterator 'it' used. [eraseDereference]\n", errout_str());
+
     }
 
     void loopAlgoElementAssign() {

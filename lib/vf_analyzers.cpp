@@ -570,6 +570,14 @@ private:
 
     Action analyzeMatch(const Token* tok, Direction d) const {
         const Token* parent = tok->astParent();
+        const ValueFlow::Value* value = getValue(tok);
+        if (value && value->isUninitValue() && value->indirect == 0 &&
+            getSingleMemberArrowWriteTarget(parent) && parent->astOperand1() == tok) {
+            // The accessor only takes an address. For this singleton layout,
+            // the selected scalar and the receiver have the same init state.
+            const Token* operation = parent->astParent();
+            return operation->str() == "=" ? Action::Invalid : Action::Read | Action::Invalid;
+        }
         if (d == Direction::Reverse && isGlobal() && !dependsOnThis() && Token::Match(parent, ". %name% (")) {
             Action a = isGlobalModified(parent->next());
             if (a != Action::None)
@@ -1505,6 +1513,8 @@ struct MemberExpressionAnalyzer : SubExpressionAnalyzer {
     {
         if (!Token::Match(tok, ". %var%"))
             return false;
+        if (const Variable* member = getSingleMemberArrowWriteTarget(tok))
+            return !exact || member->name() == varname;
         if (!exact)
             return true;
         return tok->strAt(1) == varname;
