@@ -80,6 +80,9 @@ private:
         TEST_CASE(mapindex);
         TEST_CASE(commaoperator1);
         TEST_CASE(commaoperator2);
+        TEST_CASE(commaoperatorOverloaded);
+        TEST_CASE(commaoperatorBuiltin);
+        TEST_CASE(commaoperatorOverloadCandidates);
         TEST_CASE(redundantstmts);
         TEST_CASE(vardecl);
         TEST_CASE(archive);             // ar & x
@@ -432,6 +435,151 @@ private:
               "    } s(1, 2);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void commaoperatorOverloaded() { // #4651
+        check("void f() {\n"
+              "    using namespace boost::assign;\n"
+              "    std::vector<int> values;\n"
+              "    values += 2, 2;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Collector {\n"
+              "    Collector& operator+=(int);\n"
+              "    Collector& operator,(int);\n"
+              "};\n"
+              "void f(Collector& values) {\n"
+              "    values += 1, 2, 3;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Collector {};\n"
+              "Collector& operator+=(Collector&, int);\n"
+              "Collector& operator,(Collector&, int);\n"
+              "void f(Collector& values) {\n"
+              "    values += 1, 2;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f(Unknown& values) {\n"
+              "    values += 1, 2;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Collector { void operator,(int); };\n"
+              "void f(Collector& values) {\n"
+              "    values, 2;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("enum Value { First };\n"
+              "void operator,(Value, int);\n"
+              "void f(Value value) {\n"
+              "    value, 2;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void commaoperatorBuiltin() {
+        check("void f(int& value) {\n"
+              "    value += 1, 2;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:15]: (warning) Found suspicious operator ',', result is not used. [constStatement]\n", errout_str());
+
+        check("struct S { operator int() const; };\n"
+              "void f(S value) {\n"
+              "    int i;\n"
+              "    i = value, 2;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:14]: (warning) Found suspicious operator ',', result is not used. [constStatement]\n", errout_str());
+
+        check("void f(int*& value) {\n"
+              "    value = nullptr, 2;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:20]: (warning) Found suspicious operator ',', result is not used. [constStatement]\n", errout_str());
+
+        check("void f(int* value) {\n"
+              "    value += 1, 2;\n"
+              "}\n", dinit(CheckOptions, $.cpp = false));
+        ASSERT_EQUALS("[test.c:2:15]: (warning) Found suspicious operator ',', result is not used. [constStatement]\n", errout_str());
+
+        check("struct Collector { int operator+=(int); };\n"
+              "void f(Collector& values) {\n"
+              "    values += 1, 2;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:16]: (warning) Found suspicious operator ',', result is not used. [constStatement]\n", errout_str());
+
+        check("struct Collector { void operator+=(int); };\n"
+              "void f(Collector& values) {\n"
+              "    values += 1, 2;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:16]: (warning) Found suspicious operator ',', result is not used. [constStatement]\n", errout_str());
+
+        check("struct Collector {};\n"
+              "int operator+=(Collector&, int);\n"
+              "void f(Collector& values) {\n"
+              "    values += 1, 2;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:16]: (warning) Found suspicious operator ',', result is not used. [constStatement]\n", errout_str());
+
+        check("struct Collector { void operator,(int); };\n"
+              "void f(Collector& values) {\n"
+              "    (void)values, 2;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:17]: (warning) Found suspicious operator ',', result is not used. [constStatement]\n", errout_str());
+
+        check("struct Collector { Collector* operator+=(int); };\n"
+              "void f(Collector& values) {\n"
+              "    values += 1, 2;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:16]: (warning) Found suspicious operator ',', result is not used. [constStatement]\n", errout_str());
+    }
+
+    void commaoperatorOverloadCandidates() {
+        check("struct Collector { int operator+=(double); };\n"
+              "namespace {\n"
+              "    Collector& operator+=(Collector&, int);\n"
+              "    Collector& operator,(Collector&, int);\n"
+              "}\n"
+              "void f(Collector& values) { values += 1, 2; }\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Collector {\n"
+              "    int operator+=(double);\n"
+              "    Collector& operator+=(int);\n"
+              "    void operator,(int);\n"
+              "};\n"
+              "void f(Collector& values) { values += 1, 2; }\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Collector {\n"
+              "    Collector& operator+=(int);\n"
+              "    int operator+=(double);\n"
+              "    void operator,(int);\n"
+              "};\n"
+              "void f(Collector& values) { values += 1, 2; }\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("namespace N { struct Tag {}; }\n"
+              "template<class T> struct Box { int operator+=(double); };\n"
+              "namespace N {\n"
+              "    Box<Tag>& operator+=(Box<Tag>&, int);\n"
+              "    Box<Tag>& operator,(Box<Tag>&, int);\n"
+              "}\n"
+              "void f(Box<N::Tag>& values) { values += 1, 2; }\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct B {};\n"
+              "struct A { operator B() const; };\n"
+              "struct Collector {\n"
+              "    int operator+=(A) &&;\n"
+              "    Collector& operator+=(B) &;\n"
+              "    void operator,(int);\n"
+              "};\n"
+              "void f(Collector& values, A a) { values += a, 2; }\n");
+        ASSERT_EQUALS("", errout_str());
+
     }
 
     // #8451
