@@ -45,6 +45,9 @@ private:
         TEST_CASE(as_const);
         TEST_CASE(memoize);
         TEST_CASE(endsWith);
+        TEST_CASE(stringConcat);
+        TEST_CASE(stringCreate);
+        TEST_CASE(stringPrepend);
     }
 
     void isValidGlobPattern() const {
@@ -611,6 +614,154 @@ private:
         ASSERT(!::endsWith("", "test"));
         ASSERT(!::endsWith("tes", "test"));
         ASSERT(!::endsWith("2test", "2"));
+    }
+
+    void stringConcat() const
+    {
+        {
+            std::string s = "0";
+            utils::string::concat(s, "a");
+            utils::string::concat(s, "b");
+            utils::string::concat(s, "c");
+            ASSERT_EQUALS("0abc", s);
+        }
+        {
+            std::string s = "0";
+            utils::string::concat(s, "a", "b", "c");
+            ASSERT_EQUALS("0abc", s);
+        }
+        {
+            const std::string a_str = "a";
+            const std::string b_str = "b";
+            const std::string c_str = "c";
+            {
+                std::string s = "0";
+                utils::string::concat(s, a_str);
+                utils::string::concat(s, b_str);
+                utils::string::concat(s, c_str);
+                ASSERT_EQUALS("0abc", s);
+            }
+            {
+                std::string s = "0";
+                utils::string::concat(s, a_str, b_str, c_str);
+                ASSERT_EQUALS("0abc", s);
+            }
+        }
+        {
+            std::string s = "0";
+            utils::string::concat(s, 'a');
+            utils::string::concat(s, 'b');
+            utils::string::concat(s, 'c');
+            ASSERT_EQUALS("0abc", s);
+        }
+        {
+            std::string s = "0";
+            utils::string::concat(s, 'a', 'b', 'c');
+            ASSERT_EQUALS("0abc", s);
+        }
+        {
+            const std::string a_str = "a";
+            {
+                std::string s = "0";
+                utils::string::concat(s, a_str);
+                utils::string::concat(s, 'b');
+                utils::string::concat(s, "c");
+                ASSERT_EQUALS("0abc", s);
+            }
+            {
+                std::string s = "0";
+                utils::string::concat(s, a_str, 'b', "c");
+                ASSERT_EQUALS("0abc", s);
+            }
+        }
+    }
+
+    void stringCreate() const
+    {
+        {
+            std::string s = utils::string::create("a", "b", "c");
+            ASSERT_EQUALS("abc", s);
+        }
+        {
+            const std::string a_str = "a";
+            const std::string b_str = "b";
+            const std::string c_str = "c";
+            {
+                std::string s = utils::string::create(a_str, b_str, c_str);
+                ASSERT_EQUALS("abc", s);
+            }
+        }
+        {
+            std::string s = utils::string::create('a', 'b', 'c');
+            ASSERT_EQUALS("abc", s);
+        }
+        {
+            const std::string a_str = "a";
+            {
+                std::string s = utils::string::create(a_str, 'b', "c");
+                ASSERT_EQUALS("abc", s);
+            }
+        }
+    }
+
+    void stringPrepend() const
+    {
+        {
+            std::string s = "0";
+            utils::string::prepend(s, "a");
+            utils::string::prepend(s, "b");
+            utils::string::prepend(s, "c");
+            ASSERT_EQUALS("cba0", s);
+        }
+        {
+            std::string s = "0";
+            utils::string::prepend(s, "a", "b", "c");
+            ASSERT_EQUALS("abc0", s);
+        }
+        {
+            const std::string a_str = "a";
+            const std::string b_str = "b";
+            const std::string c_str = "c";
+            {
+                std::string s = "0";
+                utils::string::prepend(s, a_str);
+                utils::string::prepend(s, b_str);
+                utils::string::prepend(s, c_str);
+                ASSERT_EQUALS("cba0", s);
+            }
+            {
+                std::string s = "0";
+                utils::string::prepend(s, a_str, b_str, c_str);
+                ASSERT_EQUALS("abc0", s);
+            }
+        }
+        {
+            std::string s = "0";
+            utils::string::prepend(s, 'a');
+            utils::string::prepend(s, 'b');
+            utils::string::prepend(s, 'c');
+            ASSERT_EQUALS("cba0", s);
+        }
+        {
+            std::string s = "0";
+            utils::string::prepend(s, 'a', 'b', 'c');
+            ASSERT_EQUALS("abc0", s);
+        }
+        {
+            const std::string a_str = "a";
+            {
+                std::string s = "0";
+                utils::string::prepend(s, a_str);
+                utils::string::prepend(s, 'b');
+                utils::string::prepend(s, "c");
+                ASSERT_EQUALS("cba0", s);
+            }
+            {
+                std::string s = "0";
+                utils::string::prepend(s, a_str, 'b', "c");
+                ASSERT_EQUALS("abc0", s);
+            }
+        }
     }
 };
 
