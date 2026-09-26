@@ -3338,8 +3338,8 @@ void CheckStlImpl::eraseIteratorOutOfBoundsError(const Token *ftok, const Token*
     }
 
     const Severity severity = isConditional ? Severity::warning : Severity::error;
-    const std::string id = isConditional ? "eraseIteratorOutOfBoundsCond" : "eraseIteratorOutOfBounds";
-    reportError(ftok, severity,
+    const char* id = isConditional ? "eraseIteratorOutOfBoundsCond" : "eraseIteratorOutOfBounds";
+    reportError(getErrorPath(ftok, val, msg), severity,
                 id,
                 msg, CWE628, Certainty::normal);
 }
