@@ -9109,7 +9109,8 @@ void Tokenizer::findGarbageCode() const
             if (tok->strAt(1) == "(")
                 syntaxError(tok);
             else if (!(tok->tokType() == Token::Type::eString && Token::simpleMatch(tok->tokAt(-1), "extern")) &&
-                     !(tok->tokType() == Token::Type::eBoolean && cpp && Token::simpleMatch(tok->tokAt(-1), "requires")))
+                     !(tok->tokType() == Token::Type::eBoolean && cpp && Token::simpleMatch(tok->tokAt(-1), "requires")) &&
+                     !Token::simpleMatch(tok->linkAt(1), "} ;"))
                 syntaxError(tok);
         }
         if (Token::Match(tok, "( ) %num%|%bool%|%char%|%str%"))
