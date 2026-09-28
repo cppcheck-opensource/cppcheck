@@ -438,6 +438,9 @@ private:
         testReportType(ReportType::misraC2012, Severity::style, "premium-misra-c-2012-10.4", "Required", "10.4");
         testReportType(ReportType::misraC2012, Severity::style, "misra-c2012-dir-4.6", "Advisory", "Dir 4.6");
         testReportType(ReportType::certC, Severity::error, "resourceLeak", "L3", "FIO42-C");
+
+        // #15071: Removed mapping for A12-1-4
+        testReportType(ReportType::autosar, Severity::style, "noExplicitConstructor", "", "");
     }
 
     void ErrorMessageCode() const {
