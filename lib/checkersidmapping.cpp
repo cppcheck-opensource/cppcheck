@@ -55,7 +55,6 @@ std::vector<checkers::IdMapping> checkers::idMappingAutosar{
     {"m10-2-1", "duplInheritedMember"},
     {"a12-1-1", "uninitMemberVar"},
     {"m12-1-1", "virtualCallInConstructor"},
-    {"a12-1-4", "noExplicitConstructor"},
     {"a12-6-1", "useInitializationList"},
     {"a12-8-3", "accessMoved"},
     {"a15-1-4", "memleak"},
