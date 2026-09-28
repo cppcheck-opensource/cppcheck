@@ -8128,6 +8128,7 @@ private:
         ignore_errout();
 
         ASSERT_EQUALS(";", tokenizeAndStringify("typedef std::size_t size_t;\n")); // #14809
+        ASSERT_EQUALS("struct S { int i { 0 } ; } ;", tokenizeAndStringify("struct S { int i : 1{0}; };\n")); // #15070
     }
 
 
