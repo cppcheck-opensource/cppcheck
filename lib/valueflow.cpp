@@ -727,7 +727,7 @@ static void valueFlowArrayBool(TokenList& tokenlist, const Settings& settings)
         }
         if (!var)
             continue;
-        if (!var->isArray() || var->isArgument() || var->isStlType())
+        if (!var->isArray() || var->isArgument() || var->getTypeName() == "std::array")
             continue;
         if (isNonZero(getOtherOperand(tok)) && Token::Match(tok->astParent(), "%comp%"))
             continue;
