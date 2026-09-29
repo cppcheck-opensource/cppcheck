@@ -982,6 +982,13 @@ private:
             const char expected[] = "template < typename A > class C { A x ; }";
             ASSERT_EQUALS(expected, tok(code));
         }
+        {
+            const char code[] = "using A = bool;\n"
+                                "template<typename T> class C { using A = T; A x; }\n"
+                                "C<int> c;\n";
+            const char expected[] = "class C<int> ; C<int> c ; class C<int> { int x ; }";
+            ASSERT_EQUALS(expected, tok(code));
+        }
     }
 
     void simplifyUsing8970() {
