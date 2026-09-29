@@ -79,6 +79,10 @@ private:
         TEST_CASE(simplifyUsing39);
         TEST_CASE(simplifyUsing40);
         TEST_CASE(simplifyUsing41);
+        TEST_CASE(simplifyUsing42);
+        TEST_CASE(simplifyUsing43);
+        TEST_CASE(simplifyUsing44);
+        TEST_CASE(simplifyUsing45);
 
         TEST_CASE(simplifyUsing8970);
         TEST_CASE(simplifyUsing8971);
@@ -953,6 +957,34 @@ private:
         const char code[] = "using FpHandler = void(*)(const SourceLocation&);\n"
                             "inline FpHandler AssertImpl::m_fpHandler = nullptr;\n";
         const char expected[] = "void ( * AssertImpl :: m_fpHandler ) ( const SourceLocation & ) ; m_fpHandler = nullptr ;";
+        ASSERT_EQUALS(expected, tok(code));
+    }
+
+    void simplifyUsing42() {
+        const char code[] = "using A = bool;\n"
+                            "template<typename T> A func() {}\n";
+        const char expected[] = "template < typename T > bool func ( ) { }";
+        ASSERT_EQUALS(expected, tok(code));
+    }
+
+    void simplifyUsing43() {
+        const char code[] = "using A = bool;\n"
+                            "template<typename A> A func() {}\n";
+        const char expected[] = "template < typename A > A func ( ) { }";
+        ASSERT_EQUALS(expected, tok(code));
+    }
+
+    void simplifyUsing44() {
+        const char code[] = "using A = bool;\n"
+                            "template<typename T> class C { A x; }\n";
+        const char expected[] = "template < typename T > class C { bool x ; }";
+        ASSERT_EQUALS(expected, tok(code));
+    }
+
+    void simplifyUsing45() {
+        const char code[] = "using A = bool;\n"
+                            "template<typename A> class C { A x; }\n";
+        const char expected[] = "template < typename A > class C { A x ; }";
         ASSERT_EQUALS(expected, tok(code));
     }
 
