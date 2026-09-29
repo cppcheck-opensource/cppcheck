@@ -3201,8 +3201,15 @@ bool Tokenizer::simplifyUsing()
                 continue;
             }
 
-            // skip template definitions
             if (Token::Match(tok1, "template < !!>")) {
+                Token *paramsEnd = tok1->next()->findClosingBracket();
+                bool shadowed = !paramsEnd;
+                for (const Token *param = tok1->next(); !shadowed && param != paramsEnd; param = param->next())
+                    shadowed = param->str() == nameToken->str();
+                if (!shadowed) {
+                    tok1 = paramsEnd;
+                    continue;
+                }
                 Token *declEndToken = TemplateSimplifier::findTemplateDeclarationEnd(tok1);
                 if (declEndToken)
                     tok1 = declEndToken;
