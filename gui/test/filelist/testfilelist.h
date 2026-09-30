@@ -33,4 +33,7 @@ private slots:
     void filterFiles3() const;
     void filterFiles4() const;
     void filterFiles5() const;
+    void unmatchedExcludes1() const;
+    void unmatchedExcludes2() const;
+    void unmatchedExcludes3() const;
 };

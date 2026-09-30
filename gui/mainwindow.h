@@ -333,10 +333,11 @@ private:
      * @param files List of files and/or directories to analyze
      * @param checkLib Flag to indicate if library should be checked
      * @param checkConfig Flag to indicate if the configuration should be checked.
+     * @param checkUnusedExcludes Flag to indicate if unused exclude paths should be reported.
      * @param selectedFiles Files selected for a recheck
      * @param recheck How the selected files are rechecked
      */
-    void doAnalyzeFiles(const QStringList &files, bool checkLib = false, bool checkConfig = false, const QStringList& selectedFiles = QStringList(), Recheck recheck = Recheck::None);
+    void doAnalyzeFiles(const QStringList &files, bool checkLib = false, bool checkConfig = false, bool checkUnusedExcludes = false, const QStringList& selectedFiles = QStringList(), Recheck recheck = Recheck::None);
 
     /**
      * @brief Clear the results that a new analysis replaces

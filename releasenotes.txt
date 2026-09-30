@@ -16,7 +16,7 @@ C/C++ support:
 -
 
 GUI:
--
+- An error is now reported when an exclude path in the project does not match any file. To hide warnings in certain files, use suppressions instead.
 
 Suppressions:
 -
@@ -34,4 +34,4 @@ Infrastructure & dependencies:
   no effect.
 
 Other:
--
+- An error is now reported when an ignore path given with -i (or an exclude path from a .cppcheck project) does not match any file. To hide warnings in certain files, use suppressions instead.

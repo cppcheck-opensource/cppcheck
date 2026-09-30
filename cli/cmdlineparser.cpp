@@ -247,7 +247,7 @@ bool CmdLineParser::fillSettingsFromArgs(int argc, const char* const argv[])
         std::list<FileWithDetails> filesResolved;
         // Execute recursiveAddFiles() to each given file parameter
         // TODO: verbose log which files were ignored?
-        const PathMatch matcher(ignored, Path::getCurrentPath());
+        PathMatch matcher(ignored, Path::getCurrentPath());
         for (const std::string &pathname : pathnamesRef) {
             const std::string err = FileLister::recursiveAddFiles(filesResolved, Path::toNativeSeparators(pathname), mSettings.library.markupExtensions(), matcher, mSettings.debugignore);
             if (!err.empty()) {
@@ -261,6 +261,12 @@ bool CmdLineParser::fillSettingsFromArgs(int argc, const char* const argv[])
             // TODO: PathMatch should provide the information if files were ignored
             if (!ignored.empty())
                 mLogger.printMessage("Maybe all paths were ignored?");
+            return false;
+        }
+
+        const auto& unmatched = matcher.unmatched();
+        if (!unmatched.empty()) {
+            mLogger.printError("unused ignore/exclude path '" + unmatched.front() + "'. To hide warnings in certain files use suppressions instead.");
             return false;
         }
 
@@ -1723,10 +1729,14 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         mPathNames = project.guiProject.pathNames;
 
     if (!project.fileSettings.empty()) {
-        project.ignorePaths(mIgnoredPaths, mSettings.debugignore);
+        const auto& unmatched = project.ignorePaths(mIgnoredPaths, mSettings.debugignore);
         if (project.fileSettings.empty()) {
             mLogger.printError("no C or C++ source files found.");
             mLogger.printMessage("all paths were ignored"); // TODO: log this differently?
+            return Result::Fail;
+        }
+        if (!unmatched.empty()) {
+            mLogger.printError("unused ignore/exclude path '" + unmatched.front() + "'. To hide warnings in certain files use suppressions instead.");
             return Result::Fail;
         }
         mFileSettings = project.fileSettings;

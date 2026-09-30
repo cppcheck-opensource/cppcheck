@@ -42,10 +42,10 @@ private:
 #else
     const std::string basepath{"/test"};
 #endif
-    const PathMatch emptyMatcher{{}, basepath};
-    const PathMatch srcMatcher{{"src/"}, basepath};
-    const PathMatch fooCppMatcher{{"foo.cpp"}, basepath};
-    const PathMatch srcFooCppMatcher{{"src/foo.cpp"}, basepath};
+    PathMatch emptyMatcher{{}, basepath};
+    PathMatch srcMatcher{{"src/"}, basepath};
+    PathMatch fooCppMatcher{{"foo.cpp"}, basepath};
+    PathMatch srcFooCppMatcher{{"src/foo.cpp"}, basepath};
 
     void run() override {
         TEST_CASE(emptymaskemptyfile);
@@ -85,32 +85,38 @@ private:
         TEST_CASE(globstar1);
         TEST_CASE(globstar2);
         TEST_CASE(pathiterator);
+        TEST_CASE(unmatched1);
+        TEST_CASE(unmatched2);
+        TEST_CASE(unmatched3);
+        TEST_CASE(unmatched4);
+        TEST_CASE(unmatched5);
+        TEST_CASE(unmatched6);
     }
 
     // Test empty PathMatch
-    void emptymaskemptyfile() const {
+    void emptymaskemptyfile() {
         ASSERT(!emptyMatcher.match(""));
     }
 
-    void emptymaskpath1() const {
+    void emptymaskpath1() {
         ASSERT(!emptyMatcher.match("src/", ifdir));
     }
 
-    void emptymaskpath2() const {
+    void emptymaskpath2() {
         ASSERT(!emptyMatcher.match("../src/", ifdir));
     }
 
-    void emptymaskpath3() const {
+    void emptymaskpath3() {
         ASSERT(!emptyMatcher.match("/home/user/code/src/", ifdir));
         ASSERT(!emptyMatcher.match("d:/home/user/code/src/", ifdir));
     }
 
     // Test PathMatch containing "src/"
-    void onemaskemptypath() const {
+    void onemaskemptypath() {
         ASSERT(!srcMatcher.match(""));
     }
 
-    void onemasksamepath() const {
+    void onemasksamepath() {
         ASSERT(srcMatcher.match("src/", ifdir));
         ASSERT(!srcMatcher.match("src/", ifreg));
     }
@@ -127,7 +133,7 @@ private:
         ASSERT(!match.match("srC/", ifreg));
     }
 
-    void onemasksamepathwithfile() const {
+    void onemasksamepathwithfile() {
         ASSERT(srcMatcher.match("src/file.txt"));
     }
 
@@ -140,36 +146,36 @@ private:
         ASSERT(!match.match(shorterToMatch, ifdir));
     }
 
-    void onemaskdifferentdir1() const {
+    void onemaskdifferentdir1() {
         ASSERT(!srcMatcher.match("srcfiles/file.txt"));
     }
 
-    void onemaskdifferentdir2() const {
+    void onemaskdifferentdir2() {
         ASSERT(!srcMatcher.match("proj/srcfiles/file.txt"));
     }
 
-    void onemaskdifferentdir3() const {
+    void onemaskdifferentdir3() {
         ASSERT(!srcMatcher.match("proj/mysrc/file.txt"));
     }
 
-    void onemaskdifferentdir4() const {
+    void onemaskdifferentdir4() {
         ASSERT(!srcMatcher.match("proj/mysrcfiles/file.txt"));
     }
 
-    void onemasklongerpath1() const {
+    void onemasklongerpath1() {
         ASSERT(srcMatcher.match("/tmp/src/", ifdir));
         ASSERT(srcMatcher.match("d:/tmp/src/", ifdir));
     }
 
-    void onemasklongerpath2() const {
+    void onemasklongerpath2() {
         ASSERT(srcMatcher.match("src/module/", ifdir));
     }
 
-    void onemasklongerpath3() const {
+    void onemasklongerpath3() {
         ASSERT(srcMatcher.match("project/src/module/", ifdir));
     }
 
-    void onemaskcwd() const {
+    void onemaskcwd() {
         ASSERT(srcMatcher.match("./src", ifdir));
     }
 
@@ -197,7 +203,7 @@ private:
     }
 
     // Test PathMatch containing "foo.cpp"
-    void filemask1() const {
+    void filemask1() {
         ASSERT(fooCppMatcher.match("foo.cpp"));
     }
 
@@ -206,32 +212,32 @@ private:
         ASSERT(match.match("fOo.cpp"));
     }
 
-    void filemask2() const {
+    void filemask2() {
         ASSERT(fooCppMatcher.match("../foo.cpp"));
     }
 
-    void filemask3() const {
+    void filemask3() {
         ASSERT(fooCppMatcher.match("src/foo.cpp"));
     }
 
-    void filemaskcwd() const {
+    void filemaskcwd() {
         ASSERT(fooCppMatcher.match("./lib/foo.cpp"));
     }
 
     // Test PathMatch containing "src/foo.cpp"
-    void filemaskpath1() const {
+    void filemaskpath1() {
         ASSERT(srcFooCppMatcher.match("src/foo.cpp"));
     }
 
-    void filemaskpath2() const {
+    void filemaskpath2() {
         ASSERT(srcFooCppMatcher.match("proj/src/foo.cpp"));
     }
 
-    void filemaskpath3() const {
+    void filemaskpath3() {
         ASSERT(!srcFooCppMatcher.match("foo.cpp"));
     }
 
-    void filemaskpath4() const {
+    void filemaskpath4() {
         ASSERT(!srcFooCppMatcher.match("bar/foo.cpp"));
     }
 
@@ -307,6 +313,60 @@ private:
         ASSERT_EQUALS("//?/", PathIterator("\\\\?\\", "..\\..", windows).read());
         /* The server and share should actually be considered part of the root and not be removed */
         ASSERT_EQUALS("//", PathIterator("\\\\Server\\Share\\Directory", "../..\\../..", windows).read());
+    }
+
+    void unmatched1() const {
+        // nothing has been matched yet => all patterns are unmatched
+        PathMatch match({"src/", "foo.cpp"});
+        ASSERT_EQUALS(2, match.unmatched().size());
+        ASSERT_EQUALS("src/", match.unmatched()[0]);
+        ASSERT_EQUALS("foo.cpp", match.unmatched()[1]);
+    }
+
+    void unmatched2() const {
+        PathMatch match({"src/", "foo.cpp"});
+        ASSERT(match.match("src/bar.cpp"));
+        ASSERT_EQUALS(1, match.unmatched().size());
+        ASSERT_EQUALS("foo.cpp", match.unmatched()[0]);
+        ASSERT(match.match("lib/foo.cpp"));
+        ASSERT_EQUALS(0, match.unmatched().size());
+    }
+
+    void unmatched3() const {
+        // failed matches does not affect the unmatched patterns
+        PathMatch match({"src/", "foo.cpp"});
+        ASSERT(!match.match("lib/bar.cpp"));
+        ASSERT(!match.match("src/", ifreg));
+        ASSERT_EQUALS(2, match.unmatched().size());
+        ASSERT(match.match("src/", ifdir));
+        ASSERT_EQUALS(1, match.unmatched().size());
+        ASSERT_EQUALS("foo.cpp", match.unmatched()[0]);
+    }
+
+    void unmatched4() const {
+        // glob patterns
+        PathMatch match({"test*.cpp", "src/**/foo.c"});
+        ASSERT(match.match("src/lib/foo/foo.c"));
+        ASSERT_EQUALS(1, match.unmatched().size());
+        ASSERT_EQUALS("test*.cpp", match.unmatched()[0]);
+        ASSERT(!match.match("src/foo.c"));
+        ASSERT(match.match("test1.cpp"));
+        ASSERT_EQUALS(0, match.unmatched().size());
+    }
+
+    void unmatched5() const {
+        // all matching patterns are recorded
+        PathMatch match({"src/", "src/foo.cpp"});
+        ASSERT(match.match("src/foo.cpp"));
+        ASSERT_EQUALS(0, match.unmatched().size());
+    }
+
+    void unmatched6() const {
+        // a pattern inside a matched directory is considered used
+        PathMatch match({"src/", "src/foo.cpp", "src/lib/", "lib/foo.cpp"});
+        ASSERT(match.match("src/", ifdir));
+        ASSERT_EQUALS(1, match.unmatched().size());
+        ASSERT_EQUALS("lib/foo.cpp", match.unmatched()[0]);
     }
 };
 
