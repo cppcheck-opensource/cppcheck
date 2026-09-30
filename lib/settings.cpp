@@ -384,7 +384,6 @@ static const std::set<std::string> autosarCheckers{
     "mismatchAllocDealloc",
     "missingReturn",
     "negativeIndex",
-    "noExplicitConstructor",
     "nullPointer",
     "nullPointerArithmetic",
     "nullPointerArithmeticRedundantCheck",
