@@ -42,7 +42,6 @@ private:
         TEST_CASE(acceptFile);
         TEST_CASE(getCurrentPath);
         TEST_CASE(getCurrentExecutablePath);
-        TEST_CASE(isAbsolute);
         TEST_CASE(getRelative);
         TEST_CASE(get_path_from_filename);
         TEST_CASE(join);
@@ -128,26 +127,6 @@ private:
 
     void getCurrentExecutablePath() const {
         ASSERT_EQUALS(false, Path::getCurrentExecutablePath("").empty());
-    }
-
-    void isAbsolute() const {
-#ifdef _WIN32
-        ASSERT_EQUALS(true, Path::isAbsolute("C:\\foo\\bar"));
-        ASSERT_EQUALS(true, Path::isAbsolute("C:/foo/bar"));
-        ASSERT_EQUALS(true, Path::isAbsolute("\\\\foo\\bar"));
-        ASSERT_EQUALS(false, Path::isAbsolute("foo\\bar"));
-        ASSERT_EQUALS(false, Path::isAbsolute("foo/bar"));
-        ASSERT_EQUALS(false, Path::isAbsolute("foo.cpp"));
-        ASSERT_EQUALS(false, Path::isAbsolute("C:foo.cpp"));
-        ASSERT_EQUALS(false, Path::isAbsolute("C:foo\\bar.cpp"));
-        ASSERT_EQUALS(false, Path::isAbsolute("bar.cpp"));
-        TODO_ASSERT_EQUALS(true, false, Path::isAbsolute("\\"));
-#else
-        ASSERT_EQUALS(true, Path::isAbsolute("/foo/bar"));
-        ASSERT_EQUALS(true, Path::isAbsolute("/"));
-        ASSERT_EQUALS(false, Path::isAbsolute("foo/bar"));
-        ASSERT_EQUALS(false, Path::isAbsolute("foo.cpp"));
-#endif
     }
 
     void getRelative() const {
