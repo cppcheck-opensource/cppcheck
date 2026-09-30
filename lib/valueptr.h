@@ -26,11 +26,14 @@
 #include <memory>
 
 template<class T>
-class CPPCHECKLIB ValuePtr {
+class ValuePtr {
     template<class U>
     struct cloner {
         static T* apply(const T* x) {
             return new U(*static_cast<const U*>(x));
+        }
+        static T* move(T* x) {
+            return new U(std::move(*static_cast<U*>(x)));
         }
     };
 
@@ -42,10 +45,14 @@ public:
 
     ValuePtr() : mPtr(nullptr), mClone() {}
 
-    template<class U>
+    template<class U, REQUIRES("Must not be ValuePtr", !std::is_base_of<ValuePtr, U>)>
     // cppcheck-suppress noExplicitConstructor
     // NOLINTNEXTLINE(google-explicit-constructor)
     ValuePtr(const U& value) : mPtr(cloner<U>::apply(&value)), mClone(&cloner<U>::apply)
+    {}
+
+    template<class U, REQUIRES("Must be rvalue", !std::is_lvalue_reference<U>), REQUIRES("Must not be ValuePtr", !std::is_base_of<ValuePtr, U>)>
+    explicit ValuePtr(U&& value) : mPtr(cloner<U>::move(&value)), mClone(&cloner<U>::apply)
     {}
 
     ValuePtr(const ValuePtr& rhs) : mPtr(nullptr), mClone(rhs.mClone) {
@@ -62,10 +69,10 @@ public:
         return mPtr.get();
     }
 
-    T& operator*() {
+    T& operator*() noexcept {
         return *get();
     }
-    const T& operator*() const {
+    const T& operator*() const noexcept {
         return *get();
     }
 
