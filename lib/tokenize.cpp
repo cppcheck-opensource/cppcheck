@@ -9179,8 +9179,8 @@ void Tokenizer::findGarbageCode() const
                 syntaxError(tok);
             if (Token::simpleMatch(tok->tokAt(-1), ")")) {
                 const Token* const prev = tok->linkAt(-1)->tokAt(-1);
-                if (!Token::Match(prev, "%name% (") || (!prev->isControlFlowKeyword() && prev->str() != "decltype")) {
-                    if (prev && prev->isUpperCaseName())
+                if (prev && prev->isNameOnly()) {
+                    if (prev->isUpperCaseName())
                         unknownMacroError(prev);
                     else
                         syntaxError(tok);

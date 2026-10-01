@@ -7929,6 +7929,14 @@ private:
                                                    "    }\n"
                                                    "}\n"), UNKNOWN_MACRO);
 
+        ASSERT_NO_THROW(tokenizeAndStringify("void f(void* h) {\n" // #15079
+                                             "    (void)::CloseHandle(h);\n"
+                                             "    int i = (int)::GetTickCount();\n"
+                                             "}\n"
+                                             "std::size_t* g(void* p) {\n"
+                                             "    return new (p) ::std::size_t;\n"
+                                             "}\n"));
+
         ASSERT_THROW_INTERNAL_EQUALS(tokenizeAndStringify("static void handle_toggle(void (*proc) PROTO_XT_CALLBACK_ARGS, int var) {}\n"), // #13198
                                      UNKNOWN_MACRO,
                                      "There is an unknown macro here somewhere. Configuration is required. If PROTO_XT_CALLBACK_ARGS is a macro then please configure it.");
