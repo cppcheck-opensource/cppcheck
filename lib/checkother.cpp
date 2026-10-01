@@ -2854,7 +2854,9 @@ void CheckOtherImpl::checkInvalidFree()
                 if (std::any_of(op->values().cbegin(),
                                 op->values().cend(),
                                 [&](const ValueFlow::Value &value) {
-                    return value.isSymbolicValue() && value.intvalue == 0;
+                    if (!value.isSymbolicValue() || !value.isKnown() || value.intvalue != 0 || !value.tokvalue)
+                        return false;
+                    return value.tokvalue->str() == "new";
                 }))
                     continue;
                 const int var1 = tok->tokAt(varIndex)->varId();
