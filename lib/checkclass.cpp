@@ -1425,11 +1425,11 @@ void CheckClassImpl::privateFunctions()
     }
 }
 
-void CheckClassImpl::unusedPrivateFunctionError(const Token* tok1, const Token *tok2, const std::string &classname, const std::string &funcname)
+void CheckClassImpl::unusedPrivateFunctionError(const Token* tokDecl, const Token *tokDef, const std::string &classname, const std::string &funcname)
 {
-    std::list<const Token *> toks{ tok1 };
-    if (tok2 && tok2 != tok1)
-        toks.push_front(tok2);
+    std::list<const Token *> toks{ tokDecl };
+    if (tokDef && tokDef != tokDecl)
+        toks.push_front(tokDef);
     reportError(toks, Severity::style, "unusedPrivateFunction", "$symbol:" + classname + "::" + funcname + "\nUnused private function: '$symbol'", CWE398, Certainty::normal);
 }
 
