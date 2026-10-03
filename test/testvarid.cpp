@@ -2715,6 +2715,30 @@ private:
                       "10: D < T ... > d@2 ;\n"
                       "11: } ;\n",
                       tokenize(code13));
+
+        const char code14[] = "struct S {\n" // #15062
+                              "    int x;\n"
+                              "    int* p;\n"
+                              "    S(int* p) : x(f(0, {0})), p(p) {}\n"
+                              "    S(int* p, int) : x(f(0, {{1}, 2})), p(p) {}\n"
+                              "};\n"
+                              "struct T {\n"
+                              "    int* p;\n"
+                              "    int g();\n"
+                              "};\n"
+                              "int T::g() { return *p; }\n";
+        ASSERT_EQUALS("1: struct S {\n"
+                      "2: int x@1 ;\n"
+                      "3: int * p@2 ;\n"
+                      "4: S ( int * p@3 ) : x@1 ( f ( 0 , { 0 } ) ) , p@2 ( p@3 ) { }\n"
+                      "5: S ( int * p@4 , int ) : x@1 ( f ( 0 , { { 1 } , 2 } ) ) , p@2 ( p@4 ) { }\n"
+                      "6: } ;\n"
+                      "7: struct T {\n"
+                      "8: int * p@5 ;\n"
+                      "9: int g ( ) ;\n"
+                      "10: } ;\n"
+                      "11: int T :: g ( ) { return * p@5 ; }\n",
+                      tokenize(code14));
     }
 
     void varid_initListWithBaseTemplate() {
