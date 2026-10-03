@@ -230,6 +230,7 @@ private:
         TEST_CASE(checkRedundantCopy);
 
         TEST_CASE(checkNegativeShift);
+        TEST_CASE(checkNegativeShiftErrorPath);
 
         TEST_CASE(incompleteArrayFill);
 
@@ -10488,6 +10489,24 @@ private:
               "    return f<-1>(2)\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void checkNegativeShiftErrorPath() {
+        setMultiline();
+        Settings s = settings1;
+        s.templateLocation = "{file}:{line}:note:{info}\n";
+
+        check("int f(int i, bool b) {\n"
+              "    int s = -1;\n"
+              "    if (b)\n"
+              "        return i;\n"
+              "    return i << s;\n"
+              "}\n", dinit(CheckOptions, $.settings = &s));
+        ASSERT_EQUALS("[test.cpp:5:14]: warning: Shifting by a negative value is undefined behaviour [shiftNegative]\n"
+                      "[test.cpp:2:14]: note: Assignment 's=-1', assigned value is -1\n"
+                      "[test.cpp:3:9]: note: Assuming condition is false\n"
+                      "[test.cpp:5:14]: note: Shifting by a negative value is undefined behaviour\n",
+                      errout_str());
     }
 
     void incompleteArrayFill() {
