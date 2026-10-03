@@ -229,6 +229,10 @@ private:
     }
 
     void isVariableChangedTest() {
+        // Built-in shifts do not modify their right-hand operand. #6552
+        ASSERT_EQUALS(false, isVariableChanged("void f(int shift, int bits) { bits >>= shift; }\n", "{", "}"));
+        ASSERT_EQUALS(false, isVariableChanged("void f(const double x, const Value& value) { value >>= x; }\n", "{", "}"));
+        ASSERT_EQUALS(true, isVariableChanged("void f(double x, const Value& value) { value >>= x; }\n", "{", "}"));
         // #8211 - no lhs for >> , do not crash
         (void)isVariableChanged("void f() {\n"
                                 "  int b;\n"
