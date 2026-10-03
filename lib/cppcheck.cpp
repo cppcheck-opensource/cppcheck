@@ -1032,7 +1032,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         // Get directives
         std::list<Directive> directives;
         preprocessor.createDirectives(directives);
-        preprocessor.simplifyPragmaAsm();
+        preprocessor.simplifyAsm();
 
         std::set<std::string> configurations;
         std::set<std::string> configDefines = { "__cplusplus" };
@@ -1060,7 +1060,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
                 if (!mSettings.keepComments)
                     Preprocessor::removeComments(data.tokens);
                 Preprocessor::createDirectives(data.tokens, directives);
-                Preprocessor::simplifyPragmaAsm(data.tokens);
+                Preprocessor::simplifyAsm(data.tokens);
                 // Discover new configurations from included file
                 if (configurations.size() < maxConfigs)
                     preprocessor.getConfigs(data.filename, data.tokens, configDefines, configurations);
