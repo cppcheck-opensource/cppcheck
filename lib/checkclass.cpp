@@ -347,6 +347,7 @@ void CheckClassImpl::constructors()
             // Variables with default initializers
             bool hasAnyDefaultInit = false;
             bool hasAnySelfInit = false;
+            bool isDefaultConstructible = true;
             const bool cpp14OrLater = mSettings.standards.cpp >= Standards::CPP14;
             for (Usage& usage : usageList) {
                 const Variable& var = *usage.var;
@@ -355,11 +356,14 @@ void CheckClassImpl::constructors()
                 if (var.hasDefault()) {
                     usage.init = true;
                     hasAnyDefaultInit = true;
+                } else if (var.isReference() || (var.isConst() && !var.isClass())) {
+                    // the default constructor is deleted, so all members are initialized by every instance
+                    isDefaultConstructible = false;
                 } else if (cpp14OrLater && !hasAnySelfInit && isInitialized(usage, FunctionType::eConstructor)) {
                     hasAnySelfInit = true;
                 }
             }
-            if (!hasAnyDefaultInit && !hasAnySelfInit)
+            if (!isDefaultConstructible || (!hasAnyDefaultInit && !hasAnySelfInit))
                 continue;
 
             handleUnionMembers(usageList);
@@ -371,6 +375,10 @@ void CheckClassImpl::constructors()
 
                 const Variable& var = *usage.var;
                 if (var.typeScope() && var.typeScope()->numConstructors > 0)
+                    continue;
+
+                // a const member of class type is default constructed or makes the class not default constructible
+                if (var.isConst())
                     continue;
 
                 if (diagVars.count(&var) == 0)
