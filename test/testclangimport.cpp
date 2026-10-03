@@ -139,6 +139,7 @@ private:
         TEST_CASE(valueType2);
 
         TEST_CASE(crash);
+        TEST_CASE(nullNodeInvalidLevel);
     }
 
     std::string parse(const char clang[]) {
@@ -1371,6 +1372,13 @@ private:
                             "  |-ParmVarDecl 0x5603791b5570 <col:49, col:51> col:52 'A<type-parameter-0-0, type-parameter-0-1> &'\n"
                             "  `-CompoundStmt 0x5603791b5700 <col:54, col:55>\n";
         (void)parse(clang); // don't crash
+    }
+
+    void nullNodeInvalidLevel() {
+        // a "<<<NULL>>>" line whose indentation maps to level 0 must not index tree[-1]
+        const char* clang = "`-FunctionDecl 0x1 <a.cpp:1:1, col:34> col:6 foo 'void ()'\n"
+                            "`-<<<NULL>>>\n";
+        ASSERT_EQUALS("void foo ( ) ;", parse(clang));
     }
 };
 

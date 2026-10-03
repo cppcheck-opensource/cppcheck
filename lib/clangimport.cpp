@@ -1639,7 +1639,9 @@ void clangimport::parseClangAstDump(Tokenizer &tokenizer, std::istream &f)
         if (pos1 == std::string::npos)
             continue;
         if (!tree.empty() && line.substr(pos1) == "-<<<NULL>>>") {
-            const int level = (pos1 - 1) / 2;
+            const size_t level = (pos1 - 1) / 2;
+            if (level == 0 || level > tree.size())
+                continue;
             tree[level - 1]->children.push_back(nullptr);
             continue;
         }
