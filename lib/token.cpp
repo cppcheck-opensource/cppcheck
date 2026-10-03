@@ -2683,8 +2683,10 @@ bool Token::Impl::getCppcheckAttribute(CppcheckAttributesType attrType, MathLib:
 Token* findTypeEnd(Token* tok)
 {
     while (Token::Match(tok, "%name%|.|::|*|&|&&|<|(|template|decltype|sizeof")) {
-        if (Token::Match(tok, "(|<"))
+        if (tok->str() == "(")
             tok = tok->link();
+        else if (tok->str() == "<") // template brackets are not linked before Tokenizer::createLinks2()
+            tok = tok->link() ? tok->link() : tok->findClosingBracket();
         if (!tok)
             return nullptr;
         tok = tok->next();
