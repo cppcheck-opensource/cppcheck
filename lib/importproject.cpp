@@ -191,7 +191,7 @@ void ImportProject::parseArgs(FileSettings &fs, const std::vector<std::string> &
     fsSetDefines(fs, std::move(defs));
 }
 
-void ImportProject::ignorePaths(const std::vector<std::string> &ipaths, bool debug)
+std::vector<std::string> ImportProject::ignorePaths(const std::vector<std::string> &ipaths, bool debug)
 {
     PathMatch matcher(ipaths, Path::getCurrentPath());
     for (auto it = fileSettings.cbegin(); it != fileSettings.cend();) {
@@ -203,6 +203,7 @@ void ImportProject::ignorePaths(const std::vector<std::string> &ipaths, bool deb
         else
             ++it;
     }
+    return matcher.unmatched();
 }
 
 void ImportProject::ignoreOtherConfigs(const std::string &cfg)
@@ -323,28 +324,25 @@ ImportProject::Type ImportProject::import(const std::string &filename, Settings 
     if (!mPath.empty() && !endsWith(mPath,'/'))
         mPath += '/';
 
-    const std::vector<std::string> fileFilters =
-        settings ? settings->fileFilters : std::vector<std::string>();
-
     if (endsWith(filename, ".json")) {
         if (importCompileCommands(fin)) {
             setRelativePaths(filename);
             return ImportProject::Type::COMPILE_DB;
         }
     } else if (endsWith(filename, ".sln")) {
-        if (importSln(fin, mPath, fileFilters)) {
+        if (importSln(fin, mPath)) {
             setRelativePaths(filename);
             return ImportProject::Type::VS_SLN;
         }
     } else if (endsWith(filename, ".slnx")) {
-        if (importSlnx(filename, fileFilters)) {
+        if (importSlnx(filename)) {
             setRelativePaths(filename);
             return ImportProject::Type::VS_SLNX;
         }
     } else if (endsWith(filename, ".vcxproj")) {
         std::map<std::string, std::string, cppcheck::stricmp> variables;
         std::vector<SharedItemsProject> sharedItemsProjects;
-        if (importVcxproj(filename, variables, "", fileFilters, sharedItemsProjects)) {
+        if (importVcxproj(filename, variables, "", sharedItemsProjects)) {
             setRelativePaths(filename);
             return ImportProject::Type::VS_VCXPROJ;
         }
@@ -463,7 +461,7 @@ bool ImportProject::importCompileCommands(std::istream &istr)
     return true;
 }
 
-bool ImportProject::importSln(std::istream &istr, const std::string &path, const std::vector<std::string> &fileFilters)
+bool ImportProject::importSln(std::istream &istr, const std::string &path)
 {
     std::string line;
 
@@ -499,7 +497,7 @@ bool ImportProject::importSln(std::istream &istr, const std::string &path, const
         if (!Path::isAbsolute(vcxproj))
             vcxproj = path + vcxproj;
         vcxproj = Path::fromNativeSeparators(std::move(vcxproj));
-        if (!importVcxproj(vcxproj, variables, "", fileFilters, sharedItemsProjects)) {
+        if (!importVcxproj(vcxproj, variables, "", sharedItemsProjects)) {
             errors.emplace_back("failed to load '" + vcxproj + "' from Visual Studio solution");
             return false;
         }
@@ -514,7 +512,7 @@ bool ImportProject::importSln(std::istream &istr, const std::string &path, const
     return true;
 }
 
-bool ImportProject::importSlnx(const std::string& filename, const std::vector<std::string>& fileFilters)
+bool ImportProject::importSlnx(const std::string& filename)
 {
     tinyxml2::XMLDocument doc;
     const tinyxml2::XMLError error = doc.LoadFile(filename.c_str());
@@ -555,7 +553,7 @@ bool ImportProject::importSlnx(const std::string& filename, const std::vector<st
             vcxproj = variables["SolutionDir"] + vcxproj;
 
         vcxproj = Path::fromNativeSeparators(std::move(vcxproj));
-        if (!importVcxproj(vcxproj, variables, "", fileFilters, sharedItemsProjects)) {
+        if (!importVcxproj(vcxproj, variables, "", sharedItemsProjects)) {
             errors.emplace_back("failed to load '" + vcxproj + "' from Visual Studio solution");
             return false;
         }
@@ -938,7 +936,6 @@ static void loadVisualStudioProperties(const std::string &props, std::map<std::s
 bool ImportProject::importVcxproj(const std::string &filename,
                                   std::map<std::string, std::string, cppcheck::stricmp> &variables,
                                   const std::string &additionalIncludeDirectories,
-                                  const std::vector<std::string> &fileFilters,
                                   std::vector<SharedItemsProject> &cache)
 {
     tinyxml2::XMLDocument doc;
@@ -947,10 +944,10 @@ bool ImportProject::importVcxproj(const std::string &filename,
         errors.emplace_back(std::string("Visual Studio project file is not a valid XML - ") + tinyxml2::XMLDocument::ErrorIDToName(error));
         return false;
     }
-    return importVcxproj(filename, doc, variables, additionalIncludeDirectories, fileFilters, cache);
+    return importVcxproj(filename, doc, variables, additionalIncludeDirectories, cache);
 }
 
-bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::XMLDocument &doc, std::map<std::string, std::string, cppcheck::stricmp> &variables, const std::string &additionalIncludeDirectories, const std::vector<std::string> &fileFilters, std::vector<SharedItemsProject> &cache)
+bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::XMLDocument &doc, std::map<std::string, std::string, cppcheck::stricmp> &variables, const std::string &additionalIncludeDirectories, std::vector<SharedItemsProject> &cache)
 {
     variables["ProjectDir"] = Path::simplifyPath(Path::getPathFromFilename(filename));
 
@@ -1029,7 +1026,7 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
                                 return false;
                             }
 
-                            SharedItemsProject toAdd = importVcxitems(pathToSharedItemsFile, fileFilters, cache);
+                            SharedItemsProject toAdd = importVcxitems(pathToSharedItemsFile, cache);
                             if (!toAdd.successful) {
                                 errors.emplace_back("Could not load shared items project \"" + pathToSharedItemsFile + "\" from original path \"" + std::string(projectAttribute) + "\".");
                                 return false;
@@ -1058,11 +1055,7 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
     }
 
     // Project files
-    PathMatch filtermatcher(fileFilters, Path::getCurrentPath());
     for (const ItemGroupClCompile& compile : compileList) {
-        if (!fileFilters.empty() && !filtermatcher.match(compile.mFilename))
-            continue;
-
         for (const ProjectConfiguration &p : projectConfigurationList) {
 
             if (!guiProject.checkVsConfigs.empty()) {
@@ -1129,7 +1122,7 @@ bool ImportProject::importVcxproj(const std::string &filename, const tinyxml2::X
     return true;
 }
 
-ImportProject::SharedItemsProject ImportProject::importVcxitems(const std::string& filename, const std::vector<std::string>& fileFilters, std::vector<SharedItemsProject> &cache)
+ImportProject::SharedItemsProject ImportProject::importVcxitems(const std::string& filename, std::vector<SharedItemsProject> &cache)
 {
     auto isInCacheCheck = [filename](const ImportProject::SharedItemsProject& e) -> bool {
         return filename == e.pathToProjectFile;
@@ -1141,8 +1134,6 @@ ImportProject::SharedItemsProject ImportProject::importVcxitems(const std::strin
 
     SharedItemsProject result;
     result.pathToProjectFile = filename;
-
-    PathMatch filtermatcher(fileFilters, Path::getCurrentPath());
 
     tinyxml2::XMLDocument doc;
     const tinyxml2::XMLError error = doc.LoadFile(filename.c_str());
@@ -1163,10 +1154,6 @@ ImportProject::SharedItemsProject ImportProject::importVcxitems(const std::strin
                     if (include && Path::acceptFile(include)) {
                         std::string file(include);
                         findAndReplace(file, "$(MSBuildThisFileDirectory)", "./");
-
-                        // Skip file if it doesn't match the filter
-                        if (!fileFilters.empty() && !filtermatcher.match(file))
-                            continue;
 
                         result.sourceFiles.emplace_back(file);
                     } else {

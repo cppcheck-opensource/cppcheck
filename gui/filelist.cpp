@@ -90,8 +90,9 @@ void FileList::addPathList(const QStringList &paths)
     }
 }
 
-QStringList FileList::getFileList() const
+QStringList FileList::getFileList()
 {
+    mUnmatchedExcludes.clear();
     if (mExcludedPaths.empty()) {
         QStringList names;
         for (const QFileInfo& item : mFileList) {
@@ -101,6 +102,11 @@ QStringList FileList::getFileList() const
         return names;
     }
     return applyExcludeList();
+}
+
+const QStringList& FileList::getUnmatchedExcludes() &
+{
+    return mUnmatchedExcludes;
 }
 
 void FileList::addExcludeList(const QStringList &paths)
@@ -117,9 +123,9 @@ static std::vector<std::string> toStdStringList(const QStringList &stringList)
     return ret;
 }
 
-QStringList FileList::applyExcludeList() const
+QStringList FileList::applyExcludeList()
 {
-    const PathMatch pathMatch(toStdStringList(mExcludedPaths), QDir::currentPath().toStdString());
+    PathMatch pathMatch(toStdStringList(mExcludedPaths), QDir::currentPath().toStdString());
 
     QStringList paths;
     for (const QFileInfo& item : mFileList) {
@@ -129,5 +135,10 @@ QStringList FileList::applyExcludeList() const
         if (!pathMatch.match(canonical.toStdString()))
             paths << canonical;
     }
+
+    for (const std::string& excludePath: pathMatch.unmatched()) {
+        mUnmatchedExcludes << QString::fromStdString(excludePath);
+    }
+
     return paths;
 }

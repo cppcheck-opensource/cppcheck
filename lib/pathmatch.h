@@ -24,6 +24,7 @@
 #include <cctype>
 #include <cstdint>
 #include <cstdio>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -117,7 +118,7 @@ public:
      * @param mode The file mode of the file named by the path.
      * @return true if any of the masks match the path, false otherwise.
      */
-    bool match(const std::string &path, Filemode mode = Filemode::regular) const;
+    bool match(const std::string &path, Filemode mode = Filemode::regular);
 
     /**
      * @brief Match path against a single pattern.
@@ -169,12 +170,23 @@ public:
         return pattern;
     }
 
+    /**
+     * @brief Get the patterns that have not matched any path.
+     *
+     * A pattern that has not matched itself is still considered used if it is covered by
+     * a pattern that has matched, since paths inside an ignored directory are not traversed.
+     *
+     * @return The patterns that have not matched any path passed to match().
+     */
+    std::vector<std::string> unmatched() const;
+
 protected:
     class PathIterator;
 
 private:
     /* List of patterns */
     std::vector<std::string> mPatterns;
+    std::set<std::string> mMatchedPatterns;
     /* Base path to with patterns and paths are relative */
     std::string mBasepath;
     /* The syntax to use */

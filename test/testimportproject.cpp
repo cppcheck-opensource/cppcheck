@@ -637,7 +637,7 @@ private:
         TestImporter project;
         std::map<std::string, std::string, cppcheck::stricmp> variables;
         std::vector<TestImporter::SharedItemsProject> cache;
-        ASSERT_EQUALS(project.importVcxproj("test.vcxproj", doc, variables, {}, {}, cache), true);
+        ASSERT_EQUALS(project.importVcxproj("test.vcxproj", doc, variables, {}, cache), true);
         ASSERT_EQUALS(project.fileSettings.size(), 2);
         ASSERT(project.fileSettings.front().defines.find(";UNICODE=1;") != std::string::npos);
         ASSERT(project.fileSettings.front().defines.find(";_UNICODE=1") != std::string::npos);

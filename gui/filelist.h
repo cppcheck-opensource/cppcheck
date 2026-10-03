@@ -62,7 +62,13 @@ public:
      * @brief Return list of filenames (to check).
      * @return list of filenames to check.
      */
-    QStringList getFileList() const;
+    QStringList getFileList();
+
+    /**
+     * @brief Return list of exclude paths that did not match any file in the last getFileList() call
+     * @return list of unmatched excludes
+     */
+    const QStringList& getUnmatchedExcludes() &;
 
     /**
      * @brief Add list of paths to exclusion list.
@@ -88,14 +94,16 @@ protected:
      * @brief Get filtered list of paths.
      * This method takes the list of paths and applies the exclude lists to
      * it. And then returns the list of paths that did not match the
-     * exclude filters.
+     * exclude filters. The exclude paths that did not match any file
+     * are stored in mUnmatchedExcludes.
      * @return Filtered list of paths.
      */
-    QStringList applyExcludeList() const;
+    QStringList applyExcludeList();
 
 private:
     QFileInfoList mFileList;
     QStringList mExcludedPaths;
+    QStringList mUnmatchedExcludes;
 };
 
 #endif // FILELIST_H

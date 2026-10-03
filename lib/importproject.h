@@ -102,7 +102,7 @@ public:
         std::string platform;
     } guiProject;
 
-    void ignorePaths(const std::vector<std::string> &ipaths, bool debug = false);
+    std::vector<std::string> ignorePaths(const std::vector<std::string> &ipaths, bool debug = false);
     void ignoreOtherConfigs(const std::string &cfg);
 
     Type import(const std::string &filename, Settings *settings=nullptr, Suppressions *supprs=nullptr);
@@ -119,15 +119,15 @@ protected:
         std::vector<std::string> sourceFiles;
     };
 
-    bool importVcxproj(const std::string &filename, std::map<std::string, std::string, cppcheck::stricmp> &variables, const std::string &additionalIncludeDirectories, const std::vector<std::string> &fileFilters, std::vector<SharedItemsProject> &cache);
-    bool importVcxproj(const std::string &filename, const tinyxml2::XMLDocument &doc, std::map<std::string, std::string, cppcheck::stricmp> &variables, const std::string &additionalIncludeDirectories, const std::vector<std::string> &fileFilters, std::vector<SharedItemsProject> &cache);
+    bool importVcxproj(const std::string &filename, std::map<std::string, std::string, cppcheck::stricmp> &variables, const std::string &additionalIncludeDirectories, std::vector<SharedItemsProject> &cache);
+    bool importVcxproj(const std::string &filename, const tinyxml2::XMLDocument &doc, std::map<std::string, std::string, cppcheck::stricmp> &variables, const std::string &additionalIncludeDirectories, std::vector<SharedItemsProject> &cache);
 
 private:
     static void parseArgs(FileSettings &fs, const std::vector<std::string> &args);
 
-    bool importSln(std::istream &istr, const std::string &path, const std::vector<std::string> &fileFilters);
-    bool importSlnx(const std::string& filename, const std::vector<std::string>& fileFilters);
-    SharedItemsProject importVcxitems(const std::string &filename, const std::vector<std::string> &fileFilters, std::vector<SharedItemsProject> &cache);
+    bool importSln(std::istream &istr, const std::string &path);
+    bool importSlnx(const std::string& filename);
+    SharedItemsProject importVcxitems(const std::string &filename, std::vector<SharedItemsProject> &cache);
     bool importBcb6Prj(const std::string &projectFilename);
 
     std::string mPath;
