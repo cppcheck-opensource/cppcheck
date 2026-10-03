@@ -139,6 +139,7 @@ private:
         TEST_CASE(valueType2);
 
         TEST_CASE(crash);
+        TEST_CASE(crash2);
     }
 
     std::string parse(const char clang[]) {
@@ -1371,6 +1372,13 @@ private:
                             "  |-ParmVarDecl 0x5603791b5570 <col:49, col:51> col:52 'A<type-parameter-0-0, type-parameter-0-1> &'\n"
                             "  `-CompoundStmt 0x5603791b5700 <col:54, col:55>\n";
         (void)parse(clang); // don't crash
+    }
+
+    void crash2() {
+        // getSpelling() indexed mExtTokens[typeIndex - 1] without a lower-bound
+        // check, so a node whose line carries no ext tokens (typeIndex <= 0) read
+        // out of bounds.
+        (void)parse("`-RecordDecl "); // don't crash
     }
 };
 

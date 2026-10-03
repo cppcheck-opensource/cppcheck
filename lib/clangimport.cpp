@@ -422,15 +422,13 @@ std::string clangimport::AstNode::getSpelling() const
     if (nodeType == FunctionDecl || nodeType == CXXConstructorDecl || nodeType == CXXMethodDecl) {
         while (typeIndex >= 0 && mExtTokens[typeIndex][0] != '\'')
             typeIndex--;
-        if (typeIndex <= 0)
-            return "";
     }
     if (nodeType == DeclRefExpr) {
         while (typeIndex > 0 && std::isalpha(mExtTokens[typeIndex][0]))
             typeIndex--;
-        if (typeIndex <= 0)
-            return "";
     }
+    if (typeIndex <= 0)
+        return "";
     const std::string &str = mExtTokens[typeIndex - 1];
     if (startsWith(str,"col:"))
         return "";
