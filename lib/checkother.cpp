@@ -2850,6 +2850,15 @@ void CheckOtherImpl::checkInvalidFree()
 
                 const int varIndex = tok->strAt(1) == "(" ? 2 :
                                      tok->strAt(3) == "(" ? 4 : 1;
+                const Token *op = tok->tokAt(varIndex + 1);
+                if (std::any_of(op->values().cbegin(),
+                                op->values().cend(),
+                                [&](const ValueFlow::Value &value) {
+                    if (!value.isSymbolicValue() || !value.isKnown() || value.intvalue != 0 || !value.tokvalue)
+                        return false;
+                    return value.tokvalue->str() == "new";
+                }))
+                    continue;
                 const int var1 = tok->tokAt(varIndex)->varId();
                 const int var2 = tok->tokAt(varIndex + 2)->varId();
                 const auto alloc1 = utils::as_const(inconclusive).find(var1);
