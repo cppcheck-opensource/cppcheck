@@ -607,7 +607,7 @@ ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok, cons
         }
     }
 
-    if (!var || var->isPointer() || (astIsContainer(bufTok) && var->getTypeName() != "std::array"))
+    if (!var || var->isPointer() || (astIsContainer(bufTok) && !var->isStlType("array")))
         return ValueFlow::Value(-1);
 
     const MathLib::bigint dim = std::accumulate(var->dimensions().cbegin(), var->dimensions().cend(), MathLib::bigint(1), [](MathLib::bigint i1, const Dimension &dim) {

@@ -6788,6 +6788,12 @@ private:
                         "    return a[0];\n"
                         "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        valueFlowUninit("std::vector<int> f() {\n" // #15077
+                        "    const std::vector<int> a[1];\n"
+                        "    return a[0];\n"
+                        "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void valueFlowUninitBreak() { // Do not show duplicate warnings about the same uninitialized value

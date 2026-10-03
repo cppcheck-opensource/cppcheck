@@ -727,7 +727,7 @@ static void valueFlowArrayBool(TokenList& tokenlist, const Settings& settings)
         }
         if (!var)
             continue;
-        if (!var->isArray() || var->isArgument() || var->getTypeName() == "std::array")
+        if (!var->isArray() || var->isArgument() || var->isStlType("array"))
             continue;
         if (isNonZero(getOtherOperand(tok)) && Token::Match(tok->astParent(), "%comp%"))
             continue;
@@ -1169,7 +1169,7 @@ static void valueFlowImpossibleValues(TokenList& tokenList, const Settings& sett
             value.setImpossible();
             setTokenValue(tok, std::move(value), settings);
         } else if (tok->variable() && tok->variable()->isArray() && !tok->variable()->isArgument() &&
-                   tok->variable()->getTypeName() != "std::array") {
+                   !tok->variable()->isStlType("array")) {
             ValueFlow::Value value{0};
             value.setImpossible();
             setTokenValue(tok, std::move(value), settings);
@@ -5995,7 +5995,7 @@ static bool needsInitialization(const Variable* var)
             return true;
         if (var->valueType()->type == ValueType::Type::ITERATOR)
             return true;
-        if (var->isStlType() && var->isArray()) {
+        if (var->isArray() && var->isStlType("array")) {
             if (const Token* ctt = var->valueType()->containerTypeToken) {
                 if (ctt->isStandardType())
                     return true;
