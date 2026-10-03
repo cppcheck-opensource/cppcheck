@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa}</ProjectGuid>
+    <RootNamespace>splitconfigtest3</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <!-- ConfigsRelease.props is unconditional and comes FIRST -- discovery (which
+       guesses Configuration=Debug only for property expansion, not for what it
+       finds structurally) picks it up regardless, becoming the first discovered
+       configuration ("Release|x64"). ConfigsDebug.props is gated on
+       Configuration=='Debug', which is TRUE for discovery's own guess -- but if
+       discovery stops scanning as soon as Release|x64 is found, it never reaches
+       this second import at all. Nor does the "accidental rescue" (the real
+       per-configuration pass for whichever config WAS found) help here: that
+       pass runs with Configuration=Release (the config it's actually
+       evaluating), so the Condition below evaluates false during it. -->
+  <Import Project="ConfigsRelease.props" />
+  <ImportGroup Condition="'$(Configuration)'=='Debug'">
+    <Import Project="ConfigsDebug.props" />
+  </ImportGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="ConfigDebug">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="ConfigRelease">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
