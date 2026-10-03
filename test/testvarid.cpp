@@ -199,6 +199,8 @@ private:
         TEST_CASE(varid_not); // #9689 'not x'
         TEST_CASE(varid_declInIfCondition);
         TEST_CASE(varid_globalScope);
+        TEST_CASE(varid_globalRedeclarationC); // #6418
+        TEST_CASE(varid_globalRedeclarationScope);
         TEST_CASE(varid_function_pointer_args);
         TEST_CASE(varid_alignas);
 
@@ -3525,6 +3527,69 @@ private:
         ASSERT_EQUALS(exp, tokenize(code));
     }
 
+    void varid_globalRedeclarationC() { // #6418
+        ASSERT_EQUALS("1: int x@1 ; int x@1 ;\n",
+                      tokenize("int x; int x;\n", dinit(TokenizeOptions, $.cpp = false)));
+        ASSERT_EQUALS("1: extern int x@1 ; int x@1 ;\n",
+                      tokenize("extern int x; int x;\n", dinit(TokenizeOptions, $.cpp = false)));
+        ASSERT_EQUALS("1: int x@1 ; extern int x@1 ;\n",
+                      tokenize("int x; extern int x;\n", dinit(TokenizeOptions, $.cpp = false)));
+
+        ASSERT_EQUALS("1: extern int x@1 ;\n"
+                      "2: int before ( ) { return x@1 ; }\n"
+                      "3: int x@1 ; x@1 = 7 ;\n"
+                      "4: extern int x@1 ;\n"
+                      "5: int after ( ) { return x@1 ; }\n",
+                      tokenize("extern int x;\n"
+                               "int before(void) { return x; }\n"
+                               "int x = 7;\n"
+                               "extern int x;\n"
+                               "int after(void) { return x; }\n", dinit(TokenizeOptions, $.cpp = false)));
+    }
+
+    void varid_globalRedeclarationScope() {
+        ASSERT_EQUALS("1: int x@1 ;\n"
+                      "2: struct A { int x@2 ; } ;\n"
+                      "3: struct B { int x@3 ; } ;\n"
+                      "4: void f ( ) { int x@4 ; { int x@5 ; x@5 = 1 ; } x@4 = 2 ; }\n"
+                      "5: void g ( ) { int x@6 ; x@6 = 3 ; }\n"
+                      "6: int x@1 ;\n",
+                      tokenize("int x;\n"
+                               "struct A { int x; };\n"
+                               "struct B { int x; };\n"
+                               "void f(void) { int x; { int x; x = 1; } x = 2; }\n"
+                               "void g(void) { int x; x = 3; }\n"
+                               "int x;\n", dinit(TokenizeOptions, $.cpp = false)));
+
+        ASSERT_EQUALS("1: int x@1 ;\n"
+                      "2: int f ( int x@2 ) ;\n"
+                      "3: int f ( int x@3 ) { return x@3 ; }\n"
+                      "4: int x@1 ;\n",
+                      tokenize("int x;\n"
+                               "int f(int x);\n"
+                               "int f(int x) { return x; }\n"
+                               "int x;\n", dinit(TokenizeOptions, $.cpp = false)));
+
+        {
+            SimpleTokenizer tokenizer(settings, *this, false);
+            ASSERT((tokenizer.tokenize)("int x;\n"
+                                        "struct { int x; } s;\n"
+                                        "int x;\n"));
+            const Token* global = Token::findsimplematch(tokenizer.tokens(), "x ;");
+            ASSERT(global && global->varId() != 0);
+            const Token* member = Token::findsimplematch(global->next(), "x ;");
+            ASSERT(member && member->varId() != 0);
+            const Token* redeclaration = Token::findsimplematch(member->next(), "x ;");
+            ASSERT(redeclaration);
+            ASSERT_EQUALS(global->varId(), redeclaration->varId());
+            ASSERT(global->varId() != member->varId());
+        }
+
+        // Preserve the existing C++ handling.
+        ASSERT_EQUALS("1: extern int x@1 ; int x@2 ;\n",
+                      tokenize("extern int x; int x;\n"));
+    }
+
     void varid_function_pointer_args() {
         const char code1[] = "void foo() {\n"
                              "    char *text;\n"
@@ -3568,7 +3633,7 @@ private:
         const char code[] = "extern alignas(16) int x;\n"
                             "alignas(16) int x;\n";
         const char expected[] = "1: extern alignas ( 16 ) int x@1 ;\n"
-                                "2: alignas ( 16 ) int x@2 ;\n";
+                                "2: alignas ( 16 ) int x@1 ;\n";
         ASSERT_EQUALS(expected, tokenize(code, dinit(TokenizeOptions, $.cpp = false)));
     }
 

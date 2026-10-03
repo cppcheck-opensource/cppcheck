@@ -13387,7 +13387,7 @@ private:
               "    int a;\n"
               "    return 0;\n"
               "}\n", dinit(CheckOptions, $.cpp = false));
-        ASSERT_EQUALS("[test.c:1:12] -> [test.c:4:9]: (style) Local variable 'a' shadows outer variable [shadowVariable]\n", errout_str());
+        ASSERT_EQUALS("[test.c:2:5] -> [test.c:4:9]: (style) Local variable 'a' shadows outer variable [shadowVariable]\n", errout_str());
 
         check("int f() {\n" // #12591
               "    int g = 0;\n"
