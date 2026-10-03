@@ -682,53 +682,60 @@ void CheckOtherImpl::checkRedundantAssignment()
                 else
                     start = tok->findExpressionStartEndTokens().second->next();
 
-                const Token * tokenToCheck = tok->astOperand1();
+                std::vector<const Token*> tokensToCheck{ tok->astOperand1() };
+                if (Token::simpleMatch(tok->astOperand1(), "[") && Token::simpleMatch(tok->astOperand1()->astOperand1(), "auto")) // structured binding
+                    tokensToCheck = astFlatten(tok->astOperand1()->astOperand2(), ",");
 
-                // Check if we are working with union
-                for (const Token* tempToken = tokenToCheck; Token::simpleMatch(tempToken, ".");) {
-                    tempToken = tempToken->astOperand1();
-                    if (tempToken && tempToken->variable() && tempToken->variable()->type() && tempToken->variable()->type()->isUnionType())
-                        tokenToCheck = tempToken;
-                }
+                for (const Token* tokenToCheck : tokensToCheck) {
 
-                if (start->hasKnownSymbolicValue(tokenToCheck) && Token::simpleMatch(start->astParent(), "=") && !diag(tok)) {
-                    const ValueFlow::Value* val = start->getKnownValue(ValueFlow::Value::ValueType::SYMBOLIC);
-                    if (val->intvalue == 0) // no offset
-                        redundantAssignmentSameValueError(tokenToCheck, val, tok->astOperand1()->expressionString());
-                }
-
-                // Get next assignment..
-                const Token *nextAssign = fwdAnalysis.reassign(tokenToCheck, start, scope->bodyEnd);
-                // extra check for union
-                if (nextAssign && tokenToCheck != tok->astOperand1()) {
-                    nextAssign = fwdAnalysis.reassign(tok->astOperand1(), start, scope->bodyEnd);
-                    // reading another member of the same union in the rhs is a use through aliasing
-                    if (nextAssign && fwdAnalysis.hasOperand(nextAssign->astOperand2(), tokenToCheck))
-                        nextAssign = nullptr;
-                }
-
-                if (!nextAssign)
-                    continue;
-
-                // there is redundant assignment. Is there a case between the assignments?
-                bool hasCase = false;
-                for (const Token *tok2 = tok; tok2 != nextAssign; tok2 = tok2->next()) {
-                    if (tok2->str() == "break" || tok2->str() == "return")
-                        break;
-                    if (tok2->str() == "case") {
-                        hasCase = true;
-                        break;
+                    // Check if we are working with union
+                    for (const Token* tempToken = tokenToCheck; Token::simpleMatch(tempToken, ".");) {
+                        tempToken = tempToken->astOperand1();
+                        if (tempToken && tempToken->variable() && tempToken->variable()->type() && tempToken->variable()->type()->isUnionType())
+                            tokenToCheck = tempToken;
                     }
-                }
 
-                // warn
-                if (hasCase)
-                    redundantAssignmentInSwitchError(tok, nextAssign, tok->astOperand1()->expressionString());
-                else if (isInitialization)
-                    redundantInitializationError(tok, nextAssign, tok->astOperand1()->expressionString(), inconclusive);
-                else {
-                    diag(nextAssign);
-                    redundantAssignmentError(tok, nextAssign, tok->astOperand1()->expressionString(), inconclusive);
+                    if (start->hasKnownSymbolicValue(tokenToCheck) && Token::simpleMatch(start->astParent(), "=") && !diag(tok)) {
+                        const ValueFlow::Value* val = start->getKnownValue(ValueFlow::Value::ValueType::SYMBOLIC);
+                        if (val->intvalue == 0) // no offset
+                            redundantAssignmentSameValueError(tokenToCheck, val, tok->astOperand1()->expressionString());
+                    }
+
+                    // Get next assignment..
+                    const Token* nextAssign = fwdAnalysis.reassign(tokenToCheck, start, scope->bodyEnd);
+                    // extra check for union
+                    const bool isUnion = tokenToCheck != tok->astOperand1() && !isStructuredBindingVariable(tokenToCheck->variable());
+                    if (nextAssign && isUnion) {
+                        nextAssign = fwdAnalysis.reassign(tok->astOperand1(), start, scope->bodyEnd);
+                        // reading another member of the same union in the rhs is a use through aliasing
+                        if (nextAssign && fwdAnalysis.hasOperand(nextAssign->astOperand2(), tokenToCheck))
+                            nextAssign = nullptr;
+                    }
+
+                    if (!nextAssign)
+                        continue;
+
+                    // there is redundant assignment. Is there a case between the assignments?
+                    bool hasCase = false;
+                    for (const Token* tok2 = tok; tok2 != nextAssign; tok2 = tok2->next()) {
+                        if (tok2->str() == "break" || tok2->str() == "return")
+                            break;
+                        if (tok2->str() == "case") {
+                            hasCase = true;
+                            break;
+                        }
+                    }
+
+                    // warn
+                    const Token* exprTok = isUnion ? tok->astOperand1() : tokenToCheck;
+                    if (hasCase)
+                        redundantAssignmentInSwitchError(tok, nextAssign, exprTok->expressionString());
+                    else if (isInitialization)
+                        redundantInitializationError(tok, nextAssign, exprTok->expressionString(), inconclusive);
+                    else {
+                        diag(nextAssign);
+                        redundantAssignmentError(tok, nextAssign, exprTok->expressionString(), inconclusive);
+                    }
                 }
             }
         }
