@@ -1421,6 +1421,12 @@ public:
     /** Add token value. Return true if value is added. */
     bool addValue(const ValueFlow::Value &value);
 
+    /**
+     * Remove the values that contradict each other and merge adjacent ranges, as addValue() does
+     * after adding a value.
+     */
+    static void removeContradictions(std::list<ValueFlow::Value>& values);
+
     void removeValues(std::function<bool(const ValueFlow::Value &)> pred) {
         if (mImpl->mValues)
             mImpl->mValues->remove_if(std::move(pred));

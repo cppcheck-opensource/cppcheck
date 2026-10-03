@@ -2198,7 +2198,7 @@ static void removeOverlaps(std::list<ValueFlow::Value>& values)
 
 // Removing contradictions is an NP-hard problem. Instead we run multiple
 // passes to try to catch most contradictions
-static void removeContradictions(std::list<ValueFlow::Value>& values)
+void Token::removeContradictions(std::list<ValueFlow::Value>& values)
 {
     removeOverlaps(values);
     for (int i = 0; i < 4; i++) {

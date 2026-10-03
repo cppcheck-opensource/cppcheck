@@ -194,6 +194,32 @@ namespace ValueFlow
             decreaseRange();
         }
 
+        /**
+         * Is a value with a bound the lower end of its range? A possible lower bound is; so is an
+         * impossible upper bound, as the values up to it are impossible.
+         */
+        bool isLowerEdge() const {
+            return (bound == Bound::Lower) != isImpossible();
+        }
+
+        /** The first value inside the range of a value with a bound */
+        MathLib::bigint rangeEdge() const {
+            if (!isImpossible())
+                return intvalue;
+            return isLowerEdge() ? intvalue + 1 : intvalue - 1;
+        }
+
+        /** Let the range start (lower edge) or end at the given value, keeping the kind of the value */
+        void setRangeEdge(MathLib::bigint edge, bool lowerEdge) {
+            if (isImpossible()) {
+                bound = lowerEdge ? Bound::Upper : Bound::Lower;
+                intvalue = lowerEdge ? edge - 1 : edge + 1;
+            } else {
+                bound = lowerEdge ? Bound::Lower : Bound::Upper;
+                intvalue = edge;
+            }
+        }
+
         void assumeCondition(const Token* tok);
 
         std::string infoString() const;

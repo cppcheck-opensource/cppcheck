@@ -934,6 +934,20 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
+        // the condition 'length > 1' does not make length equal to 2, so 'length > 2' is not dead
+        check("void f(int length, unsigned int& dst) {\n"
+              "    unsigned int src2 = 0U;\n"
+              "    if (length > 1) {\n"
+              "        if (length > 2) {\n"
+              "            src2 = 15U;\n"
+              "        }\n"
+              "    }\n"
+              "    if (length >= 2) {\n"
+              "        dst = ((0x80) | (src2 >> 2));\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
         check("const int FEATURE_BITS = x |\n"
               "#if FOO_ENABLED\n"
               "    FEATURE_FOO |\n"
