@@ -210,9 +210,10 @@ private:
         }
 
         // TODO: there should be no need for the verbose and default messages here
-        // Code is not needed for deduplication
-        const bool noCode = true;
-        std::string errmsg = msg.toString(mSettings.verbose, mSettings.templateFormat, mSettings.templateLocation, noCode);
+        std::string errmsg = msg.toString(mSettings.verbose,
+                                          mSettings.templateFormat,
+                                          mSettings.templateLocation,
+                                          nullptr);
         if (errmsg.empty())
             return;
 
