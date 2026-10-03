@@ -9178,9 +9178,11 @@ void Tokenizer::findGarbageCode() const
             if (!Token::Match(tok->next(), "%name%|*|~") || (tok->next()->isKeyword() && !Token::Match(tok->next(), "new|delete|operator")))
                 syntaxError(tok);
             if (Token::simpleMatch(tok->tokAt(-1), ")")) {
+                // NAME(...)::  => NAME is most likely an unknown macro
+                // other cases are valid, e.g. (void)::f(), return (T)::x, new (p) ::T, decltype(x)::type
                 const Token* const prev = tok->linkAt(-1)->tokAt(-1);
-                if (!Token::Match(prev, "%name% (") || (!prev->isControlFlowKeyword() && prev->str() != "decltype")) {
-                    if (prev && prev->isUpperCaseName())
+                if (Token::Match(prev, "%name% (") && !prev->isKeyword() && prev->str() != "decltype") { // decltype is no keyword before C++11
+                    if (prev->isUpperCaseName())
                         unknownMacroError(prev);
                     else
                         syntaxError(tok);
