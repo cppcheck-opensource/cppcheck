@@ -427,6 +427,38 @@ static bool isIterator(const Variable *var, bool& inconclusiveType)
     return true;
 }
 
+static bool iteratorArrowReturnsMemberAddress(const Variable* var)
+{
+    const Scope* scope = var->typeScope();
+    if (!scope || !var->type()->derivedFrom.empty())
+        return false;
+    const auto operators = scope->functionMap.equal_range("operator->");
+    if (operators.first == operators.second)
+        return false;
+
+    // Do not assume which cv/ref-qualified overload is selected.
+    for (auto it = operators.first; it != operators.second; ++it) {
+        const Function* function = it->second;
+        if (!function->functionScope || !Function::returnsPointer(function))
+            return false;
+        const Token* body = function->functionScope->bodyStart;
+        if (!Token::simpleMatch(body, "{ return &"))
+            return false;
+        const Token* memberToken = body->tokAt(3);
+        if (Token::simpleMatch(memberToken, "this ."))
+            memberToken = memberToken->tokAt(2);
+        if (!Token::Match(memberToken, "%var% ; }") || memberToken->tokAt(2) != function->functionScope->bodyEnd)
+            return false;
+        const Variable* member = memberToken->variable();
+        if (!member || member->scope() != scope || !member->isMember() || member->isStatic() ||
+            member->isPointer() || member->isReference() || member->isRValueReference())
+            return false;
+        if (member->type() && member->type()->getFunction("operator&"))
+            return false;
+    }
+    return true;
+}
+
 static std::string getContainerName(const Token *containerToken)
 {
     if (!containerToken)
@@ -454,6 +486,20 @@ void CheckStlImpl::iterators()
     logChecker("CheckStl::iterators");
 
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
+
+    // A free or friend unary operator& can change the meaning of returning &member.
+    bool hasNonMemberAddressOperator = false;
+    for (const Scope& scope : symbolDatabase->scopeList) {
+        const auto operators = scope.functionMap.equal_range("operator&");
+        for (auto it = operators.first; it != operators.second; ++it) {
+            if (it->second->argCount() == 1 && (it->second->isFriend() || !scope.isClassOrStructOrUnion())) {
+                hasNonMemberAddressOperator = true;
+                break;
+            }
+        }
+        if (hasNonMemberAddressOperator)
+            break;
+    }
 
     // Filling map of iterators id and their scope begin
     std::map<int, const Token*> iteratorScopeBeginInfo;
@@ -615,7 +661,10 @@ void CheckStlImpl::iterators()
                 dereferenceErasedError(eraseToken, tok2, tok2->strAt(1), inconclusiveType);
                 tok2 = tok2->next();
             } else if (!validIterator && Token::Match(tok2, "%varid% . %name%", iteratorId)) {
-                dereferenceErasedError(eraseToken, tok2, tok2->str(), inconclusiveType);
+                // A known operator-> can expose the iterator object's own storage before assignment.
+                if (eraseToken || !inconclusiveType || tok2->next()->originalName() != "->" || hasNonMemberAddressOperator ||
+                    !iteratorArrowReturnsMemberAddress(var))
+                    dereferenceErasedError(eraseToken, tok2, tok2->str(), inconclusiveType);
                 tok2 = tok2->tokAt(2);
             }
 
