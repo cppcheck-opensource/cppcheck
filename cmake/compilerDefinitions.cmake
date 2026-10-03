@@ -37,6 +37,12 @@ endif()
 
 if(HAVE_RULES)
     add_definitions(-DHAVE_RULES)
+    if(HAVE_PCRE)
+        add_definitions(-DHAVE_PCRE)
+    endif()
+    if(HAVE_STD_REGEX)
+        add_definitions(-DHAVE_STD_REGEX)
+    endif()
 endif()
 
 if(Boost_FOUND)

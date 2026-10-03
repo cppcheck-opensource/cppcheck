@@ -24,4 +24,6 @@ Infrastructure & dependencies:
   These describe the default setup for that OS. The arm64-wchar_t2.xml and arm64-wchar_t4.xml files are kept.
 
 Other:
+- Added support for `std::regex` as the regular engine for rules. It can be specified using `std` in the engine` element in a rule XML.
+-
 -
