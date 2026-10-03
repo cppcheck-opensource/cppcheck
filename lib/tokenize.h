@@ -211,7 +211,7 @@ private:
      *         or input token in case of an error where no braces are added
      *         or NULL when syntaxError is called
      */
-    Token * simplifyAddBracesToCommand(Token * tok);
+    Token * simplifyAddBracesToCommand(Token * tok, int depth = 500);
 
     /** Add pair of braces to an single if-block, else-block, for-block, etc.
      * for command starting at token
@@ -219,7 +219,7 @@ private:
      *         or input token in case of an error where no braces are added
      *         or NULL when syntaxError is called
      */
-    Token * simplifyAddBracesPair(Token *tok, bool commandWithCondition);
+    Token * simplifyAddBracesPair(Token *tok, bool commandWithCondition, int depth = 500);
 
     /**
      * typedef A mytype;
