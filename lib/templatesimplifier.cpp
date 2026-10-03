@@ -401,6 +401,7 @@ unsigned int TemplateSimplifier::templateParameters(const Token *tok)
         return 0;
 
     unsigned int level = 0;
+    unsigned int inTernary = 0;
 
     while (tok) {
         // skip template template
@@ -460,8 +461,16 @@ unsigned int TemplateSimplifier::templateParameters(const Token *tok)
         }
 
         // Skip '=', '?', ':'
-        if (Token::Match(tok, "=|?|:"))
+        if (Token::Match(tok, "=|?|:")) {
+            if (tok->str()[0] == '?')
+                ++inTernary;
+            else if (tok->str()[0] == ':') {
+                if (inTernary == 0)
+                    return 0;
+                --inTernary;
+            }
             tok = tok->next();
+        }
         if (!tok)
             return 0;
 
