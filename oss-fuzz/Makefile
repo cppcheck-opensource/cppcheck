@@ -312,7 +312,7 @@ $(libcppdir)/pathmatch.o: ../lib/pathmatch.cpp ../lib/config.h ../lib/path.h ../
 $(libcppdir)/platform.o: ../lib/platform.cpp ../externals/tinyxml2/tinyxml2.h ../lib/config.h ../lib/mathlib.h ../lib/path.h ../lib/platform.h ../lib/standards.h ../lib/utils.h ../lib/xml.h
 	$(CXX) ${LIB_FUZZING_ENGINE} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(libcppdir)/platform.cpp
 
-$(libcppdir)/preprocessor.o: ../lib/preprocessor.cpp ../externals/simplecpp/simplecpp.h ../lib/checkers.h ../lib/config.h ../lib/errorlogger.h ../lib/errortypes.h ../lib/library.h ../lib/mathlib.h ../lib/path.h ../lib/platform.h ../lib/preprocessor.h ../lib/settings.h ../lib/standards.h ../lib/suppressions.h ../lib/utils.h
+$(libcppdir)/preprocessor.o: ../lib/preprocessor.cpp ../externals/simplecpp/simplecpp.h ../lib/checkers.h ../lib/config.h ../lib/errorlogger.h ../lib/errortypes.h ../lib/library.h ../lib/mathlib.h ../lib/path.h ../lib/platform.h ../lib/preprocessor.h ../lib/settings.h ../lib/smallvector.h ../lib/standards.h ../lib/suppressions.h ../lib/templatesimplifier.h ../lib/token.h ../lib/utils.h ../lib/vfvalue.h
 	$(CXX) ${LIB_FUZZING_ENGINE} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(libcppdir)/preprocessor.cpp
 
 $(libcppdir)/programmemory.o: ../lib/programmemory.cpp ../lib/astutils.h ../lib/calculate.h ../lib/checkers.h ../lib/config.h ../lib/errortypes.h ../lib/infer.h ../lib/library.h ../lib/mathlib.h ../lib/platform.h ../lib/programmemory.h ../lib/settings.h ../lib/smallvector.h ../lib/sourcelocation.h ../lib/standards.h ../lib/symboldatabase.h ../lib/templatesimplifier.h ../lib/token.h ../lib/tokenlist.h ../lib/utils.h ../lib/valueflow.h ../lib/valueptr.h ../lib/vfvalue.h

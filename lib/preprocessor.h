@@ -134,6 +134,9 @@ public:
 
     simplecpp::TokenList preprocess(const std::string &cfgStr, std::vector<std::string> &files, simplecpp::OutputList& outputList);
 
+    /** Function references in library exporter macros expanded by the last preprocess(). */
+    std::set<std::string> getExportedFunctions() const;
+
     std::string getcode(const std::string &cfgStr, std::vector<std::string> &files, bool writeLocations);
 
     /**
@@ -167,6 +170,8 @@ public:
 
 private:
 
+    void readQtAnnotations(simplecpp::TokenList& tokens);
+
     /**
      * Include file types.
      */
@@ -193,6 +198,8 @@ private:
     /** simplecpp tracking info */
     std::list<simplecpp::MacroUsage> mMacroUsage;
     std::list<simplecpp::IfCond> mIfCond;
+    std::set<std::string> mExportedFunctions;
+    std::set<simplecpp::Location> mExportedLocations;
 };
 
 /// @}
