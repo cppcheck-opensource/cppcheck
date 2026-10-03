@@ -46,7 +46,7 @@ struct newInstantiation;
 /** @brief Simplify templates from the preprocessed and partially simplified code. */
 class CPPCHECKLIB TemplateSimplifier {
 public:
-    explicit TemplateSimplifier(Tokenizer &tokenizer);
+    explicit TemplateSimplifier(Tokenizer &tokenizer LIFETIMEBOUND);
 
     const std::string& dump() const {
         return mDump;
