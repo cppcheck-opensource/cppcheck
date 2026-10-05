@@ -10096,6 +10096,15 @@ private:
         ASSERT_EQUALS("[test.cpp:2:11]: (style) Variable 'p' can be declared as pointer to const [constVariablePointer]\n"
                       "[test.cpp:4:5]: (error) Mismatching address is deleted. The address you get from new must be deleted without offset. [invalidFree]\n",
                       errout_str());
+
+        check("void f() {\n"
+              "    char *p = malloc(1);\n"
+              "    ++p;\n"
+              "    free(p - 1);\n"
+              "}\n");
+        TODO_ASSERT_EQUALS("",
+                           "[test.cpp:4:5]: (error) Mismatching address is freed. The address you get from malloc() must be freed without offset. [invalidFree]\n",
+                           errout_str());
     }
 
     void checkRedundantCopy() {
