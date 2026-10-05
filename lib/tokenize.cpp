@@ -4768,11 +4768,13 @@ static const Token* findInitListLambdaEnd(const Token* tok)
 {
     if (!Token::simpleMatch(tok, "[") || Token::Match(tok->previous(), "%name%|)|]|>"))
         return nullptr; // array subscript or array size of a new expression
-    // array size of a new expression with pointer or reference type: new T*[n]{...}
-    for (const Token* prev = tok->previous(); Token::Match(prev, "*|&|&&|::|%name%|>"); prev = prev->previous()) {
+    // array size of a new expression with pointer or reference type: new T*[n]{...}, new (p) T*[n]{...}
+    for (const Token* prev = tok->previous(); Token::Match(prev, "*|&|&&|::|%name%|>|)"); prev = prev->previous()) {
         if (prev->str() == "new")
             return nullptr;
-        if (prev->str() == ">") {
+        if (prev->str() == ")")
+            prev = prev->link();
+        else if (prev->str() == ">") {
             prev = prev->findOpeningBracket();
             if (!prev)
                 break;
@@ -4933,7 +4935,8 @@ void Tokenizer::setVarIdPass1()
             if (!initlistLambdaEnds.empty() && initlistLambdaEnds.top() == tok) {
                 // end of lambda in initializer list
                 initlistLambdaEnds.pop();
-                scopeStack.pop();
+                if (scopeStack.size() > 1)
+                    scopeStack.pop();
                 variableMap.leaveScope();
                 initlist = true;
             }

@@ -2820,12 +2820,12 @@ private:
         const char code2[] = "struct S {\n"
                              "    int x;\n"
                              "    int* p;\n"
-                             "    S(int* p) : x([p]() -> std::map<int, int> { return {{*p, 1}}; }().size()), p(p) {}\n"
+                             "    S(int* p) : x(*[p]() -> int* { return p; }()), p(p) {}\n"
                              "};\n";
         ASSERT_EQUALS("1: struct S {\n"
                       "2: int x@1 ;\n"
                       "3: int * p@2 ;\n"
-                      "4: S ( int * p@3 ) : x@1 ( [ p@3 ] ( ) . std :: map < int , int > { return { { * p@3 , 1 } } ; } ( ) . size ( ) ) , p@2 ( p@3 ) { }\n"
+                      "4: S ( int * p@3 ) : x@1 ( * [ p@3 ] ( ) . int * { return p@3 ; } ( ) ) , p@2 ( p@3 ) { }\n"
                       "5: } ;\n",
                       tokenize(code2));
 
@@ -2837,6 +2837,14 @@ private:
                              "struct T {\n"
                              "    std::vector<int>** r;\n"
                              "    T(std::vector<int>* c) : r(new std::vector<int>*[2]{ N * c, c }) {}\n"
+                             "};\n"
+                             "struct U {\n"
+                             "    int** r;\n"
+                             "    U(int* c) : r(new (std::nothrow) int*[2]{ N * c, c }) {}\n"
+                             "};\n"
+                             "struct V {\n"
+                             "    int** r;\n"
+                             "    V(int* c) : r(new decltype(c)*[2]{ N * c, c }) {}\n"
                              "};\n";
         ASSERT_EQUALS("1: enum Anonymous0 { N = 2 } ;\n"
                       "2: struct S {\n"
@@ -2846,7 +2854,15 @@ private:
                       "6: struct T {\n"
                       "7: std :: vector < int > * * r@3 ;\n"
                       "8: T ( std :: vector < int > * c@4 ) : r@3 ( new std :: vector < int > * [ 2 ] { N * c@4 , c@4 } ) { }\n"
-                      "9: } ;\n",
+                      "9: } ;\n"
+                      "10: struct U {\n"
+                      "11: int * * r@5 ;\n"
+                      "12: U ( int * c@6 ) : r@5 ( new ( std :: nothrow ) int * [ 2 ] { N * c@6 , c@6 } ) { }\n"
+                      "13: } ;\n"
+                      "14: struct V {\n"
+                      "15: int * * r@7 ;\n"
+                      "16: V ( int * c@8 ) : r@7 ( new decltype ( c@8 ) * [ 2 ] { N * c@8 , c@8 } ) { }\n"
+                      "17: } ;\n",
                       tokenize(code3));
     }
 
