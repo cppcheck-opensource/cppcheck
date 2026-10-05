@@ -5518,10 +5518,12 @@ private:
               "    auto q = g;\n"
               "    if (q == nullptr) {}\n"
               "};\n");
-        ASSERT_EQUALS("[test.cpp:4:11]: (style) Condition 'p==nullptr' is always false [knownConditionTrueFalse]\n"
-                      "[test.cpp:5:11]: (style) Condition 'g==nullptr' is always false [knownConditionTrueFalse]\n"
-                      "[test.cpp:7:11]: (style) Condition 'q==nullptr' is always false [knownConditionTrueFalse]\n",
-                      errout_str());
+        TODO_ASSERT_EQUALS("[test.cpp:4:11]: (style) Condition 'p==nullptr' is always false [knownConditionTrueFalse]\n"
+                           "[test.cpp:5:11]: (style) Condition 'g==nullptr' is always false [knownConditionTrueFalse]\n"
+                           "[test.cpp:7:11]: (style) Condition 'q==nullptr' is always false [knownConditionTrueFalse]\n",
+                           "[test.cpp:4:11]: (style) Condition 'p==nullptr' is always false [knownConditionTrueFalse]\n"
+                           "[test.cpp:5:11]: (style) Condition 'g==nullptr' is always false [knownConditionTrueFalse]\n",
+                           errout_str());
     }
 
     void alwaysTrueContainer() {

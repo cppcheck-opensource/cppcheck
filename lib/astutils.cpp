@@ -1554,7 +1554,7 @@ bool isUsedAsBool(const Token* const tok, const Settings& settings)
         return true;
     if (parent->isCast())
         return !Token::simpleMatch(parent->astOperand1(), "dynamic_cast") && isUsedAsBool(parent, settings);
-    if (Token::Match(parent, "==|!=") && tok->valueType() && tok->valueType()->pointer &&
+    if (Token::Match(parent, "==|!=") && ((tok->valueType() && tok->valueType()->pointer) || tok->function()) &&
         tok->astSibling()->hasKnownIntValue() && tok->astSibling()->getKnownIntValue() == 0)
         return true;
     if (parent->str() == "(" && astIsRHS(tok) && Token::Match(parent->astOperand1(), "if|while"))
