@@ -57,6 +57,8 @@ private:
         TEST_CASE(setIncludePaths1);
         TEST_CASE(setIncludePaths2);
         TEST_CASE(setIncludePaths3); // macro names are case insensitive
+        TEST_CASE(setIncludePathsUnknownMacro); // unknown macros expand to empty string
+        TEST_CASE(setIncludePathsRootRelative); // \foo takes the project directory's drive
         TEST_CASE(setRelativePathsInclude); // #14746
         TEST_CASE(processCompileCommands1);
         TEST_CASE(processCompileCommands2); // #8563, #9567
@@ -161,6 +163,48 @@ private:
         importer.fsSetIncludePaths(fs, "/home/fred", in, properties);
         ASSERT_EQUALS(1U, fs.includePaths.size());
         ASSERT_EQUALS("c:/abc/other/", fs.includePaths.front());
+    }
+
+    void setIncludePathsUnknownMacro() const {
+        // MSBuild/Visual Studio expand an undefined property to the empty string.
+        FileSettings fs{"test.cpp", Standards::Language::CPP, 0};
+        std::list<std::string> in;
+        in.emplace_back("$(UnknownMacro)include");               // -> relative to project dir
+        in.emplace_back("$(SolutionDir)$(UnknownMacro)other");   // -> known part kept
+        in.emplace_back("$(UnknownMacro)");                      // -> dropped
+        in.emplace_back("$(UnknownMacro)\\abs\\dir");            // -> root-relative
+        in.emplace_back("$(Unknown1)$(Unknown2)include");        // duplicate after expansion
+        PropertiesMap properties;
+        properties["SolutionDir"] = "c:/abc/";
+        TestImporter importer;
+        importer.fsSetIncludePaths(fs, "/home/fred/", in, properties);
+        ASSERT_EQUALS(3U, fs.includePaths.size());
+        auto it = fs.includePaths.cbegin();
+        ASSERT_EQUALS("/home/fred/include/", *it++);
+        ASSERT_EQUALS("c:/abc/other/", *it++);
+        ASSERT_EQUALS("/abs/dir/", *it);
+        for (const std::string &p : fs.includePaths)
+            ASSERT(p.find("$(") == std::string::npos);
+    }
+
+    void setIncludePathsRootRelative() const {
+        FileSettings fs{"test.cpp", Standards::Language::CPP, 0};
+        std::list<std::string> in;
+        in.emplace_back("\\inc");                       // root-relative -> project drive
+        in.emplace_back("$(UnknownMacro)\\abs\\dir");   // root-relative after expansion
+        in.emplace_back("D:\\other\\..\\lib");          // drive-absolute, simplified
+        in.emplace_back("\\\\server\\share\\inc");      // UNC kept
+        in.emplace_back("sub\\");                       // relative -> project dir
+        PropertiesMap properties;
+        TestImporter importer;
+        importer.fsSetIncludePaths(fs, "C:/proj/", in, properties);
+        ASSERT_EQUALS(5U, fs.includePaths.size());
+        auto it = fs.includePaths.cbegin();
+        ASSERT_EQUALS("C:/inc/", *it++);
+        ASSERT_EQUALS("C:/abs/dir/", *it++);
+        ASSERT_EQUALS("D:/lib/", *it++);
+        ASSERT_EQUALS("//server/share/inc/", *it++);
+        ASSERT_EQUALS("C:/proj/sub/", *it);
     }
 
     void setRelativePathsInclude() const {

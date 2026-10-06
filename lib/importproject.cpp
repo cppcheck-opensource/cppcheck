@@ -1689,7 +1689,8 @@ struct ImportProject::PropertyValueExpander {
 
         const std::string name = parseIdentifier();
         if (name.empty() || !hasValue(name)) {
-            const std::size_t end = findMatchingParen(mStr, start + 2);
+            // mStr[start] is '$' and mStr[start + 1] is the opening '('.
+            const std::size_t end = findMatchingParen(mStr, start + 1);
             mPos = (end != std::string::npos) ? end + 1 : mStr.size();
             return mUnknownAsEmpty ? std::string() : mStr.substr(start, mPos - start);
         }
@@ -3292,40 +3293,48 @@ void ImportProject::fsSetIncludePaths(FileSettings &fs, const std::string &basep
         if (startsWith(ipath, "%("))
             continue;
         std::string s(Path::fromNativeSeparators(ipath));
-        if (!found.insert(s).second)
-            continue;
-        if (s[0] == '/' || (s.size() > 1U && s.compare(1, 2, ":/") == 0)) {
-            if (!endsWith(s, '/'))
-                s += '/';
-            fs.includePaths.push_back(std::move(s));
-            continue;
+
+        if (s.find("$(") != std::string::npos) {
+            // MSBuild expands an undefined property to the empty string, so
+            // Visual Studio sees "$(Undefined)include" as "include" (relative to
+            // the project directory) and "$(Undefined)\include" as "\include"
+            // (root of the project directory's drive).  Do the same here instead of keeping
+            // the literal "$(...)" text, which can never name a real directory.
+            //
+            // It's not possible to determine whether an unknown property is
+            // intentional or a deficiency in the importer, so expand once with
+            // unknowns preserved purely to report them as debug messages.
+            // Debug messages are not currently communicated to the GUI or CLI
+            // from importers.
+            std::string withUnknowns = s;
+            expandMSBuildVariables(withUnknowns, properties);
+            checkUnexpandedExpressions(withUnknowns, "include path");
+
+            PropertyValueExpander expander{*this, properties, s, /*unknownAsEmpty*/ true};
+            s = Path::fromNativeSeparators(expander.expand());
+            trimWhitespace(s);
+            // An entry consisting only of unknown macros is dropped by Visual Studio.
+            if (s.empty())
+                continue;
         }
 
-        if (endsWith(s, '/')) // this is a temporary hack, simplifyPath can crash if path ends with '/'
+        // simplifyPath can crash if path ends with '/'.  Keep the separator of a
+        // bare root ("/", "C:/") so its PathKind doesn't change.
+        while (s.size() > 1U && endsWith(s, '/') &&
+               !(s.size() == 3U && s[1] == ':'))
             s.pop_back();
 
-        if (s.find("$(") == std::string::npos) {
-            s = Path::simplifyPath(basepath + s);
-        } else if (!simplifyPathWithVariables(s, properties)) {
-            // A macro in this entry didn't resolve (simplifyPathWithVariables()
-            // already left `s` with the literal, unexpanded "$(...)" text in it
-            // This does NOT silently drop the entry: a directory that can never exist is
-            // harmless to keep in includePaths (nothing will ever match it), but
-            // dropping it silently left the user with no way to find out why headers
-            // that should have been under it went unfound -- addDebug() alone isn't
-            // visible by default (see debugs' doc comment in importproject.h), and
-            // even --enable=missingInclude only reports the symptom (a header not
-            // found) with no link back to this cause. So the literal entry is kept
-            // AND a normal, always-visible message is recorded -- errors (unlike
-            // debugs) is printed unconditionally by the CLI, matching how the
-            // missingFile/missingIncludeExplicit fixes for ClCompile/ForcedIncludeFiles
-            // are also always-visible, not gated behind --debug.
-            errors.emplace_back("AdditionalIncludeDirectories entry has an unresolved macro, "
-                                "include path will not be found: '" + s + "'");
-        }
+        // Resolve the entry the same way as every other path in a project file:
+        // absolute and UNC paths are kept, root-relative paths ("\include")
+        // take the drive letter of the project directory, and relative paths
+        // are relative to the project directory.
+        s = toAbsolute(s, basepath, properties);
         if (s.empty())
             continue;
-        fs.includePaths.push_back(s.back() == '/' ? s : (s + '/'));
+        if (!endsWith(s, '/'))
+            s += '/';
+        if (found.insert(s).second)
+            fs.includePaths.push_back(std::move(s));
     }
 }
 

@@ -1,34 +1,21 @@
-
 # python -m pytest vcxproj_include_dir_macro_test.py
 #
 # Regression coverage for an unresolvable macro in AdditionalIncludeDirectories
-# (fsSetIncludePaths(), lib/importproject.cpp). Unlike a ClCompile item's own
-# Include/Update/Remove path (see vcxproj_item_macro_path_test.py and friends),
-# an include-search-path entry isn't restricted to config-invariant macros --
-# AdditionalIncludeDirectories is ordinary ItemDefinitionGroup metadata,
-# expanded unconditionally like any other (see vcxproj_property_order_test.py).
-# The problem here is different: when a macro in one entry genuinely can't be
-# resolved at all (not a project property, not an environment variable),
-# fsSetIncludePaths() used to silently drop that whole entry from the search
-# path list. Any header that lived under it would then simply go unfound, with
-# nothing in cppcheck's normal output pointing back at the real cause -- the
-# only trace was an addDebug() call, and addDebug()/debugs is not surfaced by
-# the CLI under any flag (it's accumulated but never read anywhere outside
-# ImportProject itself).
+# (fsSetIncludePaths(), lib/importproject.cpp).
 #
-# The fix keeps the entry (as its literal, unexpanded text -- a directory that
-# can never exist is harmless to search) and records a normal, always-visible
-# message in ImportProject::errors, printed unconditionally by the CLI exactly
-# like every other project-import error -- not gated behind --debug like
-# addDebug() traces are.
+# MSBuild expands an undefined property to the empty string, and the result is
+# handed to cl.exe like any other include directory. cppcheck must do the same
+# rather than keep the literal "$(...)" text, which can never name a real
+# directory. Whether the expanded entry finds anything depends on what is left:
 #
-# This fixture's only <ClCompile> item is main.cpp, which #includes
-# "myheader.h" -- present only under RealInc/, reachable exclusively via
-# $(CppcheckTestIncDirMacro)\RealInc, where CppcheckTestIncDirMacro is not
-# defined anywhere (no PropertyGroup, and not expected to be a real
-# environment variable). main.cpp's #error fires if and only if that header
-# was not found, independently confirming the entry was really dropped from
-# the search path rather than merely failing to warn.
+#   $(Undefined)\RealInc -> "\RealInc"  root of the project directory's drive
+#   $(Undefined)RealInc  -> "RealInc"   relative to the project directory
+#
+# Both fixture projects compile main.cpp, which #includes "myheader.h" --
+# present only under RealInc/ next to the projects. CppcheckTestIncDirMacro is
+# not defined anywhere (no PropertyGroup, and not expected to be a real
+# environment variable). main.cpp's #error fires if and only if the header was
+# not found, which independently shows how the entry was resolved.
 
 import os
 
@@ -36,24 +23,32 @@ from testutils import cppcheck
 
 __script_dir = os.path.dirname(os.path.abspath(__file__))
 
+__not_found = ('vcxproj_include_dir_macro/main.cpp:3:2: error: #error myheader.h (under RealInc) '
+               'was not found [preprocessorErrorDirective]')
 
-def test_vcxproj_include_dir_macro():
+
+def __run(project):
     args = [
-        '--project=vcxproj_include_dir_macro/vcxproj_include_dir_macro.vcxproj',
+        '--project=vcxproj_include_dir_macro/%s' % project,
         '--no-cppcheck-build-dir',
     ]
     ret, stdout, stderr = cppcheck(args, cwd=__script_dir)
     assert ret == 0, stdout
+    # The unresolved macro is expanded to an empty string, as Visual Studio
+    # does -- it is not reported as a project import error.
+    assert 'cppcheck: error:' not in stdout, stdout
+    return stderr.replace('\\', '/')
 
-    # A normal, always-visible message naming the exact unresolved macro path --
-    # not silently dropped, and not hidden behind --debug.
-    assert "cppcheck: error: AdditionalIncludeDirectories entry has an unresolved macro, " \
-           "include path will not be found: '$(CppcheckTestIncDirMacro)/RealInc'" in stdout, stdout
 
-    # myheader.h under RealInc/ must NOT have been found -- the unresolved
-    # entry stays inert (literal, matching no real directory), it is not
-    # somehow resolved anyway. main.cpp's own #error is the independent proof.
-    filename = 'vcxproj_include_dir_macro/main.cpp'
-    normalized_stderr = stderr.replace('\\', '/')
-    assert ('%s:3:2: error: #error myheader.h (under RealInc, reached only via the unresolved '
-            'AdditionalIncludeDirectories macro) was not found [preprocessorErrorDirective]' % filename) in normalized_stderr, stderr
+def test_vcxproj_include_dir_macro_root_relative():
+    # "\RealInc" is the root of the drive, not the RealInc folder next to the
+    # project, so myheader.h must NOT be found.
+    stderr = __run('vcxproj_include_dir_macro.vcxproj')
+    assert __not_found in stderr, stderr
+
+
+def test_vcxproj_include_dir_macro_relative():
+    # "RealInc" is relative to the project directory, so myheader.h IS found.
+    stderr = __run('vcxproj_include_dir_macro_relative.vcxproj')
+    assert __not_found not in stderr, stderr
+    assert 'preprocessorErrorDirective' not in stderr, stderr
