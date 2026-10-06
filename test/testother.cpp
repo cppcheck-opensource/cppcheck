@@ -2773,6 +2773,18 @@ private:
               "void S::func(S::F f) {}\n");
         ASSERT_EQUALS("", errout_str());
 
+        check("bool f(std::vector<std::vector<int>> v) {\n" // #12136
+              "    if (v.size() != 10U)\n"
+              "        return false;\n"
+              "    for (auto it = v.begin(); it != v.end(); ++it) {\n"
+              "        if (it->size() < 9U)\n"
+              "            return false;\n"
+              "        it->erase(it->begin(), it->begin() + 9U);\n"
+              "    }\n"
+              "    return true;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
         /*const*/ Settings settingsWin64 = settingsBuilder().platform(Platform::Type::Win64).build();
         check("using ui64 = unsigned __int64;\n"
               "ui64 Test(ui64 one, ui64 two) { return one + two; }\n",
