@@ -1263,9 +1263,11 @@ void constParameterPointer_SetupDiGetDeviceInstanceId(HDEVINFO info, SP_DEVINFO_
 
 void uninitvar_localtime_s(const time_t *time, struct tm *result)
 {
-    time_t Time;
+    time_t uninit_time;
+    struct tm uninit_result;
     // cppcheck-suppress uninitvar
-    (void)localtime_s(result, &Time);
+    (void)localtime_s(result, &uninit_time);
+    (void)localtime_s(&uninit_result, time);
     (void)localtime_s(result, time);
 }
 
