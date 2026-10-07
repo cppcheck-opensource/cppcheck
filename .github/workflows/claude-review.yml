@@ -1,29 +1,25 @@
 # Automated code review of pull requests using Claude
 #
-# - PRs opened by members/owners/collaborators are reviewed automatically.
-# - For other PRs a member/owner/collaborator can request a review by writing
-#   a PR comment containing "@claude review".
+# A member/owner/collaborator requests a review by writing a PR comment
+# containing "@claude review".
 #
-# pull_request_target and issue_comment run the workflow file from the base
-# branch with access to secrets. The PR code is never checked out or executed.
+# pull_request_target is not used because the Claude GitHub App token exchange
+# rejects OIDC tokens from that event (401 "Invalid OIDC token").
+#
+# issue_comment runs the workflow file from the default branch with access to
+# secrets. The PR code is never checked out or executed.
 name: claude-review
 
 on:
-  pull_request_target:
-    types: [opened, synchronize, ready_for_review, reopened]
   issue_comment:
     types: [created]
 
 jobs:
   review:
     if: |
-      (github.event_name == 'pull_request_target' &&
-       github.event.pull_request.draft == false &&
-       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) ||
-      (github.event_name == 'issue_comment' &&
-       github.event.issue.pull_request &&
-       contains(github.event.comment.body, '@claude review') &&
-       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '@claude review') &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
 
     runs-on: ubuntu-24.04
 
@@ -44,7 +40,7 @@ jobs:
         anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
         prompt: |
           REPO: ${{ github.repository }}
-          PR NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          PR NUMBER: ${{ github.event.issue.number }}
 
           Review this pull request. Focus on correctness bugs, potential
           false positives/false negatives in checkers, performance problems
