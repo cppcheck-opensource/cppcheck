@@ -760,8 +760,10 @@ private:
               "        v[i] = 42;\n"
               "    return v;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:4:10]: warning: Out of bounds access in 'v[i]', if 'v' size is 10 and 'i' is 10 [containerOutOfBounds]\n",
-                      errout_str());
+        TODO_ASSERT_EQUALS(
+            "[test.cpp:4:10]: error: Out of bounds access in 'v[i]', if 'v' size is 10 and 'i' is 10 [containerOutOfBounds]\n",
+            "[test.cpp:4:10]: warning: Out of bounds access in 'v[i]', if 'v' size is 10 and 'i' is 10 [containerOutOfBounds]\n",
+            errout_str());
 
         check("void f() {\n"
               "    int s = 2;\n"
