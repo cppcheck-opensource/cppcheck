@@ -171,26 +171,6 @@ void nullPointer_qsort(void *base, size_t n, size_t size, int (*cmp)(const void 
     qsort(base, n, size, qsort_cmpfunc);
 }
 
-// As with all bounds-checked functions, localtime_s is only guaranteed to be available if __STDC_LIB_EXT1__ is defined by the implementation and if the user defines __STDC_WANT_LIB_EXT1__ to the integer constant 1 before including time.h.
-#ifdef __STDC_LIB_EXT1__
-void uninitvar_localtime_s(const time_t *restrict time, struct tm *restrict result)
-{
-    const time_t *restrict Time;
-    // cppcheck-suppress uninitvar
-    (void)localtime_s(Time, result);
-    (void)localtime_s(time, result);
-}
-
-void nullPointer_localtime_s(const time_t *restrict time, struct tm *restrict result)
-{
-    // cppcheck-suppress nullPointer
-    (void)localtime_s(NULL, result);
-    // cppcheck-suppress nullPointer
-    (void)localtime_s(time, NULL);
-    (void)localtime_s(time, result);
-}
-#endif // __STDC_LIB_EXT1__
-
 size_t bufferAccessOutOfBounds_wcsrtombs(char * dest, const wchar_t ** src, size_t len, mbstate_t * ps)
 {
     char buf[42];
