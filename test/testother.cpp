@@ -12999,6 +12999,16 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:4:9]: (warning) Access of moved variable 'p'. [accessMoved]\n"
                       "[test.cpp:5:9]: (warning) Access of moved variable 'p'. [accessMoved]\n", errout_str());
+
+        check("void h(std::unique_ptr<int>);\n" // #12436
+              "void g(int);\n"
+              "void f() {\n"
+              "    std::unique_ptr<int> p = std::make_unique<int>(5);\n"
+              "    int* w = p.get();\n"
+              "    h(std::move(p));\n"
+              "    g(*w);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:10]: (style) Variable 'w' can be declared as pointer to const [constVariablePointer]\n", errout_str());
     }
 
     void moveAndAddressOf() {
