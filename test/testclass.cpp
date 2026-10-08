@@ -7028,6 +7028,18 @@ private:
                    "    }\n"
                    "};\n");
         ASSERT_EQUALS("", errout_str());
+
+        checkConst("struct A {\n" // #9981
+                   "    int a = 0;\n"
+                   "    auto operator[](int x) -> int& {\n"
+                   "        a = 1;\n"
+                   "        return a;\n"
+                   "    }\n"
+                   "    int f() {\n"
+                   "        return (*this)[0];\n"
+                   "    }\n"
+                   "};\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void const102() {
