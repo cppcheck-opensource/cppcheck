@@ -7078,6 +7078,18 @@ private:
               dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
 
+        check("template<typename T>\n" // #11583
+              "int g() { return 0; }\n"
+              "void f() {\n"
+              "    std::vector<int> v(1);\n"
+              "    auto itr = v.begin() + g<int>();\n"
+              "    std::vector<int> v2(itr, v.end());\n"
+              "    v.erase(itr, v.end());\n"
+              "    v.push_back(v2.size());\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
+
         // #13410
         check("int f(std::vector<int>& v) {\n"
               "    const int* i = &*v.cbegin();\n"
