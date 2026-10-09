@@ -3351,6 +3351,10 @@ bool CheckOtherImpl::testIfNonZeroExpressionIsPositive(const Token *tok, const V
         return false;
     }
 
+    if (const Variable* var = nonZeroExpr->variable())
+        if (var->typeStartToken()->isTemplateArg())
+            return false;
+
     const ValueType* vt = nonZeroExpr->valueType();
     return vt && (vt->pointer || vt->sign == ValueType::UNSIGNED);
 }
