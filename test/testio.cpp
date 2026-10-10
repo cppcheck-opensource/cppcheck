@@ -3497,9 +3497,8 @@ private:
               "void f(E e) {\n"
               "    printf(\"%lu\", e);\n"
               "}\n");
-        TODO_ASSERT_EQUALS("[test.cpp:3]: (warning) %lu in format string (no. 1) requires 'unsigned long' but the argument type is 'uint8_t'.\n",
-                           "",
-                           errout_str());
+        ASSERT_EQUALS("[test.cpp:3]: (warning) %lu in format string (no. 1) requires 'unsigned long' but the argument type is 'unsigned char'.\n",
+                      errout_str());
 
         check("void f() {\n"
               "    printf(\"%lu\", sizeof(char));\n"

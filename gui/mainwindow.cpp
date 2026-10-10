@@ -400,7 +400,7 @@ void MainWindow::loadSettings()
     }
 
     const ReportType reportType = static_cast<ReportType>(mSettings->value(SETTINGS_REPORT_TYPE, static_cast<int>(ReportType::normal)).toInt());
-    mUI->mActionReportNormal->setChecked(reportType <= ReportType::normal);
+    mUI->mActionReportNormal->setChecked(reportType < ReportType::normal);
     mUI->mActionReportAutosar->setChecked(reportType == ReportType::autosar);
     mUI->mActionReportCertC->setChecked(reportType == ReportType::certC);
     mUI->mActionReportCertCpp->setChecked(reportType == ReportType::certCpp);

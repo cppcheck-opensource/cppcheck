@@ -9799,6 +9799,9 @@ private:
         ASSERT_EQUALS("signed int", typeOf("int x; a = x++;\n", "++"));
         ASSERT_EQUALS("signed int *", typeOf("enum AB {A,B}; AB *ab; x=ab+2;\n", "+"));
         ASSERT_EQUALS("signed int *", typeOf("enum AB {A,B}; enum AB *ab; x=ab+2;\n", "+"));
+        ASSERT_EQUALS("unsigned char", typeOf("enum E : std::uint8_t {}; E e;\n", "e"));
+        ASSERT_EQUALS("signed short", typeOf("enum E : short {}; E e;\n", "e"));
+        TODO_ASSERT_EQUALS("unsigned short", "", typeOf("enum E : unsigned short {}; E e;\n", "e"));
         ASSERT_EQUALS("AB *", typeOf("struct AB {int a; int b;}; AB ab; x=&ab;\n", "&"));
         ASSERT_EQUALS("AB *", typeOf("struct AB {int a; int b;}; struct AB ab; x=&ab;\n", "&"));
         ASSERT_EQUALS("A::BC *", typeOf("namespace A { struct BC { int b; int c; }; }; struct A::BC abc; x=&abc;\n", "&"));
