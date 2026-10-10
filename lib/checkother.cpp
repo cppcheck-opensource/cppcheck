@@ -1810,18 +1810,31 @@ void CheckOtherImpl::checkConstVariable()
         if (function && (Function::returnsReference(function) || Function::returnsPointer(function)) && !Function::returnsConst(function)) {
             std::vector<const Token*> returns = Function::findReturns(function);
             if (std::any_of(returns.cbegin(), returns.cend(), [&](const Token* retTok) {
-                if (retTok->varId() == var->declarationId())
-                    return true;
-                while (retTok && retTok->isCast())
-                    retTok = retTok->astOperand2() ? retTok->astOperand2() : retTok->astOperand1();
-                while (Token::simpleMatch(retTok, "."))
-                    retTok = retTok->astOperand2();
-                if (Token::simpleMatch(retTok, "&"))
-                    retTok = retTok->astOperand1();
-                ValueFlow::Value ltVal = ValueFlow::getLifetimeObjValue(retTok);
-                if (ltVal.isLifetimeValue() && ltVal.tokvalue->varId() == var->declarationId())
-                    return true;
-                return ValueFlow::hasLifetimeToken(getParentLifetime(retTok), var->nameToken(), mSettings);
+                bool result = false;
+                visitAstNodes(retTok, [&result, &var, this](const Token* tok) {
+                    if (tok->varId() == var->declarationId()) {
+                        result = true;
+                        return ChildrenToVisit::done;
+                    }
+                    ValueFlow::Value ltVal = ValueFlow::getLifetimeObjValue(tok);
+                    if ((ltVal.isLifetimeValue() && ltVal.tokvalue->varId() == var->declarationId()) ||
+                        ValueFlow::hasLifetimeToken(getParentLifetime(tok), var->nameToken(), mSettings)) {
+                        result = true;
+                        return ChildrenToVisit::done;
+                    }
+                    if (tok->isCast())
+                        return tok->astOperand2() ? ChildrenToVisit::op2 : ChildrenToVisit::op1;
+                    if (tok->str() == ".")
+                        return ChildrenToVisit::op2;
+                    if (tok->str() == "&")
+                        return ChildrenToVisit::op1;
+                    if (tok->str() == "?")
+                        return ChildrenToVisit::op2;
+                    if (tok->str() == ":")
+                        return ChildrenToVisit::op1_and_op2;
+                    return ChildrenToVisit::none;
+                });
+                return result;
             }))
                 continue;
         }
