@@ -1143,7 +1143,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
                 filesDeleter.addFile(dumpFile);
         }
 
-        std::set<unsigned long long> hashes;
+        std::set<std::pair<std::size_t, std::set<std::string>>> hashes;
         int checkCount = 0;
         bool hasValidConfig = false;
         std::list<std::string> configurationError;
@@ -1270,9 +1270,12 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
                     mSuppressions.nomsg.markUnmatchedInlineSuppressionsAsChecked(tokenizer.list);
                 }
 
-                // Skip if we already met the same simplified token list
+                const std::set<std::string> exportedFunctions = mSettings.checks.isEnabled(Checks::unusedFunction) ?
+                                                                preprocessor.getExportedFunctions() : std::set<std::string>{};
+
+                // Macro-only references can differ even when the simplified tokens match.
                 if (maxConfigs > 1) {
-                    const std::size_t hash = tokenizer.list.calculateHash();
+                    const auto hash = std::make_pair(tokenizer.list.calculateHash(), exportedFunctions);
                     if (hashes.find(hash) != hashes.end()) {
                         if (mSettings.debugwarnings)
                             purgedConfigurationMessage(file.spath(), currentConfig);
@@ -1282,7 +1285,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
                 }
 
                 // Check normal tokens
-                checkNormalTokens(tokenizer, analyzerInformation.get(), currentConfig);
+                checkNormalTokens(tokenizer, analyzerInformation.get(), currentConfig, exportedFunctions);
             } catch (const InternalError &e) {
                 ErrorMessage errmsg = ErrorMessage::fromInternalError(e, &tokenizer.list, file.spath());
                 mErrorLogger.reportErr(errmsg);
@@ -1381,7 +1384,8 @@ void CppCheck::internalError(const std::string &filename, const std::string &msg
 // CppCheck - A function that checks a normal token list
 //---------------------------------------------------------------------------
 
-void CppCheck::checkNormalTokens(const Tokenizer &tokenizer, AnalyzerInformation* analyzerInformation, const std::string& currentConfig)
+void CppCheck::checkNormalTokens(const Tokenizer &tokenizer, AnalyzerInformation* analyzerInformation, const std::string& currentConfig,
+                                 const std::set<std::string>& exportedFunctions)
 {
     const ProgressReporter progressReporter(mErrorLogger, mSettings.reportProgress, tokenizer.list.getSourceFilePath(), "Run checkers");
 
@@ -1420,10 +1424,10 @@ void CppCheck::checkNormalTokens(const Tokenizer &tokenizer, AnalyzerInformation
     }
 
     if (mSettings.checks.isEnabled(Checks::unusedFunction) && !mSettings.buildDir.empty()) {
-        unusedFunctionsChecker.parseTokens(tokenizer, mSettings.library);
+        unusedFunctionsChecker.parseTokens(tokenizer, mSettings.library, exportedFunctions);
     }
     if (mUnusedFunctionsCheck && mSettings.useSingleJob() && mSettings.buildDir.empty()) {
-        mUnusedFunctionsCheck->parseTokens(tokenizer, mSettings.library);
+        mUnusedFunctionsCheck->parseTokens(tokenizer, mSettings.library, exportedFunctions);
     }
 
     if (mSettings.clang) {
