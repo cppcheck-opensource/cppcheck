@@ -94,7 +94,43 @@ if(NOT BUILD_GUI)
     endif()
 endif()
 
-option(HAVE_RULES           "Usage of rules (needs PCRE library and headers)"               OFF)
+option(HAVE_RULES           "Usage of rules"                                                OFF)
+option(HAVE_PCRE            "Allow usage of PCRE in rules"                                  OFF)
+option(HAVE_STD_REGEX       "Allow usage of std::regex in rules"                            OFF)
+# TODO: add option to specify default regular expression engine
+if(NOT HAVE_RULES)
+    if(HAVE_PCRE)
+        message(WARNING "HAVE_PCRE has no effect without HAVE_RULES")
+    endif()
+    if(HAVE_STD_REGEX)
+        message(WARNING "HAVE_STD_REGEX has no effect without HAVE_RULES")
+    endif()
+endif()
+if(HAVE_RULES)
+    # TODO: handle explicit disabling
+    # TODO: enable deprecation warning when PCRE2 support has been added
+    #message(DEPRECATION "HAVE_RULES will no longer explicitly enable HAVE_PCRE with Cppcheck 2.2x")
+    #set(HAVE_PCRE ON)
+
+    if(HAVE_PCRE)
+        # TODO: enable deprecation warning when PCRE2 support has been added
+        #message(DEPRECATION "Support for PCRE has been deprecated and will be removed in a future Cppcheck version")
+    endif()
+
+    if(MSVC)
+        if(HAVE_STD_REGEX)
+            message(WARNING "Disabling usage of std::regex since its implementation is broken in Visual Studio")
+            set(HAVE_STD_REGEX OFF)
+        endif()
+    else()
+        # TODO: handle explicit disabling
+        set(HAVE_STD_REGEX ON)
+    endif()
+
+    if(NOT HAVE_PCRE AND NOT HAVE_STD_REGEX)
+        message(FATAL_ERROR "Cannot use rules since no regular expression engine is available")
+    endif()
+endif()
 option(USE_BUNDLED_TINYXML2 "Usage of bundled TinyXML2 library"                             ON)
 if(BUILD_CORE_DLL AND NOT USE_BUNDLED_TINYXML2)
     message(FATAL_ERROR "Cannot use external TinyXML2 library when building lib as DLL")
