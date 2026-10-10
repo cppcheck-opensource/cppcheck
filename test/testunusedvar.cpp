@@ -3370,6 +3370,14 @@ private:
                               "    return a;\n"
                               "}\n");
         ASSERT_EQUALS("[test.cpp:5:14]: (style) Variable 'b[c]' is assigned a value that is never used. [unreadVariable]\n", errout_str());
+
+        functionVariableUsage("int f() {\n" // #14769
+                              "    int i = 2;\n"
+                              "    const int *a, *c;\n"
+                              "    a = c = &i;\n"
+                              "    return *a;\n"
+                              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:11]: (style) Variable 'c' is assigned a value that is never used. [unreadVariable]\n", errout_str());
     }
 
     void localvar24() { // ticket #1803
