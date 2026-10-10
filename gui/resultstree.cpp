@@ -427,7 +427,7 @@ void ResultsTree::clear(const QString &filename)
 
         if (stripped == fileItem->text() ||
             filename == fileItem->errorItem->file0) {
-            mErrorList.removeAll(fileItem->errorItem->toString());
+            removeFileErrorsFromErrorList(fileItem);
             mModel->removeRow(i);
             break;
         }
@@ -445,7 +445,7 @@ void ResultsTree::clearRecheckFile(const QString &filename)
         QString storedfile = fileItem->getErrorPathItem().file;
         storedfile = ((!mCheckPath.isEmpty() && storedfile.startsWith(mCheckPath)) ? storedfile.mid(mCheckPath.length() + 1) : storedfile);
         if (actualfile == storedfile) {
-            mErrorList.removeAll(fileItem->errorItem->toString());
+            removeFileErrorsFromErrorList(fileItem);
             mModel->removeRow(i);
             break;
         }
@@ -1132,6 +1132,15 @@ void ResultsTree::saveErrors(Report *report, const ResultItem *fileItem) const
     }
 }
 
+void ResultsTree::removeFileErrorsFromErrorList(const ResultItem *fileItem)
+{
+    for (int i{0}; i < fileItem->rowCount(); ++i) {
+        const auto *errorItem = dynamic_cast<const ResultItem*>(fileItem->child(i, COLUMN_FILE));
+        if (errorItem && errorItem->errorItem)
+            mErrorList.removeAll(errorItem->errorItem->toString());
+    }
+}
+
 void ResultsTree::updateFromOldReport(const QString &filename)
 {
     showColumn(COLUMN_SINCE_DATE);
@@ -1195,6 +1204,7 @@ void ResultsTree::updateSettings(bool showFullPath,
 void ResultsTree::setCheckDirectory(const QString &dir)
 {
     mCheckPath = dir;
+    refreshFilePaths();
 }
 
 const QString& ResultsTree::getCheckDirectory() const
