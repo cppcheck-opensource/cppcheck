@@ -141,13 +141,13 @@ int main() { MyType t; }
     assert stderr == "unusedFunction:The function 'unused' is never used.\n"
 
 
-@pytest.mark.parametrize('property_type, property_name', [
-    ('READ', 'property'),
-    ('const Names::READ*', 'property'),
-    ('unsigned long', 'READ'),
-    ('Box<Pair<::READ, ::WRITE>>', 'property'),
+@pytest.mark.parametrize('property_type, property_name, reported', [
+    ('READ', 'property', ['unrelated']),
+    ('const Names::READ*', 'property', ['property', 'unrelated']),
+    ('unsigned long', 'READ', ['property', 'unrelated']),
+    ('Box<Pair<::READ, ::WRITE>>', 'property', ['property', 'unrelated']),
 ])
-def test_unused_functions_qt_property_keyword_names(tmp_path, property_type, property_name):
+def test_unused_functions_qt_property_keyword_names(tmp_path, property_type, property_name, reported):
     source = tmp_path / 'test.cpp'
     source.write_text('''class READ {};
 class WRITE {};
@@ -162,6 +162,7 @@ public:
     void valueChanged() {}
     void property() {}
     void NOTIFY() {}
+    void unrelated() {}
 };
 int main() { MyType t; }
 '''.replace('@TYPE@', property_type).replace('@PROPERTY@', property_name)
@@ -170,8 +171,11 @@ int main() { MyType t; }
                                    '--enable=unusedFunction', '--library=qt',
                                    '-j1', '--no-cppcheck-build-dir', str(source)])
     assert ret == 0, stdout
-    assert stderr == ("unusedFunction:The function 'property' is never used.\n"
-                      "unusedFunction:The function 'NOTIFY' is never used.\n")
+    # Exporter keywords are matched without parsing the property's type/name.
+    # Keyword collisions can hide unused property/NOTIFY methods, while the
+    # actual accessors must stay used and unrelated methods must still warn.
+    assert stderr.splitlines() == ["unusedFunction:The function '{}' is never used.".format(name)
+                                   for name in reported]
 
 
 def test_unused_functions_qt_property_reset_keyword_name(tmp_path):
@@ -346,6 +350,46 @@ int main() { MyType t; }
                                    '-j1', '--no-cppcheck-build-dir', str(source)])
     assert ret == 0, stdout
     assert stderr == "unusedFunction:The function 'unused' is never used.\n"
+
+
+@pytest.mark.parametrize('metadata', [
+    'GET value',
+    'GET (Base::value)',
+    'value USED',
+    'NESTED(GET unrelated) GET value',
+])
+def test_unused_functions_library_exporter(tmp_path, metadata):
+    library = tmp_path / 'exporter.cfg'
+    library.write_text('''<?xml version="1.0"?>
+<def format="2">
+    <markup ext=".meta">
+        <exported>
+            <exporter prefix="EXPORT">
+                <prefix>GET</prefix>
+                <suffix>USED</suffix>
+            </exporter>
+        </exported>
+    </markup>
+</def>
+''')
+    source = tmp_path / 'test.cpp'
+    source.write_text('''#define EXPORT(...)
+class Base {
+public:
+    int value() const { return 0; }
+};
+class MyType : public Base {
+    EXPORT(@METADATA@)
+public:
+    void unrelated() {}
+};
+int main() { MyType t; }
+'''.replace('@METADATA@', metadata))
+    ret, stdout, stderr = cppcheck(['-q', '--template={id}:{message}',
+                                   '--enable=unusedFunction', '--library=' + str(library),
+                                   '-j1', '--no-cppcheck-build-dir', str(source)])
+    assert ret == 0, stdout
+    assert stderr == "unusedFunction:The function 'unrelated' is never used.\n"
 
 
 def test_unused_functions_j():

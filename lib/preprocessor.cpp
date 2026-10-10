@@ -28,7 +28,6 @@
 #include "settings.h"
 #include "standards.h"
 #include "suppressions.h"
-#include "token.h"
 #include "utils.h"
 
 #include <algorithm>
@@ -902,123 +901,40 @@ simplecpp::TokenList Preprocessor::preprocess(const std::string &cfgStr, std::ve
     return tokens2;
 }
 
-static const simplecpp::Token* qtPropertyAttributes(const simplecpp::Token* tok)
+static std::set<std::string> exporterFunctions(const simplecpp::Token* tok, const std::string& exporter, const Library& library)
 {
-    while (tok && (tok->str() == "const" || tok->str() == "volatile"))
-        tok = tok->next;
-    if (!tok)
-        return nullptr;
-    if (Token::isStandardType(tok->str())) {
-        do {
-            tok = tok->next;
-        } while (tok && Token::isStandardType(tok->str()));
-    } else {
-        if (tok->str() == "::")
-            tok = tok->next;
-        if (!tok || !tok->name)
-            return nullptr;
-        for (;;) {
-            tok = tok->next;
-            if (tok && tok->str() == "<") {
-                unsigned int depth = 1;
-                unsigned int parentheses = 0;
-                do {
-                    tok = tok->next;
-                    if (!tok)
-                        return nullptr;
-                    if (tok->str() == "(")
-                        ++parentheses;
-                    else if (tok->str() == ")" && parentheses)
-                        --parentheses;
-                    else if (!parentheses) {
-                        if (tok->str() == "<")
-                            ++depth;
-                        else if (tok->str() == ">")
-                            --depth;
-                        else if (tok->str() == ">>") {
-                            if (depth < 2)
-                                return nullptr;
-                            depth -= 2;
-                        }
-                    }
-                } while (depth);
-                tok = tok->next;
-            }
-            if (!tok || tok->str() != "::" || !tok->next || !tok->next->name)
+    // Match configured exporter keywords without parsing library-specific grammar.
+    std::set<std::string> functions;
+    unsigned int depth = 0;
+    for (; tok; tok = tok->next) {
+        if (tok->str() == "(")
+            ++depth;
+        else if (tok->str() == ")") {
+            if (depth == 0)
                 break;
-            tok = tok->next;
+            --depth;
+        } else if (depth == 0) {
+            if (library.isexportedsuffix(exporter, tok->str()) && tok->previous && tok->previous->name)
+                functions.insert(tok->previous->str());
+            if (!library.isexportedprefix(exporter, tok->str()))
+                continue;
+            const simplecpp::Token* name = tok->next;
+            const bool parenthesized = name && name->str() == "(";
+            if (parenthesized)
+                name = name->next;
+            if (name && name->str() == "::")
+                name = name->next;
+            if (!name || !name->name)
+                continue;
+            while (name->next && name->next->str() == "::" && name->next->next && name->next->next->name)
+                name = name->next->next;
+            if (parenthesized && (!name->next || name->next->str() != ")"))
+                continue;
+            if (name->str() != "true" && name->str() != "false" && name->str() != "default")
+                functions.insert(name->str());
         }
     }
-    while (tok && (tok->str() == "*" || tok->str() == "&" || tok->str() == "&&" ||
-                   tok->str() == "const" || tok->str() == "volatile"))
-        tok = tok->next;
-    // The property name is not a function reference.
-    return tok && tok->name ? tok->next : nullptr;
-}
-
-static std::set<std::string> qtPropertyFunctions(const simplecpp::Token* tok, const Library& library)
-{
-    std::set<std::string> functions;
-    tok = qtPropertyAttributes(tok);
-    while (tok && tok->str() != ")") {
-        const std::string& attribute = tok->str();
-        tok = tok->next;
-        if (attribute == "CONSTANT" || attribute == "FINAL" || attribute == "REQUIRED" ||
-            attribute == "VIRTUAL" || attribute == "OVERRIDE")
-            continue;
-        if (!tok)
-            return {};
-        if (attribute == "REVISION") {
-            if (tok->number)
-                tok = tok->next;
-            else if (tok->str() == "(") {
-                do {
-                    tok = tok->next;
-                } while (tok && (tok->number || tok->str() == ","));
-                if (!tok || tok->str() != ")")
-                    return {};
-                tok = tok->next;
-            } else
-                return {};
-        } else if (attribute == "MEMBER") {
-            if (!tok->name)
-                return {};
-            tok = tok->next;
-        } else if (library.isexportedprefix("Q_PROPERTY", attribute)) {
-            const bool parenthesized = tok->str() == "(";
-            if (parenthesized)
-                tok = tok->next;
-            if (!tok)
-                return {};
-            if (tok->str() == "::")
-                tok = tok->next;
-            if (!tok)
-                return {};
-            if (!tok->name)
-                return {};
-            std::string function = tok->str();
-            tok = tok->next;
-            while (tok && tok->str() == "::" && tok->next && tok->next->name) {
-                function = tok->next->str();
-                tok = tok->next->next;
-            }
-            if (function != "true" && function != "false" && function != "default")
-                functions.insert(function);
-            if (parenthesized) {
-                if (!tok || tok->str() != ")")
-                    return {};
-                tok = tok->next;
-            }
-            if (tok && tok->str() == "(") {
-                tok = tok->next;
-                if (!tok || tok->str() != ")")
-                    return {};
-                tok = tok->next;
-            }
-        } else
-            return {};
-    }
-    return tok ? functions : std::set<std::string>{};
+    return functions;
 }
 
 void Preprocessor::readQtAnnotations(simplecpp::TokenList& tokens)
@@ -1055,7 +971,7 @@ void Preprocessor::readQtAnnotations(simplecpp::TokenList& tokens)
         }
         const simplecpp::Token* type = tag->next->next;
         if (type && type->str() == "qt_property" && type->next && type->next->str() == ",") {
-            const auto functions = qtPropertyFunctions(type->next->next, mSettings.library);
+            const auto functions = exporterFunctions(type->next->next, "Q_PROPERTY", mSettings.library);
             mExportedFunctions.insert(functions.begin(), functions.end());
             mExportedLocations.insert(tok->location);
         }
@@ -1091,25 +1007,8 @@ std::set<std::string> Preprocessor::getExportedFunctions() const
             if (locations.find(tok->location) == locations.end() ||
                 !mSettings.library.isexporter(tok->str()) || !tok->next || tok->next->str() != "(")
                 continue;
-            if (tok->str() == "Q_PROPERTY") {
-                const auto accessors = qtPropertyFunctions(tok->next->next, mSettings.library);
-                functions.insert(accessors.begin(), accessors.end());
-                continue;
-            }
-            unsigned int depth = 1;
-            for (const simplecpp::Token* arg = tok->next->next; arg; arg = arg->next) {
-                if (arg->str() == "(")
-                    ++depth;
-                else if (arg->str() == ")") {
-                    if (--depth == 0)
-                        break;
-                } else if (depth == 1) {
-                    if (mSettings.library.isexportedprefix(tok->str(), arg->str()) && arg->next && arg->next->name)
-                        functions.insert(arg->next->str());
-                    if (mSettings.library.isexportedsuffix(tok->str(), arg->str()) && arg->previous && arg->previous->name)
-                        functions.insert(arg->previous->str());
-                }
-            }
+            const auto exported = exporterFunctions(tok->next->next, tok->str(), mSettings.library);
+            functions.insert(exported.begin(), exported.end());
         }
     };
     collect(mTokens);
