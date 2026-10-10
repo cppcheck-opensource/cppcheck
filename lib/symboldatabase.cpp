@@ -2595,6 +2595,10 @@ void Variable::evaluate(const Settings& settings)
         } else if (tok->str() == "&&") { // Before simplification, && isn't split up
             setFlag(fIsRValueRef, true);
             setFlag(fIsReference, true); // Set also fIsReference
+        } else if (tok->str() == "(" && Token::simpleMatch(tok->link(), ") (")) {
+            // a reference before the parentheses belongs to the return type of a function pointer: int& (*f)()
+            setFlag(fIsRValueRef, false);
+            setFlag(fIsReference, false);
         }
 
         if (tok->str() == "<" && tok->link())
@@ -7578,6 +7582,8 @@ static const Token* parsedecl(const Token* type,
             if (par)
                 break;
             par = true;
+            // a reference before the parentheses belongs to the return type of the function pointer
+            valuetype->reference = Reference::None;
         }
         if (Token::simpleMatch(type, "decltype (") && type->next()->valueType()) {
             const ValueType *vt2 = type->next()->valueType();
