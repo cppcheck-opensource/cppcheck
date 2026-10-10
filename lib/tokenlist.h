@@ -50,7 +50,7 @@ struct TokensFrontBack {
 
 class CPPCHECKLIB TokenList {
 public:
-    explicit TokenList(const Settings& settings, Standards::Language lang);
+    explicit TokenList(const Settings& settings LIFETIMEBOUND, Standards::Language lang);
     ~TokenList();
 
     TokenList(const TokenList &) = delete;
