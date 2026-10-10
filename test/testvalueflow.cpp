@@ -128,6 +128,7 @@ private:
         TEST_CASE(valueFlowUninit);
 
         TEST_CASE(valueFlowConditionExpressions);
+        TEST_CASE(valueFlowConditionRanges);
 
         TEST_CASE(valueFlowContainerSize);
         TEST_CASE(valueFlowContainerSizeIterator);
@@ -9141,6 +9142,134 @@ private:
                "    }\n"
                "};\n";
         ASSERT_EQUALS(true, testValueOfXImpossible(code, 4U, 0));
+    }
+
+    // The ranges that conditions give the program memory decide which branches a value reaches
+    void valueFlowConditionRanges() {
+        const char* code;
+
+        // n > 3 does not mean that n is 4: the else branch is reachable
+        code = "void f(int n) {\n"
+               "    int x = 1;\n"
+               "    if (n > 3) {\n"
+               "        if (n < 10) {}\n"
+               "        else { int a = x; }\n"
+               "    }\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 5U, 1));
+
+        code = "void f(int n) {\n"
+               "    int x = 1;\n"
+               "    if (n > 3) {\n"
+               "        if (n == 15) { int a = x; }\n"
+               "    }\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 1));
+
+        // 3 < n < 10: n == 15 is impossible, n == 5 is not
+        code = "void f(int n) {\n"
+               "    int x = 1;\n"
+               "    if (n > 3 && n < 10) {\n"
+               "        if (n == 15) { int a = x; }\n"
+               "        if (n == 5) { int b = x; }\n"
+               "    }\n"
+               "}\n";
+        ASSERT_EQUALS(false, testValueOfX(code, 4U, 1));
+        ASSERT_EQUALS(true, testValueOfX(code, 5U, 1));
+
+        // a condition on the same variable is decided from the range
+        code = "void f(int n) {\n"
+               "    int x = 1;\n"
+               "    if (n > 3) {\n"
+               "        if (n > 2) { int a = x; }\n"
+               "        else { int b = x; }\n"
+               "    }\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 1));
+        ASSERT_EQUALS(false, testValueOfX(code, 5U, 1));
+
+        // n >= 0 and n != 0 is n > 0
+        code = "void f(int n) {\n"
+               "    int x = 1;\n"
+               "    if (n < 0) return;\n"
+               "    if (n == 0) return;\n"
+               "    if (n > 0) { int a = x; }\n"
+               "    else { int b = x; }\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 5U, 1));
+        ASSERT_EQUALS(false, testValueOfX(code, 6U, 1));
+
+        // the range is shifted and scaled by arithmetic
+        code = "void f(int n) {\n"
+               "    int x = 1;\n"
+               "    if (n > 3) {\n"
+               "        if (n + 1 > 4) { int a = x; }\n"
+               "        else { int b = x; }\n"
+               "        if ((n << 1) >= 8) { int c = x; }\n"
+               "        else { int d = x; }\n"
+               "        if (n * 2 == 7) { int e = x; }\n"
+               "        if (-2 * n < -6) { int g = x; }\n"
+               "        else { int h = x; }\n"
+               "    }\n"
+               "    if (n > 6) {\n"
+               "        if (n / 2 > 2) { int i = x; }\n"
+               "        else { int j = x; }\n"
+               "    }\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 1));
+        ASSERT_EQUALS(false, testValueOfX(code, 5U, 1));
+        ASSERT_EQUALS(true, testValueOfX(code, 6U, 1));
+        ASSERT_EQUALS(false, testValueOfX(code, 7U, 1));
+        ASSERT_EQUALS(false, testValueOfX(code, 8U, 1));
+        ASSERT_EQUALS(true, testValueOfX(code, 9U, 1));
+        ASSERT_EQUALS(false, testValueOfX(code, 10U, 1));
+        ASSERT_EQUALS(true, testValueOfX(code, 13U, 1));
+        ASSERT_EQUALS(false, testValueOfX(code, 14U, 1));
+
+        // the range of a product is solved exactly
+        code = "void f(int n) {\n"
+               "    int x = 1;\n"
+               "    if (n * 2 < 3) {\n"
+               "        if (n == 1) { int a = x; }\n"
+               "        if (n == 2) { int b = x; }\n"
+               "    }\n"
+               "    if (-2 * n > 3) {\n"
+               "        if (n == -2) { int c = x; }\n"
+               "        if (n == -1) { int d = x; }\n"
+               "    }\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 1));
+        ASSERT_EQUALS(false, testValueOfX(code, 5U, 1));
+        ASSERT_EQUALS(true, testValueOfX(code, 8U, 1));
+        ASSERT_EQUALS(false, testValueOfX(code, 9U, 1));
+
+        // a range that excludes zero is true as a bool; one that includes zero is not known
+        code = "void f(int n) {\n"
+               "    int x = 1;\n"
+               "    if (n > 3) {\n"
+               "        if (n) {} else { int a = x; }\n"
+               "    }\n"
+               "    if (n > -5) {\n"
+               "        if (n) {} else { int b = x; }\n"
+               "    }\n"
+               "}\n";
+        ASSERT_EQUALS(false, testValueOfX(code, 4U, 1));
+        ASSERT_EQUALS(true, testValueOfX(code, 7U, 1));
+
+        // container sizes
+        code = "void f(const std::string& s) {\n"
+               "    int x = 1;\n"
+               "    if (s.size() > 3 && s.size() < 10) {\n"
+               "        if (s.size() == 15) { int a = x; }\n"
+               "        if (s.empty()) { int b = x; }\n"
+               "        if (s.size() < 20) { int c = x; }\n"
+               "        else { int d = x; }\n"
+               "    }\n"
+               "}\n";
+        ASSERT_EQUALS(false, testValueOfX(code, 4U, 1));
+        ASSERT_EQUALS(false, testValueOfX(code, 5U, 1));
+        ASSERT_EQUALS(true, testValueOfX(code, 6U, 1));
+        ASSERT_EQUALS(false, testValueOfX(code, 7U, 1));
     }
 
     void valueFlowSymbolic() {

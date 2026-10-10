@@ -270,11 +270,6 @@ static void setConditionalValues(const Token* tok,
     setValueBound(false_value, tok, !lhs);
 }
 
-static bool isSaturated(MathLib::bigint value)
-{
-    return value == std::numeric_limits<MathLib::bigint>::max() || value == std::numeric_limits<MathLib::bigint>::min();
-}
-
 static void parseCompareEachInt(
     const Token* tok,
     const std::function<void(const Token* varTok, ValueFlow::Value true_value, ValueFlow::Value false_value)>& each,
@@ -292,7 +287,7 @@ static void parseCompareEachInt(
                 value1.clear();
         }
         for (const ValueFlow::Value& v1 : value1) {
-            if (isSaturated(v1.intvalue) || astIsFloat(tok->astOperand2(), /*unknown*/ false))
+            if (ValueFlow::isSaturated(v1.intvalue) || astIsFloat(tok->astOperand2(), /*unknown*/ false))
                 continue;
             ValueFlow::Value true_value = v1;
             ValueFlow::Value false_value = v1;
@@ -300,7 +295,7 @@ static void parseCompareEachInt(
             each(tok->astOperand2(), std::move(true_value), std::move(false_value));
         }
         for (const ValueFlow::Value& v2 : value2) {
-            if (isSaturated(v2.intvalue) || astIsFloat(tok->astOperand1(), /*unknown*/ false))
+            if (ValueFlow::isSaturated(v2.intvalue) || astIsFloat(tok->astOperand1(), /*unknown*/ false))
                 continue;
             ValueFlow::Value true_value = v2;
             ValueFlow::Value false_value = v2;
@@ -5490,32 +5485,29 @@ static void valueFlowForLoop(const TokenList &tokenlist, const SymbolDatabase& s
                     }
                 } else {
                     for (const auto& p : mem1) {
-                        if (!p.second.isIntValue())
-                            continue;
-                        if (p.second.isImpossible())
+                        MathLib::bigint value = 0;
+                        if (!mem1.getIntValue(p.first.getExpressionId(), value))
                             continue;
                         if (p.first.tok->varId() == 0)
                             continue;
-                        valueFlowForLoopSimplify(bodyStart, p.first.tok, false, p.second.intvalue, tokenlist, errorLogger, settings);
+                        valueFlowForLoopSimplify(bodyStart, p.first.tok, false, value, tokenlist, errorLogger, settings);
                     }
                     for (const auto& p : mem2) {
-                        if (!p.second.isIntValue())
-                            continue;
-                        if (p.second.isImpossible())
+                        MathLib::bigint value = 0;
+                        if (!mem2.getIntValue(p.first.getExpressionId(), value))
                             continue;
                         if (p.first.tok->varId() == 0)
                             continue;
-                        valueFlowForLoopSimplify(bodyStart, p.first.tok, false, p.second.intvalue, tokenlist, errorLogger, settings);
+                        valueFlowForLoopSimplify(bodyStart, p.first.tok, false, value, tokenlist, errorLogger, settings);
                     }
                 }
                 for (const auto& p : memAfter) {
-                    if (!p.second.isIntValue())
-                        continue;
-                    if (p.second.isImpossible())
+                    MathLib::bigint value = 0;
+                    if (!memAfter.getIntValue(p.first.getExpressionId(), value))
                         continue;
                     if (p.first.tok->varId() == 0)
                         continue;
-                    valueFlowForLoopSimplifyAfter(tok, p.first.getExpressionId(), p.second.intvalue, tokenlist, errorLogger, settings);
+                    valueFlowForLoopSimplifyAfter(tok, p.first.getExpressionId(), value, tokenlist, errorLogger, settings);
                 }
             }
         }
@@ -6269,6 +6261,31 @@ static const Token* parseBinaryIntOp(const Token* expr,
     return varTok;
 }
 
+static MathLib::bigint floorDiv(MathLib::bigint x, MathLib::bigint y)
+{
+    MathLib::bigint q = x / y;
+    if (x % y != 0 && (x < 0) != (y < 0))
+        --q;
+    return q;
+}
+
+static MathLib::bigint ceilDiv(MathLib::bigint x, MathLib::bigint y)
+{
+    MathLib::bigint q = x / y;
+    if (x % y != 0 && (x < 0) == (y < 0))
+        ++q;
+    return q;
+}
+
+// Solve "x * divisor" for x when the value is a bound: divide the end of the range, rounding towards
+// the inside of the range so that it stays exact; a negative divisor turns the range around.
+static bool divideBound(ValueFlow::Value& value, MathLib::bigint divisor)
+{
+    const bool lowerAfter = (divisor > 0) == value.isLowerEdge();
+    const MathLib::bigint edge = value.rangeEdge();
+    return value.setRangeEdge(lowerAfter ? ceilDiv(edge, divisor) : floorDiv(edge, divisor), lowerAfter);
+}
+
 const Token* ValueFlow::solveExprValue(const Token* expr,
                                        const std::function<std::vector<MathLib::bigint>(const Token*)>& eval,
                                        ValueFlow::Value& value)
@@ -6292,19 +6309,32 @@ const Token* ValueFlow::solveExprValue(const Token* expr,
             return ValueFlow::solveExprValue(binaryTok, eval, value);
         }
         case '-': {
-            if (rhs)
+            if (rhs) {
                 value.intvalue = intval - value.intvalue;
-            else
+                // c - x >= a  <=>  x <= c - a
+                value.invertBound();
+            } else
                 value.intvalue += intval;
             return ValueFlow::solveExprValue(binaryTok, eval, value);
         }
         case '*': {
-            if (intval == 0)
+            // A bound at the limit of the type cannot be solved, nor can its edge be divided safely
+            if (intval == 0 || ValueFlow::isSaturated(value.intvalue) || ValueFlow::isSaturated(value.rangeEdge()))
                 break;
-            value.intvalue /= intval;
+            if (value.bound == ValueFlow::Value::Bound::Point) {
+                // x * k is v only for a v that k divides
+                if (value.intvalue % intval != 0)
+                    break;
+                value.intvalue /= intval;
+            } else if (!divideBound(value, intval)) {
+                break;
+            }
             return ValueFlow::solveExprValue(binaryTok, eval, value);
         }
         case '^': {
+            // xor does not keep a range together
+            if (value.bound != ValueFlow::Value::Bound::Point)
+                break;
             value.intvalue ^= intval;
             return ValueFlow::solveExprValue(binaryTok, eval, value);
         }

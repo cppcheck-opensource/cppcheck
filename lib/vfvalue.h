@@ -27,8 +27,10 @@
 
 #include <cassert>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <limits>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -40,6 +42,9 @@ class Token;
 
 namespace ValueFlow
 {
+    /** The most values kept for one expression, for the sake of performance */
+    constexpr std::size_t maxValues = 10;
+
     class CPPCHECKLIB Value {
     public:
         enum class Bound : std::uint8_t { Upper, Lower, Point };
@@ -192,6 +197,44 @@ namespace ValueFlow
         void invertRange() {
             invertBound();
             decreaseRange();
+        }
+
+        /**
+         * Is a value with a bound the lower end of its range? A possible lower bound is; so is an
+         * impossible upper bound, as the values up to it are impossible.
+         */
+        bool isLowerEdge() const {
+            return (bound == Bound::Lower) != isImpossible();
+        }
+
+        /**
+         * The first value inside the range of a value with a bound. A bound at the limit of the type
+         * stays there, as there is no value beyond it.
+         */
+        MathLib::bigint rangeEdge() const {
+            if (!isImpossible())
+                return intvalue;
+            if (isLowerEdge())
+                return intvalue == std::numeric_limits<MathLib::bigint>::max() ? intvalue : intvalue + 1;
+            return intvalue == std::numeric_limits<MathLib::bigint>::min() ? intvalue : intvalue - 1;
+        }
+
+        /**
+         * Let the range start (lower edge) or end at the given value, keeping the kind of the value.
+         * Returns false, leaving the value as it is, when the edge is at the limit of the type: the
+         * bound would lie beyond it.
+         */
+        bool setRangeEdge(MathLib::bigint edge, bool lowerEdge) {
+            if (isImpossible()) {
+                if (lowerEdge ? edge == std::numeric_limits<MathLib::bigint>::min() : edge == std::numeric_limits<MathLib::bigint>::max())
+                    return false;
+                bound = lowerEdge ? Bound::Upper : Bound::Lower;
+                intvalue = lowerEdge ? edge - 1 : edge + 1;
+            } else {
+                bound = lowerEdge ? Bound::Lower : Bound::Upper;
+                intvalue = edge;
+            }
+            return true;
         }
 
         void assumeCondition(const Token* tok);

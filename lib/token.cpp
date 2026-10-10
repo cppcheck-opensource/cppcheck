@@ -39,6 +39,7 @@
 #include <functional>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <map>
 #include <set>
 #include <sstream>
@@ -2021,7 +2022,10 @@ static bool isAdjacent(const ValueFlow::Value& x, const ValueFlow::Value& y)
         return true;
     if (x.valueType == ValueFlow::Value::ValueType::FLOAT)
         return false;
-    return std::abs(x.intvalue - y.intvalue) == 1;
+    // Compared without a difference, which could overflow
+    const MathLib::bigint low = std::min(x.intvalue, y.intvalue);
+    const MathLib::bigint high = std::max(x.intvalue, y.intvalue);
+    return low != std::numeric_limits<MathLib::bigint>::max() && high == low + 1;
 }
 
 static bool removePointValue(std::list<ValueFlow::Value>& values, std::list<ValueFlow::Value>::iterator& x)
@@ -2198,7 +2202,7 @@ static void removeOverlaps(std::list<ValueFlow::Value>& values)
 
 // Removing contradictions is an NP-hard problem. Instead we run multiple
 // passes to try to catch most contradictions
-static void removeContradictions(std::list<ValueFlow::Value>& values)
+void Token::removeContradictions(std::list<ValueFlow::Value>& values)
 {
     removeOverlaps(values);
     for (int i = 0; i < 4; i++) {
@@ -2240,9 +2244,9 @@ bool Token::addValue(const ValueFlow::Value &value)
     // }));
 
     if (mImpl->mValues) {
-        // Don't handle more than 10 values for performance reasons
+        // Don't handle more values for performance reasons
         // TODO: add setting?
-        if (mImpl->mValues->size() >= 10U)
+        if (mImpl->mValues->size() >= ValueFlow::maxValues)
             return false;
 
         // if value already exists, don't add it again
