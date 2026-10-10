@@ -167,6 +167,9 @@
                 </attribute>
               </optional>
               <optional>
+                <attribute name="possible-null"><ref name="DATA-BOOL"/></attribute>
+              </optional>
+              <optional>
                 <attribute name="container">
                   <data type="positiveInteger"/>
                 </attribute>
