@@ -1612,8 +1612,8 @@ bool isSameExpression(bool macro, const Token *tok1, const Token *tok2, const Se
         return false;
     // An unknown string-prefix macro leaves the literal outside the AST.
     // Compare the literal text as well so identical literals still compare equal.
-    const bool stringPrefix1 = !tok1->isKeyword() && Token::Match(tok1, "%name% %str%");
-    const bool stringPrefix2 = !tok2->isKeyword() && Token::Match(tok2, "%name% %str%");
+    const bool stringPrefix1 = tok1->isName() && !tok1->isKeyword() && tok1->next() && tok1->next()->tokType() == Token::eString;
+    const bool stringPrefix2 = tok2->isName() && !tok2->isKeyword() && tok2->next() && tok2->next()->tokType() == Token::eString;
     if (stringPrefix1 || stringPrefix2) {
         if (!stringPrefix1 || !stringPrefix2)
             return false;
