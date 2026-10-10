@@ -149,7 +149,7 @@ public:
         std::string platform;
     } guiProject;
 
-    void ignorePaths(const std::vector<std::string> &ipaths, bool debug = false);
+    std::vector<std::string> ignorePaths(const std::vector<std::string> &ipaths, bool debug = false);
     void ignoreOtherConfigs(const std::string &cfg);
 
     Type import(const std::string &filename, Settings *settings=nullptr, Suppressions *supprs=nullptr);
@@ -190,9 +190,9 @@ private:
         }
     };
 
-    bool importSln(std::istream &istr, const std::string &filename, const std::vector<std::string> &fileFilters);
-    bool importSlnx(const std::string& filename, const std::vector<std::string>& fileFilters);
-    bool importVcxproj(const std::string &filename, PropertiesMap &properties, const std::vector<std::string> &fileFilters);
+    bool importSln(std::istream &istr, const std::string &filename);
+    bool importSlnx(const std::string& filename);
+    bool importVcxproj(const std::string &filename, PropertiesMap &properties);
 
     ImportResult processImport(const std::string &file,
                                PropertiesMap &properties,
