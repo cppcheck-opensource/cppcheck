@@ -620,15 +620,15 @@ class AnnotateCodeFormatter(HtmlFormatter):
                                 # from actual message
                                 if error.get('verbose') and (error['verbose'] != error['msg']):
                                     index = t.rfind('\n')
-                                    t = t[:index] + HTML_EXPANDABLE_INCONCLUSIVE % (error['msg'], html_escape(error['verbose'].replace("\\012", '\n'))) + t[index + 1:]
+                                    t = t[:index] + HTML_EXPANDABLE_INCONCLUSIVE % (html_escape(error['msg']), html_escape(error['verbose'].replace("\\012", '\n'))) + t[index + 1:]
                                 else:
-                                    t = t.replace('\n', HTML_INCONCLUSIVE % error['msg'])
+                                    t = t.replace('\n', HTML_INCONCLUSIVE % html_escape(error['msg']))
                         except KeyError:
                             if error.get('verbose') and (error['verbose'] != error['msg']):
                                 index = t.rfind('\n')
-                                t = t[:index] + HTML_EXPANDABLE_ERROR % (error['msg'], html_escape(error['verbose'].replace("\\012", '\n'))) + t[index + 1:]
+                                t = t[:index] + HTML_EXPANDABLE_ERROR % (html_escape(error['msg']), html_escape(error['verbose'].replace("\\012", '\n'))) + t[index + 1:]
                             else:
-                                t = t.replace('\n', HTML_ERROR % error['msg'])
+                                t = t.replace('\n', HTML_ERROR % html_escape(error['msg']))
 
                 line_no = line_no + 1
             yield i, t
@@ -824,7 +824,7 @@ def main() -> None:
             if is_remote:
                 # Construct remote URL for GitHub/GitLab
                 # tr_str() will use the actual line number, so we can just start with line 1
-                remote_url = source_dir.rstrip('/') + '/' + filename + '#L1'
+                remote_url = source_dir.rstrip('/') + '/' + html_escape(filename) + '#L1'
                 files[filename] = {'errors': [], 'htmlfile': remote_url}
             else:
                 files[filename] = {'errors': [], 'htmlfile': str(file_no) + '.html'}
@@ -900,10 +900,10 @@ def main() -> None:
                               (options.title,
                                htmlFormatter.get_style_defs('.highlight'),
                                options.title,
-                               ': ' + filename))
+                               ': ' + html_escape(filename)))
             output_file.write(HTML_HEAD_END)
 
-            output_file.write(HTML_MENU % (filename.split('/')[-1]))
+            output_file.write(HTML_MENU % (html_escape(filename.split('/')[-1])))
             for error in sorted(errors, key=lambda k: k['line']):
                 output_file.write("<a href=\"%s#line-%d\"> %s %s</a>" % (data['htmlfile'], error['line'], error['id'], error['line']))
             output_file.write(HTML_MENU_END)
@@ -1006,7 +1006,7 @@ def main() -> None:
         for filename, data in sorted(files.items()):
             file_error = filename in decode_errors or filename.endswith('*')
             is_file = filename != '' and not file_error
-            row_content = filename if file_error else "<a href=\"%s\">%s</a>" % (data['htmlfile'], filename)
+            row_content = html_escape(filename) if file_error else "<a href=\"%s\">%s</a>" % (data['htmlfile'], html_escape(filename))
             htmlfile = data.get('htmlfile') if is_file else None
 
             output_file.write("\n      <tbody class=\"fileEntry\">")
@@ -1122,7 +1122,7 @@ def main() -> None:
                 if it == 0:
                     LENGTH = len(str(i[1]))  # <- length of longest number, now get the difference and try to  make other numbers align to it
 
-                stats_file.write("&#160;" * 3 + str(i[1]) + "&#160;" * (1 + LENGTH - len(str(i[1]))) + "<a href=\"" + files[i[0]]['htmlfile'] + "\">  " + i[0] + "</a><br>\n")
+                stats_file.write("&#160;" * 3 + str(i[1]) + "&#160;" * (1 + LENGTH - len(str(i[1]))) + "<a href=\"" + files[i[0]]['htmlfile'] + "\">  " + html_escape(i[0]) + "</a><br>\n")
                 it += 1
                 if it == 10:  # print only the top 10
                     break
