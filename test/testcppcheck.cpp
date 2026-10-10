@@ -17,6 +17,7 @@
  */
 
 #include "addoninfo.h"
+#include "analyzerinfo.h"
 #include "color.h"
 #include "cppcheck.h"
 #include "errorlogger.h"
@@ -41,6 +42,22 @@
 #include <vector>
 
 #include <simplecpp.h>
+
+namespace {
+    class FilesDeleter {
+    public:
+        FilesDeleter() = default;
+        ~FilesDeleter() {
+            for (const std::string& fileName: mFilenames)
+                std::remove(fileName.c_str());
+        }
+        void addFile(const std::string& fileName) {
+            mFilenames.push_back(fileName);
+        }
+    private:
+        std::vector<std::string> mFilenames;
+    };
+}
 
 class TestCppcheck : public TestFixture {
 public:
@@ -84,6 +101,7 @@ private:
         TEST_CASE(checkPlistOutput);
         TEST_CASE(premiumResultsCache);
         TEST_CASE(purgedConfiguration);
+        TEST_CASE(recheckInclude);
     }
 
     void getErrorMessages() const {
@@ -175,7 +193,7 @@ private:
                         "void f()\n"
                         "{\n"
                         "  (void)(*((int*)0));\n"
-                        "}");
+                        "}\n");
 
         int called = 0;
         std::unordered_set<std::string> addons;
@@ -259,7 +277,7 @@ private:
                         "void f()\n"
                         "{\n"
                         "  (void)(*((int*)0));\n"
-                        "}");
+                        "}\n");
 
         int called = 0;
         std::unordered_set<std::string> addons;
@@ -342,7 +360,7 @@ private:
                         "void f()\n"
                         "{\n"
                         "  (void)(*((int*)0));\n"
-                        "}");
+                        "}\n");
 
         const char xmldata[] = R"(<def format="2"><markup ext=".c" reporterrors="false"/></def>)";
         const Settings s = settingsBuilder().libraryxml(xmldata).build();
@@ -364,11 +382,11 @@ private:
                         "inline void f()\n"
                         "{\n"
                         "  (void)(*((int*)0));\n"
-                        "}");
+                        "}\n");
         ScopedFile test_file_a("a.c",
-                               "#include \"inc.h\"");
+                               "#include \"inc.h\"\n");
         ScopedFile test_file_b("b.c",
-                               "#include \"inc.h\"");
+                               "#include \"inc.h\"\n");
 
         // this is the "simple" format
         const auto s = dinit(Settings, $.templateFormat = templateFormat); // TODO: remove when we only longer rely on toString() in unique message handling
@@ -400,7 +418,7 @@ private:
                              "long a=m[9], b=m[9];\n"
                              "(void)a;\n"
                              "(void)b;\n"
-                             "}");
+                             "}\n");
 
         // this is the "simple" format
         const auto s = dinit(Settings, $.templateFormat = templateFormat); // TODO: remove when we only longer rely on toString() in unique message handling?
@@ -490,7 +508,7 @@ private:
                             ";\n";
 
         simplecpp::OutputList outputList;
-        const simplecpp::TokenList tokens2(code, files, "", &outputList);
+        const simplecpp::TokenList tokens2(code, files, "", {}, &outputList);
         const std::string expected2 = "  <rawtokens>\n"
                                       "    <file index=\"0\" name=\"test.c\"/>\n"
                                       "    <file index=\"1\" name=\"\"/>\n"
@@ -573,7 +591,7 @@ private:
         simplecpp::TokenList tokens(code, files, "m1.c");
 
         Preprocessor preprocessor(tokens, settings, errorLogger, Standards::Language::C);
-        ASSERT(preprocessor.loadFiles(files));
+        ASSERT(preprocessor.loadAllIncludes(files));
 
         AddonInfo premiumaddon;
         premiumaddon.name = "premiumaddon.json";
@@ -619,6 +637,124 @@ private:
         auto it = errorLogger.errmsgs.cbegin();
         ASSERT_EQUALS("test.cpp:0:0: information: The configuration 'X=X' was not checked because its code equals another one. [purgedConfiguration]",
                       it->toString(false, templateFormat, ""));
+    }
+
+    void recheckInclude() const
+    {
+        const auto settings = dinit(Settings,
+                                    $.templateFormat = templateFormat,
+                                        $.debugainfo = true,
+                                        $.buildDir = "test-build-dir");
+
+        ScopedFile build_dir("empty", "", "test-build-dir");
+
+        FilesDeleter filesDeleter;
+        filesDeleter.addFile("test-build-dir/files.txt");
+        filesDeleter.addFile("test-build-dir/test.a1");
+        filesDeleter.addFile("test-build-dir/test.s1");
+
+        AnalyzerInformation::writeFilesTxt(settings.buildDir, {"test.cpp"}, {});
+
+        // First check
+        {
+            REDIRECT;
+
+            ScopedFile source_file("test.cpp",
+                                   "#include \"test1.h\"\n"
+                                   "#include \"test2.h\"\n");
+            ScopedFile header1_file("test1.h",
+                                    "class TestClass1 {};\n");
+            ScopedFile header2_file("test2.h",
+                                    "class TestClass2 {};\n");
+
+            Suppressions suppressions;
+            ErrorLogger2 errorLogger;
+            CppCheck cppcheck(settings, suppressions, errorLogger, nullptr, false, {});
+
+            const auto ret = cppcheck.check(FileWithDetails(source_file.path(), Standards::Language::CPP, 0));
+            const auto out = GET_REDIRECT_OUTPUT;
+
+            ASSERT_EQUALS(0, ret);
+            ASSERT_EQUALS("no cached result 'test-build-dir/test.a1' for 'test.cpp' found\n", out);
+        }
+
+        // No change, don't recheck
+        {
+            REDIRECT;
+
+            ScopedFile source_file("test.cpp",
+                                   "#include \"test1.h\"\n"
+                                   "#include \"test2.h\"\n");
+            ScopedFile header1_file("test1.h",
+                                    "class TestClass1 {};\n");
+            ScopedFile header2_file("test2.h",
+                                    "class TestClass2 {};\n");
+
+            Suppressions suppressions;
+            ErrorLogger2 errorLogger;
+            CppCheck cppcheck(settings, suppressions, errorLogger, nullptr, false, {});
+
+            const auto ret = cppcheck.check(FileWithDetails(source_file.path(), Standards::Language::CPP, 0));
+            const auto out = GET_REDIRECT_OUTPUT;
+
+            ASSERT_EQUALS(0, ret);
+            ASSERT_EQUALS("skipping analysis - loaded 0 cached finding(s) from 'test-build-dir/test.a1' for 'test.cpp'\n", out);
+        }
+
+        // Header changed, recheck
+        {
+            REDIRECT;
+
+            ScopedFile source_file("test.cpp",
+                                   "#include \"test1.h\"\n"
+                                   "#include \"test2.h\"\n");
+            ScopedFile header1_file("test1.h",
+                                    "class TestClass1 {};\n");
+            ScopedFile header2_file("test2.h",
+                                    "class TestClass2 { int a; };\n");
+
+            Suppressions suppressions;
+            ErrorLogger2 errorLogger;
+            CppCheck cppcheck(settings, suppressions, errorLogger, nullptr, false, {});
+
+            const auto ret = cppcheck.check(FileWithDetails(source_file.path(), Standards::Language::CPP, 0));
+            const auto out = GET_REDIRECT_OUTPUT;
+
+            ASSERT_EQUALS(0, ret);
+            ASSERT_EQUALS("discarding cached result from 'test-build-dir/test.a1' for 'test.cpp' - hash mismatch\n", out);
+        }
+
+        // Source changed, recheck
+        {
+            REDIRECT;
+
+            // Inclusion removed
+            ScopedFile source_file("test.cpp",
+                                   "#include \"test1.h\"\n");
+            ScopedFile header1_file("test1.h",
+                                    "class TestClass1 {};\n");
+            ScopedFile header2_file("test2.h",
+                                    "class TestClass2 { int a; };\n");
+
+            Suppressions suppressions;
+            ErrorLogger2 errorLogger;
+            CppCheck cppcheck(settings, suppressions, errorLogger, nullptr, false, {});
+
+            const auto ret = cppcheck.check(FileWithDetails(source_file.path(), Standards::Language::CPP, 0));
+            const auto out = GET_REDIRECT_OUTPUT;
+
+            ASSERT_EQUALS(0, ret);
+            ASSERT_EQUALS("discarding cached result from 'test-build-dir/test.a1' for 'test.cpp' - hash mismatch\n", out);
+        }
+
+        // Inclusion removed from source, check that it's removed from analyzer info
+        {
+            AnalyzerInformation analyzerInfo;
+            const auto includes = analyzerInfo.getIncludes("test-build-dir", "test.cpp", "", 0);
+
+            ASSERT_EQUALS(1, includes.size());
+            ASSERT_EQUALS("test1.h", *includes.begin());
+        }
     }
 
     // TODO: test suppressions

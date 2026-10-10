@@ -38,4 +38,10 @@ private slots:
     void getCheckingSuppressionsStar() const;
 
     void emptyUserInclude() const;
+
+    void getRelativePathRelative() const;
+    void getRelativePathTwoUp() const;
+    void getRelativePathTooFarUp() const;
+    void getRelativePathSubfolder() const;
+    void getRelativePathAbsoluteShorter() const;
 };

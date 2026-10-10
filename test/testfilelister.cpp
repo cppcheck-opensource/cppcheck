@@ -36,6 +36,7 @@ private:
     void run() override {
         TEST_CASE(recursiveAddFiles);
         TEST_CASE(recursiveAddFilesEmptyPath);
+        TEST_CASE(recursiveAddFilesNulInPath);
         TEST_CASE(excludeFile1);
         TEST_CASE(excludeFile2);
         TEST_CASE(excludeDir);
@@ -108,6 +109,13 @@ private:
         std::list<FileWithDetails> files;
         const std::string err = FileLister::recursiveAddFiles(files, "", {}, PathMatch());
         ASSERT_EQUALS("no path specified", err);
+    }
+
+    void recursiveAddFilesNulInPath() const {
+        std::list<FileWithDetails> files;
+        const std::string err = FileLister::recursiveAddFiles(files, std::string("lib\0", 4), {}, PathMatch());
+        ASSERT_EQUALS("path 'lib' contains a NUL character", err);
+        ASSERT(files.empty());
     }
 
     void excludeFile1() const {

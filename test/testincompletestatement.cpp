@@ -93,7 +93,7 @@ private:
               "{\n"
               "    const char def[] =\n"
               "    \"abc\";\n"
-              "}");
+              "}\n");
 
         ASSERT_EQUALS("", errout_str());
     }
@@ -102,7 +102,7 @@ private:
         check("void foo()\n"
               "{\n"
               "    \"abc\";\n"
-              "}");
+              "}\n");
 
         ASSERT_EQUALS("[test.cpp:3:5]: (warning) Redundant code: Found a statement that begins with string constant. [constStatement]\n", errout_str());
     }
@@ -111,7 +111,7 @@ private:
         check("void foo()\n"
               "{\n"
               "    const char *str[] = { \"abc\" };\n"
-              "}");
+              "}\n");
 
         ASSERT_EQUALS("", errout_str());
     }
@@ -125,7 +125,7 @@ private:
               "\"more \"\n"
               "\"world\"\n"
               "};\n"
-              "}");
+              "}\n");
 
         ASSERT_EQUALS("", errout_str());
     }
@@ -134,7 +134,7 @@ private:
         check("void foo()\n"
               "{\n"
               "    50;\n"
-              "}");
+              "}\n");
 
         ASSERT_EQUALS("[test.cpp:3:5]: (warning) Redundant code: Found a statement that begins with numeric constant. [constStatement]\n", errout_str());
     }
@@ -145,7 +145,7 @@ private:
               "  1 == (two + three);\n"
               "  2 != (two + three);\n"
               "  (one + two) != (two + three);\n"
-              "}");
+              "}\n");
     }
 
     void test7() { // #9335
@@ -160,7 +160,7 @@ private:
               "  for (C c(S); ; ) {\n"
               "    (void)c;\n"
               "  }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -174,7 +174,7 @@ private:
               "    {\n"
               "        { 346.1,114.1 }, { 347.1,111.1 }\n"
               "    };\n"
-              "}");
+              "}\n");
 
         ASSERT_EQUALS("", errout_str());
     }
@@ -186,7 +186,7 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("void f() { (void*)0; }");
+        check("void f() { (void*)0; }\n");
         ASSERT_EQUALS("[test.cpp:1:12]: (warning) Redundant code: Found unused cast in expression '(void*)0'. [constStatement]\n", errout_str());
 
         check("void f() {\n" // #13148
@@ -200,12 +200,12 @@ private:
                       errout_str());
 
         check("#define X  0\n"
-              "void f() { X; }");
+              "void f() { X; }\n");
         ASSERT_EQUALS("", errout_str());
     }
 
     void intarray() {
-        check("int arr[] = { 100/2, 1*100 };");
+        check("int arr[] = { 100/2, 1*100 };\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -213,7 +213,7 @@ private:
         check("struct st arr[] = {\n"
               "    { 100/2, 1*100 }\n"
               "    { 90, 70 }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -221,14 +221,14 @@ private:
         check("struct st arr[] = {\n"
               "    { 100/2, 1*100 }\n"
               "    { 90, 70 }\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
     }
 
     void conditionalcall() {
         check("void f() {\n"
               "    0==x ? X() : Y();\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -236,7 +236,7 @@ private:
         // #2462 - C++11 struct initialization
         check("void f() {\n"
               "    ABC abc{1,2,3};\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // #6260 - C++11 array initialization
@@ -244,30 +244,30 @@ private:
               "    static const char* a[][2] {\n"
               "        {\"b\", \"\"},\n"
               "    };\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // #2482 - false positive for empty struct
-        check("struct A {};");
+        check("struct A {};\n");
         ASSERT_EQUALS("", errout_str());
 
         // #4387 - C++11 initializer list
-        check("A::A() : abc{0} {}");
+        check("A::A() : abc{0} {}\n");
         ASSERT_EQUALS("", errout_str());
 
         // #5042 - C++11 initializer list
-        check("A::A() : abc::def<int>{0} {}");
+        check("A::A() : abc::def<int>{0} {}\n");
         ASSERT_EQUALS("", errout_str());
 
         // #4503 - vector init
-        check("void f() { vector<int> v{1}; }");
+        check("void f() { vector<int> v{1}; }\n");
         ASSERT_EQUALS("", errout_str());
     }
 
     void returnstruct() {
         check("struct s foo() {\n"
               "    return (struct s){0,0};\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // #4754
@@ -276,19 +276,19 @@ private:
               "        {\"hi\", \"there\"},\n"
               "        {\"happy\", \"sad\"}\n"
               "    };\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("struct s foo() {\n"
               "  return (struct s){0};\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
     void cast() {
         check("void f() {\n"
               "    ((struct foo *)(0x1234))->xy = 1;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("bool f(const std::exception& e) {\n" // #10918
@@ -307,14 +307,14 @@ private:
         check("void f() {\n"
               "    int x = 1;\n"
               "    x++, x++;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
     void cpp11init() {
         check("void f() {\n"
               "    int x{1};\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("std::vector<int> f(int* p) {\n"
@@ -326,7 +326,7 @@ private:
     void cpp11init2() {
         check("x<string> handlers{\n"
               "  { \"mode2\", []() { return 2; } },\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -334,33 +334,33 @@ private:
         check("struct A { void operator()(int); };\n"
               "void f() {\n"
               "A{}(0);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("template<class> struct A { void operator()(int); };\n"
               "void f() {\n"
               "A<int>{}(0);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
     void block() {
         check("void f() {\n"
               "    ({ do_something(); 0; });\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void f() {\n"
               "out:\n"
               "    ({ do_something(); 0; });\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
     void mapindex() {
         check("void f() {\n"
               "  map[{\"1\",\"2\"}]=0;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -368,7 +368,7 @@ private:
         check("void foo(int,const char*,int);\n" // #8827
               "void f(int value) {\n"
               "    foo(42,\"test\",42),(value&42);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:22]: (warning) Found suspicious operator ',', result is not used. [constStatement]\n", errout_str());
 
         check("int f() {\n" // #11257
@@ -456,13 +456,13 @@ private:
                       "[test.cpp:9:5]: (warning, inconclusive) Found suspicious operator '~', result is not used. [constStatement]\n",
                       errout_str());
 
-        check("void f1(int x) { x; }", dinit(CheckOptions, $.inconclusive = true));
+        check("void f1(int x) { x; }\n", dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("[test.cpp:1:18]: (warning) Unused variable value 'x' [constStatement]\n", errout_str());
 
-        check("void f() { if (Type t; g(t)) {} }"); // #9776
+        check("void f() { if (Type t; g(t)) {} }\n"); // #9776
         ASSERT_EQUALS("", errout_str());
 
-        check("void f(int x) { static_cast<unsigned>(x); }");
+        check("void f(int x) { static_cast<unsigned>(x); }\n");
         ASSERT_EQUALS("[test.cpp:1:38]: (warning) Redundant code: Found unused cast in expression 'static_cast<unsigned int>(x)'. [constStatement]\n", errout_str());
 
         check("void f(int x, int* p) {\n"
@@ -473,7 +473,7 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("void f() { false; }"); // #10856
+        check("void f() { false; }\n"); // #10856
         ASSERT_EQUALS("[test.cpp:1:12]: (warning) Redundant code: Found a statement that begins with bool constant. [constStatement]\n", errout_str());
 
         check("void f(int i) {\n"
@@ -783,55 +783,55 @@ private:
 
     void vardecl() {
         // #8984
-        check("void f() { a::b *c = d(); }", dinit(CheckOptions, $.inconclusive = true));
+        check("void f() { a::b *c = d(); }\n", dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
 
-        check("void f() { std::vector<b> *c; }", dinit(CheckOptions, $.inconclusive = true));
+        check("void f() { std::vector<b> *c; }\n", dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
 
-        check("void f() { a::b &c = d(); }", dinit(CheckOptions, $.inconclusive = true));
+        check("void f() { a::b &c = d(); }\n", dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
 
-        check("void f() { std::vector<b> &c; }", dinit(CheckOptions, $.inconclusive = true));
+        check("void f() { std::vector<b> &c; }\n", dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
 
-        check("void f() { a::b &&c = d(); }", dinit(CheckOptions, $.inconclusive = true));
+        check("void f() { a::b &&c = d(); }\n", dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
 
-        check("void f() { std::vector<b> &&c; }", dinit(CheckOptions, $.inconclusive = true));
+        check("void f() { std::vector<b> &&c; }\n", dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
 
-        check("void f() { char * const * a, * const * b; }", dinit(CheckOptions, $.inconclusive = true));
+        check("void f() { char * const * a, * const * b; }\n", dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
 
-        check("void f() { char * const * a = 0, * volatile restrict * b; }", dinit(CheckOptions, $.inconclusive = true, $.cpp = false));
+        check("void f() { char * const * a = 0, * volatile restrict * b; }\n", dinit(CheckOptions, $.inconclusive = true, $.cpp = false));
         ASSERT_EQUALS("", errout_str());
 
-        check("void f() { char * const * a = 0, * volatile const * b; }", dinit(CheckOptions, $.inconclusive = true));
+        check("void f() { char * const * a = 0, * volatile const * b; }\n", dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
     }
 
     void archive() {
         check("void f(Archive &ar) {\n"
               "  ar & x;\n"
-              "}", dinit(CheckOptions, $.inconclusive = true));
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
 
         check("void f(int ar) {\n"
               "  ar & x;\n"
-              "}", dinit(CheckOptions, $.inconclusive = true));
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("[test.cpp:2:6]: (warning, inconclusive) Found suspicious operator '&', result is not used. [constStatement]\n", errout_str());
     }
 
     void ast() {
-        check("struct c { void a() const { for (int x=0; x;); } };", dinit(CheckOptions, $.inconclusive = true));
+        check("struct c { void a() const { for (int x=0; x;); } };\n", dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
     }
 
     void oror() {
         check("void foo() {\n"
               "    params_given (params, \"overrides\") || (overrides = \"1\");\n"
-              "}", dinit(CheckOptions, $.inconclusive = true));
+              "}\n", dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
 
         check("void f(std::ifstream& file) {\n" // #10930

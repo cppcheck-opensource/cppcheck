@@ -7,12 +7,17 @@
 
 ## Description
 
-This checker warns when a calculation has type 'int' and it could potentially overflow that and the result is implicitly or explicitly converted to a larger
-integer type after the loss of information has already occurred.
+A multiplication (`*`) or left-shift (`<<`) is computed using `int` arithmetic, and only afterwards -
+once any overflow has already happened - is the result widened to a larger integer type by an implicit
+or explicit conversion. Widening after the fact doesn't recover information that `int` arithmetic already
+lost.
 
 ## Motivation
 
-The motivation of this checker is to catch bugs. Unintentional loss of information.
+Declaring a wider result type (`long`, `int64_t`, ...) is often meant to give a calculation more room, so
+it doesn't overflow. That only works if the wider type is used for the calculation itself; if the
+multiplication or shift is still done in `int` and only the final result is widened, the overflow already
+happened before the conversion, and the wider type just carries forward a truncated value.
 
 ## How to fix
 

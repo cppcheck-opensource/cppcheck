@@ -407,6 +407,8 @@ namespace ValueFlow
         }
 
         else if (parent->str() == ":" && Token::simpleMatch(parent->astParent(), "?")) {
+            const std::string condStr(tok == parent->astOperand1() ? "true" : "false");
+            value.errorPath.emplace_back(parent->astParent()->astOperand1(), "Assuming condition '" + parent->astParent()->astOperand1()->expressionString() + "' is " + condStr);
             setTokenValue(parent,std::move(value),settings);
         }
 
@@ -615,7 +617,7 @@ namespace ValueFlow
         // ~
         else if (parent->str() == "~") {
             for (const Value &val : tok->values()) {
-                if (!val.isIntValue())
+                if (!val.isIntValue() || (val.isImpossible() && val.intvalue < 0))
                     continue;
                 Value v(val);
                 v.intvalue = ~v.intvalue;

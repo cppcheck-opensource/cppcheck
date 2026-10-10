@@ -94,7 +94,7 @@ private:
         s.quiet = opt.quiet;
         if (opt.plistOutput)
             s.plistOutput = opt.plistOutput;
-        s.templateFormat = "{callstack}: ({severity}) {inconclusive:inconclusive: }{message}"; // TODO: remove when we only longer rely on toString() in unique message handling?
+        s.templateFormat = "{callstack}: ({severity}) {inconclusive:inconclusive: }{message}\n"; // TODO: remove when we only longer rely on toString() in unique message handling?
 
         Suppressions supprs;
         std::unique_ptr<TimerResults> timerResults;
@@ -142,8 +142,8 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}", dinit(CheckOptions,
-                         $.quiet = false));
+              "}\n", dinit(CheckOptions,
+                           $.quiet = false));
         {
             std::string expected;
             for (int i = 1; i <= num_files; ++i) {
@@ -167,7 +167,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}", dinit(CheckOptions, $.showtime = Settings::ShowTime::SUMMARY));
+              "}\n", dinit(CheckOptions, $.showtime = Settings::ShowTime::SUMMARY));
         // we are not interested in the results - so just consume them
         ignore_errout();
     }
@@ -180,7 +180,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}", dinit(CheckOptions, $.plistOutput = plistOutput.c_str()));
+              "}\n", dinit(CheckOptions, $.plistOutput = plistOutput.c_str()));
         // we are not interested in the results - so just consume them
         ignore_errout();
     }
@@ -190,7 +190,7 @@ private:
               "int main()\n"
               "{\n"
               "  return 0;\n"
-              "}");
+              "}\n");
     }
 
     void no_errors_less_files() {
@@ -198,7 +198,7 @@ private:
               "int main()\n"
               "{\n"
               "  return 0;\n"
-              "}");
+              "}\n");
     }
 
     void no_errors_equal_amount_files() {
@@ -206,7 +206,7 @@ private:
               "int main()\n"
               "{\n"
               "  return 0;\n"
-              "}");
+              "}\n");
     }
 
     void one_error_less_files() {
@@ -214,7 +214,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[" + fprefix() + "_" + zpad3(1) + ".c:3:12]: (error) Null pointer dereference: (int*)0 [nullPointer]\n", errout_str());
     }
 
@@ -224,7 +224,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}");
+              "}\n");
         {
             std::string expected;
             for (int i = 1; i <= num_files; ++i) {
@@ -239,7 +239,7 @@ private:
     void showtime_top5_file() {
         REDIRECT;
         check(2, 0,
-              "int main() {}",
+              "int main() {}\n",
               dinit(CheckOptions,
                     $.showtime = Settings::ShowTime::TOP5_FILE));
         const std::string output_s = GET_REDIRECT_OUTPUT;
@@ -250,7 +250,7 @@ private:
     void showtime_file() {
         REDIRECT;
         check(2, 0,
-              "int main() {}",
+              "int main() {}\n",
               dinit(CheckOptions,
                     $.showtime = Settings::ShowTime::FILE));
         const std::string output_s = GET_REDIRECT_OUTPUT;
@@ -260,7 +260,7 @@ private:
     void showtime_file_total() {
         REDIRECT;
         check(2, 0,
-              "int main() {}",
+              "int main() {}\n",
               dinit(CheckOptions,
                     $.showtime = Settings::ShowTime::FILE_TOTAL));
         const std::string output_s = GET_REDIRECT_OUTPUT;
@@ -277,7 +277,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
         settings = settingsOld;
     }
@@ -288,9 +288,9 @@ private:
                          "inline void f()\n"
                          "{\n"
                          "  (void)(*((int*)0));\n"
-                         "}");
+                         "}\n");
         check(2, 2,
-              "#include \"" + inc_h.name() + "\"");
+              "#include \"" + inc_h.name() + "\"\n");
         // these are not actually made unique by the implementation. That needs to be done by the given ErrorLogger
         ASSERT_EQUALS(
             "[" + inc_h.name() + ":3:12]: (error) Null pointer dereference: (int*)0 [nullPointer]\n"

@@ -57,21 +57,21 @@ private:
               "    va_list arg_ptr;\n"
               "    va_start(arg_ptr, szFormat);\n"
               "    va_end(arg_ptr);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:5]: (warning) 'szFormat' given to va_start() is not last named argument of the function. Did you intend to pass 'nSize'? [va_start_wrongParameter]\n", errout_str());
 
         check("void Format(char* szFormat, char* szBuffer, size_t nSize, ...) {\n"
               "    va_list arg_ptr;\n"
               "    va_start(arg_ptr, szBuffer);\n"
               "    va_end(arg_ptr);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:5]: (warning) 'szBuffer' given to va_start() is not last named argument of the function. Did you intend to pass 'nSize'? [va_start_wrongParameter]\n", errout_str());
 
         check("void Format(char* szFormat, char* szBuffer, size_t nSize, ...) {\n"
               "    va_list arg_ptr;\n"
               "    va_start(arg_ptr, nSize);\n"
               "    va_end(arg_ptr);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("int main(int argc, char *argv[]) {\n"
@@ -80,14 +80,14 @@ private:
               "        va_start(argp, format);\n"
               "        c = va_arg(argp, int);\n"
               "    };\n"
-              "}"); // Don't crash (#6032)
+              "}\n"); // Don't crash (#6032)
         ASSERT_EQUALS("[test.cpp:6:5]: (error) va_list 'argp' was opened but not closed by va_end(). [va_end_missing]\n", errout_str());
 
         check("void Format(char* szFormat, char* szBuffer, size_t nSize, ...) {\n"
               "    va_list arg_ptr;\n"
               "    va_start(arg_ptr);\n"
               "    va_end(arg_ptr);\n"
-              "}"); // Don't crash if less than expected arguments are given.
+              "}\n"); // Don't crash if less than expected arguments are given.
         ASSERT_EQUALS("", errout_str());
 
         check("void assertf_fail(const char *assertion, const char *file, int line, const char *func, const char* msg, ...) {\n"
@@ -99,7 +99,7 @@ private:
               "                va_end(args);\n"
               "        }\n"
               "    };\n"
-              "}"); // Inner class (#6453)
+              "}\n"); // Inner class (#6453)
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -108,14 +108,14 @@ private:
               "    va_list arg_ptr;\n"
               "    va_start(arg_ptr, szBuffer);\n"
               "    va_end(arg_ptr);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:23]: (error) Using reference 'szBuffer' as parameter for va_start() results in undefined behaviour. [va_start_referencePassed]\n", errout_str());
 
         check("void Format(char* szFormat, char (*szBuffer)[_Size], ...) {\n"
               "    va_list arg_ptr;\n"
               "    va_start(arg_ptr, szBuffer);\n"
               "    va_end(arg_ptr);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -124,7 +124,7 @@ private:
               "    va_list arg_ptr;\n"
               "    va_start(arg_ptr, szBuffer);\n"
               "    va_end(arg_ptr);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // #6186
@@ -136,13 +136,13 @@ private:
               "    } catch(...) {\n"
               "        va_end(arg_ptr);\n"
               "    }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void Format(char* szFormat, char (*szBuffer)[_Size], ...) {\n"
               "    va_list arg_ptr;\n"
               "    va_start(arg_ptr, szBuffer);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:4:1]: (error) va_list 'arg_ptr' was opened but not closed by va_end(). [va_end_missing]\n", errout_str());
 
         check("void Format(char* szFormat, char (*szBuffer)[_Size], ...) {\n"
@@ -150,7 +150,7 @@ private:
               "    va_start(arg_ptr, szBuffer);\n"
               "    if(sth) return;\n"
               "    va_end(arg_ptr);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:4:19]: (error) va_list 'arg_ptr' was opened but not closed by va_end(). [va_end_missing]\n", errout_str());
 
         // #8124
@@ -164,7 +164,7 @@ private:
               "        return va_arg(ap, const char*);\n"
               "    });\n"
               "    va_end(ap);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void f(int n, ...)\n"
@@ -176,7 +176,7 @@ private:
               "    {\n"
               "        return va_arg(ap, const char*);\n"
               "    });\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:10:1]: (error) va_list 'ap' was opened but not closed by va_end(). [va_end_missing]\n", errout_str());
     }
 
@@ -184,19 +184,19 @@ private:
         check("void Format(char* szFormat, char (*szBuffer)[_Size], ...) {\n"
               "    va_list arg_ptr;\n"
               "    return va_arg(arg_ptr, float);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:19]: (error) va_list 'arg_ptr' used before va_start() was called. [va_list_usedBeforeStarted]\n", errout_str());
 
         check("void Format(char* szFormat, char (*szBuffer)[_Size], ...) {\n"
               "    va_list arg_ptr;\n"
               "    foo(arg_ptr);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:9]: (error) va_list 'arg_ptr' used before va_start() was called. [va_list_usedBeforeStarted]\n", errout_str());
 
         check("void Format(char* szFormat, char (*szBuffer)[_Size], ...) {\n"
               "    va_list arg_ptr;\n"
               "    va_copy(f, arg_ptr);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:5]: (error) va_list 'arg_ptr' used before va_start() was called. [va_list_usedBeforeStarted]\n", errout_str());
 
         check("void Format(char* szFormat, char (*szBuffer)[_Size], ...) {\n"
@@ -204,13 +204,13 @@ private:
               "    va_start(arg_ptr, szBuffer);\n"
               "    va_end(arg_ptr);\n"
               "    return va_arg(arg_ptr, float);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:5:19]: (error) va_list 'arg_ptr' used before va_start() was called. [va_list_usedBeforeStarted]\n", errout_str());
 
         check("void Format(char* szFormat, char (*szBuffer)[_Size], ...) {\n"
               "    va_list arg_ptr;\n"
               "    va_end(arg_ptr);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:5]: (error) va_list 'arg_ptr' used before va_start() was called. [va_list_usedBeforeStarted]\n", errout_str());
 
 
@@ -221,7 +221,7 @@ private:
               "    va_start(arg_ptr, szBuffer);\n"
               "    foo(va_arg(arg_ptr, float));\n"
               "    va_end(arg_ptr);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // #6066
@@ -230,7 +230,7 @@ private:
               "    va_copy(v2, v1);\n"
               "    foo(va_arg(v1, float));\n"
               "    va_end(v2);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // #7527
@@ -246,7 +246,7 @@ private:
               "        int data = va_arg(vargs, int);\n"
               "        va_end(vargs);\n"
               "    }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // #7533
@@ -262,7 +262,7 @@ private:
               "        break;\n"
               "    }\n"
               "    va_end(args);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void action_push(int type, ...) {\n"
@@ -278,7 +278,7 @@ private:
               "        va_end(args);\n"
               "        break;\n"
               "    }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void action_push(int type, ...) {\n"
@@ -293,7 +293,7 @@ private:
               "        va_end(args);\n"
               "        break;\n"
               "    }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:13:1]: (error) va_list 'args' was opened but not closed by va_end(). [va_end_missing]\n", errout_str());
 
         // #8043
@@ -308,7 +308,7 @@ private:
               "    sdscatvprintf(curarg, _format, _cpy);\n"
               "    va_end(_cpy);\n"
               "format_err:\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -318,7 +318,7 @@ private:
               "    va_start(arg_ptr, szBuffer);\n"
               "    va_start(arg_ptr, szBuffer);\n"
               "    va_end(arg_ptr);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:4:5]: (error) va_start() or va_copy() called subsequently on 'arg_ptr' without va_end() in between. [va_start_subsequentCalls]\n", errout_str());
 
         check("void Format(char* szFormat, char (*szBuffer)[_Size], ...) {\n"
@@ -326,7 +326,7 @@ private:
               "    va_start(vl1, szBuffer);\n"
               "    va_copy(vl1, vl1);\n"
               "    va_end(vl1);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:4:5]: (error) va_start() or va_copy() called subsequently on 'vl1' without va_end() in between. [va_start_subsequentCalls]\n", errout_str());
 
         check("void Format(char* szFormat, char (*szBuffer)[_Size], ...) {\n"
@@ -335,7 +335,7 @@ private:
               "    va_end(arg_ptr);\n"
               "    va_start(arg_ptr, szBuffer);\n"
               "    va_end(arg_ptr);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -344,7 +344,7 @@ private:
               "  BG_TChar * f;\n"
               "  va_start(args,f);\n"
               "  BG_TString result(f);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // #7559
@@ -356,7 +356,7 @@ private:
               "  }\n"
               "  va_start(va, name);\n"
               "  va_end(va);\n"
-              "}");
+              "}\n");
     }
 };
 

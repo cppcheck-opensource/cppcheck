@@ -1159,6 +1159,8 @@ bool exprDependsOnThis(const Token* expr, bool onVar, nonneg int depth)
         }
         if (expr->isOperatorKeyword() && !Token::simpleMatch(expr->next()->astParent(), "."))
             return true;
+        if (expr->variable() && expr->variable()->isArgument() && !expr->variable()->type() && expr->variable()->scope()->function && expr->variable()->scope()->function->templateDef)
+            return true;
     }
     if (onVar && expr->variable()) {
         const Variable* var = expr->variable();
@@ -1552,7 +1554,7 @@ bool isUsedAsBool(const Token* const tok, const Settings& settings)
         return true;
     if (parent->isCast())
         return !Token::simpleMatch(parent->astOperand1(), "dynamic_cast") && isUsedAsBool(parent, settings);
-    if (Token::Match(parent, "==|!=") && tok->valueType() && tok->valueType()->pointer &&
+    if (Token::Match(parent, "==|!=") && ((tok->valueType() && tok->valueType()->pointer) || tok->function()) &&
         tok->astSibling()->hasKnownIntValue() && tok->astSibling()->getKnownIntValue() == 0)
         return true;
     if (parent->str() == "(" && astIsRHS(tok) && Token::Match(parent->astOperand1(), "if|while"))
@@ -3304,12 +3306,12 @@ static T* findLambdaEndTokenGeneric(T* first)
         return nullptr;
     if (!maybeLambda(first->previous()))
         return nullptr;
-    if (!Token::Match(first->link(), "] (|{|<"))
+    if (!Token::Match(first->link(), "] [({<.]"))
         return nullptr;
     const Token* roundOrCurly = first->link()->next();
     if (roundOrCurly->link() && roundOrCurly->str() == "<")
         roundOrCurly = roundOrCurly->link()->next();
-    if (first->astOperand1() != roundOrCurly)
+    if (first->astOperand1() != roundOrCurly && roundOrCurly->str() != ".")
         return nullptr;
     T * tok = first;
 

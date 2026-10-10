@@ -33,9 +33,9 @@ jobs:
         run: |
           premium_version=${{ inputs.premium_version }}
           if [ -z $premium_version ]; then
-            premium_version=26.3.0
+            premium_version=26.9.0
             #wget https://files.cppchecksolutions.com/devdrop/cppcheckpremium-$premium_version-amd64.tar.gz -O cppcheckpremium.tar.gz
-            wget https://files.cppchecksolutions.com/$premium_version/ubuntu-24.04/cppcheckpremium-$premium_version-amd64.tar.gz -O cppcheckpremium.tar.gz
+            wget https://files.cppchecksolutions.com/release/2026/$premium_version/ubuntu-24.04/cppcheckpremium-$premium_version-amd64.tar.gz -O cppcheckpremium.tar.gz
           else
             wget https://files.cppchecksolutions.com/$premium_version/ubuntu-24.04/cppcheckpremium-$premium_version-amd64.tar.gz -O cppcheckpremium.tar.gz
           fi
@@ -44,16 +44,18 @@ jobs:
 
       - name: Generate a license file
         run: |
-          echo cppcheck > cppcheck.lic
-          echo 261231 >> cppcheck.lic
-          echo 80000 >> cppcheck.lic
-          echo 4b64673f03fb6230 >> cppcheck.lic
-          echo path:lib >> cppcheck.lic
+          echo 1 > cppcheck-premium-git.lic
+          echo 271231 >> cppcheck-premium-git.lic
+          echo 70c84e8412a64e58 >> cppcheck-premium-git.lic
+          echo fbb65b6bd40de73b >> cppcheck-premium-git.lic
+          echo autosar:1 >> cppcheck-premium-git.lic
+          echo cert:1 >> cppcheck-premium-git.lic
+          echo misra:1 >> cppcheck-premium-git.lic
+          echo licensed-to:Cppcheck CI >> cppcheck-premium-git.lic
 
       - name: Check
         run: |
-          cppcheckpremium/premiumaddon --check-loc-license cppcheck.lic > cppcheck-premium-loc
-          cppcheckpremium/cppcheck --premium=safety-off -j$(nproc) -D__GNUC__ -D__CPPCHECK__ --suppressions-list=cppcheckpremium-suppressions --platform=unix64 --enable=style --premium=misra-c++-2023 --premium=cert-c++-2016 --inline-suppr lib --error-exitcode=0 --output-format=sarif 2> results.sarif
+          cppcheckpremium/cppcheck --premium-license-file=cppcheck-premium-git.lic --premium=safety-off -j$(nproc) -D__GNUC__ -D__CPPCHECK__ --suppressions-list=cppcheckpremium-suppressions --platform=unix64 --enable=style --premium=misra-c++-2023 --premium=cert-c++-2016 --inline-suppr lib --error-exitcode=0 --output-format=sarif 2> results.sarif
 
       - name: Cat results
         run: |

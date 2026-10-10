@@ -538,6 +538,20 @@ def is_source_file(file):
     return file.endswith('.c')
 
 
+def has_prior_function_prototype(cfg, function):
+    """Return whether a global prototype precedes the function definition."""
+    for token in cfg.tokenlist:
+        if token == function.tokenDef:
+            break
+        if token.str != function.name or token.scope.type != 'Global':
+            continue
+        opening = token.next
+        if opening and opening.str == '(' and opening.link and \
+                opening.link.next and opening.link.next.str == ';':
+            return True
+    return False
+
+
 def is_header(file):
     return file.endswith('.h')
 
@@ -803,7 +817,8 @@ def get_function_pointer_type(tok):
     ret += '('
     tok = tok.next.next
     while tok and (tok.str not in '()'):
-        ret += ' ' + tok.str
+        if tok.varId is None:
+            ret += ' ' + tok.str
         tok = tok.next
     if (tok is None) or tok.str != ')':
         return None
@@ -2248,6 +2263,8 @@ class MisraChecker:
                 continue
             if func.token != func.tokenDef:
                 continue
+            if has_prior_function_prototype(cfg, func):
+                continue
             if func.tokenDef.str == 'main':
                 continue
             self.reportError(func.tokenDef, 8, 4)
@@ -3497,8 +3514,9 @@ class MisraChecker:
 
         # Additional check for implicit function calls in expressions
         for token in cfg.tokenlist:
-            if token.isName and token.function is None and token.valueType is None:
-                if token.next and token.next.str == "(" and token.next.valueType is None:
+            if token.isName and token.scope.type != 'Global' and token.function is None and token.valueType is None:
+                if token.next and token.next.str == "(" and token.next.valueType is None and \
+                        isFunctionCall(token.next, cfg.standards.c):
                     if token.next.next.str == "*" and \
                         token.next.next.next.isName and token.next.next.next.valueType is not None and \
                         token.next.next.next.valueType.pointer > 0 :

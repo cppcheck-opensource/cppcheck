@@ -372,6 +372,9 @@ public:
     /** @brief Using -E for debugging purposes */
     bool preprocessOnly{};
 
+    /** @brief Keep comments in preprocessed output */
+    bool keepComments{};
+
     /** @brief Is --quiet given? */
     bool quiet{};
 

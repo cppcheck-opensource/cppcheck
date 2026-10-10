@@ -259,24 +259,16 @@ void CheckStlImpl::outOfBoundsError(const Token *tok, const std::string &contain
         return;
     }
 
-    ErrorPath errorPath;
-    if (!indexValue)
-        errorPath = getErrorPath(tok, containerSize, "Access out of bounds");
-    else {
-        ErrorPath errorPath1 = getErrorPath(tok, containerSize, "Access out of bounds");
-        ErrorPath errorPath2 = getErrorPath(tok, indexValue, "Access out of bounds");
-        if (errorPath1.size() <= 1)
-            errorPath = std::move(errorPath2);
-        else if (errorPath2.size() <= 1)
-            errorPath = std::move(errorPath1);
-        else {
-            errorPath = std::move(errorPath1);
-            errorPath.splice(errorPath.end(), errorPath2);
-        }
+    ErrorPath errorPath = getErrorPath(tok, containerSize, "Access out of bounds");
+    if (indexValue) {
+        ErrorPath errorPathIdx = getErrorPath(tok, indexValue, "Access out of bounds");
+        if (errorPathIdx.size() >= errorPath.size())
+            errorPath = std::move(errorPathIdx);
     }
 
     reportError(std::move(errorPath),
-                (containerSize && !containerSize->errorSeverity()) || (indexValue && !indexValue->errorSeverity()) ? Severity::warning : Severity::error,
+                (containerSize && (!containerSize->errorSeverity() || containerSize->conditional)) ||
+                (indexValue && (!indexValue->errorSeverity() || indexValue->conditional)) ? Severity::warning : Severity::error,
                 "containerOutOfBounds",
                 "$symbol:" + containerName +"\n" + errmsg,
                 CWE398,
@@ -1995,9 +1987,11 @@ static bool isc_strCall(const Token* tok, const Library::Container* container)
 
 static bool isc_strConcat(const Token* tok)
 {
-    if (!tok->isBinaryOp() || !Token::simpleMatch(tok, "+"))
+    if (!tok->isBinaryOp() || !Token::Match(tok, "+|+="))
         return false;
     for (const Token* op : { tok->astOperand1(), tok->astOperand2() }) { // NOLINT(readability-use-anyofallof)
+        if (tok->isAssignmentOp() && astIsLHS(op))
+            continue;
         const Token* sibling = op->astSibling();
         if (!sibling->valueType())
             continue;
@@ -3347,8 +3341,8 @@ void CheckStlImpl::eraseIteratorOutOfBoundsError(const Token *ftok, const Token*
     }
 
     const Severity severity = isConditional ? Severity::warning : Severity::error;
-    const std::string id = isConditional ? "eraseIteratorOutOfBoundsCond" : "eraseIteratorOutOfBounds";
-    reportError(ftok, severity,
+    const char* id = isConditional ? "eraseIteratorOutOfBoundsCond" : "eraseIteratorOutOfBounds";
+    reportError(getErrorPath(ftok, val, msg), severity,
                 id,
                 msg, CWE628, Certainty::normal);
 }

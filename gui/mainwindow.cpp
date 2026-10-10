@@ -118,6 +118,15 @@ static QString fromNativePath(const QString& p) {
 #endif
 }
 
+template<typename T = std::vector<std::string>>
+static T toStdStringList(const QStringList& stringList) {
+    T ret;
+    std::transform(stringList.cbegin(), stringList.cend(), std::back_inserter(ret), [](const QString& s) {
+        return s.toStdString();
+    });
+    return ret;
+}
+
 MainWindow::MainWindow(TranslationHandler* th, QSettings* settings) :
     mSettings(settings),
     mApplications(new ApplicationList(this)),
@@ -584,7 +593,7 @@ void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLib, const bo
         });
         p.ignorePaths(v);
 
-        if (!mProjectFile->getAnalyzeAllVsConfigs()) {
+        if (checkSettings.platform.type == Platform::Native && !mProjectFile->getAnalyzeAllVsConfigs()) {
             const Platform::Type platform = static_cast<Platform::Type>(mSettings->value(SETTINGS_CHECKED_PLATFORM, 0).toInt());
             std::vector<std::string> configurations;
             const QStringList configs = mProjectFile->getVsConfigurations();
@@ -697,10 +706,7 @@ void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLib, c
 
     if (!checkSettings.buildDir.empty()) {
         checkSettings.loadSummaries();
-        std::list<std::string> sourcefiles;
-        std::transform(fileNames.cbegin(), fileNames.cend(), std::back_inserter(sourcefiles), [](const QString& s) {
-            return s.toStdString();
-        });
+        const auto& sourcefiles = toStdStringList<std::list<std::string>>(fileNames);
         AnalyzerInformation::writeFilesTxt(checkSettings.buildDir, sourcefiles, {});
     }
 
@@ -1155,10 +1161,7 @@ bool MainWindow::getCppcheckSettings(Settings& settings, Suppressions& supprs)
 
         const QString platform = mProjectFile->getPlatform();
         if (platform.endsWith(".xml")) {
-            const std::vector<std::string> paths = {
-                Path::getCurrentPath(), // TODO: do we want to look in CWD?
-                QCoreApplication::applicationFilePath().toStdString(),
-            };
+            const std::vector<std::string> paths = toStdStringList(mProjectFile->getSearchPaths("platform"));
             settings.platform.loadFromFile(paths, platform.toStdString());
         } else {
             for (int i = Platform::Type::Native; i <= Platform::Type::Unix64; i++) {

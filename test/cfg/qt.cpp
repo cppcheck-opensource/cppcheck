@@ -206,7 +206,6 @@ void QString1(QString s)
 bool QString2()
 {
     QString s;
-    // cppcheck-suppress knownConditionTrueFalse
     return s.size();
 }
 
@@ -892,6 +891,13 @@ int qdateIsValid()
     QDate qd(1,1,2025);
     Q_ASSERT(qd.isValid()); // Should not warn here with assertWithSideEffect
     return qd.month(); 
+}
+
+void qAssertX()
+{
+    const char *where = "test";
+    const char *what = "assertion failed";
+    Q_ASSERT_X(false, where, what);
 }
 
 struct S_QTimer_connect : QObject { // #13846

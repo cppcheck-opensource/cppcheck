@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!-- 64-bit ARM macOS / Apple Silicon (Apple arm64 LP64 ABI). This describes the default setup. -->
+<platform>
+  <char_bit>8</char_bit>
+  <default-sign>signed</default-sign>
+  <sizeof>
+    <bool>1</bool>
+    <short>2</short>
+    <int>4</int>
+    <long>8</long>
+    <long-long>8</long-long>
+    <float>4</float>
+    <double>8</double>
+    <long-double>8</long-double>
+    <pointer>8</pointer>
+    <size_t>8</size_t>
+    <wchar_t>4</wchar_t>
+  </sizeof>
+</platform>

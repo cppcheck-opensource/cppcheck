@@ -1,8 +1,6 @@
-
 # unknownMacro
 
-**Message**: There is an unknown macro here somewhere. Configuration is required. If AAA is a macro then please configure it. [unknownMacro]
-<br/>
+**Message**: There is an unknown macro here somewhere. Configuration is required. If AAA is a macro then please configure it.<br/>
 **Category**: Configuration<br/>
 **Severity**: Error<br/>
 **Language**: C and C++

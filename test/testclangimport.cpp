@@ -116,6 +116,7 @@ private:
         TEST_CASE(vardecl5);
         TEST_CASE(vardecl6);
         TEST_CASE(vardecl7);
+        TEST_CASE(vardeclInHeader);
         TEST_CASE(whileStmt1);
         TEST_CASE(whileStmt2);
 
@@ -139,6 +140,8 @@ private:
         TEST_CASE(valueType2);
 
         TEST_CASE(crash);
+        TEST_CASE(crash2);
+        TEST_CASE(nullNodeInvalidLevel);
     }
 
     std::string parse(const char clang[]) {
@@ -1039,6 +1042,15 @@ private:
         ASSERT_EQUALS("void * * start@1 ;", parse(clang));
     }
 
+    void vardeclInHeader() {
+        // a new file is seen after tokens have been created
+        const char clang[] = "|-VarDecl 0x32b8aa0 <1.c:1:1, col:5> col:5 a 'int'\n"
+                             "`-VarDecl 0x32b8b78 <1.h:1:1, col:5> col:5 b 'int'";
+
+        ASSERT_EQUALS("int a@1 ; int b@2 ;",
+                      parse(clang));
+    }
+
     void whileStmt1() {
         const char clang[] = "`-FunctionDecl 0x3d45b18 <1.c:1:1, line:3:1> line:1:6 foo 'void ()'\n"
                              "  `-CompoundStmt 0x3d45c48 <col:12, line:3:1>\n"
@@ -1371,6 +1383,20 @@ private:
                             "  |-ParmVarDecl 0x5603791b5570 <col:49, col:51> col:52 'A<type-parameter-0-0, type-parameter-0-1> &'\n"
                             "  `-CompoundStmt 0x5603791b5700 <col:54, col:55>\n";
         (void)parse(clang); // don't crash
+    }
+
+    void crash2() {
+        // getSpelling() indexed mExtTokens[typeIndex - 1] without a lower-bound
+        // check, so a node whose line carries no ext tokens (typeIndex <= 0) read
+        // out of bounds.
+        (void)parse("`-RecordDecl "); // don't crash
+    }
+
+    void nullNodeInvalidLevel() {
+        // a "<<<NULL>>>" line whose indentation maps to level 0 must not index tree[-1]
+        const char* clang = "`-FunctionDecl 0x1 <a.cpp:1:1, col:34> col:6 foo 'void ()'\n"
+                            "`-<<<NULL>>>\n";
+        ASSERT_EQUALS("void foo ( ) ;", parse(clang));
     }
 };
 

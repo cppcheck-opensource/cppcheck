@@ -60,6 +60,15 @@
 #  endif
 #endif
 
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ <= 9
+// Hack to workaround GCC bug.
+// Details: https://trac.cppcheck.net/ticket/14850
+// seen on g++ before 10.x
+#define  SIMPLECPP_NOEXCEPT
+#else
+#define  SIMPLECPP_NOEXCEPT  noexcept
+#endif
+
 namespace simplecpp {
     /** C code standard */
     enum cstd_t : std::int8_t { CUnknown=-1, C89, C99, C11, C17, C23, C2Y };
@@ -238,7 +247,10 @@ namespace simplecpp {
             MISSING_HEADER,
             INCLUDE_NESTED_TOO_DEEPLY,
             SYNTAX_ERROR,
+            DIRECTIVE_AS_MACRO_PARAMETER,
             PORTABILITY_BACKSLASH,
+            PORTABILITY_LINE_DIRECTIVE,
+            PORTABILITY_NO_EOF_NEWLINE,
             UNHANDLED_CHAR_ERROR,
             EXPLICIT_INCLUDE_NOT_FOUND,
             FILE_NOT_FOUND,
@@ -251,6 +263,21 @@ namespace simplecpp {
 
     using OutputList = std::list<Output>;
 
+    /**
+     * Command line preprocessor settings.
+     * On the command line these are configured by -D, -U, -I, --include, -std
+     */
+    struct SIMPLECPP_LIB DUI {
+        DUI() = default;
+        std::list<std::string> defines;
+        std::set<std::string> undefined;
+        std::list<std::string> includePaths;
+        std::list<std::string> includes;
+        std::string std;
+        bool clearIncludeCache{};
+        bool removeComments{}; /** remove comment tokens from included files */
+    };
+
     /** List of tokens. */
     class SIMPLECPP_LIB TokenList {
     public:
@@ -258,45 +285,45 @@ namespace simplecpp {
 
         explicit TokenList(std::vector<std::string> &filenames);
         /** generates a token list from the given std::istream parameter */
-        TokenList(std::istream &istr, std::vector<std::string> &filenames, const std::string &filename=std::string(), OutputList *outputList = nullptr);
+        TokenList(std::istream &istr, std::vector<std::string> &filenames, const std::string &filename=std::string(), const DUI &dui = {}, OutputList *outputList = nullptr);
         /** generates a token list from the given buffer */
         template<size_t size>
-        TokenList(const char (&data)[size], std::vector<std::string> &filenames, const std::string &filename=std::string(), OutputList *outputList = nullptr)
-            : TokenList(reinterpret_cast<const unsigned char*>(data), size-1, filenames, filename, outputList, 0)
+        TokenList(const char (&data)[size], std::vector<std::string> &filenames, const std::string &filename=std::string(), const DUI &dui = {}, OutputList *outputList = nullptr)
+            : TokenList(reinterpret_cast<const unsigned char*>(data), size-1, filenames, filename, dui, outputList, 0)
         {}
         /** generates a token list from the given buffer */
         template<size_t size>
-        TokenList(const unsigned char (&data)[size], std::vector<std::string> &filenames, const std::string &filename=std::string(), OutputList *outputList = nullptr)
-            : TokenList(data, size-1, filenames, filename, outputList, 0)
+        TokenList(const unsigned char (&data)[size], std::vector<std::string> &filenames, const std::string &filename=std::string(), const DUI &dui = {}, OutputList *outputList = nullptr)
+            : TokenList(data, size-1, filenames, filename, dui, outputList, 0)
         {}
 #if SIMPLECPP_TOKENLIST_ALLOW_PTR
         /** generates a token list from the given buffer */
-        TokenList(const unsigned char* data, std::size_t size, std::vector<std::string> &filenames, const std::string &filename=std::string(), OutputList *outputList = nullptr)
-            : TokenList(data, size, filenames, filename, outputList, 0)
+        TokenList(const unsigned char* data, std::size_t size, std::vector<std::string> &filenames, const std::string &filename=std::string(), const DUI &dui = {}, OutputList *outputList = nullptr)
+            : TokenList(data, size, filenames, filename, dui, outputList, 0)
         {}
         /** generates a token list from the given buffer */
-        TokenList(const char* data, std::size_t size, std::vector<std::string> &filenames, const std::string &filename=std::string(), OutputList *outputList = nullptr)
-            : TokenList(reinterpret_cast<const unsigned char*>(data), size, filenames, filename, outputList, 0)
+        TokenList(const char* data, std::size_t size, std::vector<std::string> &filenames, const std::string &filename=std::string(), const DUI &dui = {}, OutputList *outputList = nullptr)
+            : TokenList(reinterpret_cast<const unsigned char*>(data), size, filenames, filename, dui, outputList, 0)
         {}
 #endif // SIMPLECPP_TOKENLIST_ALLOW_PTR
         /** generates a token list from the given buffer */
-        TokenList(View data, std::vector<std::string> &filenames, const std::string &filename=std::string(), OutputList *outputList = nullptr)
-            : TokenList(reinterpret_cast<const unsigned char*>(data.data()), data.size(), filenames, filename, outputList, 0)
+        TokenList(View data, std::vector<std::string> &filenames, const std::string &filename=std::string(), const DUI &dui = {}, OutputList *outputList = nullptr)
+            : TokenList(reinterpret_cast<const unsigned char*>(data.data()), data.size(), filenames, filename, dui, outputList, 0)
         {}
 #ifdef __cpp_lib_span
         /** generates a token list from the given buffer */
-        TokenList(std::span<const char> data, std::vector<std::string> &filenames, const std::string &filename=std::string(), OutputList *outputList = nullptr)
-            : TokenList(reinterpret_cast<const unsigned char*>(data.data()), data.size(), filenames, filename, outputList, 0)
+        TokenList(std::span<const char> data, std::vector<std::string> &filenames, const std::string &filename=std::string(), const DUI &dui = {}, OutputList *outputList = nullptr)
+            : TokenList(reinterpret_cast<const unsigned char*>(data.data()), data.size(), filenames, filename, dui, outputList, 0)
         {}
 
         /** generates a token list from the given buffer */
-        TokenList(std::span<const unsigned char> data, std::vector<std::string> &filenames, const std::string &filename=std::string(), OutputList *outputList = nullptr)
-            : TokenList(data.data(), data.size(), filenames, filename, outputList, 0)
+        TokenList(std::span<const unsigned char> data, std::vector<std::string> &filenames, const std::string &filename=std::string(), const DUI &dui = {}, OutputList *outputList = nullptr)
+            : TokenList(data.data(), data.size(), filenames, filename, dui, outputList, 0)
         {}
 #endif // __cpp_lib_span
 
         /** generates a token list from the given filename parameter */
-        TokenList(const std::string &filename, std::vector<std::string> &filenames, OutputList *outputList = nullptr);
+        TokenList(const std::string &filename, std::vector<std::string> &filenames, const DUI &dui = {}, OutputList *outputList = nullptr);
         TokenList(const TokenList &other);
         TokenList(TokenList &&other);
         ~TokenList();
@@ -312,7 +339,7 @@ namespace simplecpp {
         void dump(bool linenrs = false) const;
         std::string stringify(bool linenrs = false) const;
 
-        void readfile(Stream &stream, const std::string &filename=std::string(), OutputList *outputList = nullptr);
+        void readfile(Stream &stream, const std::string &filename=std::string(), const DUI &dui = {}, OutputList *outputList = nullptr);
         /**
          * @throws std::overflow_error thrown on overflow or division by zero
          * @throws std::runtime_error thrown on invalid expressions
@@ -376,7 +403,7 @@ namespace simplecpp {
         const std::string& file(const Location& loc) const;
 
     private:
-        TokenList(const unsigned char* data, std::size_t size, std::vector<std::string> &filenames, const std::string &filename, OutputList *outputList, int /*unused*/);
+        TokenList(const unsigned char* data, std::size_t size, std::vector<std::string> &filenames, const std::string &filename, const DUI &dui, OutputList *outputList, int /*unused*/);
 
         void combineOperators();
 
@@ -425,21 +452,6 @@ namespace simplecpp {
         long long result; // condition result
     };
 
-    /**
-     * Command line preprocessor settings.
-     * On the command line these are configured by -D, -U, -I, --include, -std
-     */
-    struct SIMPLECPP_LIB DUI {
-        DUI() = default;
-        std::list<std::string> defines;
-        std::set<std::string> undefined;
-        std::list<std::string> includePaths;
-        std::list<std::string> includes;
-        std::string std;
-        bool clearIncludeCache{};
-        bool removeComments{}; /** remove comment tokens from included files */
-    };
-
     struct SIMPLECPP_LIB FileData {
         /** The canonical filename associated with this data */
         std::string filename;
@@ -453,10 +465,10 @@ namespace simplecpp {
         ~FileDataCache();
 
         FileDataCache(const FileDataCache &) = delete;
-        FileDataCache(FileDataCache &&) noexcept;
+        FileDataCache(FileDataCache &&) SIMPLECPP_NOEXCEPT;
 
         FileDataCache &operator=(const FileDataCache &) = delete;
-        FileDataCache &operator=(FileDataCache &&) noexcept;
+        FileDataCache &operator=(FileDataCache &&) SIMPLECPP_NOEXCEPT;
 
         /** Get the cached data for a file, or load and then return it if it isn't cached.
          *  returns the file data and true if the file was loaded, false if it was cached. */
@@ -499,7 +511,7 @@ namespace simplecpp {
             return mData.cend();
         }
 
-        using load_callback_type = std::function<void (FileData &)>;
+        using load_callback_type = std::function<void (FileData &, bool)>;
 
         void set_load_callback(load_callback_type cb) {
             mLoadCallback = std::move(cb);
@@ -512,6 +524,7 @@ namespace simplecpp {
         using name_map_type = std::unordered_map<std::string, FileData *>;
 
         std::pair<FileData *, bool> tryload(name_map_type::iterator &name_it, const DUI &dui, std::vector<std::string> &filenames, OutputList *outputList);
+        std::pair<FileData *, bool> get_private(const std::string &sourcefile, const std::string &header, const DUI &dui, bool systemheader, std::vector<std::string> &filenames, OutputList *outputList);
 
         container_type mData;
         name_map_type mNameMap;
@@ -578,8 +591,14 @@ namespace simplecpp {
     /** Returns the C version a given standard */
     SIMPLECPP_LIB cstd_t getCStd(const std::string &std);
 
+    /** Returns the name of a C standard */
+    SIMPLECPP_LIB const char *getCStdName(cstd_t std);
+
     /** Returns the C++ version a given standard */
     SIMPLECPP_LIB cppstd_t getCppStd(const std::string &std);
+
+    /** Returns the name of a C++ standard */
+    SIMPLECPP_LIB const char *getCppStdName(cppstd_t std);
 
     /** Returns the __STDC_VERSION__ value for a given standard */
     SIMPLECPP_LIB std::string getCStdString(const std::string &std);

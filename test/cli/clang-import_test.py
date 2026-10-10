@@ -128,6 +128,21 @@ def test_log(tmpdir):
     assert_cppcheck(args, ec_exp=0, err_exp=[], out_exp=out_lines)
 
 
+def test_include(tmp_path):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, 'wt') as f:
+        f.write('#include "test.h"')
+
+    with open(tmp_path / 'test.h', 'wt') as f:
+        f.write('int x;\n')
+
+    exitcode, stdout, stderr = cppcheck(['-q', '--clang', '--debug', str(test_file)])
+    assert exitcode == 0, stderr if not stdout else stdout
+    # the number of empty lines after "##file" depends on the builtin declarations in the clang AST dump
+    assert '##file {}\n'.format(tmp_path / 'test.h') in stdout, stdout
+    assert '\n1: int x@var1 ;\n' in stdout, stdout
+
+
 def test_warning(tmpdir):  # #12424
     test_file = os.path.join(tmpdir, 'test_2')
     with open(test_file, 'wt') as f:

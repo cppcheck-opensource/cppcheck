@@ -72,12 +72,6 @@ protected:
 
     ErrorPath getErrorPath(const Token* errtok, const ValueFlow::Value* value, std::string bug) const;
 
-    /**
-     * Use WRONG_DATA in checkers when you check for wrong data. That
-     * will call this method
-     */
-    bool wrongData(const Token *tok, const char *str);
-
 public: // TODO: should be protected
     void logChecker(const char id[]);
 };

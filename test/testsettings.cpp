@@ -42,6 +42,9 @@ private:
         TEST_CASE(getMaxConfigsDefines);
         TEST_CASE(getMaxConfigsDefinesAndOpt);
         TEST_CASE(getMaxConfigsOptAndProject);
+
+        TEST_CASE(isPremiumEnabledCert);
+        TEST_CASE(isPremiumEnabledMisra);
     }
 
     void simpleEnableGroup() const {
@@ -355,6 +358,38 @@ private:
         ASSERT_EQUALS(3, s.getMaxConfigs());
         s.maxConfigsProject = 10;
         ASSERT_EQUALS(3, s.getMaxConfigs());
+    }
+
+    void isPremiumEnabledCert() const {
+        Settings s;
+        s.premiumArgs = "--cert-c-2016";
+        ASSERT(s.isPremiumEnabled("uninitvar"));
+        s.premiumArgs = "--cert-c";
+        ASSERT(s.isPremiumEnabled("uninitvar"));
+        s.premiumArgs = "--cert-c:all";
+        ASSERT(s.isPremiumEnabled("uninitvar"));
+        s.premiumArgs = "--cert-c++";
+        ASSERT(s.isPremiumEnabled("uninitvar"));
+        s.premiumArgs = "--cert-cpp";
+        ASSERT(s.isPremiumEnabled("uninitvar"));
+    }
+
+    void isPremiumEnabledMisra() const {
+        Settings s;
+        s.premiumArgs = "--misra-c-2012";
+        ASSERT(s.isPremiumEnabled("uninitvar"));
+        s.premiumArgs = "--misra-c-2023";
+        ASSERT(s.isPremiumEnabled("uninitvar"));
+        s.premiumArgs = "--misra-c-2025";
+        ASSERT(s.isPremiumEnabled("uninitvar"));
+        s.premiumArgs = "--misra-cpp-2008";
+        ASSERT(s.isPremiumEnabled("uninitvar"));
+        s.premiumArgs = "--misra-c++-2008";
+        ASSERT(s.isPremiumEnabled("uninitvar"));
+        s.premiumArgs = "--misra-cpp-2023";
+        ASSERT(s.isPremiumEnabled("uninitvar"));
+        s.premiumArgs = "--misra-c++-2023";
+        ASSERT(s.isPremiumEnabled("uninitvar"));
     }
 };
 

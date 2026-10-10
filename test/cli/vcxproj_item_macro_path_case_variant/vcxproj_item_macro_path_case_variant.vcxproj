@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{99999999-9999-9999-9999-999999999999}</ProjectGuid>
+    <RootNamespace>itemmacropathcasevarianttest</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <!-- MSBuild property names are case-insensitive: to real Visual Studio,
+       "CaseRoot" (set here for Debug) and "caseroot" (set here for Release)
+       are the exact same property, and it genuinely resolves to a DIFFERENT
+       value in each configuration -- exactly the case
+       vcxproj_item_macro_path_test.py covers with a single consistent
+       spelling. This fixture is the regression case for the same property
+       spelled with different casing in different configurations: a
+       case-SENSITIVE analysis of "which properties are config-invariant"
+       sees "CaseRoot" (one value, from Debug) and "caseroot" (one value,
+       from Release) as two unrelated single-valued names and wrongly
+       concludes each is invariant, when the real, case-folded property
+       "CaseRoot"/"caseroot" is not invariant at all. See
+       vcxproj_item_macro_path_case_test.py. -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <CaseRoot>DebugCaseDir</CaseRoot>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <caseroot>ReleaseCaseDir</caseroot>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClCompile Include="$(CaseRoot)\foo.cpp" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

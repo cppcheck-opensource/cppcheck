@@ -833,13 +833,20 @@ const simplecpp::Output* Preprocessor::handleErrors(const simplecpp::OutputList&
     return reportOutput(outputList, showerror);
 }
 
-bool Preprocessor::loadFiles(std::vector<std::string> &files)
+bool Preprocessor::loadAllIncludes(std::vector<std::string> &files)
 {
     const simplecpp::DUI dui = createDUI(mSettings, "", mLang);
 
     simplecpp::OutputList outputList;
     mFileCache = simplecpp::load(mTokens, files, dui, &outputList, std::move(mFileCache));
     return !handleErrors(outputList);
+}
+
+simplecpp::FileData *Preprocessor::loadFile(std::vector<std::string> &files, const std::string &file)
+{
+    const simplecpp::DUI dui = createDUI(mSettings, "", mLang);
+
+    return mFileCache.get("", file, dui, false, files, nullptr).first;
 }
 
 void Preprocessor::removeComments()
@@ -883,7 +890,8 @@ simplecpp::TokenList Preprocessor::preprocess(const std::string &cfgStr, std::ve
     mMacroUsage = std::move(macroUsage);
     mIfCond = std::move(ifCond);
 
-    tokens2.removeComments();
+    if (!mSettings.keepComments)
+        tokens2.removeComments();
 
     return tokens2;
 }
@@ -912,6 +920,13 @@ std::string Preprocessor::getcode(const std::string &cfgStr, std::vector<std::st
         if (!tok->macro.empty())
             ret << Preprocessor::macroChar;
         ret << tok->str();
+
+        if (tok->comment)
+            line += std::count_if(tok->str().cbegin(),
+                                  tok->str().cend(),
+                                  [](char c) {
+                return c == '\n';
+            });
     }
 
     return ret.str();
@@ -930,6 +945,8 @@ const simplecpp::Output* Preprocessor::reportOutput(const simplecpp::OutputList 
             break;
         case simplecpp::Output::WARNING:
         case simplecpp::Output::PORTABILITY_BACKSLASH:
+        case simplecpp::Output::PORTABILITY_LINE_DIRECTIVE:
+        case simplecpp::Output::PORTABILITY_NO_EOF_NEWLINE:
             break;
         case simplecpp::Output::MISSING_HEADER: {
             // not considered an "error"
@@ -939,6 +956,7 @@ const simplecpp::Output* Preprocessor::reportOutput(const simplecpp::OutputList 
                 missingInclude(out.location, out.msg.substr(pos1+1, pos2-pos1-1), out.msg[pos1] == '\"' ? UserHeader : SystemHeader);
         }
         break;
+        case simplecpp::Output::DIRECTIVE_AS_MACRO_PARAMETER:
         case simplecpp::Output::INCLUDE_NESTED_TOO_DEEPLY:
         case simplecpp::Output::SYNTAX_ERROR:
         case simplecpp::Output::UNHANDLED_CHAR_ERROR:
@@ -964,6 +982,8 @@ static std::string simplecppErrToId(simplecpp::Output::Type type)
         return "preprocessorErrorDirective";
     case simplecpp::Output::SYNTAX_ERROR:
         return "syntaxError";
+    case simplecpp::Output::DIRECTIVE_AS_MACRO_PARAMETER:
+        return "directiveAsMacroParameter";
     case simplecpp::Output::UNHANDLED_CHAR_ERROR:
         return "unhandledChar";
     case simplecpp::Output::INCLUDE_NESTED_TOO_DEEPLY:
@@ -979,6 +999,8 @@ static std::string simplecppErrToId(simplecpp::Output::Type type)
     // no handled at all (warnings)
     case simplecpp::Output::WARNING:
     case simplecpp::Output::PORTABILITY_BACKSLASH:
+    case simplecpp::Output::PORTABILITY_LINE_DIRECTIVE:
+    case simplecpp::Output::PORTABILITY_NO_EOF_NEWLINE:
         throw std::runtime_error("unexpected simplecpp::Output type " + std::to_string(type));
     }
 
@@ -1045,6 +1067,7 @@ void Preprocessor::getErrorMessages(ErrorLogger &errorLogger, const Settings &se
     preprocessor.missingInclude(loc, "", SystemHeader);
     preprocessor.error(loc, "message", simplecpp::Output::ERROR);
     preprocessor.error(loc, "message", simplecpp::Output::SYNTAX_ERROR);
+    preprocessor.error(loc, "message", simplecpp::Output::DIRECTIVE_AS_MACRO_PARAMETER);
     preprocessor.error(loc, "message", simplecpp::Output::UNHANDLED_CHAR_ERROR);
     preprocessor.error(loc, "message", simplecpp::Output::INCLUDE_NESTED_TOO_DEEPLY);
     preprocessor.error(loc, "message", simplecpp::Output::FILE_NOT_FOUND);
@@ -1061,10 +1084,10 @@ void Preprocessor::dump(std::ostream &out) const
         for (const simplecpp::MacroUsage &macroUsage: mMacroUsage) {
             out << "    <macro"
                 << " name=\"" << macroUsage.macroName << "\""
-                << " file=\"" << ErrorLogger::toxml(mTokens.file(macroUsage.macroLocation)) << "\""
+                << " file=\"" << ErrorLogger::toxml(mSettings.relativePaths ? Path::getRelativePath(mTokens.file(macroUsage.macroLocation), mSettings.basePaths) : mTokens.file(macroUsage.macroLocation)) << "\""
                 << " line=\"" << macroUsage.macroLocation.line << "\""
                 << " column=\"" << macroUsage.macroLocation.col << "\""
-                << " usefile=\"" << ErrorLogger::toxml(mTokens.file(macroUsage.useLocation)) << "\""
+                << " usefile=\"" << ErrorLogger::toxml(mSettings.relativePaths ? Path::getRelativePath(mTokens.file(macroUsage.useLocation), mSettings.basePaths) : mTokens.file(macroUsage.useLocation)) << "\""
                 << " useline=\"" << macroUsage.useLocation.line << "\""
                 << " usecolumn=\"" << macroUsage.useLocation.col << "\""
                 << " is-known-value=\"" << bool_to_string(macroUsage.macroValueKnown) << "\""
@@ -1077,7 +1100,7 @@ void Preprocessor::dump(std::ostream &out) const
         out << "  <simplecpp-if-cond>" << std::endl;
         for (const simplecpp::IfCond &ifCond: mIfCond) {
             out << "    <if-cond"
-                << " file=\"" << ErrorLogger::toxml(mTokens.file(ifCond.location)) << "\""
+                << " file=\"" << ErrorLogger::toxml(mSettings.relativePaths ? Path::getRelativePath(mTokens.file(ifCond.location), mSettings.basePaths) : mTokens.file(ifCond.location)) << "\""
                 << " line=\"" << ifCond.location.line << "\""
                 << " column=\"" << ifCond.location.col << "\""
                 << " E=\"" << ErrorLogger::toxml(ifCond.E) << "\""

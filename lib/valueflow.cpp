@@ -727,7 +727,7 @@ static void valueFlowArrayBool(TokenList& tokenlist, const Settings& settings)
         }
         if (!var)
             continue;
-        if (!var->isArray() || var->isArgument() || var->isStlType())
+        if (!var->isArray() || var->isArgument() || var->getTypeName() == "std::array")
             continue;
         if (isNonZero(getOtherOperand(tok)) && Token::Match(tok->astParent(), "%comp%"))
             continue;
@@ -1169,12 +1169,16 @@ static void valueFlowImpossibleValues(TokenList& tokenList, const Settings& sett
             value.setImpossible();
             setTokenValue(tok, std::move(value), settings);
         } else if (tok->variable() && tok->variable()->isArray() && !tok->variable()->isArgument() &&
-                   !tok->variable()->isStlType()) {
+                   tok->variable()->getTypeName() != "std::array") {
             ValueFlow::Value value{0};
             value.setImpossible();
             setTokenValue(tok, std::move(value), settings);
         } else if (tok->isIncompleteVar() && tok->astParent() && tok->astParent()->isUnaryOp("-") &&
                    isConvertedToIntegral(tok->astParent(), settings)) {
+            ValueFlow::Value value{0};
+            value.setImpossible();
+            setTokenValue(tok, std::move(value), settings);
+        } else if (tok->function() && tok->scope()->isExecutable()) {
             ValueFlow::Value value{0};
             value.setImpossible();
             setTokenValue(tok, std::move(value), settings);
@@ -1817,7 +1821,8 @@ static bool isNotEqual(std::pair<const Token*, const Token*> x, std::pair<const 
 static bool isNotEqual(std::pair<const Token*, const Token*> x, const std::string& y, bool cpp, const Settings& settings)
 {
     TokenList tokenList(settings, cpp ? Standards::Language::CPP : Standards::Language::C);
-    tokenList.createTokensFromBuffer(y.data(), y.size()); // TODO: check result?
+    const std::string str(y + "\n");
+    tokenList.createTokensFromBuffer(str.data(), str.size()); // TODO: check result?
     return isNotEqual(x, std::make_pair(tokenList.front(), tokenList.back()));
 }
 static bool isNotEqual(std::pair<const Token*, const Token*> x, const ValueType* y, bool cpp, const Settings& settings)
@@ -5161,7 +5166,7 @@ static void valueFlowInferCondition(TokenList& tokenlist, const Settings& settin
             }
         } else if (Token::Match(tok->astParent(), "?|&&|!|%oror%") ||
                    Token::Match(tok->astParent()->previous(), "if|while (") ||
-                   (astIsPointer(tok) && isUsedAsBool(tok, settings))) {
+                   ((astIsPointer(tok) || tok->function()) && isUsedAsBool(tok, settings))) {
             std::vector<ValueFlow::Value> result = infer(makeIntegralInferModel(), "!=", tok->values(), 0);
             if (result.size() != 1)
                 continue;
@@ -5421,6 +5426,11 @@ static void valueFlowForLoopSimplifyAfter(Token* fortok, nonneg int varid, const
         endToken = fortok->scope()->bodyEnd;
 
     Token* blockTok = fortok->linkAt(1)->linkAt(1);
+    if (const Token* escape = findEscapeStatement(blockTok->scope(), settings.library)) {
+        if (settings.debugwarnings)
+            bailout(tokenlist, errorLogger, escape, "For loop variable bailout on escape statement");
+        return;
+    }
     if (blockTok != endToken) {
         ValueFlow::Value v{num};
         v.errorPath.emplace_back(fortok,"After for loop, " + var->name() + " has value " + v.infoString());
@@ -7025,6 +7035,12 @@ static void valueFlowDynamicBufferSize(const TokenList& tokenlist, const SymbolD
     auto getBufferSizeFromNew = [&](const Token* newTok) -> MathLib::bigint {
         MathLib::bigint sizeValue = -1, numElem = -1;
 
+        // ::operator new(size_t size)
+        if (Token::Match(newTok->astOperand1(), "::| operatornew")) {
+            const Token *sizeTok = newTok->astOperand2();
+            return sizeTok->hasKnownIntValue() ? sizeTok->getKnownIntValue() : -1;
+        }
+
         if (newTok && newTok->astOperand1()) { // number of elements
             const Token* bracTok = nullptr, *typeTok = nullptr;
             if (newTok->astOperand1()->str() == "[")
@@ -7071,7 +7087,7 @@ static void valueFlowDynamicBufferSize(const TokenList& tokenlist, const SymbolD
             if (!rhs)
                 continue;
 
-            const bool isNew = rhs->isCpp() && rhs->str() == "new";
+            const bool isNew = rhs->isCpp() && (rhs->str() == "new" || (rhs->str() == "(" && Token::Match(rhs->astOperand1(), "::| operatornew")));
             if (!isNew && !Token::Match(rhs->previous(), "%name% ("))
                 continue;
 
@@ -7095,7 +7111,7 @@ static bool getMinMaxValues(const std::string& typestr,
                             MathLib::bigint& maxvalue)
 {
     TokenList typeTokens(settings, cpp ? Standards::Language::CPP : Standards::Language::C);
-    const std::string str(typestr + ";");
+    const std::string str(typestr + ";\n");
     if (!typeTokens.createTokensFromBuffer(str.data(), str.size()))
         return false;
     typeTokens.simplifyPlatformTypes();
@@ -7535,6 +7551,7 @@ void ValueFlow::setValues(TokenList& tokenlist,
         VFA(valueFlowInferCondition(tokenlist, settings)),
         VFA(valueFlowSwitchVariable(tokenlist, symboldatabase, errorLogger, settings)),
         VFA(valueFlowForLoop(tokenlist, symboldatabase, errorLogger, settings)),
+        VFA(valueFlowDynamicBufferSize(tokenlist, symboldatabase, errorLogger, settings)),
         VFA(valueFlowSubFunction(tokenlist, symboldatabase, errorLogger, settings)),
         VFA(valueFlowFunctionReturn(tokenlist, errorLogger, settings)),
         VFA(valueFlowLifetime(tokenlist, errorLogger, settings)),
@@ -7551,7 +7568,6 @@ void ValueFlow::setValues(TokenList& tokenlist,
     });
 
     runner.run_once({
-        VFA(valueFlowDynamicBufferSize(tokenlist, symboldatabase, errorLogger, settings)),
         VFA(valueFlowDebug(tokenlist, errorLogger, settings)), // TODO: add option to print it after each step/iteration
     });
 }

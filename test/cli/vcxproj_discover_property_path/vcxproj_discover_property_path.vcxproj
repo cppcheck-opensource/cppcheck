@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{11111111-2222-3333-4444-555555555555}</ProjectGuid>
+    <RootNamespace>discoverpropertypathtest</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <!-- No inline <ItemGroup Label="ProjectConfigurations">, so importVcxproj() must
+       fall back to its Discovery bootstrap pass to find any configuration at all.
+       This <Import> is NOT gated by any Condition or Choose -- discovery's
+       "ignore every Condition" behavior (mDiscovering) has nothing to do here.
+       The PATH ITSELF embeds $(Configuration), so resolving it at all depends on
+       Discovery seeding a guessed value for that property; without a seed the
+       path is left with a literal, unexpanded "$(Configuration)" segment, which
+       simplifyPathWithVariables() treats as unresolvable, and the import (and the
+       only configuration it defines) is silently skipped. -->
+  <Import Project="$(Configuration)\Configs.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="ConfigDebug">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

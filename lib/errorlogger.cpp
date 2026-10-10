@@ -47,6 +47,7 @@
 const std::set<std::string> ErrorLogger::mCriticalErrorIds{
     "cppcheckError",
     "cppcheckLimit",
+    "directiveAsMacroParameter",
     "includeNestedTooDeeply",
     "internalAstError",
     "instantiationError",
@@ -61,9 +62,20 @@ const std::set<std::string> ErrorLogger::mCriticalErrorIds{
     "unknownMacro"
 };
 
+static std::size_t sdbm(const std::string& hashString) {
+    return std::accumulate(hashString.cbegin(), hashString.cend(), std::size_t{0}, [](std::size_t h, unsigned char c) {
+        return static_cast<std::size_t>(c) + (h << 6) + (h << 16) - h;
+    });
+}
+
 ErrorMessage::ErrorMessage()
     : severity(Severity::none), cwe(0U), certainty(Certainty::normal)
 {}
+
+static bool needsFallbackHash(const std::string &id)
+{
+    return startsWith(id, "ctu") || id == "unusedFunction" || id == "staticFunction";
+}
 
 // TODO: id and msg are swapped compared to other calls
 ErrorMessage::ErrorMessage(std::list<FileLocation> callStack, std::string file1, Severity severity, const std::string &msg, std::string id, Certainty certainty) :
@@ -76,6 +88,9 @@ ErrorMessage::ErrorMessage(std::list<FileLocation> callStack, std::string file1,
 {
     // set the summary and verbose messages
     setmsg(msg);
+
+    if (hash == 0 && needsFallbackHash(this->id))
+        calculateWarningHashFromLocations();
 }
 
 
@@ -90,6 +105,9 @@ ErrorMessage::ErrorMessage(std::list<FileLocation> callStack, std::string file1,
 {
     // set the summary and verbose messages
     setmsg(msg);
+
+    if (hash == 0 && needsFallbackHash(this->id))
+        calculateWarningHashFromLocations();
 }
 
 ErrorMessage::ErrorMessage(const std::list<const Token*>& callstack, const TokenList* list, Severity severity, std::string id, const std::string& msg, Certainty certainty)
@@ -300,9 +318,25 @@ void ErrorMessage::calculateWarningHash(const std::list<const Token*>& callstack
 
     // hash algorithm: sdbm
     // any hash algorithm can be used but it has to be the same hash on different platforms and compilers
-    hash = std::accumulate(hashString.cbegin(), hashString.cend(), std::size_t{0}, [](std::size_t h, unsigned char c) {
-        return static_cast<std::size_t>(c) + (h << 6) + (h << 16) - h;
-    });
+    hash = sdbm(hashString);
+}
+
+void ErrorMessage::calculateWarningHashFromLocations()
+{
+    // No token information is available for this warning (e.g. whole-program/CTU
+    // checks, unusedFunction, staticFunction) so calculateWarningHash() can't be
+    // used. Instead hash the id, message and all filenames/notes in the callstack.
+    std::string hashString = id + '\n' + mShortMessage;
+    for (const FileLocation &loc : callStack) {
+        std::string fileName = loc.getfile(false);
+        if (Path::isAbsolute(fileName))
+            fileName = fileName.substr(fileName.rfind('/') + 1);
+        hashString += '\n' + fileName + '\n' + loc.getinfo();
+    }
+
+    // hash algorithm: sdbm
+    // any hash algorithm can be used but it has to be the same hash on different platforms and compilers
+    hash = sdbm(hashString);
 }
 
 static void serializeString(std::string &oss, const std::string & str)
@@ -696,7 +730,7 @@ static void replaceColors(std::string& source, bool erase) {
         replace(source, substitutionMapErase);
 }
 
-std::string ErrorMessage::toString(bool verbose, const std::string &templateFormat, const std::string &templateLocation) const
+std::string ErrorMessage::toString(bool verbose, const std::string &templateFormat, const std::string &templateLocation, bool noCode) const
 {
     assert(!templateFormat.empty());
 
@@ -737,7 +771,8 @@ std::string ErrorMessage::toString(bool verbose, const std::string &templateForm
                 endl = "\r\n";
             else
                 endl = "\r";
-            findAndReplace(result, "{code}", readCode(callStack.back().getOrigFile(), callStack.back().line, callStack.back().column, endl));
+            const std::string code = noCode ? "" : readCode(callStack.back().getOrigFile(), callStack.back().line, callStack.back().column, endl);
+            findAndReplace(result, "{code}", code);
         }
     } else {
         static const std::unordered_map<std::string, std::string> callStackSubstitutionMap =
@@ -768,7 +803,8 @@ std::string ErrorMessage::toString(bool verbose, const std::string &templateForm
                     endl = "\r\n";
                 else
                     endl = "\r";
-                findAndReplace(text, "{code}", readCode(fileLocation.getOrigFile(), fileLocation.line, fileLocation.column, endl));
+                const std::string code = noCode ? "" : readCode(fileLocation.getOrigFile(), fileLocation.line, fileLocation.column, endl);
+                findAndReplace(text, "{code}", code);
             }
             result += '\n' + text;
         }

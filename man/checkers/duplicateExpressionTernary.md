@@ -17,26 +17,6 @@ The warning is triggered when:
 
 The same expression indicates that there might be some logic error or copy-paste mistake.
 
-## Examples
-
-### Problematic code
-
-```cpp
-// Same expression in both branches
-int result = condition ? x : x;  // Warning: duplicateExpressionTernary
-
-// Same variable referenced through alias
-const int c = a;
-int result = condition ? a : c;  // Warning: duplicateExpressionTernary
-```
-
-### Fixed code
-
-```cpp
-// Different expressions in branches
-int result = condition ? x : y;  // OK
-```
-
 ## How to fix
 
 1. **Check for copy-paste errors**: Verify that both branches are supposed to have the same expression

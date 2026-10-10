@@ -461,6 +461,11 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
             mSettings.quiet = true;
         }
 
+        // -CC
+        else if (std::strcmp(argv[i], "-CC") == 0) {
+            mSettings.keepComments = true;
+        }
+
         // Include paths
         else if (std::strncmp(argv[i], "-I", 2) == 0) {
             std::string path;
@@ -1737,6 +1742,12 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
     if (mSettings.basePaths.empty() && mSettings.relativePaths)
         mSettings.basePaths = mPathNames;
 
+    if (mSettings.keepComments && !mSettings.preprocessOnly) {
+        mLogger.printError("-CC may only be used on conjunciton with -E");
+        return Result::Fail;
+    }
+
+
     return Result::Success;
 }
 
@@ -1760,6 +1771,7 @@ void CmdLineParser::printHelp() const
         "                         addon json files or through this command line option.\n"
         "                         If not present, Cppcheck will try \"python3\" first and\n"
         "                         then \"python\".\n"
+        "    -CC                  Do not remove comments during preprocessing (requires -E).\n"
         "    --cppcheck-build-dir=<dir>\n"
         "                         Cppcheck work folder. Advantages:\n"
         "                          * whole program analysis\n"

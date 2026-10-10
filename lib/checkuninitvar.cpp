@@ -1557,7 +1557,7 @@ void CheckUninitVarImpl::uninitdataError(const Token *tok, const std::string &va
 
 void CheckUninitVarImpl::uninitvarError(const Token *tok, const std::string &varname, ErrorPath errorPath)
 {
-    if (diag(tok))
+    if (tok && diag(tok))
         return;
     errorPath.emplace_back(tok, "");
     reportError(std::move(errorPath),
@@ -1572,7 +1572,7 @@ void CheckUninitVarImpl::uninitvarError(const Token* tok, const ValueFlow::Value
 {
     if (!mSettings.isEnabled(&v))
         return;
-    if (diag(tok))
+    if (tok && diag(tok))
         return;
     const Token* ltok = tok;
     if (tok && Token::simpleMatch(tok->astParent(), ".") && astIsRHS(tok))
@@ -1810,7 +1810,8 @@ void CheckUninitVar::getErrorMessages(ErrorLogger& errorLogger, const Settings& 
 
     ValueFlow::Value v{};
 
-    c.uninitvarError(nullptr, v); // TODO: does not produce any output
+    c.uninitvarError(nullptr, v);
+    c.uninitvarError(nullptr, "varname", ErrorPath{});
     c.uninitdataError(nullptr, "varname");
     c.uninitStructMemberError(nullptr, "a.b");
 }

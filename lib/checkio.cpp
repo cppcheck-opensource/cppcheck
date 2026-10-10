@@ -915,7 +915,7 @@ void CheckIOImpl::checkFormatString(const Token * const tok,
                                     argInfo.isKnownType() && argInfo.isArrayOrPointer() &&
                                     (!Token::Match(argInfo.typeToken, "char|wchar_t") ||
                                      argInfo.typeToken->strAt(-1) == "const")) {
-                                    if (!(argInfo.isArrayOrPointer() && argInfo.element && !argInfo.typeToken->isStandardType()))
+                                    if (!argInfo.element || argInfo.typeToken->isStandardType())
                                         invalidScanfArgTypeError_s(tok, numFormat, specifier, &argInfo);
                                 }
                                 if (scanf_s) {

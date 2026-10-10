@@ -140,6 +140,9 @@ public:
         Win32A,
         Win32W,
         Win64,
+        WinARM64,
+        WinARM64EC,
+        WinARM,
         Unix32,
         Unix64,
         File
@@ -188,6 +191,12 @@ public:
             return "win32W";
         case Type::Win64:
             return "win64";
+        case Type::WinARM64:
+            return "winARM64";
+        case Type::WinARM64EC:
+            return "winARM64EC";
+        case Type::WinARM:
+            return "winARM";
         case Type::Unix32:
             return "unix32";
         case Type::Unix64:

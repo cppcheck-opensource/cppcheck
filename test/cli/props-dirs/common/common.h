@@ -1,0 +1,3 @@
+#ifndef COMMON_H_INCLUDED_MARKER
+#define COMMON_H_INCLUDED_MARKER
+#endif

@@ -142,14 +142,14 @@ private:
         check("void f()\n"
               "{\n"
               "    bsd_signal(SIGABRT, SIG_IGN);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:5]: (style) Obsolescent function 'bsd_signal' called. It is recommended to use 'sigaction' instead. [bsd_signalCalled]\n", errout_str());
 
         check("int f()\n"
               "{\n"
               "    int bsd_signal(0);\n"
               "    return bsd_signal;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void f()\n"
@@ -158,7 +158,7 @@ private:
               "    if(!hp = gethostbyname(\"127.0.0.1\")) {\n"
               "        exit(1);\n"
               "    }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:4:14]: (style) Obsolescent function 'gethostbyname' called. It is recommended to use 'getaddrinfo' instead. [gethostbynameCalled]\n", errout_str());
 
         check("void f()\n"
@@ -168,13 +168,13 @@ private:
               "    if(!hp = gethostbyaddr((char *) &addr, sizeof(addr), AF_INET)) {\n"
               "        exit(1);\n"
               "    }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:5:14]: (style) Obsolescent function 'gethostbyaddr' called. It is recommended to use 'getnameinfo' instead. [gethostbyaddrCalled]\n", errout_str());
 
         check("void f()\n"
               "{\n"
               "    usleep( 1000 );\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:5]: (style) Obsolescent function 'usleep' called. It is recommended to use 'nanosleep' or 'setitimer' instead. [usleepCalled]\n", errout_str());
     }
 
@@ -186,7 +186,7 @@ private:
               "{\n"
               "    n1::index();\n"
               "    return 0;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("std::size_t f()\n"
@@ -194,19 +194,19 @@ private:
               "    std::size_t index(0);\n"
               "    index++;\n"
               "    return index;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("int f()\n"
               "{\n"
               "    return this->index();\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void f()\n"
               "{\n"
               "    int index( 0 );\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("const char f()\n"
@@ -214,7 +214,7 @@ private:
               "    const char var[6] = \"index\";\n"
               "    const char i = index(var, 0);\n"
               "    return i;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:4:20]: (style) Obsolescent function 'index' called. It is recommended to use 'strchr' instead. [indexCalled]\n",
                       errout_str());
     }
@@ -222,7 +222,7 @@ private:
     void prohibitedFunctions_qt_index() {
         check("void TDataModel::forceRowRefresh(int row) {\n"
               "    emit dataChanged(index(row, 0), index(row, columnCount() - 1));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS(
             "[test.cpp:2:22]: (style) Obsolescent function 'index' called. It is recommended to use 'strchr' instead. [indexCalled]\n"
             "[test.cpp:2:37]: (style) Obsolescent function 'index' called. It is recommended to use 'strchr' instead. [indexCalled]\n",
@@ -233,14 +233,14 @@ private:
         check("void f()\n"
               "{\n"
               "    int rindex( 0 );\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void f()\n"
               "{\n"
               "    const char var[7] = \"rindex\";\n"
               "    print(rindex(var, 0));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:4:11]: (style) Obsolescent function 'rindex' called. It is recommended to use 'strrchr' instead. [rindexCalled]\n", errout_str());
     }
 
@@ -250,7 +250,7 @@ private:
               "public:\n"
               "    Fred() : index(0) { }\n"
               "    int index;\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -258,13 +258,13 @@ private:
         check("void f()\n"
               "{\n"
               "    char *x = gets(a);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:15]: (warning) Obsolete function 'gets' called. It is recommended to use 'fgets' or 'gets_s' instead. [getsCalled]\n", errout_str());
 
         check("void f()\n"
               "{\n"
               "    foo(x, gets(a));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:12]: (warning) Obsolete function 'gets' called. It is recommended to use 'fgets' or 'gets_s' instead. [getsCalled]\n", errout_str());
     }
 
@@ -272,32 +272,32 @@ private:
         check("void f()\n"
               "{\n"
               "    char *x = alloca(10);\n"
-              "}");  // #4382 - there are no VLAs in C++
+              "}\n");  // #4382 - there are no VLAs in C++
         ASSERT_EQUALS("[test.cpp:3:15]: (warning) Obsolete function 'alloca' called. [allocaCalled]\n", errout_str());
 
         check("void f()\n"
               "{\n"
               "    char *x = alloca(10);\n"
-              "}", dinit(CheckOptions, $.cpp = false));
+              "}\n", dinit(CheckOptions, $.cpp = false));
         ASSERT_EQUALS("[test.c:3:15]: (warning) Obsolete function 'alloca' called. In C99 and later it is recommended to use a variable length array instead. [allocaCalled]\n", errout_str());
 
         const Settings s = settingsBuilder(settings).c(Standards::C89).cpp(Standards::CPP03).build();
         check("void f()\n"
               "{\n"
               "    char *x = alloca(10);\n"
-              "}", s);  // #4382 - there are no VLAs in C++
+              "}\n", s);  // #4382 - there are no VLAs in C++
         ASSERT_EQUALS("", errout_str());
 
         check("void f()\n"
               "{\n"
               "    char *x = alloca(10);\n"
-              "}", s, false); // #7558 - no alternative to alloca in C89
+              "}\n", s, false); // #7558 - no alternative to alloca in C89
         ASSERT_EQUALS("", errout_str());
 
         check("void f()\n"
               "{\n"
               "    char *x = alloca(10);\n"
-              "}", s, false);
+              "}\n", s, false);
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -311,7 +311,7 @@ private:
               "{\n"
               "    int b ; b = ftime ( 1 ) ;\n"
               "    return 0 ;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -321,7 +321,7 @@ private:
               "{\n"
               "    char *x = std::gets(str);\n"
               "    char *y = gets(str);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:20]: (warning) Obsolete function 'gets' called. It is recommended to use 'fgets' or 'gets_s' instead. [getsCalled]\n"
                       "[test.cpp:4:15]: (warning) Obsolete function 'gets' called. It is recommended to use 'fgets' or 'gets_s' instead. [getsCalled]\n", errout_str());
     }
@@ -332,7 +332,7 @@ private:
               "{\n"
               "    char *x = std::gets(str);\n"
               "    usleep( 1000 );\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:20]: (warning) Obsolete function 'gets' called. It is recommended to use 'fgets' or 'gets_s' instead. [getsCalled]\n"
                       "[test.cpp:4:5]: (style) Obsolescent function 'usleep' called. It is recommended to use 'nanosleep' or 'setitimer' instead. [usleepCalled]\n", errout_str());
     }
@@ -344,14 +344,14 @@ private:
               "    char s [ 10 ] ;\n"
               "    gets ( s ) ;\n"
               "    return 0;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:5:5]: (warning) Obsolete function 'gets' called. It is recommended to use 'fgets' or 'gets_s' instead. [getsCalled]\n", errout_str());
 
         check("int getcontext(ucontext_t *ucp);\n"
               "void f (ucontext_t *ucp)\n"
               "{\n"
               "    getcontext ( ucp ) ;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:4:5]: (portability) Obsolescent function 'getcontext' called. Applications are recommended to be rewritten to use POSIX threads. [getcontextCalled]\n", errout_str());
     }
 
@@ -362,7 +362,7 @@ private:
               "    char s [ 10 ] ;\n"
               "    gets ( s ) ;\n"
               "    return 0;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -371,7 +371,7 @@ private:
               "{\n"
               "    char *cpwd;"
               "    crypt(pwd, cpwd);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:20]: (warning) Return value of function crypt() is not used. [ignoredReturnValue]\n"
                       "[test.cpp:3:20]: (portability) Non reentrant function 'crypt' called. For threadsafe applications it is recommended to use the reentrant replacement function 'crypt_r'. [cryptCalled]\n", errout_str());
 
@@ -380,7 +380,7 @@ private:
               "    char *pwd = getpass(\"Password:\");"
               "    char *cpwd;"
               "    crypt(pwd, cpwd);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:57]: (warning) Return value of function crypt() is not used. [ignoredReturnValue]\n"
                       "[test.cpp:3:57]: (portability) Non reentrant function 'crypt' called. For threadsafe applications it is recommended to use the reentrant replacement function 'crypt_r'. [cryptCalled]\n", errout_str());
 
@@ -388,7 +388,7 @@ private:
               "{\n"
               "    int crypt = 0;"
               "    return crypt;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -397,14 +397,14 @@ private:
               "{\n"
               "    time_t t = 0;"
               "    auto lt = std::localtime(&t);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:37]: (portability) Non reentrant function 'localtime' called. For threadsafe applications it is recommended to use the reentrant replacement function 'localtime_r'. [localtimeCalled]\n", errout_str());
 
         // Passed as function argument
         check("void f()\n"
               "{\n"
               "    printf(\"Magic guess: %d\", getpwent());\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:31]: (portability) Non reentrant function 'getpwent' called. For threadsafe applications it is recommended to use the reentrant replacement function 'getpwent_r'. [getpwentCalled]\n", errout_str());
 
         // Pass return value
@@ -412,14 +412,14 @@ private:
               "{\n"
               "    time_t t = 0;"
               "    struct tm *foo = localtime(&t);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:39]: (portability) Non reentrant function 'localtime' called. For threadsafe applications it is recommended to use the reentrant replacement function 'localtime_r'. [localtimeCalled]\n", errout_str());
 
         // Access via global namespace
         check("void f()\n"
               "{\n"
               "    ::getpwent();\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:7]: (warning) Return value of function ::getpwent() is not used. [ignoredReturnValue]\n"
                       "[test.cpp:3:7]: (portability) Non reentrant function 'getpwent' called. For threadsafe applications it is recommended to use the reentrant replacement function 'getpwent_r'. [getpwentCalled]\n", errout_str());
 
@@ -427,68 +427,68 @@ private:
         check("int getpwent()\n"
               "{\n"
               "    return 123;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // Be quiet on other namespaces
         check("void f()\n"
               "{\n"
               "    foobar::getpwent();\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // Be quiet on class member functions
         check("void f()\n"
               "{\n"
               "    foobar.getpwent();\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
     void invalidFunctionUsage1() {
-        check("void f() { memset(a,b,sizeof(a)!=12); }");
+        check("void f() { memset(a,b,sizeof(a)!=12); }\n");
         ASSERT_EQUALS("[test.cpp:1:32]: (error) Invalid memset() argument nr 3. A non-boolean value is required. [invalidFunctionArgBool]\n", errout_str());
 
-        check("void f() { memset(a,b,sizeof(a)!=0); }");
+        check("void f() { memset(a,b,sizeof(a)!=0); }\n");
         ASSERT_EQUALS("[test.cpp:1:32]: (error) Invalid memset() argument nr 3. A non-boolean value is required. [invalidFunctionArgBool]\n", errout_str());
 
-        check("void f() { memset(a,b,!c); }");
+        check("void f() { memset(a,b,!c); }\n");
         ASSERT_EQUALS("[test.cpp:1:23]: (error) Invalid memset() argument nr 3. A non-boolean value is required. [invalidFunctionArgBool]\n", errout_str());
 
         // Ticket #6990
-        check("void f(bool c) { memset(a,b,c); }");
+        check("void f(bool c) { memset(a,b,c); }\n");
         ASSERT_EQUALS("[test.cpp:1:29]: (error) Invalid memset() argument nr 3. A non-boolean value is required. [invalidFunctionArgBool]\n", errout_str());
-        check("void f() { memset(a,b,true); }");
+        check("void f() { memset(a,b,true); }\n");
         ASSERT_EQUALS("[test.cpp:1:23]: (error) Invalid memset() argument nr 3. A non-boolean value is required. [invalidFunctionArgBool]\n", errout_str());
 
         // Ticket #6588 (c mode)
         check("void record(char* buf, int n) {\n"
               "  memset(buf, 0, n < 255);\n"           /* KO */
               "  memset(buf, 0, n < 255 ? n : 255);\n" /* OK */
-              "}", dinit(CheckOptions, $.cpp = false));
+              "}\n", dinit(CheckOptions, $.cpp = false));
         ASSERT_EQUALS("[test.c:2:20]: (error) Invalid memset() argument nr 3. A non-boolean value is required. [invalidFunctionArgBool]\n", errout_str());
 
         // Ticket #6588 (c++ mode)
         check("void record(char* buf, int n) {\n"
               "  memset(buf, 0, n < 255);\n"           /* KO */
               "  memset(buf, 0, n < 255 ? n : 255);\n" /* OK */
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:20]: (error) Invalid memset() argument nr 3. A non-boolean value is required. [invalidFunctionArgBool]\n", errout_str());
 
         check("int boolArgZeroIsInvalidButOneIsValid(int a, int param) {\n"
               "  return div(a, param > 0);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:23]: (error) Invalid div() argument nr 2. The value is 0 or 1 (boolean) but the valid values are ':-1,1:'. [invalidFunctionArg]\n", errout_str());
 
         check("void boolArgZeroIsValidButOneIsInvalid(int param) {\n"
               "  strtol(a, b, param > 0);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:22]: (error) Invalid strtol() argument nr 3. The value is 0 or 1 (boolean) but the valid values are '0,2:36'. [invalidFunctionArg]\n", errout_str());
 
-        check("void f() { strtol(a,b,1); }");
+        check("void f() { strtol(a,b,1); }\n");
         ASSERT_EQUALS("[test.cpp:1:23]: (error) Invalid strtol() argument nr 3. The value is 1 but the valid values are '0,2:36'. [invalidFunctionArg]\n", errout_str());
 
-        check("void f() { strtol(a,b,10); }");
+        check("void f() { strtol(a,b,10); }\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void f(std::vector<int>& v) {\n" //  #10754
@@ -531,16 +531,16 @@ private:
     }
 
     void invalidFunctionUsageStrings() {
-        check("size_t f() { char x = 'x'; return strlen(&x); }");
+        check("size_t f() { char x = 'x'; return strlen(&x); }\n");
         ASSERT_EQUALS("[test.cpp:1:42]: (error) Invalid strlen() argument nr 1. A nul-terminated string is required. [invalidFunctionArgStr]\n", errout_str());
 
-        check("size_t f() { return strlen(&x); }");
+        check("size_t f() { return strlen(&x); }\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("size_t f(char x) { return strlen(&x); }");
+        check("size_t f(char x) { return strlen(&x); }\n");
         ASSERT_EQUALS("[test.cpp:1:34]: (error) Invalid strlen() argument nr 1. A nul-terminated string is required. [invalidFunctionArgStr]\n", errout_str());
 
-        check("size_t f() { char x = '\\0'; return strlen(&x); }");
+        check("size_t f() { char x = '\\0'; return strlen(&x); }\n");
         ASSERT_EQUALS("", errout_str());
 
         check("size_t f() {\n"
@@ -550,41 +550,41 @@ private:
               "  else\n"
               "    x = 'a';\n"
               "  return strlen(&x);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:7:17]: (error) Invalid strlen() argument nr 1. A nul-terminated string is required. [invalidFunctionArgStr]\n", errout_str());
 
-        check("int f() { char x = '\\0'; return strcmp(\"Hello world\", &x); }");
+        check("int f() { char x = '\\0'; return strcmp(\"Hello world\", &x); }\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("int f() { char x = 'x'; return strcmp(\"Hello world\", &x); }");
+        check("int f() { char x = 'x'; return strcmp(\"Hello world\", &x); }\n");
         ASSERT_EQUALS("[test.cpp:1:54]: (error) Invalid strcmp() argument nr 2. A nul-terminated string is required. [invalidFunctionArgStr]\n", errout_str());
 
-        check("size_t f(char x) { char * y = &x; return strlen(y); }");
+        check("size_t f(char x) { char * y = &x; return strlen(y); }\n");
         TODO_ASSERT_EQUALS("[test.cpp:1:42]: (error) Invalid strlen() argument nr 1. A nul-terminated string is required. [invalidFunctionArgStr]\n", "", errout_str());
 
-        check("size_t f(char x) { char * y = &x; char *z = y; return strlen(z); }");
+        check("size_t f(char x) { char * y = &x; char *z = y; return strlen(z); }\n");
         TODO_ASSERT_EQUALS("[test.cpp:1:42]: (error) Invalid strlen() argument nr 1. A nul-terminated string is required. [invalidFunctionArgStr]\n", "", errout_str());
 
-        check("size_t f() { char x = 'x'; char * y = &x; char *z = y; return strlen(z); }");
+        check("size_t f() { char x = 'x'; char * y = &x; char *z = y; return strlen(z); }\n");
         TODO_ASSERT_EQUALS("[test.cpp:1:42]: (error) Invalid strlen() argument nr 1. A nul-terminated string is required. [invalidFunctionArgStr]\n", "", errout_str());
 
-        check("size_t f() { char x = '\\0'; char * y = &x; char *z = y; return strlen(z); }");
+        check("size_t f() { char x = '\\0'; char * y = &x; char *z = y; return strlen(z); }\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("size_t f() { char x[] = \"Hello world\"; return strlen(x); }");
+        check("size_t f() { char x[] = \"Hello world\"; return strlen(x); }\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("size_t f(char x[]) { return strlen(x); }");
+        check("size_t f(char x[]) { return strlen(x); }\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("int f(char x, char y) { return strcmp(&x, &y); }");
+        check("int f(char x, char y) { return strcmp(&x, &y); }\n");
         ASSERT_EQUALS("[test.cpp:1:39]: (error) Invalid strcmp() argument nr 1. A nul-terminated string is required. [invalidFunctionArgStr]\n"
                       "[test.cpp:1:43]: (error) Invalid strcmp() argument nr 2. A nul-terminated string is required. [invalidFunctionArgStr]\n", errout_str());
 
-        check("size_t f() { char x[] = \"Hello world\"; return strlen(&x[0]); }");
+        check("size_t f() { char x[] = \"Hello world\"; return strlen(&x[0]); }\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("size_t f() { char* x = \"Hello world\"; return strlen(&x[0]); }");
+        check("size_t f() { char* x = \"Hello world\"; return strlen(&x[0]); }\n");
         ASSERT_EQUALS("", errout_str());
 
         check("struct S {\n"
@@ -597,11 +597,11 @@ private:
               "  size_t l1 = strlen(&s1.x);\n"
               "  size_t l2 = strlen(&s2.x);\n"
               "  return l1 + l2;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:8:22]: (error) Invalid strlen() argument nr 1. A nul-terminated string is required. [invalidFunctionArgStr]\n"
                       "[test.cpp:9:22]: (error) Invalid strlen() argument nr 1. A nul-terminated string is required. [invalidFunctionArgStr]\n", errout_str());
 
-        check("const char x = 'x'; size_t f() { return strlen(&x); }");
+        check("const char x = 'x'; size_t f() { return strlen(&x); }\n");
         ASSERT_EQUALS("[test.cpp:1:48]: (error) Invalid strlen() argument nr 1. A nul-terminated string is required. [invalidFunctionArgStr]\n", errout_str());
 
         check("struct someStruct {\n"
@@ -616,7 +616,7 @@ private:
               "int f(struct someStruct * const tp, const int k)\n"
               "{\n"
               "    return strcmp(&tp->x.buf[k], \"needle\");\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("struct someStruct {\n"
@@ -625,29 +625,29 @@ private:
               "int f(struct someStruct * const tp, const int k)\n"
               "{\n"
               "    return strcmp(&tp->buf[k], \"needle\");\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("const char x = 'x'; size_t f() { char y = x; return strlen(&y); }");
+        check("const char x = 'x'; size_t f() { char y = x; return strlen(&y); }\n");
         ASSERT_EQUALS("[test.cpp:1:60]: (error) Invalid strlen() argument nr 1. A nul-terminated string is required. [invalidFunctionArgStr]\n", errout_str());
 
-        check("const char x = '\\0'; size_t f() { return strlen(&x); }");
+        check("const char x = '\\0'; size_t f() { return strlen(&x); }\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("const char x = '\\0'; size_t f() { char y = x; return strlen(&y); }");
+        check("const char x = '\\0'; size_t f() { char y = x; return strlen(&y); }\n");
         ASSERT_EQUALS("", errout_str());
 
         check("size_t f() {\n"
               "  char * a = \"Hello world\";\n"
               "  char ** b = &a;\n"
               "  return strlen(&b[0][0]);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("size_t f() {\n"
               "  char ca[] = \"asdf\";\n"
               "  return strlen((char*) &ca);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // #5225
@@ -658,67 +658,67 @@ private:
               "  strcat(str, &d);\n"
               "  puts(str);\n"
               "  return 0;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:5:15]: (error) Invalid strcat() argument nr 2. A nul-terminated string is required. [invalidFunctionArgStr]\n", errout_str());
 
         check("FILE* f(void) {\n"
               "  const char fileName[1] = { \'x\' };\n"
               "  return fopen(fileName, \"r\"); \n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:16]: (error) Invalid fopen() argument nr 1. A nul-terminated string is required. [invalidFunctionArgStr]\n", errout_str());
 
         check("FILE* f(void) {\n"
               "  const char fileName[2] = { \'x\', \'y\' };\n"
               "  return fopen(fileName, \"r\"); \n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:16]: (error) Invalid fopen() argument nr 1. A nul-terminated string is required. [invalidFunctionArgStr]\n", errout_str());
 
         check("FILE* f(void) {\n"
               "  const char fileName[3] = { \'x\', \'y\' ,\'\\0\' };\n"
               "  return fopen(fileName, \"r\"); \n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("FILE* f(void) {\n"
               "  const char fileName[3] = { \'x\', \'\\0\' ,\'y\' };\n"
               "  return fopen(fileName, \"r\"); \n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("FILE* f(void) {\n"
               "  const char fileName[3] = { \'x\', \'y\' };\n" // implicit '\0' added at the end
               "  return fopen(fileName, \"r\"); \n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("FILE* f(void) {\n"
               "  const char fileName[] = { \'\\0\' };\n"
               "  return fopen(fileName, \"r\"); \n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("FILE* f(void) {\n"
               "  const char fileName[] = { \'0\' + 42 };\n" // no size is explicitly defined, no implicit '\0' is added
               "  return fopen(fileName, \"r\"); \n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:16]: (error) Invalid fopen() argument nr 1. A nul-terminated string is required. [invalidFunctionArgStr]\n", errout_str());
 
         check("FILE* f(void) {\n"
               "  const char fileName[] = { \'0\' + 42, \'x\' };\n" // no size is explicitly defined, no implicit '\0' is added
               "  return fopen(fileName, \"r\"); \n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:16]: (error) Invalid fopen() argument nr 1. A nul-terminated string is required. [invalidFunctionArgStr]\n", errout_str());
 
         check("FILE* f(void) {\n"
               "  const char fileName[2] = { \'0\' + 42 };\n" // implicitly '\0' added at the end because size is set to 2
               "  return fopen(fileName, \"r\"); \n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("FILE* f(void) {\n"
               "  const char fileName[] = { };\n"
               "  return fopen(fileName, \"r\"); \n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void scanMetaTypes()\n" // don't crash
@@ -729,7 +729,7 @@ private:
               "        if (strstr(name, \"GammaRay::\") != name)\n"
               "            metaTypes.push_back(mtId);\n"
               "    }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("int f() {\n"
@@ -771,10 +771,10 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("size_t f() { wchar_t x = L'x'; return wcslen(&x); }");
+        check("size_t f() { wchar_t x = L'x'; return wcslen(&x); }\n");
         ASSERT_EQUALS("[test.cpp:1:46]: (error) Invalid wcslen() argument nr 1. A nul-terminated string is required. [invalidFunctionArgStr]\n", errout_str());
 
-        check("void f() { char a[10] = \"1234567890\"; puts(a); }", dinit(CheckOptions, $.cpp = false)); // #1770
+        check("void f() { char a[10] = \"1234567890\"; puts(a); }\n", dinit(CheckOptions, $.cpp = false)); // #1770
         ASSERT_EQUALS("[test.c:1:44]: (error) Invalid puts() argument nr 1. A nul-terminated string is required. [invalidFunctionArgStr]\n", errout_str());
     }
 
@@ -800,7 +800,7 @@ private:
               "    std::cout <<  sqrt(-1) << std::endl;\n"
               "    std::cout <<  sqrtf(-1) << std::endl;\n"
               "    std::cout <<  sqrtl(-1) << std::endl;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:25]: (error) Invalid sqrt() argument nr 1. The value is -1 but the valid values are '0.0:'. [invalidFunctionArg]\n"
                       "[test.cpp:4:26]: (error) Invalid sqrtf() argument nr 1. The value is -1 but the valid values are '0.0:'. [invalidFunctionArg]\n"
                       "[test.cpp:5:26]: (error) Invalid sqrtl() argument nr 1. The value is -1 but the valid values are '0.0:'. [invalidFunctionArg]\n", errout_str());
@@ -811,7 +811,7 @@ private:
               "    std::cout <<  sqrt(-0.) << std::endl;\n"
               "    std::cout <<  sqrtf(-0.) << std::endl;\n"
               "    std::cout <<  sqrtl(-0.) << std::endl;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void foo()\n"
@@ -819,7 +819,7 @@ private:
               "    std::cout <<  sqrt(1) << std::endl;\n"
               "    std::cout <<  sqrtf(1) << std::endl;\n"
               "    std::cout <<  sqrtl(1) << std::endl;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -839,7 +839,7 @@ private:
               "    std::cout <<  log1p(-3) << std::endl;\n"
               "    std::cout <<  log1pf(-3) << std::endl;\n"
               "    std::cout <<  log1pl(-3) << std::endl;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:24]: (error) Invalid log() argument nr 1. The value is -2 but the valid values are '4.94066e-324:'. [invalidFunctionArg]\n"
                       "[test.cpp:4:25]: (error) Invalid logf() argument nr 1. The value is -2 but the valid values are '1.4013e-45:'. [invalidFunctionArg]\n"
                       "[test.cpp:5:25]: (error) Invalid logl() argument nr 1. The value is -2 but the valid values are '4.94066e-324:'. [invalidFunctionArg]\n"
@@ -876,7 +876,7 @@ private:
               "    std::cout <<  log1p(-2) << std::endl;\n"
               "    std::cout <<  log1pf(-2) << std::endl;\n"
               "    std::cout <<  log1pl(-2) << std::endl;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:24]: (error) Invalid log() argument nr 1. The value is -1 but the valid values are '4.94066e-324:'. [invalidFunctionArg]\n"
                       "[test.cpp:4:25]: (error) Invalid logf() argument nr 1. The value is -1 but the valid values are '1.4013e-45:'. [invalidFunctionArg]\n"
                       "[test.cpp:5:25]: (error) Invalid logl() argument nr 1. The value is -1 but the valid values are '4.94066e-324:'. [invalidFunctionArg]\n"
@@ -913,7 +913,7 @@ private:
               "    std::cout <<  log1p(-2.0) << std::endl;\n"
               "    std::cout <<  log1pf(-2.0) << std::endl;\n"
               "    std::cout <<  log1pl(-2.0) << std::endl;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:25]: (error) Invalid log() argument nr 1. The value is -1 but the valid values are '4.94066e-324:'. [invalidFunctionArg]\n"
                       "[test.cpp:4:26]: (error) Invalid logf() argument nr 1. The value is -1 but the valid values are '1.4013e-45:'. [invalidFunctionArg]\n"
                       "[test.cpp:5:26]: (error) Invalid logl() argument nr 1. The value is -1 but the valid values are '4.94066e-324:'. [invalidFunctionArg]\n"
@@ -950,7 +950,7 @@ private:
               "    std::cout <<  log1p(-1.1) << std::endl;\n"
               "    std::cout <<  log1pf(-1.1) << std::endl;\n"
               "    std::cout <<  log1pl(-1.1) << std::endl;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:25]: (error) Invalid log() argument nr 1. The value is -0.1 but the valid values are '4.94066e-324:'. [invalidFunctionArg]\n"
                       "[test.cpp:4:26]: (error) Invalid logf() argument nr 1. The value is -0.1 but the valid values are '1.4013e-45:'. [invalidFunctionArg]\n"
                       "[test.cpp:5:26]: (error) Invalid logl() argument nr 1. The value is -0.1 but the valid values are '4.94066e-324:'. [invalidFunctionArg]\n"
@@ -987,7 +987,7 @@ private:
               "    std::cout <<  log1p(-1.) << std::endl;\n"
               "    std::cout <<  log1pf(-1.0) << std::endl;\n"
               "    std::cout <<  log1pl(-1) << std::endl;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:23]: (error) Invalid log() argument nr 1. The value is 0 but the valid values are '4.94066e-324:'. [invalidFunctionArg]\n"
                       "[test.cpp:4:25]: (error) Invalid logf() argument nr 1. The value is 0 but the valid values are '1.4013e-45:'. [invalidFunctionArg]\n"
                       "[test.cpp:5:25]: (error) Invalid logl() argument nr 1. The value is 0 but the valid values are '4.94066e-324:'. [invalidFunctionArg]\n"
@@ -1060,21 +1060,21 @@ private:
               "    std::cout <<  log1p(2.0)        << std::endl;\n"
               "    std::cout <<  log1pf(2.0)       << std::endl;\n"
               "    std::cout <<  log1pf(2.0f)      << std::endl;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void foo()\n"
               "{\n"
               "    std::string *log(0);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // #3473 - no warning if "log" is a variable
-        check("Fred::Fred() : log(0) { }");
+        check("Fred::Fred() : log(0) { }\n");
         ASSERT_EQUALS("", errout_str());
 
         // #5748
-        check("void f() { foo.log(0); }");
+        check("void f() { foo.log(0); }\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -1112,7 +1112,7 @@ private:
               "    + acosl(0.1E-1)  \n"
               "    + acosl(+0.1E-1) \n"
               "    + acosl(-0.1E-1);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void foo()\n"
@@ -1120,7 +1120,7 @@ private:
               "    std::cout <<  acos(1.1) << std::endl;\n"
               "    std::cout <<  acosf(1.1) << std::endl;\n"
               "    std::cout <<  acosl(1.1) << std::endl;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:25]: (error) Invalid acos() argument nr 1. The value is 1.1 but the valid values are '-1.0:1.0'. [invalidFunctionArg]\n"
                       "[test.cpp:4:26]: (error) Invalid acosf() argument nr 1. The value is 1.1 but the valid values are '-1.0:1.0'. [invalidFunctionArg]\n"
                       "[test.cpp:5:26]: (error) Invalid acosl() argument nr 1. The value is 1.1 but the valid values are '-1.0:1.0'. [invalidFunctionArg]\n", errout_str());
@@ -1130,7 +1130,7 @@ private:
               "    std::cout <<  acos(-1.1) << std::endl;\n"
               "    std::cout <<  acosf(-1.1) << std::endl;\n"
               "    std::cout <<  acosl(-1.1) << std::endl;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:26]: (error) Invalid acos() argument nr 1. The value is -1.1 but the valid values are '-1.0:1.0'. [invalidFunctionArg]\n"
                       "[test.cpp:4:27]: (error) Invalid acosf() argument nr 1. The value is -1.1 but the valid values are '-1.0:1.0'. [invalidFunctionArg]\n"
                       "[test.cpp:5:27]: (error) Invalid acosl() argument nr 1. The value is -1.1 but the valid values are '-1.0:1.0'. [invalidFunctionArg]\n", errout_str());
@@ -1173,7 +1173,7 @@ private:
               "    + asinl(0.1E-1)  \n"
               "    + asinl(+0.1E-1) \n"
               "    + asinl(-0.1E-1);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void foo()\n"
@@ -1181,7 +1181,7 @@ private:
               "    std::cout <<  asin(1.1) << std::endl;\n"
               "    std::cout <<  asinf(1.1) << std::endl;\n"
               "    std::cout <<  asinl(1.1) << std::endl;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:25]: (error) Invalid asin() argument nr 1. The value is 1.1 but the valid values are '-1.0:1.0'. [invalidFunctionArg]\n"
                       "[test.cpp:4:26]: (error) Invalid asinf() argument nr 1. The value is 1.1 but the valid values are '-1.0:1.0'. [invalidFunctionArg]\n"
                       "[test.cpp:5:26]: (error) Invalid asinl() argument nr 1. The value is 1.1 but the valid values are '-1.0:1.0'. [invalidFunctionArg]\n", errout_str());
@@ -1191,7 +1191,7 @@ private:
               "    std::cout <<  asin(-1.1) << std::endl;\n"
               "    std::cout <<  asinf(-1.1) << std::endl;\n"
               "    std::cout <<  asinl(-1.1) << std::endl;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:26]: (error) Invalid asin() argument nr 1. The value is -1.1 but the valid values are '-1.0:1.0'. [invalidFunctionArg]\n"
                       "[test.cpp:4:27]: (error) Invalid asinf() argument nr 1. The value is -1.1 but the valid values are '-1.0:1.0'. [invalidFunctionArg]\n"
                       "[test.cpp:5:27]: (error) Invalid asinl() argument nr 1. The value is -1.1 but the valid values are '-1.0:1.0'. [invalidFunctionArg]\n", errout_str());
@@ -1204,7 +1204,7 @@ private:
               "    std::cout <<  pow(0,-10) << std::endl;\n"
               "    std::cout <<  powf(0,-10) << std::endl;\n"
               "    std::cout <<  powl(0,-10) << std::endl;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:19]: (warning) Passing values 0 and -10 to pow() leads to implementation-defined result. [wrongmathcall]\n"
                       "[test.cpp:4:19]: (warning) Passing values 0 and -10 to powf() leads to implementation-defined result. [wrongmathcall]\n"
                       "[test.cpp:5:19]: (warning) Passing values 0 and -10 to powl() leads to implementation-defined result. [wrongmathcall]\n", errout_str());
@@ -1214,7 +1214,7 @@ private:
               "    std::cout <<  pow(0,10) << std::endl;\n"
               "    std::cout <<  powf(0,10) << std::endl;\n"
               "    std::cout <<  powl(0,10) << std::endl;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -1255,7 +1255,7 @@ private:
               "    std::cout <<  atan2l(0.1E-1,3)   ;\n"
               "    std::cout <<  atan2l(+0.1E-1,1)  ;\n"
               "    std::cout <<  atan2l(-0.1E-1,8)  ;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void foo()\n"
@@ -1263,7 +1263,7 @@ private:
               "    std::cout <<  atan2(0,0) << std::endl;\n"
               "    std::cout <<  atan2f(0,0) << std::endl;\n"
               "    std::cout <<  atan2l(0,0) << std::endl;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:19]: (warning) Passing values 0 and 0 to atan2() leads to implementation-defined result. [wrongmathcall]\n"
                       "[test.cpp:4:19]: (warning) Passing values 0 and 0 to atan2f() leads to implementation-defined result. [wrongmathcall]\n"
                       "[test.cpp:5:19]: (warning) Passing values 0 and 0 to atan2l() leads to implementation-defined result. [wrongmathcall]\n", errout_str());
@@ -1276,7 +1276,7 @@ private:
               "    std::cout <<  fmod(1.0,0) << std::endl;\n"
               "    std::cout <<  fmodf(1.0,0) << std::endl;\n"
               "    std::cout <<  fmodl(1.0,0) << std::endl;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:28]: (error) Invalid fmod() argument nr 2. The value is 0 but the valid values are '!0.0'. [invalidFunctionArg]\n"
                       "[test.cpp:4:29]: (error) Invalid fmodf() argument nr 2. The value is 0 but the valid values are '!0.0'. [invalidFunctionArg]\n"
                       "[test.cpp:5:29]: (error) Invalid fmodl() argument nr 2. The value is 0 but the valid values are '!0.0'. [invalidFunctionArg]\n"
@@ -1289,7 +1289,7 @@ private:
               "    std::cout <<  fmod(1.0,1) << std::endl;\n"
               "    std::cout <<  fmodf(1.0,1) << std::endl;\n"
               "    std::cout <<  fmodl(1.0,1) << std::endl;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -1298,7 +1298,7 @@ private:
               "    print(exp(x) - 1);\n"
               "    print(log(1 + x));\n"
               "    print(1 - erf(x));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:11]: (style) Expression 'exp(x) - 1' can be replaced by 'expm1(x)' to avoid loss of precision. [unpreciseMathCall]\n"
                       "[test.cpp:3:11]: (style) Expression 'log(1 + x)' can be replaced by 'log1p(x)' to avoid loss of precision. [unpreciseMathCall]\n"
                       "[test.cpp:4:11]: (style) Expression '1 - erf(x)' can be replaced by 'erfc(x)' to avoid loss of precision. [unpreciseMathCall]\n", errout_str());
@@ -1307,7 +1307,7 @@ private:
               "    print(exp(x) - 1.0);\n"
               "    print(log(1.0 + x));\n"
               "    print(1.0 - erf(x));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:11]: (style) Expression 'exp(x) - 1' can be replaced by 'expm1(x)' to avoid loss of precision. [unpreciseMathCall]\n"
                       "[test.cpp:3:11]: (style) Expression 'log(1 + x)' can be replaced by 'log1p(x)' to avoid loss of precision. [unpreciseMathCall]\n"
                       "[test.cpp:4:12]: (style) Expression '1 - erf(x)' can be replaced by 'erfc(x)' to avoid loss of precision. [unpreciseMathCall]\n", errout_str());
@@ -1316,7 +1316,7 @@ private:
               "    print(exp(3 + x*f(a)) - 1);\n"
               "    print(log(x*4 + 1));\n"
               "    print(1 - erf(34*x + f(x) - c));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:11]: (style) Expression 'exp(x) - 1' can be replaced by 'expm1(x)' to avoid loss of precision. [unpreciseMathCall]\n"
                       "[test.cpp:3:11]: (style) Expression 'log(1 + x)' can be replaced by 'log1p(x)' to avoid loss of precision. [unpreciseMathCall]\n"
                       "[test.cpp:4:11]: (style) Expression '1 - erf(x)' can be replaced by 'erfc(x)' to avoid loss of precision. [unpreciseMathCall]\n", errout_str());
@@ -1324,7 +1324,7 @@ private:
         check("void foo() {\n"
               "    print(2*exp(x) - 1);\n"
               "    print(1 - erf(x)/2.0);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
@@ -1341,67 +1341,67 @@ private:
 
         check("void foo() {\n"
               "  mystrcmp(a, b);\n"
-              "}", settings2);
+              "}\n", settings2);
         ASSERT_EQUALS("[test.cpp:2:3]: (warning) Return value of function mystrcmp() is not used. [ignoredReturnValue]\n", errout_str());
 
         check("void foo() {\n"
               "  foo::mystrcmp(a, b);\n"
-              "}", settings2);
+              "}\n", settings2);
         ASSERT_EQUALS("[test.cpp:2:8]: (warning) Return value of function foo::mystrcmp() is not used. [ignoredReturnValue]\n", errout_str());
 
         check("void f() {\n"
               "  foo x;\n"
               "  x.mystrcmp(a, b);\n"
-              "}", settings2);
+              "}\n", settings2);
         ASSERT_EQUALS("[test.cpp:3:5]: (warning) Return value of function x.mystrcmp() is not used. [ignoredReturnValue]\n", errout_str());
 
         check("bool mystrcmp(char* a, char* b);\n" // cppcheck sees a custom strcmp definition, but it returns a value. Assume it is the one specified in the library.
               "void foo() {\n"
               "    mystrcmp(a, b);\n"
-              "}", settings2);
+              "}\n", settings2);
         ASSERT_EQUALS("[test.cpp:3:5]: (warning) Return value of function mystrcmp() is not used. [ignoredReturnValue]\n", errout_str());
 
         check("void mystrcmp(char* a, char* b);\n" // cppcheck sees a custom strcmp definition which returns void!
               "void foo() {\n"
               "    mystrcmp(a, b);\n"
-              "}", settings2);
+              "}\n", settings2);
         ASSERT_EQUALS("", errout_str());
 
         check("void foo() {\n"
               "    class mystrcmp { mystrcmp() {} };\n" // strcmp is a constructor definition here
-              "}", settings2);
+              "}\n", settings2);
         ASSERT_EQUALS("", errout_str());
 
         check("void foo() {\n"
               "    return mystrcmp(a, b);\n"
-              "}", settings2);
+              "}\n", settings2);
         ASSERT_EQUALS("", errout_str());
 
         check("void foo() {\n"
               "    return foo::mystrcmp(a, b);\n"
-              "}", settings2);
+              "}\n", settings2);
         ASSERT_EQUALS("", errout_str());
 
         check("void foo() {\n"
               "    if(mystrcmp(a, b));\n"
-              "}", settings2);
+              "}\n", settings2);
         ASSERT_EQUALS("", errout_str());
 
         check("void foo() {\n"
               "    bool b = mystrcmp(a, b);\n"
-              "}", settings2);
+              "}\n", settings2);
         ASSERT_EQUALS("", errout_str());
 
         // #6194
         check("void foo() {\n"
               "    MyStrCmp mystrcmp(x, y);\n"
-              "}", settings2);
+              "}\n", settings2);
         ASSERT_EQUALS("", errout_str());
 
         // #6197
         check("void foo() {\n"
               "    abc::def.mystrcmp(a,b);\n"
-              "}", settings2);
+              "}\n", settings2);
         ASSERT_EQUALS("", errout_str());
 
         // #6233
@@ -1412,30 +1412,30 @@ private:
               "    };\n"
               "    lambda(13.3);\n"
               "    return 0;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str()); // TODO: use settings2?
 
         // #6669
         check("void foo(size_t size) {\n"
               "   void * res{malloc(size)};\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str()); // TODO: use settings2?
 
         // #7447
         check("void foo() {\n"
               "   int x{mystrcmp(a,b)};\n"
-              "}", settings2);
+              "}\n", settings2);
         ASSERT_EQUALS("", errout_str());
 
         // #7905
         check("void foo() {\n"
               "   int x({mystrcmp(a,b)});\n"
-              "}", settings2);
+              "}\n", settings2);
         ASSERT_EQUALS("", errout_str());
 
         check("void foo() {\n" // don't crash
               "  DEBUG(123)(mystrcmp(a,b))(fd);\n"
-              "}", settings2);
+              "}\n", settings2);
         check("struct teststruct {\n"
               "    int testfunc1() __attribute__ ((warn_unused_result)) { return 1; }\n"
               "    [[nodiscard]] int testfunc2() { return 1; }\n"
@@ -1446,7 +1446,7 @@ private:
               "    TestStruct1.testfunc1();\n"
               "    TestStruct1.testfunc2();\n"
               "    return 0;\n"
-              "}", settings2);
+              "}\n", settings2);
         ASSERT_EQUALS("[test.cpp:4:18]: (warning) Return value of function testfunc1() is not used. [ignoredReturnValue]\n"
                       "[test.cpp:4:31]: (warning) Return value of function testfunc2() is not used. [ignoredReturnValue]\n"
                       "[test.cpp:8:17]: (warning) Return value of function TestStruct1.testfunc1() is not used. [ignoredReturnValue]\n"
@@ -1456,7 +1456,7 @@ private:
         check("template <typename... a> uint8_t b(std::tuple<uint8_t> d) {\n"
               "  std::tuple<a...> c{std::move(d)};\n"
               "  return std::get<0>(c);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str()); // TODO: use settings2?
 
         check("struct A { int x; };\n"
@@ -1464,13 +1464,13 @@ private:
               "A f(int x, Ts... xs) {\n"
               "    return {std::move(x), static_cast<int>(xs)...};\n"
               "}\n"
-              "A g() { return f(1); }");
+              "A g() { return f(1); }\n");
         ASSERT_EQUALS("", errout_str()); // TODO: use settings2?
 
         // #8412 - unused operator result
         check("void foo() {\n"
               "  !mystrcmp(a, b);\n"
-              "}", settings2);
+              "}\n", settings2);
         ASSERT_EQUALS("[test.cpp:2:4]: (warning) Return value of function mystrcmp() is not used. [ignoredReturnValue]\n", errout_str());
 
         check("void f(std::vector<int*> v) {\n"
@@ -1502,24 +1502,24 @@ private:
 
         check("void foo() {\n"
               "  mystrcmp(a, b);\n"
-              "}", settings2);
+              "}\n", settings2);
         ASSERT_EQUALS("[test.cpp:2:3]: (style) Error code from the return value of function mystrcmp() is not used. [ignoredReturnErrorCode]\n", errout_str());
     }
 
     void memsetZeroBytes() {
         check("void f() {\n"
               "    memset(p, 10, 0x0);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:5]: (warning) memset() called to fill 0 bytes. [memsetZeroBytes]\n", errout_str());
 
         check("void f() {\n"
               "    memset(p, sizeof(p), 0);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:5]: (warning) memset() called to fill 0 bytes. [memsetZeroBytes]\n", errout_str());
 
         check("void f() {\n"
               "    memset(p, sizeof(p), i);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // #6269 false positives in case of overloaded standard library functions
@@ -1528,13 +1528,13 @@ private:
               "  void f( void )   {\n"
               "     memset( 0 );\n"
               "  }\n"
-              "};");
+              "};\n");
         ASSERT_EQUALS("", errout_str());
 
         // #7285
         check("void f() {\n"
               "    memset(&tm, sizeof(tm), 0);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:5]: (warning) memset() called to fill 0 bytes. [memsetZeroBytes]\n", errout_str());
 
     }
@@ -1545,7 +1545,7 @@ private:
               "    memset(is, 1.0f, 40);\n"
               "    int* is2 = new int[10];\n"
               "    memset(is2, 0.1f, 40);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:17]: (portability) The 2nd memset() argument '1.0f' is a float, its representation is implementation defined. [memsetFloat]\n"
                       "[test.cpp:5:18]: (portability) The 2nd memset() argument '0.1f' is a float, its representation is implementation defined. [memsetFloat]\n", errout_str());
 
@@ -1553,19 +1553,19 @@ private:
               "    int* is = new int[10];\n"
               "    float g = computeG();\n"
               "    memset(is, g, 40);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:4:16]: (portability) The 2nd memset() argument 'g' is a float, its representation is implementation defined. [memsetFloat]\n", errout_str());
 
         check("void f() {\n"
               "    int* is = new int[10];\n"
               "    memset(is, 0.0f, 40);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void f() {\n" // FP
               "    float x = 2.3f;\n"
               "    memset(a, (x?64:0), 40);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void f() {\n"
@@ -1573,7 +1573,7 @@ private:
               "    memset(ss, 256, 4);\n"
               "    short ss2[2];\n"
               "    memset(ss2, -129, 4);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:16]: (warning) The 2nd memset() argument '256' doesn't fit into an 'unsigned char'. [memsetValueOutOfRange]\n"
                       "[test.cpp:5:18]: (warning) The 2nd memset() argument '-129' doesn't fit into an 'unsigned char'. [memsetValueOutOfRange]\n", errout_str());
 
@@ -1588,23 +1588,23 @@ private:
               "    memset(cs2, 255, 30);\n"
               "    char cs3[30];\n"
               "    memset(cs3, 0, 30);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("void f() {\n"
               "    int is[10];\n"
               "    const int i = g();\n"
               "    memset(is, 1.0f + i, 40);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:4:21]: (portability) The 2nd memset() argument '1.0f+i' is a float, its representation is implementation defined. [memsetFloat]\n", errout_str());
     }
 
     void checkMissingReturn1() {
-        check("int f() {}");
+        check("int f() {}\n");
         ASSERT_EQUALS("[test.cpp:1:10]: (error) Found an exit path from function with non-void return type that has missing return statement [missingReturn]\n", errout_str());
 
         {
-            const char code[] = "int main(void) {}";
+            const char code[] = "int main(void) {}\n";
             {
                 const Settings s = settingsBuilder().c(Standards::C89).build();
 
@@ -1622,16 +1622,16 @@ private:
             }
         }
 
-        check("F(A,B) { x=1; }");
+        check("F(A,B) { x=1; }\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("auto foo4() -> void {}");
+        check("auto foo4() -> void {}\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("void STDCALL foo() {}");
+        check("void STDCALL foo() {}\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("void operator=(int y) { x=y; }");
+        check("void operator=(int y) { x=y; }\n");
         ASSERT_EQUALS("", errout_str());
 
         check("int f() {\n"
@@ -1647,14 +1647,14 @@ private:
         check("int foo(int x) {\n"
               "  return 1;\n"
               "  (void)x;\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("int foo(int x) {\n"
               "  if (x) goto out;\n"
               "  return 1;\n"
               "out:\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:11]: (error) Found an exit path from function with non-void return type that has missing return statement [missingReturn]\n", errout_str());
 
         // switch
@@ -1663,7 +1663,7 @@ private:
               "        case 1: break;\n" // <- error
               "        case 2: return 1;\n"
               "    }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:17]: (error) Found an exit path from function with non-void return type that has missing return statement [missingReturn]\n", errout_str());
 
         check("int f() {\n"
@@ -1671,7 +1671,7 @@ private:
               "        case 1: return 2; break;\n"
               "        default: return 1;\n"
               "    }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("bool test(unsigned char v1, int v2) {\n"
@@ -1685,7 +1685,7 @@ private:
               "        default:\n"
               "            return true;\n"
               "    }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // if/else
@@ -1693,7 +1693,7 @@ private:
               "    if (x) {\n"
               "        return 1;\n"
               "    }\n" // <- error (missing else)
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:4:5]: (error) Found an exit path from function with non-void return type that has missing return statement [missingReturn]\n", errout_str());
 
         check("int f(int x) {\n"
@@ -1702,19 +1702,19 @@ private:
               "    } else {\n"
               "        return 1;\n"
               "    }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:9]: (error) Found an exit path from function with non-void return type that has missing return statement [missingReturn]\n", errout_str());
 
         check("int f() {\n"
               "    if (!0) {\n"
               "        return 1;\n"
               "    }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("int f() {\n"
               "    if (!0) {}\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:2:14]: (error) Found an exit path from function with non-void return type that has missing return statement [missingReturn]\n", errout_str());
 
         // loop
@@ -1722,7 +1722,7 @@ private:
               "    while (1) {\n"
               "        dostuff();\n"
               "    }\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // return {..}
@@ -1731,20 +1731,20 @@ private:
               "        return {};\n"
               "    else\n"
               "        return {1, 2};\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
 
         // noreturn function
-        check("int f(int x) { exit(0); }");
+        check("int f(int x) { exit(0); }\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("int f(int x) { assert(0); }");
+        check("int f(int x) { assert(0); }\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("int f(int x) { if (x) return 1; else return bar({1}, {}); }");
+        check("int f(int x) { if (x) return 1; else return bar({1}, {}); }\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("auto f() -> void {}"); // #10342
+        check("auto f() -> void {}\n"); // #10342
         ASSERT_EQUALS("", errout_str());
 
         check("struct S1 {\n" // #7433
@@ -1764,36 +1764,36 @@ private:
                       errout_str());
 
         // #11171
-        check("std::enable_if_t<sizeof(uint64_t) == 8> f() {}");
+        check("std::enable_if_t<sizeof(uint64_t) == 8> f() {}\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("std::enable_if_t<sizeof(uint64_t) == 8, int> f() {}");
+        check("std::enable_if_t<sizeof(uint64_t) == 8, int> f() {}\n");
         ASSERT_EQUALS(
             "[test.cpp:1:51]: (error) Found an exit path from function with non-void return type that has missing return statement [missingReturn]\n",
             errout_str());
 
-        check("template<class T> std::enable_if_t<std::is_same<T, int>{}, int> f(T) {}");
+        check("template<class T> std::enable_if_t<std::is_same<T, int>{}, int> f(T) {}\n");
         ASSERT_EQUALS(
             "[test.cpp:1:71]: (error) Found an exit path from function with non-void return type that has missing return statement [missingReturn]\n",
             errout_str());
 
-        check("template<class T> std::enable_if_t<std::is_same<T, int>{}> f(T) {}");
+        check("template<class T> std::enable_if_t<std::is_same<T, int>{}> f(T) {}\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("typename std::enable_if<sizeof(uint64_t) == 8>::type f() {}");
+        check("typename std::enable_if<sizeof(uint64_t) == 8>::type f() {}\n");
         ASSERT_EQUALS("", errout_str());
 
-        check("typename std::enable_if<sizeof(uint64_t) == 8, int>::type f() {}");
+        check("typename std::enable_if<sizeof(uint64_t) == 8, int>::type f() {}\n");
         ASSERT_EQUALS(
             "[test.cpp:1:64]: (error) Found an exit path from function with non-void return type that has missing return statement [missingReturn]\n",
             errout_str());
 
-        check("template<class T> typename std::enable_if<std::is_same<T, int>{}, int>::type f(T) {}");
+        check("template<class T> typename std::enable_if<std::is_same<T, int>{}, int>::type f(T) {}\n");
         ASSERT_EQUALS(
             "[test.cpp:1:84]: (error) Found an exit path from function with non-void return type that has missing return statement [missingReturn]\n",
             errout_str());
 
-        check("template<class T> typename std::enable_if<std::is_same<T, int>{}>::type f(T) {}");
+        check("template<class T> typename std::enable_if<std::is_same<T, int>{}>::type f(T) {}\n");
         ASSERT_EQUALS("", errout_str());
 
         check("struct S {\n"
@@ -1954,35 +1954,35 @@ private:
 
     // NRVO check
     void returnLocalStdMove1() {
-        check("struct A{}; A f() { A var; return std::move(var); }");
+        check("struct A{}; A f() { A var; return std::move(var); }\n");
         ASSERT_EQUALS("[test.cpp:1:45]: (performance) Using std::move for returning object by-value from function will affect copy elision optimization."
                       " More: https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rf-return-move-local [returnStdMoveLocal]\n", errout_str());
     }
 
     // RVO, C++03 ctor style
     void returnLocalStdMove2() {
-        check("struct A{}; A f() { return std::move( A() ); }");
+        check("struct A{}; A f() { return std::move( A() ); }\n");
         ASSERT_EQUALS("[test.cpp:1:40]: (performance) Using std::move for returning object by-value from function will affect copy elision optimization."
                       " More: https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rf-return-move-local [returnStdMoveLocal]\n", errout_str());
     }
 
     // RVO, new ctor style
     void returnLocalStdMove3() {
-        check("struct A{}; A f() { return std::move(A{}); }");
+        check("struct A{}; A f() { return std::move(A{}); }\n");
         ASSERT_EQUALS("[test.cpp:1:39]: (performance) Using std::move for returning object by-value from function will affect copy elision optimization."
                       " More: https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rf-return-move-local [returnStdMoveLocal]\n", errout_str());
     }
 
     // Function argument
     void returnLocalStdMove4() {
-        check("struct A{}; A f(A a) { return std::move(A{}); }");
+        check("struct A{}; A f(A a) { return std::move(A{}); }\n");
         ASSERT_EQUALS("[test.cpp:1:42]: (performance) Using std::move for returning object by-value from function will affect copy elision optimization."
                       " More: https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rf-return-move-local [returnStdMoveLocal]\n", errout_str());
     }
 
     void returnLocalStdMove5() {
         check("struct A{} a; A f1() { return std::move(a); }\n"
-              "A f2() { volatile A var; return std::move(var); }");
+              "A f2() { volatile A var; return std::move(var); }\n");
         ASSERT_EQUALS("", errout_str());
 
         check("struct S { std::string msg{ \"abc\" }; };\n"
@@ -2009,14 +2009,14 @@ private:
               "   int *a;\n"
               "   a = malloc( -10 );\n"
               "   free(a);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:17]: (error) Invalid malloc() argument nr 1. The value is -10 but the valid values are '0:'. [invalidFunctionArg]\n", errout_str());
 
         check("void f() {\n"
               "   int *a;\n"
               "   a = alloca( -10 );\n"
               "   free(a);\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[test.cpp:3:8]: (warning) Obsolete function 'alloca' called. [allocaCalled]\n"
                       "[test.cpp:3:17]: (error) Invalid alloca() argument nr 1. The value is -10 but the valid values are '0:'. [invalidFunctionArg]\n", errout_str());
     }
@@ -2027,12 +2027,12 @@ private:
 
         check("void f() {\n"
               "    lib_func();"
-              "}", s);
+              "}\n", s);
         ASSERT_EQUALS("[test.cpp:2:5]: (information) --check-library: There is no matching configuration for function lib_func() [checkLibraryFunction]\n", errout_str());
 
         check("void f(void* v) {\n"
               "    lib_func(v);"
-              "}", s);
+              "}\n", s);
         ASSERT_EQUALS("[test.cpp:2:5]: (information) --check-library: There is no matching configuration for function lib_func() [checkLibraryFunction]\n", errout_str());
 
         // #10105
@@ -2048,7 +2048,7 @@ private:
               "\n"
               "        void testFunctionReturnType() {\n"
               "        }\n"
-              "};", s);
+              "};\n", s);
         ASSERT_EQUALS("", errout_str());
 
         // #11183
@@ -2058,7 +2058,7 @@ private:
               "\n"
               "void f() {\n"
               "    cb(std::string(\"\"));\n"
-              "}", s);
+              "}\n", s);
         TODO_ASSERT_EQUALS("", "[test.cpp:6:5]: (information) --check-library: There is no matching configuration for function cb() [checkLibraryFunction]\n", errout_str());
 
         // #7375
