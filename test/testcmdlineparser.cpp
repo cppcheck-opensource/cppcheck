@@ -505,6 +505,8 @@ private:
         TEST_CASE(noSafetyOverride);
         TEST_CASE(debugAnalyzerinfo);
         TEST_CASE(debugIpc);
+        TEST_CASE(wholeProgram);
+        TEST_CASE(noWholeProgram);
 
         TEST_CASE(ignorepaths1);
         TEST_CASE(ignorepaths2);
@@ -1389,6 +1391,7 @@ private:
         const char * const argv[] = {"cppcheck", "-j", "3", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(3, settings->jobs);
+        ASSERT_EQUALS("cppcheck: disabling whole program analysis as it requires --cppcheck-build-dir to be active with -j.\n", logger->str());
     }
 
     void jobs2() {
@@ -1396,6 +1399,7 @@ private:
         const char * const argv[] = {"cppcheck", "-j3", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(3, settings->jobs);
+        ASSERT_EQUALS("cppcheck: disabling whole program analysis as it requires --cppcheck-build-dir to be active with -j.\n", logger->str());
     }
 
     void jobsMissingCount() {
@@ -3073,6 +3077,7 @@ private:
 #elif defined(HAS_THREADING_MODEL_THREAD)
         ASSERT_EQUALS_ENUM(Settings::ExecutorType::Thread, settings->executor);
 #endif
+        ASSERT_EQUALS("cppcheck: disabling whole program analysis as it requires --cppcheck-build-dir to be active with -j.\n", logger->str());
     }
 
     void executorAutoNoJobs() {
@@ -3092,6 +3097,7 @@ private:
         const char * const argv[] = {"cppcheck", "-j2", "--executor=thread", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS_ENUM(Settings::ExecutorType::Thread, settings->executor);
+        ASSERT_EQUALS("cppcheck: disabling whole program analysis as it requires --cppcheck-build-dir to be active with -j.\n", logger->str());
     }
 
     void executorThreadNoJobs() {
@@ -3116,6 +3122,7 @@ private:
         const char * const argv[] = {"cppcheck", "-j2", "--executor=process", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS_ENUM(Settings::ExecutorType::Process, settings->executor);
+        ASSERT_EQUALS("cppcheck: disabling whole program analysis as it requires --cppcheck-build-dir to be active with -j.\n", logger->str());
     }
 
     void executorProcessNoJobs() {
@@ -3509,6 +3516,20 @@ private:
         const char * const argv[] = {"cppcheck", "--debug-ipc", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(true, settings->debugipc);
+    }
+
+    void wholeProgram() {
+        REDIRECT;
+        const char * const argv[] = {"cppcheck", "--whole-program", "file.cpp"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
+        ASSERT_EQUALS(true, settings->wholeProgram);
+    }
+
+    void noWholeProgram() {
+        REDIRECT;
+        const char * const argv[] = {"cppcheck", "--no-whole-program", "file.cpp"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
+        ASSERT_EQUALS(false, settings->wholeProgram);
     }
 
     void ignorepaths1() {
