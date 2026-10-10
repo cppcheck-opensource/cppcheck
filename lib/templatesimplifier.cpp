@@ -394,13 +394,14 @@ unsigned int TemplateSimplifier::templateParameters(const Token *tok)
         return 0;
     if (tok->str() != "<")
         return 0;
-    if (Token::Match(tok->previous(), "%var% <"))
+    if (Token::Match(tok->previous(), "%var%|) <") && !(tok->linkAt(-1) && Token::simpleMatch(tok->linkAt(-1)->tokAt(-1), "operator")))
         return 0;
     tok = tok->next();
     if (!tok || tok->str() == ">")
         return 0;
 
     unsigned int level = 0;
+    unsigned int ternaryLevel = 0;
 
     while (tok) {
         // skip template template
@@ -460,8 +461,16 @@ unsigned int TemplateSimplifier::templateParameters(const Token *tok)
         }
 
         // Skip '=', '?', ':'
-        if (Token::Match(tok, "=|?|:"))
+        if (Token::Match(tok, "=|?|:")) {
+            if (tok->str()[0] == '?')
+                ++ternaryLevel;
+            else if (tok->str()[0] == ':') {
+                if (ternaryLevel == 0)
+                    return 0;
+                --ternaryLevel;
+            }
             tok = tok->next();
+        }
         if (!tok)
             return 0;
 
