@@ -797,6 +797,90 @@ private:
         ASSERT_EQUALS("[test.cpp:4:9]: (warning) Member variable 'T::j' has no initializer. [uninitMemberVarNoCtor]\n"
                       "[test.cpp:8:9]: (warning) Member variable 'U::k' has no initializer. [uninitMemberVarNoCtor]\n",
                       errout_str());
+
+        check("struct S {\n" // #15080
+              "    int a = 0;\n"
+              "    const int b;\n"
+              "    int k;\n"
+              "};\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S {\n"
+              "    int a = 0;\n"
+              "    int& c;\n"
+              "    int k;\n"
+              "};\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S {\n"
+              "    int a = 0;\n"
+              "    const int* d;\n"
+              "};\n");
+        ASSERT_EQUALS("[test.cpp:3:16]: (warning) Member variable 'S::d' has no initializer. [uninitMemberVarNoCtor]\n", errout_str());
+
+        check("struct S {\n"
+              "    int a = 0;\n"
+              "    int* const p;\n"
+              "    int k;\n"
+              "};\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S {\n" // static members don't affect the default constructor
+              "    int a = 0;\n"
+              "    static const int N;\n"
+              "    static int& r;\n"
+              "    int k;\n"
+              "};\n");
+        ASSERT_EQUALS("[test.cpp:5:9]: (warning) Member variable 'S::k' has no initializer. [uninitMemberVarNoCtor]\n", errout_str());
+
+        check("struct S {\n" // function pointers returning a reference are no references
+              "    int a = 0;\n"
+              "    std::string& (*f)(int, int);\n"
+              "    int& (*g[2])();\n"
+              "    int k;\n"
+              "};\n");
+        ASSERT_EQUALS("[test.cpp:3:20]: (warning) Member variable 'S::f' has no initializer. [uninitMemberVarNoCtor]\n"
+                      "[test.cpp:4:12]: (warning) Member variable 'S::g' has no initializer. [uninitMemberVarNoCtor]\n"
+                      "[test.cpp:5:9]: (warning) Member variable 'S::k' has no initializer. [uninitMemberVarNoCtor]\n",
+                      errout_str());
+
+        check("struct S {\n"
+              "    int a = 0;\n"
+              "    int (*&f)();\n"
+              "    int k;\n"
+              "};\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S {\n"
+              "    int a = 0;\n"
+              "    int (&arr)[2];\n"
+              "    int k;\n"
+              "};\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("typedef const unsigned int Mode;\n"
+              "struct S {\n"
+              "    std::vector<int> v;\n"
+              "    Mode m;\n"
+              "    int k;\n"
+              "};\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S {\n"
+              "    std::string a;\n"
+              "    const std::string s;\n"
+              "    int k;\n"
+              "};\n");
+        ASSERT_EQUALS("[test.cpp:4:9]: (warning) Member variable 'S::k' has no initializer. [uninitMemberVarNoCtor]\n", errout_str());
+
+        check("struct S {\n"
+              "    const std::array<std::uint8_t, 2> a;\n"
+              "    const std::vector<std::uint8_t>::const_iterator it;\n"
+              "};\n"
+              "S f(const std::vector<std::uint8_t>& v) {\n"
+              "    return S{ {}, v.cbegin() };\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     // ticket #4290 "False Positive: style (noConstructor): The class 'foo' does not have a constructor."
