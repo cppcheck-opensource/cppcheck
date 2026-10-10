@@ -1260,3 +1260,31 @@ void constParameterPointer_SetupDiGetDeviceInstanceId(HDEVINFO info, SP_DEVINFO_
     TCHAR buffer[buffer_size];
     SetupDiGetDeviceInstanceId(info, data, buffer, buffer_size, NULL);
 }
+
+void uninitvar_localtime_s(const time_t *time, struct tm *result)
+{
+    time_t uninit_time;
+    struct tm uninit_result;
+    // cppcheck-suppress uninitvar
+    (void)localtime_s(result, &uninit_time);
+    (void)localtime_s(&uninit_result, time);
+    (void)localtime_s(result, time);
+}
+
+void nullPointer_localtime_s(const time_t *time, struct tm *result)
+{
+    // cppcheck-suppress nullPointer
+    (void)localtime_s(result, NULL);
+    // cppcheck-suppress nullPointer
+    (void)localtime_s(NULL, time);
+    (void)localtime_s(result, time);
+}
+
+void memleak_localtime_s(void) // #9258
+{
+    const time_t t = time(0);
+    struct tm *const now = new tm();
+    if (localtime_s(now, &t) == 0)
+        printf("%d\n", now->tm_mday);
+    // cppcheck-suppress memleak
+}
