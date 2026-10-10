@@ -636,6 +636,27 @@ private:
               "};\n"
               "static B<64> b;\n");
         ASSERT_EQUALS("", errout_str());
+
+        // FP shiftTooManyBits: guarded shift where the shift amount is
+        // conditionally derived from an unsigned subtraction; a possible value
+        // from an interprocedural caller must not collapse the interval
+        // inference on the unsigned arithmetic result
+        {
+            const Settings settings = settingsBuilder().platform(Platform::Type::Unix64).build();
+            check("static unsigned int l[16];\n"
+                  "void scalar_shift(unsigned int shift) {\n"
+                  "    unsigned int shiftlimbs = shift >> 5;\n"
+                  "    unsigned int shiftlow = shift & 0x1Fu;\n"
+                  "    unsigned int shifthigh = 32u - shiftlow;\n"
+                  "    unsigned int r = 0u;\n"
+                  "    r |= (shift < 448u && shiftlow ? (l[1 + shiftlimbs] << shifthigh) : 0u);\n"
+                  "    r |= (shift < 416u && shiftlow ? (l[2 + shiftlimbs] << shifthigh) : 0u);\n"
+                  "    (void)r;\n"
+                  "}\n"
+                  "int main(void) { scalar_shift(384u); return 0; }\n",
+                  dinit(CheckOptions, $.settings = &settings));
+            ASSERT_EQUALS("", errout_str());
+        }
     }
 };
 

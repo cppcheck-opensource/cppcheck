@@ -488,6 +488,18 @@ namespace ValueFlow
                 return;
             }
 
+            // Impossible bounds cannot be propagated through arithmetic whose
+            // result type is unsigned, because wrap-around invalidates the bound
+            const ValueType* resultType = parent->valueType();
+            const bool wraps =
+                resultType && resultType->isIntegral() &&
+                resultType->sign == ValueType::Sign::UNSIGNED && resultType->pointer == 0 &&
+                (resultType->type == ValueType::Type::INT ||
+                 resultType->type == ValueType::Type::LONG ||
+                 resultType->type == ValueType::Type::LONGLONG ||
+                 resultType->type == ValueType::Type::UNKNOWN_INT);
+            const bool skipImpossibleBounds = wraps && Token::Match(parent, "+|-|*");
+
             for (const Value &value1 : parent->astOperand1()->values()) {
                 if (!isComputableValue(parent, value1))
                     continue;
@@ -499,6 +511,12 @@ namespace ValueFlow
                     if (value1.isIteratorValue() && value2.isIteratorValue())
                         continue;
                     if (!isCompatibleValues(value1, value2))
+                        continue;
+                    // Skip impossible bounds on arithmetic with unsigned result type
+                    const bool operandHasImpossibleBound =
+                        (value1.isIntValue() && value1.isImpossible() && value1.bound != Value::Bound::Point) ||
+                        (value2.isIntValue() && value2.isImpossible() && value2.bound != Value::Bound::Point);
+                    if (skipImpossibleBounds && operandHasImpossibleBound)
                         continue;
                     Value result(0);
                     combineValueProperties(value1, value2, result);
