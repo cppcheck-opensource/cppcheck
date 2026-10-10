@@ -2300,7 +2300,81 @@ static bool isConstant(const Token* tok) {
     return tok && (tok->isEnumerator() || Token::Match(tok, "%bool%|%num%|%str%|%char%|nullptr|NULL"));
 }
 
-static bool isConstStatement(const Token *tok, const Library& library, bool platformIndependent, bool isNestedBracket = false)
+static bool isBuiltinCommaOperand(const Token* tok, const Settings& settings)
+{
+    if (!tok)
+        return false;
+    const auto builtinType = [](const ValueType* vt) {
+        return vt && (vt->pointer > 0 || vt->type == ValueType::VOID || (vt->isPrimitive() && !vt->isEnum()));
+    };
+    // A comma chain can itself return an object through an overloaded operator.
+    if (tok->str() == ",")
+        return isBuiltinCommaOperand(tok->astOperand1(), settings) && isBuiltinCommaOperand(tok->astOperand2(), settings);
+    if (!tok->isAssignmentOp())
+        return builtinType(tok->valueType());
+    const ValueType* lhs = tok->astOperand1() ? tok->astOperand1()->valueType() : nullptr;
+    const ValueType* rhs = tok->astOperand2() ? tok->astOperand2()->valueType() : nullptr;
+    if (builtinType(lhs) && (tok->str() == "=" || builtinType(rhs)))
+        return true;
+
+    // Assignment value types are copied from the lhs, even when an overload
+    // returns another type. Do not select an arbitrary overload: only rely on
+    // the return type when all visible candidates have a built-in result.
+    for (const ValueType* vt : {lhs, rhs}) {
+        if (!builtinType(vt) && (!vt || !vt->typeScope))
+            return false;
+        if (vt && vt->typeScope) {
+            // Template aliases/qualifications and inherited overloads cannot
+            // be resolved reliably by comparing the available parameter types.
+            if (vt->typeScope->className.find('<') != std::string::npos ||
+                (vt->typeScope->definedType && !vt->typeScope->definedType->derivedFrom.empty()))
+                return false;
+        }
+    }
+    if (!tok->scope())
+        return false;
+    bool found = false;
+    const std::string name = "operator" + tok->str();
+    // Include non-member candidates conservatively, including hidden friends
+    // and anonymous namespaces, without trying to rank overloads.
+    for (const Scope& scope : tok->scope()->symdb.scopeList) {
+        const auto range = scope.functionMap.equal_range(name);
+        for (auto it = range.first; it != range.second; ++it) {
+            const Function* function = it->second;
+            const bool member = scope.isClassOrStruct() && !function->isFriend();
+            if (member && (!lhs || lhs->typeScope != &scope))
+                continue;
+            if (function->argCount() != (member ? 1U : 2U))
+                continue;
+            bool matches = true;
+            for (unsigned int arg = 0; arg < function->argCount(); ++arg) {
+                const ValueType* operand = member || arg == 1U ? rhs : lhs;
+                const ValueType* parameter = function->getArgumentVar(arg)->valueType();
+                const auto match = ValueType::matchParameter(operand, parameter);
+                if (match == ValueType::MatchResult::UNKNOWN)
+                    return false;
+                if (match == ValueType::MatchResult::NOMATCH) {
+                    // A user-defined conversion may still make this candidate
+                    // viable; matchParameter does not resolve those conversions.
+                    if (!builtinType(operand) || !builtinType(parameter))
+                        return false;
+                    matches = false;
+                }
+            }
+            if (!matches)
+                continue;
+            if (!function->retDef)
+                return false;
+            const ValueType result = ValueType::parseDecl(function->retDef, settings);
+            if (!builtinType(&result))
+                return false;
+            found = true;
+        }
+    }
+    return found;
+}
+
+static bool isConstStatement(const Token *tok, const Settings& settings, bool platformIndependent, bool isNestedBracket = false)
 {
     if (!tok)
         return false;
@@ -2322,7 +2396,7 @@ static bool isConstStatement(const Token *tok, const Library& library, bool plat
         tok2 = tok2->astParent();
     }
     if (Token::Match(tok, "&&|%oror%"))
-        return isConstStatement(tok->astOperand1(), library, platformIndependent) && isConstStatement(tok->astOperand2(), library, platformIndependent);
+        return isConstStatement(tok->astOperand1(), settings, platformIndependent) && isConstStatement(tok->astOperand2(), settings, platformIndependent);
     if (Token::Match(tok, "!|~|%cop%") && (tok->astOperand1() || tok->astOperand2()))
         return true;
     if (Token::simpleMatch(tok->previous(), "sizeof ("))
@@ -2332,16 +2406,18 @@ static bool isConstStatement(const Token *tok, const Library& library, bool plat
     if (isCPPCast(tok)) {
         if (Token::simpleMatch(tok->astOperand1(), "dynamic_cast") && Token::simpleMatch(tok->astOperand1()->linkAt(1)->previous(), "& >"))
             return false;
-        return isWithoutSideEffects(tok) && isConstStatement(tok->astOperand2(), library, platformIndependent);
+        return isWithoutSideEffects(tok) && isConstStatement(tok->astOperand2(), settings, platformIndependent);
     }
     if (tok->isCast() && tok->next() && tok->next()->isStandardType())
-        return isWithoutSideEffects(tok->astOperand1()) && isConstStatement(tok->astOperand1(), library, platformIndependent);
+        return isWithoutSideEffects(tok->astOperand1()) && isConstStatement(tok->astOperand1(), settings, platformIndependent);
     if (Token::simpleMatch(tok, "."))
-        return isConstStatement(tok->astOperand2(), library, platformIndependent);
+        return isConstStatement(tok->astOperand2(), settings, platformIndependent);
     if (Token::simpleMatch(tok, ",")) {
+        if (tok->isCpp() && (!isBuiltinCommaOperand(tok->astOperand1(), settings) || !isBuiltinCommaOperand(tok->astOperand2(), settings)))
+            return false;
         if (tok->astParent()) // warn about const statement on rhs at the top level
-            return isConstStatement(tok->astOperand1(), library, platformIndependent) &&
-                   isConstStatement(tok->astOperand2(), library, platformIndependent);
+            return isConstStatement(tok->astOperand1(), settings, platformIndependent) &&
+                   isConstStatement(tok->astOperand2(), settings, platformIndependent);
 
         const Token* lml = previousBeforeAstLeftmostLeaf(tok); // don't warn about matrix/vector assignment (e.g. Eigen)
         if (lml)
@@ -2349,21 +2425,21 @@ static bool isConstStatement(const Token *tok, const Library& library, bool plat
         const Token* stream = lml;
         while (stream && Token::Match(stream->astParent(), ".|[|(|*"))
             stream = stream->astParent();
-        return (!stream || !isLikelyStream(stream)) && isConstStatement(tok->astOperand2(), library, platformIndependent);
+        return (!stream || !isLikelyStream(stream)) && isConstStatement(tok->astOperand2(), settings, platformIndependent);
     }
     if (Token::simpleMatch(tok, "?") && Token::simpleMatch(tok->astOperand2(), ":")) // ternary operator
-        return isConstStatement(tok->astOperand1(), library, platformIndependent) &&
-               isConstStatement(tok->astOperand2()->astOperand1(), library, platformIndependent) &&
-               isConstStatement(tok->astOperand2()->astOperand2(), library, platformIndependent);
+        return isConstStatement(tok->astOperand1(), settings, platformIndependent) &&
+               isConstStatement(tok->astOperand2()->astOperand1(), settings, platformIndependent) &&
+               isConstStatement(tok->astOperand2()->astOperand2(), settings, platformIndependent);
     if (isBracketAccess(tok) && isWithoutSideEffects(tok->astOperand1(), /*checkArrayAccess*/ true, /*checkReference*/ false)) {
         const bool isChained = succeeds(tok->astParent(), tok);
         if (Token::simpleMatch(tok->astParent(), "[")) {
             if (isChained)
-                return isConstStatement(tok->astOperand2(), library, platformIndependent) &&
-                       isConstStatement(tok->astParent(), library, platformIndependent);
-            return isNestedBracket && isConstStatement(tok->astOperand2(), library, platformIndependent);
+                return isConstStatement(tok->astOperand2(), settings, platformIndependent) &&
+                       isConstStatement(tok->astParent(), settings, platformIndependent);
+            return isNestedBracket && isConstStatement(tok->astOperand2(), settings, platformIndependent);
         }
-        return isConstStatement(tok->astOperand2(), library, platformIndependent, /*isNestedBracket*/ !isChained);
+        return isConstStatement(tok->astOperand2(), settings, platformIndependent, /*isNestedBracket*/ !isChained);
     }
     if (!tok->astParent() && findLambdaEndToken(tok))
         return true;
@@ -2379,7 +2455,7 @@ static bool isConstStatement(const Token *tok, const Library& library, bool plat
             funcStr.insert(0, tok2->strAt(-2) + "::");
             tok2 = tok2->tokAt(-2);
         }
-        if (library.functions().count(funcStr) > 0)
+        if (settings.library.functions().count(funcStr) > 0)
             return true;
     }
     return false;
@@ -2468,7 +2544,7 @@ void CheckOtherImpl::checkIncompleteStatement()
         // Skip statement expressions
         if (Token::simpleMatch(rtok, "; } )") || Token::simpleMatch(tok->next(), "; } )"))
             continue;
-        if (!isConstStatement(tok, mSettings.library, false))
+        if (!isConstStatement(tok, mSettings, false))
             continue;
         if (isVoidStmt(tok))
             continue;
@@ -2657,7 +2733,7 @@ void CheckOtherImpl::checkMisusedScopedObject()
                 if (Token::simpleMatch(parTok, "<") && parTok->link())
                     parTok = parTok->link()->next();
                 if (const Token* arg = parTok->astOperand2()) {
-                    if (!isConstStatement(arg, mSettings.library, false))
+                    if (!isConstStatement(arg, mSettings, false))
                         continue;
                     if (parTok->str() == "(") {
                         if (arg->varId() && !(arg->variable() && arg->variable()->nameToken() != arg))
@@ -3138,7 +3214,7 @@ void CheckOtherImpl::checkDuplicateExpression()
 
                 else if (!tok->astOperand1()->values().empty() && !tok->astOperand2()->values().empty() && isEqualKnownValue(tok->astOperand1(), tok->astOperand2()) &&
                          !isVariableChanged(tok->astParent(), /*indirect*/ 0, mSettings) &&
-                         isConstStatement(tok->astOperand1(), mSettings.library, true) && isConstStatement(tok->astOperand2(), mSettings.library, true))
+                         isConstStatement(tok->astOperand1(), mSettings, true) && isConstStatement(tok->astOperand2(), mSettings, true))
                     duplicateValueTernaryError(tok);
             }
         }
