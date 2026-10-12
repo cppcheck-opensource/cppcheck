@@ -31,6 +31,10 @@ namespace ValueFlow
                        Value value,
                        const Settings& settings,
                        SourceLocation loc = SourceLocation::current());
+    bool truncateImplicitConversion(Token* parent,
+                                    const Token* sourceTok,
+                                    Value& value,
+                                    const Settings& settings);
 }
 
 #endif // vfSetTokenValueH
