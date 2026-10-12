@@ -283,6 +283,13 @@ struct ValueFlowAnalyzer : Analyzer {
         // Only if its invertible
         if (value->isImpossible() && !Token::Match(parent, "+=|-=|*=|++|--"))
             return Action::None;
+        // Shifting an impossible range bound is unsound if the operation can wrap: unsigned types, and
+        // signed types narrower than int (promoted to int and converted back)
+        if (value->isImpossible() && value->bound != ValueFlow::Value::Bound::Point && tok->valueType() &&
+            tok->valueType()->isIntegral() && !tok->valueType()->pointer &&
+            (tok->valueType()->sign == ValueType::Sign::UNSIGNED || tok->valueType()->type == ValueType::Type::CHAR ||
+             tok->valueType()->type == ValueType::Type::SHORT))
+            return Action::None;
         if (value->isLifetimeValue()) {
             if (value->lifetimeKind != ValueFlow::Value::LifetimeKind::Iterator)
                 return Action::None;

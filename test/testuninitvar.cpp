@@ -65,6 +65,7 @@ private:
         TEST_CASE(valueFlowUninit2_value);
         TEST_CASE(valueFlowUninit_uninitvar2);
         TEST_CASE(valueFlowUninit_functioncall);
+        TEST_CASE(valueFlowUninitFloatingPositiveControl);
         TEST_CASE(uninitStructMember);  // struct members
         TEST_CASE(uninitvar2_while);
         TEST_CASE(uninitvar2_4494);      // #4494
@@ -3607,7 +3608,8 @@ private:
     }
 
     void uninitvar2_value() {
-        checkUninitVar("void f() {\n"
+        checkUninitVar("#define ENOMEM 12\n"
+                       "void f() {\n"
                        "    int i;\n"
                        "    if (x) {\n"
                        "        int y = -ENOMEM;\n"  // assume constant ENOMEM is nonzero since it's negated
@@ -3617,7 +3619,8 @@ private:
                        "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        checkUninitVar("void f() {\n"
+        checkUninitVar("#define ENOMEM 12\n"
+                       "void f() {\n"
                        "    int i, y;\n"
                        "    if (x) {\n"
                        "        y = -ENOMEM;\n"  // assume constant ENOMEM is nonzero since it's negated
@@ -3627,7 +3630,8 @@ private:
                        "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        checkUninitVar("void f() {\n"
+        checkUninitVar("#define ENOMEM 12\n"
+                       "void f() {\n"
                        "    int i, y;\n"
                        "    if (x) y = -ENOMEM;\n"  // assume constant ENOMEM is nonzero since it's negated
                        "    else y = get_value(i);\n"
@@ -3729,6 +3733,15 @@ private:
         (checkuninitvar.valueFlowUninit)();
     }
 
+    void valueFlowUninitFloatingPositiveControl() {
+        valueFlowUninit("float initialized(float x) { if (x <= 0.0f) return 0.0f; return x; }\n", false);
+        ASSERT_EQUALS("", errout_str());
+        valueFlowUninit("float uninitialized() { float x; return x; }\n", false);
+        ASSERT_EQUALS(
+            "[test.c:1:41]: (error) Uninitialized variable: x [uninitvar]\n",
+            errout_str());
+    }
+
     void uninitvar15() { // #13685
         const char code[] = "int f() {\n"
                             "    int x;\n"
@@ -3742,7 +3755,8 @@ private:
 
     void valueFlowUninit2_value()
     {
-        valueFlowUninit("void f() {\n"
+        valueFlowUninit("#define ENOMEM 12\n"
+                        "void f() {\n"
                         "    int i;\n"
                         "    if (x) {\n"
                         "        int y = -ENOMEM;\n" // assume constant ENOMEM is nonzero since it's negated
@@ -3752,7 +3766,8 @@ private:
                         "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        valueFlowUninit("void f() {\n"
+        valueFlowUninit("#define ENOMEM 12\n"
+                        "void f() {\n"
                         "    int i, y;\n"
                         "    if (x) {\n"
                         "        y = -ENOMEM;\n" // assume constant ENOMEM is nonzero since it's negated
@@ -3762,7 +3777,8 @@ private:
                         "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        valueFlowUninit("void f() {\n"
+        valueFlowUninit("#define ENOMEM 12\n"
+                        "void f() {\n"
                         "    int i, y;\n"
                         "    if (x) y = -ENOMEM;\n" // assume constant ENOMEM is nonzero since it's negated
                         "    else y = get_value(i);\n"
