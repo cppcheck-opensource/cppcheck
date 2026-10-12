@@ -41,6 +41,31 @@ def test_missing_include(tmpdir):  # #11283
     assert stderr == '{}:2:2: information: Include file: "test.h" not found. [missingInclude]\n'.format(test_file)
 
 
+@pytest.mark.parametrize("extension", [".c", ".cpp"])
+def test_floating_strict_bounds_do_not_mark_parameters_uninitialized(tmpdir, extension):
+    test_file = os.path.join(tmpdir, 'floating_bounds' + extension)
+    with open(test_file, 'wt') as f:
+        f.write("""
+float f1(float x) { if (x >= 1.0f) return 1; return x; }
+float f5(float x) { if (x >= 1.0f) return 1; if (x < 1.0f) return 2; return x; }
+long double g1(long double x) { if (x <= 2.0L) return 1; return x; }
+float g2(float x) { if (1.0f <= x) return 1; return x * 2; }
+double control(double x) { if (x >= 1.0) return 1; return x; }
+float guarded_else(float x) {
+    if (x <= 0.0f) return 0;
+    else return x;
+}
+float real_uninitialized(void) {
+    float real_uninitialized;
+    return real_uninitialized;
+}
+""")
+
+    exitcode, _, stderr = cppcheck(['-q', '--enable=style,warning', '--platform=unix64', '--template=simple', test_file])
+    assert exitcode == 0
+    assert stderr.count('[uninitvar]') == 1
+    assert 'real_uninitialized [uninitvar]' in stderr
+
 def __test_missing_include_check_config(tmpdir, use_j):
     test_file = os.path.join(tmpdir, 'test.c')
     with open(test_file, 'wt') as f:
@@ -3303,6 +3328,25 @@ def test_unique_error(tmp_path):  # #6366
     assert stderr.splitlines() == [
         "{}:4:13: error: Array 'm[9]' accessed at index 9, which is out of bounds. [arrayIndexOutOfBounds]".format(test_file),
         "{}:4:21: error: Array 'm[9]' accessed at index 9, which is out of bounds. [arrayIndexOutOfBounds]".format(test_file)
+    ]
+
+
+def test_unsigned_loop_index_wrap_remains_out_of_bounds(tmp_path):
+    test_file = tmp_path / 'unsigned_wrap.cpp'
+    test_file.write_text(
+        "void f() {\n"
+        "    int a[4];\n"
+        "    for (unsigned int i = 0; i < 1; ++i)\n"
+        "        a[i - 1] = 0;\n"
+        "}\n"
+    )
+
+    args = ['-q', '--enable=warning,style', '--platform=unix64', '--template=simple', str(test_file)]
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0, stdout
+    assert stdout.splitlines() == []
+    assert stderr.splitlines() == [
+        "{}:4:10: error: Array 'a[4]' accessed at index 4294967295, which is out of bounds. [arrayIndexOutOfBounds]".format(test_file)
     ]
 
 

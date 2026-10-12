@@ -19,16 +19,20 @@
 #include "errortypes.h"
 #include "fixture.h"
 #include "helpers.h"
+#include "infer.h"
 #include "mathlib.h"
 #include "platform.h"
 #include "settings.h"
 #include "standards.h"
 #include "token.h"
+#include "valueptr.h"
+#include "vf_common.h"
 #include "vfvalue.h"
 
 #include <algorithm>
 #include <climits>
 #include <cmath>
+#include <limits>
 #include <cstdint>
 #include <cstring>
 #include <functional>
@@ -160,6 +164,8 @@ private:
         TEST_CASE(valueFlowSymbolicStrlen);
         TEST_CASE(valueFlowSmartPointer);
         TEST_CASE(valueFlowImpossibleMinMax);
+        TEST_CASE(inferPathCompatibility);
+        TEST_CASE(valueFlowPlainCharCast);
         TEST_CASE(valueFlowImpossibleIncDec);
         TEST_CASE(valueFlowImpossibleUnknownConstant);
         TEST_CASE(valueFlowContainerEqual);
@@ -5201,6 +5207,28 @@ private:
                "}\n";
         values = tokenValues(code, "i ]");
         ASSERT(values.empty());
+        ValueFlow::Value excludedUpper(0, ValueFlow::Value::Bound::Upper);
+        excludedUpper.setImpossible();
+        excludedUpper.path = 7;
+        ValueFlow::Value unrelatedPoint(5);
+        unrelatedPoint.setPossible();
+        const std::list<ValueFlow::Value> initializerValues{excludedUpper, unrelatedPoint};
+        const ValueFlow::Value* minSource = nullptr;
+        const std::vector<MathLib::bigint> minimum = getMinValue(makeIntegralInferModel(), initializerValues, &minSource);
+        ASSERT_EQUALS(1U, minimum.size());
+        ASSERT_EQUALS(1, minimum.front());
+        ASSERT(minSource);
+        ASSERT(minSource == &initializerValues.front());
+        ASSERT(minSource->isImpossible());
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::Bound::Upper, minSource->bound);
+        ASSERT_EQUALS(7, minSource->path);
+        ValueFlow::Value maxUpper(std::numeric_limits<MathLib::bigint>::max(), ValueFlow::Value::Bound::Upper);
+        maxUpper.setImpossible();
+        ASSERT(getMinValue(makeIntegralInferModel(), {maxUpper}, nullptr).empty());
+        ValueFlow::Value minLower(std::numeric_limits<MathLib::bigint>::min(), ValueFlow::Value::Bound::Lower);
+        minLower.setImpossible();
+        ASSERT(getMaxValue(makeIntegralInferModel(), {minLower}).empty());
+
     }
 
     void valueFlowSubFunction() {
@@ -6384,7 +6412,8 @@ private:
         ASSERT_EQUALS(1, values.size());
         ASSERT_EQUALS(true, values.front().isUninitValue());
 
-        code = "void f(int x) {\n"
+        code = "#define ENOMEM 12\n"
+               "void f(int x) {\n"
                "    int i;\n"
                "    if (x > 0) {\n"
                "        int y = -ENOMEM;\n" // assume constant ENOMEM is nonzero since it's negated
@@ -8067,6 +8096,31 @@ private:
                             "    S(std::max_align_t T::* p) : m(p) {}\n"
                             "};\n";
         (void)valueOfTok(code, ":"); // don't crash
+
+        const char libraryXml[] = "<def>"
+                                  "<function name=\"unknown_char\"><returnValue type=\"char\" unknownValues=\"all\"/></function>"
+                                  "<function name=\"signed_char\"><returnValue type=\"signed char\" unknownValues=\"all\"/></function>"
+                                  "</def>";
+        Settings charSettings = settingsBuilder().libraryxml(libraryXml).platform(Platform::Type::Unspecified).build();
+        charSettings.checkUnknownFunctionReturn.insert("unknown_char");
+        charSettings.checkUnknownFunctionReturn.insert("signed_char");
+        const std::list<ValueFlow::Value> signedReturnValues = tokenValues("x = signed_char();\n", "(", &charSettings);
+        ASSERT_EQUALS(2, signedReturnValues.size());
+        ASSERT_EQUALS(-128, signedReturnValues.front().intvalue);
+        ASSERT_EQUALS(127, signedReturnValues.back().intvalue);
+        const std::list<ValueFlow::Value> unknownReturnValues = tokenValues("x = unknown_char();\n", "(", &charSettings);
+        ASSERT(unknownReturnValues.empty() ||
+               std::any_of(unknownReturnValues.cbegin(), unknownReturnValues.cend(), [](const ValueFlow::Value& value) {
+            return value.isIntValue() && value.intvalue >= 200;
+        }));
+        const char charCode[] = "char unknown_char(void);\n"
+                                "void f() {\n"
+                                "    if (unknown_char() == 200) {}\n"
+                                "}\n";
+        const std::list<ValueFlow::Value> comparisonValues = tokenValues(charCode, "==", &charSettings);
+        ASSERT(std::none_of(comparisonValues.cbegin(), comparisonValues.cend(), [](const ValueFlow::Value& value) {
+            return value.isKnown() && value.isIntValue() && value.intvalue == 0;
+        }));
     }
 
     void valueFlowUnknownFunctionReturnRand() {
@@ -9070,6 +9124,40 @@ private:
                "}\n";
         ASSERT_EQUALS(false, testValueOfXImpossible(code, 3U, 2));
         ASSERT_EQUALS(true, testValueOfXImpossible(code, 3U, -1));
+
+        code = "int f() {\n"
+               "    unsigned int source = 4294967295u;\n"
+               "    unsigned int x = (source + 1u) % 16u;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXKnown(code, 4U, 0));
+
+        code = "auto f(unsigned int i) {\n"
+               "    auto x = (int)i;\n"
+               "    return x;\n"
+               "}\n";
+        SimpleTokenizer narrowingTokenizer(settings, *this);
+        ASSERT(narrowingTokenizer.tokenize(code));
+        const Token* narrowingReturn = Token::findmatch(narrowingTokenizer.tokens(), "return x");
+        ASSERT(narrowingReturn && narrowingReturn->next());
+        const std::list<ValueFlow::Value>& narrowedValues = narrowingReturn->next()->values();
+        // Narrowing may add signed-destination bounds; it must not invent an excluded point.
+        ASSERT(std::none_of(narrowedValues.cbegin(), narrowedValues.cend(), [](const ValueFlow::Value& value) {
+            return value.isImpossible() && value.bound == ValueFlow::Value::Bound::Point;
+        }));
+
+        code = "auto f(unsigned int i) {\n"
+               "    auto x = (long long)i;\n"
+               "    return x;\n"
+               "}\n";
+        SimpleTokenizer wideningTokenizer(settings, *this);
+        ASSERT(wideningTokenizer.tokenize(code));
+        const Token* wideningReturn = Token::findmatch(wideningTokenizer.tokens(), "return x");
+        ASSERT(wideningReturn && wideningReturn->next());
+        const std::list<ValueFlow::Value>& widenedValues = wideningReturn->next()->values();
+        ASSERT(std::any_of(widenedValues.cbegin(), widenedValues.cend(), [](const ValueFlow::Value& value) {
+            return value.isImpossible() && value.bound == ValueFlow::Value::Bound::Upper && value.intvalue == -1;
+        }));
     }
 
     void valueFlowMod() {
@@ -9115,7 +9203,7 @@ private:
 
         code = "int f() {\n"
                "     const int a[128] = {};\n"
-               "     char b = -128;\n"
+               "     signed char b = -128;\n"
                "     return a[--b];\n"
                "}\n";
         values = tokenValues(code, "--");
@@ -9128,13 +9216,13 @@ private:
         const char* code;
 
         code = "int f(const std::string &str) {\n"
-               "    int x = str.c_str();\n"
+               "    bool x = str.c_str();\n"
                "    return x;\n"
                "}\n";
-        ASSERT_EQUALS(true, testValueOfXImpossible(code, 3U, 0));
+        ASSERT_EQUALS(true, testValueOfXKnown(code, 3U, 1));
 
         code = "int f(const std::string_view &str) {\n"
-               "    int x = str.c_str();\n"
+               "    bool x = str.data();\n"
                "    return x;\n"
                "}\n";
         ASSERT_EQUALS(false, testValueOfXImpossible(code, 3U, 0));
@@ -9630,6 +9718,199 @@ private:
                "}\n";
         ASSERT_EQUALS(true, testValueOfXImpossible(code, 3U, "a", -1));
         ASSERT_EQUALS(true, testValueOfXImpossible(code, 3U, -1));
+
+        const Settings settingsUnix64 = settingsBuilder().platform(Platform::Type::Unix64).build();
+        code = "void f(unsigned long long x) {\n"
+               "    return (unsigned int)x;\n"
+               "}\n";
+        SimpleTokenizer tokenizer(settingsUnix64, *this);
+        ASSERT(tokenizer.tokenize(code));
+        const Token* returnTok = Token::findmatch(tokenizer.tokens(), "return (");
+        ASSERT(returnTok && returnTok->next());
+        const std::list<ValueFlow::Value>& castValues = returnTok->next()->values();
+        ASSERT(std::any_of(castValues.cbegin(), castValues.cend(), [](const ValueFlow::Value& value) {
+            return value.isImpossible() && value.intvalue == -1;
+        }));
+        ASSERT(std::any_of(castValues.cbegin(), castValues.cend(), [](const ValueFlow::Value& value) {
+            return value.isImpossible() && value.intvalue == 4294967296;
+        }));
+
+        // Impossible bounds on a cast must not be propagated through
+        // arithmetic with unsigned result type, since wrap-around invalidates the bound
+        code = "void f(int x) {\n"
+               "    return (unsigned int)x - 1u;\n"
+               "}\n";
+        SimpleTokenizer tokenizer2(settingsUnix64, *this);
+        ASSERT(tokenizer2.tokenize(code));
+        const Token* minusTok = Token::findsimplematch(tokenizer2.tokens(), "-");
+        ASSERT(minusTok);
+        for (const ValueFlow::Value& value : minusTok->values()) {
+            ASSERT(!(value.isImpossible() && value.isIntValue() &&
+                     value.bound != ValueFlow::Value::Bound::Point && value.intvalue == 4294967295));
+        }
+
+        // Known values are still propagated through unsigned arithmetic
+        code = "void f(int x) {\n"
+               "    unsigned int y = 5u;\n"
+               "    return y - 1u;\n"
+               "}\n";
+        SimpleTokenizer tokenizer3(settingsUnix64, *this);
+        ASSERT(tokenizer3.tokenize(code));
+        const Token* minusTok3 = Token::findsimplematch(tokenizer3.tokens(), "-");
+        ASSERT(minusTok3);
+        ASSERT(std::any_of(minusTok3->values().cbegin(), minusTok3->values().cend(), [](const ValueFlow::Value& value) {
+            return value.isKnown() && value.isIntValue() && value.intvalue == 4;
+        }));
+
+        ValueType charType(ValueType::Sign::SIGNED, ValueType::Type::CHAR, 0);
+        MathLib::bigint minValue;
+        MathLib::bigint maxValue;
+        ASSERT(ValueFlow::getMinMaxValues(&charType, settingsUnix64.platform, minValue, maxValue));
+        ASSERT_EQUALS(-128, minValue);
+        ASSERT_EQUALS(127, maxValue);
+        const ValueFlow::Value castInput(255);
+        ValueFlow::Value signedCast(castInput);
+        ASSERT(ValueFlow::castValue(signedCast, ValueType::Sign::SIGNED, 8));
+        ASSERT_EQUALS(-1, signedCast.intvalue);
+
+        charType.sign = ValueType::Sign::UNSIGNED;
+        ASSERT(ValueFlow::getMinMaxValues(&charType, settingsUnix64.platform, minValue, maxValue));
+        ASSERT_EQUALS(0, minValue);
+        ASSERT_EQUALS(255, maxValue);
+        ValueFlow::Value unsignedCast(castInput);
+        ASSERT(ValueFlow::castValue(unsignedCast, ValueType::Sign::UNSIGNED, 8));
+        ASSERT_EQUALS(255, unsignedCast.intvalue);
+
+        ValueFlow::Value unsignedModulo(-1);
+        ASSERT(ValueFlow::castValue(unsignedModulo, ValueType::Sign::UNSIGNED, 8));
+        ASSERT_EQUALS(255, unsignedModulo.intvalue);
+        ValueFlow::Value unrepresentableUnsigned64(-1);
+        ASSERT_EQUALS(false, ValueFlow::castValue(unrepresentableUnsigned64, ValueType::Sign::UNSIGNED, 64));
+        ASSERT_EQUALS(-1, unrepresentableUnsigned64.intvalue);
+
+        ValueFlow::Value validFloat;
+        validFloat.valueType = ValueFlow::Value::ValueType::FLOAT;
+        validFloat.floatValue = 2863308666.68847;
+        ASSERT(ValueFlow::castValue(validFloat, ValueType::Sign::UNSIGNED, 32));
+        ASSERT_EQUALS(2863308666LL, validFloat.intvalue);
+
+        ValueFlow::Value negativeFraction;
+        negativeFraction.valueType = ValueFlow::Value::ValueType::FLOAT;
+        negativeFraction.floatValue = -0.5;
+        ASSERT(ValueFlow::castValue(negativeFraction, ValueType::Sign::UNSIGNED, 32));
+        ASSERT_EQUALS(0, negativeFraction.intvalue);
+
+        ValueFlow::Value unsignedLimit;
+        unsignedLimit.valueType = ValueFlow::Value::ValueType::FLOAT;
+        unsignedLimit.floatValue = 4294967295.9;
+        ASSERT(ValueFlow::castValue(unsignedLimit, ValueType::Sign::UNSIGNED, 32));
+        ASSERT_EQUALS(4294967295LL, unsignedLimit.intvalue);
+
+        ValueFlow::Value signedMaximum;
+        signedMaximum.valueType = ValueFlow::Value::ValueType::FLOAT;
+        signedMaximum.floatValue = 2147483647.9;
+        ASSERT(ValueFlow::castValue(signedMaximum, ValueType::Sign::SIGNED, 32));
+        ASSERT_EQUALS(2147483647LL, signedMaximum.intvalue);
+
+        ValueFlow::Value unsignedBelow;
+        unsignedBelow.valueType = ValueFlow::Value::ValueType::FLOAT;
+        unsignedBelow.floatValue = -1.0;
+        ASSERT_EQUALS(false, ValueFlow::castValue(unsignedBelow, ValueType::Sign::UNSIGNED, 32));
+        ASSERT(unsignedBelow.isFloatValue());
+
+        ValueFlow::Value signedBelow;
+        signedBelow.valueType = ValueFlow::Value::ValueType::FLOAT;
+        signedBelow.floatValue = -2147483649.0;
+        ASSERT_EQUALS(false, ValueFlow::castValue(signedBelow, ValueType::Sign::SIGNED, 32));
+        ASSERT(signedBelow.isFloatValue());
+
+        ValueFlow::Value unsignedOverflow;
+        unsignedOverflow.valueType = ValueFlow::Value::ValueType::FLOAT;
+        unsignedOverflow.floatValue = 4294967296.0;
+        ASSERT_EQUALS(false, ValueFlow::castValue(unsignedOverflow, ValueType::Sign::UNSIGNED, 32));
+        ASSERT(unsignedOverflow.isFloatValue());
+
+        ValueFlow::Value signedMinimum;
+        signedMinimum.valueType = ValueFlow::Value::ValueType::FLOAT;
+        signedMinimum.floatValue = -2147483648.9;
+        ASSERT(ValueFlow::castValue(signedMinimum, ValueType::Sign::SIGNED, 32));
+        ASSERT_EQUALS(-2147483648LL, signedMinimum.intvalue);
+
+        ValueFlow::Value signedOverflow;
+        signedOverflow.valueType = ValueFlow::Value::ValueType::FLOAT;
+        signedOverflow.floatValue = 2147483648.0;
+        ASSERT_EQUALS(false, ValueFlow::castValue(signedOverflow, ValueType::Sign::SIGNED, 32));
+        ASSERT(signedOverflow.isFloatValue());
+
+        ValueFlow::Value infinite;
+        infinite.valueType = ValueFlow::Value::ValueType::FLOAT;
+        infinite.floatValue = std::numeric_limits<double>::infinity();
+        ASSERT_EQUALS(false, ValueFlow::castValue(infinite, ValueType::Sign::UNSIGNED, 32));
+        ASSERT(infinite.isFloatValue());
+
+        ValueFlow::Value notANumber;
+        notANumber.valueType = ValueFlow::Value::ValueType::FLOAT;
+        notANumber.floatValue = std::numeric_limits<double>::quiet_NaN();
+        ASSERT_EQUALS(false, ValueFlow::castValue(notANumber, ValueType::Sign::UNSIGNED, 32));
+        ASSERT(notANumber.isFloatValue());
+
+        ValueType doubleType(ValueType::Sign::UNKNOWN_SIGN, ValueType::Type::DOUBLE, 0);
+        ValueType intType(ValueType::Sign::SIGNED, ValueType::Type::INT, 0);
+        // A representable float endpoint maps monotonically and retains its bound kind.
+        ValueFlow::Value floatLower;
+        floatLower.valueType = ValueFlow::Value::ValueType::FLOAT;
+        floatLower.floatValue = 1.0;
+        floatLower.bound = ValueFlow::Value::Bound::Lower;
+        floatLower.setPossible();
+        ASSERT(ValueFlow::isValueRangePreservingConversion(&doubleType, &intType, settingsUnix64, &floatLower));
+        ASSERT(ValueFlow::castValue(floatLower, ValueType::Sign::SIGNED, 32));
+        ASSERT(floatLower.isPossible());
+        ASSERT(floatLower.isIntValue());
+        ASSERT(floatLower.bound == ValueFlow::Value::Bound::Lower);
+        ASSERT_EQUALS(1, floatLower.intvalue);
+
+        ValueFlow::Value excludedFloatLower;
+        excludedFloatLower.valueType = ValueFlow::Value::ValueType::FLOAT;
+        excludedFloatLower.floatValue = 1.0;
+        excludedFloatLower.bound = ValueFlow::Value::Bound::Lower;
+        excludedFloatLower.setImpossible();
+        ASSERT_EQUALS(false, ValueFlow::isValueRangePreservingConversion(&doubleType, &intType, settingsUnix64, &excludedFloatLower));
+        ASSERT_EQUALS(false, ValueFlow::castValue(excludedFloatLower, ValueType::Sign::SIGNED, 32));
+        ASSERT(excludedFloatLower.isFloatValue());
+        ValueType unsignedIntType(ValueType::Sign::UNSIGNED, ValueType::Type::INT, 0);
+        ValueFlow::Value negativeUpper(-1, ValueFlow::Value::Bound::Upper);
+        negativeUpper.setPossible();
+        ASSERT(ValueFlow::convertValueRange(negativeUpper, &intType, &unsignedIntType, settingsUnix64, nullptr, nullptr));
+        ASSERT(negativeUpper.isPossible());
+        ASSERT(negativeUpper.bound == ValueFlow::Value::Bound::Lower);
+        ASSERT_EQUALS(2147483648LL, negativeUpper.intvalue);
+
+        ValueType unsignedLongType(ValueType::Sign::UNSIGNED, ValueType::Type::LONG, 0);
+        ValueFlow::Value negativeUpper64(-1, ValueFlow::Value::Bound::Upper);
+        negativeUpper64.setPossible();
+        ASSERT(ValueFlow::convertValueRange(negativeUpper64, &intType, &unsignedLongType, settingsUnix64, nullptr, nullptr));
+        ASSERT(negativeUpper64.bound == ValueFlow::Value::Bound::Lower);
+        ASSERT_EQUALS(std::numeric_limits<MathLib::bigint>::max(), negativeUpper64.intvalue);
+
+        ValueFlow::Value crossesZero(-1, ValueFlow::Value::Bound::Lower);
+        crossesZero.setPossible();
+        ASSERT_EQUALS(false, ValueFlow::convertValueRange(crossesZero, &intType, &unsignedIntType, settingsUnix64, nullptr, nullptr));
+        ASSERT(crossesZero.bound == ValueFlow::Value::Bound::Lower);
+        ASSERT_EQUALS(-1, crossesZero.intvalue);
+
+        ValueFlow::Value excludedUpper(-1, ValueFlow::Value::Bound::Upper);
+        excludedUpper.setImpossible();
+        ASSERT_EQUALS(true, ValueFlow::convertValueRange(excludedUpper, &intType, &unsignedIntType, settingsUnix64, nullptr, nullptr));
+        ASSERT(excludedUpper.isImpossible());
+        ASSERT_EQUALS(-1, excludedUpper.intvalue);
+        const MathLib::bigint outsideSignedMaximum = maxValue + 1;
+        ValueFlow::Value excludedUpperLimit(outsideSignedMaximum, ValueFlow::Value::Bound::Lower);
+        excludedUpperLimit.setImpossible();
+        ASSERT_EQUALS(false, ValueFlow::convertValueRange(excludedUpperLimit, &intType, &unsignedIntType, settingsUnix64, nullptr, nullptr));
+        ASSERT(excludedUpperLimit.isImpossible());
+        ASSERT_EQUALS(outsideSignedMaximum, excludedUpperLimit.intvalue);
+        charType.sign = ValueType::UNKNOWN_SIGN;
+        ASSERT_EQUALS(false, ValueFlow::getMinMaxValues(&charType, settingsUnix64.platform, minValue, maxValue));
     }
 
     void valueFlowImpossibleIncDec()
@@ -9655,6 +9936,243 @@ private:
                "}\n";
         ASSERT_EQUALS(true, testValueOfXImpossible(code, 7U, -1));
         ASSERT_EQUALS(false, testValueOfXKnown(code, 7U, -1));
+
+        code = "int guarded_predecrement(unsigned int x) {\n"
+               "    if (x > 0) {\n"
+               "        --x;\n"
+               "        if (x == 0) return 1;\n"
+               "    }\n"
+               "    return 0;\n"
+               "}\n";
+        ASSERT_EQUALS(false, testValueOfXImpossible(code, 4U, 0));
+
+        code = "int guarded_postdecrement(unsigned int x) {\n"
+               "    if (x > 0) {\n"
+               "        x--;\n"
+               "        if (x == 0) return 1;\n"
+               "    }\n"
+               "    return 0;\n"
+               "}\n";
+        ASSERT_EQUALS(false, testValueOfXImpossible(code, 4U, 0));
+
+        code = "int decimal_dot(const char* current, const char* first, int dot) {\n"
+               "    unsigned int digits = (unsigned int)(current - first);\n"
+               "    if (digits > 0) {\n"
+               "        if (dot) {\n"
+               "            digits--;\n"
+               "            if (digits == 0) return 1;\n"
+               "        }\n"
+               "    }\n"
+               "    return 0;\n"
+               "}\n";
+        ASSERT_EQUALS(false, testValueOfXImpossible(code, 6U, 0));
+
+        code = "int wrap_decrement(unsigned int x) {\n"
+               "    x--;\n"
+               "    if (x == 4294967295u) return 1;\n"
+               "    return 0;\n"
+               "}\n";
+        SimpleTokenizer wrapTokenizer(settings, *this);
+        ASSERT(wrapTokenizer.tokenize(code));
+        const Token* wrappedValue = nullptr;
+        for (const Token* tok = wrapTokenizer.tokens(); tok; tok = tok->next()) {
+            if (tok->str() == "x" && tok->linenr() == 3) {
+                wrappedValue = tok;
+                break;
+            }
+        }
+        if (wrappedValue == nullptr) {
+            ASSERT(wrappedValue);
+            return;
+        }
+        ASSERT(std::none_of(wrappedValue->values().cbegin(),
+                            wrappedValue->values().cend(),
+                            [](const ValueFlow::Value& value) {
+            return value.isImpossible() && value.isIntValue() && value.intvalue == 4294967295LL;
+        }));
+    }
+
+    void valueFlowPlainCharCast()
+    {
+        // Values that fit in both signed and unsigned char are kept on a cast to plain char.
+        ASSERT_EQUALS(true, testValueOfXKnown("int f() {\n"
+                                              "    int i = 65;\n"
+                                              "    int x = (char)i;\n"
+                                              "    return x;\n"
+                                              "}\n",
+                                              4,
+                                              65));
+        ASSERT_EQUALS(true, testValueOfXKnown("int f() {\n"
+                                              "    int x = static_cast<char>(0);\n"
+                                              "    return x;\n"
+                                              "}\n",
+                                              3,
+                                              0));
+        ASSERT_EQUALS(true, testValueOfX("int f(int i) {\n"
+                                         "    if (i == 0) {}\n"
+                                         "    int x = (char)i;\n"
+                                         "    return x;\n"
+                                         "}\n",
+                                         4,
+                                         0));
+    }
+
+    void inferPathCompatibility()
+    {
+        SimpleTokenizer tokenizer(settings, *this);
+        ASSERT(tokenizer.tokenize("int f(int x) { if (x) return 0; if (x > 0) return 2; return 1; }\n"));
+        const Token* const condition = Token::findmatch(tokenizer.tokens(), "if");
+        ASSERT(condition);
+        const Token* exclusionCondition = nullptr;
+        for (const Token* tok = condition->next(); tok; tok = tok->next()) {
+            if (tok->str() == "if") {
+                exclusionCondition = tok;
+                break;
+            }
+        }
+        ASSERT(exclusionCondition);
+
+        ValueFlow::Value lhs(384);
+        lhs.setPossible();
+        lhs.condition = condition;
+        lhs.path = 7;
+        lhs.conditional = true;
+        lhs.varId = 1;
+        lhs.varvalue = 384;
+        ValueFlow::Value rhs(32);
+        rhs.setKnown();
+
+        std::vector<ValueFlow::Value> inferred = infer(makeIntegralInferModel(), "-", {lhs}, {rhs});
+        ASSERT_EQUALS(1U, inferred.size());
+        ASSERT(inferred.front().isPossible());
+        ASSERT_EQUALS(7, inferred.front().path);
+        ASSERT(inferred.front().condition == condition);
+        ASSERT(inferred.front().conditional);
+        ASSERT_EQUALS(1, inferred.front().varId);
+        ASSERT_EQUALS(384, inferred.front().varvalue);
+        std::list<ValueFlow::Value> arithmeticValue{inferred.front()};
+
+        ValueFlow::Value rhsSamePath(32);
+        rhsSamePath.setPossible();
+        rhsSamePath.condition = condition;
+        rhsSamePath.path = 7;
+        inferred = infer(makeIntegralInferModel(), "-", {lhs}, {rhsSamePath});
+        ASSERT_EQUALS(1U, inferred.size());
+        ASSERT_EQUALS(7, inferred.front().path);
+        ASSERT(inferred.front().condition == condition);
+
+        ValueFlow::Value rhsDifferentPath(32);
+        rhsDifferentPath.setPossible();
+        rhsDifferentPath.path = 8;
+        inferred = infer(makeIntegralInferModel(), "-", {lhs}, {rhsDifferentPath});
+        ASSERT(inferred.empty());
+
+        ValueFlow::Value knownLhs(9);
+        knownLhs.setKnown();
+        ValueFlow::Value knownRhs(4);
+        knownRhs.setKnown();
+        inferred = infer(makeIntegralInferModel(), "-", {knownLhs}, {knownRhs});
+        ASSERT_EQUALS(1U, inferred.size());
+        ASSERT(inferred.front().isKnown());
+        ASSERT_EQUALS(0, inferred.front().path);
+        ASSERT_EQUALS(5, inferred.front().intvalue);
+        ValueFlow::Value arithmeticExpected(352);
+        arithmeticExpected.setKnown();
+        inferred = infer(makeIntegralInferModel(), "==", arithmeticValue, {arithmeticExpected});
+        ASSERT_EQUALS(1U, inferred.size());
+        ASSERT(inferred.front().isPossible());
+        ASSERT_EQUALS(7, inferred.front().path);
+        ASSERT_EQUALS(1, inferred.front().intvalue);
+
+        ValueFlow::Value rhsLower(1);
+        rhsLower.setPossible();
+        rhsLower.bound = ValueFlow::Value::Bound::Lower;
+        rhsLower.condition = condition;
+        rhsLower.path = 7;
+        ValueFlow::Value rhsUpper(10);
+        rhsUpper.setPossible();
+        rhsUpper.bound = ValueFlow::Value::Bound::Upper;
+        rhsUpper.condition = condition;
+        rhsUpper.path = 7;
+        std::vector<ValueFlow::Value> derivedBounds = infer(makeIntegralInferModel(), "-", {lhs}, {rhsLower, rhsUpper});
+        ASSERT_EQUALS(2U, derivedBounds.size());
+        ASSERT(std::all_of(derivedBounds.cbegin(), derivedBounds.cend(), [](const ValueFlow::Value& value) {
+            return value.isImpossible() && value.bound != ValueFlow::Value::Bound::Point && value.path == 7;
+        }));
+        ASSERT(std::any_of(derivedBounds.cbegin(), derivedBounds.cend(), [](const ValueFlow::Value& value) {
+            return value.bound == ValueFlow::Value::Bound::Upper;
+        }));
+        ASSERT(std::any_of(derivedBounds.cbegin(), derivedBounds.cend(), [](const ValueFlow::Value& value) {
+            return value.bound == ValueFlow::Value::Bound::Lower;
+        }));
+        std::list<ValueFlow::Value> derivedValues(derivedBounds.begin(), derivedBounds.end());
+        ValueFlow::Value intervalBoundary(384);
+        intervalBoundary.setKnown();
+        inferred = infer(makeIntegralInferModel(), "==", derivedValues, {intervalBoundary});
+        ASSERT_EQUALS(1U, inferred.size());
+        ASSERT(inferred.front().isPossible());
+        ASSERT_EQUALS(7, inferred.front().path);
+        ASSERT_EQUALS(0, inferred.front().intvalue);
+
+        lhs.path = 0;
+        rhsLower.path = 0;
+        rhsUpper.path = 0;
+        derivedBounds = infer(makeIntegralInferModel(), "-", {lhs}, {rhsLower, rhsUpper});
+        std::list<ValueFlow::Value> localDerivedValues(derivedBounds.begin(), derivedBounds.end());
+        inferred = infer(makeIntegralInferModel(), "==", localDerivedValues, {intervalBoundary});
+        ASSERT_EQUALS(1U, inferred.size());
+        ASSERT(inferred.front().isKnown());
+        ASSERT_EQUALS(0, inferred.front().path);
+        ASSERT_EQUALS(0, inferred.front().intvalue);
+
+        ValueFlow::Value scalarSupport(23);
+        scalarSupport.setPossible();
+        scalarSupport.path = 7;
+        scalarSupport.condition = condition;
+        scalarSupport.errorPath.emplace_back(condition, "scalar support");
+        ValueFlow::Value excludedPoint(23);
+        excludedPoint.setImpossible();
+        excludedPoint.bound = ValueFlow::Value::Bound::Point;
+        excludedPoint.path = 7;
+        excludedPoint.condition = exclusionCondition;
+        excludedPoint.errorPath.emplace_back(exclusionCondition, "excluded point");
+        ValueFlow::Value castLower(100);
+        castLower.setImpossible();
+        castLower.bound = ValueFlow::Value::Bound::Lower;
+        castLower.path = 7;
+        ValueFlow::Value castUpper(0);
+        castUpper.setImpossible();
+        castUpper.bound = ValueFlow::Value::Bound::Upper;
+        castUpper.path = 7;
+        const std::list<ValueFlow::Value> castAndExclusionValues{castLower, excludedPoint, castUpper};
+        inferred = infer(makeIntegralInferModel(), "==", {scalarSupport}, castAndExclusionValues);
+        ASSERT_EQUALS(1U, inferred.size());
+        ASSERT(inferred.front().isPossible());
+        ASSERT(!inferred.front().isKnown());
+        ASSERT_EQUALS(7, inferred.front().path);
+        ASSERT_EQUALS(0, inferred.front().intvalue);
+        ASSERT(inferred.front().condition == condition);
+        ASSERT(std::any_of(inferred.front().errorPath.cbegin(), inferred.front().errorPath.cend(), [&](const std::pair<const Token*, std::string>& item) {
+            return item.first == condition;
+        }));
+        ASSERT(std::any_of(inferred.front().errorPath.cbegin(), inferred.front().errorPath.cend(), [&](const std::pair<const Token*, std::string>& item) {
+            return item.first == exclusionCondition;
+        }));
+
+        inferred = infer(makeIntegralInferModel(), "!=", {scalarSupport}, castAndExclusionValues);
+        ASSERT_EQUALS(1U, inferred.size());
+        ASSERT(inferred.front().isPossible());
+        ASSERT(!inferred.front().isKnown());
+        ASSERT_EQUALS(7, inferred.front().path);
+        ASSERT_EQUALS(1, inferred.front().intvalue);
+
+        scalarSupport.path = 7;
+        excludedPoint.path = 8;
+        castLower.path = 8;
+        castUpper.path = 8;
+        const std::list<ValueFlow::Value> incompatibleValues{castLower, excludedPoint, castUpper};
+        inferred = infer(makeIntegralInferModel(), "==", {scalarSupport}, incompatibleValues);
+        ASSERT(inferred.empty());
     }
 
     void valueFlowImpossibleUnknownConstant()
@@ -9667,7 +10185,8 @@ private:
                "        if (x != 0) return;\n"
                "    }\n"
                "}\n";
-        ASSERT_EQUALS(true, testValueOfXImpossible(code, 4U, 0));
+        // An untyped incomplete identifier cannot carry its exclusion through an int conversion.
+        ASSERT_EQUALS(false, testValueOfXImpossible(code, 4U, 0));
     }
 
     void valueFlowContainerEqual()

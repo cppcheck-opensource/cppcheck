@@ -43,10 +43,10 @@ protected:
     InferModel() = default;
 };
 
-std::vector<ValueFlow::Value> infer(const ValuePtr<InferModel>& model,
-                                    const std::string& op,
-                                    std::list<ValueFlow::Value> lhsValues,
-                                    std::list<ValueFlow::Value> rhsValues);
+CPPCHECKLIB std::vector<ValueFlow::Value> infer(const ValuePtr<InferModel>& model,
+                                                const std::string& op,
+                                                std::list<ValueFlow::Value> lhsValues,
+                                                std::list<ValueFlow::Value> rhsValues);
 
 std::vector<ValueFlow::Value> infer(const ValuePtr<InferModel>& model,
                                     const std::string& op,
@@ -58,10 +58,10 @@ std::vector<ValueFlow::Value> infer(const ValuePtr<InferModel>& model,
                                     std::list<ValueFlow::Value> lhsValues,
                                     MathLib::bigint rhs);
 
-CPPCHECKLIB std::vector<MathLib::bigint> getMinValue(const ValuePtr<InferModel>& model, const std::list<ValueFlow::Value>& values);
-std::vector<MathLib::bigint> getMaxValue(const ValuePtr<InferModel>& model, const std::list<ValueFlow::Value>& values);
+CPPCHECKLIB std::vector<MathLib::bigint> getMinValue(const ValuePtr<InferModel>& model, const std::list<ValueFlow::Value>& values, const ValueFlow::Value** minRef);
+CPPCHECKLIB std::vector<MathLib::bigint> getMaxValue(const ValuePtr<InferModel>& model, const std::list<ValueFlow::Value>& values);
 
-ValuePtr<InferModel> makeIntegralInferModel();
+CPPCHECKLIB ValuePtr<InferModel> makeIntegralInferModel();
 
 ValueFlow::Value inferCondition(const std::string& op, const Token* varTok, MathLib::bigint val);
 

@@ -39,13 +39,27 @@ namespace ValueFlow
 
 namespace ValueFlow
 {
-    bool getMinMaxValues(const ValueType* vt, const Platform& platform, MathLib::bigint& minValue, MathLib::bigint& maxValue);
+    CPPCHECKLIB bool getMinMaxValues(const ValueType* vt, const Platform& platform, MathLib::bigint& minValue, MathLib::bigint& maxValue);
+    CPPCHECKLIB bool isValueRangePreservingConversion(const ValueType* source,
+                                                      const ValueType* destination,
+                                                      const Settings& settings,
+                                                      const Value* range = nullptr);
+    // Transfer an integer range fact through a conversion when its image is soundly representable.
+    CPPCHECKLIB bool convertValueRange(Value& value,
+                                       const ValueType* source,
+                                       const ValueType* destination,
+                                       const Settings& settings,
+                                       const Token* sourceTok,
+                                       const Token* useTok);
+
+    bool isUnsignedArithmeticResult(const Token* tok);
+    bool isUnsignedArithmeticNoWrap(const Token* tok, const Settings& settings, bool requireGlobalContext);
 
     MathLib::bigint truncateIntValue(MathLib::bigint value, size_t value_size, const ValueType* dst, const Platform& platform);
 
     Token * valueFlowSetConstantValue(Token *tok, const Settings &settings);
 
-    Value castValue(Value value, ValueType::Sign sign, nonneg int bit);
+    CPPCHECKLIB bool castValue(Value& value, ValueType::Sign sign, nonneg int bit);
 
     std::string debugString(const Value& v);
 
