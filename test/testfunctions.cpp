@@ -63,6 +63,8 @@ private:
         // Math function usage
         TEST_CASE(mathfunctionCall_fmod);
         TEST_CASE(mathfunctionCall_sqrt);
+        TEST_CASE(mathfunctionCall_log_garli_reduction);
+        TEST_CASE(mathfunctionCall_log_guarded);
         TEST_CASE(mathfunctionCall_log);
         TEST_CASE(mathfunctionCall_acos);
         TEST_CASE(mathfunctionCall_asin);
@@ -821,6 +823,90 @@ private:
               "    std::cout <<  sqrtl(1) << std::endl;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void mathfunctionCall_log_guarded() {
+        check("double guarded_return(double x) {\n"
+              "    if (x <= 0.0)\n"
+              "        return 0.0;\n"
+              "    return log(x);\n"
+              "}\n"
+              "double guarded_else(double x) {\n"
+              "    if (x <= 0.0) {\n"
+              "        return 0.0;\n"
+              "    } else {\n"
+              "        return log(x);\n"
+              "    }\n"
+              "}\n"
+              "double guarded_short_circuit(double x) {\n"
+              "    if (x <= 0.0 || x >= 2.0) return 0.0;\n"
+              "    return log(x);\n"
+              "}\n"
+              "double guarded_subtract_short_circuit(double x) {\n"
+              "    if (x >= 0.5 || x <= -1.0) return 0.0;\n"
+              "    return log(0.5 - x);\n"
+              "}\n"
+              "double guarded_subtract(double x) {\n"
+              "    if (x >= 0.5)\n"
+              "        return 0.0;\n"
+              "    return log(0.5 - x);\n"
+              "}\n"
+              "float guarded_float(float x) {\n"
+              "    if (x <= 0.0f)\n"
+              "        return 0.0f;\n"
+              "    return logf(x);\n"
+              "}\n"
+              "float guarded_float_subtract(float x) {\n"
+              "    if (x >= 0.5f)\n"
+              "        return 0.0f;\n"
+              "    return logf(0.5f - x);\n"
+              "}\n"
+              "long double guarded_long_double(long double x) {\n"
+              "    if (x <= 0.0L)\n"
+              "        return 0.0L;\n"
+              "    return logl(x);\n"
+              "}\n"
+              "double guarded_after_assignment(double x) {\n"
+              "    if (x <= 0.0)\n"
+              "        x = 1.0;\n"
+              "    return log(x);\n"
+              "}\n"
+              "double guarded_after_loop(double x) {\n"
+              "    while (x <= 0.0)\n"
+              "        x = 1.0;\n"
+              "    return log(x);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("double invalid_true_branch(double x) {\n"
+              "    if (x <= 0.0)\n"
+              "        return log(x);\n"
+              "    return 0.0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:11] -> [test.cpp:3:20]: (warning) Either the condition 'x<=0.0' is redundant or log() argument nr 1 can have invalid value. The value is 0 but the valid values are '4.94066e-324:'. [invalidFunctionArg]\n",
+                      errout_str());
+    }
+
+    void mathfunctionCall_log_garli_reduction() {
+        check("inline double LnGamma(double alp) {\n"
+              "    double x = alp, f = 0.0, z;\n"
+              "    if (x < 7) {\n"
+              "        f = 1.0;\n"
+              "        z = x - 1.0;\n"
+              "        while (++z < 7.0)\n"
+              "            f *= z;\n"
+              "        x = z;\n"
+              "        f = -log(f);\n"
+              "    }\n"
+              "    return f + (x - 0.5) * log(x) - x + 0.918938533204673;\n"
+              "}\n"
+              "double PointChi2(double p, double v) {\n"
+              "    if (p < 0.000002 || p > 0.999998 || v <= 0.0)\n"
+              "        return -1.0;\n"
+              "    return LnGamma(v * 0.5);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
     }
 
     void mathfunctionCall_log() {

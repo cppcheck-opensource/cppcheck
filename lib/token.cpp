@@ -28,6 +28,7 @@
 #include "utils.h"
 #include "tokenrange.h"
 #include "valueflow.h"
+#include "vf_common.h"
 
 #include <algorithm>
 #include <cassert>
@@ -1928,8 +1929,11 @@ const ValueFlow::Value * Token::getValueLE(const MathLib::bigint val, const Sett
 {
     if (!mImpl->mValues)
         return nullptr;
+    const bool unsignedMayWrap = ValueFlow::isUnsignedArithmeticResult(this) &&
+                                 !ValueFlow::isUnsignedArithmeticNoWrap(this, settings, true);
     return ValueFlow::findValue(*mImpl->mValues, settings, [&](const ValueFlow::Value& v) {
-        return !v.isImpossible() && v.isIntValue() && v.intvalue <= val;
+        return !v.isImpossible() && v.isIntValue() && v.intvalue <= val &&
+               (!unsignedMayWrap || v.bound != ValueFlow::Value::Bound::Lower);
     });
 }
 

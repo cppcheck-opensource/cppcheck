@@ -9682,6 +9682,8 @@ private:
                                      $.platform.int_bit = 32,
                                          $.platform.long_bit = 64,
                                          $.platform.long_long_bit = 64);
+        const Settings settingsUnix64 = settingsBuilder().platform(Platform::Type::Unix64).build();
+        const Settings settingsWin64 = settingsBuilder().platform(Platform::Type::Win64).build();
 
         // numbers
         ASSERT_EQUALS("signed int", typeOf("1;\n", "1", false, &s));
@@ -9760,7 +9762,8 @@ private:
         ASSERT_EQUALS("unsigned int", typeOf("(unsigned int)1 + (unsigned char)2;\n", "+"));
         ASSERT_EQUALS("unsigned int", typeOf("(unsigned int)1 + (signed int)2;\n", "+"));
         ASSERT_EQUALS("unsigned int", typeOf("(unsigned int)1 + (unsigned int)2;\n", "+"));
-        ASSERT_EQUALS("signed long", typeOf("(signed long)1 + (unsigned int)2;\n", "+"));
+        ASSERT_EQUALS("signed long", typeOf("(signed long)1 + (unsigned int)2;\n", "+", true, &settingsUnix64));
+        ASSERT_EQUALS("unsigned long", typeOf("(signed long)1 + (unsigned int)2;\n", "+", true, &settingsWin64));
         ASSERT_EQUALS("unsigned long", typeOf("(unsigned long)1 + (signed int)2;\n", "+"));
 
         // char
@@ -9967,19 +9970,19 @@ private:
                                        "  <podtype name=\"xyz::x\" sign=\"u\" size=\"4\"/>\n"
                                        "  <podtype name=\"podtype2\" sign=\"u\" size=\"0\" stdtype=\"int\"/>\n"
                                        "</def>";
-            const Settings settingsWin64 = settingsBuilder().platform(Platform::Type::Win64).libraryxml(xmldata).build();
+            const Settings settingsWin64PodType = settingsBuilder().platform(Platform::Type::Win64).libraryxml(xmldata).build();
             ValueType vt;
-            ASSERT_EQUALS(true, vt.fromLibraryType("u32", settingsWin64));
-            ASSERT_EQUALS(true, vt.fromLibraryType("xyz::x", settingsWin64));
+            ASSERT_EQUALS(true, vt.fromLibraryType("u32", settingsWin64PodType));
+            ASSERT_EQUALS(true, vt.fromLibraryType("xyz::x", settingsWin64PodType));
             ASSERT_EQUALS(ValueType::Type::INT, vt.type);
             ValueType vt2;
-            ASSERT_EQUALS(true, vt2.fromLibraryType("podtype2", settingsWin64));
+            ASSERT_EQUALS(true, vt2.fromLibraryType("podtype2", settingsWin64PodType));
             ASSERT_EQUALS(ValueType::Type::INT, vt2.type);
-            ASSERT_EQUALS("unsigned int *", typeOf(";void *data = new u32[10];\n", "new", true, &settingsWin64));
-            ASSERT_EQUALS("unsigned int *", typeOf(";void *data = new xyz::x[10];\n", "new", true, &settingsWin64));
-            ASSERT_EQUALS("unsigned int", typeOf("; x = (xyz::x)12;\n", "(", true, &settingsWin64));
-            ASSERT_EQUALS("unsigned int", typeOf(";u32(12);\n", "(", true, &settingsWin64));
-            ASSERT_EQUALS("unsigned int", typeOf("x = u32(y[i]);\n", "(", true, &settingsWin64));
+            ASSERT_EQUALS("unsigned int *", typeOf(";void *data = new u32[10];\n", "new", true, &settingsWin64PodType));
+            ASSERT_EQUALS("unsigned int *", typeOf(";void *data = new xyz::x[10];\n", "new", true, &settingsWin64PodType));
+            ASSERT_EQUALS("unsigned int", typeOf("; x = (xyz::x)12;\n", "(", true, &settingsWin64PodType));
+            ASSERT_EQUALS("unsigned int", typeOf(";u32(12);\n", "(", true, &settingsWin64PodType));
+            ASSERT_EQUALS("unsigned int", typeOf("x = u32(y[i]);\n", "(", true, &settingsWin64PodType));
         }
         {
             // PlatformType
@@ -10002,9 +10005,9 @@ private:
                                        "    <platform type=\"win64\"/>\n"
                                        "  </platformtype>\n"
                                        "</def>";
-            const Settings settingsWin64 = settingsBuilder().platform(Platform::Type::Win64).libraryxml(xmldata).build();
+            const Settings settingsWin64PlatformType = settingsBuilder().platform(Platform::Type::Win64).libraryxml(xmldata).build();
             ValueType vt;
-            ASSERT_EQUALS(true, vt.fromLibraryType("LPCTSTR", settingsWin64));
+            ASSERT_EQUALS(true, vt.fromLibraryType("LPCTSTR", settingsWin64PlatformType));
             ASSERT_EQUALS(ValueType::Type::WCHAR_T, vt.type);
         }
         {

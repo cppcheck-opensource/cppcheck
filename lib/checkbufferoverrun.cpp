@@ -355,10 +355,77 @@ void CheckBufferOverrunImpl::arrayIndex()
                 arrayIndexError(tok, dimensions, indexValues);
         }
 
+        const auto isNonnegativeInductionVariable = [&](const Token* indexToken) {
+            const Variable* const variable = indexToken->variable();
+            if (!variable || !indexToken->varId())
+                return false;
+
+            for (const Scope* loop = indexToken->scope(); loop; loop = loop->nestedIn) {
+                if (loop->type != ScopeType::eFor || !loop->classDef || !loop->bodyStart || !loop->bodyEnd)
+                    continue;
+                const Token* const forExpressions = loop->classDef->next();
+                if (!forExpressions || !forExpressions->astOperand2())
+                    continue;
+                const Token* const clauses = forExpressions->astOperand2();
+                const Token* const init = clauses->astOperand1();
+                const Token* const remainingClauses = clauses->astOperand2();
+                if (!init || !remainingClauses || !remainingClauses->astOperand1() || !remainingClauses->astOperand2())
+                    continue;
+                const Token* const step = remainingClauses->astOperand2();
+                if (!Token::simpleMatch(init, "=") || !init->astOperand1() ||
+                    init->astOperand1()->varId() != indexToken->varId() || !Token::simpleMatch(step, "++"))
+                    continue;
+                const Token* stepVariable = step->astOperand1();
+                if (!stepVariable)
+                    stepVariable = step->astOperand2();
+                if (!stepVariable || stepVariable->varId() != indexToken->varId())
+                    continue;
+
+                const Token* const initialValue = init->astOperand2();
+                const ValueType* const initialType = initialValue ? initialValue->valueType() : nullptr;
+                const ValueType* const indexType = indexToken->valueType();
+                if (!initialValue || !initialType || !indexType || !initialType->isIntegral() || !indexType->isIntegral() ||
+                    initialType->pointer || indexType->pointer || initialType->sign != indexType->sign ||
+                    initialType->getSizeOf(mSettings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer) >
+                    indexType->getSizeOf(mSettings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer))
+                    continue;
+                const bool hasNonnegativeLowerBound = std::any_of(initialValue->values().cbegin(),
+                                                                  initialValue->values().cend(),
+                                                                  [](const ValueFlow::Value& value) {
+                    return value.isIntValue() && !value.isImpossible() && !value.isInconclusive() && value.intvalue >= 0 &&
+                           (value.bound == ValueFlow::Value::Bound::Lower ||
+                            (value.bound == ValueFlow::Value::Bound::Point && value.isKnown()));
+                });
+                if (!hasNonnegativeLowerBound)
+                    continue;
+                const Token* const condition = remainingClauses->astOperand1();
+                if (findVariableChanged(previousBeforeAstLeftmostLeaf(condition)->next(),
+                                        nextAfterAstRightmostLeaf(condition),
+                                        /*indirect*/ 0,
+                                        variable->declarationId(),
+                                        variable->isGlobal(),
+                                        mSettings))
+                    continue;
+                if (findVariableChanged(loop->bodyStart->next(),
+                                        loop->bodyEnd,
+                                        /*indirect*/ 1,
+                                        variable->declarationId(),
+                                        variable->isGlobal(),
+                                        mSettings))
+                    continue;
+                return true;
+            }
+            return false;
+        };
+
         // Negative index
         bool neg = false;
         std::vector<ValueFlow::Value> negativeIndexes;
         for (const Token * indexToken : indexTokens) {
+            if (isNonnegativeInductionVariable(indexToken)) {
+                negativeIndexes.emplace_back(ValueFlow::Value::unknown());
+                continue;
+            }
             const ValueFlow::Value *negativeValue = indexToken->getValueLE(-1, mSettings);
             if (negativeValue) {
                 negativeIndexes.emplace_back(*negativeValue);

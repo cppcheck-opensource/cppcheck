@@ -98,12 +98,49 @@ void CheckTypeImpl::checkTooBigBitwiseShift()
         else
             continue;
 
-        // Get biggest rhs value. preferably a value which doesn't have 'condition'.
-        const ValueFlow::Value * value = tok->astOperand2()->getValueGE(lhsbits, mSettings);
+        // Get the biggest feasible rhs value, preferring a value without a condition.
+        const Token* const shiftCount = tok->astOperand2();
+        const auto isUnreachableTernaryValue = [&](const ValueFlow::Value& candidate) {
+            const Token* child = shiftCount;
+            for (const Token* parent = child->astParent(); parent; child = parent, parent = parent->astParent()) {
+                if (parent->str() != ":" || !Token::simpleMatch(parent->astParent(), "?"))
+                    continue;
+                const bool inTrueBranch = child == parent->astOperand1();
+                const bool inFalseBranch = child == parent->astOperand2();
+                if (!inTrueBranch && !inFalseBranch)
+                    continue;
+                const Token* condition = parent->astParent()->astOperand1();
+                bool canEnterBranch = false;
+                bool canEnterOtherBranch = false;
+                for (const ValueFlow::Value& value : condition->values()) {
+                    if (!value.isIntValue() || value.isImpossible() || value.bound != ValueFlow::Value::Bound::Point ||
+                        (value.path != 0 && (candidate.path == 0 || value.path != candidate.path)))
+                        continue;
+                    if ((value.intvalue != 0) == inTrueBranch)
+                        canEnterBranch = true;
+                    else
+                        canEnterOtherBranch = true;
+                }
+                return canEnterOtherBranch && !canEnterBranch;
+            }
+            return false;
+        };
+        const auto getShiftCountValueGE = [&](MathLib::bigint threshold) -> const ValueFlow::Value* {
+            return ValueFlow::findValue(shiftCount->values(), mSettings, [&](const ValueFlow::Value& candidate) {
+                if (candidate.isImpossible() || !candidate.isIntValue() || candidate.intvalue < threshold ||
+                    isUnreachableTernaryValue(candidate))
+                    return false;
+                return std::none_of(shiftCount->values().cbegin(), shiftCount->values().cend(), [&](const ValueFlow::Value& bound) {
+                    return bound.isImpossible() && bound.isIntValue() && bound.bound == ValueFlow::Value::Bound::Lower &&
+                           bound.intvalue <= threshold && (bound.path == 0 || bound.path == candidate.path);
+                });
+            });
+        };
+        const ValueFlow::Value * value = getShiftCountValueGE(lhsbits);
         if (value && mSettings.isEnabled(value, false))
             tooBigBitwiseShiftError(tok, lhsbits, *value);
         else if (lhstype->sign == ValueType::Sign::SIGNED) {
-            value = tok->astOperand2()->getValueGE(lhsbits-1, mSettings);
+            value = getShiftCountValueGE(lhsbits - 1);
             if (value && mSettings.isEnabled(value, false))
                 tooBigSignedBitwiseShiftError(tok, lhsbits, *value);
         }
@@ -493,15 +530,18 @@ void CheckTypeImpl::checkFloatToIntegerOverflow(const Token *tok, const ValueTyp
         return;
 
     for (const ValueFlow::Value &f : floatValues) {
-        if (f.valueType != ValueFlow::Value::ValueType::FLOAT)
+        if (f.valueType != ValueFlow::Value::ValueType::FLOAT || f.isImpossible())
             continue;
         if (!mSettings.isEnabled(&f, false))
             continue;
-        if (f.floatValue >= std::exp2(mSettings.platform.long_long_bit))
+
+        const bool positiveEvidence = f.bound != ValueFlow::Value::Bound::Upper;
+        const bool negativeEvidence = f.bound != ValueFlow::Value::Bound::Lower;
+        if (positiveEvidence && f.floatValue >= std::exp2(mSettings.platform.long_long_bit))
             floatToIntegerOverflowError(tok, f);
-        else if ((-f.floatValue) > std::exp2(mSettings.platform.long_long_bit - 1))
+        else if (negativeEvidence && (-f.floatValue) > std::exp2(mSettings.platform.long_long_bit - 1))
             floatToIntegerOverflowError(tok, f);
-        else if (mSettings.platform.type != Platform::Type::Unspecified) {
+        else if (positiveEvidence && mSettings.platform.type != Platform::Type::Unspecified) {
             int bits = 0;
             if (vtint->type == ValueType::Type::CHAR)
                 bits = mSettings.platform.char_bit;
