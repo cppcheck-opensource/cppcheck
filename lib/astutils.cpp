@@ -33,6 +33,7 @@
 #include "utils.h"
 #include "valueflow.h"
 #include "valueptr.h"
+#include "vf_common.h"
 #include "vfvalue.h"
 
 #include "checkclass.h"
@@ -42,6 +43,7 @@
 #include <functional>
 #include <initializer_list>
 #include <iterator>
+#include <limits>
 #include <list>
 #include <set>
 #include <type_traits>
@@ -835,6 +837,17 @@ bool astIsRHS(const Token* tok)
     return parent->astOperand2() == tok;
 }
 
+std::string invertOperatorForOperandSwap(std::string op)
+{
+    if (op.empty())
+        return op;
+    if (op[0] == '<')
+        op[0] = '>';
+    else if (op[0] == '>')
+        op[0] = '<';
+    return op;
+}
+
 template<class T, REQUIRES("T must be a Token class", std::is_convertible<T*, const Token*> )>
 static T* getCondTokImpl(T* tok)
 {
@@ -952,55 +965,65 @@ const Token *findNextTokenFromBreak(const Token *breakToken)
     return nullptr;
 }
 
-bool extractForLoopValues(const Token *forToken,
-                          nonneg int &varid,
-                          bool &knownInitValue,
-                          MathLib::bigint &initValue,
-                          bool &partialCond,
-                          MathLib::bigint &stepValue,
-                          MathLib::bigint &lastValue)
+ForLoopValues extractForLoopValues(const Token *forToken)
 {
+    ForLoopValues values;
     if (!Token::simpleMatch(forToken, "for (") || !Token::simpleMatch(forToken->next()->astOperand2(), ";"))
-        return false;
+        return values;
     const Token *initExpr = forToken->next()->astOperand2()->astOperand1();
     const Token *condExpr = forToken->next()->astOperand2()->astOperand2()->astOperand1();
     const Token *incExpr  = forToken->next()->astOperand2()->astOperand2()->astOperand2();
     if (!initExpr || !initExpr->isBinaryOp() || initExpr->str() != "=" || !Token::Match(initExpr->astOperand1(), "%var%"))
-        return false;
-    std::vector<MathLib::bigint> minInitValue =
-        getMinValue(makeIntegralInferModel(), initExpr->astOperand2()->values());
-    if (minInitValue.empty()) {
-        const ValueFlow::Value* v = initExpr->astOperand2()->getMinValue(true);
-        if (v)
-            minInitValue.push_back(v->intvalue);
+        return values;
+    const Token* const initToken = initExpr->astOperand2();
+    const std::vector<MathLib::bigint> minInitValue =
+        getMinValue(makeIntegralInferModel(), initToken->values());
+    values.initValueSource = getMinValueSource(makeIntegralInferModel(), initToken->values());
+    values.hasMinimum = !minInitValue.empty();
+    if (values.hasMinimum) {
+        values.knownInitValue = initToken->hasKnownIntValue();
+        values.initValue = minInitValue.front();
+        if (values.knownInitValue && values.initValueSource &&
+            values.initValueSource->bound != ValueFlow::Value::Bound::Point) {
+            const auto it = std::find_if(initToken->values().cbegin(),
+                                         initToken->values().cend(),
+                                         [&](const ValueFlow::Value& value) {
+                return value.isIntValue() && !value.isImpossible() && !value.isInconclusive() &&
+                       value.bound == ValueFlow::Value::Bound::Point && value.intvalue == values.initValue;
+            });
+            if (it != initToken->values().cend())
+                values.initValueSource = &*it;
+        }
     }
-    if (minInitValue.empty())
-        return false;
-    varid = initExpr->astOperand1()->varId();
-    knownInitValue = initExpr->astOperand2()->hasKnownIntValue();
-    initValue = minInitValue.front();
-    partialCond = Token::Match(condExpr, "%oror%|&&");
-    visitAstNodes(condExpr, [varid, &condExpr](const Token *tok) {
+    values.varid = initExpr->astOperand1()->varId();
+    values.partialCond = Token::Match(condExpr, "%oror%|&&");
+    visitAstNodes(condExpr, [&](const Token *tok) {
         if (Token::Match(tok, "%oror%|&&"))
             return ChildrenToVisit::op1_and_op2;
-        if (Token::Match(tok, "<|<=") && tok->isBinaryOp() && tok->astOperand1()->varId() == varid && tok->astOperand2()->hasKnownIntValue()) {
+        if (Token::Match(tok, "<|<=") && tok->isBinaryOp() && tok->astOperand1()->varId() == values.varid &&
+            tok->astOperand2()->hasKnownIntValue()) {
             if (Token::Match(condExpr, "%oror%|&&") || tok->astOperand2()->getKnownIntValue() < condExpr->astOperand2()->getKnownIntValue())
                 condExpr = tok;
         }
         return ChildrenToVisit::none;
     });
-    if (!Token::Match(condExpr, "<|<=") || !condExpr->isBinaryOp() || condExpr->astOperand1()->varId() != varid || !condExpr->astOperand2()->hasKnownIntValue())
-        return false;
-    if (!incExpr || !incExpr->isUnaryOp("++") || incExpr->astOperand1()->varId() != varid)
-        return false;
-    stepValue = 1;
-    if (condExpr->str() == "<")
-        lastValue = condExpr->astOperand2()->getKnownIntValue() - 1;
-    else
-        lastValue = condExpr->astOperand2()->getKnownIntValue();
-    return true;
+    if (!Token::Match(condExpr, "<|<=") || !condExpr->isBinaryOp() || condExpr->astOperand1()->varId() != values.varid ||
+        !condExpr->astOperand2()->hasKnownIntValue())
+        return values;
+    if (!incExpr || !incExpr->isUnaryOp("++") || incExpr->astOperand1()->varId() != values.varid)
+        return values;
+    values.stepValue = 1;
+    if (condExpr->str() == "<") {
+        const MathLib::bigint limit = condExpr->astOperand2()->getKnownIntValue();
+        if (limit == std::numeric_limits<MathLib::bigint>::min())
+            return values;
+        values.lastValue = limit - 1;
+    } else {
+        values.lastValue = condExpr->astOperand2()->getKnownIntValue();
+    }
+    values.valid = true;
+    return values;
 }
-
 
 static const Token * getVariableInitExpression(const Variable * var)
 {
@@ -1476,6 +1499,22 @@ static inline bool isDifferentKnownValues(const Token * const tok1, const Token 
     });
 }
 
+// Like isDifferentKnownValues(), but the two constants are read as they compare against 'exprTok'.
+static bool isDifferentKnownValues(const Token* tok1, const Token* tok2, const Token* exprTok, const Settings& settings)
+{
+    return compareKnownValue(tok1, tok2, [&](const ValueFlow::Value& v1, const ValueFlow::Value& v2, bool sameLifetime) {
+        if (!v1.isIntValue() || !v2.isIntValue()) {
+            bool equal = v1.equalValue(v2);
+            if (v1.isIteratorValue())
+                equal &= sameLifetime;
+            return !equal;
+        }
+        const MathLib::bigint value1 = ValueFlow::castConstantToOperandType(tok1, exprTok, v1.intvalue, settings);
+        const MathLib::bigint value2 = ValueFlow::castConstantToOperandType(tok2, exprTok, v2.intvalue, settings);
+        return value1 != value2;
+    });
+}
+
 static inline bool isSameConstantValue(bool macro, const Token* tok1, const Token* tok2)
 {
     if (tok1 == nullptr || tok2 == nullptr)
@@ -1903,9 +1942,9 @@ bool isOppositeCond(bool isNot, const Token * const cond1, const Token * const c
     if (!isNot) {
         if (cond1->str() == "==" && cond2->str() == "==") {
             if (isSameExpression(true, cond1->astOperand1(), cond2->astOperand1(), settings, pure, followVar, errors))
-                return isDifferentKnownValues(cond1->astOperand2(), cond2->astOperand2());
+                return isDifferentKnownValues(cond1->astOperand2(), cond2->astOperand2(), cond1->astOperand1(), settings);
             if (isSameExpression(true, cond1->astOperand2(), cond2->astOperand2(), settings, pure, followVar, errors))
-                return isDifferentKnownValues(cond1->astOperand1(), cond2->astOperand1());
+                return isDifferentKnownValues(cond1->astOperand1(), cond2->astOperand1(), cond1->astOperand2(), settings);
         }
 
         if (Library::isContainerYield(cond1, Library::Container::Yield::EMPTY, "empty") &&
@@ -2011,10 +2050,16 @@ bool isOppositeCond(bool isNot, const Token * const cond1, const Token * const c
         const ValueFlow::Value &rhsValue1 = value1->values().front();
         const ValueFlow::Value &rhsValue2 = value2->values().front();
 
+        // The operands are compared in their common type. When one side is an unsigned constant and the
+        // other a signed expression, the comparison happens in the unsigned domain, so the constant must be
+        // read as that expression's type would see it: 0xFFFFFFFFu is -1 for an 'int' operand.
+        const MathLib::bigint bound1 = ValueFlow::castConstantToOperandType(value1, expr1, rhsValue1.intvalue, settings);
+        const MathLib::bigint bound2 = ValueFlow::castConstantToOperandType(value2, expr2, rhsValue2.intvalue, settings);
+
         if (op1 == "<" || op1 == "<=")
-            return (op2 == "==" || op2 == ">" || op2 == ">=") && (rhsValue1.intvalue < rhsValue2.intvalue);
+            return (op2 == "==" || op2 == ">" || op2 == ">=") && (bound1 < bound2);
         if (op1 == ">=" || op1 == ">")
-            return (op2 == "==" || op2 == "<" || op2 == "<=") && (rhsValue1.intvalue > rhsValue2.intvalue);
+            return (op2 == "==" || op2 == "<" || op2 == "<=") && (bound1 > bound2);
 
         return false;
     }
@@ -3932,6 +3977,20 @@ const Token *skipUnreachableBranch(const Token *tok)
     }
 
     return tok;
+}
+
+bool isInUnreachableBranch(const Token *tok)
+{
+    for (const Scope *scope = tok->scope(); scope; scope = scope->nestedIn) {
+        if (scope->type != ScopeType::eIf && scope->type != ScopeType::eElse)
+            continue;
+        const Token *body = scope->bodyStart;
+        if (!body || body->str() != "{" || scope->bodyEnd != body->link())
+            continue;
+        if (skipUnreachableBranch(body) != body)
+            return true;
+    }
+    return false;
 }
 
 bool isEscapeKeyword(const Token *tok, const Settings &settings)

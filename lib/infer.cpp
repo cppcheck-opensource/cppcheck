@@ -24,6 +24,7 @@
 #include "valueptr.h"
 #include "vfvalue.h"
 
+#include <limits>
 #include <cassert>
 #include <algorithm>
 #include <functional>
@@ -127,7 +128,8 @@ namespace {
             Interval result;
             const ValueFlow::Value* minValue = getCompareValue(values, predicate, std::less<MathLib::bigint>{});
             if (minValue) {
-                if (minValue->isImpossible() && minValue->bound == ValueFlow::Value::Bound::Upper)
+                if (minValue->isImpossible() && minValue->bound == ValueFlow::Value::Bound::Upper &&
+                    minValue->intvalue != std::numeric_limits<MathLib::bigint>::max())
                     result.setMinValue(minValue->intvalue + 1, minValue);
                 if (minValue->isPossible() && minValue->bound == ValueFlow::Value::Bound::Lower)
                     result.setMinValue(minValue->intvalue, minValue);
@@ -137,20 +139,14 @@ namespace {
             }
             const ValueFlow::Value* maxValue = getCompareValue(values, predicate, std::greater<MathLib::bigint>{});
             if (maxValue) {
-                if (maxValue->isImpossible() && maxValue->bound == ValueFlow::Value::Bound::Lower)
+                if (maxValue->isImpossible() && maxValue->bound == ValueFlow::Value::Bound::Lower &&
+                    maxValue->intvalue != std::numeric_limits<MathLib::bigint>::min())
                     result.setMaxValue(maxValue->intvalue - 1, maxValue);
                 if (maxValue->isPossible() && maxValue->bound == ValueFlow::Value::Bound::Upper)
                     result.setMaxValue(maxValue->intvalue, maxValue);
                 assert(!maxValue->isKnown());
             }
             return result;
-        }
-
-        static Interval fromValues(const std::list<ValueFlow::Value>& values)
-        {
-            return Interval::fromValues(values, [](const ValueFlow::Value&) {
-                return true;
-            });
         }
 
         template<class F>
@@ -237,12 +233,37 @@ namespace {
     };
 }
 
-static void addToErrorPath(ValueFlow::Value& value, const std::vector<const ValueFlow::Value*>& refs)
+static bool isOnPath(const ValueFlow::Value& value, MathLib::bigint path)
+{
+    return value.path == 0 || value.path == path;
+}
+
+static bool addToErrorPath(ValueFlow::Value& value, const std::vector<const ValueFlow::Value*>& refs)
 {
     std::unordered_set<const Token*> locations;
+    const Token* condition = nullptr;
+    MathLib::bigint path = 0;
+    nonneg int varId = 0;
+    MathLib::bigint varvalue = 0;
+    bool conflictingVariable = false;
     for (const ValueFlow::Value* ref : refs) {
-        if (ref->condition && !value.condition)
-            value.condition = ref->condition;
+        if (ref->path < 0 || (ref->path > 0 && path > 0 && ref->path != path))
+            return false;
+        if (ref->path > 0)
+            path = ref->path;
+        if (ref->condition && !condition)
+            condition = ref->condition;
+        if (ref->varId) {
+            if (varId && (varId != ref->varId || varvalue != ref->varvalue))
+                conflictingVariable = true;
+            else {
+                varId = ref->varId;
+                varvalue = ref->varvalue;
+            }
+        }
+        value.conditional = value.conditional || ref->conditional;
+        value.defaultArg = value.defaultArg || ref->defaultArg;
+        value.safe = value.safe || ref->safe;
         std::copy_if(ref->errorPath.cbegin(),
                      ref->errorPath.cend(),
                      std::back_inserter(value.errorPath),
@@ -256,6 +277,16 @@ static void addToErrorPath(ValueFlow::Value& value, const std::vector<const Valu
             return locations.insert(e.first).second;
         });
     }
+    value.condition = condition;
+    value.path = path;
+    if (conflictingVariable) {
+        value.varId = 0;
+        value.varvalue = 0;
+    } else {
+        value.varId = varId;
+        value.varvalue = varvalue;
+    }
+    return true;
 }
 
 static void setValueKind(ValueFlow::Value& value, const std::vector<const ValueFlow::Value*>& refs)
@@ -270,80 +301,131 @@ static void setValueKind(ValueFlow::Value& value, const std::vector<const ValueF
     }
     if (isInconclusive)
         value.setInconclusive();
-    else if (isPossible)
+    else if (isPossible || value.path > 0)
         value.setPossible();
     else
         value.setKnown();
 }
 
-static bool inferNotEqual(const std::list<ValueFlow::Value>& values, MathLib::bigint x)
+// The paths on which two value lists can be compared: 0 when both lists have values that
+// are not tied to a path, and every path that occurs in both lists. An empty list is
+// compatible with every path.
+std::vector<MathLib::bigint> getCommonPaths(const std::list<ValueFlow::Value>& lhsValues,
+                                            const std::list<ValueFlow::Value>& rhsValues)
 {
-    return std::any_of(values.cbegin(), values.cend(), [&](const ValueFlow::Value& value) {
-        return value.isImpossible() && value.intvalue == x;
-    });
+    std::vector<MathLib::bigint> paths;
+    const auto addPath = [&](MathLib::bigint path) {
+        if (std::find(paths.cbegin(), paths.cend(), path) == paths.cend())
+            paths.push_back(path);
+    };
+    const auto hasPath = [](const std::list<ValueFlow::Value>& values, MathLib::bigint path) {
+        if (values.empty())
+            return true;
+        return std::any_of(values.cbegin(), values.cend(), [path](const ValueFlow::Value& value) {
+            return isOnPath(value, path);
+        });
+    };
+    if (hasPath(lhsValues, 0) && hasPath(rhsValues, 0))
+        addPath(0);
+    for (const ValueFlow::Value& value : lhsValues) {
+        if (value.path > 0 && hasPath(rhsValues, value.path))
+            addPath(value.path);
+    }
+    for (const ValueFlow::Value& value : rhsValues) {
+        if (value.path > 0 && hasPath(lhsValues, value.path))
+            addPath(value.path);
+    }
+    return paths;
 }
 
-std::vector<ValueFlow::Value> infer(const ValuePtr<InferModel>& model,
-                                    const std::string& op,
-                                    std::list<ValueFlow::Value> lhsValues,
-                                    std::list<ValueFlow::Value> rhsValues)
+template<class PathPredicate>
+static const ValueFlow::Value* findImpossiblePoint(const ValuePtr<InferModel>& model,
+                                                   const std::list<ValueFlow::Value>& values,
+                                                   const std::vector<const ValueFlow::Value*>& scalarRefs,
+                                                   MathLib::bigint x,
+                                                   PathPredicate onPath)
 {
-    std::vector<ValueFlow::Value> result;
-    auto notMatch = [&](const ValueFlow::Value& value) {
-        return !model->match(value);
+    const auto it = std::find_if(values.cbegin(), values.cend(), [&](const ValueFlow::Value& value) {
+        if (!model->match(value) || !onPath(value) || !value.isImpossible() ||
+            value.bound != ValueFlow::Value::Bound::Point || value.intvalue != x)
+            return false;
+        return std::any_of(scalarRefs.cbegin(), scalarRefs.cend(), [&](const ValueFlow::Value* ref) {
+            return model->match(*ref) && value.equalValue(*ref);
+        });
+    });
+    return it == values.cend() ? nullptr : &*it;
+}
+
+template<class PathPredicate>
+static std::vector<ValueFlow::Value> inferIntervals(const ValuePtr<InferModel>& model,
+                                                    const std::string& op,
+                                                    const std::list<ValueFlow::Value>& lhsValues2,
+                                                    const std::list<ValueFlow::Value>& rhsValues2,
+                                                    PathPredicate onPath)
+{
+    const auto predicate = [&](const ValueFlow::Value& value) {
+        return model->match(value) && onPath(value);
     };
-    lhsValues.remove_if(notMatch);
-    if (lhsValues.empty())
-        return result;
-    rhsValues.remove_if(notMatch);
-    if (rhsValues.empty())
-        return result;
+    std::vector<ValueFlow::Value> inferred;
+    Interval lhs = Interval::fromValues(lhsValues2, predicate);
+    Interval rhs = Interval::fromValues(rhsValues2, predicate);
 
-    Interval lhs = Interval::fromValues(lhsValues);
-    Interval rhs = Interval::fromValues(rhsValues);
-
+    const ValueFlow::Value* excludedPoint = nullptr;
+    std::vector<const ValueFlow::Value*> excludedRefs;
+    if (op == "!=" || op == "==") {
+        if (lhs.isScalar()) {
+            std::vector<const ValueFlow::Value*> scalarRefs = lhs.getScalarRef();
+            excludedPoint = findImpossiblePoint(model, rhsValues2, scalarRefs, lhs.getScalar(), onPath);
+            if (excludedPoint)
+                excludedRefs = std::move(scalarRefs);
+        }
+        if (!excludedPoint && rhs.isScalar()) {
+            std::vector<const ValueFlow::Value*> scalarRefs = rhs.getScalarRef();
+            excludedPoint = findImpossiblePoint(model, lhsValues2, scalarRefs, rhs.getScalar(), onPath);
+            if (excludedPoint)
+                excludedRefs = std::move(scalarRefs);
+        }
+        if (excludedPoint)
+            excludedRefs.push_back(excludedPoint);
+    }
     if (op == "-") {
         Interval diff = lhs - rhs;
         if (diff.isScalar()) {
             std::vector<const ValueFlow::Value*> refs = diff.getScalarRef();
             ValueFlow::Value value(diff.getScalar());
-            addToErrorPath(value, refs);
-            setValueKind(value, refs);
-            result.push_back(std::move(value));
+            if (addToErrorPath(value, refs)) {
+                setValueKind(value, refs);
+                inferred.push_back(std::move(value));
+            }
         } else {
             if (!diff.minvalue.empty()) {
                 ValueFlow::Value value(diff.minvalue.front() - 1);
                 value.setImpossible();
                 value.bound = ValueFlow::Value::Bound::Upper;
-                addToErrorPath(value, diff.minRef);
-                result.push_back(std::move(value));
+                if (addToErrorPath(value, diff.minRef))
+                    inferred.push_back(std::move(value));
             }
             if (!diff.maxvalue.empty()) {
                 ValueFlow::Value value(diff.maxvalue.front() + 1);
                 value.setImpossible();
                 value.bound = ValueFlow::Value::Bound::Lower;
-                addToErrorPath(value, diff.maxRef);
-                result.push_back(std::move(value));
+                if (addToErrorPath(value, diff.maxRef))
+                    inferred.push_back(std::move(value));
             }
+        }
+    } else if (excludedPoint) {
+        ValueFlow::Value value(op == "!=");
+        if (addToErrorPath(value, excludedRefs)) {
+            setValueKind(value, excludedRefs);
+            inferred.push_back(std::move(value));
         }
     } else if ((op == "!=" || op == "==") && lhs.isScalarOrEmpty() && rhs.isScalarOrEmpty()) {
         if (lhs.isScalar() && rhs.isScalar()) {
             std::vector<const ValueFlow::Value*> refs = Interval::merge(lhs.getScalarRef(), rhs.getScalarRef());
             ValueFlow::Value value(calculate(op, lhs.getScalar(), rhs.getScalar()));
-            addToErrorPath(value, refs);
-            setValueKind(value, refs);
-            result.push_back(std::move(value));
-        } else {
-            std::vector<const ValueFlow::Value*> refs;
-            if (lhs.isScalar() && inferNotEqual(rhsValues, lhs.getScalar()))
-                refs = lhs.getScalarRef();
-            else if (rhs.isScalar() && inferNotEqual(lhsValues, rhs.getScalar()))
-                refs = rhs.getScalarRef();
-            if (!refs.empty()) {
-                ValueFlow::Value value(op == "!=");
-                addToErrorPath(value, refs);
+            if (addToErrorPath(value, refs)) {
                 setValueKind(value, refs);
-                result.push_back(std::move(value));
+                inferred.push_back(std::move(value));
             }
         }
     } else {
@@ -351,12 +433,53 @@ std::vector<ValueFlow::Value> infer(const ValuePtr<InferModel>& model,
         std::vector<bool> r = Interval::compare(op, lhs, rhs, &refs);
         if (!r.empty()) {
             ValueFlow::Value value(static_cast<int>(r.front()));
-            addToErrorPath(value, refs);
-            setValueKind(value, refs);
-            result.push_back(std::move(value));
+            if (addToErrorPath(value, refs)) {
+                setValueKind(value, refs);
+                inferred.push_back(std::move(value));
+            }
         }
     }
+    return inferred;
+}
 
+std::vector<ValueFlow::Value> infer(const ValuePtr<InferModel>& model,
+                                    const std::string& op,
+                                    std::list<ValueFlow::Value> lhsValues,
+                                    std::list<ValueFlow::Value> rhsValues)
+{
+    auto notMatch = [&](const ValueFlow::Value& value) {
+        return !model->match(value);
+    };
+    lhsValues.remove_if(notMatch);
+    if (lhsValues.empty())
+        return {};
+    rhsValues.remove_if(notMatch);
+    if (rhsValues.empty())
+        return {};
+
+    lhsValues.remove_if([](const ValueFlow::Value& value) {
+        return value.path < 0;
+    });
+    rhsValues.remove_if([](const ValueFlow::Value& value) {
+        return value.path < 0;
+    });
+    if (lhsValues.empty() || rhsValues.empty())
+        return {};
+
+    const std::vector<MathLib::bigint> paths = getCommonPaths(lhsValues, rhsValues);
+    if (paths.size() == 1 && paths.front() == 0) {
+        return inferIntervals(model, op, lhsValues, rhsValues, [](const ValueFlow::Value&) {
+            return true;
+        });
+    }
+
+    std::vector<ValueFlow::Value> result;
+    for (MathLib::bigint path : paths) {
+        std::vector<ValueFlow::Value> inferred = inferIntervals(model, op, lhsValues, rhsValues, [path](const ValueFlow::Value& value) {
+            return isOnPath(value, path);
+        });
+        std::move(inferred.begin(), inferred.end(), std::back_inserter(result));
+    }
     return result;
 }
 
@@ -378,14 +501,23 @@ std::vector<ValueFlow::Value> infer(const ValuePtr<InferModel>& model,
 
 std::vector<MathLib::bigint> getMinValue(const ValuePtr<InferModel>& model, const std::list<ValueFlow::Value>& values)
 {
-    return Interval::fromValues(values, [&](const ValueFlow::Value& v) {
-        return model->match(v);
+    return Interval::fromValues(values, [&](const ValueFlow::Value& value) {
+        return model->match(value);
     }).minvalue;
 }
+
+const ValueFlow::Value* getMinValueSource(const ValuePtr<InferModel>& model, const std::list<ValueFlow::Value>& values)
+{
+    const Interval interval = Interval::fromValues(values, [&](const ValueFlow::Value& value) {
+        return model->match(value);
+    });
+    return interval.minRef.empty() ? nullptr : interval.minRef.front();
+}
+
 std::vector<MathLib::bigint> getMaxValue(const ValuePtr<InferModel>& model, const std::list<ValueFlow::Value>& values)
 {
-    return Interval::fromValues(values, [&](const ValueFlow::Value& v) {
-        return model->match(v);
+    return Interval::fromValues(values, [&](const ValueFlow::Value& value) {
+        return model->match(value);
     }).maxvalue;
 }
 

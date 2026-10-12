@@ -20,10 +20,10 @@
 #define vfSetTokenValueH
 
 #include "sourcelocation.h"
+#include "vf_common.h"
 
 class Token;
 class Settings;
-namespace ValueFlow { class Value; }
 
 namespace ValueFlow
 {
@@ -31,6 +31,10 @@ namespace ValueFlow
                        Value value,
                        const Settings& settings,
                        SourceLocation loc = SourceLocation::current());
+    ConvertedValue truncateImplicitConversion(Token* parent,
+                                              const Token* sourceTok,
+                                              Value value,
+                                              const Settings& settings);
 }
 
 #endif // vfSetTokenValueH

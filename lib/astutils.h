@@ -213,6 +213,9 @@ std::vector<ValueType> getParentValueTypes(const Token* tok,
 bool astIsLHS(const Token* tok);
 bool astIsRHS(const Token* tok);
 
+/** The comparison operator that tests the left operand, i.e. the one with the operands exchanged. */
+std::string invertOperatorForOperandSwap(std::string op);
+
 Token* getCondTok(Token* tok);
 const Token* getCondTok(const Token* tok);
 
@@ -230,15 +233,22 @@ const Token* getCondTokFromEnd(const Token* endBlock);
 const Token *findNextTokenFromBreak(const Token *breakToken);
 
 /**
- * Extract for loop values: loopvar varid, init value, step value, last value (inclusive)
+ * The values of a for loop that can be extracted: loop variable id, init value, step value,
+ * last value (inclusive). `initValueSource` identifies the fact supplying the minimum.
  */
-bool extractForLoopValues(const Token *forToken,
-                          nonneg int &varid,
-                          bool &knownInitValue,
-                          MathLib::bigint &initValue,
-                          bool &partialCond,
-                          MathLib::bigint &stepValue,
-                          MathLib::bigint &lastValue);
+struct ForLoopValues {
+    bool valid = false;
+    bool hasMinimum = false;
+    bool knownInitValue = false;
+    bool partialCond = false;
+    nonneg int varid = 0;
+    MathLib::bigint initValue = 0;
+    MathLib::bigint stepValue = 0;
+    MathLib::bigint lastValue = 0;
+    const ValueFlow::Value* initValueSource = nullptr;
+};
+
+ForLoopValues extractForLoopValues(const Token *forToken);
 
 bool precedes(const Token * tok1, const Token * tok2);
 bool succeeds(const Token* tok1, const Token* tok2);
@@ -465,6 +475,9 @@ bool isExhaustiveSwitch(const Token *startbrace);
 bool isUnreachableOperand(const Token *tok);
 
 const Token *skipUnreachableBranch(const Token *tok);
+
+/** Is 'tok' inside a branch that skipUnreachableBranch() proves unreachable? */
+bool isInUnreachableBranch(const Token *tok);
 
 bool isEscapeKeyword(const Token *tok, const Settings &settings);
 

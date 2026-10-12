@@ -65,6 +65,7 @@ private:
         TEST_CASE(valueFlowUninit2_value);
         TEST_CASE(valueFlowUninit_uninitvar2);
         TEST_CASE(valueFlowUninit_functioncall);
+        TEST_CASE(valueFlowUninitFloatingPositiveControl);
         TEST_CASE(uninitStructMember);  // struct members
         TEST_CASE(uninitvar2_while);
         TEST_CASE(uninitvar2_4494);      // #4494
@@ -3740,6 +3741,15 @@ private:
         // Check for redundant code..
         CheckUninitVarImpl checkuninitvar(&tokenizer, settings, *this);
         (checkuninitvar.valueFlowUninit)();
+    }
+
+    void valueFlowUninitFloatingPositiveControl() {
+        valueFlowUninit("float initialized(float x) { if (x <= 0.0f) return 0.0f; return x; }\n", false);
+        ASSERT_EQUALS("", errout_str());
+        valueFlowUninit("float uninitialized() { float x; return x; }\n", false);
+        ASSERT_EQUALS(
+            "[test.c:1:41]: (error) Uninitialized variable: x [uninitvar]\n",
+            errout_str());
     }
 
     void uninitvar15() { // #13685

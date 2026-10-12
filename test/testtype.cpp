@@ -43,6 +43,7 @@ private:
         TEST_CASE(longCastReturn);
         TEST_CASE(checkFloatToIntegerOverflow);
         TEST_CASE(integerOverflow); // #11794
+        TEST_CASE(integerOverflowEnumConstant);
         TEST_CASE(shiftTooManyBits); // #11496
     }
 
@@ -612,6 +613,88 @@ private:
                "}\n", dinit(CheckPOptions, $.cpp = false));
         ASSERT_EQUALS("[test.c:4:24]: (error) Undefined behaviour: float () to integer conversion overflow. [floatConversionOverflow]\n", removeFloat(errout_str()));
 
+        check("void f(double rr) {\n"
+              "    if (!(rr >= 0.0) || rr > 1.0e308)\n"
+              "        return;\n"
+              "    while (rr >= 1.0e119L)\n"
+              "        rr *= 1.0e-100L;\n"
+              "    while (rr >= 1.0e29L)\n"
+              "        rr *= 1.0e-10L;\n"
+              "    while (rr >= 1.0e19L)\n"
+              "        rr *= 1.0e-1L;\n"
+              "    unsigned long long value = (unsigned long long)rr;\n"
+              "    (void)value;\n"
+              "}\n");
+        ASSERT_EQUALS("", removeFloat(errout_str()));
+
+        {
+            const Settings unix64 = settingsBuilder().platform(Platform::Type::Unix64).c(Standards::C11).cpp(Standards::CPP14).build();
+            checkP("int f(double d) { if (d >= 1e10) return 0; if (d > 100.0) return 0; return (int)d; }\n", dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("", errout_str());
+            checkP("int f(double d) { if (d >= 1e10) return 0; if (d > 100.0) return 0; return (int)d; }\n", dinit(CheckPOptions, $.settings = &unix64, $.cpp = false));
+            ASSERT_EQUALS("", errout_str());
+
+            checkP("int f(double d) { if (d >= 1e10 || d > 100.0) return 0; return (int)d; }\n", dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("", errout_str());
+            checkP("int f(double d) { if (d >= 1e10 || d > 100.0) return 0; return (int)d; }\n", dinit(CheckPOptions, $.settings = &unix64, $.cpp = false));
+            ASSERT_EQUALS("", errout_str());
+
+            checkP("int f(double d) { if (1e10 <= d || d > 100.0) return 0; return (int)d; }\n", dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("", errout_str());
+            checkP("int f(double d) { if (1e10 <= d || d > 100.0) return 0; return (int)d; }\n", dinit(CheckPOptions, $.settings = &unix64, $.cpp = false));
+            ASSERT_EQUALS("", errout_str());
+
+            checkP("int f(double d) { if (d <= -1e30) return 0; if (d < -100.0) return 0; return (int)d; }\n", dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("", errout_str());
+            checkP("int f(double d) { if (d <= -1e30) return 0; if (d < -100.0) return 0; return (int)d; }\n", dinit(CheckPOptions, $.settings = &unix64, $.cpp = false));
+            ASSERT_EQUALS("", errout_str());
+
+            checkP("int f(double d) { if (d >= 1e10) return 0; if (d > 100.0) return 0; return d; }\n", dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("", errout_str());
+            checkP("int f(double d) { if (d >= 1e10) return 0; if (d > 100.0) return 0; return d; }\n", dinit(CheckPOptions, $.settings = &unix64, $.cpp = false));
+            ASSERT_EQUALS("", errout_str());
+
+            checkP("int f(double d) { if (d >= 1e100) return (int)d; return 0; }\n",
+                   dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("[test.cpp:1:25] -> [test.cpp:1:42]: (warning) Undefined behaviour: float () to integer conversion overflow. [floatConversionOverflow]\n", removeFloat(errout_str()));
+            checkP("int f(double d) { if (d <= -1e100) return (int)d; return 0; }\n",
+                   dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("[test.cpp:1:25] -> [test.cpp:1:43]: (warning) Undefined behaviour: float () to integer conversion overflow. [floatConversionOverflow]\n", removeFloat(errout_str()));
+            checkP("unsigned int s3backer(unsigned int maxkeys) {\n"
+                   "    if (maxkeys >= (unsigned int)(4294967295U*.666666)-1) return 0;\n"
+                   "    return (unsigned int)(maxkeys/.666666)+1;\n"
+                   "}\n", dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("", removeFloat(errout_str()));
+            checkP("unsigned int s3backer(unsigned int maxkeys) {\n"
+                   "    if (maxkeys >= (unsigned int)(4294967295U*.666666)-1) return 0;\n"
+                   "    return (unsigned int)(maxkeys/.666666)+1;\n"
+                   "}\n", dinit(CheckPOptions, $.settings = &unix64, $.cpp = false));
+            ASSERT_EQUALS("", removeFloat(errout_str()));
+            const Settings unix32 = settingsBuilder().platform(Platform::Type::Unix32).c(Standards::C11).cpp(Standards::CPP14).build();
+            checkP("unsigned int s3backer(unsigned int maxkeys) {\n"
+                   "    if (maxkeys >= (unsigned int)(4294967295U*.666666)-1) return 0;\n"
+                   "    return (unsigned int)(maxkeys/.666666)+1;\n"
+                   "}\n", dinit(CheckPOptions, $.settings = &unix32, $.cpp = false));
+            ASSERT_EQUALS("", removeFloat(errout_str()));
+            checkP("unsigned int s3backer_literal(unsigned int maxkeys) {\n"
+                   "    if (maxkeys >= 2863308665U) return 0;\n"
+                   "    return (unsigned int)(maxkeys/.666666)+1;\n"
+                   "}\n", dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("", removeFloat(errout_str()));
+            checkP("unsigned int s3backer_literal(unsigned int maxkeys) {\n"
+                   "    if (maxkeys >= 2863308665U) return 0;\n"
+                   "    return (unsigned int)(maxkeys/.666666)+1;\n"
+                   "}\n", dinit(CheckPOptions, $.settings = &unix64, $.cpp = false));
+            ASSERT_EQUALS("", removeFloat(errout_str()));
+            checkP("unsigned int f(double d) { if (d >= 2863308665U) return 0; return (unsigned int)d; }\n",
+                   dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("", removeFloat(errout_str()));
+
+            checkP("unsigned int f(void) { return (unsigned int)6442457383.46; }\n",
+                   dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("[test.cpp:1:31]: (error) Undefined behaviour: float () to integer conversion overflow. [floatConversionOverflow]\n", removeFloat(errout_str()));
+        }
+
     }
 
     void integerOverflow() { // #11794
@@ -645,6 +728,53 @@ private:
         ASSERT_EQUALS("[test.cpp:2:21]: (error) Signed integer overflow for expression '2147483647+a'. [integerOverflow]\n", errout_str());
     }
 
+    void integerOverflowEnumConstant() {
+        // An enumerator without an explicit base type gets the type that can represent its value,
+        // per the C rules for the compatible type of an enumeration.
+        const Settings s = settingsBuilder().severity(Severity::warning).platform(Platform::Type::Unix64).build();
+
+        // 1U << 31 exceeds the signed int range: unsigned int, no signed overflow
+        check("enum m { A = 0, B = 1U << 31, C = 1 << 20 };\n"
+              "unsigned g(void) { return B; }\n"
+              "unsigned g2(void) { return C; }\n"
+              "unsigned g3(void) { return B + 0; }\n"
+              "unsigned long long g4(void) { return B + C; }\n", dinit(CheckOptions, $.settings = &s));
+        ASSERT_EQUALS("", errout_str());
+
+        // shift of a signed literal; the value still does not fit in int. The shift itself is
+        // undefined behaviour (reported), but the enumerator must not be signed int.
+        check("enum cs_mode { CS_MODE_LITTLE_ENDIAN = 0, CS_MODE_BIG_ENDIAN = 1 << 31, CS_MODE_QPX = 1 << 20 };\n"
+              "int f(void) { return CS_MODE_BIG_ENDIAN + CS_MODE_QPX; }\n", dinit(CheckOptions, $.settings = &s));
+        ASSERT_EQUALS("[test.cpp:1:66]: (error) Shifting signed 32-bit value by 31 bits is undefined behaviour [shiftTooManyBitsSigned]\n", errout_str());
+
+        // values built from bitwise-or and sum of literals
+        check("enum e { A = 1U << 20, B = 1U << 31 | 1 };\n"
+              "unsigned f(void) { return A + B; }\n", dinit(CheckOptions, $.settings = &s));
+        ASSERT_EQUALS("", errout_str());
+
+        check("enum e { A = 0x40000000, B = A + A };\n"
+              "unsigned f(void) { return B; }\n", dinit(CheckOptions, $.settings = &s));
+        ASSERT_EQUALS("", errout_str());
+
+        // beyond unsigned int -> long/long long
+        check("enum e { A = 4294967296LL };\n"
+              "long long f(void) { return A; }\n", dinit(CheckOptions, $.settings = &s));
+        ASSERT_EQUALS("", errout_str());
+
+        // a value that does fit in int keeps the signed int type; no overflow for `a + A` since the
+        // enumerator is only a constant here (base does not report it either)
+        check("enum e { A = 2147483647 };\n"
+              "int f(int a) { return a + A; }\n", dinit(CheckOptions, $.settings = &s));
+        ASSERT_EQUALS("", errout_str());
+
+        // genuine signed overflow still reports
+        check("int f(void) {\n"
+              "    int a = 2147483647;\n"
+              "    return a + 1;\n"
+              "}\n", dinit(CheckOptions, $.settings = &s));
+        ASSERT_EQUALS("[test.cpp:3:14]: (error) Signed integer overflow for expression 'a+1'. [integerOverflow]\n", errout_str());
+    }
+
     void shiftTooManyBits() { // #11496
         check("template<unsigned int width> struct B {\n"
               "    unsigned long long f(unsigned int n) const {\n"
@@ -655,6 +785,72 @@ private:
               "};\n"
               "static B<64> b;\n");
         ASSERT_EQUALS("", errout_str());
+
+        // FP shiftTooManyBits: guarded shift where the shift amount is
+        // conditionally derived from an unsigned subtraction; a possible value
+        // from an interprocedural caller must not collapse the interval
+        // inference on the unsigned arithmetic result
+        {
+            const Settings settings = settingsBuilder().platform(Platform::Type::Unix64).build();
+            check("static unsigned int l[16];\n"
+                  "void scalar_shift(unsigned int shift) {\n"
+                  "    unsigned int shiftlimbs = shift >> 5;\n"
+                  "    unsigned int shiftlow = shift & 0x1Fu;\n"
+                  "    unsigned int shifthigh = 32u - shiftlow;\n"
+                  "    unsigned int r = 0u;\n"
+                  "    r |= (shift < 448u && shiftlow ? (l[1 + shiftlimbs] << shifthigh) : 0u);\n"
+                  "    r |= (shift < 416u && shiftlow ? (l[2 + shiftlimbs] << shifthigh) : 0u);\n"
+                  "    (void)r;\n"
+                  "}\n"
+                  "int main(void) { scalar_shift(384u); return 0; }\n",
+                  dinit(CheckOptions, $.settings = &settings));
+            ASSERT_EQUALS("", errout_str());
+        }
+
+        check("int guarded_shift(int delta, unsigned int lag_depth, unsigned int lag_mask) {\n"
+              "    if (lag_depth > 20) return 0;\n"
+              "    if (delta < -100) return 0;\n"
+              "    if (delta < -(int)lag_depth) return 0;\n"
+              "    if (delta < 0) return lag_mask >> -delta;\n"
+              "    return 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        {
+            const Settings c11unix64 = settingsBuilder().platform(Platform::Type::Unix64).c(Standards::C11).build();
+            checkP("unsigned long f(unsigned long i) {\n"
+                   "    if (i < 64) return 0;\n"
+                   "    if (i < 96) return 1 << (i - 64);\n"
+                   "    return 0;\n"
+                   "}\n", dinit(CheckPOptions, $.settings = &c11unix64, $.cpp = false));
+            ASSERT_EQUALS("[test.c:3:11] -> [test.c:3:26]: (warning) Shifting signed 32-bit value by 31 bits is undefined behaviour. See condition at line 3. [shiftTooManyBitsSigned]\n", errout_str());
+
+            checkP("unsigned long f(unsigned long i) {\n"
+                   "    if (i < 64) return 0;\n"
+                   "    if (i < 96) return 1u << (i - 64);\n"
+                   "    return 0;\n"
+                   "}\n", dinit(CheckPOptions, $.settings = &c11unix64, $.cpp = false));
+            ASSERT_EQUALS("", errout_str());
+
+            checkP("unsigned long f(unsigned long i) {\n"
+                   "    if (i < 64) return 0;\n"
+                   "    if (i < 95) return 1 << (i - 64);\n"
+                   "    return 0;\n"
+                   "}\n", dinit(CheckPOptions, $.settings = &c11unix64, $.cpp = false));
+            ASSERT_EQUALS("", errout_str());
+        }
+        const Settings cpp14unix64 = settingsBuilder().platform(Platform::Type::Unix64).cpp(Standards::CPP14).build();
+        checkP("unsigned long f(unsigned long i) {\n"
+               "    if (i < 64) return 0;\n"
+               "    if (i < 96) return 1 << (i - 64);\n"
+               "    return 0;\n"
+               "}\n", dinit(CheckPOptions, $.settings = &cpp14unix64));
+        ASSERT_EQUALS("[test.cpp:3:11] -> [test.cpp:3:26]: (portability) Shifting signed 32-bit value by 31 bits is implementation-defined behaviour. See condition at line 3. [shiftTooManyBitsSigned]\n", errout_str());
+
+        check("unsigned int oversized_shift(unsigned int value) {\n"
+              "    return value >> 32;\n"
+              "}\n");
+        ASSERT(errout_str().find("[shiftTooManyBits]") != std::string::npos);
     }
 };
 
