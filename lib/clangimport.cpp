@@ -1139,6 +1139,8 @@ Token *clangimport::AstNode::createTokens(TokenList &tokenList)
         return nullptr;
     }
     if (nodeType == GotoStmt) {
+        if (mExtTokens.size() < 2)
+            return nullptr;
         addtoken(tokenList, "goto");
         addtoken(tokenList, unquote(mExtTokens[mExtTokens.size() - 2]));
         addtoken(tokenList, ";");
@@ -1228,9 +1230,12 @@ Token *clangimport::AstNode::createTokens(TokenList &tokenList)
         if (children.empty())
             return nullptr;
         const Token *defToken = addtoken(tokenList, "namespace");
-        const std::string &s = mExtTokens[mExtTokens.size() - 2];
-        const Token* nameToken = (startsWith(s, "col:") || startsWith(s, "line:")) ?
-                                 addtoken(tokenList, mExtTokens.back()) : nullptr;
+        const Token* nameToken = nullptr;
+        if (mExtTokens.size() >= 2) {
+            const std::string &s = mExtTokens[mExtTokens.size() - 2];
+            if (startsWith(s, "col:") || startsWith(s, "line:"))
+                nameToken = addtoken(tokenList, mExtTokens.back());
+        }
         Scope *scope = createScope(tokenList, ScopeType::eNamespace, children, defToken);
         if (nameToken)
             scope->className = nameToken->str();
@@ -1507,10 +1512,12 @@ void clangimport::AstNode::createTokensForCXXRecord(TokenList &tokenList)
     const bool isStruct = contains(mExtTokens, "struct");
     Token * const classToken = addtoken(tokenList, isStruct ? "struct" : "class");
     std::string className;
-    if (mExtTokens[mExtTokens.size() - 2] == (isStruct?"struct":"class"))
-        className = mExtTokens.back();
-    else
-        className = mExtTokens[mExtTokens.size() - 2];
+    if (mExtTokens.size() >= 2) {
+        if (mExtTokens[mExtTokens.size() - 2] == (isStruct?"struct":"class"))
+            className = mExtTokens.back();
+        else
+            className = mExtTokens[mExtTokens.size() - 2];
+    }
     className += getTemplateParameters();
     /*Token *nameToken =*/ addtoken(tokenList, className);
     // base classes

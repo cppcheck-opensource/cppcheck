@@ -142,6 +142,7 @@ private:
 
         TEST_CASE(crash);
         TEST_CASE(crash2);
+        TEST_CASE(crash3);
         TEST_CASE(nullNodeInvalidLevel);
     }
 
@@ -1428,6 +1429,18 @@ private:
         const char* clang = "`-FunctionDecl 0x1 <a.cpp:1:1, col:34> col:6 foo 'void ()'\n"
                             "`-<<<NULL>>>\n";
         ASSERT_EQUALS("void foo ( ) ;", parse(clang));
+    }
+
+    void crash3() {
+        // GotoStmt, NamespaceDecl and CXXRecordDecl read mExtTokens[size() - 2]
+        // without checking the node has two ext tokens, so a crafted node with
+        // fewer tokens indexed out of bounds.
+        (void)parse("`-FunctionDecl 0x1 <a.cpp:1:1, col:34> col:6 foo 'void ()'\n"
+                    "  `-CompoundStmt 0x2 <col:12, col:34>\n"
+                    "    `-GotoStmt 0x3\n"); // don't crash
+        (void)parse("`-NamespaceDecl 0x1\n"
+                    "  `-CXXRecordDecl 0x2\n"); // don't crash
+        (void)parse("`-CXXRecordDecl 0x1"); // don't crash
     }
 };
 
