@@ -256,7 +256,7 @@ namespace ValueFlow
             // Ensure that the comma isn't a function call
             if (!callParent || (!Token::Match(callParent->previous(), "%name%|> (") && !Token::simpleMatch(callParent, "{") &&
                                 (!Token::Match(callParent, "( %name%") || settings.library.isNotLibraryFunction(callParent->next())) &&
-                                !(callParent->str() == "(" && (Token::simpleMatch(callParent->astOperand1(), "*") || Token::Match(callParent->astOperand1(), "%name%|("))))) {
+                                !(callParent->str() == "(" && Token::Match(callParent->astOperand1(), "%name%|(|[|*|.")))) {
                 setTokenValue(parent, std::move(value), settings);
                 return;
             }

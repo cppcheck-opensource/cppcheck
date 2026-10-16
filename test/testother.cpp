@@ -13722,6 +13722,18 @@ private:
                "    return MACRO(true);\n"
                "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct S {\n" // #15063
+              "    int (*f)(int, int);\n"
+              "    int (*a[2])(int, int);\n"
+              "};\n"
+              "int g1(struct S* p, int x) {\n"
+              "    return (p->f)(x, 10);\n"
+              "}\n"
+              "int g2(struct S s, int x) {\n"
+              "    return s.a[0](x, 10);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void knownArgumentHiddenVariableExpression() {
