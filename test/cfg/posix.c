@@ -1524,9 +1524,11 @@ void pthread_cond_timedwait_test(pthread_cond_t *cond, pthread_mutex_t *mutex, c
 
 void pthread_cond_init_test(pthread_cond_t *cond, const pthread_condattr_t *attr)
 {
-    // cppcheck-suppress nullPointer
     (void)pthread_cond_init(cond, NULL);
     (void)pthread_cond_init(cond, attr);
+    const pthread_condattr_t *uattr;
+    // cppcheck-suppress uninitvar
+    (void)pthread_cond_init(cond, uattr);
 }
 
 void pthread_cond_destroy_test(const pthread_cond_t *cond)
@@ -1537,6 +1539,12 @@ void pthread_cond_destroy_test(const pthread_cond_t *cond)
 void pthread_cleanup_push_test(void (*routine)(void *), void *arg)
 {
     pthread_cleanup_push(routine, arg);
+    pthread_cleanup_pop(0);
+}
+
+void pthread_cleanup_push_test_NULL(void (*routine)(void *))
+{
+    pthread_cleanup_push(routine, NULL);
     pthread_cleanup_pop(0);
 }
 
