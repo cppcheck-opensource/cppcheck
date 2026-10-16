@@ -184,4 +184,41 @@ void TestFileList::filterFiles5() const
     QVERIFY(!files.contains(base + "/dir1/dir11/foo11.cpp"));
 }
 
+void TestFileList::unmatchedExcludes1() const
+{
+    FileList list;
+    QStringList filters;
+    filters << "foo1.cpp" << "foo3.cc";
+    list.addExcludeList(filters);
+    list.addDirectory(QString(SRCDIR) + "/../data/files");
+    QVERIFY(!list.getFileList().isEmpty());
+    QVERIFY(list.getUnmatchedExcludes().isEmpty());
+}
+
+void TestFileList::unmatchedExcludes2() const
+{
+    FileList list;
+    QStringList filters;
+    filters << "foo1.cpp" << "bar.cpp" << "dir3/";
+    list.addExcludeList(filters);
+    list.addDirectory(QString(SRCDIR) + "/../data/files", true);
+    // unmatched excludes does not affect the file list
+    QCOMPARE(list.getFileList().size(), 9);
+    const QStringList unmatched = list.getUnmatchedExcludes();
+    QCOMPARE(unmatched.size(), 2);
+    QCOMPARE(unmatched[0], QString("bar.cpp"));
+    QCOMPARE(unmatched[1], QString("dir3/"));
+}
+
+void TestFileList::unmatchedExcludes3() const
+{
+    FileList list;
+    QStringList filters;
+    filters << "dir1/";
+    list.addExcludeList(filters);
+    list.addDirectory(QString(SRCDIR) + "/../data/files", true);
+    QVERIFY(!list.getFileList().isEmpty());
+    QVERIFY(list.getUnmatchedExcludes().isEmpty());
+}
+
 QTEST_MAIN(TestFileList)

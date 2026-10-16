@@ -84,7 +84,8 @@ ScopedFile::~ScopedFile() {
         // TODO: simplify the function call
         // hack to be able to delete *.plist output files
         std::list<FileWithDetails> files;
-        const std::string res = FileLister::addFiles(files, mPath, {".plist"}, false, PathMatch());
+        PathMatch ignored;
+        const std::string res = FileLister::addFiles(files, mPath, {".plist"}, false, ignored);
         if (!res.empty()) {
             std::cout << "ScopedFile(" << mPath + ") - generating file list failed (" << res << ")" << std::endl;
         }

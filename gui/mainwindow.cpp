@@ -647,7 +647,7 @@ void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLib, const bo
     mUI->mResults->setCheckSettings(checkSettings);
 }
 
-void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLib, const bool checkConfig)
+void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLib, const bool checkConfig, const bool checkUnusedExcludes)
 {
     if (files.isEmpty())
         return;
@@ -677,6 +677,17 @@ void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLib, c
         QMessageBox msg(QMessageBox::Warning,
                         "Cppcheck",
                         tr("No suitable files found to analyze!"),
+                        QMessageBox::Ok,
+                        this);
+        msg.exec();
+        return;
+    }
+
+    const QStringList unmatchedExcludePaths = checkUnusedExcludes ? pathList.getUnmatchedExcludes() : QStringList();
+    if (!unmatchedExcludePaths.isEmpty()) {
+        QMessageBox msg(QMessageBox::Warning,
+                        "Cppcheck",
+                        tr("Unused exclude paths:\n%1\nto hide warnings in certain files use suppressions instead").arg(unmatchedExcludePaths.join("\n")),
                         QMessageBox::Ok,
                         this);
         msg.exec();
@@ -1981,7 +1992,9 @@ void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringLis
     if (paths.isEmpty()) {
         paths << mCurrentDirectory;
     }
-    doAnalyzeFiles(paths, checkLib, checkConfig);
+    // the exclude paths can only be validated when the whole project is analyzed
+    const bool checkUnusedExcludes = recheckFiles.isEmpty();
+    doAnalyzeFiles(paths, checkLib, checkConfig, checkUnusedExcludes);
 }
 
 void MainWindow::newProjectFile()

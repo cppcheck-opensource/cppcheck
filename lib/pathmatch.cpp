@@ -21,6 +21,7 @@
 #include "path.h"
 
 #include <algorithm>
+#include <iterator>
 #include <stack>
 #include <string>
 #include <utility>
@@ -31,11 +32,17 @@ PathMatch::PathMatch(std::vector<std::string> patterns, std::string basepath, Sy
     mPatterns(std::move(patterns)), mBasepath(std::move(basepath)), mSyntax(syntax)
 {}
 
-bool PathMatch::match(const std::string &path, Filemode mode) const
+bool PathMatch::match(const std::string &path, Filemode mode)
 {
-    return std::any_of(mPatterns.cbegin(), mPatterns.cend(), [&] (const std::string &pattern) {
-        return match(pattern, path, mBasepath, mode, mSyntax);
-    });
+    // check all patterns so every matching pattern is recorded
+    bool ret = false;
+    for (const std::string &pattern : mPatterns) {
+        if (match(pattern, path, mBasepath, mode, mSyntax)) {
+            mMatchedPatterns.insert(pattern);
+            ret = true;
+        }
+    }
+    return ret;
 }
 
 bool PathMatch::match(const std::string &pattern, const std::string &path, const std::string &basepath, Filemode mode, Syntax syntax)
@@ -148,4 +155,19 @@ bool PathMatch::match(const std::string &pattern, const std::string &path, const
         /* No more path separators to try from */
         return false;
     }
+}
+
+std::vector<std::string> PathMatch::unmatched() const {
+    std::vector<std::string> ret;
+    std::copy_if(mPatterns.cbegin(), mPatterns.cend(), std::back_inserter(ret), [this](const std::string& s) {
+        if (mMatchedPatterns.count(s) != 0)
+            return false;
+        // paths inside a matched directory are not traversed, so a pattern that is
+        // covered by a matched pattern is considered used
+        const Filemode mode = !s.empty() && PathIterator::issep(s.back(), mSyntax) ? Filemode::directory : Filemode::regular;
+        return std::none_of(mMatchedPatterns.cbegin(), mMatchedPatterns.cend(), [&](const std::string& matched) {
+            return match(matched, s, mBasepath, mode, mSyntax);
+        });
+    });
+    return ret;
 }

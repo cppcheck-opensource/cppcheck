@@ -235,7 +235,7 @@ void ImportProject::parseArgs(FileSettings &fs, const std::vector<std::string> &
     fsSetDefines(fs, std::move(defs));
 }
 
-void ImportProject::ignorePaths(const std::vector<std::string> &ipaths, bool debug)
+std::vector<std::string> ImportProject::ignorePaths(const std::vector<std::string> &ipaths, bool debug)
 {
     PathMatch matcher(ipaths, Path::getCurrentPath());
     for (auto it = fileSettings.cbegin(); it != fileSettings.cend();) {
@@ -247,6 +247,7 @@ void ImportProject::ignorePaths(const std::vector<std::string> &ipaths, bool deb
         else
             ++it;
     }
+    return matcher.unmatched();
 }
 
 void ImportProject::ignoreOtherConfigs(const std::string &cfg)
@@ -1759,27 +1760,24 @@ ImportProject::Type ImportProject::import(const std::string &filename, Settings 
     if (!mPath.empty() && !endsWith(mPath,'/'))
         mPath += '/';
 
-    const std::vector<std::string> fileFilters =
-        settings ? settings->fileFilters : std::vector<std::string>();
-
     if (endsWith(filename, ".json")) {
         if (processCompileCommands(fin)) {
             setRelativePaths(filename);
             return ImportProject::Type::COMPILE_DB;
         }
     } else if (endsWith(filename, ".sln")) {
-        if (importSln(fin, filename, fileFilters)) {
+        if (importSln(fin, filename)) {
             setRelativePaths(filename);
             return ImportProject::Type::VS_SLN;
         }
     } else if (endsWith(filename, ".slnx")) {
-        if (importSlnx(filename, fileFilters)) {
+        if (importSlnx(filename)) {
             setRelativePaths(filename);
             return ImportProject::Type::VS_SLNX;
         }
     } else if (endsWith(filename, ".vcxproj")) {
         PropertiesMap mVariables;
-        if (importVcxproj(toAbsolute(filename), mVariables, fileFilters)) {
+        if (importVcxproj(toAbsolute(filename), mVariables)) {
             setRelativePaths(filename);
             return ImportProject::Type::VS_VCXPROJ;
         }
@@ -1907,7 +1905,7 @@ void ImportProject::setSolution(const std::string &filename, PropertiesMap &prop
     properties["SolutionName"] = fileStem(properties["SolutionFileName"]);
 }
 
-bool ImportProject::importSln(std::istream &istr, const std::string &filename, const std::vector<std::string> &fileFilters)
+bool ImportProject::importSln(std::istream &istr, const std::string &filename)
 {
     std::string line;
 
@@ -2000,7 +1998,7 @@ bool ImportProject::importSln(std::istream &istr, const std::string &filename, c
 
     for (const std::string &vcxproj : vcxprojs) {
         PropertiesMap mVariables = solutionVariables;
-        if (!importVcxproj(vcxproj, mVariables, fileFilters)) {
+        if (!importVcxproj(vcxproj, mVariables)) {
             errors.emplace_back("failed to load '" + vcxproj + "' from Visual Studio solution");
             return false;
         }
@@ -2009,7 +2007,7 @@ bool ImportProject::importSln(std::istream &istr, const std::string &filename, c
     return true;
 }
 
-bool ImportProject::importSlnx(const std::string& filename, const std::vector<std::string>& fileFilters)
+bool ImportProject::importSlnx(const std::string& filename)
 {
     debugs.clear();
 
@@ -2054,7 +2052,7 @@ bool ImportProject::importSlnx(const std::string& filename, const std::vector<st
         vcxproj = Path::fromNativeSeparators(std::move(vcxproj));
 
         PropertiesMap mVariables = solutionVariables;
-        if (!importVcxproj(vcxproj, mVariables, fileFilters)) {
+        if (!importVcxproj(vcxproj, mVariables)) {
             errors.emplace_back("failed to load '" + vcxproj + "' from Visual Studio solution");
             return false;
         }
@@ -4583,8 +4581,7 @@ ImportProject::ImportResult ImportProject::processImport(const std::string &file
 }
 
 bool ImportProject::importVcxproj(const std::string &filename,
-                                  PropertiesMap &properties,
-                                  const std::vector<std::string> &fileFilters)
+                                  PropertiesMap &properties)
 {
     tinyxml2::XMLDocument doc;
     const tinyxml2::XMLError error = doc.LoadFile(filename.c_str());
@@ -4908,11 +4905,7 @@ bool ImportProject::importVcxproj(const std::string &filename,
         // we can only set it globally but in this context it needs to be treated per file
 
         // Project files
-        PathMatch filtermatcher(fileFilters, Path::getCurrentPath());
         for (const ItemGroupClCompile &compile : compileList) {
-            if (!fileFilters.empty() && !filtermatcher.match(compile.filename))
-                continue;
-
             const std::string &excl = compile.get("ExcludedFromBuild");
             if (!excl.empty() && caseInsensitiveStringCompare(excl, "true") == 0)
                 continue;

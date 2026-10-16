@@ -317,8 +317,9 @@ private:
      * @param files List of files and/or directories to analyze
      * @param checkLib Flag to indicate if library should be checked
      * @param checkConfig Flag to indicate if the configuration should be checked.
+     * @param checkUnusedExcludes Flag to indicate if unused exclude paths should be reported.
      */
-    void doAnalyzeFiles(const QStringList &files, bool checkLib = false, bool checkConfig = false);
+    void doAnalyzeFiles(const QStringList &files, bool checkLib = false, bool checkConfig = false, bool checkUnusedExcludes = false);
 
     /**
      * @brief Get our default cppcheck settings and read project file.

@@ -11,7 +11,7 @@ C/C++ support:
 -
 
 GUI:
--
+- An error is now reported when an exclude path in the project does not match any file. To hide warnings in certain files, use suppressions instead.
 
 Suppressions:
 -
@@ -24,4 +24,4 @@ Infrastructure & dependencies:
   These describe the default setup for that OS. The arm64-wchar_t2.xml and arm64-wchar_t4.xml files are kept.
 
 Other:
--
+- An error is now reported when an ignore path given with -i (or an exclude path from a .cppcheck project) does not match any file. To hide warnings in certain files, use suppressions instead.

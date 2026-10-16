@@ -171,7 +171,7 @@ static std::string getCppFiles(std::vector<std::string> &files, const std::strin
     std::list<FileWithDetails> filelist;
     const std::set<std::string> extra;
     const std::vector<std::string> masks;
-    const PathMatch matcher(masks, Path::getCurrentPath());
+    PathMatch matcher(masks, Path::getCurrentPath());
     std::string err = FileLister::addFiles(filelist, path, extra, recursive, matcher);
     if (!err.empty())
         return err;

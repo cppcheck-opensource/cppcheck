@@ -46,7 +46,7 @@
 // When compiling Unicode targets WinAPI automatically uses *W Unicode versions
 // of called functions. Thus, we explicitly call *A versions of the functions.
 
-static std::string addFiles2(std::list<FileWithDetails>&files, const std::string &path, const std::set<std::string> &extra, bool recursive, const PathMatch& ignored, bool debug = false)
+static std::string addFiles2(std::list<FileWithDetails>&files, const std::string &path, const std::set<std::string> &extra, bool recursive, PathMatch& ignored, bool debug = false)
 {
     const std::string cleanedPath = Path::toNativeSeparators(path);
 
@@ -163,7 +163,7 @@ static std::string addFiles2(std::list<FileWithDetails>&files, const std::string
     return "";
 }
 
-std::string FileLister::addFiles(std::list<FileWithDetails> &files, const std::string &path, const std::set<std::string> &extra, bool recursive, const PathMatch& ignored, bool debug)
+std::string FileLister::addFiles(std::list<FileWithDetails> &files, const std::string &path, const std::set<std::string> &extra, bool recursive, PathMatch& ignored, bool debug)
 {
     if (path.empty())
         return "no path specified";
@@ -205,7 +205,7 @@ static std::string addFiles2(std::list<FileWithDetails> &files,
                              const std::string &path,
                              const std::set<std::string> &extra,
                              bool recursive,
-                             const PathMatch& ignored,
+                             PathMatch& ignored,
                              bool debug)
 {
     if (ignored.match(path))
@@ -284,7 +284,7 @@ static std::string addFiles2(std::list<FileWithDetails> &files,
     return "";
 }
 
-std::string FileLister::addFiles(std::list<FileWithDetails> &files, const std::string &path, const std::set<std::string> &extra, bool recursive, const PathMatch& ignored, bool debug)
+std::string FileLister::addFiles(std::list<FileWithDetails> &files, const std::string &path, const std::set<std::string> &extra, bool recursive, PathMatch& ignored, bool debug)
 {
     if (path.empty())
         return "no path specified";
@@ -312,7 +312,7 @@ std::string FileLister::addFiles(std::list<FileWithDetails> &files, const std::s
 
 #endif
 
-std::string FileLister::recursiveAddFiles(std::list<FileWithDetails> &files, const std::string &path, const std::set<std::string> &extra, const PathMatch& ignored, bool debug)
+std::string FileLister::recursiveAddFiles(std::list<FileWithDetails> &files, const std::string &path, const std::set<std::string> &extra, PathMatch& ignored, bool debug)
 {
     return addFiles(files, path, extra, true, ignored, debug);
 }

@@ -519,6 +519,11 @@ private:
         TEST_CASE(ignorefilepaths7);
         TEST_CASE(ignorefilepaths8);
         TEST_CASE(ignorefilepaths9);
+        TEST_CASE(ignoreUnused1);
+        TEST_CASE(ignoreUnused2);
+        TEST_CASE(ignoreUsed);
+        TEST_CASE(ignoreUnusedProject);
+        TEST_CASE(ignoreUsedProject);
 
         TEST_CASE(nonexistentpath);
 
@@ -3647,6 +3652,56 @@ private:
         ASSERT_EQUALS(1, parser->mPathNames.size());
         ASSERT_EQUALS("src/file.cpp", parser->mPathNames[0]);
         ASSERT_EQUALS("cppcheck: error: could not find or open any of the paths given.\ncppcheck: Maybe all paths were ignored?\n", logger->str());
+    }
+
+    void ignoreUnused1() {
+        REDIRECT;
+        ScopedFile file("file.cpp", "");
+        const char * const argv[] = {"cppcheck", "-ifoo.cpp", "file.cpp"};
+        ASSERT(!fillSettingsFromArgs(argv));
+        ASSERT_EQUALS("cppcheck: error: unused ignore/exclude path 'foo.cpp'. To hide warnings in certain files use suppressions instead.\n", logger->str());
+    }
+
+    void ignoreUnused2() {
+        REDIRECT;
+        ScopedFile file1("file1.cpp", "");
+        ScopedFile file2("file2.cpp", "");
+        const char * const argv[] = {"cppcheck", "-ifile1.cpp", "-ifoo.cpp", "file1.cpp", "file2.cpp"};
+        ASSERT(!fillSettingsFromArgs(argv));
+        ASSERT_EQUALS("cppcheck: error: unused ignore/exclude path 'foo.cpp'. To hide warnings in certain files use suppressions instead.\n", logger->str());
+    }
+
+    void ignoreUsed() {
+        REDIRECT;
+        ScopedFile file1("file1.cpp", "");
+        ScopedFile file2("file2.cpp", "");
+        const char * const argv[] = {"cppcheck", "-ifile1.cpp", "file1.cpp", "file2.cpp"};
+        ASSERT(fillSettingsFromArgs(argv));
+        ASSERT_EQUALS("", logger->str());
+        ASSERT_EQUALS(1, parser->getFiles().size());
+        ASSERT_EQUALS("file2.cpp", parser->getFiles().cbegin()->path());
+    }
+
+    void ignoreUnusedProject() {
+        REDIRECT;
+        ScopedFile file("compile_commands.json",
+                        R"([{"directory": "/tmp", "command": "gcc -c file1.c", "file": "file1.c"},
+                            {"directory": "/tmp", "command": "gcc -c file2.c", "file": "file2.c"}])");
+        const char * const argv[] = {"cppcheck", "--project=compile_commands.json", "-ifile1.c", "-ifoo.c"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, parseFromArgs(argv));
+        ASSERT_EQUALS("cppcheck: error: unused ignore/exclude path 'foo.c'. To hide warnings in certain files use suppressions instead.\n", logger->str());
+    }
+
+    void ignoreUsedProject() {
+        REDIRECT;
+        ScopedFile file("compile_commands.json",
+                        R"([{"directory": "/tmp", "command": "gcc -c file1.c", "file": "file1.c"},
+                            {"directory": "/tmp", "command": "gcc -c file2.c", "file": "file2.c"}])");
+        const char * const argv[] = {"cppcheck", "--project=compile_commands.json", "-ifile1.c"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
+        ASSERT_EQUALS("", logger->str());
+        ASSERT_EQUALS(1, parser->getFileSettings().size());
+        ASSERT_EQUALS("/tmp/file2.c", parser->getFileSettings().cbegin()->filename());
     }
 
     void nonexistentpath() {
