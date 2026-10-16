@@ -434,7 +434,7 @@ namespace ValueFlow
                 visitAstNodes(parent->astOperand1(),
                               [&](const Token *t) {
                     if (t->varId()) {
-                        if (varId > 0 || value.varId != 0)
+                        if (varId > 0)
                             ret = true;
                         varId = t->varId();
                     } else if (t->str() == "(" && Token::Match(t->previous(), "%name%"))
@@ -443,7 +443,6 @@ namespace ValueFlow
                 });
                 if (ret)
                     return;
-
                 value.conditional = true;
                 value.changeKnownToPossible();
 

@@ -5164,8 +5164,9 @@ static void valueFlowInferCondition(TokenList& tokenlist, const Settings& settin
                     setTokenValue(tok, std::move(value), settings);
                 }
             }
-        } else if (Token::Match(tok->astParent(), "?|&&|!|%oror%") ||
+        } else if (Token::Match(tok->astParent(), "&&|!|%oror%") ||
                    Token::Match(tok->astParent()->previous(), "if|while (") ||
+                   (astIsLHS(tok) && Token::simpleMatch(tok->astParent(), "?")) ||
                    ((astIsPointer(tok) || tok->function()) && isUsedAsBool(tok, settings))) {
             std::vector<ValueFlow::Value> result = infer(makeIntegralInferModel(), "!=", tok->values(), 0);
             if (result.size() != 1)
