@@ -240,6 +240,7 @@ private:
         TEST_CASE(vardecl33);
         TEST_CASE(vardecl34);
         TEST_CASE(vardecl35);
+        TEST_CASE(vardecl36);
         TEST_CASE(vardecl_stl_1);
         TEST_CASE(vardecl_stl_2);
         TEST_CASE(vardecl_stl_3);
@@ -3033,6 +3034,38 @@ private:
                           tokenizeAndStringify(code));
             ignore_errout();
         }
+    }
+
+    void vardecl36() {
+        const char code[] = "struct S {\n" // #15086
+                            "    bool f1() const;\n"
+                            "    bool f2() const;\n"
+                            "    int g() const;\n"
+                            "    int x, y;\n"
+                            "};\n"
+                            "bool S::f1() const {\n"
+                            "    const bool b = x ? g() < 0 : 0 > y;\n"
+                            "    return b;\n"
+                            "}\n"
+                            "bool S::f2() const {\n"
+                            "    const bool b = g() < x ? x != y : 0 > y;\n"
+                            "    return b;\n"
+                            "}\n";
+        const char expected[] = "struct S {\n"
+                                "bool f1 ( ) const ;\n"
+                                "bool f2 ( ) const ;\n"
+                                "int g ( ) const ;\n"
+                                "int x ; int y ;\n"
+                                "} ;\n"
+                                "bool S :: f1 ( ) const {\n"
+                                "const bool b = x ? ( g ( ) < 0 ) : 0 > y ;\n"
+                                "return b ;\n"
+                                "}\n"
+                                "bool S :: f2 ( ) const {\n"
+                                "const bool b = g ( ) < x ? x != y : 0 > y ;\n"
+                                "return b ;\n"
+                                "}";
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
     }
 
     void volatile_variables() {
