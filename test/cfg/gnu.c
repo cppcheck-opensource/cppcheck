@@ -390,6 +390,23 @@ void valid_code(int argInt1, va_list valist_arg, const int * parg)
     // cppcheck-suppress zerodiv
     // cppcheck-suppress unreadVariable
     i64_1 /= bswap_64(0x023456789abcde0f) - 0x0fdebc9a78563402;
+
+#if __GNUC__ > 16
+    uint8_t i8_1 = 0;
+    // cppcheck-suppress zerodiv
+    // cppcheck-suppress unreadVariable
+    i8_1 /= __builtin_bitreverse8(1) - 128;
+    // cppcheck-suppress zerodiv
+    // cppcheck-suppress unreadVariable
+    i16_1 /= __builtin_bitreverse16(5) - 40960;
+    // cppcheck-suppress zerodiv
+    // cppcheck-suppress unreadVariable
+    i32_1 /= __builtin_bitreverse32(4294967295) - 4294967295;
+    // cppcheck-suppress zerodiv
+    // cppcheck-suppress unreadVariable
+    i64_1 /= __builtin_bitreverse64(8) - 1152921504606846976;
+#endif
+
 #endif
 }
 
