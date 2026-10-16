@@ -26,6 +26,7 @@
 
 #include <cstdint>
 #include <ctime>
+#include <fstream>
 #include <list>
 #include <set>
 #include <sstream>
@@ -33,6 +34,8 @@
 #include <utility>
 #include <vector>
 #include <map>
+#include <functional>
+#include <memory>
 
 class Token;
 class TokenList;
@@ -102,6 +105,19 @@ public:
         std::string mInfo;
     };
 
+    using SourceLineCallback = std::function<std::string (
+                                                 const std::string &file,
+                                                 int linenr,
+                                                 int column,
+                                                 const char endl[],
+                                                 int cachePrio)>;
+
+    static std::string directSourceLineCallback(const std::string &file,
+                                                int linenr,
+                                                int column,
+                                                const char endl[],
+                                                int cachePrio);
+
     ErrorMessage(std::list<FileLocation> callStack,
                  std::string file1,
                  Severity severity,
@@ -152,13 +168,13 @@ public:
      * or template to be used. E.g. "{file}:{line},{severity},{id},{message}"
      * @param templateLocation Format Empty string to use default output format
      * or template to be used. E.g. "{file}:{line},{info}"
-     * @param noCode Always replace {code} with an empty string
+     * @param sourceLineCallback Function used for fetching a line of source code for the error context
      * @return formatted string
      */
     std::string toString(bool verbose,
                          const std::string &templateFormat,
                          const std::string &templateLocation,
-                         bool noCode = false) const;
+                         const SourceLineCallback &sourceLineCallback = directSourceLineCallback) const;
 
     std::string serialize() const;
     /**
@@ -302,8 +318,36 @@ public:
         return mCriticalErrorIds.count(id) != 0;
     }
 
+    ErrorMessage::SourceLineCallback getSourceLineCallback();
+
 private:
     static const std::set<std::string> mCriticalErrorIds;
+
+protected:
+    virtual std::size_t getSourceCacheSize() const {
+        return 4;
+    }
+
+    class CPPCHECKLIB SourceCacheEntry {
+    public:
+        explicit SourceCacheEntry(const std::string &file, int prio);
+
+        int prio;
+        std::string file;
+
+        bool operator<(const SourceCacheEntry &rhs) const;
+
+        std::string getLine(int linenr);
+
+    private:
+        std::ifstream mStream;
+        std::string mLine;
+        int mLinenr{0};
+    };
+
+    std::vector<std::shared_ptr<SourceCacheEntry>> mSourceCache;
+
+    std::string sourceLineCallback(const std::string &file, int linenr, int column, const char endl[], int cachePrio);
 };
 
 /// RAII class for reporting progress messages
