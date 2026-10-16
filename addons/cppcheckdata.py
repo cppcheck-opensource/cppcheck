@@ -1052,6 +1052,7 @@ class Suppression:
         # Other Suppression (Globally set via suppression file or cli command)
         if ((self.fileName is None or fnmatch(file, self.fileName))
                 and (self.suppressionType is None)
+                and (self.lineNumber is None)
                 and (self.symbolName is None or fnmatch(message, '*'+self.symbolName+'*'))
                 and fnmatch(errorId, self.errorId)):
             return True
