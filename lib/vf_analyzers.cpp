@@ -1104,7 +1104,7 @@ struct MultiValueFlowAnalyzer : ValueFlowAnalyzer {
             if (!var)
                 continue;
             assert(var->nameToken());
-            ps[var->nameToken()] = p.second;
+            ps[var->nameToken()] = {p.second};
         }
         return ps;
     }
@@ -1379,7 +1379,7 @@ struct ExpressionAnalyzer : SingleValueFlowAnalyzer {
 
     ProgramState getProgramState() const override {
         ProgramState ps;
-        ps[expr] = value;
+        ps[expr] = {value};
         return ps;
     }
 

@@ -25,6 +25,7 @@
 #include "symboldatabase.h"
 
 #include <cstddef>
+#include <limits>
 #include <string>
 
 class Token;
@@ -42,6 +43,12 @@ namespace ValueFlow
     bool getMinMaxValues(const ValueType* vt, const Platform& platform, MathLib::bigint& minValue, MathLib::bigint& maxValue);
 
     MathLib::bigint truncateIntValue(MathLib::bigint value, size_t value_size, ValueType::Sign dst_sign);
+
+    /** Is the value at a limit of its type, standing for any value beyond? */
+    inline bool isSaturated(MathLib::bigint value)
+    {
+        return value == std::numeric_limits<MathLib::bigint>::max() || value == std::numeric_limits<MathLib::bigint>::min();
+    }
 
     Token * valueFlowSetConstantValue(Token *tok, const Settings &settings);
 

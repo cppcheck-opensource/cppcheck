@@ -645,7 +645,7 @@ $(libcppdir)/platform.o: lib/platform.cpp externals/tinyxml2/tinyxml2.h lib/conf
 $(libcppdir)/preprocessor.o: lib/preprocessor.cpp externals/simplecpp/simplecpp.h lib/checkers.h lib/config.h lib/errorlogger.h lib/errortypes.h lib/library.h lib/mathlib.h lib/path.h lib/platform.h lib/preprocessor.h lib/settings.h lib/standards.h lib/suppressions.h lib/utils.h
 	$(CXX) ${INCLUDE_FOR_LIB} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(libcppdir)/preprocessor.cpp
 
-$(libcppdir)/programmemory.o: lib/programmemory.cpp lib/astutils.h lib/calculate.h lib/checkers.h lib/config.h lib/errortypes.h lib/infer.h lib/library.h lib/mathlib.h lib/platform.h lib/programmemory.h lib/settings.h lib/smallvector.h lib/sourcelocation.h lib/standards.h lib/symboldatabase.h lib/templatesimplifier.h lib/token.h lib/tokenlist.h lib/utils.h lib/valueflow.h lib/valueptr.h lib/vfvalue.h
+$(libcppdir)/programmemory.o: lib/programmemory.cpp lib/astutils.h lib/calculate.h lib/checkers.h lib/config.h lib/errortypes.h lib/infer.h lib/library.h lib/mathlib.h lib/platform.h lib/programmemory.h lib/settings.h lib/smallvector.h lib/sourcelocation.h lib/standards.h lib/symboldatabase.h lib/templatesimplifier.h lib/token.h lib/tokenlist.h lib/utils.h lib/valueflow.h lib/valueptr.h lib/vf_common.h lib/vfvalue.h
 	$(CXX) ${INCLUDE_FOR_LIB} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(libcppdir)/programmemory.cpp
 
 $(libcppdir)/regex.o: lib/regex.cpp lib/config.h lib/regex.h
