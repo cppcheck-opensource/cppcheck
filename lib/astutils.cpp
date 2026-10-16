@@ -2714,6 +2714,33 @@ bool isVariableChanged(const Token *tok, int indirect, const Settings &settings,
     if (tok2->isCpp() && Token::Match(tok2->astParent(), ">>|&") && astIsRHS(tok2) && isLikelyStreamRead(tok2->astParent()))
         return true;
 
+    // An overloaded >>= can extract into its right-hand operand by reference.
+    if (tok2->isCpp() && Token::simpleMatch(tok2->astParent(), ">>=") && astIsRHS(tok2) &&
+        !astIsIntegral(tok2->astParent()->astOperand1(), false)) {
+        const ValueType* lhsType = tok2->astParent()->astOperand1()->valueType();
+        if (!lhsType || !lhsType->typeScope)
+            return true;
+        const Scope* lhsScope = lhsType->typeScope;
+        const auto operators = lhsScope->functionMap.equal_range("operator>>=");
+        if (operators.first == operators.second ||
+            (lhsScope->definedType && !lhsScope->definedType->derivedFrom.empty()) ||
+            Token::findsimplematch(lhsScope->bodyStart, "friend", lhsScope->bodyEnd))
+            return true;
+        // Non-member operators can compete with members. Avoid ranking them.
+        for (const Scope& scope : lhsScope->symdb.scopeList) {
+            const auto functions = scope.functionMap.equal_range("operator>>=");
+            for (auto it = functions.first; it != functions.second; ++it) {
+                if (!scope.isClassOrStruct() || it->second->isFriend())
+                    return true;
+            }
+        }
+        for (auto it = operators.first; it != operators.second; ++it) {
+            const Variable* arg = it->second->getArgumentVar(0);
+            if (!arg || (!arg->isConst() && arg->isReference()))
+                return true;
+        }
+    }
+
     if (isLikelyStream(tok2))
         return true;
 
