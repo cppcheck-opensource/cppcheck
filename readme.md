@@ -12,6 +12,30 @@ The original name of this program was "C++check", but it was later changed to "C
 
 Despite the name, Cppcheck is designed for both C and C++.
 
+## Getting Started
+
+Cppcheck is primarily a command-line tool, but this repository also includes a GUI frontend.
+
+1. Build the project with CMake:
+
+    cmake -S . -B build
+    cmake --build build
+
+2. Run Cppcheck on a single file:
+
+    build/cppcheck file1.c
+
+3. Run Cppcheck on a folder recursively:
+
+    build/cppcheck path
+
+If you want the GUI, enable it when building:
+
+    cmake -S . -B build -DBUILD_GUI=ON
+    cmake --build build
+
+Then run the generated `cppcheck-gui` executable from the build output.
+
 ## Manual
 
 A manual is available [online](https://cppcheck.sourceforge.io/manual.pdf).
