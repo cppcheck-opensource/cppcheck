@@ -129,6 +129,8 @@ private:
         TEST_CASE(knownConditionAfterBailout); // #12526
         TEST_CASE(knownConditionIncDecOperator);
         TEST_CASE(knownConditionFloating);
+        TEST_CASE(knownConditionPromotion);
+        TEST_CASE(knownConditionWiderConstant);
     }
 
     struct CheckOptions
@@ -6903,6 +6905,28 @@ private:
             "[test.cpp:3]: (style) Condition 'nf>-1.0' is always false\n",
             "",
             errout_str());
+    }
+
+    void knownConditionPromotion() {
+        check("int wrapped(uint8_t last) {\n"
+              "    uint8_t seq = last;\n"
+              "    seq++;\n"
+              "    if (seq - 1 != last)\n"
+              "        return 1;\n"
+              "    return 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void knownConditionWiderConstant() {
+        check("int wrapped(unsigned int last) {\n"
+              "    unsigned int seq = last;\n"
+              "    seq++;\n"
+              "    if (seq - 1UL != last)\n"
+              "        return 1;\n"
+              "    return 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 };
 

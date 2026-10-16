@@ -64,6 +64,8 @@ private:
         TEST_CASE(tan);
         TEST_CASE(abs);
         TEST_CASE(toString);
+        TEST_CASE(additionWouldOverflow);
+        TEST_CASE(subtractionWouldOverflow);
     }
 
     void isGreater() const {
@@ -1510,6 +1512,34 @@ private:
 
         ASSERT_EQUALS("2.22507385851e-308", MathLib::toString(std::numeric_limits<double>::min()));
         ASSERT_EQUALS("1.79769313486e+308", MathLib::toString(std::numeric_limits<double>::max()));
+    }
+
+    void additionWouldOverflow() const {
+        const auto max = std::numeric_limits<MathLib::bigint>::max();
+        const auto min = std::numeric_limits<MathLib::bigint>::min();
+
+        ASSERT_EQUALS(false, MathLib::additionWouldOverflow(1, 2));
+        ASSERT_EQUALS(false, MathLib::additionWouldOverflow(1, -2));
+        ASSERT_EQUALS(false, MathLib::additionWouldOverflow(max - 1, 1));
+        ASSERT_EQUALS(true, MathLib::additionWouldOverflow(max - 1, 2));
+        ASSERT_EQUALS(false, MathLib::additionWouldOverflow(0, min));
+        ASSERT_EQUALS(true, MathLib::additionWouldOverflow(-1, min));
+        ASSERT_EQUALS(false, MathLib::additionWouldOverflow(min + 1, -1));
+        ASSERT_EQUALS(true, MathLib::additionWouldOverflow(min, -1));
+    }
+
+    void subtractionWouldOverflow() const {
+        const auto max = std::numeric_limits<MathLib::bigint>::max();
+        const auto min = std::numeric_limits<MathLib::bigint>::min();
+
+        ASSERT_EQUALS(false, MathLib::subtractionWouldOverflow(1, 2));
+        ASSERT_EQUALS(false, MathLib::subtractionWouldOverflow(1, -2));
+        ASSERT_EQUALS(false, MathLib::subtractionWouldOverflow(min, 0));
+        ASSERT_EQUALS(true, MathLib::subtractionWouldOverflow(min, 1));
+        ASSERT_EQUALS(false, MathLib::subtractionWouldOverflow(max - 1, -1));
+        ASSERT_EQUALS(true, MathLib::subtractionWouldOverflow(max, -1));
+        ASSERT_EQUALS(true, MathLib::subtractionWouldOverflow(0, min));
+        ASSERT_EQUALS(false, MathLib::subtractionWouldOverflow(-1, min));
     }
 };
 

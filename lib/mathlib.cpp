@@ -1369,3 +1369,17 @@ MathLib::value operator>>(const MathLib::value &v1, const MathLib::value &v2)
 {
     return v1.shiftRight(v2);
 }
+
+bool MathLib::additionWouldOverflow(MathLib::bigint x, MathLib::bigint y)
+{
+    if (y > 0)
+        return x > std::numeric_limits<MathLib::bigint>::max() - y;
+    return std::numeric_limits<MathLib::bigint>::min() - y > x;
+}
+
+bool MathLib::subtractionWouldOverflow(MathLib::bigint x, MathLib::bigint y)
+{
+    if (y == std::numeric_limits<MathLib::bigint>::min())
+        return x >= 0;
+    return additionWouldOverflow(x, -y);
+}

@@ -3741,6 +3741,34 @@ static void valueFlowSymbolicOperators(const SymbolDatabase& symboldatabase, con
                     continue;
                 if (Token::Match(tok, "<<|>>|/|-") && !astIsLHS(vartok))
                     continue;
+                if (Token::Match(tok, "+|-") && constant->intvalue != 0) {
+                    const ValueType *varVt = vartok->valueType();
+                    const ValueType *tokVt = tok->valueType();
+                    if (varVt && tokVt &&
+                        varVt->sign == tokVt->sign &&
+                        varVt->type == tokVt->type &&
+                        varVt->pointer == tokVt->pointer) {
+                        std::unordered_set<nonneg int> ids;
+                        for (const auto &value : vartok->values()) {
+                            if (!value.isSymbolicValue())
+                                continue;
+                            if (!value.isKnown())
+                                continue;
+                            if (!value.tokvalue)
+                                continue;
+                            if (!ids.insert(value.tokvalue->exprId()).second)
+                                continue;
+                            const bool add = tok->str() == "+";
+                            if (add && MathLib::additionWouldOverflow(value.intvalue, constant->intvalue))
+                                continue;
+                            if (!add && MathLib::subtractionWouldOverflow(value.intvalue, constant->intvalue))
+                                continue;
+                            ValueFlow::Value newValue(value);
+                            newValue.intvalue = add ? newValue.intvalue + constant->intvalue : newValue.intvalue - constant->intvalue;
+                            setTokenValue(tok, std::move(newValue), settings);
+                        }
+                    }
+                }
                 if (Token::Match(tok, "<<|>>|^|+|-|%or%") && constant->intvalue != 0)
                     continue;
                 if (Token::Match(tok, "*|/") && constant->intvalue != 1)

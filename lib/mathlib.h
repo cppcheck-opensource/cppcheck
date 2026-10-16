@@ -169,6 +169,9 @@ public:
     static bool isOctalDigit(char c);
 
     static unsigned int encodeMultiChar(const std::string& str);
+
+    static bool additionWouldOverflow(MathLib::bigint x, MathLib::bigint y);
+    static bool subtractionWouldOverflow(MathLib::bigint x, MathLib::bigint y);
 };
 
 MathLib::value operator+(const MathLib::value &v1, const MathLib::value &v2);
