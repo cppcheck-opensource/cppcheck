@@ -27,9 +27,6 @@
 #include "token.h"
 #include "tokenize.h"
 #include "vfvalue.h"
-
-#include <list>
-#include <vector>
 //---------------------------------------------------------------------------
 
 static const CWE CWE398(398U);  // Indicator of Poor Code Quality

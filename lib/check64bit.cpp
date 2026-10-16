@@ -29,8 +29,6 @@
 #include "token.h"
 #include "tokenize.h"
 
-#include <vector>
-
 //---------------------------------------------------------------------------
 
 // CWE ids used

@@ -36,10 +36,7 @@
 #include "vfvalue.h"
 
 #include <iomanip>
-#include <list>
-#include <map>
 #include <sstream>
-#include <unordered_map>
 #include <vector>
 
 //---------------------------------------------------------------------------

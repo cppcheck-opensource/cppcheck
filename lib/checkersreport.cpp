@@ -25,10 +25,7 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <map>
 #include <sstream>
-#include <unordered_set>
-#include <vector>
 
 static int getMisraCVersion(const Settings& settings) {
     if (settings.premiumArgs.find("misra-c-2025") != std::string::npos)
