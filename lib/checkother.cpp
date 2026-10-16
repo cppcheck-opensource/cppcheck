@@ -4226,7 +4226,7 @@ static const Token *findShadowed(const Scope *scope, const Variable& var, int li
     if (!scope)
         return nullptr;
     for (const Variable &v : scope->varlist) {
-        if (scope->isExecutable() && v.nameToken()->linenr() > linenr)
+        if ((scope->isExecutable() || scope->type == ScopeType::eGlobal) && v.nameToken()->linenr() > linenr)
             continue;
         if (v.name() == var.name())
             return v.nameToken();
@@ -4312,9 +4312,10 @@ void CheckOtherImpl::checkShadowVariables()
 void CheckOtherImpl::shadowError(const Token *shadows, const std::string &shadowsType,
                                  const Token *shadowed, const std::string &shadowedType)
 {
-    ErrorPath errorPath;
-    errorPath.emplace_back(shadowed, "Shadowed " + shadowedType);
-    errorPath.emplace_back(shadows, "Shadow " + shadowsType);
+    ErrorPath errorPath{
+        {shadowed, "Shadowed " + shadowedType},
+        {shadows, "Shadow " + shadowsType}
+    };
     const std::string &varname = shadows ? shadows->str() : shadowsType;
     const std::string ShadowsType = char(std::toupper(shadowsType[0])) + shadowsType.substr(1);
     const std::string ShadowedType = char(std::toupper(shadowedType[0])) + shadowedType.substr(1);

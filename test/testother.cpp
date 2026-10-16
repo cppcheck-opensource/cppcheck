@@ -13520,6 +13520,13 @@ private:
 
         check("struct S { void g(float f) {} void f() {} };\n");
         ASSERT_EQUALS("[test.cpp:1:36] -> [test.cpp:1:25]: (style) Argument 'f' shadows outer function [shadowFunction]\n", errout_str());
+
+        check("int f() {\n" // #15114
+              "    int i = 0;\n"
+              "    return i;\n"
+              "}\n"
+              "int i = 1;\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void knownArgument() {
