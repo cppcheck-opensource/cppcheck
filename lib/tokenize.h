@@ -50,7 +50,7 @@ class CPPCHECKLIB Tokenizer {
     friend class SymbolDatabase;
 
 public:
-    Tokenizer(TokenList tokenList, ErrorLogger &errorLogger);
+    Tokenizer(TokenList tokenList, ErrorLogger &errorLogger LIFETIMEBOUND);
     ~Tokenizer();
 
     void setTimerResults(TimerResultsIntf *tr) {
