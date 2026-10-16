@@ -1275,8 +1275,9 @@ class HttpClientThread(Thread):
                 text = clientsReport(self.resultPath)
                 httpGetResponse(self.connection, text, 'text/html')
             else:
-                filename = self.resultPath + url
-                if not os.path.isfile(filename):
+                result_path = os.path.normpath(self.resultPath)
+                filename = os.path.normpath(result_path + url)
+                if os.path.commonpath([result_path, filename]) != result_path or not os.path.isfile(filename):
                     print_ts('HTTP/1.1 404 Not Found')
                     self.connection.send(b'HTTP/1.1 404 Not Found\r\n\r\n')
                 else:
