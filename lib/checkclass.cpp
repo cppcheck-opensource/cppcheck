@@ -2032,7 +2032,7 @@ void CheckClassImpl::virtualDestructor()
         }
 
         // Check if destructor is empty and non-empty ..
-        if (mSettings.standards.cpp <= Standards::CPP03) {
+        if (mSettings.standards.cpp == Standards::CPP03) {
             // Find the destructor
             const Function *destructor = scope->getDestructor();
 

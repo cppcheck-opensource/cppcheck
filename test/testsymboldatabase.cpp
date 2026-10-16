@@ -9910,6 +9910,8 @@ private:
         ASSERT_EQUALS("unsigned long", typeOf("enum E : unsigned long { }; void foo() { E e[3]; bar(e[0]); }\n", "[ 0"));
         ASSERT_EQUALS("signed long long", typeOf("enum E : long long { }; void foo() { E e[3]; bar(e[0]); }\n", "[ 0"));
         ASSERT_EQUALS("unsigned long long", typeOf("enum E : unsigned long long { }; void foo() { E e[3]; bar(e[0]); }\n", "[ 0"));
+        ASSERT_EQUALS("unsigned char", typeOf("enum E : std::uint8_t {}; E e;\n", "e", /*cpp*/ true, &settings1));
+        ASSERT_EQUALS("bool", typeOf("enum E : bool {}; E e;\n", "e"));
 
 #define CHECK_LIBRARY_FUNCTION_RETURN_TYPE(type) do { \
         const char xmldata[] = "<?xml version=\"1.0\"?>\n" \
