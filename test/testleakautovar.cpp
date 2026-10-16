@@ -118,6 +118,15 @@ private:
 
         // handling function calls
         TEST_CASE(functioncall1);
+        TEST_CASE(functioncallMemberAddress);
+        TEST_CASE(functioncallMemberAddressOwnership);
+        TEST_CASE(functioncallMemberAddressValue);
+        TEST_CASE(functioncallMemberAddressDerived);
+        TEST_CASE(functioncallMemberAddressIndirect);
+        TEST_CASE(functioncallMemberAddressLeakIgnore);
+        TEST_CASE(functioncallMemberAddressDoubleFree);
+        TEST_CASE(functioncallMemberAddressNested);
+        TEST_CASE(functioncallMemberAddressCppStorage);
 
         // goto
         TEST_CASE(goto1);
@@ -1908,6 +1917,238 @@ private:
               "    std::string str = std::string(b);\n"
               "}\n", dinit(CheckOptions, $.cpp = true));
         ASSERT_EQUALS("[test.cpp:4:1]: (error) Memory leak: b [memleak]\n", errout_str());
+    }
+
+    void functioncallMemberAddress() { // #6259
+        check("void f() {\n"
+              "  line_element *wall = malloc(sizeof(line_element));\n"
+              "  list_add_tail(&(wall->list), &(state.l_elements_head));\n"
+              "  state.l_direction = direction;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.c:5:1]: (information) --check-library: Function list_add_tail() should have <use>/<leak-ignore> configuration [checkLibraryUseIgnore]\n", errout_str());
+
+        check("struct S { int value; };\n"
+              "void retain(void *);\n"
+              "void f(int *state) {\n"
+              "    struct S *p = malloc(sizeof(*p));\n"
+              "    retain(&p->value);\n"
+              "    *state = 1;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.c:7:1]: (information) --check-library: Function retain() should have <use>/<leak-ignore> configuration [checkLibraryUseIgnore]\n", errout_str());
+
+        check("struct S { int value; };\n"
+              "void retain(void *);\n"
+              "void f(int *state) {\n"
+              "    struct S *p = malloc(sizeof(*p));\n"
+              "    retain(&(p->value));\n"
+              "    *state = 1;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.c:7:1]: (information) --check-library: Function retain() should have <use>/<leak-ignore> configuration [checkLibraryUseIgnore]\n", errout_str());
+
+        check("struct S { int value; };\n"
+              "void retain(void *);\n"
+              "void f(int *state) {\n"
+              "    struct S *p = malloc(sizeof(*p));\n"
+              "    retain((void *)&p->value);\n"
+              "    *state = 1;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.c:7:1]: (information) --check-library: Function retain() should have <use>/<leak-ignore> configuration [checkLibraryUseIgnore]\n", errout_str());
+    }
+
+    void functioncallMemberAddressOwnership() {
+        check("struct link { struct link *next; };\n"
+              "struct item { int value; struct link entry; };\n"
+              "struct link *head;\n"
+              "void retain_entry(struct link *entry) {\n"
+              "    entry->next = head;\n"
+              "    head = entry;\n"
+              "}\n"
+              "void append_item(int value, int *state) {\n"
+              "    struct item *p = malloc(sizeof(*p));\n"
+              "    if (!p) return;\n"
+              "    p->value = value;\n"
+              "    retain_entry(&p->entry);\n"
+              "    *state = 1;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void functioncallMemberAddressDerived() {
+        check("struct S { int value; };\n"
+              "void observe(int);\n"
+              "void f(int *saved, int *state) {\n"
+              "    struct S *p = malloc(sizeof(*p));\n"
+              "    observe(&p->value == saved);\n"
+              "    *state = 1;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.c:7:1]: (error) Memory leak: p [memleak]\n", errout_str());
+
+        check("struct S { int value; };\n"
+              "void observe(int);\n"
+              "void f(int *state) {\n"
+              "    struct S *p = malloc(sizeof(*p));\n"
+              "    observe((&p->value, 1));\n"
+              "    *state = 1;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.c:7:1]: (error) Memory leak: p [memleak]\n", errout_str());
+
+        check("struct S { int value; };\n"
+              "void observe(long);\n"
+              "void f(int *state) {\n"
+              "    struct S *p = malloc(sizeof(*p));\n"
+              "    observe((long)&p->value);\n"
+              "    *state = 1;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.c:7:1]: (error) Memory leak: p [memleak]\n", errout_str());
+    }
+
+    void functioncallMemberAddressValue() {
+        check("struct S { int value; };\n"
+              "void observe(int);\n"
+              "void f(int *state) {\n"
+              "    struct S *p = malloc(sizeof(*p));\n"
+              "    p->value = 1;\n"
+              "    observe(p->value);\n"
+              "    *state = 1;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.c:8:1]: (error) Memory leak: p [memleak]\n", errout_str());
+    }
+
+    void functioncallMemberAddressIndirect() {
+        check("struct S { int value; struct S *child; };\n"
+              "void retain(int *);\n"
+              "void f(struct S *child, int *state) {\n"
+              "    struct S *p = malloc(sizeof(*p));\n"
+              "    p->child = child;\n"
+              "    retain(&p->child->value);\n"
+              "    *state = 1;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.c:8:1]: (error) Memory leak: p [memleak]\n", errout_str());
+
+        check("struct S { int *value; };\n"
+              "void retain(int *);\n"
+              "void f(int *value, int *state) {\n"
+              "    struct S *p = malloc(sizeof(*p));\n"
+              "    p->value = value;\n"
+              "    retain(p->value);\n"
+              "    *state = 1;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.c:8:1]: (error) Memory leak: p [memleak]\n", errout_str());
+    }
+
+    void functioncallMemberAddressLeakIgnore() {
+        check("struct S { int value; };\n"
+              "void f(int *state) {\n"
+              "    struct S *p = malloc(sizeof(*p));\n"
+              "    memset(&p->value, 0, sizeof(p->value));\n"
+              "    *state = 1;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.c:6:1]: (error) Memory leak: p [memleak]\n", errout_str());
+
+        const Settings pureSettings = settingsBuilder(settings).libraryxml(
+            "<def format=\"2\"><function name=\"observe\"><pure/><noreturn>false</noreturn>"
+            "<arg nr=\"1\"><not-uninit/></arg></function></def>").build();
+        check("struct S { int value; };\n"
+              "int observe(const int *);\n"
+              "void f(int *state) {\n"
+              "    struct S *p = malloc(sizeof(*p));\n"
+              "    p->value = 1;\n"
+              "    *state = observe(&p->value);\n"
+              "    *state += 1;\n"
+              "}\n", dinit(CheckOptions, $.s = &pureSettings));
+        ASSERT_EQUALS("[test.c:8:1]: (error) Memory leak: p [memleak]\n", errout_str());
+    }
+
+    void functioncallMemberAddressDoubleFree() {
+        check("struct S { int value; };\n"
+              "void retain(int *);\n"
+              "void f() {\n"
+              "    struct S *p = malloc(sizeof(*p));\n"
+              "    retain(&p->value);\n"
+              "    free(p);\n"
+              "    free(p);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.c:6:5] -> [test.c:7:5]: (error) Memory pointed to by 'p' is freed twice. [doubleFree]\n", errout_str());
+
+        check("struct S { int value; };\n"
+              "void retain(int *);\n"
+              "void f() {\n"
+              "    S *p = new S;\n"
+              "    retain(&p->value);\n"
+              "    free(p);\n"
+              "}\n", dinit(CheckOptions, $.cpp = true));
+        ASSERT_EQUALS("[test.cpp:4:12] -> [test.cpp:6:5]: (error) Mismatching allocation and deallocation: p [mismatchAllocDealloc]\n", errout_str());
+    }
+
+    void functioncallMemberAddressNested() {
+        check("struct Entry { int value; };\n"
+              "struct S { struct Entry embedded; };\n"
+              "void retain(int *);\n"
+              "void f(int *state) {\n"
+              "    struct S *p = malloc(sizeof(*p));\n"
+              "    retain(&p->embedded.value);\n"
+              "    *state = 1;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.c:8:1]: (information) --check-library: Function retain() should have <use>/<leak-ignore> configuration [checkLibraryUseIgnore]\n", errout_str());
+    }
+
+    void functioncallMemberAddressCppStorage() {
+        check("struct S { int value; };\n"
+              "void retain(int *);\n"
+              "void f(int *state) {\n"
+              "    S *p = new S;\n"
+              "    retain(&p->value);\n"
+              "    *state = 1;\n"
+              "}\n", dinit(CheckOptions, $.cpp = true));
+        ASSERT_EQUALS("[test.cpp:7:1]: (information) --check-library: Function retain() should have <use>/<leak-ignore> configuration [checkLibraryUseIgnore]\n", errout_str());
+
+        check("struct S { int *value; };\n"
+              "void retain(int **);\n"
+              "void f(int *state) {\n"
+              "    S *p = new S;\n"
+              "    retain(&p->value);\n"
+              "    *state = 1;\n"
+              "}\n", dinit(CheckOptions, $.cpp = true));
+        ASSERT_EQUALS("[test.cpp:7:1]: (information) --check-library: Function retain() should have <use>/<leak-ignore> configuration [checkLibraryUseIgnore]\n", errout_str());
+
+        check("struct S { static int value; };\n"
+              "void retain(int *);\n"
+              "void f(int *state) {\n"
+              "    S *p = new S;\n"
+              "    retain(&p->value);\n"
+              "    *state = 1;\n"
+              "}\n", dinit(CheckOptions, $.cpp = true));
+        ASSERT_EQUALS("[test.cpp:7:1]: (error) Memory leak: p [memleak]\n", errout_str());
+
+        check("struct S { int &value; };\n"
+              "void retain(int *);\n"
+              "void f(int &value, int *state) {\n"
+              "    S *p = new S{value};\n"
+              "    retain(&p->value);\n"
+              "    *state = 1;\n"
+              "}\n", dinit(CheckOptions, $.cpp = true));
+        ASSERT_EQUALS("[test.cpp:7:1]: (error) Memory leak: p [memleak]\n", errout_str());
+
+        check("struct Entry { int *operator&(); };\n"
+              "struct S { Entry entry; };\n"
+              "void retain(int *);\n"
+              "void f(int *state) {\n"
+              "    S *p = (S *)malloc(sizeof(S));\n"
+              "    retain(&p->entry);\n"
+              "    *state = 1;\n"
+              "}\n", dinit(CheckOptions, $.cpp = true));
+        ASSERT_EQUALS("[test.cpp:8:1]: (error) Memory leak: p [memleak]\n", errout_str());
+
+        check("struct Entry { int value; };\n"
+              "struct Link { Entry *operator->(); };\n"
+              "struct S { Link link; };\n"
+              "void retain(int *);\n"
+              "void f(int *state) {\n"
+              "    S *p = (S *)malloc(sizeof(S));\n"
+              "    retain(&p->link->value);\n"
+              "    *state = 1;\n"
+              "}\n", dinit(CheckOptions, $.cpp = true));
+        ASSERT_EQUALS("[test.cpp:9:1]: (error) Memory leak: p [memleak]\n", errout_str());
     }
 
     void goto1() {
