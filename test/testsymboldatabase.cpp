@@ -1602,6 +1602,61 @@ private:
             ASSERT(p->valueType()->originalTypeName == "ubFunctionPointer_fp");
             ASSERT(p->valueType()->reference == Reference::None);
         }
+        { // function pointer returning a reference
+            GET_SYMBOL_DB("void foo(int& (*f)()) {}\n");
+            const Variable* const p = db->getVariableFromVarId(1);
+            ASSERT(!p->isReference());
+            ASSERT(p->isPointer());
+            ASSERT(p->valueType());
+            ASSERT(p->valueType()->pointer == 1);
+            ASSERT(p->valueType()->reference == Reference::None);
+        }
+        {
+            GET_SYMBOL_DB("void foo(int&& (*f)()) {}\n");
+            const Variable* const p = db->getVariableFromVarId(1);
+            ASSERT(!p->isReference());
+            ASSERT(!p->isRValueReference());
+            ASSERT(p->valueType());
+            ASSERT(p->valueType()->reference == Reference::None);
+        }
+        {
+            GET_SYMBOL_DB("struct S { int& (*f[2])(); };\n");
+            const Variable* const p = db->getVariableFromVarId(1);
+            ASSERT(!p->isReference());
+            ASSERT(p->isArray());
+            ASSERT(p->valueType());
+            ASSERT(p->valueType()->reference == Reference::None);
+        }
+        { // pointer to member function returning a reference
+            GET_SYMBOL_DB("struct S { int& g(); };\n"
+                          "void foo(int& (S::*pm)()) {}\n");
+            const Variable* const p = db->getVariableFromVarId(1);
+            ASSERT(p);
+            ASSERT_EQUALS("pm", p->name());
+            ASSERT(!p->isReference());
+            ASSERT(p->valueType());
+            ASSERT(p->valueType()->reference == Reference::None);
+        }
+        { // parentheses that are no function declarator
+            GET_SYMBOL_DB("void foo(int& (r)) {}\n");
+            const Variable* const p = db->functionScopes.front()->function->getArgumentVar(0);
+            ASSERT(p);
+            ASSERT(p->isReference());
+        }
+        {
+            GET_SYMBOL_DB("void foo(int& UNUSED(r)) {}\n");
+            const Variable* const p = db->functionScopes.front()->function->getArgumentVar(0);
+            ASSERT(p);
+            ASSERT(p->isReference());
+        }
+        { // reference to function pointer
+            GET_SYMBOL_DB("void foo(int (*&f)()) {}\n");
+            const Variable* const p = db->getVariableFromVarId(1);
+            ASSERT(p->isReference());
+            ASSERT(p->isPointer());
+            ASSERT(p->valueType());
+            ASSERT(p->valueType()->reference == Reference::LValue);
+        }
     }
 
     void VariableValueTypeTemplate() {
