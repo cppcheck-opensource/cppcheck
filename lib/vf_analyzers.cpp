@@ -357,7 +357,7 @@ struct ValueFlowAnalyzer : Analyzer {
             if (dst) {
                 const size_t sz = dst->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
                 if (sz > 0 && sz < sizeof(MathLib::biguint)) {
-                    MathLib::bigint newvalue = ValueFlow::truncateIntValue(value->intvalue, sz, dst->sign);
+                    MathLib::bigint newvalue = ValueFlow::truncateIntValue(value->intvalue, sz, dst, settings.platform);
 
                     /* Handle overflow/underflow for value bounds */
                     if (value->bound != ValueFlow::Value::Bound::Point) {

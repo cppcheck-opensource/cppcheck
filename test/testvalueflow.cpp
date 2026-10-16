@@ -1389,6 +1389,13 @@ private:
             ASSERT_EQUALS(22, values.back().intvalue);
         }
 
+        code  = "void f() {\n" // #15032
+                "    char c = -1;\n"
+                "    if (~c == -256) {}\n"
+                "}\n";
+        const int expected = std::numeric_limits<char>::is_signed ? 0 : -256;
+        ASSERT_EQUALS(true, testKnownValueOfTok(code, "~", expected));
+
         // #10251 starship operator
         code  = "struct X {};\n"
                 "auto operator<=>(const X & a, const X & b) -> decltype(1 <=> 2) {\n"
