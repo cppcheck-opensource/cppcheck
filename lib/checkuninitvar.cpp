@@ -1441,6 +1441,12 @@ int CheckUninitVarImpl::isFunctionParUsage(const Token *vartok, bool pointer, Al
 
 bool CheckUninitVarImpl::isMemberVariableAssignment(const Token *tok, const std::string &membervar) const
 {
+    if (const Variable* member = getSingleMemberArrowWriteTarget(tok->astParent())) {
+        const Token* access = tok->astParent();
+        if (access->astOperand1() == tok && member->name() == membervar &&
+            Token::simpleMatch(access->astParent(), "=") && astIsLHS(access))
+            return true;
+    }
     if (Token::Match(tok, "%name% . %name%") && tok->strAt(2) == membervar) {
         if (Token::Match(tok->tokAt(3), "[=.[]"))
             return true;
@@ -1671,7 +1677,13 @@ void CheckUninitVarImpl::valueFlowUninit()
                         (tok->astParent()->next()->variable() || tok->astParent()->next()->isEnumerator()))
                         continue;
                 }
-                const ExprUsage usage = getExprUsage(tok, v->indirect, mSettings);
+                // For a proven singleton accessor, the scalar operation also
+                // describes the receiver's initialization state (including ++).
+                const Token* usageToken = tok;
+                if (v->indirect == 0 && getSingleMemberArrowWriteTarget(tok->astParent()) &&
+                    tok->astParent()->astOperand1() == tok)
+                    usageToken = tok->astParent();
+                const ExprUsage usage = getExprUsage(usageToken, v->indirect, mSettings);
                 if (usage == ExprUsage::NotUsed || usage == ExprUsage::Inconclusive)
                     continue;
                 if (!v->subexpressions.empty() && usage == ExprUsage::PassedByReference)

@@ -439,6 +439,11 @@ bool isConstVarExpression(const Token* tok, const std::function<bool(const Token
 
 bool isLeafDot(const Token* tok);
 
+// Identify a standalone scalar write through a pure overloaded arrow when the
+// receiver's only member contains only that scalar. This is not a general alias
+// summary: reads, bindings, nested expressions and captured writes are excluded.
+const Variable* getSingleMemberArrowWriteTarget(const Token* tok);
+
 enum class ExprUsage : std::uint8_t { None, NotUsed, PassedByReference, Used, Inconclusive };
 
 ExprUsage getExprUsage(const Token* tok, int indirect, const Settings& settings);

@@ -43,6 +43,13 @@ private:
         TEST_CASE(uninitvar_alloc);     // data is allocated but not initialized
         TEST_CASE(uninitvar_arrays);    // arrays
         TEST_CASE(uninitvar_class);     // class/struct
+        TEST_CASE(uninitvar_ownedArrow);
+        TEST_CASE(uninitvar_ownedArrowEscapes);
+        TEST_CASE(valueFlowUninit_ownedArrow);
+        TEST_CASE(valueFlowUninit_ownedArrowWrites);
+        TEST_CASE(valueFlowUninit_ownedArrowReadModify);
+        TEST_CASE(valueFlowUninit_ownedArrowReceivers);
+        TEST_CASE(valueFlowUninit_ownedArrowConditional);
         TEST_CASE(uninitvar_enum);      // enum variables
         TEST_CASE(uninitvar_if);        // handling if
         TEST_CASE(uninitvar_loops);     // handling for/while
@@ -3675,6 +3682,172 @@ private:
         // Check for redundant code..
         CheckUninitVarImpl checkuninitvar(&tokenizer, settings, *this);
         (checkuninitvar.valueFlowUninit)();
+    }
+
+    void uninitvar_ownedArrow() { // #6572
+        checkUninitVar("struct CCommitPointer { int m_place; };\n"
+                       "struct iterator {\n"
+                       "    CCommitPointer m_ptr;\n"
+                       "    CCommitPointer& operator*() { return m_ptr; }\n"
+                       "    CCommitPointer* operator->() { return &m_ptr; }\n"
+                       "    iterator& operator++() { ++m_ptr.m_place; return *this; }\n"
+                       "};\n"
+                       "iterator begin() {\n"
+                       "    iterator it;\n"
+                       "    it->m_place = 0;\n"
+                       "    return it;\n"
+                       "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void uninitvar_ownedArrowEscapes() {
+        checkUninitVar("struct Item { int value; };\n"
+                       "struct Cursor { Item item; Item* operator->() { return &item; } };\n"
+                       "Cursor f(bool b) {\n"
+                       "    Cursor it;\n"
+                       "    b && (it->value = 1);\n"
+                       "    return it;\n"
+                       "}\n");
+        ASSERT_EQUALS("[test.cpp:6:12]: (error) Uninitialized struct member: it.item [uninitStructMember]\n", errout_str());
+
+        checkUninitVar("struct Item { int value; };\n"
+                       "struct Cursor { Item item; Item* operator->() { return &item; } };\n"
+                       "Cursor f() {\n"
+                       "    Cursor it;\n"
+                       "    (void)noexcept(it->value = 1);\n"
+                       "    return it;\n"
+                       "}\n");
+        ASSERT_EQUALS("[test.cpp:6:12]: (error) Uninitialized struct member: it.item [uninitStructMember]\n", errout_str());
+
+        checkUninitVar("struct Item { int value; };\n"
+                       "struct Cursor { Item item; Item* operator->() { return &item; } };\n"
+                       "Cursor f() {\n"
+                       "    Cursor it;\n"
+                       "    int& r = it->value;\n"
+                       "    ++r;\n"
+                       "    return it;\n"
+                       "}\n");
+        ASSERT_EQUALS("[test.cpp:7:12]: (error) Uninitialized struct member: it.item [uninitStructMember]\n", errout_str());
+
+
+    }
+
+    void valueFlowUninit_ownedArrow() { // #6572
+        valueFlowUninit("struct CCommitPointer { int m_place; };\n"
+                        "struct iterator {\n"
+                        "    CCommitPointer m_ptr;\n"
+                        "    CCommitPointer& operator*() { return m_ptr; }\n"
+                        "    CCommitPointer* operator->() { return &m_ptr; }\n"
+                        "    iterator& operator++() { ++m_ptr.m_place; return *this; }\n"
+                        "};\n"
+                        "iterator begin() {\n"
+                        "    iterator it;\n"
+                        "    it->m_place = 0;\n"
+                        "    return it;\n"
+                        "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void valueFlowUninit_ownedArrowWrites() {
+        valueFlowUninit("struct Item { int value; };\n"
+                        "struct Cursor { Item item; Item* operator->() { return &this->item; }\n"
+                        "    const Item* operator->() const { return &item; } };\n"
+                        "int f(bool b) {\n"
+                        "    Cursor it;\n"
+                        "    if (b) it->value = 1; else it->value = 2;\n"
+                        "    it->value += 1;\n"
+                        "    return it->value;\n"
+                        "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void valueFlowUninit_ownedArrowReadModify() {
+        valueFlowUninit("struct Item { int value; };\n"
+                        "struct Cursor { Item item; Item* operator->() { return &item; } };\n"
+                        "Cursor f() {\n"
+                        "    Cursor it;\n"
+                        "    it->value++;\n"
+                        "    return it;\n"
+                        "}\n");
+        ASSERT_EQUALS("[test.cpp:5:5]: (error) Uninitialized variable: it [uninitvar]\n", errout_str());
+
+        valueFlowUninit("struct Item { int value; };\n"
+                        "struct Cursor { Item item; Item* operator->() { return &item; } };\n"
+                        "Cursor f() {\n"
+                        "    Cursor it;\n"
+                        "    --it->value;\n"
+                        "    return it;\n"
+                        "}\n");
+        ASSERT_EQUALS("[test.cpp:5:7]: (error) Uninitialized variable: it [uninitvar]\n", errout_str());
+
+        valueFlowUninit("struct Item { int value; };\n"
+                        "struct Cursor { Item item; Item* operator->() { return &item; } };\n"
+                        "Cursor f() {\n"
+                        "    Cursor it;\n"
+                        "    it->value += 1;\n"
+                        "    return it;\n"
+                        "}\n");
+        ASSERT_EQUALS("[test.cpp:5:5]: (error) Uninitialized variable: it [uninitvar]\n", errout_str());
+    }
+
+    void valueFlowUninit_ownedArrowReceivers() {
+        valueFlowUninit("struct Item { int value; };\n"
+                        "struct Cursor { Item item; Item* operator->() { return &item; } };\n"
+                        "Cursor f() {\n"
+                        "    Cursor it;\n"
+                        "    it->value = it->value + 1;\n"
+                        "    return it;\n"
+                        "}\n");
+        ASSERT_EQUALS("[test.cpp:5:17]: (error) Uninitialized variable: it [uninitvar]\n", errout_str());
+
+        valueFlowUninit("struct Item { int value; };\n"
+                        "struct Cursor { Item item; Item* operator->() { return &item; } };\n"
+                        "Cursor f() {\n"
+                        "    Cursor first, second;\n"
+                        "    first->value = second->value;\n"
+                        "    return first;\n"
+                        "}\n");
+        ASSERT_EQUALS("[test.cpp:5:20]: (error) Uninitialized variable: second [uninitvar]\n", errout_str());
+
+        valueFlowUninit("struct Item { int value; };\n"
+                        "struct Cursor { Item item; Item* operator->() { return &item; } };\n"
+                        "Cursor f() {\n"
+                        "    Cursor first, second;\n"
+                        "    first->value = 1;\n"
+                        "    second->value = first->value;\n"
+                        "    return second;\n"
+                        "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void valueFlowUninit_ownedArrowConditional() {
+        valueFlowUninit("struct Item { int value; };\n"
+                        "struct Cursor { Item item; Item* operator->() { return &item; } };\n"
+                        "Cursor f(bool b) {\n"
+                        "    Cursor it;\n"
+                        "    if (b) it->value = 1;\n"
+                        "    return it;\n"
+                        "}\n");
+        ASSERT_EQUALS("[test.cpp:5:9] -> [test.cpp:6:12]: (warning) Uninitialized variable: it.item [uninitvar]\n", errout_str());
+
+        valueFlowUninit("struct Item { int value; };\n"
+                        "struct Cursor { Item item; Item* operator->() { return &item; } };\n"
+                        "Cursor f() {\n"
+                        "    Cursor it;\n"
+                        "    auto l = [&it] { it->value = 1; };\n"
+                        "    return it;\n"
+                        "}\n");
+        ASSERT_EQUALS("[test.cpp:6:12]: (error) Uninitialized variable: it [uninitvar]\n", errout_str());
+
+        // Reference writes are not projected into the owning object.
+        valueFlowUninit("struct Item { int value; };\n"
+                        "struct Cursor { Item item; Item* operator->() { return &item; } };\n"
+                        "void f() {\n"
+                        "    Cursor it;\n"
+                        "    int& r = it->value;\n"
+                        "    ++r;\n"
+                        "}\n");
+        ASSERT_EQUALS("[test.cpp:5:14]: (error) Uninitialized variable: it [uninitvar]\n", errout_str());
     }
 
     void uninitvar15() { // #13685
