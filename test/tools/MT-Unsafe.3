@@ -1,0 +1,69 @@
+.TH MT-Unsafe 3 2026-06-21 "CppCheck" "CppCheck Developer Tools"
+.SH NAME
+MT-Unsafe.py
+
+.SH DESCRIPTION
+This man page does
+.BI not
+document real functions
+(although some of the functions it names
+.I are
+real).
+
+This man page is test data for the
+.BI tools/MT-Unsafe.py
+script, which is used to convert man pages into data for the
+.B cppcheck
+addon
+.I threadsafety.py\fR.
+The output should match
+.I test/tools/MT-Unsafe.3.expected\fR.
+E.g.:
+
+.I tools/MT-Unsafe.py test/tools/MT-Unsafe.3 | diff - test/tools/MT-Unsafe.3.expected
+should produce no output.
+
+.\ .SH SEE ALSO
+
+.SH ATTRIBUTES
+For an explanation of the terms used in this section, see
+.BR attributes (7).
+
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+.na
+.nh
+.BR elf_flagelf (),\~elf_flagehdr(),\~elf_flagphdr(),\~elf_flagscn(),\~elf_flagshdr(),\~elf_flagdata()
+T}	Thread safety	MT-Unsafe
+T{
+.na
+.nh
+.BR safe_function (),\~second_safe_function(),third_function()
+T}	Thread safety	MT-Safe
+T{
+.na
+.nh
+.BR race_function (),
+.BR second_race_function ()
+T}	Thread safety	MT-Unsafe race:argument
+.TE
+
+
+.\ .SH STANDARDS
+
+.\ .SH HISTORY
+.\ Original version Andrew C. Aitchison 2026-06-21
+
+.SH AUTHORS
+.PP
+\fBAndrew Aitchison\fR <\&github@aitchison\&.me\&.uk\&>
+.RS 4
+Wrote MT-Unsafe.py and this man page\&.
+.RE
+.SH COPYRIGHT
+Copyright (C) 2026 Cppcheck team.
+.\ .SH NOTES
