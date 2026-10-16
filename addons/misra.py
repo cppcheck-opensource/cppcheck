@@ -3918,7 +3918,7 @@ class MisraChecker:
             if mo:
                 dir = mo.group(1)
             if dir not in ['define', 'elif', 'else', 'endif', 'error', 'if', 'ifdef', 'ifndef', 'include',
-                           'pragma', 'undef', 'warning']:
+                           'pragma', 'undef', 'warning', 'line']:
                 self.reportError(directive, 20, 13)
 
     def misra_20_14(self, data):
