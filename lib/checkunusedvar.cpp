@@ -1009,7 +1009,7 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage_iterateScopes(const Scope* c
             const Token * const equal = skipBracketsAndMembers(tok->next());
 
             // checked for chained assignments
-            if (tok != start && equal && equal->str() == "=") {
+            if (tok != start && (Token::simpleMatch(equal, "=") || (start->astParent() && Token::simpleMatch(start->astParent()->astParent(), "=")))) {
                 const nonneg int varId = tok->varId();
                 const Variables::VariableUsage * const var = variables.find(varId);
 
