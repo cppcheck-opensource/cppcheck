@@ -132,10 +132,8 @@ void XmlReportV2::writeError(const ErrorItem &error)
 
     // Don't localize severity so we can read these files
     mXmlWriter->writeAttribute(SeverityAttribute, GuiSeverity::toString(error.severity));
-    const QString summary = XmlReport::quoteMessage(error.summary);
-    mXmlWriter->writeAttribute(MsgAttribute, summary);
-    const QString message = XmlReport::quoteMessage(error.message);
-    mXmlWriter->writeAttribute(VerboseAttribute, message);
+    mXmlWriter->writeAttribute(MsgAttribute, error.summary);
+    mXmlWriter->writeAttribute(VerboseAttribute, error.message);
     if (error.inconclusive)
         mXmlWriter->writeAttribute(InconclusiveAttribute, "true");
     if (!error.remark.isEmpty())
@@ -145,7 +143,7 @@ void XmlReportV2::writeError(const ErrorItem &error)
     if (error.hash > 0)
         mXmlWriter->writeAttribute(HashAttribute, QString::number(error.hash));
     if (!error.file0.isEmpty())
-        mXmlWriter->writeAttribute(IncludedFromFilenameAttribute, quoteMessage(error.file0));
+        mXmlWriter->writeAttribute(IncludedFromFilenameAttribute, error.file0);
     if (!error.sinceDate.isEmpty())
         mXmlWriter->writeAttribute(SinceDateAttribute, error.sinceDate);
     if (!error.tags.isEmpty())
@@ -155,12 +153,12 @@ void XmlReportV2::writeError(const ErrorItem &error)
         mXmlWriter->writeStartElement(LocationElementName);
 
         QString file = QDir::toNativeSeparators(error.errorPath[i].file);
-        mXmlWriter->writeAttribute(FilenameAttribute, XmlReport::quoteMessage(file));
+        mXmlWriter->writeAttribute(FilenameAttribute, file);
         mXmlWriter->writeAttribute(LineAttribute, QString::number(error.errorPath[i].line));
         if (error.errorPath[i].column > 0)
             mXmlWriter->writeAttribute(ColumnAttribute, QString::number(error.errorPath[i].column));
         if (error.errorPath.count() > 1)
-            mXmlWriter->writeAttribute(InfoAttribute, XmlReport::quoteMessage(error.errorPath[i].info));
+            mXmlWriter->writeAttribute(InfoAttribute, error.errorPath[i].info);
 
         mXmlWriter->writeEndElement();
     }

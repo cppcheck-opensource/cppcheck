@@ -21,7 +21,9 @@
 #include "erroritem.h"
 #include "xmlreportv2.h"
 
+#include <QFile>
 #include <QList>
+#include <QTemporaryDir>
 #include <QtTest>
 
 void TestXmlReportV2::readXml() const
@@ -51,6 +53,54 @@ void TestXmlReportV2::readXml() const
     QCOMPARE(GuiSeverity::toString(item2.severity), QString("error"));
     QCOMPARE(item2.summary, QString("Mismatching allocation and deallocation: k"));
     QCOMPARE(item2.message, QString("Mismatching allocation and deallocation: k"));
+}
+
+void TestXmlReportV2::writeXmlEscaping() const
+{
+    QTemporaryDir tmpdir;
+    const QString path = tmpdir.path() + "/results.xml";
+
+    ErrorItem item;
+    item.errorId = "unusedVariable";
+    item.severity = Severity::style;
+    item.summary = "Unused variable: \"x\" & <y>";
+    item.message = item.summary;
+
+    QErrorPathItem loc;
+    loc.file = "test.cpp";
+    loc.line = 1;
+    loc.column = 1;
+    loc.info = item.summary;
+    item.errorPath << loc;
+    loc.line = 2;
+    item.errorPath << loc;
+
+    {
+        XmlReportV2 report(path, QString());
+        QVERIFY(report.create());
+        report.writeHeader();
+        report.writeError(item);
+        report.writeFooter();
+    }
+
+    // Each special character must be escaped exactly once
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::ReadOnly));
+
+    const QString xml = QString::fromUtf8(file.readAll());
+    QVERIFY(xml.contains("msg=\"Unused variable: &quot;x&quot; &amp; &lt;y&gt;\""));
+    QVERIFY(xml.contains("info=\"Unused variable: &quot;x&quot; &amp; &lt;y&gt;\""));
+    QVERIFY(!xml.contains("&amp;quot;"));
+
+    XmlReportV2 report(path, QString());
+    QVERIFY(report.open());
+
+    const QList<ErrorItem> errors = report.read();
+    QCOMPARE(errors.size(), 1);
+    QCOMPARE(errors[0].summary, item.summary);
+    QCOMPARE(errors[0].message, item.message);
+    QCOMPARE(errors[0].errorPath.size(), 2);
+    QCOMPARE(errors[0].errorPath[0].info, item.summary);
 }
 
 QTEST_MAIN(TestXmlReportV2)

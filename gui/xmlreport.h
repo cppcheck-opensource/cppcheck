@@ -43,16 +43,10 @@ public:
     virtual QList<ErrorItem> read() = 0;
 
     /**
-     * @brief Quote the message.
-     * @param message Message to quote.
-     * @return quoted message.
-     */
-    static QString quoteMessage(const QString &message);
-
-    /**
      * @brief Unquote the message.
-     * @param message Message to quote.
-     * @return quoted message.
+     * For older reports where special characters have been escaped twice (#15107).
+     * @param message Message to unquote.
+     * @return unquoted message.
      */
     static QString unquoteMessage(const QString &message);
 

@@ -23,4 +23,5 @@ class TestXmlReportV2 : public QObject {
 
 private slots:
     void readXml() const;
+    void writeXmlEscaping() const;
 };
