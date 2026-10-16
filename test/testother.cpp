@@ -4213,6 +4213,18 @@ private:
               "    }\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct DS;\n" // #15104
+              "void select(int a, int b);\n"
+              "class Query {\n"
+              "public:\n"
+              "    template <typename Callback>\n"
+              "    int select(DS &ds, Callback cb);\n"
+              "    template <typename Callback>\n"
+              "    int select(DS *ds, Callback cb);\n"
+              "    int select(DS &ds) { return select(ds, [](int) {}); }\n"
+              "};\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void constParameterCallback() {

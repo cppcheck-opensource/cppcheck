@@ -39,6 +39,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cctype>
 #include <cstring>
 #include <functional>
 #include <initializer_list>
@@ -5935,6 +5936,39 @@ std::vector<const Scope*> Scope::findAssociatedScopes() const
 
 //---------------------------------------------------------------------------
 
+// Might an object of the class be converted to a pointer by a conversion operator (also in an unknown base class)?
+// operator C*(), operator ptr()
+static bool mayConvertToPointer(const Scope* classScope)
+{
+    const std::vector<const Scope*> scopes = classScope->findAssociatedScopes();
+    return std::any_of(scopes.cbegin(), scopes.cend(), [](const Scope* scope) {
+        const bool hasConversionOperator = std::any_of(scope->functionList.cbegin(), scope->functionList.cend(), [](const Function& f) {
+            return f.name().size() > 8 && startsWith(f.name(), "operator") &&
+                   (std::isalpha(static_cast<unsigned char>(f.name()[8])) || f.name()[8] == '_' || f.name()[8] == ':');
+        });
+        const bool hasUnknownBase = scope->definedType && std::any_of(scope->definedType->derivedFrom.cbegin(), scope->definedType->derivedFrom.cend(), [](const Type::BaseInfo& base) {
+            return !base.type || !base.type->classScope;
+        });
+        return hasConversionOperator || hasUnknownBase;
+    });
+}
+
+// Returns true if the variable can't be passed for the function argument because only one of them is a pointer to
+// the same class: struct C; void f(C* p); void g(C& r); C c; C* p; f(c); g(p);
+static bool isPointerMismatch(const Variable* callarg, const Variable* funcarg)
+{
+    if (!callarg->type() || callarg->type() != funcarg->type() || callarg->isArray() || funcarg->isArray())
+        return false;
+    // function pointer or reference: C (*f)()
+    if (Token::simpleMatch(callarg->nameToken()->next(), ") (") || (funcarg->nameToken() && Token::simpleMatch(funcarg->nameToken()->next(), ") (")))
+        return false;
+    // assume that incomplete types have no conversion operator
+    if (funcarg->isPointer())
+        return !callarg->isPointer() && (!callarg->type()->classScope || !mayConvertToPointer(callarg->type()->classScope));
+    // a temporary from a converting constructor can bind to const C& and C&&
+    return callarg->isPointer() && funcarg->isReference() && !funcarg->isRValueReference() && !funcarg->isConst();
+}
+
 static void checkVariableCallMatch(const Variable* callarg, const Variable* funcarg, size_t& same, size_t& fallback1, size_t& fallback2)
 {
     if (callarg) {
@@ -6070,7 +6104,7 @@ const Function* Scope::findFunction(const Token* tok, bool requireConst, Referen
             addMatchingFunctions(nestedScope);
     }
 
-    const std::size_t numberOfMatchesNonBase = matches.size();
+    std::size_t numberOfMatchesNonBase = matches.size();
 
     // check in base classes
     findFunctionInBase(name, tok, args, matches);
@@ -6184,6 +6218,14 @@ const Function* Scope::findFunction(const Token* tok, bool requireConst, Referen
             // check for a match with a variable
             if (Token::Match(arguments[j], "%var% ,|)")) {
                 const Variable * callarg = arguments[j]->variable();
+                if (callarg && isPointerMismatch(callarg, funcarg)) {
+                    // can't match so remove this function from possible matches
+                    matches.erase(matches.begin() + i);
+                    if (i < numberOfMatchesNonBase)
+                        --numberOfMatchesNonBase;
+                    erased = true;
+                    break;
+                }
                 checkVariableCallMatch(callarg, funcarg, same, fallback1, fallback2);
             }
 

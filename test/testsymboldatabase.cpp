@@ -547,6 +547,7 @@ private:
         TEST_CASE(findFunction63); // #14937 - member function of type returned by operator()
         TEST_CASE(findFunction64); // overloaded operator()
         TEST_CASE(findFunction65);
+        TEST_CASE(findFunction66); // #15104 - object passed for pointer to its class
         TEST_CASE(findFunctionRef1);
         TEST_CASE(findFunctionRef2); // #13328
         TEST_CASE(findFunctionContainer);
@@ -9002,6 +9003,137 @@ private:
             const Token* g = Token::findsimplematch(tokenizer.tokens(), "g ( +");
             ASSERT(g && g->function());
             ASSERT_EQUALS(2, g->function()->tokenDef->linenr());
+        }
+    }
+
+    void findFunction66() { // #15104 - object passed for pointer to its class
+        {
+            GET_SYMBOL_DB("struct DS;\n"
+                          "void select(int a, int b);\n"
+                          "class Query {\n"
+                          "    int m = 0;\n"
+                          "public:\n"
+                          "    template <typename Callback>\n"
+                          "    int select(DS &ds, Callback cb) { cb(m); return 0; }\n"
+                          "    template <typename Callback>\n"
+                          "    int select(DS *ds, Callback cb) { return select(*ds, cb); }\n"
+                          "    int select(DS &ds) { return select(ds, [](int) {}); }\n"
+                          "};\n");
+            const Token* call1 = Token::findsimplematch(tokenizer.tokens(), "select ( * ds , cb )");
+            ASSERT(call1 && call1->function());
+            ASSERT_EQUALS(7, call1->function()->tokenDef->linenr());
+            const Token* call2 = Token::findsimplematch(tokenizer.tokens(), "select ( ds , [");
+            ASSERT(call2 && call2->function());
+            ASSERT_EQUALS(7, call2->function()->tokenDef->linenr());
+        }
+        {
+            GET_SYMBOL_DB("struct DS;\n"
+                          "void select(int a, int b);\n"
+                          "struct Base {\n"
+                          "    int m = 0;\n"
+                          "    template <typename Callback>\n"
+                          "    int select(DS &ds, Callback cb) { cb(m); return 0; }\n"
+                          "    template <typename Callback>\n"
+                          "    int select(DS *ds, Callback cb) { return select(*ds, cb); }\n"
+                          "};\n"
+                          "struct Query : Base {\n"
+                          "    int run(DS &ds) { return select(ds, [](int) {}); }\n"
+                          "};\n");
+            const Token* call = Token::findsimplematch(tokenizer.tokens(), "select ( ds , [");
+            ASSERT(call && call->function());
+            ASSERT_EQUALS(6, call->function()->tokenDef->linenr());
+        }
+        {
+            GET_SYMBOL_DB("struct DS;\n"
+                          "void select(int a, int b);\n"
+                          "namespace N {\n"
+                          "    template <typename C> int select(DS &ds, C cb) { cb(1); return 0; }\n"
+                          "    template <typename C> int select(DS *ds, C cb) { return select(*ds, cb); }\n"
+                          "    int f(DS &ds) { return select(ds, [](int) {}); }\n"
+                          "}\n");
+            const Token* call = Token::findsimplematch(tokenizer.tokens(), "select ( ds , [");
+            ASSERT(call && call->function());
+            ASSERT_EQUALS(4, call->function()->tokenDef->linenr());
+        }
+        { // conversion operator
+            GET_SYMBOL_DB("struct C { operator C*(); };\n"
+                          "void f(C* p);\n"
+                          "void g(C c) { f(c); }\n");
+            const Token* call = Token::findsimplematch(tokenizer.tokens(), "f ( c )");
+            ASSERT(call && call->function());
+            ASSERT_EQUALS(2, call->function()->tokenDef->linenr());
+        }
+        { // converting constructor
+            GET_SYMBOL_DB("struct N { N(N* parent); };\n"
+                          "void f(N&& n);\n"
+                          "void g(const N& n);\n"
+                          "void h(N* p) { f(p); g(p); }\n");
+            const Token* call1 = Token::findsimplematch(tokenizer.tokens(), "f ( p )");
+            ASSERT(call1 && call1->function());
+            ASSERT_EQUALS(2, call1->function()->tokenDef->linenr());
+            const Token* call2 = Token::findsimplematch(tokenizer.tokens(), "g ( p )");
+            ASSERT(call2 && call2->function());
+            ASSERT_EQUALS(3, call2->function()->tokenDef->linenr());
+        }
+        { // function reference
+            GET_SYMBOL_DB("struct C { int x; };\n"
+                          "C make();\n"
+                          "void reg(C (*f)());\n"
+                          "void g() { C (&fr)() = make; reg(fr); }\n");
+            const Token* call = Token::findsimplematch(tokenizer.tokens(), "reg ( fr )");
+            ASSERT(call && call->function());
+            ASSERT_EQUALS(3, call->function()->tokenDef->linenr());
+        }
+        { // conversion operator in base class or with type alias
+            GET_SYMBOL_DB("template <class D> struct PtrConv { operator D*(); };\n"
+                          "struct C : PtrConv<C> {};\n"
+                          "struct F { using ptr = F*; operator ptr(); };\n"
+                          "void f(C* p);\n"
+                          "void k(F* p);\n"
+                          "void g(C c, F e) { f(c); k(e); }\n");
+            const Token* call1 = Token::findsimplematch(tokenizer.tokens(), "f ( c )");
+            ASSERT(call1 && call1->function());
+            ASSERT_EQUALS(4, call1->function()->tokenDef->linenr());
+            const Token* call2 = Token::findsimplematch(tokenizer.tokens(), "k ( e )");
+            ASSERT(call2 && call2->function());
+            ASSERT_EQUALS(5, call2->function()->tokenDef->linenr());
+        }
+        { // conversion operator in unknown base class or to qualified type
+            GET_SYMBOL_DB("struct C : Unknown { int x; };\n"
+                          "struct D { operator ::D*(); };\n"
+                          "void f(C* p);\n"
+                          "void k(D* p);\n"
+                          "void g(C c, D d) { f(c); k(d); }\n");
+            const Token* call1 = Token::findsimplematch(tokenizer.tokens(), "f ( c )");
+            ASSERT(call1 && call1->function());
+            ASSERT_EQUALS(3, call1->function()->tokenDef->linenr());
+            const Token* call2 = Token::findsimplematch(tokenizer.tokens(), "k ( d )");
+            ASSERT(call2 && call2->function());
+            ASSERT_EQUALS(4, call2->function()->tokenDef->linenr());
+        }
+        { // pointer passed for non-const reference
+            GET_SYMBOL_DB("struct C { int x; };\n"
+                          "void f(int a, int b);\n"
+                          "namespace N {\n"
+                          "    template <class T> void f(C& r, T t);\n"
+                          "    template <class T> void f(C* p, T t);\n"
+                          "    void h(C* p) { f(p, 1); }\n"
+                          "}\n");
+            const Token* call = Token::findsimplematch(tokenizer.tokens(), "f ( p , 1 )");
+            ASSERT(call && call->function());
+            ASSERT_EQUALS(5, call->function()->tokenDef->linenr());
+        }
+        { // removed candidate must not change name hiding of base class functions
+            GET_SYMBOL_DB("struct C { int x; };\n"
+                          "struct Base { void f(const C& r, int i) const; };\n"
+                          "struct Derived : Base {\n"
+                          "    void f(C* p, int i);\n"
+                          "    void f(C& r, double v);\n"
+                          "    void g(C& c) { f(c, 1); }\n"
+                          "};\n");
+            const Token* call = Token::findsimplematch(tokenizer.tokens(), "f ( c , 1 )");
+            ASSERT(call && call->function());
+            ASSERT_EQUALS(5, call->function()->tokenDef->linenr());
         }
     }
 
