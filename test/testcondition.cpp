@@ -129,6 +129,7 @@ private:
         TEST_CASE(knownConditionAfterBailout); // #12526
         TEST_CASE(knownConditionIncDecOperator);
         TEST_CASE(knownConditionFloating);
+        TEST_CASE(knownConditionTemplateConstPointer); // "const T *" must deduce T without the const
     }
 
     struct CheckOptions
@@ -4978,6 +4979,19 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
+        check("template <typename Char>\n" // deduced template parameter type is integral
+              "void f0(Char c)\n"
+              "{\n"
+              "    if (c <= 0) return;\n"
+              "    if (c >= 1) {;}\n"
+              "}\n"
+              "void g()\n"
+              "{\n"
+              "    char c = 'A';\n"
+              "    f0(c);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:11] -> [test.cpp:5:11]: (style) Condition 'c>=1' is always true [knownConditionTrueFalse]\n", errout_str());
+
         check("void f() {\n"
               "    if (42) {}\n"
               "    if (42U) {}\n"
@@ -6903,6 +6917,20 @@ private:
             "[test.cpp:3]: (style) Condition 'nf>-1.0' is always false\n",
             "",
             errout_str());
+    }
+
+    void knownConditionTemplateConstPointer() {
+        // the deduced T must be "int", not "const int" - otherwise the local s is a constant
+        check("template<class T> T sum(const T* p, int n) {\n"
+              "    T s = 0;\n"
+              "    for (int i = 0; i < n; ++i)\n"
+              "        s += p[i];\n"
+              "    if (s == 0)\n"
+              "        return -1;\n"
+              "    return s;\n"
+              "}\n"
+              "int g(const int* p, int n) { return sum(p, n); }\n");
+        ASSERT_EQUALS("", errout_str());
     }
 };
 

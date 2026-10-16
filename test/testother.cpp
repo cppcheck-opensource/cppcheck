@@ -9653,6 +9653,15 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
+        // template parameter type is deduced as unsigned from the call
+        check("template<class T> bool pos(T x) { return x >= 0; }\n"
+              "void use() { unsigned u = 3; pos(u); }\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("template<class T> bool neg(T x) { return 0 <= x; }\n"
+              "void use() { unsigned u = 3; neg(u); }\n");
+        ASSERT_EQUALS("", errout_str());
+
         // #13734
         check("void f() {\n"
               "    uint8_t a[N + 1];\n"
