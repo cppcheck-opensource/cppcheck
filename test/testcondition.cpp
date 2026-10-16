@@ -6652,6 +6652,12 @@ private:
                       "[test.cpp:2:28]: (style) Comparing expression of type 'signed int' against value 2147483647. Condition is always false. [compareValueOutOfTypeRangeError]\n"
                       "[test.cpp:7:17]: (style) Comparing expression of type 'signed int' against value 2147483647. Condition is always false. [compareValueOutOfTypeRangeError]\n",
                       errout_str());
+
+        check("void f(char c) {\n" // #11592
+              "    if (c == 128) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:14]: (style) Comparing expression of type 'char' against value 128. Condition is always false. [compareValueOutOfTypeRangeError]\n",
+                      errout_str());
     }
 
     void knownConditionCast() {
