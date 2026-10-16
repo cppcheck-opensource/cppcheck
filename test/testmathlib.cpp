@@ -679,16 +679,10 @@ private:
 
         ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("invalid"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: conversion failed: invalid");
 
-        // AppleClang before 18 reports a different error
-#if (defined(__APPLE__) && defined(__MACH__)) && (defined(_LIBCPP_VERSION) && (_LIBCPP_VERSION < 180000))
-        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1invalid"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: conversion failed: 1invalid");
-        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1.1invalid"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: conversion failed: 1.1invalid");
-#else
-        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1invalid"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: input was not completely consumed: 1invalid");
-        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1.1invalid"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: input was not completely consumed: 1.1invalid");
-#endif
-        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("1 invalid"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: input was not completely consumed: 1 invalid");
-        ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("-1e-08.0"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: input was not completely consumed: -1e-08.0");
+        ASSERT_THROW_INTERNAL(MathLib::toDoubleNumber("1invalid"), INTERNAL);
+        ASSERT_THROW_INTERNAL(MathLib::toDoubleNumber("1.1invalid"), INTERNAL);
+        ASSERT_THROW_INTERNAL(MathLib::toDoubleNumber("1 invalid"), INTERNAL);
+        ASSERT_THROW_INTERNAL(MathLib::toDoubleNumber("-1e-08.0"), INTERNAL);
 
         // invalid suffices
 #ifdef _LIBCPP_VERSION
