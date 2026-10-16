@@ -144,9 +144,9 @@ public:
      */
     std::size_t calculateHash(const std::string &toolinfo) const;
 
-    void simplifyPragmaAsm();
+    void simplifyAsm();
 
-    static void simplifyPragmaAsm(simplecpp::TokenList &tokenList);
+    static void simplifyAsm(simplecpp::TokenList &tokenList);
 
     static void getErrorMessages(ErrorLogger &errorLogger, const Settings &settings);
 
