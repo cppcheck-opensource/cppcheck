@@ -689,38 +689,6 @@ void *bufferAccessOutOfBounds_memchr(void *s, int c, size_t n)
     return std::memchr(s,c,n);
 }
 
-// As with all bounds-checked functions, localtime_s is only guaranteed to be available if __STDC_LIB_EXT1__ is defined by the implementation and if the user defines __STDC_WANT_LIB_EXT1__ to the integer constant 1 before including time.h.
-#ifdef __STDC_LIB_EXT1__
-void uninitvar_localtime_s(const std::time_t *restrict time, struct tm *restrict result)
-{
-    // cppcheck-suppress valueFlowBailoutIncompleteVar
-    const std::time_t *restrict Time;
-    // TODO cppcheck-suppress uninitvar
-    (void)std::localtime_s(Time, result);
-    (void)std::localtime_s(time, result);
-}
-
-void nullPointer_localtime_s(const std::time_t *restrict time, struct tm *restrict result)
-{
-    // cppcheck-suppress nullPointer
-    (void)std::localtime_s(NULL, result);
-    // cppcheck-suppress nullPointer
-    (void)std::localtime_s(time, NULL);
-    (void)std::localtime_s(time, result);
-}
-
-void memleak_localtime_s(const std::time_t *restrict time, struct tm *restrict result) // #9258
-{
-    const time_t t = time(0);
-    const struct tm* const now = new tm();
-    if (localtime_s(now, &t) == 0) {
-        // cppcheck-suppress valueFlowBailoutIncompleteVar
-        std::cout << now->tm_mday << std::endl;
-    }
-    // cppcheck-suppress memleak
-}
-#endif // __STDC_LIB_EXT1__
-
 size_t nullPointer_strftime(char *s, size_t max, const char *fmt, const struct tm *p)
 {
     // cppcheck-suppress nullPointer
