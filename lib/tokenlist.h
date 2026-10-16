@@ -228,6 +228,7 @@ private:
     std::vector<std::string> mOrigFiles;
 
     /** settings */
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members) - TokenList is move-only
     const Settings& mSettings;
 
     /** File is known to be C/C++ code */

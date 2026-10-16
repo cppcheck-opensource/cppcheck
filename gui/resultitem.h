@@ -53,8 +53,8 @@ public:
         return mIconFileName;
     }
 private:
-    const Type mType;
-    const int mErrorPathIndex;
+    Type mType;
+    int mErrorPathIndex;
     QString mIconFileName;
 };
 
