@@ -2202,6 +2202,58 @@ private:
                        "    return i;\n"
                        "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        // #15005
+        checkUninitVar("void f() {\n"
+                       "    char *p = new char;\n"
+                       "    p += 1;\n"
+                       "    delete (p - 1);\n"
+                       "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        checkUninitVar("void f() {\n"
+                       "    char *p = new char;\n"
+                       "    *p += 1;\n"
+                       "    delete p;\n"
+                       "}\n");
+        ASSERT_EQUALS("[test.cpp:3:6]: (error) Memory is allocated but not initialized: p [uninitdata]\n", errout_str());
+
+        checkUninitVar("void f() {\n"
+                       "    char *p = new char;\n"
+                       "    (*p)++;\n"
+                       "    delete p;\n"
+                       "}\n");
+        ASSERT_EQUALS("[test.cpp:3:7]: (error) Memory is allocated but not initialized: p [uninitdata]\n", errout_str());
+
+        checkUninitVar("void f() {\n"
+                       "    char *p = new char;\n"
+                       "    p[0]++;\n"
+                       "    delete p;\n"
+                       "}\n");
+        ASSERT_EQUALS("[test.cpp:3:5]: (error) Memory is allocated but not initialized: p [uninitdata]\n", errout_str());
+
+        checkUninitVar("void f() {\n"
+                       "    char *buf = (char *)malloc(1);\n"
+                       "    if (!buf)\n"
+                       "        return NULL;\n"
+                       "    buf += buf[0];\n"
+                       "    free(buf);\n"
+                       "}\n");
+        ASSERT_EQUALS("[test.cpp:5:15]: (error) Memory is allocated but not initialized: buf[0] [uninitdata]\n", errout_str());
+
+        checkUninitVar("void g() {\n"
+                       "    int* p = new int;\n"
+                       "    p++;\n"
+                       "    delete (p - 1);\n"
+                       "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        checkUninitVar("void g() {\n"
+                       "    int* p = new int;\n"
+                       "    ++p;\n"
+                       "    delete (p - 1);\n"
+                       "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     // class / struct..
@@ -8176,6 +8228,16 @@ private:
             "  f(&x);\n"
             "}\n");
         ASSERT_EQUALS("[test.cpp:6:4] -> [test.cpp:2:10]: (error) Using argument p that points at uninitialized variable x [ctuuninitvar]\n", errout_str());
+
+        ctu("void f(int *p) {\n"
+            "    a += *p;\n"
+            "}\n"
+            "int main() {\n"
+            "  int x;\n"
+            "  f(&x);\n"
+            "}\n");
+        ASSERT_EQUALS("[test.cpp:6:4] -> [test.cpp:2:11]: (error) Using argument p that points at uninitialized variable x [ctuuninitvar]\n", errout_str());
+
 
         ctu("void use(int *p) { a = *p + 3; }\n"
             "void call(int x, int *p) { x++; use(p); }\n"
