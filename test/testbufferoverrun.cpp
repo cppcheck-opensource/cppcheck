@@ -229,6 +229,7 @@ private:
         TEST_CASE(buffer_overrun_36);
         TEST_CASE(buffer_overrun_37);
         TEST_CASE(buffer_overrun_38);
+        TEST_CASE(buffer_overrun_39);
         TEST_CASE(buffer_overrun_errorpath);
         TEST_CASE(buffer_overrun_bailoutIfSwitch);  // ticket #2378 : bailoutIfSwitch
         TEST_CASE(buffer_overrun_function_array_argument);
@@ -3638,6 +3639,44 @@ private:
         ASSERT_EQUALS("", errout_str());
     }
 
+    void buffer_overrun_39() { // #11765
+        check("void f() {\n"
+              "    char buf[10];\n"
+              "    memcpy(buf, \"abc\", 4);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f() {\n"
+              "    char buf[128];\n"
+              "    memcpy(buf, \"abc\", 5);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:17]: (warning) Buffer is accessed out of bounds: \"abc\" [bufferAccessOutOfBounds]\n",
+                      errout_str());
+
+        check("void f() {\n"
+              "    char buf[128];\n"
+              "    memcpy(buf, L\"abc\", 4 * sizeof(wchar_t));\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f() {\n"
+              "    char buf[128];\n"
+              "    memcpy(buf, L\"abc\", 4 * sizeof(wchar_t) + 1);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:17]: (warning) Buffer is accessed out of bounds: L\"abc\" [bufferAccessOutOfBounds]\n",
+                      errout_str());
+
+        check("int f(char* s) {\n"
+              "    return memcmp(s, \"\\0\\0\\0\", 3);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("int f(const char16_t* buf) {\n"
+              "    return memcmp(buf, u\"abc\", 4 * sizeof(char16_t));\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
     void buffer_overrun_errorpath() {
         setMultiline();
         Settings s = settings0;
@@ -4618,9 +4657,8 @@ private:
         check("void f() {\n"
               "  mymemset(\"abc\", 0, 20);\n"
               "}\n", settings);
-        TODO_ASSERT_EQUALS("[test.cpp:2]: (error) Buffer is accessed out of bounds.\n",
-                           "",
-                           errout_str());
+        ASSERT_EQUALS("[test.cpp:2:12]: (warning) Buffer is accessed out of bounds: \"abc\" [bufferAccessOutOfBounds]\n",
+                      errout_str());
 
         check("void f() {\n"
               "  mymemset(temp, \"abc\", 4);\n"

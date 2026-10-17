@@ -558,7 +558,7 @@ void CheckBufferOverrunImpl::pointerArithmeticError(const Token *tok, const Toke
 
 //---------------------------------------------------------------------------
 
-ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok, const Settings& settings) const
+ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok, const Settings& settings, bool checkStringLiteral) const
 {
     if (!bufTok->valueType())
         return ValueFlow::Value(-1);
@@ -603,6 +603,14 @@ ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok, cons
                     bufSizeVal.errorPath = value->errorPath;
                     return bufSizeVal;
                 }
+            }
+        } else if (checkStringLiteral && bufTok->tokType() == Token::Type::eString && bufTok->valueType()) {
+            ValueFlow::Value strSizeVal;
+            strSizeVal.valueType = ValueFlow::Value::ValueType::BUFFER_SIZE;
+            const size_t charSize = bufTok->valueType()->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointee);
+            if (charSize > 0) {
+                strSizeVal.intvalue = Token::getStrArraySize(bufTok) * charSize;
+                return strSizeVal;
             }
         }
     }
@@ -715,7 +723,8 @@ void CheckBufferOverrunImpl::bufferOverflow()
                 if (argtok->valueType() && argtok->valueType()->pointer == 0)
                     continue;
                 // TODO: strcpy(buf+10, "hello");
-                ValueFlow::Value bufferSize = getBufferSize(argtok, mSettings);
+                const bool strz = mSettings.library.isargstrz(tok, argnr + 1);
+                ValueFlow::Value bufferSize = getBufferSize(argtok, mSettings, !strz);
                 if (bufferSize.intvalue <= 0)
                     continue;
                 // buffer size == 1 => do not warn for dynamic memory
