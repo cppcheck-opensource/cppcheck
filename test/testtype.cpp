@@ -593,6 +593,88 @@ private:
                "}\n", dinit(CheckPOptions, $.cpp = false));
         ASSERT_EQUALS("[test.c:4:24]: (error) Undefined behaviour: float () to integer conversion overflow. [floatConversionOverflow]\n", removeFloat(errout_str()));
 
+        check("void f(double rr) {\n"
+              "    if (!(rr >= 0.0) || rr > 1.0e308)\n"
+              "        return;\n"
+              "    while (rr >= 1.0e119L)\n"
+              "        rr *= 1.0e-100L;\n"
+              "    while (rr >= 1.0e29L)\n"
+              "        rr *= 1.0e-10L;\n"
+              "    while (rr >= 1.0e19L)\n"
+              "        rr *= 1.0e-1L;\n"
+              "    unsigned long long value = (unsigned long long)rr;\n"
+              "    (void)value;\n"
+              "}\n");
+        ASSERT_EQUALS("", removeFloat(errout_str()));
+
+        {
+            const Settings unix64 = settingsBuilder().platform(Platform::Type::Unix64).c(Standards::C11).cpp(Standards::CPP14).build();
+            checkP("int f(double d) { if (d >= 1e10) return 0; if (d > 100.0) return 0; return (int)d; }\n", dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("", errout_str());
+            checkP("int f(double d) { if (d >= 1e10) return 0; if (d > 100.0) return 0; return (int)d; }\n", dinit(CheckPOptions, $.settings = &unix64, $.cpp = false));
+            ASSERT_EQUALS("", errout_str());
+
+            checkP("int f(double d) { if (d >= 1e10 || d > 100.0) return 0; return (int)d; }\n", dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("", errout_str());
+            checkP("int f(double d) { if (d >= 1e10 || d > 100.0) return 0; return (int)d; }\n", dinit(CheckPOptions, $.settings = &unix64, $.cpp = false));
+            ASSERT_EQUALS("", errout_str());
+
+            checkP("int f(double d) { if (1e10 <= d || d > 100.0) return 0; return (int)d; }\n", dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("", errout_str());
+            checkP("int f(double d) { if (1e10 <= d || d > 100.0) return 0; return (int)d; }\n", dinit(CheckPOptions, $.settings = &unix64, $.cpp = false));
+            ASSERT_EQUALS("", errout_str());
+
+            checkP("int f(double d) { if (d <= -1e30) return 0; if (d < -100.0) return 0; return (int)d; }\n", dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("", errout_str());
+            checkP("int f(double d) { if (d <= -1e30) return 0; if (d < -100.0) return 0; return (int)d; }\n", dinit(CheckPOptions, $.settings = &unix64, $.cpp = false));
+            ASSERT_EQUALS("", errout_str());
+
+            checkP("int f(double d) { if (d >= 1e10) return 0; if (d > 100.0) return 0; return d; }\n", dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("", errout_str());
+            checkP("int f(double d) { if (d >= 1e10) return 0; if (d > 100.0) return 0; return d; }\n", dinit(CheckPOptions, $.settings = &unix64, $.cpp = false));
+            ASSERT_EQUALS("", errout_str());
+
+            checkP("int f(double d) { if (d >= 1e100) return (int)d; return 0; }\n",
+                   dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("[test.cpp:1:25] -> [test.cpp:1:42]: (warning) Undefined behaviour: float () to integer conversion overflow. [floatConversionOverflow]\n", removeFloat(errout_str()));
+            checkP("int f(double d) { if (d <= -1e100) return (int)d; return 0; }\n",
+                   dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("[test.cpp:1:25] -> [test.cpp:1:43]: (warning) Undefined behaviour: float () to integer conversion overflow. [floatConversionOverflow]\n", removeFloat(errout_str()));
+            checkP("unsigned int s3backer(unsigned int maxkeys) {\n"
+                   "    if (maxkeys >= (unsigned int)(4294967295U*.666666)-1) return 0;\n"
+                   "    return (unsigned int)(maxkeys/.666666)+1;\n"
+                   "}\n", dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("", removeFloat(errout_str()));
+            checkP("unsigned int s3backer(unsigned int maxkeys) {\n"
+                   "    if (maxkeys >= (unsigned int)(4294967295U*.666666)-1) return 0;\n"
+                   "    return (unsigned int)(maxkeys/.666666)+1;\n"
+                   "}\n", dinit(CheckPOptions, $.settings = &unix64, $.cpp = false));
+            ASSERT_EQUALS("", removeFloat(errout_str()));
+            const Settings unix32 = settingsBuilder().platform(Platform::Type::Unix32).c(Standards::C11).cpp(Standards::CPP14).build();
+            checkP("unsigned int s3backer(unsigned int maxkeys) {\n"
+                   "    if (maxkeys >= (unsigned int)(4294967295U*.666666)-1) return 0;\n"
+                   "    return (unsigned int)(maxkeys/.666666)+1;\n"
+                   "}\n", dinit(CheckPOptions, $.settings = &unix32, $.cpp = false));
+            ASSERT_EQUALS("", removeFloat(errout_str()));
+            checkP("unsigned int s3backer_literal(unsigned int maxkeys) {\n"
+                   "    if (maxkeys >= 2863308665U) return 0;\n"
+                   "    return (unsigned int)(maxkeys/.666666)+1;\n"
+                   "}\n", dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("", removeFloat(errout_str()));
+            checkP("unsigned int s3backer_literal(unsigned int maxkeys) {\n"
+                   "    if (maxkeys >= 2863308665U) return 0;\n"
+                   "    return (unsigned int)(maxkeys/.666666)+1;\n"
+                   "}\n", dinit(CheckPOptions, $.settings = &unix64, $.cpp = false));
+            ASSERT_EQUALS("", removeFloat(errout_str()));
+            checkP("unsigned int f(double d) { if (d >= 2863308665U) return 0; return (unsigned int)d; }\n",
+                   dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("", removeFloat(errout_str()));
+
+            checkP("unsigned int f(void) { return (unsigned int)6442457383.46; }\n",
+                   dinit(CheckPOptions, $.settings = &unix64));
+            ASSERT_EQUALS("[test.cpp:1:31]: (error) Undefined behaviour: float () to integer conversion overflow. [floatConversionOverflow]\n", removeFloat(errout_str()));
+        }
+
     }
 
     void integerOverflow() { // #11794
@@ -636,6 +718,72 @@ private:
               "};\n"
               "static B<64> b;\n");
         ASSERT_EQUALS("", errout_str());
+
+        // FP shiftTooManyBits: guarded shift where the shift amount is
+        // conditionally derived from an unsigned subtraction; a possible value
+        // from an interprocedural caller must not collapse the interval
+        // inference on the unsigned arithmetic result
+        {
+            const Settings settings = settingsBuilder().platform(Platform::Type::Unix64).build();
+            check("static unsigned int l[16];\n"
+                  "void scalar_shift(unsigned int shift) {\n"
+                  "    unsigned int shiftlimbs = shift >> 5;\n"
+                  "    unsigned int shiftlow = shift & 0x1Fu;\n"
+                  "    unsigned int shifthigh = 32u - shiftlow;\n"
+                  "    unsigned int r = 0u;\n"
+                  "    r |= (shift < 448u && shiftlow ? (l[1 + shiftlimbs] << shifthigh) : 0u);\n"
+                  "    r |= (shift < 416u && shiftlow ? (l[2 + shiftlimbs] << shifthigh) : 0u);\n"
+                  "    (void)r;\n"
+                  "}\n"
+                  "int main(void) { scalar_shift(384u); return 0; }\n",
+                  dinit(CheckOptions, $.settings = &settings));
+            ASSERT_EQUALS("", errout_str());
+        }
+
+        check("int guarded_shift(int delta, unsigned int lag_depth, unsigned int lag_mask) {\n"
+              "    if (lag_depth > 20) return 0;\n"
+              "    if (delta < -100) return 0;\n"
+              "    if (delta < -(int)lag_depth) return 0;\n"
+              "    if (delta < 0) return lag_mask >> -delta;\n"
+              "    return 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        {
+            const Settings c11unix64 = settingsBuilder().platform(Platform::Type::Unix64).c(Standards::C11).build();
+            checkP("unsigned long f(unsigned long i) {\n"
+                   "    if (i < 64) return 0;\n"
+                   "    if (i < 96) return 1 << (i - 64);\n"
+                   "    return 0;\n"
+                   "}\n", dinit(CheckPOptions, $.settings = &c11unix64, $.cpp = false));
+            ASSERT_EQUALS("[test.c:3:11] -> [test.c:3:26]: (warning) Shifting signed 32-bit value by 31 bits is undefined behaviour. See condition at line 3. [shiftTooManyBitsSigned]\n", errout_str());
+
+            checkP("unsigned long f(unsigned long i) {\n"
+                   "    if (i < 64) return 0;\n"
+                   "    if (i < 96) return 1u << (i - 64);\n"
+                   "    return 0;\n"
+                   "}\n", dinit(CheckPOptions, $.settings = &c11unix64, $.cpp = false));
+            ASSERT_EQUALS("", errout_str());
+
+            checkP("unsigned long f(unsigned long i) {\n"
+                   "    if (i < 64) return 0;\n"
+                   "    if (i < 95) return 1 << (i - 64);\n"
+                   "    return 0;\n"
+                   "}\n", dinit(CheckPOptions, $.settings = &c11unix64, $.cpp = false));
+            ASSERT_EQUALS("", errout_str());
+        }
+        const Settings cpp14unix64 = settingsBuilder().platform(Platform::Type::Unix64).cpp(Standards::CPP14).build();
+        checkP("unsigned long f(unsigned long i) {\n"
+               "    if (i < 64) return 0;\n"
+               "    if (i < 96) return 1 << (i - 64);\n"
+               "    return 0;\n"
+               "}\n", dinit(CheckPOptions, $.settings = &cpp14unix64));
+        ASSERT_EQUALS("[test.cpp:3:11] -> [test.cpp:3:26]: (portability) Shifting signed 32-bit value by 31 bits is implementation-defined behaviour. See condition at line 3. [shiftTooManyBitsSigned]\n", errout_str());
+
+        check("unsigned int oversized_shift(unsigned int value) {\n"
+              "    return value >> 32;\n"
+              "}\n");
+        ASSERT(errout_str().find("[shiftTooManyBits]") != std::string::npos);
     }
 };
 

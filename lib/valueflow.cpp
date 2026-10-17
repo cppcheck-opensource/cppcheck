@@ -113,6 +113,7 @@
 #include <array>
 #include <cassert>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <functional>
@@ -420,10 +421,12 @@ void ValueFlow::combineValueProperties(const ValueFlow::Value &value1, const Val
         if (value1.bound == ValueFlow::Value::Bound::Lower || value2.bound == ValueFlow::Value::Bound::Lower)
             result.bound = ValueFlow::Value::Bound::Lower;
     }
-    if (value1.path != value2.path)
-        result.path = -1;
-    else
+    if (value1.path == 0)
+        result.path = value2.path;
+    else if (value2.path == 0 || value1.path == value2.path)
         result.path = value1.path;
+    else
+        result.path = -1;
 }
 
 static void valueFlowNumber(TokenList &tokenlist, const Settings& settings)
@@ -1025,7 +1028,7 @@ static void valueFlowRightShift(TokenList& tokenList, const Settings& settings)
     }
 }
 
-static std::vector<MathLib::bigint> minUnsignedValue(const Token* tok, int depth = 8)
+static std::vector<MathLib::bigint> minUnsignedValue(const Token* tok, const Settings& settings, int depth = 8)
 {
     std::vector<MathLib::bigint> result;
     if (!tok)
@@ -1034,10 +1037,11 @@ static std::vector<MathLib::bigint> minUnsignedValue(const Token* tok, int depth
         return result;
     if (const ValueFlow::Value* v = tok->getKnownValue(ValueFlow::Value::ValueType::INT)) {
         result = {v->intvalue};
-    } else if (!Token::Match(tok, "-|%|&|^") && tok->isConstOp() && tok->astOperand1() && tok->astOperand2()) {
-        std::vector<MathLib::bigint> op1 = minUnsignedValue(tok->astOperand1(), depth - 1);
+    } else if (!Token::Match(tok, "-|%|&|^") && tok->isConstOp() && tok->astOperand1() && tok->astOperand2() &&
+               (!ValueFlow::isUnsignedArithmeticResult(tok) || ValueFlow::isUnsignedArithmeticNoWrap(tok, settings, true))) {
+        std::vector<MathLib::bigint> op1 = minUnsignedValue(tok->astOperand1(), settings, depth - 1);
         if (!op1.empty()) {
-            std::vector<MathLib::bigint> op2 = minUnsignedValue(tok->astOperand2(), depth - 1);
+            std::vector<MathLib::bigint> op2 = minUnsignedValue(tok->astOperand2(), settings, depth - 1);
             if (!op2.empty()) {
                 result = calculate<std::vector<MathLib::bigint>>(tok->str(), op1.front(), op2.front());
             }
@@ -1087,8 +1091,26 @@ static void valueFlowImpossibleValues(TokenList& tokenList, const Settings& sett
             upper.bound = ValueFlow::Value::Bound::Lower;
             upper.setImpossible();
             setTokenValue(tok, std::move(upper), settings);
+        } else if (tok->isCast() && tok->valueType() && tok->valueType()->isIntegral() && !tok->valueType()->pointer) {
+            MathLib::bigint minValue;
+            MathLib::bigint maxValue;
+            if (!ValueFlow::getMinMaxValues(tok->valueType(), settings.platform, minValue, maxValue))
+                continue;
+
+            if (minValue > std::numeric_limits<MathLib::bigint>::min()) {
+                ValueFlow::Value lower{minValue - 1};
+                lower.bound = ValueFlow::Value::Bound::Upper;
+                lower.setImpossible();
+                setTokenValue(tok, std::move(lower), settings);
+            }
+            if (maxValue < std::numeric_limits<MathLib::bigint>::max()) {
+                ValueFlow::Value upper{maxValue + 1};
+                upper.bound = ValueFlow::Value::Bound::Lower;
+                upper.setImpossible();
+                setTokenValue(tok, std::move(upper), settings);
+            }
         } else if (astIsUnsigned(tok) && !astIsPointer(tok)) {
-            std::vector<MathLib::bigint> minvalue = minUnsignedValue(tok);
+            std::vector<MathLib::bigint> minvalue = minUnsignedValue(tok, settings);
             if (minvalue.empty())
                 continue;
             ValueFlow::Value value{std::max<MathLib::bigint>(0, minvalue.front()) - 1};
@@ -4097,41 +4119,82 @@ static std::list<ValueFlow::Value> truncateValues(std::list<ValueFlow::Value> va
                                                   const ValueType* src,
                                                   const Settings& settings)
 {
-    if (!dst || !dst->isIntegral())
+    if (!dst || !dst->isIntegral() || dst->pointer)
         return values;
 
-    const size_t sz = dst->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
-
-    if (src) {
-        const size_t osz = src->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
-        if (osz >= sz && dst->sign == ValueType::Sign::SIGNED && src->sign == ValueType::Sign::UNSIGNED) {
-            values.remove_if([&](const ValueFlow::Value& value) {
-                if (!value.isIntValue())
-                    return false;
-                if (!value.isImpossible())
-                    return false;
-                if (value.bound != ValueFlow::Value::Bound::Upper)
-                    return false;
-                if (osz == sz && value.intvalue < 0)
-                    return true;
-                if (osz > sz)
-                    return true;
-                return false;
-            });
-        }
-    }
-
-    for (ValueFlow::Value &value : values) {
-        // Don't truncate impossible values since those can be outside of the valid range
-        if (value.isImpossible())
+    const int bits = static_cast<int>(dst->getSizeOf(settings,
+                                                     ValueType::Accuracy::ExactOrZero,
+                                                     ValueType::SizeOf::Pointee) * settings.platform.char_bit);
+    for (auto it = values.begin(); it != values.end();) {
+        ValueFlow::Value& value = *it;
+        if (value.isSymbolicValue() || value.isImpossible() || value.bound != ValueFlow::Value::Bound::Point) {
+            const ValueType* const conversionSource = value.isSymbolicValue() && value.tokvalue && value.tokvalue->valueType()
+                ? value.tokvalue->valueType()
+                : src;
+            if (value.isSymbolicValue() && dst->type == ValueType::Type::BOOL && conversionSource &&
+                conversionSource->pointer > 0 && value.isKnown() && value.bound == ValueFlow::Value::Bound::Point &&
+                value.intvalue == 0) {
+                ++it;
+                continue;
+            }
+            if (value.isFloatValue()) {
+                if (!ValueFlow::castValue(value, dst->sign, bits))
+                    it = values.erase(it);
+                else
+                    ++it;
+            } else if (!ValueFlow::isValueRangePreservingConversion(conversionSource, dst, settings, &value)) {
+                it = values.erase(it);
+            } else if (value.isImpossible() && value.isIntValue() &&
+                       value.bound == ValueFlow::Value::Bound::Point && src &&
+                       src->sign == ValueType::Sign::SIGNED && dst->sign == ValueType::Sign::UNSIGNED &&
+                       dst->type != ValueType::Type::BOOL && !ValueFlow::castValue(value, dst->sign, bits)) {
+                it = values.erase(it);
+            } else {
+                ++it;
+            }
             continue;
-        if (value.isFloatValue()) {
-            value.intvalue = static_cast<MathLib::bigint>(value.floatValue);
-            value.valueType = ValueFlow::Value::ValueType::INT;
         }
-
-        if (value.isIntValue() && sz > 0 && sz < sizeof(MathLib::biguint))
-            value.intvalue = ValueFlow::truncateIntValue(value.intvalue, sz, dst->sign);
+        if (dst->type == ValueType::Type::BOOL && (value.isIntValue() || value.isFloatValue())) {
+            value.intvalue = value.isIntValue() ? value.intvalue != 0 : std::fpclassify(value.floatValue) != FP_ZERO;
+            value.valueType = ValueFlow::Value::ValueType::INT;
+            // Keep target-specific point results possible when plain char signedness is unknown.
+        } else if (dst->type == ValueType::Type::CHAR && dst->sign == ValueType::Sign::UNKNOWN_SIGN &&
+                   value.isIntValue() && value.bound == ValueFlow::Value::Bound::Point) {
+            const MathLib::bigint originalValue = value.intvalue;
+            ValueFlow::Value unsignedValue = value;
+            if (!ValueFlow::castValue(unsignedValue, ValueType::Sign::UNSIGNED, bits)) {
+                it = values.erase(it);
+                continue;
+            }
+            ValueType signedCharType(ValueType::Sign::SIGNED, ValueType::Type::CHAR, 0);
+            MathLib::bigint minValue{}, maxValue{};
+            const bool signedRepresentable = ValueFlow::getMinMaxValues(&signedCharType, settings.platform, minValue, maxValue) &&
+                                             originalValue >= minValue && originalValue <= maxValue;
+            if (signedRepresentable && unsignedValue.intvalue == originalValue) {
+                ++it;
+                continue;
+            }
+            auto next = it;
+            ++next;
+            value = std::move(unsignedValue);
+            value.setPossible();
+            if (signedRepresentable) {
+                ValueFlow::Value signedValue = value;
+                signedValue.intvalue = originalValue;
+                signedValue.setPossible();
+                values.insert(next, std::move(signedValue));
+            }
+            it = next;
+            continue;
+            // Zero is representable in every integral type, even when its size is unknown.
+        } else if ((value.isIntValue() || value.isFloatValue()) &&
+                   !(value.isIntValue() && value.intvalue == 0) &&
+                   !ValueFlow::isValueRangePreservingConversion(src, dst, settings, &value) &&
+                   !ValueFlow::castValue(value, dst->sign, bits)) {
+            it = values.erase(it);
+            continue;
+        }
+        ++it;
     }
     return values;
 }
@@ -4213,16 +4276,15 @@ static void valueFlowAfterAssign(const TokenList &tokenlist,
 
             std::list<ValueFlow::Value> values = truncateValues(
                 rhs->values(), tok->astOperand1()->valueType(), rhs->valueType(), settings);
-            // Remove known values
-            std::set<ValueFlow::Value::ValueType> types;
-            if (tok->astOperand1()->hasKnownValue()) {
-                for (const ValueFlow::Value& value:tok->astOperand1()->values()) {
-                    if (value.isKnown() && !value.isSymbolicValue())
-                        types.insert(value.valueType);
-                }
-            }
+            // Remove only values already represented by an identical known value on the LHS.
             values.remove_if([&](const ValueFlow::Value& value) {
-                return types.count(value.valueType) > 0;
+                if (!value.isKnown() || value.isSymbolicValue())
+                    return false;
+                return std::any_of(tok->astOperand1()->values().cbegin(),
+                                   tok->astOperand1()->values().cend(),
+                                   [&](const ValueFlow::Value& knownValue) {
+                    return knownValue.isKnown() && !knownValue.isSymbolicValue() && knownValue.equalValue(value);
+                });
             });
             // Remove container size if its not a container - unless the size records its container
             // and flows into a pointer to the container data (e.g. p = v.data())
@@ -4420,10 +4482,12 @@ struct ConditionHandler {
             return it->path;
         }
 
-        MathLib::bigint getPath() const
-        {
-            assert(std::abs(findPath(true_values) - findPath(false_values)) == 0);
-            return findPath(true_values) | findPath(false_values);
+        MathLib::bigint getPath() const {
+            const MathLib::bigint truePath = findPath(true_values);
+            const MathLib::bigint falsePath = findPath(false_values);
+            assert(true_values.empty() || false_values.empty() ||
+                   std::abs(truePath - falsePath) == 0);
+            return truePath | falsePath;
         }
 
         Token* getContextAndValues(Token* condTok,
@@ -4522,7 +4586,7 @@ struct ConditionHandler {
                         continue;
                     if (cond.vartok->hasKnownIntValue())
                         continue;
-                    if (cond.true_values.empty() || cond.false_values.empty())
+                    if (cond.true_values.empty() && cond.false_values.empty())
                         continue;
                     if (!isConstExpression(cond.vartok, settings.library))
                         continue;
@@ -4895,7 +4959,8 @@ struct ConditionHandler {
                     bailBlock = i;
                 changeKnownToPossible(values);
             }
-            if (changeBlock >= 0 && !Token::simpleMatch(top->previous(), "while (")) {
+            if (changeBlock >= 0 &&
+                (!Token::simpleMatch(top->previous(), "while (") || astIsFloat(cond.vartok, false))) {
                 if (settings.debugwarnings)
                     bailout(tokenlist,
                             errorLogger,
@@ -5074,6 +5139,39 @@ struct SimpleConditionHandler : ConditionHandler {
         if (!conds.empty())
             return conds;
 
+        if (tok->isComparisonOp() && tok->astOperand1() && tok->astOperand2() &&
+            (tok->str() == ">=" || tok->str() == "<=")) {
+            for (bool lhs : {true, false}) {
+                const Token* vartok = lhs ? tok->astOperand1() : tok->astOperand2();
+                const Token* valuetok = lhs ? tok->astOperand2() : tok->astOperand1();
+                if (!astIsFloat(vartok, false) || !valuetok->isLiteral())
+                    continue;
+                const ValueFlow::Value* value = valuetok->getKnownValue(ValueFlow::Value::ValueType::FLOAT);
+                if (!value || !value->isKnown())
+                    continue;
+
+                const bool lower = lhs == (tok->str() == ">=");
+                const ValueFlow::Value::Bound bound = lower ? ValueFlow::Value::Bound::Lower
+                                                            : ValueFlow::Value::Bound::Upper;
+                Condition cond;
+                cond.vartok = vartok;
+                cond.impossible = false;
+
+                ValueFlow::Value trueValue = *value;
+                trueValue.bound = bound;
+                trueValue.assumeCondition(tok);
+                trueValue.setPossible();
+                cond.true_values.push_back(std::move(trueValue));
+
+                ValueFlow::Value falseValue = *value;
+                falseValue.bound = bound;
+                falseValue.assumeCondition(tok);
+                falseValue.setImpossible();
+                cond.false_values.push_back(std::move(falseValue));
+                return {std::move(cond)};
+            }
+        }
+
         const Token* vartok = getConditionVariable(tok);
         if (!vartok)
             return {};
@@ -5158,8 +5256,25 @@ static void valueFlowInferCondition(TokenList& tokenlist, const Settings& settin
                     }
                 }
             } else if (isIntegralOrPointer(tok->astOperand1()) && isIntegralOrPointer(tok->astOperand2())) {
-                std::vector<ValueFlow::Value> result =
-                    infer(makeIntegralInferModel(), tok->str(), tok->astOperand1()->values(), tok->astOperand2()->values());
+                const bool isUnsignedArith = ValueFlow::isUnsignedArithmeticResult(tok);
+                const bool mayWrap = isUnsignedArith && !ValueFlow::isUnsignedArithmeticNoWrap(tok, settings, false);
+                std::vector<ValueFlow::Value> result;
+                const auto isIntegralRange = [](const ValueFlow::Value& value) {
+                    return value.bound != ValueFlow::Value::Bound::Point &&
+                           (value.isIntValue() || value.isSymbolicValue());
+                };
+                if (mayWrap) {
+                    std::list<ValueFlow::Value> lhsValues = tok->astOperand1()->values();
+                    std::list<ValueFlow::Value> rhsValues = tok->astOperand2()->values();
+                    lhsValues.remove_if(isIntegralRange);
+                    rhsValues.remove_if(isIntegralRange);
+                    result = infer(makeIntegralInferModel(), tok->str(), std::move(lhsValues), std::move(rhsValues));
+                } else {
+                    result = infer(makeIntegralInferModel(),
+                                   tok->str(),
+                                   tok->astOperand1()->values(),
+                                   tok->astOperand2()->values());
+                }
                 for (ValueFlow::Value& value : result) {
                     setTokenValue(tok, std::move(value), settings);
                 }

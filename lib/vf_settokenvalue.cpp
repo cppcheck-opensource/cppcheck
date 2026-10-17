@@ -21,6 +21,7 @@
 #include "astutils.h"
 #include "calculate.h"
 #include "config.h"
+#include "infer.h"
 #include "library.h"
 #include "mathlib.h"
 #include "platform.h"
@@ -29,12 +30,14 @@
 #include "token.h"
 #include "utils.h"
 #include "valueflow.h"
+#include "valueptr.h"
 #include "vfvalue.h"
 
 #include "vf_common.h"
 
 #include <algorithm>
 #include <climits>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -64,35 +67,69 @@ namespace ValueFlow
         return Library::Container::Yield::NO_YIELD;
     }
 
-    static Value truncateImplicitConversion(Token* parent, const Value& value, const Settings& settings)
+    static bool truncateImplicitConversion(Token* parent, const Token* sourceTok, Value& value, const Settings& settings)
     {
-        if (!value.isIntValue() && !value.isFloatValue())
-            return value;
-        if (!parent)
-            return value;
-        if (!parent->isBinaryOp())
-            return value;
-        if (!parent->isConstOp() && !parent->isAssignmentOp())
-            return value;
-        if (!astIsIntegral(parent->astOperand1(), false))
-            return value;
-        if (!astIsIntegral(parent->astOperand2(), false))
-            return value;
-        const ValueType* vt1 = parent->astOperand1()->valueType();
-        const ValueType* vt2 = parent->astOperand2()->valueType();
-        // If the sign is the same there is no truncation
-        if (vt1->sign == vt2->sign)
-            return value;
-        const size_t n1 = vt1->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
-        const size_t n2 = vt2->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
-        ValueType::Sign sign = ValueType::Sign::UNSIGNED;
-        if (n1 < n2)
-            sign = vt2->sign;
-        else // (n1 >= n2)
-            sign = vt1->sign;
-        Value v = castValue(value, sign, std::max(n1, n2) * 8);
-        v.wideintvalue = value.intvalue;
-        return v;
+        if (!parent || (!value.isIntValue() &&
+                        !(value.isSymbolicValue() && value.bound != Value::Bound::Point)))
+            return true;
+
+        const Token* lhs = parent->astOperand1();
+        const Token* rhs = parent->astOperand2();
+        const ValueType* destination = nullptr;
+        ValueType commonType;
+        if (parent->str() == ":" && parent->astParent() && parent->astParent()->str() == "?") {
+            destination = parent->astParent()->valueType();
+        } else if (parent->str() == "=") {
+            return true;
+        } else if ((parent->isConstOp() || parent->isAssignmentOp()) && lhs && rhs && lhs->valueType() && rhs->valueType()) {
+            if (Token::Match(parent, "<<|>>")) {
+                const Token* operand = sourceTok == lhs ? lhs : rhs;
+                commonType = ValueType::getCommonIntegralType(operand->valueType(), nullptr, settings);
+            } else {
+                commonType = ValueType::getCommonIntegralType(lhs->valueType(), rhs->valueType(), settings);
+            }
+            destination = &commonType;
+        } else {
+            return true;
+        }
+
+        if (!destination || !destination->isIntegral() || destination->pointer)
+            return true;
+        const ValueType* const source = sourceTok ? sourceTok->valueType() : nullptr;
+        if (value.isImpossible() && value.isIntValue() && value.bound == Value::Bound::Point) {
+            if (!isValueRangePreservingConversion(source, destination, settings, &value))
+                return false;
+            if (source && source->sign == ValueType::Sign::SIGNED && destination->sign == ValueType::Sign::UNSIGNED &&
+                destination->type != ValueType::Type::BOOL) {
+                const MathLib::bigint originalValue = value.intvalue;
+                const int bits = static_cast<int>(destination->getSizeOf(settings,
+                                                                         ValueType::Accuracy::ExactOrZero,
+                                                                         ValueType::SizeOf::Pointee) * settings.platform.char_bit);
+                if (!castValue(value, destination->sign, bits))
+                    return false;
+                value.wideintvalue = originalValue;
+            }
+            return true;
+        }
+        if (value.isImpossible() || value.bound != Value::Bound::Point || value.isSymbolicValue())
+            return isValueRangePreservingConversion(source, destination, settings, &value);
+        if (destination->type == ValueType::Type::BOOL) {
+            value.intvalue = value.intvalue != 0;
+            return true;
+        }
+        if (isValueRangePreservingConversion(source, destination, settings, &value))
+            return true;
+        if (destination->sign == ValueType::Sign::UNKNOWN_SIGN)
+            return source && source->isTypeEqual(destination) && source->sign == destination->sign;
+
+        const int bits = static_cast<int>(destination->getSizeOf(settings,
+                                                                 ValueType::Accuracy::ExactOrZero,
+                                                                 ValueType::SizeOf::Pointee) * settings.platform.char_bit);
+        const MathLib::bigint originalValue = value.intvalue;
+        if (!castValue(value, destination->sign, bits))
+            return false;
+        value.wideintvalue = originalValue;
+        return true;
     }
 
     static const Token *getCastTypeStartToken(const Token *parent, const Library& library)
@@ -126,21 +163,57 @@ namespace ValueFlow
         return value.isIntValue() || value.isFloatValue();
     }
 
-    static void setTokenValueCast(Token *parent, const ValueType &valueType, Value value, const Settings &settings)
+    static void setTokenValueCast(Token* parent,
+                                  const ValueType& valueType,
+                                  const ValueType* sourceType,
+                                  Value value,
+                                  const Settings& settings)
     {
-        if (valueType.pointer || value.isImpossible())
-            setTokenValue(parent,std::move(value),settings);
-        else if (valueType.type == ValueType::Type::CHAR)
-            setTokenValue(parent, castValue(std::move(value), valueType.sign, settings.platform.char_bit), settings);
-        else if (valueType.type == ValueType::Type::SHORT)
-            setTokenValue(parent, castValue(std::move(value), valueType.sign, settings.platform.short_bit), settings);
-        else if (valueType.type == ValueType::Type::INT)
-            setTokenValue(parent, castValue(std::move(value), valueType.sign, settings.platform.int_bit), settings);
-        else if (valueType.type == ValueType::Type::LONG)
-            setTokenValue(parent, castValue(std::move(value), valueType.sign, settings.platform.long_bit), settings);
-        else if (valueType.type == ValueType::Type::LONGLONG)
-            setTokenValue(parent, castValue(std::move(value), valueType.sign, settings.platform.long_long_bit), settings);
-        else if (valueType.isFloat() && isNumeric(value)) {
+        if (valueType.type == ValueType::Type::BOOL && sourceType && sourceType->pointer > 0 &&
+            value.isSymbolicValue() && value.isKnown() && value.bound == Value::Bound::Point && value.intvalue == 0) {
+            setTokenValue(parent, std::move(value), settings);
+            return;
+        }
+        if (valueType.pointer)
+            setTokenValue(parent, std::move(value), settings);
+        else if (valueType.isIntegral() && (isNumeric(value) || value.isSymbolicValue())) {
+            if (value.isImpossible() || value.bound != Value::Bound::Point || value.isSymbolicValue()) {
+                if (value.isFloatValue()) {
+                    const int bits = static_cast<int>(valueType.getSizeOf(settings,
+                                                                          ValueType::Accuracy::ExactOrZero,
+                                                                          ValueType::SizeOf::Pointee) * settings.platform.char_bit);
+                    if (!castValue(value, valueType.sign, bits))
+                        return;
+                } else {
+                    if (!isValueRangePreservingConversion(sourceType, &valueType, settings, &value))
+                        return;
+                    if (value.isImpossible() && value.isIntValue() && value.bound == Value::Bound::Point && sourceType &&
+                        sourceType->sign == ValueType::Sign::SIGNED && valueType.sign == ValueType::Sign::UNSIGNED &&
+                        valueType.type != ValueType::Type::BOOL) {
+                        const int bits = static_cast<int>(valueType.getSizeOf(settings,
+                                                                              ValueType::Accuracy::ExactOrZero,
+                                                                              ValueType::SizeOf::Pointee) * settings.platform.char_bit);
+                        if (!castValue(value, valueType.sign, bits))
+                            return;
+                    }
+                }
+                setTokenValue(parent, std::move(value), settings);
+                return;
+            }
+            if (valueType.type == ValueType::Type::BOOL) {
+                value.intvalue = value.isFloatValue() ? std::fpclassify(value.floatValue) != FP_ZERO : value.intvalue != 0;
+                value.valueType = Value::ValueType::INT;
+            } else {
+                const int bits = static_cast<int>(valueType.getSizeOf(settings,
+                                                                      ValueType::Accuracy::ExactOrZero,
+                                                                      ValueType::SizeOf::Pointee) * settings.platform.char_bit);
+                if (!castValue(value, valueType.sign, bits))
+                    return;
+            }
+            setTokenValue(parent, std::move(value), settings);
+        } else if (valueType.isFloat() && isNumeric(value)) {
+            if (value.isImpossible() || value.bound != Value::Bound::Point)
+                return;
             if (value.isIntValue())
                 value.floatValue = static_cast<double>(value.intvalue);
             value.valueType = Value::ValueType::FLOAT;
@@ -150,7 +223,7 @@ namespace ValueFlow
             const long long charMin = settings.platform.signedCharMin();
             if (charMin <= value.intvalue && value.intvalue <= charMax) {
                 // unknown type, but value is small so there should be no truncation etc
-                setTokenValue(parent,std::move(value),settings);
+                setTokenValue(parent, std::move(value), settings);
             }
         }
     }
@@ -228,8 +301,8 @@ namespace ValueFlow
             >= sizeof(MathLib::bigint))
             return;
 
-        if (!value.isImpossible() && value.isIntValue())
-            value = truncateImplicitConversion(tok->astParent(), value, settings);
+        const bool canPropagate = !(value.isIntValue() || value.isSymbolicValue()) ||
+                                  truncateImplicitConversion(tok->astParent(), tok, value, settings);
 
         // a container size value on a container expression belongs to that expression, while a
         // pointer or an iterator only transports the size of the container it was obtained from
@@ -242,7 +315,7 @@ namespace ValueFlow
         if (!tok->addValue(value))
             return;
 
-        if (value.path < 0)
+        if (!canPropagate || value.path < 0)
             return;
 
         Token *parent = tok->astParent();
@@ -398,12 +471,7 @@ namespace ValueFlow
                 Token::simpleMatch(parent->astOperand1(), "dynamic_cast"))
                 return;
             const ValueType &valueType = ValueType::parseDecl(castType, settings);
-            if (value.isImpossible() && value.isIntValue() && value.intvalue < 0
-                && astIsUnsigned(tok) && valueType.sign == ValueType::SIGNED && tok->valueType()
-                && tok->valueType()->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer)
-                >= valueType.getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer))
-                return;
-            setTokenValueCast(parent, valueType, std::move(value), settings);
+            setTokenValueCast(parent, valueType, tok->valueType(), std::move(value), settings);
         }
 
         else if (parent->str() == ":" && Token::simpleMatch(parent->astParent(), "?")) {
@@ -488,6 +556,9 @@ namespace ValueFlow
                 return;
             }
 
+            const bool skipUnsignedRangeBounds = isUnsignedArithmeticResult(parent) &&
+                                                 !isUnsignedArithmeticNoWrap(parent, settings, false);
+
             for (const Value &value1 : parent->astOperand1()->values()) {
                 if (!isComputableValue(parent, value1))
                     continue;
@@ -499,6 +570,11 @@ namespace ValueFlow
                     if (value1.isIteratorValue() && value2.isIteratorValue())
                         continue;
                     if (!isCompatibleValues(value1, value2))
+                        continue;
+                    const auto hasRangeBound = [](const Value& value) {
+                        return (value.isIntValue() || value.isSymbolicValue()) && value.bound != Value::Bound::Point;
+                    };
+                    if (skipUnsignedRangeBounds && (hasRangeBound(value1) || hasRangeBound(value2)))
                         continue;
                     Value result(0);
                     combineValueProperties(value1, value2, result);
@@ -588,6 +664,19 @@ namespace ValueFlow
                         }
                         if (error)
                             continue;
+                        if (isUnsignedArithmeticResult(parent) && value1.bound == Value::Bound::Point &&
+                            value2.bound == Value::Bound::Point && result.isIntValue()) {
+                            const ValueType* const resultType = parent->valueType();
+                            const size_t resultSize = resultType->getSizeOf(settings,
+                                                                            ValueType::Accuracy::ExactOrZero,
+                                                                            ValueType::SizeOf::Pointer);
+                            if (resultSize > 0 && resultSize < sizeof(MathLib::bigint)) {
+                                result.wideintvalue = result.intvalue;
+                                result.intvalue = ValueFlow::truncateIntValue(result.intvalue,
+                                                                              resultSize,
+                                                                              ValueType::Sign::UNSIGNED);
+                            }
+                        }
                         // If the bound comes from the second value then invert the bound when subtracting
                         if (Token::simpleMatch(parent, "-") && value2.bound == result.bound &&
                             value2.bound != Value::Bound::Point)
@@ -639,6 +728,32 @@ namespace ValueFlow
         // unary minus
         else if (parent->isUnaryOp("-") && !astIsUnsigned(parent)) {
             for (const Value &val : tok->values()) {
+                if (val.isSymbolicValue() && val.isImpossible() && val.tokvalue &&
+                    val.bound != Value::Bound::Point) {
+                    std::list<Value> symbolicValues;
+                    std::copy_if(val.tokvalue->values().cbegin(),
+                                 val.tokvalue->values().cend(),
+                                 std::back_inserter(symbolicValues),
+                                 [&](const Value& symbolicValue) {
+                        return symbolicValue.path == 0 || symbolicValue.path == val.path;
+                    });
+                    const std::vector<MathLib::bigint> range = val.bound == Value::Bound::Upper
+                        ? ::getMinValue(::makeIntegralInferModel(), symbolicValues)
+                        : ::getMaxValue(::makeIntegralInferModel(), symbolicValues);
+                    if (range.empty() || range.front() == std::numeric_limits<MathLib::bigint>::min())
+                        continue;
+                    const MathLib::bigint negated = -range.front();
+                    if ((val.intvalue > 0 && negated < std::numeric_limits<MathLib::bigint>::min() + val.intvalue) ||
+                        (val.intvalue < 0 && negated > std::numeric_limits<MathLib::bigint>::max() + val.intvalue))
+                        continue;
+                    Value v(val);
+                    v.valueType = Value::ValueType::INT;
+                    v.tokvalue = nullptr;
+                    v.intvalue = negated - val.intvalue;
+                    v.invertBound();
+                    setTokenValue(parent, std::move(v), settings);
+                    continue;
+                }
                 if (!val.isIntValue() && !val.isFloatValue())
                     continue;
                 Value v(val);
