@@ -719,6 +719,7 @@ size_t bufferAccessOutOfBounds_strnlen(const char *s, size_t maxlen)
     size_t len = strnlen(buf,2);
     // cppcheck-suppress bufferAccessOutOfBounds
     len+=strnlen(buf,3);
+    len+=strnlen("ab",3);
     return len;
 }
 
