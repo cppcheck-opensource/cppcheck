@@ -730,3 +730,45 @@ int g_define_enum_and_flags_type_test(void) {
     return e + f;
 }
 #endif
+
+static gboolean source_func_frees_data(gpointer data)
+{
+    g_free(data);
+    return FALSE;
+}
+
+static void destroy_notify_frees_data(gpointer data)
+{
+    g_free(data);
+}
+
+// The data passed to a GSource is owned by the callback or the destroy notify
+// from then on, so it does not leak.
+void g_idle_add_takes_data_test(void)
+{
+    // cppcheck-suppress constVariablePointer
+    gchar *data = g_strdup("data");
+    g_idle_add(source_func_frees_data, data);
+
+    gchar *data_full = g_strdup("data");
+    g_idle_add_full(200, source_func_frees_data, data_full, NULL);
+}
+
+void g_timeout_add_takes_data_test(void)
+{
+    // cppcheck-suppress constVariablePointer
+    gchar *data = g_strdup("data");
+    g_timeout_add(10, source_func_frees_data, data);
+
+    // cppcheck-suppress constVariablePointer
+    gchar *data_seconds = g_strdup("data");
+    g_timeout_add_seconds(1, source_func_frees_data, data_seconds);
+
+    // cppcheck-suppress constVariablePointer
+    gchar *data_full = g_strdup("data");
+    g_timeout_add_full(0, 10, source_func_frees_data, data_full, destroy_notify_frees_data);
+
+    // cppcheck-suppress constVariablePointer
+    gchar *data_seconds_full = g_strdup("data");
+    g_timeout_add_seconds_full(0, 1, source_func_frees_data, data_seconds_full, destroy_notify_frees_data);
+}
