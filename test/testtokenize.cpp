@@ -2030,6 +2030,15 @@ private:
                                            "void S::func() const\n"
                                            "try { f(); }\n"
                                            "catch (...) { g(); }\n"));
+
+        ASSERT_EQUALS("struct D : B {\n" // #15126
+                      "void f ( ) override { try { } catch ( ... ) { } }\n"
+                      "void g ( ) final { try { } catch ( ... ) { } }\n"
+                      "} ;",
+                      tokenizeAndStringify("struct D : B {\n"
+                                           "    void f() override try {} catch (...) {}\n"
+                                           "    void g() final try {} catch (...) {}\n"
+                                           "};\n"));
     }
 
     // Simplify "((..))" into "(..)"
