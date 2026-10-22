@@ -777,3 +777,27 @@ void g_idle_add_freed_data_test(void)
     // TODO cppcheck-suppress deallocuse
     g_idle_add(source_func_frees_data, data);
 }
+
+static gpointer thread_func(gpointer data)
+{
+    return data;
+}
+
+void g_thread_join_releases_thread_test(void)
+{
+    // cppcheck-suppress [constVariablePointer, unusedAllocatedMemory]
+    GThread *thread = g_thread_new("test", thread_func, NULL);
+    g_thread_join(thread);
+
+    // cppcheck-suppress constVariablePointer
+    GThread *thread_try = g_thread_try_new("test", thread_func, NULL, NULL);
+    if (thread_try)
+        g_thread_join(thread_try);
+}
+
+void g_thread_not_joined_test(void)
+{
+    GThread *thread = g_thread_new("test", thread_func, NULL);
+    (void)thread;
+    // cppcheck-suppress memleak
+}
