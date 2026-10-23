@@ -720,7 +720,9 @@ void SuppressionList::markUnmatchedInlineSuppressionsAsChecked(const TokenList &
         if (currFileIdx != tok->fileIndex() || currLineNr != tok->linenr()) {
             currLineNr = tok->linenr();
             currFileIdx = tok->fileIndex();
-            for (auto &suppression : mSuppressions) {
+            // checked is not used for hash suppressions
+            for (Suppression *s : mNonHashSuppressions) {
+                Suppression &suppression = *s;
                 if (suppression.type == SuppressionList::Type::unique) {
                     if (!suppression.checked && (suppression.lineNumber == currLineNr) && (suppression.fileName == tokenlist.file(tok))) {
                         suppression.checked = true;
