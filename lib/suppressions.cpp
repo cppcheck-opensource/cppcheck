@@ -32,7 +32,6 @@
 #include <cctype>   // std::isdigit, std::isalnum, etc
 #include <cstring>
 #include <exception>
-#include <functional> // std::bind, std::placeholders
 #include <sstream>
 #include <stdexcept>
 #include <utility>
@@ -325,14 +324,27 @@ std::string SuppressionList::addSuppressionLine(const std::string &line)
     }
 }
 
+SuppressionList::Suppression *SuppressionList::findSameParameters(const Suppression &suppression)
+{
+    const std::vector<Suppression*> *candidates = &mNonHashSuppressions;
+    if (suppression.hash > 0) {
+        const auto it = mHashSuppressions.find(suppression.hash);
+        if (it == mHashSuppressions.end())
+            return nullptr;
+        candidates = &it->second;
+    }
+    const auto found = std::find_if(candidates->cbegin(), candidates->cend(), [&](const Suppression *s) {
+        return suppression.isSameParameters(*s);
+    });
+    return found != candidates->cend() ? *found : nullptr;
+}
+
 std::string SuppressionList::addSuppression(SuppressionList::Suppression suppression)
 {
     std::lock_guard<std::mutex> lg(mSuppressionsSync);
 
     // Check if suppression is already in list
-    auto foundSuppression = std::find_if(mSuppressions.begin(), mSuppressions.end(),
-                                         std::bind(&Suppression::isSameParameters, &suppression, std::placeholders::_1));
-    if (foundSuppression != mSuppressions.end()) {
+    if (findSameParameters(suppression)) {
         return "suppression '" + suppression.toString() + "' already exists";
     }
 
@@ -380,9 +392,8 @@ bool SuppressionList::updateSuppressionState(const SuppressionList::Suppression&
     std::lock_guard<std::mutex> lg(mSuppressionsSync);
 
     // Check if suppression is already in list
-    auto foundSuppression = std::find_if(mSuppressions.begin(), mSuppressions.end(),
-                                         std::bind(&Suppression::isSameParameters, &suppression, std::placeholders::_1));
-    if (foundSuppression != mSuppressions.end()) {
+    Suppression *const foundSuppression = findSameParameters(suppression);
+    if (foundSuppression) {
         if (suppression.checked)
             foundSuppression->checked = true;
         if (suppression.matched)

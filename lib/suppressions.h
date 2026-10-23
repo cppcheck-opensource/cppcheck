@@ -295,6 +295,13 @@ public:
     void markUnmatchedInlineSuppressionsAsChecked(const TokenList &tokenlist);
 
 private:
+    /**
+     * @brief Find a suppression with the same parameters. mSuppressionsSync must be locked.
+     * @param suppression the suppression to look for
+     * @return the found suppression, or nullptr
+     */
+    Suppression *findSameParameters(const Suppression &suppression);
+
     mutable std::mutex mSuppressionsSync;
     /** @brief List of error which the user doesn't want to see. */
     std::list<Suppression> mSuppressions;
