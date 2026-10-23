@@ -542,13 +542,21 @@ bool SuppressionList::isSuppressed(const SuppressionList::ErrorMessage &errmsg, 
     // TODO: handle unmatchedPolyspaceSuppression?
     const bool unmatchedSuppression(errmsg.errorId == "unmatchedSuppression");
     bool returnValue = false;
-    for (Suppression &s : mSuppressions) {
-        if (!global && !s.isLocal())
-            continue;
-        if (unmatchedSuppression && s.errorId != errmsg.errorId)
-            continue;
-        if (s.isMatch(errmsg))
-            returnValue = true;
+    const auto match = [&](const std::vector<Suppression*> &suppressions) {
+        for (Suppression *s : suppressions) {
+            if (!global && !s->isLocal())
+                continue;
+            if (unmatchedSuppression && s->errorId != errmsg.errorId)
+                continue;
+            if (s->isMatch(errmsg))
+                returnValue = true;
+        }
+    };
+    match(mNonHashSuppressions);
+    if (errmsg.hash != 0) {
+        const auto it = mHashSuppressions.find(errmsg.hash);
+        if (it != mHashSuppressions.end())
+            match(it->second);
     }
     return returnValue;
 }
@@ -557,13 +565,21 @@ bool SuppressionList::isSuppressedExplicitly(const SuppressionList::ErrorMessage
 {
     std::lock_guard<std::mutex> lg(mSuppressionsSync);
 
-    for (Suppression &s : mSuppressions) {
-        if (!global && !s.isLocal())
-            continue;
-        if (s.errorId != errmsg.errorId) // Error id must match exactly
-            continue;
-        if (s.isMatch(errmsg))
-            return true;
+    const auto match = [&](const std::vector<Suppression*> &suppressions) {
+        return std::any_of(suppressions.cbegin(), suppressions.cend(), [&](Suppression *s) {
+            if (!global && !s->isLocal())
+                return false;
+            if (s->errorId != errmsg.errorId) // Error id must match exactly
+                return false;
+            return s->isMatch(errmsg);
+        });
+    };
+    if (match(mNonHashSuppressions))
+        return true;
+    if (errmsg.hash != 0) {
+        const auto it = mHashSuppressions.find(errmsg.hash);
+        if (it != mHashSuppressions.end())
+            return match(it->second);
     }
     return false;
 }
