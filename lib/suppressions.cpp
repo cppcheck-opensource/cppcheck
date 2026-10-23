@@ -356,6 +356,12 @@ std::string SuppressionList::addSuppression(SuppressionList::Suppression suppres
 
     mSuppressions.push_back(std::move(suppression));
 
+    Suppression *const added = &mSuppressions.back();
+    if (added->hash > 0)
+        mHashSuppressions[added->hash].push_back(added);
+    else
+        mNonHashSuppressions.push_back(added);
+
     return "";
 }
 

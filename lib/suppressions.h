@@ -29,6 +29,7 @@
 #include <mutex>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include <map>
@@ -297,6 +298,10 @@ private:
     mutable std::mutex mSuppressionsSync;
     /** @brief List of error which the user doesn't want to see. */
     std::list<Suppression> mSuppressions;
+    /** @brief Suppressions in mSuppressions with hash > 0, indexed by hash */
+    std::unordered_map<std::size_t, std::vector<Suppression*>> mHashSuppressions;
+    /** @brief Suppressions in mSuppressions with hash == 0 */
+    std::vector<Suppression*> mNonHashSuppressions;
 };
 
 struct Suppressions
