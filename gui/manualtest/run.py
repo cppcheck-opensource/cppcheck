@@ -194,7 +194,7 @@ def main():
         emit('start', total=len(selected), out=args.out, edition=args.edition)
         for index, test in enumerate(selected, 1):
             name = test['name']
-            emit('test', index=index, name=name, steps=len(test['script']))
+            emit('test', index=index, name=name, file=test['file'], steps=len(test['script']))
             t0 = time.time()
             try:
                 res = run_test(os.path.abspath(args.app), test, args.out,

@@ -39,7 +39,7 @@ class Job:
         self.editions = [e for e, _ in cmds]
         self.lines, self.reports, self.rc = [], [], None
         self.started = time.time()
-        self.progress = {'total': 0, 'index': 0, 'test': '', 'step': 0, 'steps': 0, 'label': '', 'base': None,
+        self.progress = {'total': 0, 'index': 0, 'test': '', 'testfile': '', 'step': 0, 'steps': 0, 'label': '', 'base': None,
                          'edition': None, 'results': []}
         self.proc, self.stopped, self.lock = None, False, threading.Lock()
         threading.Thread(target=self.work, args=(cmds,), daemon=True).start()
@@ -84,14 +84,15 @@ class Job:
         except (ValueError, KeyError, TypeError):
             return False
         if kind == 'start':
-            p.update(total=e['total'], index=0, test='', step=0, steps=0, label='', edition=e.get('edition'),
+            p.update(total=e['total'], index=0, test='', testfile='', step=0, steps=0, label='', edition=e.get('edition'),
                      base='/results/' + os.path.relpath(e['out'], self.out_dir))
         elif kind == 'test':
-            p.update(index=e['index'], test=e['name'], step=0, steps=e['steps'], label='')
+            p.update(index=e['index'], test=e['name'], testfile=e.get('file', ''), step=0, steps=e['steps'], label='')
         elif kind == 'step':
             p.update(step=e['step'], steps=e['steps'], label=e['label'])
         elif kind == 'result':
             p['results'].append(dict({k: e[k] for k in ('name', 'status', 'reason', 'seconds', 'crash', 'slug')},
+                                     file=e.get('file', ''),
                                      shots=e.get('shots', []), edition=p['edition'], base=p['base']))
         return True
 

@@ -336,7 +336,7 @@ function showJob(j, label) {
   if (run && p.total) {
     bar.max = 100; bar.value = 100 * ((Math.max(p.index, 1) - 1 + (p.steps ? p.step / p.steps : 0)) / p.total);
     $('#jobtext').textContent = (multi && p.edition ? p.edition + ': ' : '') +
-      (p.index ? 'Test ' + p.index + ' of ' + p.total + ': ' + p.test : 'Starting...');
+      (p.index ? 'Test ' + p.index + ' of ' + p.total + ': ' + p.test + (p.testfile ? ' (' + p.testfile + ')' : '') : 'Starting...');
     $('#jobstep').textContent = p.steps ? 'Step ' + p.step + ' of ' + p.steps + (p.label ? ': ' + p.label : '') : '';
   } else {
     bar.removeAttribute('value');
@@ -354,7 +354,7 @@ function showJob(j, label) {
   const table = rs.length ? '<table>' + rs.map(x => {
     const f = ext => x.base + '/' + encodeURIComponent(x.slug) + ext;
     return `<tr><td><span class="st st-${x.status}">${x.status}</span>${x.crash ? ' <span class="st st-CRASH">CRASH</span>' : ''}</td>
-      <td><strong>${esc(x.name)}</strong>${multi ? ` <span class="chip">${esc(x.edition)}</span>` : ''}<div class="muted">${Math.round(x.seconds)} s ·
+      <td><strong>${esc(x.name)}</strong>${x.file ? ` <span class="muted">${esc(x.file)}</span>` : ''}${multi ? ` <span class="chip">${esc(x.edition)}</span>` : ''}<div class="muted">${Math.round(x.seconds)} s ·
         <a href="${f('.txt')}" target="_blank">steps</a> · <a href="${f('.png')}" target="_blank">screenshot</a> ·
         <a href="${f('.app.log')}" target="_blank">app log</a></div>${(x.shots || []).length ? `
         <details><summary class="muted">screenshots after the steps (${x.shots.length})</summary><div class="shots">${x.shots.map(s =>
