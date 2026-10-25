@@ -68,8 +68,9 @@ Feature: Results list
     Given the project file {project:basic-project}/basic.cppcheck is opened from the File menu
     And the analysis is done
     When I expand a.c in the results
-    And I right click on the first nullPointer error and click Hide
-    And I open View > Show Hidden
+    And I right click on the first nullPointer error and click Hide all with id
+    Then the a.c results are hidden
+    When I open View > Show Hidden
     Then the error that was hidden is shown again
 
   @id:t90bf32e9 @project:basic-project

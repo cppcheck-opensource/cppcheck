@@ -794,104 +794,150 @@
         "do": "click",
         "name": "File",
         "role": "menu item",
-        "label": "Open the File menu"
+        "label": "Given the project file is opened from the File menu: open File menu"
       },
       {
         "do": "click",
-        "name": "Open Project File",
+        "name": "Open Project File...",
         "role": "menu item",
-        "label": "Choose Open Project File"
+        "label": "Given the project file is opened from the File menu: Open Project File"
+      },
+      {
+        "do": "wait",
+        "name": "Select Project File",
+        "role": "dialog",
+        "label": "Project file dialog is shown"
       },
       {
         "do": "settext",
         "name": "File name:",
         "role": "text",
         "value": "{project:basic-project}/basic.cppcheck",
-        "label": "Enter the project file path"
+        "label": "Enter the project file basic.cppcheck"
       },
       {
-        "do": "click",
-        "name": "Open",
-        "role": "button",
-        "nth": 1,
-        "label": "Confirm the file dialog"
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Open the project file"
       },
       {
         "expect": "visible",
-        "name": "src/b.c",
-        "role": "table cell",
-        "timeout": 30,
-        "label": "Analysis is done and results are shown"
+        "name": "Project: basic.cppcheck",
+        "role": "frame",
+        "timeout": 10,
+        "label": "The project is loaded"
       },
       {
-        "do": "sleep",
-        "seconds": 3,
-        "label": "Let the analysis finish completely"
-      },
-      {
-        "do": "click",
+        "expect": "visible",
         "name": "src/a.c",
         "role": "table cell",
-        "mouse": true,
-        "label": "Select a.c in the results"
+        "timeout": 30,
+        "label": "And the analysis is done: a.c is in the results"
+      },
+      {
+        "expect": "state",
+        "name": "Stop analysis",
+        "role": "button",
+        "not_state": "enabled",
+        "timeout": 30,
+        "label": "And the analysis is done"
+      },
+      {
+        "do": "focus",
+        "name": "src/a.c",
+        "role": "table cell",
+        "label": "When I expand a.c in the results: select a.c"
       },
       {
         "do": "key",
         "keys": [
           "Right"
         ],
-        "label": "Expand a.c in the results"
+        "label": "When I expand a.c in the results"
       },
       {
         "expect": "visible",
         "name": "Null pointer dereference: p",
         "role": "table cell",
-        "label": "The first nullPointer error is listed"
+        "label": "The first nullPointer error of a.c is shown"
+      },
+      {
+        "expect": "visible",
+        "name": "Null pointer dereference: q",
+        "role": "table cell",
+        "label": "The second nullPointer error of a.c is shown"
       },
       {
         "do": "rightclick",
         "name": "Null pointer dereference: p",
         "role": "table cell",
-        "label": "Right click on the first nullPointer error"
+        "label": "And I right click on the first nullPointer error"
+      },
+      {
+        "expect": "ocr",
+        "contains": "Hide all with id",
+        "label": "The context menu has Hide all with id"
       },
       {
         "do": "key",
         "keys": [
-          "Down",
-          "Down",
-          "Down",
+          "Up",
+          "Up",
+          "Up"
+        ],
+        "label": "Move to Hide all with id in the context menu"
+      },
+      {
+        "do": "key",
+        "keys": [
           "Return"
         ],
-        "label": "Click Hide in the context menu"
+        "label": "And click Hide all with id"
       },
       {
         "expect": "gone",
         "name": "Null pointer dereference: p",
+        "label": "Then the a.c results are hidden: first nullPointer error"
+      },
+      {
+        "expect": "gone",
+        "name": "Null pointer dereference: q",
+        "label": "Then the a.c results are hidden: second nullPointer error"
+      },
+      {
+        "expect": "visible",
+        "name": "Variable 'p' can be declared as pointer to const",
         "role": "table cell",
-        "label": "The error is hidden"
+        "label": "Other a.c results are still shown"
       },
       {
         "do": "click",
         "name": "View",
         "role": "menu item",
-        "label": "Open the View menu"
+        "label": "When I open View menu"
       },
       {
         "do": "click",
         "name": "Show hidden",
         "role": "menu item",
-        "label": "Click Show Hidden"
+        "label": "When I open View > Show Hidden"
       },
       {
         "expect": "visible",
         "name": "Null pointer dereference: p",
         "role": "table cell",
-        "timeout": 5,
-        "observed_fail": true,
-        "label": "The hidden error is shown again"
+        "label": "Then the error that was hidden is shown again"
+      },
+      {
+        "expect": "visible",
+        "name": "Null pointer dereference: q",
+        "role": "table cell",
+        "label": "Then the other hidden nullPointer error is shown again"
       }
     ],
-    "script_for": "1675a0aff0c3"
+    "script_for": "0b1c29212e8d"
   },
   "t90bf32e9": {
     "script": [
