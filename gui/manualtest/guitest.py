@@ -94,6 +94,13 @@ def start(args):
     home = args.home or os.path.join(tmp, 'home')
     os.makedirs(runtime, mode=0o700)
     os.makedirs(home, exist_ok=True)
+    # Cppcheck Premium needs its license file in HOME
+    lic = os.path.join('.cppcheckpremium', 'cppcheck-premium.lic')
+    src_lic = os.path.join(os.path.expanduser('~'), lic)
+    dst_lic = os.path.join(home, lic)
+    if os.path.isfile(src_lic) and os.path.realpath(src_lic) != os.path.realpath(dst_lic):
+        os.makedirs(os.path.dirname(dst_lic), exist_ok=True)
+        shutil.copy2(src_lic, dst_lic)
     pids = []
 
     def spawn(cmd, env, **kw):

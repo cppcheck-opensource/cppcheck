@@ -60,7 +60,7 @@ Feature: Open and create projects
       | y2038  |
       | thread |
 
-  @id:tf6da2cfd @project:basic-project
+  @id:tf6da2cfd @project:basic-project @edition:opensource
   Scenario: Add the Misra addon to a project
     Given the project file {project:basic-project}/basic.cppcheck is opened from the File menu
     And the analysis is done
