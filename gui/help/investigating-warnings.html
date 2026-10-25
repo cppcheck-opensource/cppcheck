@@ -1,22 +1,183 @@
 <html>
 <head>
 <title>Investigating warnings</title>
+<link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
 
 <h1>Investigating warnings</h1>
 
-<p>When you have run the analysis it is time to look at the results.</p>
+<p>When the analysis is done (or while it is still running) it is time to look
+at the results. This page explains how to read a warning, how to decide if it
+is a real bug, and what you can do with it.</p>
 
-<p>If you click on a warning then the corresponding code will be shown in the
-&quot;Warning details&quot; at the bottom.</p>
+<h2>Reading a warning</h2>
 
-<p>You can right click warnings to get options. The difference of
-&quot;hiding&quot; a warning and &quot;suppressing&quot; a warning is that
-the suppression is permanent and hiding the warning is only temporary. When
-suppressing warning(s), that is saved in the project file.
+<p class="figure"><img src="images/main-window.png"></p>
 
+<p>Click a warning in the results list. The lower part of the window then
+shows:</p>
+<ul>
+<li>the <b>id</b> of the warning, for example <code>arrayIndexOutOfBounds</code>.
+    The id identifies the kind of problem. Search for it in the Cppcheck
+    documentation or on the internet to learn more about it,</li>
+<li>the <b>CWE</b> number, if there is one. CWE (Common Weakness Enumeration)
+    is a standard list of software weaknesses. Look it up at
+    <a href="https://cwe.mitre.org/">cwe.mitre.org</a> for a general
+    description of the problem,</li>
+<li>the full <b>message</b>. It can be longer than the summary in the list,</li>
+<li>the <b>source code</b> with the line of the warning highlighted.</li>
+</ul>
+
+<p>In the example above Cppcheck says that <code>buf[16]</code> is accessed at
+index 16. The array has 16 elements, so the valid indexes are 0 to 15. The loop
+condition <code>i &lt;= BUFFER_SIZE</code> should be
+<code>i &lt; BUFFER_SIZE</code>.</p>
+
+<h3>Notes: the path to the bug</h3>
+
+<p>Many warnings have notes. Click the arrow in front of the warning to see
+them. Notes show the steps that lead to the problem, in order, for
+example:</p>
+<pre>Assuming that condition 'i&lt;=16' is not redundant   (line 9)
+Array index out of bounds                         (line 10)</pre>
+
+<p>Click a note to show its line in the code view. For a bug that depends on
+values, the notes usually tell you where the value comes from, which
+conditions Cppcheck assumes, and where the bad value is used. Follow the notes
+to understand the warning.</p>
+
+<p>A note like <i>Assuming that condition 'x' is not redundant</i> means that
+Cppcheck uses the condition in your code as a hint about possible values. For
+example, if the code checks <code>if (p == NULL)</code> after it has already
+used <code>p</code>, then either the check is not needed or the code can use a
+null pointer. Cppcheck warns because one of them must be wrong.</p>
+
+<h2>Is it a real bug?</h2>
+
+<p>Cppcheck tries to avoid false warnings, but no static analysis tool is
+perfect. To decide if a warning is right:</p>
+<ol>
+<li>Read the message and the notes, and look at the code they point to.</li>
+<li>Think about the values Cppcheck mentions. Can they really happen? Look at
+    the callers of the function if needed.</li>
+<li>Check if Cppcheck may be missing information. Warnings in code that uses
+    macros or types that Cppcheck could not see, because an include path is
+    missing, can be wrong. Look for <i>missingInclude</i> information
+    messages and fix the include paths in the project.</li>
+<li>Check if a library configuration is missing. If your code calls a
+    function that never returns (like a fatal error handler) and Cppcheck
+    does not know that, it may warn about code after the call. Select the
+    library in the project or write a configuration for your own functions.
+    See <a href="projectfiledialog.html#libraries">Libraries</a>.</li>
+</ol>
+
+<p>Even if a warning is not a bug today, it can point to code that is hard to
+understand or easy to break. Many developers prefer to change the code so that
+the warning goes away, instead of suppressing it.</p>
+
+<p>If you are sure Cppcheck is wrong, suppress the warning (see
+<a href="suppressions.html">Hiding and suppressing warnings</a>). It is also
+very helpful if you report the false warning, with a small code example, at
+<a href="https://trac.cppcheck.net/">https://trac.cppcheck.net/</a> or in the
+Cppcheck forum.</p>
+
+<h3>Inconclusive warnings</h3>
+
+<p>Sometimes Cppcheck finds something suspicious but can not be sure that it
+is a bug. These <i>inconclusive</i> warnings are not shown by default. Enable
+<i>Check for inconclusive errors also</i> in the
+<a href="preferences.html">preferences</a> to see them. An extra
+<i>Inconclusive</i> column then marks them. Expect more false warnings among
+them.</p>
+
+<h2>Where to start</h2>
+
+<p>The first analysis of a large project can give many warnings. Some
+tips:</p>
+<ul>
+<li>Start with <b>errors</b>, then <b>warnings</b>. Use the
+    <a href="severities.html">severity</a> buttons in the toolbar to hide the
+    other severities.</li>
+<li>Look at the <b>information</b> messages early. They are not bugs, but they
+    tell you about problems in the configuration, such as headers that can
+    not be found. Fixing them makes the other results better.</li>
+<li>Sort by the <i>Id</i> column to handle one kind of warning at a time. If
+    one kind of warning is wrong everywhere, it may be a configuration
+    problem.</li>
+<li>Use the quick filter to find warnings about a function, a variable or a
+    file.</li>
+<li>With a build dir, sort by <i>Since date</i> to see the newest warnings
+    first. New warnings are the easiest to fix, because the code is fresh in
+    your mind.</li>
+<li>Use <a href="tagging.html">tags</a> to remember what you have looked
+    at.</li>
+</ul>
+
+<h2>Opening the code in an editor</h2>
+
+<p>Double-click a warning, or select it and press Enter, to open the file in
+your default editor at the line of the warning. You can also right-click a
+warning and choose an editor at the top of the context menu.</p>
+
+<p>Editors are configured in the <a href="preferences.html#applications">
+preferences</a> on the <i>Applications</i> tab. On some systems the GUI finds
+installed editors automatically.</p>
+
+<p>If the file is not found, for example because the results were loaded from
+an XML file created on another computer, the GUI asks you to select the
+folder where the file is.</p>
+
+<a name="contextmenu"></a>
+<h2>The context menu</h2>
+
+<p>Right-click one or more selected warnings to get the context menu. Select
+several warnings with Ctrl+click or Shift+click.</p>
+
+<p class="figure"><img src="images/context-menu.png"></p>
+
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Command</th><th>Description</th></tr>
+<tr><td>(editors)</td><td>Open the file of the warning in this editor.</td></tr>
+<tr><td>Recheck N file(s)</td><td>Analyze the selected files again. Select
+    file items (the top level items in the list) to enable this. Useful after
+    you have fixed something in a file. Not available while an analysis is
+    running or for results loaded from an XML file.</td></tr>
+<tr><td>Copy</td><td>Copy the selected warnings, notes or file names to the
+    clipboard as text, in the format
+    <code>file:line:column:severity: summary [id]</code>, followed by one line
+    for each note. Paste it in a bug report or a chat.</td></tr>
+<tr><td>Hide N result(s)</td><td>Hide the selected warnings until the next
+    analysis. See <a href="suppressions.html#hide">Hiding warnings</a>.</td></tr>
+<tr><td>Hide all with id</td><td>Hide all warnings with the same id as the
+    selected warning, until the next analysis.</td></tr>
+<tr><td>Suppress selected id(s)</td><td>Suppress all warnings with the ids of
+    the selected warnings, in all files. The suppression is saved in the
+    project file, so the warnings are not reported again. See
+    <a href="suppressions.html">Hiding and suppressing warnings</a>.</td></tr>
+<tr><td>Open containing folder</td><td>Open the folder of the file in your
+    file manager.</td></tr>
+<tr><td>Tag</td><td>Give the selected warnings a tag. Only shown if the
+    project has tags. See <a href="tagging.html">Tagging warnings</a>.</td></tr>
+</table>
+
+<h2>Analyzing again</h2>
+
+<p>After you have changed the code:</p>
+<ul>
+<li>Right-click a file in the results list and choose <i>Recheck</i> to
+    analyze just that file again.</li>
+<li>Use <i>Reanalyze all files</i> in the toolbar to analyze everything again.
+    With a build dir only changed files are analyzed again, so this is
+    fast.</li>
+<li>Use <i>Analyze &gt; Reanalyze modified files</i> (Ctrl+R) to analyze only
+    the files that changed since the last analysis. See
+    <a href="mainwindow.html">The main window</a> for when this is
+    available.</li>
+</ul>
+
+<p class="nav">Previous: <a href="projectfiledialog.html">Project files</a> |
+Next: <a href="severities.html">Severities and report types</a></p>
 
 </body>
 </html>
-

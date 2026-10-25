@@ -1,0 +1,190 @@
+<html>
+<head>
+<title>Troubleshooting</title>
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+
+<h1>Troubleshooting</h1>
+
+<p>Answers to common questions and problems.</p>
+
+<h2>I get many "Include file not found" messages</h2>
+
+<p>There are two kinds:</p>
+<ul>
+<li><b>missingIncludeSystem</b>: a standard or system header, such as
+    <code>&lt;stdio.h&gt;</code> or <code>&lt;vector&gt;</code>, was not found.
+    This is normal. Cppcheck does not need these headers, because it knows the
+    standard library and the libraries you select in the project. Hide the
+    <i>information</i> severity, or suppress the id
+    <code>missingIncludeSystem</code> in the project.</li>
+<li><b>missingInclude</b>: one of your own headers was not found. Fix this:
+    add the folder of the header to the <a href="projectfiledialog.html#includepaths">
+    include paths</a> of the project, or import the project from your build
+    system so that Cppcheck gets the same include paths as the compiler.</li>
+</ul>
+
+<p>Use <i>Analyze &gt; Check configuration (defines, includes)</i> to get a
+list of the configuration problems of the project.</p>
+
+<h2>Cppcheck reports a syntax error or an unknown macro</h2>
+
+<p>Cppcheck does not analyze a file it can not parse. A message like <i>There
+is an unknown macro here somewhere. Configuration is required.</i> means that
+the code uses a macro that Cppcheck does not know, in a place where the code
+can not be parsed without knowing what the macro means. For example:</p>
+
+<pre>DECLARE_HANDLER(foo)    // what is this?
+{
+    ...
+}</pre>
+
+<p>To fix it, do one of these:</p>
+<ul>
+<li>add the include path of the header that defines the macro,</li>
+<li>select the library that the macro belongs to (for example <i>qt</i> for
+    <code>Q_OBJECT</code> and <code>signals</code>, or <i>windows</i> for the
+    Windows API macros),</li>
+<li>give the macro a value in <a href="projectfiledialog.html#defines">
+    Defines</a>, for example <code>DECLARE_HANDLER(x)=void x()</code>, or in a
+    library configuration file.</li>
+</ul>
+
+<p>If the code is correct and compiles, but Cppcheck still reports a syntax
+error, please report it as a Cppcheck bug.</p>
+
+<h2>The analysis is slow</h2>
+
+<ul>
+<li>Use a <a href="projectfiledialog.html#builddir">build dir</a>. Then
+    unchanged files are not analyzed again.</li>
+<li>Increase the <i>Number of threads</i> in the
+    <a href="preferences.html">preferences</a>.</li>
+<li>Use the <i>Reduced</i> or <i>Normal</i> check level instead of
+    <i>Exhaustive</i>.</li>
+<li>Make sure that <i>Force checking all #ifdef configurations</i> is off in
+    the preferences.</li>
+<li>Use <a href="projectfiledialog.html#defines">undefines</a> to skip
+    configurations you do not need, or import a compile database: then each
+    file is analyzed with one configuration only.</li>
+<li>Do not add system include folders (such as <code>/usr/include</code>) to
+    the include paths.</li>
+<li><a href="projectfiledialog.html#exclude">Exclude</a> generated code and
+    3rd party code.</li>
+<li>Use <i>View &gt; Thread Details</i> to find files that take long; see
+    <a href="tools.html#threads">Thread details</a>.</li>
+</ul>
+
+<h2>A warning is wrong (false positive)</h2>
+
+<p>First check the configuration: missing include paths and missing library
+configurations are common causes. For example, if your code calls a function
+that never returns and Cppcheck does not know that, it can report problems in
+code that is never reached. Configure the function as <i>noreturn</i> in a
+library configuration (see <a href="tools.html#libraryeditor">Library
+editor</a>).</p>
+
+<p>If the configuration is right, suppress the warning (see
+<a href="suppressions.html">Hiding and suppressing warnings</a>) and please
+report the false positive to the Cppcheck project with a small code example.
+Use the <a href="tools.html#scratchpad">scratchpad</a> to make the example as
+small as possible.</p>
+
+<h2>A bug that I know of is not found</h2>
+
+<ul>
+<li>Check that the severity of the warning is shown in the severity toolbar,
+    that the quick filter is empty, that no warnings are hidden (<i>View &gt;
+    Show hidden</i>) and that <i>View &gt; Report</i> is <i>Normal</i>.</li>
+<li>Check that the file was analyzed: look in the <i>Analysis Log</i>.</li>
+<li>Check that the code was analyzed with the right configuration. If the
+    code is in an <code>#ifdef</code> block, it may only be analyzed when a
+    macro is defined.</li>
+<li>Select the libraries that the code uses, so that Cppcheck knows how their
+    functions behave.</li>
+<li>Try the <i>Exhaustive</i> check level and enable inconclusive warnings in
+    the preferences.</li>
+<li>Bugs that span several files need a build dir (whole program
+    analysis).</li>
+</ul>
+
+<p>Cppcheck can not find all bugs. If you think the bug should be found,
+create a small example in the scratchpad and report it to the Cppcheck
+project.</p>
+
+<a name="checklibrary"></a>
+<h2>Checking the library configuration</h2>
+
+<p>Select <i>Analyze &gt; Reanalyze and check library</i>. The project is
+analyzed again, and Cppcheck reports <i>information</i> messages for functions
+it has no configuration for, for example:</p>
+<ul>
+<li><code>checkLibraryNoReturn</code>: Cppcheck does not know if the function
+    can return. Configure <i>noreturn</i> for it.</li>
+<li><code>checkLibraryFunction</code>: the function is not configured at all.
+    If it is a library function, configure it so that Cppcheck can check how it
+    is used.</li>
+</ul>
+
+<p>Write the missing configuration in a <code>.cfg</code> file with the
+<a href="tools.html#libraryeditor">library editor</a> or a text editor, put it
+in the folder of the project file and select it on the <i>Types and
+Functions</i> tab of the project.</p>
+
+<h2>Addons do not work</h2>
+
+<ul>
+<li>Addons are Python scripts. Install Python, and if it is not in the PATH,
+    set the <i>Python binary</i> in the <a href="preferences.html#addons">
+    preferences</a>.</li>
+<li>The project needs a <a href="projectfiledialog.html#builddir">build
+    dir</a>. Without it, the analysis is stopped with the message <i>To check
+    the project using addons, you need a build directory</i>.</li>
+<li>If an addon is shown as <i>(Not found)</i> in the project dialog, the
+    Cppcheck installation is incomplete.</li>
+</ul>
+
+<h2>Clang-Tidy is "not found"</h2>
+
+<p>Install Clang-Tidy (it is part of LLVM/Clang). If it is not in the PATH, set
+the <a href="preferences.html#clang">Clang path</a> in the preferences to the
+folder where <code>clang-tidy</code> is.</p>
+
+<h2>Double-clicking a warning does nothing</h2>
+
+<p>No editor is configured, or no default editor is selected. Add your editor
+on the <a href="preferences.html#applications">Applications</a> tab of the
+preferences and click <i>Set as default</i>. If the editor does not start,
+check the executable path and the parameters.</p>
+
+<h2>The results are old</h2>
+
+<p>When you open a project with a build dir, the results of the last analysis
+are shown, not a new analysis. Click <i>Reanalyze all files</i> to analyze the
+current code.</p>
+
+<h2>"Failed to load std.cfg"</h2>
+
+<p>The GUI can not find its data files. The Cppcheck installation is broken;
+reinstall Cppcheck. If you built Cppcheck yourself, make sure the
+<code>cfg</code> folder is installed next to the program, or configure the data
+folder with the <code>--data-dir</code> <a href="commandline.html">command line
+option</a>.</p>
+
+<h2>Where can I get more help?</h2>
+
+<ul>
+<li>The Cppcheck manual:
+    <a href="https://cppcheck.sourceforge.io/manual.pdf">https://cppcheck.sourceforge.io/manual.pdf</a></li>
+<li>The Cppcheck home page:
+    <a href="https://cppcheck.sourceforge.io/">https://cppcheck.sourceforge.io/</a></li>
+<li>The bug tracker:
+    <a href="https://trac.cppcheck.net/">https://trac.cppcheck.net/</a></li>
+</ul>
+
+<p class="nav">Previous: <a href="commandline.html">Command line options</a> |
+Back to <a href="index.html">Contents</a></p>
+
+</body>
+</html>

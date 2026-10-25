@@ -5,46 +5,136 @@
     <filterSection>
         <toc>
             <section title="Cppcheck GUI help" ref="index.html">
+                <section title="Getting started" ref="walkthrough.html"/>
+                <section title="The main window" ref="mainwindow.html"/>
+                <section title="Analyzing without a project" ref="standalone-analysis.html"/>
+                <section title="Project files" ref="projectfiledialog.html">
+                    <section title="Paths and Defines" ref="projectfiledialog.html#paths"/>
+                    <section title="Types and Functions" ref="projectfiledialog.html#types"/>
+                    <section title="Analysis" ref="projectfiledialog.html#analysis"/>
+                    <section title="Warning options" ref="projectfiledialog.html#warningoptions"/>
+                    <section title="Addons" ref="projectfiledialog.html#addons"/>
+                </section>
                 <section title="Investigating warnings" ref="investigating-warnings.html"/>
+                <section title="Severities and report types" ref="severities.html"/>
+                <section title="Hiding and suppressing warnings" ref="suppressions.html"/>
+                <section title="Tagging warnings" ref="tagging.html"/>
+                <section title="Results files, printing and statistics" ref="reports.html"/>
+                <section title="Scratchpad, library editor and other tools" ref="tools.html"/>
                 <section title="Preferences" ref="preferences.html"/>
-                <section title="Project file dialog" ref="projectfiledialog.html"/>
-                <section title="Severities" ref="severities.html"/>
-                <section title="Standalone analysis" ref="standalone-analysis.html"/>
-                <section title="Tagging" ref="tagging.html"/>
-                <section title="Quick walk through" ref="walkthrough.html"/>
+                <section title="Command line options" ref="commandline.html"/>
+                <section title="Troubleshooting" ref="troubleshooting.html"/>
             </section>
         </toc>
         <keywords>
+            <keyword name="Addons" ref="projectfiledialog.html#addons"/>
+            <keyword name="Applications" ref="preferences.html#applications"/>
+            <keyword name="Autosar" ref="severities.html#reports"/>
+            <keyword name="Build dir" ref="projectfiledialog.html#builddir"/>
+            <keyword name="Cert" ref="severities.html#reports"/>
+            <keyword name="Check level" ref="projectfiledialog.html#analysis"/>
+            <keyword name="Clang" ref="preferences.html#clang"/>
+            <keyword name="Clang-Tidy" ref="projectfiledialog.html#addons"/>
+            <keyword name="Code editor style" ref="preferences.html#codeeditor"/>
+            <keyword name="Command line" ref="commandline.html"/>
+            <keyword name="Compile database" ref="projectfiledialog.html#import"/>
+            <keyword name="Context menu" ref="investigating-warnings.html#contextmenu"/>
+            <keyword name="CSV" ref="reports.html#save"/>
+            <keyword name="Defines" ref="projectfiledialog.html#defines"/>
+            <keyword name="Editor" ref="preferences.html#applications"/>
             <keyword name="Error" ref="severities.html"/>
+            <keyword name="Exclude" ref="projectfiledialog.html#exclude"/>
+            <keyword name="False positive" ref="troubleshooting.html"/>
+            <keyword name="Filter" ref="mainwindow.html"/>
+            <keyword name="Hide" ref="suppressions.html#hide"/>
+            <keyword name="Import project" ref="projectfiledialog.html#import"/>
+            <keyword name="Include paths" ref="projectfiledialog.html#includepaths"/>
+            <keyword name="Inconclusive" ref="investigating-warnings.html"/>
+            <keyword name="Information" ref="severities.html"/>
+            <keyword name="Inline suppressions" ref="suppressions.html#inline"/>
+            <keyword name="Keyboard shortcuts" ref="mainwindow.html"/>
+            <keyword name="Libraries" ref="projectfiledialog.html#libraries"/>
+            <keyword name="Library editor" ref="tools.html#libraryeditor"/>
+            <keyword name="Misra" ref="severities.html#reports"/>
+            <keyword name="Missing include" ref="troubleshooting.html"/>
+            <keyword name="Notes" ref="investigating-warnings.html"/>
+            <keyword name="Open XML" ref="reports.html#open"/>
             <keyword name="Performance" ref="severities.html"/>
+            <keyword name="Platform" ref="projectfiledialog.html#platform"/>
             <keyword name="Portability" ref="severities.html"/>
+            <keyword name="Preferences" ref="preferences.html"/>
+            <keyword name="Print" ref="reports.html#print"/>
             <keyword name="Project" ref="projectfiledialog.html"/>
+            <keyword name="Python" ref="preferences.html#addons"/>
+            <keyword name="Report types" ref="severities.html#reports"/>
+            <keyword name="Root path" ref="projectfiledialog.html#rootpath"/>
+            <keyword name="Save results" ref="reports.html#save"/>
+            <keyword name="Scratchpad" ref="tools.html#scratchpad"/>
+            <keyword name="Severities" ref="severities.html"/>
+            <keyword name="Statistics" ref="reports.html#statistics"/>
             <keyword name="Style" ref="severities.html"/>
+            <keyword name="Suppressions" ref="suppressions.html"/>
+            <keyword name="Syntax error" ref="troubleshooting.html"/>
             <keyword name="Tag" ref="tagging.html"/>
+            <keyword name="Thread details" ref="tools.html#threads"/>
+            <keyword name="Undefines" ref="projectfiledialog.html#defines"/>
+            <keyword name="Visual Studio" ref="projectfiledialog.html#import"/>
             <keyword name="Warning" ref="severities.html"/>
         </keywords>
         <files>
+          <file>style.css</file>
           <file>index.html</file>
-          <file>images/index-mainwindow.png</file>
-          <file>investigating-warnings.html</file>
-          <file>preferences.html</file>
+          <file>walkthrough.html</file>
+          <file>mainwindow.html</file>
+          <file>standalone-analysis.html</file>
           <file>projectfiledialog.html</file>
+          <file>investigating-warnings.html</file>
           <file>severities.html</file>
+          <file>suppressions.html</file>
+          <file>tagging.html</file>
+          <file>reports.html</file>
+          <file>tools.html</file>
+          <file>preferences.html</file>
+          <file>commandline.html</file>
+          <file>troubleshooting.html</file>
+          <file>images/add-application.png</file>
+          <file>images/context-menu-tag.png</file>
+          <file>images/context-menu.png</file>
+          <file>images/library-editor.png</file>
+          <file>images/main-window.png</file>
+          <file>images/menu-analyze.png</file>
+          <file>images/menu-edit.png</file>
+          <file>images/menu-file.png</file>
+          <file>images/menu-help.png</file>
+          <file>images/menu-view-report.png</file>
+          <file>images/menu-view.png</file>
+          <file>images/new-suppression.png</file>
+          <file>images/preferences-addons.png</file>
+          <file>images/preferences-applications.png</file>
+          <file>images/preferences-clang.png</file>
+          <file>images/preferences-code-editor.png</file>
+          <file>images/preferences-general.png</file>
+          <file>images/preferences-language.png</file>
+          <file>images/preferences-reports.png</file>
+          <file>images/projectfile-addons.png</file>
+          <file>images/projectfile-analysis.png</file>
+          <file>images/projectfile-import.png</file>
+          <file>images/projectfile-paths-and-defines.png</file>
+          <file>images/projectfile-types-and-functions.png</file>
+          <file>images/projectfile-warning-options.png</file>
+          <file>images/quick-filter.png</file>
+          <file>images/report-misra.png</file>
+          <file>images/scratchpad.png</file>
           <file>images/severities-error.png</file>
-          <file>images/severities-warning.png</file>
-          <file>images/severities-style.png</file>
+          <file>images/severities-information.png</file>
           <file>images/severities-performance.png</file>
           <file>images/severities-portability.png</file>
-          <file>images/severities-information.png</file>
-          <file>standalone-analysis.html</file>
-          <file>tagging.html</file>
-          <file>walkthrough.html</file>
-          <file>images/walkthrough-analysis.png</file>
-          <file>images/walkthrough-library.png</file>
-          <file>images/walkthrough-toolbar-severities.png</file>
-          <file>images/walkthrough-import-project.png</file>
-          <file>images/walkthrough-new-project.png</file> 
-          <file>images/walkthrough-warning-menu.png</file>
+          <file>images/severities-style.png</file>
+          <file>images/severities-warning.png</file>
+          <file>images/statistics-previous-scan.png</file>
+          <file>images/statistics-project.png</file>
+          <file>images/statistics-statistics.png</file>
+          <file>images/toolbar.png</file>
         </files>
     </filterSection>
 </QtHelpProject>

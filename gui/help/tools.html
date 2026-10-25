@@ -1,0 +1,146 @@
+<html>
+<head>
+<title>Scratchpad, library editor and other tools</title>
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+
+<h1>Scratchpad, library editor and other tools</h1>
+
+<a name="scratchpad"></a>
+<h2>Scratchpad</h2>
+
+<p>The scratchpad lets you analyze a piece of code without saving it in a file.
+Use it to try out how Cppcheck handles some code, to reduce a false warning to
+a small example before you report it, or to check a code snippet from a
+review.</p>
+
+<p>Open it with <i>View &gt; Show Scratchpad...</i>.</p>
+
+<p class="figure"><img src="images/scratchpad.png"></p>
+
+<ol>
+<li>Type or paste C or C++ code in the editor.</li>
+<li>Optionally enter a file name. It is mainly used to decide the language:
+    <code>test.c</code> is analyzed as C and <code>test.cpp</code> as C++. If
+    you leave it empty, the code is analyzed as C++.</li>
+<li>Click <i>Check</i>.</li>
+</ol>
+
+<p>The results are shown in the results list of the main window, and they
+replace the results that were shown before. The code is analyzed with the
+settings of the open project, or with the settings of the <i>Analyze</i> menu
+if no project is open. The code can not include your own headers, since it is
+not stored in a file.</p>
+
+<p>The scratchpad keeps its text while the GUI is running, so you can change
+the code and click <i>Check</i> again.</p>
+
+<a name="libraryeditor"></a>
+<h2>Library editor</h2>
+
+<p>A library configuration file (<code>.cfg</code>) tells Cppcheck how the
+functions of a library behave. Cppcheck comes with configurations for many
+libraries (see <a href="projectfiledialog.html#libraries">Libraries</a>). For
+your own libraries, or libraries that have no configuration, you can write one
+yourself. The library editor helps you with the function part of the
+configuration.</p>
+
+<p>Open it with <i>View &gt; Library Editor...</i>.</p>
+
+<p class="figure"><img src="images/library-editor.png"></p>
+
+<h3>Working with files</h3>
+
+<p>Click <i>Open</i> to load an existing <code>.cfg</code> file, <i>Save</i>
+to save your changes and <i>Save as</i> to save to a new file. To start a new
+configuration, add functions and click <i>Save as</i>.</p>
+
+<p>Save your configuration in the folder of your project file. It then
+appears in the <i>Libraries</i> list on the <i>Types and Functions</i> tab of
+the project dialog, where you can select it.</p>
+
+<p>The editor only shows the functions of a configuration. Other parts of the
+file, such as memory and resource allocation functions, defines and types, are
+kept when you save. If a file contains elements that the editor does not know,
+it can not be opened in the editor; use a text editor for such files.</p>
+
+<h3>Functions</h3>
+
+<p>The list on the left shows the functions of the configuration. Type in
+<i>Filter</i> to show only functions whose names contain the text. Click
+<i>Sort</i> to sort the list by name.</p>
+
+<p>Click <i>Add</i> to add a function. Enter the function name and the number
+of arguments. If several functions have the same properties, you can enter
+their names separated by commas; they then share one entry.</p>
+
+<p>Select a function to see and change its properties:</p>
+
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Property</th><th>Meaning</th></tr>
+<tr><td>Comments</td><td>Your notes about the function. They are saved as
+    an XML comment before the function in the file.</td></tr>
+<tr><td>noreturn</td><td><i>True</i> if the function never returns, like
+    <code>exit()</code> or a fatal error handler. Then Cppcheck knows that the
+    code after a call is not reached. <i>False</i> if it always returns.
+    <i>Unknown</i> if it depends.</td></tr>
+<tr><td>return value must be used</td><td>Warn if the return value is ignored,
+    for example for functions that return an error code or a new object.</td></tr>
+<tr><td>ignore function in leaks checking</td><td>The function does not take
+    ownership of a pointer that is passed to it. Without this, Cppcheck may
+    assume that the function frees or stores the memory, and stop tracking a
+    possible leak.</td></tr>
+<tr><td>Arguments</td><td>The properties of each argument. Select an argument
+    and click <i>Edit</i> to change them.</td></tr>
+</table>
+
+<h3>Argument properties</h3>
+
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Property</th><th>Meaning</th></tr>
+<tr><td>Not bool</td><td>A boolean value (for example the result of a
+    comparison) is wrong for this argument. Typical for pointers and
+    sizes.</td></tr>
+<tr><td>Not null</td><td>A null pointer must not be passed.</td></tr>
+<tr><td>Not uninit</td><td>The value must be initialized. For pointers this
+    means the data it points at is read by the function.</td></tr>
+<tr><td>String</td><td>The argument must be a zero terminated string.</td></tr>
+<tr><td>Format string</td><td>The argument is a printf style format string;
+    the following arguments are checked against it.</td></tr>
+<tr><td>Min size of buffer</td><td>The minimum size of the buffer that is
+    passed. <i>argvalue</i>: the value of another argument (for example the
+    size argument of <code>memset</code>); <i>mul</i>: the product of two
+    arguments; <i>strlen</i>: the length of a string argument.</td></tr>
+<tr><td>Valid values</td><td>The values that are allowed, for example
+    <code>0:</code> (zero or more), <code>1:255</code> or
+    <code>0,2:5</code>. Cppcheck warns if another value can be passed.</td></tr>
+</table>
+
+<p>For all features of the configuration format, see the Cppcheck manual and
+the files in the <code>cfg</code> folder of the Cppcheck installation. You can
+edit <code>.cfg</code> files in a text editor too.</p>
+
+<p>To find which functions in your code are not configured yet, use
+<i>Analyze &gt; Reanalyze and check library</i>; see
+<a href="troubleshooting.html#checklibrary">Checking the library
+configuration</a>.</p>
+
+<a name="threads"></a>
+<h2>Thread details</h2>
+
+<p><i>View &gt; Thread Details</i> shows what each analysis thread is doing:
+the file it analyzes, when it started on the file and how far it has come.
+Use it to find files that take a long time to analyze. If one file takes very
+long, you can for example exclude it, reduce the number of configurations with
+<a href="projectfiledialog.html#defines">undefines</a>, or use a lower check
+level.</p>
+
+<p>The number of threads is set in the <a href="preferences.html">
+preferences</a>.</p>
+
+<p class="nav">Previous: <a href="reports.html">Results files, printing and
+statistics</a> | Next: <a href="preferences.html">Preferences</a></p>
+
+</body>
+</html>

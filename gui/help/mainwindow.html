@@ -1,0 +1,293 @@
+<html>
+<head>
+<title>The main window</title>
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+
+<h1>The main window</h1>
+
+<p>This page describes the parts of the main window and every command in the
+menus and toolbars.</p>
+
+<p class="figure"><img src="images/main-window.png"></p>
+
+<p>From top to bottom the main window has:</p>
+<ul>
+<li>the <b>menu bar</b>,</li>
+<li>the <b>toolbars</b>: the standard toolbar, the severity toolbar and the
+    quick filter,</li>
+<li>the <b>progress bar</b>, which is shown while an analysis is running,</li>
+<li>the <b>results list</b> with all warnings,</li>
+<li>the <b>lower panel</b> with two tabs: <i>Warning Details</i> (the message
+    and the source code of the selected warning) and <i>Analysis Log</i>.</li>
+</ul>
+
+<p>The title bar shows the name of the project file that is open. You can drag
+the bar between the results list and the lower panel to give more space to
+either of them. The GUI remembers the window size, the column widths and the
+position of the bar.</p>
+
+<h2>The results list</h2>
+
+<p>The results are grouped by file. Each file is a top level item; click the
+arrow to expand it, or use <i>View &gt; Expand all</i>. Each warning in a file
+can have child items called <i>notes</i>, which describe the path through the
+code that leads to the problem.</p>
+
+<p>The columns are:</p>
+
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Column</th><th>Meaning</th></tr>
+<tr><td>File</td><td>The file of the warning. By default the path is shown
+    relative to the project (see <i>Show full path of files</i> in the
+    <a href="preferences.html">preferences</a> and <i>Root path</i> in the
+    <a href="projectfiledialog.html#rootpath">project file</a>).</td></tr>
+<tr><td>Line</td><td>The line number.</td></tr>
+<tr><td>Severity</td><td>error, warning, style, performance, portability,
+    information, or note for the notes. See
+    <a href="severities.html">Severities</a>. The icon in the File column
+    shows the severity too.</td></tr>
+<tr><td>Classification, Level, Guideline, Rule</td><td>Only shown when a
+    compliance report type (Misra, Cert, Autosar) is selected in
+    <i>View &gt; Report</i>. See <a href="severities.html#reports">Report
+    types</a>.</td></tr>
+<tr><td>Inconclusive</td><td>Shown when inconclusive warnings are enabled in
+    the preferences. Marks warnings where Cppcheck is not sure.</td></tr>
+<tr><td>Summary</td><td>A short description of the problem.</td></tr>
+<tr><td>Id</td><td>The id of the checker message, for example
+    <code>nullPointer</code>. You need it for suppressions. The column can be
+    turned off in the preferences.</td></tr>
+<tr><td>Since date</td><td>The date the warning was first seen. Only
+    available for projects with a build dir; the date is kept from analysis
+    to analysis as long as the warning is still there. This makes it easy to
+    see which warnings are new.</td></tr>
+<tr><td>Tags</td><td>Your own tag for the warning. See
+    <a href="tagging.html">Tagging</a>.</td></tr>
+<tr><td>CWE</td><td>The <a href="https://cwe.mitre.org/">Common Weakness
+    Enumeration</a> number of the problem, if there is one.</td></tr>
+</table>
+
+<p>Click a column header to sort by that column. Drag the edge of a column
+header to change its width.</p>
+
+<p>Double-click a warning, or select it and press Enter, to open the file in
+your default editor at the line of the warning. You must configure the editor
+first in the <a href="preferences.html#applications">preferences</a>.</p>
+
+<p>Right-click warnings to get a context menu. See
+<a href="investigating-warnings.html#contextmenu">The context menu</a>.</p>
+
+<h2>Warning Details and the code view</h2>
+
+<p>When you select a warning, the <i>Warning Details</i> tab shows the id, the
+CWE number and the full message. Some messages are longer than the summary in
+the list and explain the problem in more detail. If the file was included from
+another file, it also shows which file included it.</p>
+
+<p>Below the message, the code view shows the source file with the line of the
+warning highlighted. Select a note to see the line of the note. The code view
+is read only; use your editor to change the code. The colors of the code view
+can be changed in the <a href="preferences.html#codeeditor">preferences</a>.</p>
+
+<h2>Analysis Log</h2>
+
+<p>The <i>Analysis Log</i> tab shows which files were analyzed and with which
+configuration: the preprocessor defines, undefines, include paths and
+platform. Look here if the results are not what you expected, for example to
+check that the right include paths are used. Right-click the log to clear it
+or copy one or all entries.</p>
+
+<p>If <i>Show internal warnings in log</i> is enabled in the preferences,
+internal debug warnings are shown here too.</p>
+
+<p>If a critical error happens, for example a syntax error that stops the
+analysis of a file, a red message is shown above the results list.</p>
+
+<h2>Toolbars</h2>
+
+<p class="figure"><img src="images/toolbar.png"></p>
+
+<p>The <b>standard toolbar</b> (left) has, from left to right: <i>Open Project
+File</i>, <i>Save results to file</i>, <i>Reanalyze all files</i>,
+<i>Stop</i>, <i>Clear results</i>, <i>Preferences</i> and <i>About</i>. These
+commands are described with the menus below.</p>
+
+<p>The <b>severity toolbar</b> (right) has one toggle button for each
+severity: error, warning, style, portability, performance and information.
+When a button is pressed, warnings with that severity are shown. Release it to
+hide them. The last two buttons show or hide results from Cppcheck itself and
+results from Clang tools (Clang-Tidy). When you select a compliance report
+type, the buttons change to the classifications of that standard, for example
+Mandatory, Required and Advisory for Misra.</p>
+
+<p>The <b>quick filter</b> field shows only warnings that contain the text you
+type. The text is searched (ignoring case) in the summary, the message, the id,
+the classification and the files and texts of the notes. Click the small cross
+in the field to clear the filter.</p>
+
+<p class="figure"><img src="images/quick-filter.png"></p>
+
+<p>The toolbars can be turned on and off with <i>View &gt; Toolbars</i>.</p>
+
+<h2>The File menu</h2>
+
+<p class="figure"><img src="images/menu-file.png"></p>
+
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Command</th><th>Description</th></tr>
+<tr><td>Open XML...</td><td>Open a results file in XML format that was saved
+    earlier by the GUI or created with the command line tool
+    (<code>cppcheck --xml ...</code>). The current results are cleared. See
+    <a href="reports.html#open">Opening results</a>.</td></tr>
+<tr><td>New Project File...</td><td>Create a new project file. First you
+    choose the file name, then the <a href="projectfiledialog.html">project
+    file dialog</a> opens. When you click OK the analysis starts.</td></tr>
+<tr><td>Open Project File...</td><td>Open an existing project file
+    (<code>*.cppcheck</code>). If the project has a build dir with results
+    from an earlier analysis, those results are shown. Otherwise the analysis
+    starts.</td></tr>
+<tr><td>Edit Project File...</td><td>Change the settings of the open project.
+    When you click OK, the project file is saved and the code is analyzed
+    again.</td></tr>
+<tr><td>Close Project File</td><td>Close the project and clear the results.
+    You must close the project before you can analyze files or folders
+    without a project.</td></tr>
+<tr><td>(recent projects)</td><td>The project files you opened recently.
+    Click one to open it.</td></tr>
+<tr><td>Save results to file...</td><td>Save the results as XML, text or CSV.
+    See <a href="reports.html#save">Saving results</a>.</td></tr>
+<tr><td>Print Preview... / Print...</td><td>Preview or print the results.
+    See <a href="reports.html#print">Printing</a>.</td></tr>
+<tr><td>Quit</td><td>Close the GUI. If an analysis is running, you are asked
+    if you want to stop it.</td></tr>
+</table>
+
+<h2>The Edit menu</h2>
+
+<p class="figure"><img src="images/menu-edit.png"></p>
+
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Command</th><th>Description</th></tr>
+<tr><td>Clear results</td><td>Remove all results from the list. If the
+    project has a build dir, the cached analysis results in the build dir are
+    deleted too, so the next analysis analyzes every file from scratch.</td></tr>
+<tr><td>Preferences</td><td>Open the <a href="preferences.html">preferences
+    dialog</a>.</td></tr>
+</table>
+
+<h2>The View menu</h2>
+
+<p class="figure"><img src="images/menu-view.png"></p>
+
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Command</th><th>Description</th></tr>
+<tr><td>Toolbars</td><td>Show or hide the standard toolbar, the severity
+    toolbar (<i>Categories</i>) and the quick filter.</td></tr>
+<tr><td>Report</td><td>Choose how warnings are classified: <i>Normal</i>
+    (Cppcheck severities) or according to a coding standard: Autosar, Cert C,
+    Cert C++, Misra C, Misra C++ 2008 or Misra C++ 2023. See
+    <a href="severities.html#reports">Report types</a>.</td></tr>
+<tr><td>Show errors ... Show information</td><td>The same as the buttons in
+    the severity toolbar.</td></tr>
+<tr><td>Check all / Uncheck all</td><td>Show or hide all severities at
+    once.</td></tr>
+<tr><td>Collapse all / Expand all</td><td>Collapse or expand all files and
+    warnings in the results list.</td></tr>
+<tr><td>Show hidden</td><td>Show the warnings again that you have hidden with
+    the context menu. Only enabled when there are hidden warnings.</td></tr>
+<tr><td>Show Scratchpad...</td><td>Open the <a href="tools.html#scratchpad">
+    scratchpad</a>, where you can type or paste code and analyze it.</td></tr>
+<tr><td>Statistics</td><td>Show <a href="reports.html#statistics">statistics</a>
+    about the project and the last analysis.</td></tr>
+<tr><td>Library Editor...</td><td>Open the <a href="tools.html#libraryeditor">
+    library editor</a> to create or change a library configuration (.cfg)
+    file.</td></tr>
+<tr><td>Thread Details</td><td>Show what each analysis thread is doing right
+    now. See <a href="tools.html#threads">Thread details</a>.</td></tr>
+</table>
+
+<h2>The Analyze menu</h2>
+
+<p class="figure"><img src="images/menu-analyze.png"></p>
+
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Command</th><th>Description</th></tr>
+<tr><td>Files...</td><td>Analyze one or more files without a project. You can
+    also select a compile database, a Visual Studio solution or project, or a
+    Borland C++ Builder 6 project here. See
+    <a href="standalone-analysis.html">Analyzing without a project</a>.</td></tr>
+<tr><td>Directory...</td><td>Analyze all source files in a folder and its
+    subfolders, without a project.</td></tr>
+<tr><td>Reanalyze modified files</td><td>Analyze again only the files that
+    changed since the last analysis in this session, including files that
+    include a changed header. This works for files and folders you selected
+    with <i>Files...</i> or <i>Directory...</i> and for projects that list
+    their paths in the project file. For projects that import a compile
+    database or a Visual Studio project, use <i>Reanalyze all files</i>
+    instead.</td></tr>
+<tr><td>Reanalyze all files</td><td>Analyze all files again. For a project with
+    a build dir, unchanged files are not analyzed again; their cached results
+    are used.</td></tr>
+<tr><td>Reanalyze and check library</td><td>Analyze the project again and
+    report functions and types for which Cppcheck has no configuration. Use it
+    to find out what is missing in your library configurations. See
+    <a href="troubleshooting.html#checklibrary">Checking the library
+    configuration</a>.</td></tr>
+<tr><td>Check configuration (defines, includes)</td><td>Analyze the project
+    again and report problems in the configuration, such as include files
+    that can not be found. Use it when you set up a new project.</td></tr>
+<tr><td>Stop</td><td>Stop the running analysis (Esc). Results found so far are
+    kept.</td></tr>
+<tr><td>C standard / C++ standard</td><td>The language standard used for
+    files when the standard is not known in another way (for example from an
+    imported project).</td></tr>
+<tr><td>Auto-detect language / Enforce C++ / Enforce C</td><td>By default the
+    language of each file is chosen from its file extension: <code>.c</code>
+    files are C and <code>.cpp</code>, <code>.cc</code>, <code>.cxx</code> and
+    similar are C++. Choose <i>Enforce C++</i> or <i>Enforce C</i> to analyze
+    all files as that language, for example if your C++ code is in
+    <code>.c</code> files.</td></tr>
+<tr><td>Native ... Windows 64-bit</td><td>The platform to use when the project
+    does not choose a platform, or when you analyze without a project.
+    <i>Native</i> is the platform you run Cppcheck on. See
+    <a href="projectfiledialog.html#platform">Platform</a>.</td></tr>
+</table>
+
+<h2>The Help menu</h2>
+
+<p class="figure"><img src="images/menu-help.png"></p>
+
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Command</th><th>Description</th></tr>
+<tr><td>Contents</td><td>Open this help (F1).</td></tr>
+<tr><td>License...</td><td>Show the license of Cppcheck (GNU GPL v3).</td></tr>
+<tr><td>Authors...</td><td>Show the people who have contributed to
+    Cppcheck.</td></tr>
+<tr><td>About...</td><td>Show the version of Cppcheck.</td></tr>
+</table>
+
+<p>Cppcheck Premium also shows <i>EULA...</i> in this menu.</p>
+
+<h2>Keyboard shortcuts</h2>
+
+<table class="options" border="1" cellspacing="0" cellpadding="4">
+<tr><th>Shortcut</th><th>Command</th></tr>
+<tr><td>Ctrl+Shift+N</td><td>New Project File</td></tr>
+<tr><td>Ctrl+Shift+O</td><td>Open Project File</td></tr>
+<tr><td>Ctrl+S</td><td>Save results to file</td></tr>
+<tr><td>Ctrl+P</td><td>Print</td></tr>
+<tr><td>Ctrl+Q</td><td>Quit</td></tr>
+<tr><td>Ctrl+F</td><td>Analyze files</td></tr>
+<tr><td>Ctrl+D</td><td>Analyze directory</td></tr>
+<tr><td>Ctrl+R</td><td>Reanalyze modified files</td></tr>
+<tr><td>Esc</td><td>Stop the analysis</td></tr>
+<tr><td>F1</td><td>Help</td></tr>
+<tr><td>Enter</td><td>Open the selected warning in the default editor</td></tr>
+</table>
+
+<p class="nav">Previous: <a href="walkthrough.html">Getting started</a> |
+Next: <a href="standalone-analysis.html">Analyzing without a project</a></p>
+
+</body>
+</html>

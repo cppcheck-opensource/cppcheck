@@ -1,0 +1,125 @@
+<html>
+<head>
+<title>Results files, printing and statistics</title>
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+
+<h1>Results files, printing and statistics</h1>
+
+<a name="save"></a>
+<h2>Saving results</h2>
+
+<p>Select <i>File &gt; Save results to file...</i> (Ctrl+S) or click the save
+button in the toolbar. Choose a file name and a format:</p>
+
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Format</th><th>Contents</th></tr>
+<tr><td>XML files (*.xml)</td><td>All information about each warning: file,
+    line, column, severity, id, CWE, message, notes, tags and more. This is
+    the same XML format (version 2) as the command line tool writes with
+    <code>--xml</code>. The GUI can open it again, and many other tools, for
+    example CI systems and report generators, can read it. Use this format if
+    you want to keep the results.</td></tr>
+<tr><td>Text files (*.txt)</td><td>One line per warning, in the classic
+    Cppcheck text format:<br>
+    <code>[src/buffer.c:9] -&gt; [src/buffer.c:10]: (error) Array 'buf[16]'
+    accessed at index 16, which is out of bounds.</code><br>
+    The locations of the notes are listed first, connected with
+    <code>-&gt;</code>.</td></tr>
+<tr><td>CSV files (*.csv)</td><td>One line per warning with the columns file,
+    line, severity, id and summary. Open it in a spreadsheet to sort, count
+    and filter warnings.</td></tr>
+</table>
+
+<p>Two preferences on the <a href="preferences.html">Reports tab</a> affect
+what is saved:</p>
+<ul>
+<li><b>Save all errors when creating report</b>: also save warnings that are
+    hidden. By default only the warnings you can see are saved, so you can use
+    the severity buttons, the quick filter and hiding to choose what goes in
+    the report.</li>
+<li><b>Save full path to files in reports</b>: save the full path of each
+    file instead of the path relative to the project.</li>
+</ul>
+
+<a name="open"></a>
+<h2>Opening results</h2>
+
+<p>Select <i>File &gt; Open XML...</i> to open a results file in XML format.
+The current results are cleared first. The file can come from the GUI or from
+the command line tool, for example from a CI job:</p>
+
+<pre>cppcheck --project=compile_commands.json --xml 2&gt; results.xml</pre>
+
+<p>When results are opened from a file, the GUI needs to find the source files
+to show the code. If the paths in the file are relative, the GUI asks for the
+folder they are relative to when you select a warning. You can also give the
+folder on the command line with the <code>-d</code> option; see
+<a href="commandline.html">Command line options</a>.</p>
+
+<p>XML files in the old version 1 format can not be opened. Use
+<code>--xml</code> with a recent Cppcheck version to create files in the
+version 2 format.</p>
+
+<p>For results opened from a file, the code can not be analyzed again with
+<i>Recheck</i>, because the GUI does not know how it was analyzed.</p>
+
+<a name="print"></a>
+<h2>Printing</h2>
+
+<p>Select <i>File &gt; Print...</i> (Ctrl+P) to print the results, or <i>File
+&gt; Print Preview...</i> to see what will be printed first. The printout has
+one line per warning with the file, line, severity and summary. Like saved
+reports, only the warnings you can see are printed. You can print to a PDF
+file if your system has a PDF printer.</p>
+
+<a name="statistics"></a>
+<h2>Statistics</h2>
+
+<p>Select <i>View &gt; Statistics</i> to see statistics about the project and
+the last analysis. Enable <i>Show statistics on check completion</i> in the
+<a href="preferences.html">preferences</a> to show the statistics
+automatically after each analysis.</p>
+
+<p>The statistics dialog has these tabs:</p>
+
+<h3>Project</h3>
+<p>The root path of the project, the paths that are analyzed, the include
+paths, the defines and the undefines.</p>
+<p class="figure"><img src="images/statistics-project.png"></p>
+
+<h3>Previous Scan</h3>
+<p>The path that was analyzed, the number of files and how long the analysis
+took.</p>
+<p class="figure"><img src="images/statistics-previous-scan.png"></p>
+
+<h3>Statistics</h3>
+<p>The number of warnings of each severity, and the number of active
+checkers.</p>
+<p class="figure"><img src="images/statistics-statistics.png"></p>
+
+<h3>Checkers</h3>
+<p>A report of which checkers were active in the analysis and which were not.
+Use it to see what was checked, for example to document the analysis for a
+safety certification.</p>
+
+<h3>History</h3>
+<p>A chart of the number of warnings over time, read from the build dir of the
+project. Only available if the GUI was built with Qt Charts and the project
+has a build dir.</p>
+
+<p>Click <i>Copy to Clipboard</i> to copy the statistics as text and HTML, for
+example to paste them in an e-mail or a document. Click <i>Pdf Export</i> to
+save them as a PDF file.</p>
+
+<p class="note"><b>Note:</b> the statistics count the warnings of the last
+analysis in this session. When you open a project with a build dir, the
+results of the previous session are shown, but they are not counted until you
+analyze again.</p>
+
+<p class="nav">Previous: <a href="tagging.html">Tagging warnings</a> |
+Next: <a href="tools.html">Scratchpad, library editor and other tools</a></p>
+
+</body>
+</html>

@@ -1,17 +1,125 @@
-
 <html>
 <head>
-<title>Standalone analysis</title>
+<title>Analyzing without a project</title>
+<link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
 
-<h1>Standalone analysis</h1>
+<h1>Analyzing without a project</h1>
 
-<p>It is possible to quickly analyze files. Open the <i>Analyze</i> menu and click on
-either <i>Files...</i> or <i>Directory...</i>.</p>
+<p>You can analyze code quickly without creating a project file. This is
+useful to try Cppcheck, or to look at a few files. For regular use a project
+is better: with a properly configured project Cppcheck knows your include
+paths, defines and libraries, and the analysis is more accurate. You also get
+features that need a project, such as saved suppressions, tags and the build
+dir. See <a href="projectfiledialog.html">Project files</a>.</p>
 
-<p>It is recommended that you create a project for analysis. A properly configured
-project will give you better analysis.</p>
+<p class="note">If a project is open, close it first with <i>File &gt; Close
+Project File</i>. The GUI does not let you analyze files or folders while a
+project is open.</p>
+
+<h2>Analyzing files</h2>
+
+<p>Select <i>Analyze &gt; Files...</i> (Ctrl+F) and select one or more source
+files. The analysis starts at once.</p>
+
+<p>In the same file dialog you can also select a project of your build
+system. Cppcheck then analyzes the files of that project with its include
+paths and defines, just as if you had imported it in a project file:</p>
+<ul>
+<li>a compile database (<code>compile_commands.json</code>),</li>
+<li>a Visual Studio solution (<code>*.sln</code>, <code>*.slnx</code>) or
+    project (<code>*.vcxproj</code>). For a solution, a dialog asks which
+    configuration (for example <code>Debug|x64</code>) to analyze,</li>
+<li>a Borland C++ Builder 6 project (<code>*.bpr</code>).</li>
+</ul>
+
+<h2>Analyzing a directory</h2>
+
+<p>Select <i>Analyze &gt; Directory...</i> (Ctrl+D) and select a folder.
+Cppcheck analyzes all source files in the folder and its subfolders. Files
+with these extensions are analyzed: <code>.c</code>, <code>.cpp</code>,
+<code>.cxx</code>, <code>.cc</code>, <code>.c++</code>, <code>.tpp</code>,
+<code>.txx</code>, <code>.ipp</code> and <code>.ixx</code>.</p>
+
+<p>Header files are not analyzed on their own. The code in a header is
+analyzed when a source file includes it, as long as Cppcheck can find the
+header.</p>
+
+<p>If the folder contains a Cppcheck project file, the GUI asks if you want to
+open that project instead. If there are several project files, it asks if you
+want to continue without them.</p>
+
+<h2>Which settings are used</h2>
+
+<p>Without a project, the analysis uses:</p>
+<ul>
+<li>the <a href="preferences.html">preferences</a>: number of threads,
+    <i>Force checking all #ifdef configurations</i>, <i>Enable inline
+    suppressions</i>, <i>Check for inconclusive errors also</i>,</li>
+<li>the settings in the <i>Analyze</i> menu: the C and C++ standard, the
+    language (auto-detect, enforce C or enforce C++) and the platform.</li>
+</ul>
+
+<p>The <i>Analyze</i> menu settings are remembered when you close the GUI.</p>
+
+<h3>Language standard</h3>
+
+<p><i>Analyze &gt; C standard</i> and <i>Analyze &gt; C++ standard</i> select
+the language version. It affects how some code is parsed and which checks
+apply. For example, some functions are deprecated in newer standards, and
+some library functions only exist in newer standards.</p>
+
+<h3>Language</h3>
+
+<p>With <i>Auto-detect language</i> the file extension decides if a file is C
+or C++. Choose <i>Enforce C</i> or <i>Enforce C++</i> to treat all files as
+one language.</p>
+
+<h3>Platform</h3>
+
+<p>The platform decides the size of the basic types (<code>short</code>,
+<code>int</code>, <code>long</code>, pointers, <code>wchar_t</code> and so on)
+and whether <code>char</code> is signed. Choose the platform the code will run
+on:</p>
+<ul>
+<li><b>Native</b>: the computer you run Cppcheck on.</li>
+<li><b>Unix 32-bit</b> / <b>Unix 64-bit</b>: Linux, BSD, macOS and similar
+    on 32-bit or 64-bit processors.</li>
+<li><b>Windows 32-bit ANSI</b> / <b>Windows 32-bit Unicode</b>: 32-bit
+    Windows. In the ANSI variant the Windows "T" macros and types such as
+    <code>TCHAR</code> and <code>_tcscpy</code> mean the <code>char</code>
+    versions; in the Unicode variant they mean the <code>wchar_t</code>
+    versions.</li>
+<li><b>Windows 64-bit</b>: 64-bit Windows, with Unicode.</li>
+</ul>
+
+<h2>Limitations</h2>
+
+<p>Without a project:</p>
+<ul>
+<li>There are no include paths, so Cppcheck may not find your own headers. You
+    will see <i>information</i> messages about missing includes, and some
+    warnings can be missing because types and macros are unknown.</li>
+<li>Suppressions made with the context menu can not be saved. The warnings
+    disappear from the list but are reported again in the next analysis. Use
+    inline suppressions in the code instead, or create a project. See
+    <a href="suppressions.html">Hiding and suppressing warnings</a>.</li>
+<li>Warnings can not be tagged.</li>
+<li>There is no build dir. Every analysis analyzes all files, the <i>Since
+    date</i> column is not available, and checks that need whole program
+    analysis, such as unused functions, are not run.</li>
+<li>Addons and coding standards (Misra, Cert, ...) can not be used.</li>
+</ul>
+
+<h2>Analyzing again</h2>
+
+<p>After you change the code, use <i>Analyze &gt; Reanalyze modified files</i>
+(Ctrl+R) to analyze the files that changed, or <i>Reanalyze all files</i> to
+analyze everything again.</p>
+
+<p class="nav">Previous: <a href="mainwindow.html">The main window</a> |
+Next: <a href="projectfiledialog.html">Project files</a></p>
 
 </body>
 </html>

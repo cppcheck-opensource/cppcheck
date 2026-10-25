@@ -1,69 +1,156 @@
 <html>
 <head>
-<title>Walk through</title>
+<title>Getting started</title>
+<link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
 
-<h1>Quick walk through</h1>
+<h1>Getting started</h1>
 
-This is a quick and short walk through to get you started.
+<p>This page walks you through a first analysis: you create a project file,
+run the analysis and look at the results. It takes a few minutes. The other
+pages in this help explain each step in more detail.</p>
 
-<h2>Step 1: Create a project.</h2>
+<h2>Step 1: Create a project file</h2>
 
-<p>Create a new project:</p>
+<p>Select <i>File &gt; New Project File...</i> (Ctrl+Shift+N). A file dialog
+asks where to save the project file. Save it in the root folder of your code,
+for example next to your <code>CMakeLists.txt</code> or Visual Studio
+solution. Paths in the project file are stored relative to the project file,
+so the project keeps working if you move the whole folder or check it into
+version control.</p>
 
-<blockquote><img src="images/walkthrough-new-project.png"></blockquote>
+<p>When you have chosen a file name, the <i>Project file</i> dialog opens. A
+new project automatically gets a <i>build dir</i> called
+<code>&lt;name&gt;-cppcheck-build-dir</code>. Cppcheck stores its work files
+there; it makes repeated analysis much faster and is required for some
+features. See <a href="projectfiledialog.html#builddir">Cppcheck build dir</a>.</p>
 
-<p>In the <i>Paths and Defines</i> tab, it is recommended that you import your
-project file at the top.</p>
+<h2>Step 2: Tell Cppcheck where the code is</h2>
 
-<blockquote><img src="images/walkthrough-import-project.png"></blockquote>
+<p>Open the <i>Paths and Defines</i> tab. You have two choices.</p>
 
-<p>In the <i>Types and Functions</i> tab, try to activate all 3rd party
-libraries you use (windows, posix, ...).</p>
+<h3>Choice A: Import a project (recommended)</h3>
 
-<blockquote><img src="images/walkthrough-library.png"></blockquote>
+<p>If you build your code with Visual Studio, CMake, Meson, Bear or any other
+tool that can produce a compile database, import it. Click <i>Browse...</i>
+next to <i>Import Project</i> and select one of:</p>
+<ul>
+<li>a Visual Studio solution (<code>*.sln</code>, <code>*.slnx</code>) or
+    project (<code>*.vcxproj</code>),</li>
+<li>a compile database (<code>compile_commands.json</code>). CMake creates it
+    if you configure with <code>-DCMAKE_EXPORT_COMPILE_COMMANDS=ON</code>,</li>
+<li>a Borland C++ Builder 6 project (<code>*.bpr</code>).</li>
+</ul>
 
-<p>In the <i>Analysis</i> tab, leave the default settings to start with.</p>
+<p>Cppcheck then reads the list of source files, the include paths, the
+preprocessor defines and the language standard from the imported file. The
+<i>Paths</i>, <i>Include Paths</i> and <i>Undefines</i> fields are disabled
+because the values come from the imported project.</p>
 
-<p>In the <i>Warnings options</i> tab, leave the default settings to start
-with.</p>
+<p class="figure"><img src="images/projectfile-import.png"></p>
 
-<p>In the <i>Addons</i> tab, leave the default settings to start with.</p>
+<h3>Choice B: Enter the paths yourself</h3>
 
+<p>If you can not import a project, enter the information manually:</p>
+<ul>
+<li><b>Paths</b>: click <i>Add...</i> and select the folders (or files) to
+    analyze. Cppcheck analyzes all C/C++ source files in these folders and
+    their subfolders.</li>
+<li><b>Include Paths</b>: add the folders where your own header files are.
+    Cppcheck needs your headers to understand types, macros and functions.
+    You do not need to add the standard library or system headers; Cppcheck
+    has built-in knowledge about them.</li>
+<li><b>Defines</b>: optionally enter macros, for example
+    <code>DEBUG;VERSION=3</code>.</li>
+</ul>
 
-<h2>Step 2: Analyze code.</h2>
+<p class="figure"><img src="images/projectfile-paths-and-defines.png"></p>
 
-<p>When the project file has been created, the analysis will start
-automatically.</p>
+<h2>Step 3: Select libraries</h2>
 
-<p>While analysis is performed in the background, you can investigate the
-results.</p>
+<p>Open the <i>Types and Functions</i> tab. In the <i>Libraries</i> list,
+check the libraries your code uses, for example <i>posix</i>, <i>windows</i>,
+<i>qt</i>, <i>boost</i>, <i>gtk</i> or <i>sdl</i>. A library configuration tells
+Cppcheck how the functions and types in that library behave: which functions
+allocate memory, which arguments must not be null, which functions never
+return, and so on. This gives you more and better warnings.</p>
 
-<blockquote><img src="images/walkthrough-analysis.png"></blockquote>
+<p>Set the <i>Platform</i> to the target of your code if it differs from the
+computer you run Cppcheck on. This matters for portability and overflow
+checks, since the sizes of <code>int</code>, <code>long</code> and pointers
+differ between platforms.</p>
 
+<p class="figure"><img src="images/projectfile-types-and-functions.png"></p>
 
-<h2>Step 3: Investigate warnings.</h2>
+<h2>Step 4: Leave the rest as it is</h2>
 
-<p>In the toolbar you choose what types of warnings you want to see
-(error/warning/style/performance/portability/information).</p>
+<p>The <i>Analysis</i>, <i>Warning options</i> and <i>Addons</i> tabs have good
+default values. You can come back later and change them; see
+<a href="projectfiledialog.html">Project files</a> for a description of every
+option.</p>
 
-<blockquote><img src="images/walkthrough-toolbar-severities.png"></blockquote>
+<p>Click <i>OK</i>. The project file is saved. If the build dir does not exist
+yet, the GUI asks if it should create it: answer <i>Yes</i>.</p>
 
+<h2>Step 5: Watch the analysis</h2>
 
-<p>All warnings are shown in a list. If you select a warning in the list, then
-details about that warning is shown.</p>
+<p>The analysis starts immediately. A progress bar above the results shows
+how many files have been analyzed. You do not have to wait: warnings appear
+in the list as soon as they are found, and you can start looking at them.
+To stop the analysis, click the <i>Stop</i> button in the toolbar or press
+Esc.</p>
 
-<p>If you right click on warning(s) then you get a context menu.</p>
+<h2>Step 6: Look at the results</h2>
 
-<blockquote><img src="images/walkthrough-warning-menu.png"></blockquote>
+<p>The results list groups the warnings by file. Click the arrow next to a
+file name, or use <i>View &gt; Expand all</i>, to see the warnings. Click a
+warning to show its details and the source code in the lower part of the
+window. The line with the problem is highlighted.</p>
 
-<p>The difference of &quot;Hide&quot; and &quot;Suppress&quot; is that
-suppressions are saved in the project file. The suppressed warnings will not be
-shown again unless you remove the suppression. When you hide a warning then
-they will be temporarily hidden; the next time you analyze your code these
-warnings will be shown again.</p>
+<p class="figure"><img src="images/main-window.png"></p>
+
+<p>Some warnings have an arrow in front of them. Expand them to see
+<i>notes</i>: these show the path through the code that leads to the
+problem, for example where a variable got the value that later causes the
+bug. Click a note to jump to that line.</p>
+
+<p>Use the colored buttons in the toolbar to show or hide warnings by
+severity. Start with errors and warnings; they are the most likely to be
+real bugs. See <a href="severities.html">Severities</a>.</p>
+
+<p class="figure"><img src="images/toolbar.png"></p>
+
+<p>Right-click a warning to get more options: open the file in your editor,
+copy the warning, hide it, suppress it or tag it.</p>
+
+<p class="figure"><img src="images/context-menu.png"></p>
+
+<p>Read <a href="investigating-warnings.html">Investigating warnings</a> to
+learn how to work efficiently with the results.</p>
+
+<h2>Step 7: Fix the code and analyze again</h2>
+
+<p>Fix the bugs in your editor. Then click <i>Reanalyze all files</i> in the
+toolbar. Because the project has a build dir, Cppcheck only does the full
+analysis again for files that changed (or that include a changed header). For
+the other files the results are taken from the build dir, so this is
+fast.</p>
+
+<p>If you do not agree with a warning, you can suppress it so that it is not
+shown again. See <a href="suppressions.html">Hiding and suppressing
+warnings</a>.</p>
+
+<h2>Next time</h2>
+
+<p>The project files you used recently are listed in the <i>File</i> menu.
+When you open a project that has a build dir, the GUI first shows the results
+from the last analysis. Click <i>Reanalyze all files</i> in the toolbar to
+analyze the code again. Thanks to the build dir, files that did not change
+are not analyzed again; their old results are reused.</p>
+
+<p class="nav">Previous: <a href="index.html">Cppcheck GUI</a> |
+Next: <a href="mainwindow.html">The main window</a></p>
 
 </body>
 </html>
-
