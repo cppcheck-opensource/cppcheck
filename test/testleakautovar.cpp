@@ -1935,6 +1935,13 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
+        // Array of function pointers
+        check("void f() {\n"
+              "    void *buf = malloc(1);\n"
+              "    arr[0](buf);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
         // Function returning a function pointer, passed as an arg to a normal
         // function
         check("void f() {\n"
