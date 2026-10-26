@@ -9482,7 +9482,7 @@ void Tokenizer::simplifyFunctionTryCatch()
         if (!Token::Match(tok, "try {|:"))
             continue;
         const Token* par = tok->previous();
-        while (par && (par->isKeyword() || Token::Match(par, "final|override")))
+        while (par && (par->isKeyword() || Token::Match(par, "%name%|&|&&|->|::")))
             par = par->previous();
         if (!TokenList::isFunctionHead(par, "try")) // TODO: this is supposed to a list of characters and not strings
             continue;
