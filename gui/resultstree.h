@@ -29,6 +29,7 @@
 #include <string>
 
 #include <QObject>
+#include <QSet>
 #include <QString>
 #include <QStringList>
 #include <QTreeView>
@@ -357,6 +358,12 @@ protected:
     void saveErrors(Report *report, const ResultItem *fileItem) const;
 
     /**
+     * @brief Remove all errors of a file item from the duplicate-check list
+     * @param fileItem Item whose errors to remove
+     */
+    void removeFileErrorsFromErrorList(const ResultItem *fileItem);
+
+    /**
      * @brief Convert a severity string to a icon filename
      *
      * @param severity Severity
@@ -566,8 +573,8 @@ private:
 
     QStringList mHiddenMessageId;
 
-    // List of existing errors so we can avoid duplicates
-    QStringList mErrorList;
+    // Set of existing errors so we can avoid duplicates
+    QSet<QString> mErrorList;
 
     QItemSelectionModel* mSelectionModel{};
     ThreadHandler *mThread{};

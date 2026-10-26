@@ -1,0 +1,399 @@
+{
+  "te65b1fa8": {
+    "script": [
+      {
+        "label": "Open the File menu",
+        "do": "click",
+        "name": "File",
+        "role": "menu item"
+      },
+      {
+        "label": "Choose Open Project File",
+        "do": "click",
+        "name": "Open Project File",
+        "role": "menu item"
+      },
+      {
+        "label": "Enter the project file path",
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:basic-project}/basic.cppcheck"
+      },
+      {
+        "label": "Confirm the file dialog",
+        "do": "key",
+        "keys": [
+          "Return"
+        ]
+      },
+      {
+        "label": "Wait until the first analysis shows results for a.c",
+        "expect": "visible",
+        "name": "src/a.c",
+        "role": "table cell",
+        "timeout": 30
+      },
+      {
+        "label": "Results for b.c are shown too",
+        "expect": "visible",
+        "name": "src/b.c",
+        "role": "table cell"
+      },
+      {
+        "label": "Edit a.c so it only contains ;",
+        "do": "write",
+        "path": "{project:basic-project}/src/a.c",
+        "content": ";"
+      },
+      {
+        "label": "Edit b.c so it only contains ;",
+        "do": "write",
+        "path": "{project:basic-project}/src/b.c",
+        "content": ";"
+      },
+      {
+        "label": "Click Reanalyze all files",
+        "do": "click",
+        "name": "Reanalyze all files",
+        "role": "button"
+      },
+      {
+        "label": "Wait until the analysis is done (No errors found dialog)",
+        "expect": "visible",
+        "name": "No errors found",
+        "role": "label",
+        "timeout": 30
+      },
+      {
+        "label": "Close the dialog",
+        "do": "click",
+        "name": "OK",
+        "role": "button"
+      },
+      {
+        "label": "No results for a.c",
+        "expect": "gone",
+        "name": "src/a.c",
+        "role": "table cell"
+      },
+      {
+        "label": "No results for b.c",
+        "expect": "gone",
+        "name": "src/b.c",
+        "role": "table cell"
+      }
+    ],
+    "script_for": "c692e526a6cd"
+  },
+  "tc707b85b": {
+    "script": [
+      {
+        "do": "wait",
+        "name": "Cppcheck",
+        "role": "frame",
+        "timeout": 20,
+        "label": "Application started with no project"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File",
+        "role": "button",
+        "label": "Open the project file dialog"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:recheck}/p.cppcheck",
+        "label": "Enter the path of p.cppcheck"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Open the project"
+      },
+      {
+        "expect": "visible",
+        "name": "b.c",
+        "role": "table cell",
+        "timeout": 30,
+        "label": "Analysis done, b.c in the results"
+      },
+      {
+        "expect": "visible",
+        "name": "a.c",
+        "role": "table cell",
+        "timeout": 30,
+        "label": "a.c in the results"
+      },
+      {
+        "do": "sleep",
+        "seconds": 3,
+        "label": "Let the analysis finish"
+      },
+      {
+        "do": "copy",
+        "from": "{project:recheck}/a_v2.c",
+        "to": "{project:recheck}/a.c",
+        "label": "Change a.c by copying a_v2.c over it"
+      },
+      {
+        "do": "rightclick",
+        "name": "a.c",
+        "role": "table cell",
+        "nth": 0,
+        "label": "Right click on a.c in the results"
+      },
+      {
+        "expect": "ocr",
+        "contains": "Recheck",
+        "label": "Context menu shows Recheck"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Down",
+          "Return"
+        ],
+        "label": "Click Recheck"
+      },
+      {
+        "do": "sleep",
+        "seconds": 4,
+        "label": "Wait for the recheck"
+      },
+      {
+        "do": "click",
+        "name": "b.c",
+        "role": "table cell",
+        "nth": 0,
+        "label": "Select the b.c row"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Right",
+          "Down",
+          "Down",
+          "Down",
+          "Right"
+        ],
+        "label": "Expand b.c and a.c to show their results"
+      },
+      {
+        "expect": "text",
+        "contains": "uninitvar",
+        "label": "The uninitvar error of the changed a.c is shown"
+      },
+      {
+        "expect": "text",
+        "not_contains": "nullPointer",
+        "label": "The nullPointer error is gone"
+      },
+      {
+        "expect": "text",
+        "contains": "arrayIndexOutOfBounds",
+        "label": "The arrayIndexOutOfBounds error in b.c is still shown"
+      }
+    ],
+    "script_for": "0c160519508a"
+  },
+  "tc550387d": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File",
+        "role": "menu item",
+        "label": "Choose Open Project File"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:basic-project}/basic.cppcheck",
+        "label": "Enter the project file path"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Confirm the file dialog"
+      },
+      {
+        "expect": "visible",
+        "name": "include/util.h",
+        "role": "table cell",
+        "timeout": 30,
+        "label": "Analysis is done and util.h is in the results"
+      },
+      {
+        "expect": "visible",
+        "name": "src/b.c",
+        "role": "table cell",
+        "timeout": 30,
+        "label": "Analysis finished for all files"
+      },
+      {
+        "do": "rightclick",
+        "name": "include/util.h",
+        "role": "table cell",
+        "label": "Right click on util.h in the results"
+      },
+      {
+        "do": "sleep",
+        "seconds": 1,
+        "label": "Wait for the context menu"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Down",
+          "Return"
+        ],
+        "label": "Click the Recheck entry of the context menu"
+      },
+      {
+        "expect": "text",
+        "contains": "Checking /tmp",
+        "timeout": 30,
+        "label": "The analysis was run again"
+      },
+      {
+        "expect": "text",
+        "contains": "src/a.c ...",
+        "timeout": 30,
+        "label": "The file that includes util.h is checked again"
+      },
+      {
+        "do": "sleep",
+        "seconds": 3,
+        "label": "Wait until the analysis is done"
+      },
+      {
+        "do": "click",
+        "name": "include/util.h",
+        "role": "table cell",
+        "mouse": true,
+        "label": "Select util.h with the mouse so it has focus"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Right"
+        ],
+        "label": "Expand util.h"
+      },
+      {
+        "expect": "visible",
+        "name": "nullPointer",
+        "role": "table cell",
+        "timeout": 10,
+        "label": "The nullPointer error in util.h is shown again"
+      },
+      {
+        "expect": "visible",
+        "name": "Null pointer dereference",
+        "role": "table cell",
+        "timeout": 5,
+        "label": "The nullPointer message is shown"
+      }
+    ],
+    "script_for": "dc8fcd30e236"
+  },
+  "ta6f3b40b": {
+    "script": [
+      {
+        "label": "Start the application with no project loaded",
+        "expect": "visible",
+        "name": "Cppcheck",
+        "role": "frame"
+      },
+      {
+        "label": "Open the project file",
+        "do": "click",
+        "name": "Open Project File",
+        "role": "button"
+      },
+      {
+        "label": "Wait for the Select Project File dialog",
+        "do": "wait",
+        "name": "Select Project File",
+        "timeout": 10
+      },
+      {
+        "label": "Enter the project file {case}.cppcheck",
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:syntax-error}/{case}.cppcheck"
+      },
+      {
+        "label": "Confirm the file dialog",
+        "do": "key",
+        "keys": [
+          "Return"
+        ]
+      },
+      {
+        "label": "The project is loaded",
+        "expect": "visible",
+        "name": "Project: {case}.cppcheck",
+        "role": "frame",
+        "timeout": 15
+      },
+      {
+        "label": "Wait until the analysis is done (ok.c is checked)",
+        "expect": "text",
+        "contains": "Checking ok.c",
+        "timeout": 60
+      },
+      {
+        "label": "Give the analysis time to finish",
+        "do": "sleep",
+        "seconds": 3
+      },
+      {
+        "label": "The analysis finishes: Stop analysis is disabled again",
+        "expect": "state",
+        "name": "Stop analysis",
+        "role": "button",
+        "not_state": "enabled",
+        "timeout": 60
+      },
+      {
+        "label": "The analysis finishes: Reanalyze all files is enabled again",
+        "expect": "state",
+        "name": "Reanalyze all files",
+        "role": "button",
+        "state": "enabled",
+        "timeout": 30
+      },
+      {
+        "label": "The broken source file {case}.c was analyzed",
+        "expect": "text",
+        "contains": "Checking {case}.c"
+      },
+      {
+        "label": "The nullPointer error in ok.c is shown (ok.c has a result row)",
+        "expect": "visible",
+        "name": "ok.c",
+        "role": "table cell"
+      },
+      {
+        "label": "The application does not crash",
+        "expect": "alive"
+      }
+    ],
+    "script_for": "3090dfe1cf47"
+  }
+}

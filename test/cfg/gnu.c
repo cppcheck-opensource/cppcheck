@@ -376,6 +376,13 @@ wchar_t *nullPointer_wmempcpy(wchar_t *dest, const wchar_t *src, size_t n)
     return wmempcpy(dest,src,n);
 }
 
+void bufferAccessOutOfBounds_wmempcpy(const wchar_t *src)
+{
+    wchar_t buf[3];
+    // cppcheck-suppress bufferAccessOutOfBounds
+    wmempcpy(buf, src, 5);
+}
+
 int uninitvar_getpw(uid_t uid, char *buf)
 {
     uid_t someUid;

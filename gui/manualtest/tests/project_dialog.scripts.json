@@ -1,0 +1,371 @@
+{
+  "tcf7ddb76": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "New Project File",
+        "role": "menu item",
+        "label": "Create a new project file"
+      },
+      {
+        "do": "settext",
+        "name": "File name",
+        "role": "text",
+        "value": "{project:relative-paths}/rel.cppcheck",
+        "label": "Enter the project file name"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Confirm the project file name"
+      },
+      {
+        "expect": "visible",
+        "name": "Project file: rel.cppcheck",
+        "role": "dialog",
+        "label": "Project file dialog is open"
+      },
+      {
+        "do": "click",
+        "name": "Add...",
+        "role": "button",
+        "nth": 1,
+        "label": "Add an include directory"
+      },
+      {
+        "do": "settext",
+        "name": "Directory:",
+        "role": "text",
+        "value": "{project:relative-paths}/inc",
+        "label": "Enter the include directory {project:relative-paths}/inc"
+      },
+      {
+        "do": "click",
+        "name": "Choose",
+        "role": "button",
+        "label": "Choose the include directory"
+      },
+      {
+        "do": "click",
+        "name": "Warning options",
+        "role": "page tab",
+        "label": "Open the tab with the excluded files"
+      },
+      {
+        "do": "click",
+        "name": "Exclude file",
+        "role": "button",
+        "label": "Exclude a file"
+      },
+      {
+        "do": "settext",
+        "name": "File name",
+        "role": "text",
+        "value": "{project:relative-paths}/skip/b.c",
+        "label": "Enter the excluded file {project:relative-paths}/skip/b.c"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Confirm the excluded file"
+      },
+      {
+        "expect": "visible",
+        "name": "skip/b.c",
+        "role": "list item",
+        "label": "skip/b.c is in the exclude list"
+      },
+      {
+        "do": "click",
+        "name": "Paths and Defines",
+        "role": "page tab",
+        "label": "Back to Paths and Defines"
+      },
+      {
+        "do": "click",
+        "name": "Browse...",
+        "role": "button",
+        "nth": 0,
+        "label": "Browse for the import project"
+      },
+      {
+        "do": "settext",
+        "name": "File name",
+        "role": "text",
+        "value": "{project:relative-paths}/compile_commands.json",
+        "label": "Enter the import project {project:relative-paths}/compile_commands.json"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Confirm the import project"
+      },
+      {
+        "do": "click",
+        "name": "OK",
+        "role": "button",
+        "label": "Save the project file as rel.cppcheck"
+      },
+      {
+        "do": "sleep",
+        "seconds": 1
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Escape"
+        ],
+        "label": "Dismiss the build dir question"
+      },
+      {
+        "expect": "file",
+        "path": "{project:relative-paths}/rel.cppcheck",
+        "contains": "<importproject>compile_commands.json</importproject>",
+        "label": "Import project is relative"
+      },
+      {
+        "expect": "file",
+        "path": "{project:relative-paths}/rel.cppcheck",
+        "contains": "<dir name=\"inc",
+        "label": "Include directory is relative (inc)"
+      },
+      {
+        "expect": "file",
+        "path": "{project:relative-paths}/rel.cppcheck",
+        "contains": "<path name=\"skip/b.c\"/>",
+        "label": "Excluded file is relative (skip/b.c)"
+      },
+      {
+        "expect": "file",
+        "path": "{project:relative-paths}/rel.cppcheck",
+        "not_contains": "{project:relative-paths}",
+        "label": "No absolute path to the project folder in the XML"
+      }
+    ],
+    "script_for": "edfc96b05beb"
+  },
+  "t5afff002": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "New Project File",
+        "role": "menu item",
+        "label": "Create a new project file"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{work}/t.cppcheck",
+        "label": "Enter the project file name"
+      },
+      {
+        "do": "click",
+        "name": "Save",
+        "role": "button",
+        "exact": true,
+        "label": "Save the new project file; the project file dialog opens"
+      },
+      {
+        "expect": "visible",
+        "name": "Project file",
+        "role": "dialog",
+        "label": "Project file dialog is open"
+      },
+      {
+        "do": "click",
+        "name": "Types and Functions",
+        "role": "page tab",
+        "label": "Go to the tab with the Platform setting"
+      },
+      {
+        "do": "click",
+        "name": "Platform",
+        "role": "combo box",
+        "label": "Open the Platform drop-down list"
+      },
+      {
+        "expect": "visible",
+        "name": "pic8.xml",
+        "role": "list item",
+        "label": "pic8.xml is in the Platform list"
+      },
+      {
+        "do": "click",
+        "name": "pic8.xml",
+        "role": "list item",
+        "exact": true,
+        "mouse": true,
+        "label": "Select pic8.xml in the list"
+      },
+      {
+        "expect": "visible",
+        "name": "pic8.xml",
+        "role": "combo box",
+        "label": "The dialog shows pic8.xml as the platform"
+      }
+    ],
+    "script_for": "619f376b22e1"
+  },
+  "t91490557": {
+    "script": [
+      {
+        "do": "click",
+        "name": "Open Project File",
+        "role": "button",
+        "label": "Open the project file dialog from the toolbar"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:custom-cfg}/p.cppcheck",
+        "label": "Enter the path of p.cppcheck"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Open the project file"
+      },
+      {
+        "expect": "visible",
+        "name": "Cppcheck",
+        "role": "alert",
+        "label": "Analysis finishes and an alert appears"
+      },
+      {
+        "do": "click",
+        "name": "OK",
+        "role": "button",
+        "label": "Dismiss the alert"
+      },
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Edit Project File",
+        "role": "menu item",
+        "label": "Open the project file dialog (edit the project file)"
+      },
+      {
+        "expect": "visible",
+        "name": "Project file: p.cppcheck",
+        "role": "dialog",
+        "label": "The project file dialog is open"
+      },
+      {
+        "expect": "visible",
+        "name": "aa",
+        "role": "list item",
+        "exact": true,
+        "label": "aa is in the Libraries list"
+      },
+      {
+        "expect": "visible",
+        "name": "avr",
+        "role": "list item",
+        "exact": true,
+        "label": "avr is in the Libraries list"
+      }
+    ],
+    "script_for": "b0bf245f7042"
+  },
+  "t0ec0680b": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File...",
+        "role": "menu item",
+        "label": "Choose Open Project File"
+      },
+      {
+        "do": "wait",
+        "name": "Select Project File",
+        "role": "dialog",
+        "label": "File dialog is shown"
+      },
+      {
+        "do": "settext",
+        "name": "File name",
+        "role": "text",
+        "value": "{project:embedded}/embedded.cppcheck",
+        "label": "Enter the project file path"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Open the project file"
+      },
+      {
+        "do": "wait",
+        "name": "Project: embedded.cppcheck",
+        "role": "frame",
+        "label": "Project is loaded"
+      },
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu again"
+      },
+      {
+        "do": "click",
+        "name": "Edit Project File...",
+        "role": "menu item",
+        "label": "Open the project file dialog"
+      },
+      {
+        "do": "wait",
+        "name": "Project file: embedded.cppcheck",
+        "role": "dialog",
+        "label": "Project file dialog is shown"
+      },
+      {
+        "do": "click",
+        "name": "Addons",
+        "role": "page tab",
+        "label": "Go to the Addons tab"
+      },
+      {
+        "expect": "state",
+        "name": "Misra C 2012",
+        "role": "check box",
+        "state": "checked",
+        "label": "The Misra C 2012 checkbox is checked"
+      }
+    ],
+    "script_for": "187bd0d82a72"
+  }
+}

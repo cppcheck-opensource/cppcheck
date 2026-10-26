@@ -144,6 +144,7 @@ private:
         TEST_CASE(crash2);
         TEST_CASE(crash3);
         TEST_CASE(nullNodeInvalidLevel);
+        TEST_CASE(invalidExtTokens);
     }
 
     std::string parse(const char clang[]) {
@@ -1421,7 +1422,7 @@ private:
         // getSpelling() indexed mExtTokens[typeIndex - 1] without a lower-bound
         // check, so a node whose line carries no ext tokens (typeIndex <= 0) read
         // out of bounds.
-        (void)parse("`-RecordDecl "); // don't crash
+        ASSERT_THROW_INTERNAL_EQUALS(parse("`-RecordDecl "), AST, "invalid AST node: RecordDecl");
     }
 
     void nullNodeInvalidLevel() {
@@ -1441,6 +1442,29 @@ private:
         (void)parse("`-NamespaceDecl 0x1\n"
                     "  `-CXXRecordDecl 0x2\n"); // don't crash
         (void)parse("`-CXXRecordDecl 0x1"); // don't crash
+    }
+
+    void invalidExtTokens() {
+        // nodes without the ext tokens the handlers read must not index out of bounds
+        ASSERT_THROW_INTERNAL_EQUALS(parse("`-FunctionDecl 0x1 <a.cpp:1:1, col:20> col:5 f 'int ()'\n"
+                                           "  `-CompoundStmt 0x2 <col:9, col:20>\n"
+                                           "    `-ReturnStmt 0x3 <col:11, col:18>\n"
+                                           "      `-IntegerLiteral \n"), AST, "invalid AST node: IntegerLiteral");
+        ASSERT_THROW_INTERNAL_EQUALS(parse("`-EnumDecl "), AST, "invalid AST node: EnumDecl");
+        ASSERT_THROW_INTERNAL_EQUALS(parse("`-VarDecl 0x1"), AST, "invalid AST node: VarDecl");
+        ASSERT_THROW_INTERNAL_EQUALS(parse("`-VarDecl 0x1 'int'"), AST, "invalid AST node: VarDecl");
+        ASSERT_THROW_INTERNAL_EQUALS(parse("`-VarDecl 0x1 <col:1>"), AST, "invalid AST node: VarDecl");
+        ASSERT_THROW_INTERNAL_EQUALS(parse("`-FieldDecl 0x1 'int'"), AST, "invalid AST node: FieldDecl");
+        ASSERT_THROW_INTERNAL_EQUALS(parse("`-FunctionDecl 0x1 <a.cpp:1:1, col:20> col:5 f 'int ()' prev"), AST, "invalid AST node: FunctionDecl");
+        // address-only declarations: getSpelling() is empty, addtoken() adds nothing and back() is null
+        ASSERT_THROW_INTERNAL_EQUALS(parse("`-FunctionDecl 0x1"), AST, "invalid AST node: FunctionDecl");
+        ASSERT_THROW_INTERNAL_EQUALS(parse("`-CXXConstructorDecl 0x1"), AST, "invalid AST node: CXXConstructorDecl");
+        ASSERT_THROW_INTERNAL_EQUALS(parse("`-CXXMethodDecl 0x1"), AST, "invalid AST node: CXXMethodDecl");
+        ASSERT_THROW_INTERNAL_EQUALS(parse("`-EnumConstantDecl 0x1"), AST, "invalid AST node: EnumConstantDecl");
+        ASSERT_THROW_INTERNAL_EQUALS(parse("`-FunctionDecl 0x1 <a.cpp:1:1, col:20> col:5 f 'int ()'\n"
+                                           "  `-ParmVarDecl 0x2 <col:1>\n"), AST, "invalid AST node: ParmVarDecl");
+        ASSERT_THROW_INTERNAL_EQUALS(parse("`-FunctionDecl 0x1 <a.cpp:1:1, col:20> col:5 f 'int ()'\n"
+                                           "  `-ParmVarDecl 0x2 'int'\n"), AST, "invalid AST node: ParmVarDecl");
     }
 };
 

@@ -1301,6 +1301,10 @@ void CheckConditionImpl::checkIncorrectLogicOperator()
             if (isfloat && (op1 == "==" || op1 == "!=" || op2 == "==" || op2 == "!="))
                 continue;
 
+            // no double value to compare (1e400L would become infinity)
+            if (isfloat && (MathLib::isLongDoubleOutOfDoubleRange(value1) || MathLib::isLongDoubleOutOfDoubleRange(value2)))
+                continue;
+
             // the expr are not the token of the value but they provide better context
             const double d1 = isfloat ? MathLib::toDoubleNumber(value1) : 0;
             const double d2 = isfloat ? MathLib::toDoubleNumber(value2) : 0;

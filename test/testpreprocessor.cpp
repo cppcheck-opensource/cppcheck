@@ -382,6 +382,7 @@ private:
         TEST_CASE(limitsDefines);
 
         TEST_CASE(hashCalculation);
+        TEST_CASE(hashCalculationIncludeOrder);
 
         TEST_CASE(standard);
 
@@ -3180,6 +3181,25 @@ private:
         ASSERT(getHash(code) != getHash(code2));
         ASSERT(getHash(code) != getHash(code3));
         ASSERT(getHash(code2) != getHash(code3));
+    }
+
+    void hashCalculationIncludeOrder() {
+        // #15132 - the load order of the includes must not change the hash
+        const ScopedFile headerA("hash_a.h", "int a;\n");
+        const ScopedFile headerZ("hash_z.h", "int z;\n");
+        const char code[] = "#include \"hash_z.h\"\n"
+                            "#include \"hash_a.h\"\n";
+
+        const auto getHashLoadOrder = [&](const std::vector<std::string> &loadOrder) {
+            std::vector<std::string> files;
+            simplecpp::TokenList tokens(code, files, "test.c");
+            Preprocessor preprocessor(tokens, settingsDefault, *this, Standards::Language::C);
+            for (const std::string &header : loadOrder)
+                ASSERT(preprocessor.loadFile(files, header));
+            return preprocessor.calculateHash("");
+        };
+
+        ASSERT_EQUALS(getHashLoadOrder({"hash_z.h", "hash_a.h"}), getHashLoadOrder({"hash_a.h", "hash_z.h"}));
     }
 
     void standard() {

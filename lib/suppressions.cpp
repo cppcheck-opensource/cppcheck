@@ -255,6 +255,8 @@ SuppressionList::Suppression SuppressionList::parseLine(std::string line)
     // Strip any end of line comments
     std::string::size_type endpos = std::min(line.find('#'), line.find("//"));
     if (endpos != std::string::npos) {
+        const std::string::size_type offset = line[endpos] == '#' ? 1 : 2;
+        suppression.extraComment = trim(line.substr(endpos + offset));
         while (endpos > 0 && std::isspace(line[endpos-1])) {
             endpos--;
         }

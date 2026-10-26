@@ -204,6 +204,7 @@ private:
         TEST_CASE(duplicateExpression20);
         TEST_CASE(duplicateExpression21);
         TEST_CASE(duplicateExpression22);
+        TEST_CASE(duplicateExpression23); // #12282
         TEST_CASE(duplicateExpressionLoop);
         TEST_CASE(duplicateValueTernary);
         TEST_CASE(duplicateValueTernarySizeof); // #13773
@@ -230,6 +231,7 @@ private:
         TEST_CASE(checkRedundantCopy);
 
         TEST_CASE(checkNegativeShift);
+        TEST_CASE(checkNegativeShiftErrorPath);
 
         TEST_CASE(incompleteArrayFill);
 
@@ -4224,6 +4226,17 @@ private:
               "    int select(DS *ds, Callback cb);\n"
               "    int select(DS &ds) { return select(ds, [](int) {}); }\n"
               "};\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("int& g();\n" // reference to function
+              "int k();\n"
+              "int f1() { int& (&r)() = g; return r(); }\n"
+              "int f2() { int (&r)() = k; return r(); }\n"
+              "int& f3(int& (&f)()) { return f(); }\n"
+              "int f4(int&& (&f)()) { return f(); }\n"
+              "int f5(int (&f)()) { return f(); }\n"
+              "using FR = int&(&)();\n"
+              "void f6(FR f) { f(); }\n");
         ASSERT_EQUALS("", errout_str());
 
         check("struct S {\n" // #15087
@@ -8509,6 +8522,17 @@ private:
         ASSERT_EQUALS("", errout_str());
     }
 
+    void duplicateExpression23() { // #12282
+        // long double literals out of the range of double are different values
+        check("long double f() {\n"
+              "    return 1e400L / 1e500L;\n"
+              "}\n"
+              "int g(long double x) {\n"
+              "    return x == 1e400L || x == 1e500L;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
     void duplicateExpression22() {
         check("int f() {\n" // #14913
               "    return 0x1 | (0x2 | 0x4) | 0x1;\n"
@@ -10523,6 +10547,24 @@ private:
               "    return f<-1>(2)\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void checkNegativeShiftErrorPath() {
+        setMultiline();
+        Settings s = settings1;
+        s.templateLocation = "{file}:{line}:note:{info}\n";
+
+        check("int f(int i, bool b) {\n"
+              "    int s = -1;\n"
+              "    if (b)\n"
+              "        return i;\n"
+              "    return i << s;\n"
+              "}\n", dinit(CheckOptions, $.settings = &s));
+        ASSERT_EQUALS("[test.cpp:5:14]: warning: Shifting by a negative value is undefined behaviour [shiftNegative]\n"
+                      "[test.cpp:2:14]: note: Assignment 's=-1', assigned value is -1\n"
+                      "[test.cpp:3:9]: note: Assuming condition is false\n"
+                      "[test.cpp:5:14]: note: Shifting by a negative value is undefined behaviour\n",
+                      errout_str());
     }
 
     void incompleteArrayFill() {
@@ -13543,6 +13585,24 @@ private:
 
         check("struct S { void g(float f) {} void f() {} };\n");
         ASSERT_EQUALS("[test.cpp:1:36] -> [test.cpp:1:25]: (style) Argument 'f' shadows outer function [shadowFunction]\n", errout_str());
+
+        check("int f() {\n" // #15114
+              "    int i = 0;\n"
+              "    return i;\n"
+              "}\n"
+              "int i = 1;\n");
+        ASSERT_EQUALS("", errout_str());
+
+        {
+            ScopedFile inc("test.h", "int pad1;\nint pad2;\nint pad3;\nint pad4;\nfloat f;\n");
+            checkP("void g() {\n"
+                   "    #include \"test.h\"\n"
+                   "    {\n"
+                   "        float f;\n"
+                   "    }\n"
+                   "}\n");
+            ASSERT_EQUALS("[test.h:5:7] -> [test.cpp:4:15]: (style) Local variable 'f' shadows outer variable [shadowVariable]\n", errout_str());
+        }
     }
 
     void knownArgument() {
@@ -13744,6 +13804,18 @@ private:
                "int f(int a) {\n"
                "    return MACRO(true);\n"
                "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S {\n" // #15063
+              "    int (*f)(int, int);\n"
+              "    int (*a[2])(int, int);\n"
+              "};\n"
+              "int g1(struct S* p, int x) {\n"
+              "    return (p->f)(x, 10);\n"
+              "}\n"
+              "int g2(struct S s, int x) {\n"
+              "    return s.a[0](x, 10);\n"
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 

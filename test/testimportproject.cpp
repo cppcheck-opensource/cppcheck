@@ -1327,6 +1327,12 @@ private:
         ASSERT_EQUALS("5", cppcheck::testing::expandMSBuildExpression("$([System.Math]::Abs(5))"));
         ASSERT_EQUALS("2", cppcheck::testing::expandMSBuildExpression("$([System.Math]::Floor(2.9))"));
         ASSERT_EQUALS("3", cppcheck::testing::expandMSBuildExpression("$([System.Math]::Ceiling(2.1))"));
+        ASSERT_EQUALS("2", cppcheck::testing::expandMSBuildExpression("$([System.Math]::Round(2.5))"));
+        ASSERT_EQUALS("4", cppcheck::testing::expandMSBuildExpression("$([System.Math]::Round(3.5))"));
+        ASSERT_EQUALS("-2", cppcheck::testing::expandMSBuildExpression("$([System.Math]::Round(-2.5))"));
+        ASSERT_EQUALS("1000000000000000019884624838656.000000", cppcheck::testing::expandMSBuildExpression("$([System.Math]::Pow(10, 30))"));
+        ASSERT_EQUALS("1000000000000000019884624838656.000000", cppcheck::testing::expandMSBuildExpression("$([System.Math]::Round(1e30))"));
+        ASSERT_EQUALS("-1000000000000000019884624838656.000000", cppcheck::testing::expandMSBuildExpression("$([System.Math]::Floor(-1e30))"));
 
         // --- $([System.IO.Path]::...) ---
         ASSERT_EQUALS("bar.cpp", cppcheck::testing::expandMSBuildExpression("$([System.IO.Path]::GetFileName('C:/foo/bar.cpp'))"));

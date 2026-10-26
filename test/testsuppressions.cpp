@@ -1124,38 +1124,45 @@ private:
         SuppressionList suppressions1;
         ASSERT_EQUALS("", suppressions1.parseFile(file1));
         ASSERT_EQUALS(true, suppressions1.isSuppressed(errorMessage("abc", "test.cpp", 123)));
+        ASSERT_EQUALS("", suppressions1.getSuppressions().cbegin()->extraComment);
 
         std::istringstream file2("// comment\n"
                                  "abc");
         SuppressionList suppressions2;
         ASSERT_EQUALS("", suppressions2.parseFile(file2));
         ASSERT_EQUALS(true, suppressions2.isSuppressed(errorMessage("abc", "test.cpp", 123)));
+        ASSERT_EQUALS("", suppressions2.getSuppressions().cbegin()->extraComment);
 
         std::istringstream file3("abc // comment");
         SuppressionList suppressions3;
         ASSERT_EQUALS("", suppressions3.parseFile(file3));
         ASSERT_EQUALS(true, suppressions3.isSuppressed(errorMessage("abc", "test.cpp", 123)));
+        ASSERT_EQUALS("comment", suppressions3.getSuppressions().cbegin()->extraComment);
 
         std::istringstream file4("abc\t\t # comment");
         SuppressionList suppressions4;
         ASSERT_EQUALS("", suppressions4.parseFile(file4));
         ASSERT_EQUALS(true, suppressions4.isSuppressed(errorMessage("abc", "test.cpp", 123)));
+        ASSERT_EQUALS("comment", suppressions4.getSuppressions().cbegin()->extraComment);
 
         std::istringstream file5("abc:test.cpp\t\t # comment");
         SuppressionList suppressions5;
         ASSERT_EQUALS("", suppressions5.parseFile(file5));
         ASSERT_EQUALS(true, suppressions5.isSuppressed(errorMessage("abc", "test.cpp", 123)));
+        ASSERT_EQUALS("comment", suppressions5.getSuppressions().cbegin()->extraComment);
 
         std::istringstream file6("abc:test.cpp:123\t\t # comment with . inside");
         SuppressionList suppressions6;
         ASSERT_EQUALS("", suppressions6.parseFile(file6));
         ASSERT_EQUALS(true, suppressions6.isSuppressed(errorMessage("abc", "test.cpp", 123)));
+        ASSERT_EQUALS("comment with . inside", suppressions6.getSuppressions().cbegin()->extraComment);
 
         std::istringstream file7(" // comment\n" // #11450
                                  "abc");
         SuppressionList suppressions7;
         ASSERT_EQUALS("", suppressions7.parseFile(file7));
         ASSERT_EQUALS(true, suppressions7.isSuppressed(errorMessage("abc", "test.cpp", 123)));
+        ASSERT_EQUALS("", suppressions7.getSuppressions().cbegin()->extraComment);
     }
 
     void inlinesuppress() const {

@@ -1,0 +1,548 @@
+{
+  "t41f9102b": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "expect": "visible",
+        "name": "Open XML...",
+        "role": "menu item",
+        "label": "File menu shows entries"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Escape"
+        ],
+        "label": "Close the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Edit",
+        "role": "menu item",
+        "label": "Open the Edit menu"
+      },
+      {
+        "expect": "visible",
+        "name": "Clear results",
+        "role": "menu item",
+        "label": "Edit menu shows entries"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Escape"
+        ],
+        "label": "Close the Edit menu"
+      },
+      {
+        "do": "click",
+        "name": "View",
+        "role": "menu item",
+        "label": "Open the View menu"
+      },
+      {
+        "expect": "visible",
+        "name": "Toolbars",
+        "role": "menu item",
+        "label": "View menu shows entries"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Escape"
+        ],
+        "label": "Close the View menu"
+      },
+      {
+        "do": "click",
+        "name": "Analyze",
+        "role": "menu item",
+        "label": "Open the Analyze menu"
+      },
+      {
+        "expect": "visible",
+        "name": "Files...",
+        "role": "menu item",
+        "label": "Analyze menu shows entries"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Escape"
+        ],
+        "label": "Close the Analyze menu"
+      },
+      {
+        "do": "click",
+        "name": "Help",
+        "role": "menu item",
+        "label": "Open the Help menu"
+      },
+      {
+        "expect": "visible",
+        "name": "Contents",
+        "role": "menu item",
+        "label": "Help menu shows entries"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Escape"
+        ],
+        "label": "Close the Help menu"
+      }
+    ],
+    "script_for": "06424398d415"
+  },
+  "t1cc2be0f": {
+    "script": [
+      {
+        "do": "click",
+        "name": "View",
+        "role": "menu item",
+        "label": "Open View menu"
+      },
+      {
+        "do": "click",
+        "name": "Toolbars",
+        "role": "menu item",
+        "label": "Open Toolbars submenu"
+      },
+      {
+        "expect": "state",
+        "name": "Standard",
+        "role": "menu item",
+        "state": "checked",
+        "label": "Standard toolbar entry is checked"
+      },
+      {
+        "expect": "state",
+        "name": "Categories",
+        "role": "menu item",
+        "state": "checked",
+        "label": "Categories toolbar entry is checked"
+      },
+      {
+        "expect": "state",
+        "name": "Filter",
+        "role": "menu item",
+        "state": "checked",
+        "label": "Filter toolbar entry is checked"
+      },
+      {
+        "do": "click",
+        "name": "Standard",
+        "role": "menu item",
+        "label": "Uncheck Standard toolbar"
+      },
+      {
+        "expect": "gone",
+        "name": "Standard",
+        "role": "tool bar",
+        "label": "Standard toolbar is no longer shown"
+      },
+      {
+        "expect": "visible",
+        "name": "Categories",
+        "role": "tool bar",
+        "label": "Categories toolbar still shown"
+      },
+      {
+        "expect": "visible",
+        "name": "Filter",
+        "role": "tool bar",
+        "label": "Filter toolbar still shown"
+      },
+      {
+        "do": "click",
+        "name": "Categories",
+        "role": "menu item",
+        "label": "Uncheck Categories toolbar"
+      },
+      {
+        "expect": "gone",
+        "name": "Categories",
+        "role": "tool bar",
+        "label": "Categories toolbar is no longer shown"
+      },
+      {
+        "expect": "visible",
+        "name": "Filter",
+        "role": "tool bar",
+        "label": "Filter toolbar still shown"
+      },
+      {
+        "do": "click",
+        "name": "Filter",
+        "role": "menu item",
+        "label": "Uncheck Filter toolbar"
+      },
+      {
+        "expect": "gone",
+        "name": "Filter",
+        "role": "tool bar",
+        "label": "Filter toolbar is no longer shown"
+      }
+    ],
+    "script_for": "6a99d7841493"
+  },
+  "t5fdeee58": {
+    "script": [
+      {
+        "expect": "capture",
+        "name": "Cppcheck",
+        "role": "frame",
+        "regex": "'Cppcheck (?:Premium )?(\\d[^']*)'",
+        "as": "version",
+        "label": "Note the version in the title of the main window"
+      },
+      {
+        "do": "click",
+        "name": "Help",
+        "role": "menu item",
+        "label": "Open the Help menu"
+      },
+      {
+        "do": "click",
+        "name": "About...",
+        "role": "menu item",
+        "label": "Open Help > About"
+      },
+      {
+        "expect": "visible",
+        "name": "About Cppcheck",
+        "role": "dialog",
+        "label": "About dialog is shown"
+      },
+      {
+        "expect": "visible",
+        "name": "Version {version}",
+        "role": "label",
+        "label": "About dialog shows the same version as the main window title ({version})"
+      }
+    ],
+    "script_for": "5dadee22b5ec"
+  },
+  "t90321d9c": {
+    "script": [
+      {
+        "do": "click",
+        "name": "Help",
+        "role": "menu item",
+        "label": "Open the Help menu"
+      },
+      {
+        "do": "click",
+        "name": "Contents",
+        "role": "menu item",
+        "label": "Choose Help > Contents"
+      },
+      {
+        "expect": "visible",
+        "name": "Cppcheck GUI help",
+        "role": "dialog",
+        "label": "A help window opens",
+        "observed_fail": true
+      },
+      {
+        "expect": "text",
+        "contains": "Contents",
+        "label": "The help window has contents (it is not empty)"
+      },
+      {
+        "expect": "text",
+        "not_contains": "was not found",
+        "label": "No error that the help file was not found"
+      }
+    ],
+    "script_for": "7c97b218aa0f"
+  },
+  "tc059b730": {
+    "script": [
+      {
+        "do": "click",
+        "name": "Help",
+        "role": "menu item",
+        "label": "Open the Help menu"
+      },
+      {
+        "do": "click",
+        "name": "License...",
+        "role": "menu item",
+        "label": "Open License"
+      },
+      {
+        "expect": "visible",
+        "name": "License",
+        "role": "dialog",
+        "label": "License dialog opens"
+      },
+      {
+        "expect": "text",
+        "contains": "GNU GENERAL PUBLIC LICENSE",
+        "label": "License dialog has text"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Escape"
+        ],
+        "label": "Close License with Escape"
+      },
+      {
+        "expect": "gone",
+        "name": "License",
+        "label": "License dialog is closed"
+      },
+      {
+        "do": "click",
+        "name": "Help",
+        "role": "menu item",
+        "label": "Open the Help menu"
+      },
+      {
+        "do": "click",
+        "name": "Authors...",
+        "role": "menu item",
+        "label": "Open Authors"
+      },
+      {
+        "expect": "visible",
+        "name": "Authors",
+        "role": "dialog",
+        "label": "Authors dialog opens"
+      },
+      {
+        "expect": "text",
+        "contains": "The cppcheck team",
+        "label": "Authors dialog has text"
+      },
+      {
+        "do": "click",
+        "name": "Close",
+        "role": "button",
+        "label": "Close Authors with its Close button"
+      },
+      {
+        "expect": "gone",
+        "name": "Authors",
+        "role": "dialog",
+        "label": "Authors dialog is closed"
+      },
+      {
+        "do": "click",
+        "name": "Help",
+        "role": "menu item",
+        "label": "Open the Help menu"
+      },
+      {
+        "do": "click",
+        "name": "About...",
+        "role": "menu item",
+        "label": "Open About"
+      },
+      {
+        "expect": "visible",
+        "name": "About Cppcheck",
+        "role": "dialog",
+        "label": "About dialog opens"
+      },
+      {
+        "expect": "text",
+        "contains": "Cppcheck - A tool for static C/C++ code analysis.",
+        "label": "About dialog has text"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Escape"
+        ],
+        "label": "Close About with Escape"
+      },
+      {
+        "expect": "gone",
+        "name": "About Cppcheck",
+        "role": "dialog",
+        "label": "About dialog is closed"
+      },
+      {
+        "do": "click",
+        "name": "Help",
+        "role": "menu item",
+        "label": "Open the Help menu"
+      },
+      {
+        "do": "click",
+        "name": "Contents",
+        "role": "menu item",
+        "label": "Open Contents"
+      },
+      {
+        "expect": "visible",
+        "name": "Cppcheck",
+        "role": "alert",
+        "label": "Contents shows a message"
+      },
+      {
+        "expect": "text",
+        "contains": "Helpfile",
+        "label": "Message has text"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Escape"
+        ],
+        "label": "Close the message with Escape"
+      },
+      {
+        "expect": "visible",
+        "name": "Cppcheck GUI help",
+        "role": "dialog",
+        "label": "Help window opens"
+      },
+      {
+        "expect": "text",
+        "contains": "Introduction",
+        "observed_fail": true,
+        "label": "Help window has text in it, not empty"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Escape"
+        ],
+        "label": "Close the help window with Escape"
+      }
+    ],
+    "script_for": "97511d2313db"
+  },
+  "t5bf8f6ae": {
+    "script": [
+      {
+        "do": "click",
+        "name": "View",
+        "role": "menu item",
+        "label": "Open the View menu"
+      },
+      {
+        "do": "click",
+        "name": "Show Scratchpad",
+        "role": "menu item",
+        "label": "Open View > Scratch Pad"
+      },
+      {
+        "expect": "visible",
+        "name": "Scratchpad",
+        "role": "dialog",
+        "label": "Scratchpad dialog is shown"
+      },
+      {
+        "do": "focus",
+        "path": "1.1",
+        "label": "Focus the code editor of the scratchpad"
+      },
+      {
+        "do": "type",
+        "value": "int main(void)",
+        "label": "Type line 1"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "New line"
+      },
+      {
+        "do": "type",
+        "value": "{",
+        "label": "Type line 2"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "New line"
+      },
+      {
+        "do": "type",
+        "value": "    int *p = 0;",
+        "label": "Type line 3"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "New line"
+      },
+      {
+        "do": "type",
+        "value": "    return *p;",
+        "label": "Type line 4"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "New line"
+      },
+      {
+        "do": "type",
+        "value": "}",
+        "label": "Type line 5"
+      },
+      {
+        "do": "click",
+        "name": "Check",
+        "role": "button",
+        "label": "Click Check"
+      },
+      {
+        "expect": "text",
+        "contains": "nullPointer",
+        "timeout": 15,
+        "label": "A nullPointer error is shown"
+      },
+      {
+        "expect": "text",
+        "contains": "Null pointer dereference: p",
+        "label": "The null pointer message is shown"
+      },
+      {
+        "expect": "alive",
+        "label": "The application did not crash"
+      }
+    ],
+    "script_for": "30d9d26803fd"
+  },
+  "t1a2285d8": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Quit",
+        "role": "menu item",
+        "label": "Choose File > Quit"
+      },
+      {
+        "expect": "exited",
+        "label": "The application closes"
+      }
+    ],
+    "script_for": "bc31dd4069bf"
+  }
+}

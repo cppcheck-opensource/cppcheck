@@ -21,7 +21,6 @@
 #include "errorlogger.h"
 #include "filesettings.h"
 #include "path.h"
-#include "utils.h"
 
 #include <array>
 #include <cstring>
@@ -197,12 +196,13 @@ std::string AnalyzerInformation::skipAnalysis(const tinyxml2::XMLDocument &analy
 
 std::string AnalyzerInformation::getAnalyzerInfoFileFromFilesTxt(std::istream& filesTxt, const std::string &sourcefile, const std::string &cfg, size_t fsFileId)
 {
+    const std::string simplifiedSourcefile = Path::simplifyPath(sourcefile);
     std::string line;
     while (std::getline(filesTxt,line)) {
         AnalyzerInformation::Info filesTxtInfo;
         if (!filesTxtInfo.parse(line))
             continue; // TODO: report error?
-        if (endsWith(sourcefile, filesTxtInfo.sourceFile) && filesTxtInfo.cfg == cfg && filesTxtInfo.fsFileId == fsFileId)
+        if (filesTxtInfo.sourceFile == simplifiedSourcefile && filesTxtInfo.cfg == cfg && filesTxtInfo.fsFileId == fsFileId)
             return filesTxtInfo.afile;
     }
     return "";

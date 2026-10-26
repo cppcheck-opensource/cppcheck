@@ -1406,9 +1406,12 @@ std::string ImportProject::applyMSBuildStaticFunction(const std::string &classNa
         // Format a double as an integer string when the value is whole,
         // otherwise use std::to_string (which gives 6 decimal places).
         const auto fmtDouble = [](double d) -> std::string {
-            const auto i = static_cast<long long>(d);
-            if (!(static_cast<double>(i) < d) && !(static_cast<double>(i) > d))
-                return std::to_string(i);
+            // Converting a double outside the long long range is undefined behaviour
+            if (d >= static_cast<double>(LLONG_MIN) && d < -static_cast<double>(LLONG_MIN)) {
+                const auto i = static_cast<long long>(d);
+                if (!(static_cast<double>(i) < d) && !(static_cast<double>(i) > d))
+                    return std::to_string(i);
+            }
             return std::to_string(d);
         };
         if (args.size() == 1) {
@@ -1425,16 +1428,14 @@ std::string ImportProject::applyMSBuildStaticFunction(const std::string &classNa
                     // not round-half-away-from-zero.
                     const double fl = std::floor(x);
                     const double frac = x - fl;
-                    long long rounded;
+                    double rounded;
                     if (frac < 0.5)
-                        rounded = static_cast<long long>(fl);
+                        rounded = fl;
                     else if (frac > 0.5)
-                        rounded = static_cast<long long>(fl) + 1;
-                    else { // exactly 0.5 -- round to nearest even integer
-                        const auto ifl = static_cast<long long>(fl);
-                        rounded = ((ifl % 2) == 0) ? ifl : ifl + 1;
-                    }
-                    return std::to_string(rounded);
+                        rounded = fl + 1;
+                    else // exactly 0.5 -- round to nearest even integer
+                        rounded = (std::fabs(std::fmod(fl, 2.0)) < 1) ? fl : fl + 1;
+                    return fmtDouble(rounded);
                 }
                 if (caseInsensitiveStringCompare(member, "Sqrt") == 0 && x >= 0)
                     return fmtDouble(std::sqrt(x));

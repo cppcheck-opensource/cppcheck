@@ -1,0 +1,1127 @@
+{
+  "t852206f1": {
+    "script": [
+      {
+        "do": "click",
+        "name": "Show errors",
+        "role": "check box",
+        "label": "Click Error once"
+      },
+      {
+        "do": "click",
+        "name": "Show warnings",
+        "role": "check box",
+        "label": "Click Warning once"
+      },
+      {
+        "do": "click",
+        "name": "Show style warnings",
+        "role": "check box",
+        "label": "Click Style once"
+      },
+      {
+        "do": "click",
+        "name": "Show portability",
+        "role": "check box",
+        "label": "Click Portability once"
+      },
+      {
+        "do": "click",
+        "name": "Show performance warnings",
+        "role": "check box",
+        "label": "Click Performance once"
+      },
+      {
+        "do": "click",
+        "name": "Show information",
+        "role": "check box",
+        "label": "Click Information once"
+      },
+      {
+        "do": "click",
+        "name": "Cppcheck",
+        "role": "check box",
+        "label": "Click Cppcheck once"
+      },
+      {
+        "do": "click",
+        "name": "Clang",
+        "role": "check box",
+        "label": "Click Clang once"
+      },
+      {
+        "expect": "state",
+        "name": "Show errors",
+        "role": "check box",
+        "not_state": "checked",
+        "label": "Error changed to unchecked after first click"
+      },
+      {
+        "expect": "state",
+        "name": "Show warnings",
+        "role": "check box",
+        "not_state": "checked",
+        "label": "Warning changed to unchecked after first click"
+      },
+      {
+        "expect": "state",
+        "name": "Show style warnings",
+        "role": "check box",
+        "not_state": "checked",
+        "label": "Style changed to unchecked after first click"
+      },
+      {
+        "expect": "state",
+        "name": "Show portability",
+        "role": "check box",
+        "not_state": "checked",
+        "label": "Portability changed to unchecked after first click"
+      },
+      {
+        "expect": "state",
+        "name": "Show performance warnings",
+        "role": "check box",
+        "not_state": "checked",
+        "label": "Performance changed to unchecked after first click"
+      },
+      {
+        "expect": "state",
+        "name": "Show information",
+        "role": "check box",
+        "not_state": "checked",
+        "label": "Information changed to unchecked after first click"
+      },
+      {
+        "expect": "state",
+        "name": "Cppcheck",
+        "role": "check box",
+        "not_state": "checked",
+        "label": "Cppcheck changed to unchecked after first click"
+      },
+      {
+        "expect": "state",
+        "name": "Clang",
+        "role": "check box",
+        "not_state": "checked",
+        "label": "Clang changed to unchecked after first click"
+      },
+      {
+        "do": "click",
+        "name": "Show errors",
+        "role": "check box",
+        "label": "Click Error a second time"
+      },
+      {
+        "do": "click",
+        "name": "Show warnings",
+        "role": "check box",
+        "label": "Click Warning a second time"
+      },
+      {
+        "do": "click",
+        "name": "Show style warnings",
+        "role": "check box",
+        "label": "Click Style a second time"
+      },
+      {
+        "do": "click",
+        "name": "Show portability",
+        "role": "check box",
+        "label": "Click Portability a second time"
+      },
+      {
+        "do": "click",
+        "name": "Show performance warnings",
+        "role": "check box",
+        "label": "Click Performance a second time"
+      },
+      {
+        "do": "click",
+        "name": "Show information",
+        "role": "check box",
+        "label": "Click Information a second time"
+      },
+      {
+        "do": "click",
+        "name": "Cppcheck",
+        "role": "check box",
+        "label": "Click Cppcheck a second time"
+      },
+      {
+        "do": "click",
+        "name": "Clang",
+        "role": "check box",
+        "label": "Click Clang a second time"
+      },
+      {
+        "expect": "state",
+        "name": "Show errors",
+        "role": "check box",
+        "state": "checked",
+        "label": "Error is back to its start state (checked)"
+      },
+      {
+        "expect": "state",
+        "name": "Show warnings",
+        "role": "check box",
+        "state": "checked",
+        "label": "Warning is back to its start state (checked)"
+      },
+      {
+        "expect": "state",
+        "name": "Show style warnings",
+        "role": "check box",
+        "state": "checked",
+        "label": "Style is back to its start state (checked)"
+      },
+      {
+        "expect": "state",
+        "name": "Show portability",
+        "role": "check box",
+        "state": "checked",
+        "label": "Portability is back to its start state (checked)"
+      },
+      {
+        "expect": "state",
+        "name": "Show performance warnings",
+        "role": "check box",
+        "state": "checked",
+        "label": "Performance is back to its start state (checked)"
+      },
+      {
+        "expect": "state",
+        "name": "Show information",
+        "role": "check box",
+        "state": "checked",
+        "label": "Information is back to its start state (checked)"
+      },
+      {
+        "expect": "state",
+        "name": "Cppcheck",
+        "role": "check box",
+        "state": "checked",
+        "label": "Cppcheck is back to its start state (checked)"
+      },
+      {
+        "expect": "state",
+        "name": "Clang",
+        "role": "check box",
+        "state": "checked",
+        "label": "Clang is back to its start state (checked)"
+      }
+    ],
+    "script_for": "e5baac140df9"
+  },
+  "td7decf1a": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File...",
+        "role": "menu item",
+        "label": "Choose Open Project File"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:basic-project}/basic.cppcheck",
+        "label": "Enter the project file path"
+      },
+      {
+        "do": "click",
+        "name": "Open",
+        "role": "button",
+        "exact": true,
+        "label": "Confirm the file dialog"
+      },
+      {
+        "expect": "visible",
+        "name": "src/b.c",
+        "role": "table cell",
+        "timeout": 30,
+        "label": "Analysis is done and results are shown"
+      },
+      {
+        "expect": "visible",
+        "name": "src/a.c",
+        "role": "table cell",
+        "label": "All files are listed before filtering"
+      },
+      {
+        "expect": "visible",
+        "name": "include/util.h",
+        "role": "table cell",
+        "label": "util.h is listed before filtering"
+      },
+      {
+        "do": "focus",
+        "path": "0.4.1",
+        "role": "text",
+        "label": "Focus the Filter field"
+      },
+      {
+        "do": "type",
+        "value": "arrayIndex",
+        "label": "Type arrayIndex in the Filter field"
+      },
+      {
+        "expect": "visible",
+        "name": "src/b.c",
+        "role": "table cell",
+        "label": "Only the b.c error remains shown"
+      },
+      {
+        "expect": "gone",
+        "name": "src/a.c",
+        "role": "table cell",
+        "label": "a.c error is filtered out"
+      },
+      {
+        "expect": "gone",
+        "name": "include/util.h",
+        "role": "table cell",
+        "label": "util.h error is filtered out"
+      },
+      {
+        "do": "settext",
+        "path": "0.4.1",
+        "role": "text",
+        "value": "",
+        "label": "Clear the Filter field"
+      },
+      {
+        "expect": "visible",
+        "name": "src/a.c",
+        "role": "table cell",
+        "label": "a.c error is shown again"
+      },
+      {
+        "expect": "visible",
+        "name": "src/b.c",
+        "role": "table cell",
+        "label": "b.c error is shown again"
+      },
+      {
+        "expect": "visible",
+        "name": "include/util.h",
+        "role": "table cell",
+        "label": "util.h error is shown again"
+      }
+    ],
+    "script_for": "f86b9b8205a7"
+  },
+  "t2af9d498": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File...",
+        "role": "menu item",
+        "label": "Choose Open Project File"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:basic-project}/basic.cppcheck",
+        "label": "Enter the project file path"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Confirm the file dialog"
+      },
+      {
+        "do": "wait",
+        "name": "Checking src/b.c",
+        "role": "list item",
+        "timeout": 30,
+        "label": "Wait until the analysis has run"
+      },
+      {
+        "expect": "visible",
+        "name": "src/a.c",
+        "role": "table cell",
+        "timeout": 30,
+        "label": "Results are shown"
+      },
+      {
+        "do": "click",
+        "name": "View",
+        "role": "menu item",
+        "label": "Open the View menu"
+      },
+      {
+        "do": "click",
+        "name": "Collapse all",
+        "role": "menu item",
+        "label": "View > Collapse All"
+      },
+      {
+        "do": "click",
+        "name": "Expand all",
+        "role": "menu item",
+        "label": "View > Expand All (menu is still open)"
+      },
+      {
+        "expect": "visible",
+        "name": "Null pointer dereference: r",
+        "role": "table cell",
+        "label": "The error in util.h is visible"
+      },
+      {
+        "expect": "visible",
+        "name": "Null pointer dereference: p",
+        "role": "table cell",
+        "label": "The error in a.c is visible"
+      },
+      {
+        "expect": "state",
+        "name": "include/util.h",
+        "role": "table cell",
+        "state": "expanded",
+        "nth": 0,
+        "label": "util.h is expanded"
+      },
+      {
+        "expect": "state",
+        "name": "src/a.c",
+        "role": "table cell",
+        "state": "expanded",
+        "nth": 0,
+        "label": "a.c is expanded"
+      }
+    ],
+    "script_for": "3d1da0542440"
+  },
+  "tec898362": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File...",
+        "role": "menu item",
+        "label": "Choose Open Project File"
+      },
+      {
+        "do": "wait",
+        "name": "Select Project File",
+        "role": "dialog",
+        "label": "File dialog appears"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:basic-project}/basic.cppcheck",
+        "label": "Enter the project file path"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Confirm the file dialog"
+      },
+      {
+        "expect": "visible",
+        "name": "src/b.c",
+        "role": "table cell",
+        "timeout": 60,
+        "label": "Analysis is done and the file entries are shown"
+      },
+      {
+        "do": "click",
+        "name": "View",
+        "role": "menu item",
+        "label": "Open the View menu"
+      },
+      {
+        "do": "click",
+        "name": "Expand all",
+        "role": "menu item",
+        "label": "View > Expand All"
+      },
+      {
+        "expect": "visible",
+        "name": "nullPointer",
+        "role": "table cell",
+        "label": "Errors are visible after expanding"
+      },
+      {
+        "do": "hover",
+        "name": "View",
+        "role": "menu item",
+        "label": "Open the View menu again"
+      },
+      {
+        "do": "click",
+        "name": "Collapse all",
+        "role": "menu item",
+        "label": "View > Collapse All"
+      },
+      {
+        "expect": "visible",
+        "name": "include/util.h",
+        "role": "table cell",
+        "label": "File entry util.h is shown"
+      },
+      {
+        "expect": "visible",
+        "name": "src/a.c",
+        "role": "table cell",
+        "label": "File entry a.c is shown"
+      },
+      {
+        "expect": "visible",
+        "name": "src/b.c",
+        "role": "table cell",
+        "label": "File entry b.c is shown"
+      },
+      {
+        "expect": "gone",
+        "name": "nullPointer",
+        "label": "Errors are not shown"
+      },
+      {
+        "expect": "gone",
+        "name": "constVariablePointer",
+        "label": "Style errors are not shown"
+      }
+    ],
+    "script_for": "405a34af72d2"
+  },
+  "t4c027507": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File...",
+        "role": "menu item",
+        "label": "Choose Open Project File from the File menu"
+      },
+      {
+        "do": "wait",
+        "name": "Select Project File",
+        "role": "dialog",
+        "label": "Wait for the file dialog"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:basic-project}/basic.cppcheck",
+        "label": "Enter the path of basic.cppcheck"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Confirm the file dialog"
+      },
+      {
+        "do": "wait",
+        "name": "src/b.c",
+        "role": "table cell",
+        "timeout": 60,
+        "label": "Wait until the analysis is done and results are shown"
+      },
+      {
+        "do": "wait",
+        "name": "Select Project File",
+        "gone": true,
+        "label": "File dialog is closed"
+      },
+      {
+        "do": "rightclick",
+        "name": "src/a.c",
+        "role": "table cell",
+        "label": "Right click on the file a.c in the results"
+      },
+      {
+        "expect": "ocr",
+        "contains": "Recheck",
+        "label": "Context menu has Recheck"
+      },
+      {
+        "expect": "ocr",
+        "contains": "Open containing folder",
+        "label": "Context menu has Open containing folder"
+      },
+      {
+        "expect": "ocr",
+        "not_contains": "Hide",
+        "label": "Context menu has no Hide entries"
+      },
+      {
+        "expect": "ocr",
+        "not_contains": "Suppress selected id",
+        "label": "Context menu has no Suppress selected id"
+      }
+    ],
+    "script_for": "237d77caee36"
+  },
+  "taacc3841": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File",
+        "role": "menu item",
+        "label": "Choose Open Project File"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:basic-project}/basic.cppcheck",
+        "label": "Enter the project file path"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Open the project file"
+      },
+      {
+        "expect": "visible",
+        "name": "src/a.c",
+        "role": "table cell",
+        "timeout": 30,
+        "label": "Analysis is done and results show a.c"
+      },
+      {
+        "do": "focus",
+        "name": "src/a.c",
+        "role": "table cell",
+        "label": "Focus the a.c row"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Right"
+        ],
+        "label": "Expand a.c in the results"
+      },
+      {
+        "expect": "visible",
+        "name": "Null pointer dereference: p",
+        "role": "table cell",
+        "label": "First nullPointer error (line 6) is shown"
+      },
+      {
+        "do": "rightclick",
+        "name": "Null pointer dereference: p",
+        "role": "table cell",
+        "label": "Right click on the first nullPointer error"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Down",
+          "Down",
+          "Down",
+          "Return"
+        ],
+        "label": "Click Hide (Hide 1 result(s)) in the context menu"
+      },
+      {
+        "expect": "gone",
+        "name": "Null pointer dereference: p",
+        "label": "The hidden error is gone"
+      },
+      {
+        "expect": "visible",
+        "name": "Null pointer dereference: q",
+        "role": "table cell",
+        "label": "Second nullPointer error (line 12) is still shown"
+      },
+      {
+        "expect": "visible",
+        "name": "Variable 'p' can be declared as pointer to const",
+        "role": "table cell",
+        "label": "Other errors are still shown (line 5)"
+      },
+      {
+        "expect": "visible",
+        "name": "Variable 'q' can be declared as pointer to const",
+        "role": "table cell",
+        "label": "Other errors are still shown (line 11)"
+      }
+    ],
+    "script_for": "13f9f46bd6a3"
+  },
+  "t2937b690": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File...",
+        "role": "menu item",
+        "label": "Choose Open Project File"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:basic-project}/basic.cppcheck",
+        "label": "Enter the project file path"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Open the project file"
+      },
+      {
+        "expect": "visible",
+        "name": "src/a.c",
+        "role": "table cell",
+        "timeout": 30,
+        "label": "Wait until the analysis is done and results are shown"
+      },
+      {
+        "do": "doubleclick",
+        "name": "src/a.c",
+        "role": "table cell",
+        "label": "Select a.c in the results"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Right"
+        ],
+        "label": "Expand a.c in the results"
+      },
+      {
+        "expect": "visible",
+        "name": "nullPointer",
+        "role": "table cell",
+        "label": "nullPointer errors are listed before hiding"
+      },
+      {
+        "do": "rightclick",
+        "name": "nullPointer",
+        "role": "table cell",
+        "nth": 0,
+        "label": "Right click on a nullPointer error"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Down",
+          "Down",
+          "Down",
+          "Down"
+        ],
+        "label": "Move to Hide all with id in the context menu"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Click Hide all with ID"
+      },
+      {
+        "expect": "gone",
+        "name": "nullPointer",
+        "role": "table cell",
+        "label": "All nullPointer errors are gone from a.c and util.h"
+      },
+      {
+        "expect": "visible",
+        "name": "constVariablePointer",
+        "role": "table cell",
+        "label": "Other errors in a.c are still shown"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "End",
+          "Right"
+        ],
+        "label": "Expand b.c in the results"
+      },
+      {
+        "expect": "visible",
+        "name": "arrayIndexOutOfBounds",
+        "role": "table cell",
+        "label": "The arrayIndexOutOfBounds error in b.c is still shown"
+      }
+    ],
+    "script_for": "0c3a81139be4"
+  },
+  "t313463d3": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Given the project file is opened from the File menu: open File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File...",
+        "role": "menu item",
+        "label": "Given the project file is opened from the File menu: Open Project File"
+      },
+      {
+        "do": "wait",
+        "name": "Select Project File",
+        "role": "dialog",
+        "label": "Project file dialog is shown"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:basic-project}/basic.cppcheck",
+        "label": "Enter the project file basic.cppcheck"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Open the project file"
+      },
+      {
+        "expect": "visible",
+        "name": "Project: basic.cppcheck",
+        "role": "frame",
+        "timeout": 10,
+        "label": "The project is loaded"
+      },
+      {
+        "expect": "visible",
+        "name": "src/a.c",
+        "role": "table cell",
+        "timeout": 30,
+        "label": "And the analysis is done: a.c is in the results"
+      },
+      {
+        "expect": "state",
+        "name": "Stop analysis",
+        "role": "button",
+        "not_state": "enabled",
+        "timeout": 30,
+        "label": "And the analysis is done"
+      },
+      {
+        "do": "focus",
+        "name": "src/a.c",
+        "role": "table cell",
+        "label": "When I expand a.c in the results: select a.c"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Right"
+        ],
+        "label": "When I expand a.c in the results"
+      },
+      {
+        "expect": "visible",
+        "name": "Null pointer dereference: p",
+        "role": "table cell",
+        "label": "The first nullPointer error of a.c is shown"
+      },
+      {
+        "expect": "visible",
+        "name": "Null pointer dereference: q",
+        "role": "table cell",
+        "label": "The second nullPointer error of a.c is shown"
+      },
+      {
+        "do": "rightclick",
+        "name": "Null pointer dereference: p",
+        "role": "table cell",
+        "label": "And I right click on the first nullPointer error"
+      },
+      {
+        "expect": "ocr",
+        "contains": "Hide all with id",
+        "label": "The context menu has Hide all with id"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Up",
+          "Up",
+          "Up"
+        ],
+        "label": "Move to Hide all with id in the context menu"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "And click Hide all with id"
+      },
+      {
+        "expect": "gone",
+        "name": "Null pointer dereference: p",
+        "label": "Then the a.c results are hidden: first nullPointer error"
+      },
+      {
+        "expect": "gone",
+        "name": "Null pointer dereference: q",
+        "label": "Then the a.c results are hidden: second nullPointer error"
+      },
+      {
+        "expect": "visible",
+        "name": "Variable 'p' can be declared as pointer to const",
+        "role": "table cell",
+        "label": "Other a.c results are still shown"
+      },
+      {
+        "do": "click",
+        "name": "View",
+        "role": "menu item",
+        "label": "When I open View menu"
+      },
+      {
+        "do": "click",
+        "name": "Show hidden",
+        "role": "menu item",
+        "label": "When I open View > Show Hidden"
+      },
+      {
+        "expect": "visible",
+        "name": "Null pointer dereference: p",
+        "role": "table cell",
+        "label": "Then the error that was hidden is shown again"
+      },
+      {
+        "expect": "visible",
+        "name": "Null pointer dereference: q",
+        "role": "table cell",
+        "label": "Then the other hidden nullPointer error is shown again"
+      }
+    ],
+    "script_for": "0b1c29212e8d"
+  },
+  "t90bf32e9": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File",
+        "role": "menu item",
+        "label": "Click Open Project File"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:basic-project}/basic.cppcheck",
+        "label": "Enter project file path"
+      },
+      {
+        "do": "click",
+        "name": "Open",
+        "role": "button",
+        "exact": true,
+        "label": "Confirm the file dialog"
+      },
+      {
+        "expect": "visible",
+        "name": "src/a.c",
+        "role": "table cell",
+        "timeout": 60,
+        "label": "Wait until the analysis is done"
+      },
+      {
+        "do": "sleep",
+        "seconds": 3,
+        "label": "Let the analysis finish"
+      },
+      {
+        "do": "focus",
+        "name": "src/a.c",
+        "role": "table cell",
+        "label": "Select a.c in the results"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Right"
+        ],
+        "label": "Expand a.c in the results"
+      },
+      {
+        "expect": "visible",
+        "name": "nullPointer",
+        "role": "table cell",
+        "label": "nullPointer error is shown under a.c"
+      },
+      {
+        "do": "rightclick",
+        "name": "nullPointer",
+        "role": "table cell",
+        "nth": 0,
+        "label": "Right click on a nullPointer error"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Down",
+          "Down",
+          "Down",
+          "Down",
+          "Down",
+          "Return"
+        ],
+        "label": "Click Suppress selected id"
+      },
+      {
+        "expect": "gone",
+        "name": "nullPointer",
+        "role": "table cell",
+        "label": "No nullPointer error is shown in the results"
+      },
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open File menu"
+      },
+      {
+        "do": "click",
+        "name": "Edit Project File",
+        "role": "menu item",
+        "label": "Click Edit Project File"
+      },
+      {
+        "do": "click",
+        "name": "Warning options",
+        "role": "page tab",
+        "label": "Go to Warning options"
+      },
+      {
+        "expect": "visible",
+        "name": "nullPointer",
+        "role": "list item",
+        "label": "The id nullPointer is listed under Suppressions"
+      }
+    ],
+    "script_for": "fb50a62ef505"
+  },
+  "t389a5f3a": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File...",
+        "role": "menu item",
+        "label": "Choose Open Project File"
+      },
+      {
+        "do": "settext",
+        "name": "File name",
+        "role": "text",
+        "value": "{project:basic-project}/basic.cppcheck",
+        "label": "Enter the project file path"
+      },
+      {
+        "do": "click",
+        "name": "Open",
+        "role": "button",
+        "exact": true,
+        "label": "Confirm the file dialog"
+      },
+      {
+        "expect": "visible",
+        "name": "src/b.c",
+        "role": "table cell",
+        "timeout": 30,
+        "label": "Analysis results are shown"
+      },
+      {
+        "do": "sleep",
+        "seconds": 3,
+        "label": "Wait until the analysis is done"
+      },
+      {
+        "expect": "state",
+        "name": "Clear results",
+        "role": "button",
+        "state": "enabled",
+        "label": "Analysis finished, Clear results is available"
+      },
+      {
+        "do": "click",
+        "name": "Clear results",
+        "role": "button",
+        "label": "Click Clear results"
+      },
+      {
+        "expect": "gone",
+        "name": "src/a.c",
+        "role": "table cell",
+        "label": "Result tree has no src/a.c entry"
+      },
+      {
+        "expect": "gone",
+        "name": "src/b.c",
+        "role": "table cell",
+        "label": "Result tree has no src/b.c entry"
+      },
+      {
+        "expect": "gone",
+        "name": "include/util.h",
+        "role": "table cell",
+        "label": "Result tree has no include/util.h entry"
+      }
+    ],
+    "script_for": "96a64734a43b"
+  }
+}

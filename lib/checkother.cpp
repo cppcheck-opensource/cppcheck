@@ -1783,6 +1783,8 @@ void CheckOtherImpl::checkConstVariable()
             continue;
         if (var->isConst())
             continue;
+        if (Tokenizer::isFunctionPointer(var->nameToken())) // reference to function
+            continue;
         const Scope* scope = var->scope();
         if (!scope)
             continue;
@@ -3541,9 +3543,11 @@ void CheckOtherImpl::redundantCopyError(const Token *tok,const std::string& varn
 // Checking for shift by negative values
 //---------------------------------------------------------------------------
 
-static bool isNegative(const Token *tok, const Settings &settings)
+static const ValueFlow::Value* isNegative(const Token *tok, const Settings &settings)
 {
-    return tok->valueType() && tok->valueType()->sign == ValueType::SIGNED && tok->getValueLE(-1LL, settings);
+    if (!tok->valueType() || tok->valueType()->sign != ValueType::SIGNED)
+        return nullptr;
+    return tok->getValueLE(-1LL, settings);
 }
 
 void CheckOtherImpl::checkNegativeBitwiseShift()
@@ -3579,24 +3583,28 @@ void CheckOtherImpl::checkNegativeBitwiseShift()
         if (ternary)
             continue;
 
-        // Get negative rhs value. preferably a value which doesn't have 'condition'.
-        if (portability && isNegative(tok->astOperand1(), mSettings))
-            negativeBitwiseShiftError(tok, 1);
-        else if (isNegative(tok->astOperand2(), mSettings))
-            negativeBitwiseShiftError(tok, 2);
+        const ValueFlow::Value* value = isNegative(tok->astOperand1(), mSettings); // lhs
+        if (portability && value)
+            negativeBitwiseShiftError(tok, true, value);
+        else {
+            value = isNegative(tok->astOperand2(), mSettings); // rhs
+            if (value)
+                negativeBitwiseShiftError(tok, false, value);
+        }
     }
 }
 
 
-void CheckOtherImpl::negativeBitwiseShiftError(const Token *tok, int op)
+void CheckOtherImpl::negativeBitwiseShiftError(const Token *tok, bool isLHS, const ValueFlow::Value* v)
 {
-    if (op == 1)
-        // LHS - this is used by intention in various software, if it
-        // is used often in a project and works as expected then this is
-        // a portability issue
-        reportError(tok, Severity::portability, "shiftNegativeLHS", "Shifting a negative value is technically undefined behaviour", CWE758, Certainty::normal);
-    else // RHS
-        reportError(tok, Severity::error, "shiftNegative", "Shifting by a negative value is undefined behaviour", CWE758, Certainty::normal);
+    // LHS - this is used by intention in various software, if it
+    // is used often in a project and works as expected then this is
+    // a portability issue
+    const char* id = isLHS ? "shiftNegativeLHS" : "shiftNegative";
+    const std::string msg = isLHS ? "Shifting a negative value is technically undefined behaviour" : "Shifting by a negative value is undefined behaviour";
+    const Severity severity = isLHS ? Severity::portability : (v && v->errorSeverity() && !v->conditional ? Severity::error : Severity::warning);
+    const ErrorPath errorPath = getErrorPath(tok, v, msg);
+    reportError(errorPath, severity, id, msg, CWE758, Certainty::normal);
 }
 
 //---------------------------------------------------------------------------
@@ -4234,12 +4242,12 @@ void CheckOtherImpl::funcArgOrderDifferent(const std::string & functionName,
     reportError(tokens, Severity::warning, "funcArgOrderDifferent", msg, CWE683, Certainty::normal);
 }
 
-static const Token *findShadowed(const Scope *scope, const Variable& var, int linenr)
+static const Token *findShadowed(const Scope *scope, const Variable& var)
 {
     if (!scope)
         return nullptr;
     for (const Variable &v : scope->varlist) {
-        if (scope->isExecutable() && v.nameToken()->linenr() > linenr)
+        if ((scope->isExecutable() || scope->type == ScopeType::eGlobal) && succeeds(v.nameToken(), var.nameToken()))
             continue;
         if (v.name() == var.name())
             return v.nameToken();
@@ -4253,9 +4261,9 @@ static const Token *findShadowed(const Scope *scope, const Variable& var, int li
 
     if (scope->type == ScopeType::eLambda)
         return nullptr;
-    const Token* shadowed = findShadowed(scope->nestedIn, var, linenr);
+    const Token* shadowed = findShadowed(scope->nestedIn, var);
     if (!shadowed)
-        shadowed = findShadowed(scope->functionOf, var, linenr);
+        shadowed = findShadowed(scope->functionOf, var);
     return shadowed;
 }
 
@@ -4289,9 +4297,9 @@ void CheckOtherImpl::checkShadowVariables()
                 }
             }
 
-            const Token *shadowed = findShadowed(scope.nestedIn, var, var.nameToken()->linenr());
+            const Token *shadowed = findShadowed(scope.nestedIn, var);
             if (!shadowed)
-                shadowed = findShadowed(scope.functionOf, var, var.nameToken()->linenr());
+                shadowed = findShadowed(scope.functionOf, var);
             if (!shadowed)
                 return;
             if (scope.type == ScopeType::eFunction && scope.className == var.name())
@@ -4325,9 +4333,10 @@ void CheckOtherImpl::checkShadowVariables()
 void CheckOtherImpl::shadowError(const Token *shadows, const std::string &shadowsType,
                                  const Token *shadowed, const std::string &shadowedType)
 {
-    ErrorPath errorPath;
-    errorPath.emplace_back(shadowed, "Shadowed " + shadowedType);
-    errorPath.emplace_back(shadows, "Shadow " + shadowsType);
+    ErrorPath errorPath{
+        {shadowed, "Shadowed " + shadowedType},
+        {shadows, "Shadow " + shadowsType}
+    };
     const std::string &varname = shadows ? shadows->str() : shadowsType;
     const std::string ShadowsType = char(std::toupper(shadowsType[0])) + shadowsType.substr(1);
     const std::string ShadowedType = char(std::toupper(shadowedType[0])) + shadowedType.substr(1);
@@ -4956,8 +4965,8 @@ void CheckOther::getErrorMessages(ErrorLogger& errorLogger, const Settings &sett
     c.zerodivError(nullptr, nullptr);
     c.misusedScopeObjectError(nullptr, "varname");
     c.invalidPointerCastError(nullptr,  "float *", "double *", false, false);
-    c.negativeBitwiseShiftError(nullptr, 1);
-    c.negativeBitwiseShiftError(nullptr, 2);
+    c.negativeBitwiseShiftError(nullptr, true);
+    c.negativeBitwiseShiftError(nullptr, false);
     c.raceAfterInterlockedDecrementError(nullptr);
     c.invalidFreeError(nullptr, "malloc", false);
     c.overlappingWriteUnion(nullptr);

@@ -1,0 +1,306 @@
+{
+  "t232a9783": {
+    "script": [
+      {
+        "do": "click",
+        "name": "Edit",
+        "role": "menu item",
+        "label": "Open the Edit menu"
+      },
+      {
+        "do": "click",
+        "name": "Preferences",
+        "role": "menu item",
+        "label": "Open Edit > Preferences"
+      },
+      {
+        "expect": "visible",
+        "name": "Preferences",
+        "role": "dialog",
+        "label": "Preferences dialog is shown"
+      },
+      {
+        "expect": "state",
+        "name": "General",
+        "role": "page tab",
+        "state": "selected",
+        "label": "General tab is shown"
+      },
+      {
+        "expect": "value",
+        "name": "Number of threads",
+        "role": "text",
+        "equals": "1",
+        "label": "The number of threads is 1"
+      }
+    ],
+    "script_for": "3c6d225d76b6"
+  },
+  "tf5b5a7e1": {
+    "script": [
+      {
+        "do": "click",
+        "name": "Edit",
+        "role": "menu item",
+        "label": "Open the Edit menu"
+      },
+      {
+        "do": "click",
+        "name": "Preferences",
+        "role": "menu item",
+        "label": "Open Edit > Preferences"
+      },
+      {
+        "expect": "visible",
+        "name": "Preferences",
+        "role": "dialog",
+        "label": "Preferences dialog is shown"
+      },
+      {
+        "do": "click",
+        "name": "General",
+        "role": "page tab",
+        "label": "Go to the General tab"
+      },
+      {
+        "do": "settext",
+        "name": "Number of threads",
+        "role": "text",
+        "value": "0",
+        "label": "Type 0 in the number of threads field"
+      },
+      {
+        "do": "click",
+        "name": "OK",
+        "role": "button",
+        "label": "Close the dialog with OK"
+      },
+      {
+        "do": "click",
+        "name": "Edit",
+        "role": "menu item",
+        "label": "Open the Edit menu again"
+      },
+      {
+        "do": "click",
+        "name": "Preferences",
+        "role": "menu item",
+        "label": "Open Edit > Preferences again"
+      },
+      {
+        "expect": "visible",
+        "name": "Preferences",
+        "role": "dialog",
+        "label": "Preferences dialog is shown again"
+      },
+      {
+        "do": "click",
+        "name": "General",
+        "role": "page tab",
+        "label": "Go to the General tab again"
+      },
+      {
+        "expect": "value",
+        "name": "Number of threads",
+        "role": "text",
+        "equals": "1",
+        "label": "The number of threads is at least 1, never 0"
+      }
+    ],
+    "script_for": "6a7660844e11"
+  },
+  "t841cca6c": {
+    "script": [
+      {
+        "do": "click",
+        "name": "Edit",
+        "role": "menu item",
+        "label": "Open the Edit menu"
+      },
+      {
+        "do": "click",
+        "name": "Preferences",
+        "role": "menu item",
+        "label": "Open Preferences from the Edit menu"
+      },
+      {
+        "expect": "visible",
+        "name": "Preferences",
+        "role": "dialog",
+        "label": "Preferences dialog is shown"
+      },
+      {
+        "do": "settext",
+        "name": "Number of threads",
+        "role": "text",
+        "value": "100",
+        "label": "Set the number of threads to 100"
+      },
+      {
+        "expect": "value",
+        "name": "Number of threads",
+        "role": "text",
+        "equals": "100",
+        "label": "Thread count field holds 100"
+      },
+      {
+        "do": "click",
+        "name": "OK",
+        "role": "button",
+        "label": "Close the Preferences dialog with OK"
+      },
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File",
+        "role": "menu item",
+        "label": "Choose Open Project File"
+      },
+      {
+        "expect": "visible",
+        "name": "Select Project File",
+        "role": "dialog",
+        "label": "File dialog is shown"
+      },
+      {
+        "do": "settext",
+        "name": "File name",
+        "role": "text",
+        "value": "{project:basic-project}/basic.cppcheck",
+        "label": "Enter the path of basic.cppcheck"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Open the project file"
+      },
+      {
+        "expect": "visible",
+        "name": "src/b.c",
+        "role": "table cell",
+        "timeout": 60,
+        "label": "Analysis is done and results for src/b.c are shown"
+      },
+      {
+        "expect": "visible",
+        "name": "src/a.c",
+        "role": "table cell",
+        "label": "Results for src/a.c are shown"
+      },
+      {
+        "expect": "text",
+        "contains": "Project: basic.cppcheck",
+        "label": "The project is loaded"
+      },
+      {
+        "expect": "alive",
+        "label": "The application did not crash"
+      }
+    ],
+    "script_for": "3f99ba3a159c"
+  },
+  "t28ce8afe": {
+    "script": [
+      {
+        "do": "click",
+        "name": "Preferences",
+        "role": "button",
+        "label": "Open Preferences"
+      },
+      {
+        "do": "click",
+        "name": "Addons",
+        "role": "page tab",
+        "label": "Go to the Addons tab"
+      },
+      {
+        "do": "settext",
+        "name": "MISRA addon",
+        "role": "text",
+        "value": "{project:embedded}/{rulefile}",
+        "label": "Select the rule text file"
+      },
+      {
+        "do": "click",
+        "name": "OK",
+        "role": "button",
+        "label": "Close the dialog with OK"
+      },
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File...",
+        "role": "menu item",
+        "label": "Choose Open Project File"
+      },
+      {
+        "do": "settext",
+        "name": "File name",
+        "role": "text",
+        "value": "{project:embedded}/embedded.cppcheck",
+        "label": "Enter the project file name"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Open the project file"
+      },
+      {
+        "do": "sleep",
+        "seconds": 8,
+        "label": "Wait until the analysis is done"
+      },
+      {
+        "expect": "visible",
+        "name": "gpio.c",
+        "role": "table cell",
+        "timeout": 20,
+        "label": "Results for gpio.c are shown"
+      },
+      {
+        "do": "doubleclick",
+        "name": "gpio.c",
+        "role": "table cell",
+        "label": "Select the gpio.c result row"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Right"
+        ],
+        "label": "Expand the result row"
+      },
+      {
+        "expect": "text",
+        "contains": "TEST RULE TEXT: unused parameters are not allowed",
+        "timeout": 10,
+        "label": "Misra error has the rule text from the file"
+      },
+      {
+        "expect": "text",
+        "contains": "misra-c2012-2.7",
+        "label": "The unused parameter Misra rule id is shown"
+      },
+      {
+        "expect": "text",
+        "not_contains": "internalError",
+        "label": "There are no internalError results"
+      }
+    ],
+    "script_for": "755194f793e0"
+  }
+}

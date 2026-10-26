@@ -139,12 +139,16 @@ namespace ValueFlow
                 // Bad character literal
             }
         } else if (tok->isNumber() && MathLib::isFloat(tok->str())) {
-            Value value;
-            value.valueType = Value::ValueType::FLOAT;
-            value.floatValue = MathLib::toDoubleNumber(tok);
-            if (!tok->isTemplateArg())
-                value.setKnown();
-            setTokenValue(tok, std::move(value), settings);
+            // A long double literal out of the range of double (1e400L) has no
+            // double value: infinity would make different literals compare equal.
+            if (!MathLib::isLongDoubleOutOfDoubleRange(tok->str())) {
+                Value value;
+                value.valueType = Value::ValueType::FLOAT;
+                value.floatValue = MathLib::toDoubleNumber(tok);
+                if (!tok->isTemplateArg())
+                    value.setKnown();
+                setTokenValue(tok, std::move(value), settings);
+            }
         } else if (tok->enumerator() && tok->enumerator()->value_known) {
             Value value(tok->enumerator()->value);
             if (!tok->isTemplateArg())

@@ -69,6 +69,7 @@ private:
         TEST_CASE(incorrectLogicOperator15);
         TEST_CASE(incorrectLogicOperator16); // #10070
         TEST_CASE(incorrectLogicOperator17);
+        TEST_CASE(incorrectLogicOperator18); // #12282
         TEST_CASE(secondAlwaysTrueFalseWhenFirstTrueError);
         TEST_CASE(incorrectLogicOp_condSwapping);
         TEST_CASE(testBug5895);
@@ -1754,6 +1755,17 @@ private:
     void incorrectLogicOperator16() { // #10070
         check("void foo(void* p) {\n"
               "    if (!p || p == -1) { }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void incorrectLogicOperator18() { // #12282
+        // long double literals out of the range of double are different values
+        check("int f(long double x) {\n"
+              "    return x > 1e400L && x < 1e500L;\n"
+              "}\n"
+              "int g() {\n"
+              "    return 1e400L < 1e500L;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
     }

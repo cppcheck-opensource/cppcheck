@@ -1603,6 +1603,66 @@ private:
             ASSERT(p->valueType()->originalTypeName == "ubFunctionPointer_fp");
             ASSERT(p->valueType()->reference == Reference::None);
         }
+        { // function pointer returning a reference
+            GET_SYMBOL_DB("void foo(int& (*f)()) {}\n");
+            const Variable* const p = db->getVariableFromVarId(1);
+            ASSERT(!p->isReference());
+            ASSERT(p->isPointer());
+            ASSERT(p->valueType());
+            ASSERT(p->valueType()->pointer == 1);
+        }
+        {
+            GET_SYMBOL_DB("void foo(int&& (*f)()) {}\n");
+            const Variable* const p = db->getVariableFromVarId(1);
+            ASSERT(!p->isReference());
+            ASSERT(!p->isRValueReference());
+        }
+        {
+            GET_SYMBOL_DB("struct S { int& (*f[2])(); };\n");
+            const Variable* const p = db->getVariableFromVarId(1);
+            ASSERT(!p->isReference());
+            ASSERT(p->isArray());
+        }
+        { // pointer to member function returning a reference
+            GET_SYMBOL_DB("struct S { int& g(); };\n"
+                          "void foo(int& (S::*pm)()) {}\n");
+            const Variable* const p = db->getVariableFromVarId(1);
+            ASSERT(p);
+            ASSERT_EQUALS("pm", p->name());
+            ASSERT(!p->isReference());
+        }
+        { // parentheses that are no function declarator
+            GET_SYMBOL_DB("void foo(int& (r)) {}\n");
+            const Variable* const p = db->functionScopes.front()->function->getArgumentVar(0);
+            ASSERT(p);
+            ASSERT(p->isReference());
+        }
+        {
+            GET_SYMBOL_DB("void foo(int& UNUSED(r)) {}\n");
+            const Variable* const p = db->functionScopes.front()->function->getArgumentVar(0);
+            ASSERT(p);
+            ASSERT(p->isReference());
+        }
+        { // reference to function pointer
+            GET_SYMBOL_DB("void foo(int (*&f)()) {}\n");
+            const Variable* const p = db->getVariableFromVarId(1);
+            ASSERT(p->isReference());
+            ASSERT(p->isPointer());
+            ASSERT(p->valueType());
+            ASSERT(p->valueType()->reference == Reference::LValue);
+        }
+        { // reference to function returning a reference
+            GET_SYMBOL_DB("void foo(int& (&f)()) {}\n");
+            const Variable* const p = db->getVariableFromVarId(1);
+            ASSERT(p->isReference());
+            ASSERT(!p->isRValueReference());
+        }
+        {
+            GET_SYMBOL_DB("void foo(int&& (&f)()) {}\n");
+            const Variable* const p = db->getVariableFromVarId(1);
+            ASSERT(p->isReference());
+            ASSERT(!p->isRValueReference());
+        }
     }
 
     void VariableValueTypeTemplate() {
@@ -2410,6 +2470,31 @@ private:
             const Function* ctor = tokenizer.tokens()->tokAt(3)->function();
             ASSERT(db && ctor && ctor->type == FunctionType::eMoveConstructor);
             ASSERT(ctor && ctor->retDef == nullptr);
+        }
+        {
+            GET_SYMBOL_DB("class Foo { Foo(Foo&& (*f)()); };\n");
+            const Function* ctor = tokenizer.tokens()->tokAt(3)->function();
+            ASSERT(db && ctor && ctor->type == FunctionType::eConstructor);
+        }
+        {
+            GET_SYMBOL_DB("class Foo { Foo(Foo& (&f)()); };\n");
+            const Function* ctor = tokenizer.tokens()->tokAt(3)->function();
+            ASSERT(db && ctor && ctor->type == FunctionType::eConstructor);
+        }
+        {
+            GET_SYMBOL_DB("class Foo { Foo(Foo&& (&f)()); };\n");
+            const Function* ctor = tokenizer.tokens()->tokAt(3)->function();
+            ASSERT(db && ctor && ctor->type == FunctionType::eConstructor);
+        }
+        {
+            GET_SYMBOL_DB("class Foo { Foo(Foo (&f)()); };\n");
+            const Function* ctor = tokenizer.tokens()->tokAt(3)->function();
+            ASSERT(db && ctor && ctor->type == FunctionType::eConstructor);
+        }
+        {
+            GET_SYMBOL_DB("class Foo { Foo(Foo& (&)()); };\n");
+            const Function* ctor = tokenizer.tokens()->tokAt(3)->function();
+            ASSERT(db && ctor && ctor->type == FunctionType::eConstructor);
         }
         {
             GET_SYMBOL_DB("void f() { extern void f(); }\n");
@@ -9987,6 +10072,8 @@ private:
         ASSERT_EQUALS("signed long", typeOf("a = (long)32;\n", "("));
         ASSERT_EQUALS("signed long", typeOf("a = (long int)32;\n", "("));
         ASSERT_EQUALS("signed long long", typeOf("a = (long long)32;\n", "("));
+        ASSERT_EQUALS("signed int &", typeOf("void f(int& (*fp)()) { fp(); }\n", "( ) ;")); // #15094
+        ASSERT_EQUALS("signed int &&", typeOf("void f(int&& (*fp)()) { fp(); }\n", "( ) ;"));
         ASSERT_EQUALS("long double", typeOf("a = (long double)32;\n", "("));
         ASSERT_EQUALS("char", typeOf("a = static_cast<char>(32);\n", "("));
         ASSERT_EQUALS("", typeOf("a = (unsigned x)0;\n", "("));

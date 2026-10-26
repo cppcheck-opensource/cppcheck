@@ -1,0 +1,63 @@
+<html>
+<head>
+<title>Command line options</title>
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+
+<h1>Command line options</h1>
+
+<p>The GUI can be started from a terminal or a shortcut with options:</p>
+
+<pre>cppcheck-gui [OPTIONS] [files or paths]</pre>
+
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Option</th><th>Description</th></tr>
+<tr><td><code>-p &lt;file&gt;</code></td><td>Open the project file and analyze
+    it. If the project has a build dir with earlier results, these are shown
+    instead; click <i>Reanalyze all files</i> to analyze again.</td></tr>
+<tr><td><code>-l &lt;file&gt;</code></td><td>Open a results file in XML
+    format.</td></tr>
+<tr><td><code>-d &lt;directory&gt;</code></td><td>Used with <code>-l</code>:
+    the folder that was analyzed to create the results file. Relative paths in
+    the results file are relative to this folder. It is needed to show the
+    source code of the warnings.</td></tr>
+<tr><td><code>-h</code>, <code>--help</code></td><td>Show a short description
+    of the options.</td></tr>
+<tr><td><code>-v</code>, <code>--version</code></td><td>Show the version of
+    the GUI.</td></tr>
+<tr><td><code>--data-dir=&lt;directory&gt;</code></td><td>Meant for
+    installation scripts. Stores the folder where Cppcheck's data files
+    (translations, library configurations, platforms, addons) are installed.
+    The GUI is not started when this option is used.</td></tr>
+<tr><td><i>files or paths</i></td><td>Analyze these files and folders without
+    a project. If one of the arguments is a project file
+    (<code>*.cppcheck</code>), it is opened as with <code>-p</code>. If one of
+    them is an XML file, it is opened as a results file.</td></tr>
+</table>
+
+<h2>Examples</h2>
+
+<p>Open a project:</p>
+<pre>cppcheck-gui -p myproject.cppcheck</pre>
+<p>or simply:</p>
+<pre>cppcheck-gui myproject.cppcheck</pre>
+
+<p>Look at the results of a CI job. The job ran Cppcheck in the folder
+<code>/home/me/src/myproject</code> and saved the results:</p>
+<pre>cppcheck-gui -l results.xml -d /home/me/src/myproject</pre>
+
+<p>Analyze a folder without a project:</p>
+<pre>cppcheck-gui src/</pre>
+
+<h2>Starting without options</h2>
+
+<p>When the GUI is started without options, it opens the project that was open
+when it was closed last time, and shows the results of the last analysis if
+the project has a build dir.</p>
+
+<p class="nav">Previous: <a href="preferences.html">Preferences</a> |
+Next: <a href="troubleshooting.html">Troubleshooting</a></p>
+
+</body>
+</html>

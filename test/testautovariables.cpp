@@ -133,6 +133,7 @@ private:
         TEST_CASE(returnReference27);
         TEST_CASE(returnReference28);
         TEST_CASE(returnReference29);
+        TEST_CASE(returnReference30); // #15094
         TEST_CASE(returnReferenceFunction);
         TEST_CASE(returnReferenceContainer);
         TEST_CASE(returnReferenceLiteral);
@@ -1770,6 +1771,23 @@ private:
         ASSERT_EQUALS("[test.cpp:2:23]: (error) Reference to temporary returned. [returnTempReference]\n"
                       "[test.cpp:5:12]: (error) Reference to temporary returned. [returnTempReference]\n",
                       errout_str());
+    }
+
+    void returnReference30() // #15094
+    {
+        check("int& f1(int& (*fp)()) { return fp(); }\n"
+              "void f2(int& (*fp)()) { int& r = fp(); r = 2; }\n"
+              "struct D {\n"
+              "    int& call() { return f(); }\n"
+              "    int& (*f)();\n"
+              "};\n"
+              "const int& f3(const int& (*fp)(int)) { return fp(1); }\n"
+              "int& (*g)();\n"
+              "int& f4() { return g(); }\n"
+              "typedef int& (*FP)();\n"
+              "int& f5(FP fp) { return fp(); }\n"
+              "int* f6(int& (*fp)()) { return &fp(); }\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void returnReferenceFunction() {

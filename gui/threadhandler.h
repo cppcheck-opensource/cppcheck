@@ -20,6 +20,7 @@
 #ifndef THREADHANDLER_H
 #define THREADHANDLER_H
 
+#include "filesettings.h"
 #include "settings.h"
 #include "suppressions.h"
 #include "threadresult.h"
@@ -237,6 +238,12 @@ protected:
      *
      */
     std::list<FileWithDetails> mLastFiles;
+
+    /**
+     * @brief Files of the project checked last time (used by the whole program analysis)
+     *
+     */
+    std::list<FileSettings> mLastFileSettings;
 
     /** @brief date and time when current checking started */
     QDateTime mCheckStartTime;

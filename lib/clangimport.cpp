@@ -336,7 +336,10 @@ namespace clangimport {
     public:
         AstNode(std::string nodeType, const std::string &ext, Data *data)
             : nodeType(std::move(nodeType)), mExtTokens(splitString(ext)), mData(data)
-        {}
+        {
+            if (mExtTokens.empty())
+                throw InternalError(nullptr, "invalid AST node: " + this->nodeType, InternalError::AST);
+        }
         std::string nodeType;
         std::vector<AstNodePtr> children;
 
@@ -1052,7 +1055,10 @@ Token *clangimport::AstNode::createTokens(TokenList &tokenList)
         return nullptr;
     }
     if (nodeType == EnumConstantDecl) {
-        Token *nameToken = addtoken(tokenList, getSpelling());
+        const std::string name = getSpelling();
+        if (name.empty())
+            throw InternalError(nullptr, "invalid AST node: " + nodeType, InternalError::AST);
+        Token *nameToken = addtoken(tokenList, name);
         auto *scope = const_cast<Scope *>(nameToken->scope());
         scope->enumeratorList.emplace_back(nameToken->scope());
         Enumerator *e = &scope->enumeratorList.back();
@@ -1388,6 +1394,10 @@ Token * clangimport::AstNode::createTokensCall(TokenList &tokenList)
 
 void clangimport::AstNode::createTokensFunctionDecl(TokenList &tokenList)
 {
+    // an address-only node has no name: addtoken("") adds nothing and would return a null back()
+    const std::string name = getSpelling();
+    if (name.empty())
+        throw InternalError(nullptr, "invalid AST node: " + nodeType, InternalError::AST);
     const bool prev = contains(mExtTokens, "prev");
     const bool hasBody = !children.empty() && children.back()->nodeType == CompoundStmt;
     const bool isStatic = contains(mExtTokens, "static");
@@ -1409,11 +1419,14 @@ void clangimport::AstNode::createTokensFunctionDecl(TokenList &tokenList)
     if (mExtTokens.size() > 4 && mExtTokens[1] == "parent")
         addFullScopeNameTokens(tokenList, mData->getScope(mExtTokens[2]));
 
-    Token *nameToken = addtoken(tokenList, getSpelling() + getTemplateParameters());
+    Token *nameToken = addtoken(tokenList, name + getTemplateParameters());
     auto *nestedIn = const_cast<Scope *>(nameToken->scope());
 
     if (prev) {
-        const std::string addr = *(std::find(mExtTokens.cbegin(), mExtTokens.cend(), "prev") + 1);
+        const auto it = std::find(mExtTokens.cbegin(), mExtTokens.cend(), "prev");
+        if (it + 1 == mExtTokens.cend())
+            throw InternalError(nullptr, "invalid AST node: " + nodeType, InternalError::AST);
+        const std::string addr = *(it + 1);
         mData->ref(addr, nameToken);
     }
     if (!nameToken->function()) {
@@ -1460,6 +1473,9 @@ void clangimport::AstNode::createTokensFunctionDecl(TokenList &tokenList)
         AstNodePtr child = children[i];
         if (child->nodeType != ParmVarDecl)
             continue;
+        // there must be a token between the address and the type
+        if (child->mExtTokens.size() < 3)
+            throw InternalError(nullptr, "invalid AST node: " + child->nodeType, InternalError::AST);
         if (tokenList.back() != par1)
             addtoken(tokenList, ",");
         const Type *recordType = addTypeTokens(tokenList, child->mExtTokens.back(), nestedIn);
@@ -1562,6 +1578,9 @@ Token * clangimport::AstNode::createTokensVarDecl(TokenList &tokenList)
     int typeIndex = mExtTokens.size() - 1;
     while (typeIndex > 1 && std::isalpha(mExtTokens[typeIndex][0]))
         typeIndex--;
+    // there must be a name token between the address and the type
+    if (typeIndex < 2)
+        throw InternalError(nullptr, "invalid AST node: " + nodeType, InternalError::AST);
     const std::string type = mExtTokens[typeIndex];
     const std::string name = mExtTokens[typeIndex - 1];
     const Token *startToken = tokenList.back();

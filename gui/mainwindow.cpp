@@ -59,6 +59,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <fstream>
 #include <iterator>
 #include <list>
 #include <memory>
@@ -96,6 +97,7 @@
 #include <QtNetwork/QNetworkRequest>
 #include <QPushButton>
 #include <QRegularExpression>
+#include <QSet>
 #include <QSettings>
 #include <QSize>
 #include <QTimer>
@@ -116,6 +118,18 @@ static QString fromNativePath(const QString& p) {
 #else
     return p;
 #endif
+}
+
+// The files selected in the results view are not necessarily spelled the same way as the
+// project or files.txt spells them, compare them as absolute paths
+static QString comparablePath(const QString& path) {
+    return QDir::cleanPath(QFileInfo(path).absoluteFilePath());
+}
+
+static QSet<QString> comparablePaths(const QStringList& paths) {
+    QSet<QString> ret;
+    std::transform(paths.cbegin(), paths.cend(), std::inserter(ret, ret.end()), comparablePath);
+    return ret;
 }
 
 template<typename T = std::vector<std::string>>
@@ -568,21 +582,31 @@ void MainWindow::saveSettings() const
     mUI->mResults->saveSettings(mSettings);
 }
 
-void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLib, const bool checkConfig, const QStringList& recheckFiles)
+void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLib, const bool checkConfig, const QStringList& selectedFiles, const Recheck recheck)
 {
     Settings checkSettings;
     auto supprs = std::make_shared<Suppressions>();
     if (!getCppcheckSettings(checkSettings, *supprs))
         return;
 
-    // filter requested files
-    if (!recheckFiles.isEmpty()) {
+    // Filter the selected files
+    if (recheck == Recheck::Selected) {
+        const QSet<QString> selected = comparablePaths(selectedFiles);
         p.fileSettings.remove_if([&](const FileSettings& fs) {
-            return !recheckFiles.contains(QString::fromStdString(fs.filename()));
+            return !selected.contains(comparablePath(QString::fromStdString(fs.filename())));
         });
+        if (p.fileSettings.empty()) {
+            QMessageBox msg(QMessageBox::Information,
+                            "Cppcheck",
+                            tr("None of the selected files is part of the project, nothing to analyze."),
+                            QMessageBox::Ok,
+                            this);
+            msg.exec();
+            return;
+        }
     }
 
-    clearResults();
+    clearResultsForAnalysis(checkSettings.buildDir, selectedFiles, recheck);
 
     mIsLogfileLoaded = false;
     if (mProjectFile) {
@@ -647,7 +671,7 @@ void MainWindow::doAnalyzeProject(ImportProject p, const bool checkLib, const bo
     mUI->mResults->setCheckSettings(checkSettings);
 }
 
-void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLib, const bool checkConfig)
+void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLib, const bool checkConfig, const QStringList& selectedFiles, const Recheck recheck)
 {
     if (files.isEmpty())
         return;
@@ -657,7 +681,7 @@ void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLib, c
     if (!getCppcheckSettings(checkSettings, *supprs))
         return;
 
-    clearResults();
+    clearResultsForAnalysis(checkSettings.buildDir, selectedFiles, recheck);
 
     mIsLogfileLoaded = false;
     FileList pathList;
@@ -669,7 +693,6 @@ void MainWindow::doAnalyzeFiles(const QStringList &files, const bool checkLib, c
     }
     QStringList fileNames = pathList.getFileList();
 
-    mUI->mResults->clear(true);
     mUI->mResults->setResultsSource(ResultsTree::ResultsSource::Analysis);
     mThread->clearFiles();
 
@@ -1379,11 +1402,6 @@ void MainWindow::reAnalyzeSelected(const QStringList& files)
         return;
 
     if (mProjectFile) {
-        // Clear details, statistics and progress
-        mUI->mResults->clear(false);
-        for (int i = 0; i < files.size(); ++i)
-            mUI->mResults->clearRecheckFile(files[i]);
-
         analyzeProject(mProjectFile, files);
         return;
     }
@@ -1393,10 +1411,7 @@ void MainWindow::reAnalyzeSelected(const QStringList& files)
     if (!getCppcheckSettings(checkSettings, *supprs))
         return;
 
-    // Clear details, statistics and progress
-    mUI->mResults->clear(false);
-    for (int i = 0; i < files.size(); ++i)
-        mUI->mResults->clearRecheckFile(files[i]);
+    clearResultsForAnalysis(checkSettings.buildDir, files, Recheck::Selected);
 
     mCurrentDirectory = mUI->mResults->getCheckDirectory();
     FileList pathList;
@@ -1451,7 +1466,7 @@ void MainWindow::reAnalyze(bool all)
 void MainWindow::clearResults()
 {
     if (mProjectFile && !mProjectFile->getBuildDir().isEmpty()) {
-        QDir dir(QFileInfo(mProjectFile->getFilename()).absolutePath() + '/' + mProjectFile->getBuildDir());
+        QDir dir(QDir(QFileInfo(mProjectFile->getFilename()).absolutePath()).filePath(mProjectFile->getBuildDir()));
         for (const QString& f: dir.entryList(QDir::Files)) {
             if (!f.endsWith("files.txt")) {
                 static const QRegularExpression rx("^.*.s[0-9]+$");
@@ -1463,6 +1478,42 @@ void MainWindow::clearResults()
     mUI->mResults->clear(true);
     Q_ASSERT(false == mUI->mResults->hasResults());
     enableResultsButtons();
+}
+
+void MainWindow::clearResultsForAnalysis(const std::string& buildDir, const QStringList& selectedFiles, const Recheck recheck)
+{
+    switch (recheck) {
+    case Recheck::None:
+        clearResults();
+        break;
+    case Recheck::Selected:
+        // Only the selected files are analyzed, the results of the other files are kept
+        mUI->mResults->clear(false);
+        for (const QString& f : selectedFiles)
+            mUI->mResults->clearRecheckFile(f);
+        enableResultsButtons();
+        break;
+    case Recheck::Cached: {
+        // Every file reports its results again, either analyzed or replayed from the analyzer
+        // information. Remove the analyzer information of the selected files so that they really
+        // are analyzed again, also by the clang tools that keep their results next to it.
+        const QSet<QString> selected = comparablePaths(selectedFiles);
+        QDir dir(QString::fromStdString(buildDir));
+        std::ifstream filesTxt(buildDir + "/files.txt");
+        std::string line;
+        while (std::getline(filesTxt, line)) {
+            AnalyzerInformation::Info info;
+            if (!info.parse(line) || !selected.contains(comparablePath(QString::fromStdString(info.sourceFile))))
+                continue;
+            const QString afile = QString::fromStdString(info.afile);
+            for (const QString& f : dir.entryList({afile, afile + ".*"}, QDir::Files))
+                dir.remove(f);
+        }
+        mUI->mResults->clear(true);
+        enableResultsButtons();
+        break;
+    }
+    }
 }
 
 void MainWindow::openResults()
@@ -1863,9 +1914,16 @@ bool MainWindow::loadLastResults()
     return true;
 }
 
-void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringList& recheckFiles, const bool checkLib, const bool checkConfig)
+void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringList& selectedFiles, const bool checkLib, const bool checkConfig)
 {
     Settings::terminate(false);
+
+    // With a build directory the whole project is analyzed: the analyzer information cache skips
+    // the unchanged files, and files.txt stays complete so whole program analysis sees every file.
+    // Without a build directory there is no cache, so only the selected files are analyzed.
+    Recheck recheck = Recheck::None;
+    if (!selectedFiles.isEmpty())
+        recheck = projectFile->getBuildDir().isEmpty() ? Recheck::Selected : Recheck::Cached;
 
     QFileInfo inf(projectFile->getFilename());
     const QString& rootpath = projectFile->getRootPath();
@@ -1968,11 +2026,11 @@ void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringLis
             msg.exec();
             return;
         }
-        doAnalyzeProject(p, checkLib, checkConfig, recheckFiles);  // TODO: avoid copy
+        doAnalyzeProject(p, checkLib, checkConfig, selectedFiles, recheck);  // TODO: avoid copy
         return;
     }
 
-    QStringList paths = recheckFiles.isEmpty() ? projectFile->getCheckPaths() : recheckFiles;
+    QStringList paths = recheck == Recheck::Selected ? selectedFiles : projectFile->getCheckPaths();
 
     // If paths not given then check the root path (which may be the project
     // file's location, see above). This is to keep the compatibility with
@@ -1981,7 +2039,7 @@ void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringLis
     if (paths.isEmpty()) {
         paths << mCurrentDirectory;
     }
-    doAnalyzeFiles(paths, checkLib, checkConfig);
+    doAnalyzeFiles(paths, checkLib, checkConfig, selectedFiles, recheck);
 }
 
 void MainWindow::newProjectFile()
