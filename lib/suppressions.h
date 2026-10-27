@@ -52,14 +52,14 @@ public:
     };
 
     struct CPPCHECKLIB ErrorMessage {
-        std::size_t hash;
+        std::size_t hash{};
         std::string errorId;
         void setFileName(std::string s);
         const std::string &getFileName() const {
             return mFileName;
         }
-        int lineNumber; // TODO: need to be unsigned
-        Certainty certainty;
+        int lineNumber{}; // TODO: need to be unsigned
+        Certainty certainty{};
         std::string symbolNames;
         std::set<std::string> macroNames;
 
