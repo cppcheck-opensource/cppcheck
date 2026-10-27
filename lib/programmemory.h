@@ -183,7 +183,7 @@ struct ProgramMemoryState {
     // Memoized findExpressionChanged() pre-filter; structural, so never invalidated.
     std::shared_ptr<ChangedCache> changedCache;
 
-    explicit ProgramMemoryState(const Settings& s);
+    explicit ProgramMemoryState(const Settings& s LIFETIMEBOUND);
 
     void replace(ProgramMemory pm, const Token* origin = nullptr);
 

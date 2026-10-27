@@ -55,7 +55,7 @@ public:
      * options user has given.
      * @param suppressions Suppressions instance that keeps the suppressions
      */
-    CmdLineParser(CmdLineLogger &logger, Settings &settings, Suppressions &suppressions);
+    CmdLineParser(CmdLineLogger &logger LIFETIMEBOUND, Settings &settings LIFETIMEBOUND, Suppressions &suppressions LIFETIMEBOUND);
 
     enum class Result : std::uint8_t { Success, Exit, Fail };
 

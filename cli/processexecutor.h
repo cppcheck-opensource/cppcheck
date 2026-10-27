@@ -46,7 +46,7 @@ class TimerResults;
  */
 class ProcessExecutor : public Executor {
 public:
-    ProcessExecutor(const std::list<FileWithDetails> &files, const std::list<FileSettings>& fileSettings, const Settings &settings, Suppressions &suppressions, ErrorLogger &errorLogger, TimerResults* timerResults, CppCheck::ExecuteCmdFn executeCommand);
+    ProcessExecutor(const std::list<FileWithDetails> &files LIFETIMEBOUND, const std::list<FileSettings>& fileSettings LIFETIMEBOUND, const Settings &settings LIFETIMEBOUND, Suppressions &suppressions LIFETIMEBOUND, ErrorLogger &errorLogger LIFETIMEBOUND, TimerResults* timerResults LIFETIMEBOUND, CppCheck::ExecuteCmdFn executeCommand);
     ProcessExecutor(const ProcessExecutor &) = delete;
     ProcessExecutor& operator=(const ProcessExecutor &) = delete;
 
