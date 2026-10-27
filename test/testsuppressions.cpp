@@ -1976,18 +1976,18 @@ private:
         ASSERT_EQUALS("", supprs.addSuppression(s));
         ASSERT_EQUALS(true, supprs.updateSuppressionState(s));
 
-        SuppressionList::ErrorMessage errmsg = errorMessage("id");
-        errmsg.hash = 1;
-        ASSERT_EQUALS(true, supprs.isSuppressed(errmsg));
-        errmsg.hash = 2;
-        ASSERT_EQUALS(false, supprs.isSuppressed(errmsg));
-        errmsg.hash = 0;
-        ASSERT_EQUALS(false, supprs.isSuppressed(errmsg));
-        errmsg.hash = 1;
-        errmsg.errorId = "id2";
-        ASSERT_EQUALS(true, supprs.isSuppressed(errmsg));
-        errmsg.errorId = "id3";
-        ASSERT_EQUALS(false, supprs.isSuppressed(errmsg));
+        SuppressionList::ErrorMessage error = errorMessage("id");
+        error.hash = 1;
+        ASSERT_EQUALS(true, supprs.isSuppressed(error));
+        error.hash = 2;
+        ASSERT_EQUALS(false, supprs.isSuppressed(error));
+        error.hash = 0;
+        ASSERT_EQUALS(false, supprs.isSuppressed(error));
+        error.hash = 1;
+        error.errorId = "id2";
+        ASSERT_EQUALS(true, supprs.isSuppressed(error));
+        error.errorId = "id3";
+        ASSERT_EQUALS(false, supprs.isSuppressed(error));
     }
 
     void addSuppressionLineMultiple() const {
