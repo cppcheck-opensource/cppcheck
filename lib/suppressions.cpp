@@ -33,6 +33,7 @@
 #include <cstring>
 #include <exception>
 #include <functional> // std::bind, std::placeholders
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
@@ -850,7 +851,7 @@ std::list<SuppressionList::Suppression> polyspace::Parser::parse(const std::stri
             if (rangeValue > 0) {
                 suppr.type = SuppressionList::Type::block;
                 suppr.lineBegin = line;
-                suppr.lineEnd = line + rangeValue;
+                suppr.lineEnd = (rangeValue > std::numeric_limits<int>::max() - line) ? std::numeric_limits<int>::max() : (line + rangeValue);
             }
             else if (polyspaceKind == polyspace::CommentKind::Regular)
                 suppr.type = SuppressionList::Type::unique;
@@ -886,7 +887,8 @@ int polyspace::Parser::parseRange(const std::string& comment, std::string::size_
         int ret = std::stoi(range);
         pos = endpos;
         return ret;
-    } catch (const std::invalid_argument &) {}
+    } catch (const std::invalid_argument &) {
+    } catch (const std::out_of_range &) {}
     return 0;
 }
 

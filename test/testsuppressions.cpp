@@ -34,6 +34,7 @@
 
 #include <cstring>
 #include <initializer_list>
+#include <limits>
 #include <list>
 #include <map>
 #include <memory>
@@ -2175,6 +2176,10 @@ private:
         pos = 0;
         ASSERT_EQUALS(0, polyspace::Parser::parseRange(" +A ",pos));
         ASSERT_EQUALS(1U, pos);
+
+        pos = 0;
+        ASSERT_EQUALS(0, polyspace::Parser::parseRange(" +99999999999 ",pos));
+        ASSERT_EQUALS(1U, pos);
     }
 
     void polyspaceParseIds() const {
@@ -2364,6 +2369,12 @@ private:
             "", "--misra-c-2012",
             { "/* polyspace +3 MISRA2012 : 2.7 */", 1 },
             { { "premium-misra-c-2012-2.7", 1, "", SuppressionList::Type::block, 1, 4 } }
+            );
+
+        testPolyspaceSuppression(
+            "", "--misra-c-2012",
+            { "/* polyspace +2147483647 MISRA2012 : 2.7 */", 2 },
+            { { "premium-misra-c-2012-2.7", 2, "", SuppressionList::Type::block, 2, std::numeric_limits<int>::max() } }
             );
     }
 
