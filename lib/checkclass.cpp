@@ -1836,7 +1836,7 @@ void CheckClassImpl::operatorEqToSelf()
                 if (func.argumentList.empty())
                     continue;
                 const Token* typeTok = func.argumentList.front().typeEndToken();
-                while (typeTok->str() == "const" || typeTok->str() == "&" || typeTok->str() == "*")
+                while (typeTok->str() == "const" || typeTok->str() == "&" || typeTok->str() == "&&" || typeTok->str() == "*")
                     typeTok = typeTok->previous();
                 if (typeTok->str() != scope->className)
                     continue;

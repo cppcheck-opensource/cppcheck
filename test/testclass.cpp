@@ -84,6 +84,7 @@ private:
         TEST_CASE(operatorEqToSelf7);
         TEST_CASE(operatorEqToSelf8);   // ticket #2179
         TEST_CASE(operatorEqToSelf9);   // ticket #2592
+        TEST_CASE(operatorEqToSelf10);  // ticket #15156
 
         TEST_CASE(memsetOnStruct);
         TEST_CASE(memsetVector);
@@ -2672,6 +2673,23 @@ private:
             "    return Foo::operator=(&other);\n"
             "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void operatorEqToSelf10() {
+        checkOpertorEqToSelf(
+            "class Foo\n"
+            "{\n"
+            "    int32_t * p;\n"
+            "public:\n"
+            "    Foo& operator=( Foo && o ) noexcept\n"
+            "    {\n"
+            "        delete p;\n"
+            "        p = o.p;\n"
+            "        o.p = nullptr;\n"
+            "        return *this;\n"
+            "    }\n"
+            "};\n");
+        ASSERT_EQUALS("[test.cpp:5:10]: (warning) 'operator=' should check for assignment to self to avoid problems with dynamic memory. [operatorEqToSelf]\n", errout_str());
     }
 
     struct CheckVirtualDestructorOptions
