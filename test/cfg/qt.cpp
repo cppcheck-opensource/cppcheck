@@ -85,7 +85,7 @@ void assertWithSideEffect_QDir_exists(const char *path) { // #14720
 
 void assertWithSideEffect_QDir_mkdir(const char *path) { // #12468
     QDir dir;
-    // cppcheck-suppress assertWithSideEffect
+    // cppcheck-suppress [assertWithSideEffect, checkLibraryNoReturn] // TODO: #8329
     Q_ASSERT(dir.mkdir(path));
 }
 
