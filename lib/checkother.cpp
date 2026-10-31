@@ -4418,7 +4418,8 @@ void CheckOtherImpl::checkKnownArgument()
                 if (Token::Match(child, "%var%|.|[")) {
                     if (child->hasKnownIntValue())
                         return ChildrenToVisit::none;
-                    if (astIsIntegral(child, false) && !astIsPointer(child) && child->values().empty()) {
+                    if (astIsIntegral(child, false) && !astIsPointer(child) &&
+                        (child->values().empty() || (child->values().front().isIntValue() && child->values().front().isImpossible()))) {
                         vartok = child;
                         return ChildrenToVisit::done;
                     }

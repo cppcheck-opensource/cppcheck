@@ -13833,6 +13833,13 @@ private:
                       "[test.cpp:5:18]: (style) Argument 'true||x' to function dostuff is always 1. Constant literal calculation disable/hide variable expression 'x'. [knownArgumentHiddenVariableExpression]\n"
                       "[test.cpp:6:15]: (style) Argument 'x*0' to function dostuff is always 0. Constant literal calculation disable/hide variable expression 'x'. [knownArgumentHiddenVariableExpression]\n"
                       "[test.cpp:7:15]: (style) Argument '0*x' to function dostuff is always 0. Constant literal calculation disable/hide variable expression 'x'. [knownArgumentHiddenVariableExpression]\n", errout_str());
+
+        check("void f(int x) {\n" // #15145
+              "    if (x != 0)\n"
+              "        g(0 * x);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:13]: (style) Argument '0*x' to function g is always 0. Constant literal calculation disable/hide variable expression 'x'. [knownArgumentHiddenVariableExpression]\n",
+                      errout_str());
     }
 
     void knownArgumentTernaryOperator() { // #10374
