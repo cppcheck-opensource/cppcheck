@@ -90,6 +90,25 @@ def test_preprocessor_error(tmpdir):
     assert exitcode != 0
 
 
+@pytest.mark.parametrize('in_header', [False, True])
+def test_sdcc_asm_operands(tmp_path, in_header):  # #6028
+    source = ('int f(void) {\n'
+              '    __asm\n'
+              '        movx @dptr,a\n'
+              '        mov b,#(s_XINIT>>8)\n'
+              '    __endasm;\n'
+              '    return 1/0;\n'
+              '}\n')
+    main_file = tmp_path / 'main.c'
+    asm_file = tmp_path / 'asm.h' if in_header else main_file
+    asm_file.write_text(source)
+    if in_header:
+        main_file.write_text('#include "asm.h"\n')
+    exitcode, _, stderr = cppcheck(['--error-exitcode=1', '--template={file}:{line}:{id}', str(main_file)])
+    assert exitcode == 1
+    assert stderr == '{}:6:zerodiv\n'.format(asm_file)
+
+
 __ANSI_BOLD = "\x1b[1m"
 __ANSI_FG_RED = "\x1b[31m"
 __ANSI_FG_DEFAULT = "\x1b[39m"
