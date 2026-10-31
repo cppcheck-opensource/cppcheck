@@ -312,6 +312,7 @@ private:
         TEST_CASE(movePointerAlias);
         TEST_CASE(moveOutparam);
         TEST_CASE(moveTryEmplace);
+        TEST_CASE(moveSubFunction);
 
         TEST_CASE(funcArgNamesDifferent);
         TEST_CASE(funcArgOrderDifferent);
@@ -13351,6 +13352,30 @@ private:
               "    }\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void moveSubFunction()
+    {
+        check("struct T {\n" // #15150
+              "    void set(std::string a) { m = std::move(a); }\n"
+              "    std::string m;\n"
+              "};\n"
+              "void f(std::string s) {\n"
+              "    T t;\n"
+              "    t.set(std::move(s));\n"
+              "    t.set(s);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:8:11]: (warning) Access of moved variable 's'. [accessMoved]\n", errout_str());
+
+        check("void g(const std::string& s) {}\n"
+              "void h(std::string& r) { x = std::move(r); }\n"
+              "void f(std::string s1, std::string s2) {\n"
+              "    t1 = std::move(s1);\n"
+              "    t2 = std::move(s2);\n"
+              "    g(s1);\n"
+              "    h(s2);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:40]: (warning) Access of moved variable 'r'. [accessMoved]\n", errout_str());
     }
 
     void funcArgNamesDifferent() {
