@@ -4581,6 +4581,12 @@ private:
         ASSERT_EQUALS("[test.cpp:5:11] -> [test.cpp:4:9] -> [test.cpp:5:6]: (error) Non-local variable 'g.a' will use pointer to local variable 'x'. [danglingLifetime]\n"
                       "[test.cpp:5:11] -> [test.cpp:4:9] -> [test.cpp:6:13]: (error) Returning pointer to local variable 'x' that will be invalid when returning. [returnDanglingLifetime]\n",
                       errout_str());
+
+        check("int* f() {\n" // #11168
+              "    auto x = get();\n"
+              "    return &*x.a;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void danglingLifetimeClassMemberFunctions()
