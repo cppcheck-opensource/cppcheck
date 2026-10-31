@@ -2029,6 +2029,22 @@ private:
                                            "void S::func() const\n"
                                            "try { f(); }\n"
                                            "catch (...) { g(); }\n"));
+
+        ASSERT_EQUALS("struct D : B {\n" // #15126
+                      "void f ( ) override { try { } catch ( ... ) { } }\n"
+                      "void g ( ) final { try { } catch ( ... ) { } }\n"
+                      "void i ( ) & override { try { } catch ( ... ) { } }\n"
+                      "void j ( ) const && override { try { } catch ( ... ) { } }\n"
+                      "auto k ( ) . std :: nullptr_t override { try { } catch ( ... ) { } }\n"
+                      "} ;",
+                      tokenizeAndStringify("struct D : B {\n"
+                                           "    void f() override try {} catch (...) {}\n"
+                                           "    void g() final try {} catch (...) {}\n"
+                                           "    void i() & override try {} catch (...) {}\n"
+                                           "    void j() const && override try {} catch (...) {}\n"
+                                           "    auto k() -> std::nullptr_t override try {} catch (...) {}\n"
+                                           "};\n"));
+        ASSERT_EQUALS("[test.cpp:6:5]: (debug) auto token with no type. [autoNoType]\n", errout_str());
     }
 
     // Simplify "((..))" into "(..)"
