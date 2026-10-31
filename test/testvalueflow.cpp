@@ -57,6 +57,7 @@ private:
         TEST_CASE(valueFlowMove);
 
         TEST_CASE(valueFlowBitAnd);
+        TEST_CASE(valueFlowBitOr);
         TEST_CASE(valueFlowRightShift);
 
         TEST_CASE(valueFlowCalculations);
@@ -4332,6 +4333,13 @@ private:
                "}\n";
         auto values = tokenValues(code, "s :", ValueFlow::Value::ValueType::FLOAT);
         ASSERT_EQUALS(0, values.size());
+
+        code = "bool f(unsigned a, unsigned b) {\n"
+               "    unsigned m = a < b ? a : b;\n"
+               "    bool x = (m > a);\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 0));
     }
 
     void valueFlowForwardLambda() {
@@ -4421,6 +4429,22 @@ private:
                "}\n";
         ASSERT_EQUALS(true, testValueOfX(code,3U,0));
         ASSERT_EQUALS(false, testValueOfX(code,3U,16));
+    }
+
+    void valueFlowBitOr() {
+        const char *code;
+
+        code = "int f(int a) {\n"
+               "  int x = a | 0x80;\n"
+               "  return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXImpossible(code, 3U, 0));
+
+        code = "bool f(const std::optional<bool>& o) {\n"
+               "    const bool x = o | []() { return std::make_optional(false); };\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(false, testValueOfXImpossible(code, 3U, 0));
     }
 
     void valueFlowForwardInconclusiveImpossible() {
