@@ -1237,27 +1237,30 @@ class CppcheckData:
         # Parse general configuration options from <dumps> node
         # We intentionally don't clean node resources here because we
         # want to serialize in memory only small part of the XML tree.
-        for event, node in ElementTree.iterparse(self.filename, events=('start', 'end')):
-            if platform_done and rawtokens_done and suppressions_done:
-                break
-            if node.tag == 'dumps':
-                self.language = node.get('language')
-            if node.tag == 'platform' and event == 'start':
-                self.platform = Platform(node)
-                platform_done = True
-            elif node.tag == 'rawtokens' and event == 'end':
-                for rawtokens_node in node:
-                    if rawtokens_node.tag == 'file':
-                        self.files.append(rawtokens_node.get('name'))
-                    elif rawtokens_node.tag == 'tok':
-                        tok = Token(rawtokens_node)
-                        tok.file = self.files[int(rawtokens_node.get('fileIndex'))]
-                        self.rawTokens.append(tok)
-                rawtokens_done = True
-            elif node.tag == 'suppressions' and event == 'end':
-                for suppressions_node in node:
-                    self.suppressions.append(Suppression(suppressions_node))
-                suppressions_done = True
+        # The file handle is closed explicitly since the iterator may
+        # break early and Python 3.13+ warns about unclosed iterators.
+        with open(self.filename, 'rb') as dumpfile:
+            for event, node in ElementTree.iterparse(dumpfile, events=('start', 'end')):
+                if platform_done and rawtokens_done and suppressions_done:
+                    break
+                if node.tag == 'dumps':
+                    self.language = node.get('language')
+                if node.tag == 'platform' and event == 'start':
+                    self.platform = Platform(node)
+                    platform_done = True
+                elif node.tag == 'rawtokens' and event == 'end':
+                    for rawtokens_node in node:
+                        if rawtokens_node.tag == 'file':
+                            self.files.append(rawtokens_node.get('name'))
+                        elif rawtokens_node.tag == 'tok':
+                            tok = Token(rawtokens_node)
+                            tok.file = self.files[int(rawtokens_node.get('fileIndex'))]
+                            self.rawTokens.append(tok)
+                    rawtokens_done = True
+                elif node.tag == 'suppressions' and event == 'end':
+                    for suppressions_node in node:
+                        self.suppressions.append(Suppression(suppressions_node))
+                    suppressions_done = True
 
         global current_dumpfile_suppressions
         current_dumpfile_suppressions = self.suppressions
@@ -1296,126 +1299,130 @@ class CppcheckData:
         # Use iterable objects to traverse XML tree for dump files incrementally.
         # Iterative approach is required to avoid large memory consumption.
         # Calling .clear() is necessary to let the element be garbage collected.
-        for event, node in ElementTree.iterparse(self.filename, events=('start', 'end')):
-            # Serialize new configuration node
-            if node.tag == 'dump':
-                if event == 'start':
-                    cfg = Configuration(node.get('cfg'))
+        # The file handle is closed explicitly since the generator may
+        # be closed before the iterator is exhausted (Python 3.13+
+        # warns about unclosed iterators).
+        with open(self.filename, 'rb') as dumpfile:
+            for event, node in ElementTree.iterparse(dumpfile, events=('start', 'end')):
+                # Serialize new <dump> node contents
+                if node.tag == 'dump':
+                    if event == 'start':
+                        cfg = Configuration(node.get('cfg'))
+                        continue
+                    if event == 'end':
+                        cfg.setIdMap(cfg_arguments)
+                        yield cfg
+                        cfg = None
+                        cfg_arguments = []
+
+                elif node.tag == 'clang-warning' and event == 'start':
+                    cfg.clang_warnings.append({'file': node.get('file'),
+                                               'line': int(node.get('line')),
+                                               'column': int(node.get('column')),
+                                               'message': node.get('message')})
+                # Parse standards
+                elif node.tag == "standards" and event == 'start':
                     continue
-                if event == 'end':
-                    cfg.setIdMap(cfg_arguments)
-                    yield cfg
-                    cfg = None
-                    cfg_arguments = []
+                elif node.tag == 'c' and event == 'start':
+                    cfg.standards.set_c(node)
+                elif node.tag == 'cpp' and event == 'start':
+                    cfg.standards.set_cpp(node)
+                elif node.tag == 'posix' and event == 'start':
+                    cfg.standards.set_posix(node)
 
-            elif node.tag == 'clang-warning' and event == 'start':
-                cfg.clang_warnings.append({'file': node.get('file'),
-                                           'line': int(node.get('line')),
-                                           'column': int(node.get('column')),
-                                           'message': node.get('message')})
-            # Parse standards
-            elif node.tag == "standards" and event == 'start':
-                continue
-            elif node.tag == 'c' and event == 'start':
-                cfg.standards.set_c(node)
-            elif node.tag == 'cpp' and event == 'start':
-                cfg.standards.set_cpp(node)
-            elif node.tag == 'posix' and event == 'start':
-                cfg.standards.set_posix(node)
+                # Parse directives list
+                elif node.tag == 'directive':
+                    if event == 'start':
+                        cfg.directives.append(Directive(node))
+                        iter_directive = True
+                    elif event == 'end':
+                        iter_directive = False
+                # Parse macro usage
+                elif node.tag == 'macro' and event == 'start':
+                    cfg.macro_usage.append(MacroUsage(node))
 
-            # Parse directives list
-            elif node.tag == 'directive':
-                if event == 'start':
-                    cfg.directives.append(Directive(node))
-                    iter_directive = True
-                elif event == 'end':
-                    iter_directive = False
-            # Parse macro usage
-            elif node.tag == 'macro' and event == 'start':
-                cfg.macro_usage.append(MacroUsage(node))
+                # Preprocessor #if/#elif condition
+                elif node.tag == "if-cond" and event == 'start':
+                    cfg.preprocessor_if_conditions.append(PreprocessorIfCondition(node))
 
-            # Preprocessor #if/#elif condition
-            elif node.tag == "if-cond" and event == 'start':
-                cfg.preprocessor_if_conditions.append(PreprocessorIfCondition(node))
-
-            # Parse tokens
-            elif node.tag == 'tokenlist' and event == 'start':
-                continue
-            elif node.tag == 'token' and event == 'start' and not iter_directive and not iter_typedef_info:
-                cfg.tokenlist.append(Token(node))
-
-            # Parse scopes
-            elif node.tag == 'scopes' and event == 'start':
-                continue
-            elif node.tag == 'scope' and event == 'start':
-                cfg.scopes.append(Scope(node))
-            elif node.tag == 'varlist':
-                if event == 'start':
-                    iter_scope_varlist = True
-                elif event == 'end':
-                    iter_scope_varlist = False
-
-            # Parse functions
-            elif node.tag == 'functionList' and event == 'start':
-                continue
-            elif node.tag == 'function':
-                if event == 'start':
-                    cfg_function = Function(node, cfg.scopes[-1])
+                # Parse tokens
+                elif node.tag == 'tokenlist' and event == 'start':
                     continue
-                if event == 'end':
-                    cfg.functions.append(cfg_function)
-                    cfg_function = None
+                elif node.tag == 'token' and event == 'start' and not iter_directive and not iter_typedef_info:
+                    cfg.tokenlist.append(Token(node))
 
-            # Parse function arguments
-            elif node.tag == 'arg' and event == 'start':
-                arg_nr = int(node.get('nr'))
-                arg_variable_id = node.get('variable')
-                cfg_function.argumentId[arg_nr] = arg_variable_id
+                # Parse scopes
+                elif node.tag == 'scopes' and event == 'start':
+                    continue
+                elif node.tag == 'scope' and event == 'start':
+                    cfg.scopes.append(Scope(node))
+                elif node.tag == 'varlist':
+                    if event == 'start':
+                        iter_scope_varlist = True
+                    elif event == 'end':
+                        iter_scope_varlist = False
 
-            # Parse variables
-            elif node.tag == 'var' and event == 'start':
-                if iter_scope_varlist:
-                    cfg.scopes[-1].varlistId.append(node.get('id'))
-                else:
-                    var = Variable(node)
-                    if var.nameTokenId:
-                        cfg.variables.append(var)
+                # Parse functions
+                elif node.tag == 'functionList' and event == 'start':
+                    continue
+                elif node.tag == 'function':
+                    if event == 'start':
+                        cfg_function = Function(node, cfg.scopes[-1])
+                        continue
+                    if event == 'end':
+                        cfg.functions.append(cfg_function)
+                        cfg_function = None
+
+                # Parse function arguments
+                elif node.tag == 'arg' and event == 'start':
+                    arg_nr = int(node.get('nr'))
+                    arg_variable_id = node.get('variable')
+                    cfg_function.argumentId[arg_nr] = arg_variable_id
+
+                # Parse variables
+                elif node.tag == 'var' and event == 'start':
+                    if iter_scope_varlist:
+                        cfg.scopes[-1].varlistId.append(node.get('id'))
                     else:
-                        cfg_arguments.append(var)
+                        var = Variable(node)
+                        if var.nameTokenId:
+                            cfg.variables.append(var)
+                        else:
+                            cfg_arguments.append(var)
 
-            # Parse containers
-            elif node.tag == 'containers' and event == 'start':
-                continue
-            elif node.tag == 'container' and event == 'start':
-                cfg.containers.append(Container(node))
-
-            # Parse typedef info
-            elif node.tag == 'typedef-info':
-                iter_typedef_info = (event == 'start')
-            elif iter_typedef_info and node.tag == 'info' and event == 'start':
-                cfg.typedefInfo.append(TypedefInfo(node))
-
-            # Parse template-token
-            #elif node.tag == 'TokenAndName' and event == 'start': #todo add processing of containers
-            #    cfg.containers.append(Container(node))
-
-            # Parse valueflows (list of values)
-            elif node.tag == 'valueflow' and event == 'start':
-                continue
-            elif node.tag == 'values':
-                if event == 'start':
-                    cfg_valueflow = ValueFlow(node)
+                # Parse containers
+                elif node.tag == 'containers' and event == 'start':
                     continue
-                if event == 'end':
-                    cfg.valueflow.append(cfg_valueflow)
-                    cfg_valueflow = None
+                elif node.tag == 'container' and event == 'start':
+                    cfg.containers.append(Container(node))
 
-            # Parse values
-            elif node.tag == 'value' and event == 'start':
-                cfg_valueflow.values.append(Value(node))
+                # Parse typedef info
+                elif node.tag == 'typedef-info':
+                    iter_typedef_info = (event == 'start')
+                elif iter_typedef_info and node.tag == 'info' and event == 'start':
+                    cfg.typedefInfo.append(TypedefInfo(node))
 
-            # Remove links to the sibling nodes
-            node.clear()
+                # Parse template-token
+                #elif node.tag == 'TokenAndName' and event == 'start': #todo add processing of containers
+                #    cfg.containers.append(Container(node))
+
+                # Parse valueflows (list of values)
+                elif node.tag == 'valueflow' and event == 'start':
+                    continue
+                elif node.tag == 'values':
+                    if event == 'start':
+                        cfg_valueflow = ValueFlow(node)
+                        continue
+                    if event == 'end':
+                        cfg.valueflow.append(cfg_valueflow)
+                        cfg_valueflow = None
+
+                # Parse values
+                elif node.tag == 'value' and event == 'start':
+                    cfg_valueflow.values.append(Value(node))
+
+                # Remove links to the sibling nodes
+                node.clear()
 
     def __repr__(self):
         attrs = ["configurations", "platform"]
