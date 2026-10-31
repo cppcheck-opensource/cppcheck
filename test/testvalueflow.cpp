@@ -9441,6 +9441,51 @@ private:
                "    int a[3];\n"
                "};\n";
         ASSERT(tokenValues(code, "* p )").empty());
+
+        code = "int f(int i) {\n"
+               "    int j = i;\n"
+               "    i++;\n"
+               "    int x = i - 1;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXKnown(code, 5U, "j", 0));
+
+        code = "int f(int i) {\n"
+               "    int j = i;\n"
+               "    i++;\n"
+               "    int x = i + 2;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXKnown(code, 5U, "j", 3));
+
+        code = "int f(int i) {\n"
+               "    int j = i;\n"
+               "    i++;\n"
+               "    int x = 2 + i;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXKnown(code, 5U, "j", 3));
+
+        code = "int *f(int *q) {\n"
+               "    int *p = q;\n"
+               "    p += 2;\n"
+               "    int *x = p - 2;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXKnown(code, 5U, "q", 0));
+
+        if (sizeof(MathLib::bigint) == 8) {
+            code = "long long f(long long i) {\n"
+                   "    long long j = i;\n"
+                   "    i++;\n"
+                   "    long long a = i + 0x7fffffffffffffffLL;\n"
+                   "    long long x = i - 2;\n"
+                   "    return a + x;\n"
+                   "}\n";
+            ASSERT_EQUALS(0U, tokenValues(code, "+ 0x7fffffffffffffffLL").size());
+            ASSERT_EQUALS(1U, tokenValues(code, "- 2").size());
+            ASSERT_EQUALS(true, testValueOfXKnown(code, 6U, "j", -1));
+        }
     }
 
     void valueFlowSymbolicIdentity()
