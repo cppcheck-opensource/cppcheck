@@ -43,20 +43,6 @@ public:
     virtual QList<ErrorItem> read() = 0;
 
     /**
-     * @brief Quote the message.
-     * @param message Message to quote.
-     * @return quoted message.
-     */
-    static QString quoteMessage(const QString &message);
-
-    /**
-     * @brief Unquote the message.
-     * @param message Message to quote.
-     * @return quoted message.
-     */
-    static QString unquoteMessage(const QString &message);
-
-    /**
      * @brief Get the XML report format version from the file.
      * @param filename Filename of the report file.
      * @return XML report format version or 0 if error happened.

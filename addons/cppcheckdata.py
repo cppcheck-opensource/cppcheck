@@ -38,6 +38,13 @@ EXIT_CODE = 0
 
 current_dumpfile_suppressions = []
 
+def _iterparse(filename, events):
+    # Open the file here so it is closed even when the caller stops iterating
+    # early. Python 3.15 warns about unclosed iterparse iterators otherwise.
+    with open(filename, 'rb') as f:
+        yield from ElementTree.iterparse(f, events=events)
+
+
 def _load_location(location, element):
     """Load location from element/dict"""
     location.file = element.get('file')
@@ -1237,7 +1244,7 @@ class CppcheckData:
         # Parse general configuration options from <dumps> node
         # We intentionally don't clean node resources here because we
         # want to serialize in memory only small part of the XML tree.
-        for event, node in ElementTree.iterparse(self.filename, events=('start', 'end')):
+        for event, node in _iterparse(self.filename, events=('start', 'end')):
             if platform_done and rawtokens_done and suppressions_done:
                 break
             if node.tag == 'dumps':
@@ -1296,7 +1303,7 @@ class CppcheckData:
         # Use iterable objects to traverse XML tree for dump files incrementally.
         # Iterative approach is required to avoid large memory consumption.
         # Calling .clear() is necessary to let the element be garbage collected.
-        for event, node in ElementTree.iterparse(self.filename, events=('start', 'end')):
+        for event, node in _iterparse(self.filename, events=('start', 'end')):
             # Serialize new configuration node
             if node.tag == 'dump':
                 if event == 'start':

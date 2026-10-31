@@ -106,12 +106,6 @@ Application& ApplicationList::getApplication(const int /*unused*/) {
 const Application& ApplicationList::getApplication(const int index) const {
     return mApplications.at(index);
 }
-QString XmlReport::quoteMessage(const QString &message) {
-    return message;
-}
-QString XmlReport::unquoteMessage(const QString &message) {
-    return message;
-}
 XmlReport::XmlReport(const QString& filename) : Report(filename) {}
 // NOLINTNEXTLINE(performance-unnecessary-value-param)
 void ThreadResult::finishCheck(CheckThread::Details /*unused*/) {

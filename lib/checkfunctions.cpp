@@ -222,14 +222,15 @@ void CheckFunctionsImpl::invalidFunctionArgError(const Token *tok, const std::st
         errmsg << " The value is " << std::setprecision(10) << (invalidValue->isIntValue() ? invalidValue->intvalue : invalidValue->floatValue) << " but the valid values are '" << validstr << "'.";
     else
         errmsg << " The value is 0 or 1 (boolean) but the valid values are '" << validstr << "'.";
-    if (invalidValue)
+    if (invalidValue) {
+        const auto severity = invalidValue->errorSeverity() && invalidValue->isKnown() && !invalidValue->conditional ? Severity::error : Severity::warning;
         reportError(getErrorPath(tok, invalidValue, "Invalid argument"),
-                    invalidValue->errorSeverity() && invalidValue->isKnown() ? Severity::error : Severity::warning,
+                    severity,
                     "invalidFunctionArg",
                     errmsg.str(),
                     CWE628,
                     invalidValue->isInconclusive() ? Certainty::inconclusive : Certainty::normal);
-    else
+    } else
         reportError(tok,
                     Severity::error,
                     "invalidFunctionArg",

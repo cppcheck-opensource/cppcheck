@@ -21,7 +21,9 @@
 #include "erroritem.h"
 #include "xmlreportv2.h"
 
+#include <QFile>
 #include <QList>
+#include <QTemporaryDir>
 #include <QtTest>
 
 void TestXmlReportV2::readXml() const
@@ -51,6 +53,41 @@ void TestXmlReportV2::readXml() const
     QCOMPARE(GuiSeverity::toString(item2.severity), QString("error"));
     QCOMPARE(item2.summary, QString("Mismatching allocation and deallocation: k"));
     QCOMPARE(item2.message, QString("Mismatching allocation and deallocation: k"));
+}
+
+void TestXmlReportV2::writeXmlEscaping() const
+{
+    QTemporaryDir dir;
+    const QString path = dir.path() + "/results.xml";
+
+    ErrorItem item;
+    item.errorId = "id";
+    item.severity = Severity::style;
+    item.summary = "\"x\" & <y> &quot;";
+    item.message = item.summary;
+    QErrorPathItem loc;
+    loc.file = "a&b.cpp";
+    loc.line = 1;
+    item.errorPath << loc;
+    {
+        XmlReportV2 report(path, QString());
+        QVERIFY(report.create());
+        report.writeHeader();
+        report.writeError(item);
+        report.writeFooter();
+    }
+
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    QVERIFY(file.readAll().contains("msg=\"&quot;x&quot; &amp; &lt;y&gt; &amp;quot;\""));
+
+    XmlReportV2 report(path, QString());
+    QVERIFY(report.open());
+    const QList<ErrorItem> errors = report.read();
+    QCOMPARE(errors.size(), 1);
+    QCOMPARE(errors[0].summary, item.summary);
+    QCOMPARE(errors[0].message, item.message);
+    QCOMPARE(errors[0].errorPath[0].file, loc.file);
 }
 
 QTEST_MAIN(TestXmlReportV2)
