@@ -35,7 +35,6 @@
 #include <cctype>
 #include <cstdlib>
 #include <functional>
-#include <list>
 #include <map>
 #include <set>
 #include <sstream>

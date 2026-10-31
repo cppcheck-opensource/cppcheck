@@ -40,7 +40,6 @@
 #include <list>
 #include <sstream>
 #include <utility>
-#include <vector>
 
 //---------------------------------------------------------------------------
 

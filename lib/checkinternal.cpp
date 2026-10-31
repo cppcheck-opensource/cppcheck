@@ -29,7 +29,6 @@
 
 #include <cstring>
 #include <set>
-#include <vector>
 
 void CheckInternalImpl::checkTokenMatchPatterns()
 {

@@ -35,7 +35,6 @@
 #include <algorithm>
 #include <cstring>
 #include <iterator>
-#include <list>
 #include <map>
 #include <set>
 #include <stdexcept>
