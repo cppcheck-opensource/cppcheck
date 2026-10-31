@@ -42,8 +42,7 @@ def _iterparse(filename, events):
     # Open the file here so it is closed even when the caller stops iterating
     # early. Python 3.15 warns about unclosed iterparse iterators otherwise.
     with open(filename, 'rb') as f:
-        for item in ElementTree.iterparse(f, events=events):
-            yield item
+        yield from ElementTree.iterparse(f, events=events)
 
 
 def _load_location(location, element):
