@@ -9663,8 +9663,8 @@ static Token* getVariableTokenAfterAttributes(Token* tok) {
     Token *vartok = nullptr;
     Token *after = getTokenAfterAttributes(tok, true);
 
-    // check if after variable name
-    if (Token::Match(after, "[;={]")) {
+    // check if after variable or parameter name
+    if (Token::Match(after, "[;={,)]")) {
         Token *prev = tok->previous();
         while (Token::simpleMatch(prev, "]"))
             prev = prev->link()->previous();
