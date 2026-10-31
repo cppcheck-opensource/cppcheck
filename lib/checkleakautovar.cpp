@@ -138,7 +138,8 @@ void CheckLeakAutoVarImpl::deallocReturnError(const Token *tok, const Token *dea
 void CheckLeakAutoVarImpl::configurationInfo(const Token* tok, const std::pair<const Token*, VarInfo::Usage>& functionUsage)
 {
     if (mSettings.checkLibrary && functionUsage.second == VarInfo::USED &&
-        (!functionUsage.first || !functionUsage.first->function() || !functionUsage.first->function()->hasBody())) {
+        (!functionUsage.first || !functionUsage.first->function() || !functionUsage.first->function()->hasBody()) &&
+        !(functionUsage.first && mSettings.library.isUse(mSettings.library.getFunctionName(functionUsage.first)))) {
         std::string funcStr = functionUsage.first ? mSettings.library.getFunctionName(functionUsage.first) : "f";
         if (funcStr.empty())
             funcStr = "unknown::" + functionUsage.first->str();
