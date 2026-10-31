@@ -6670,6 +6670,14 @@ private:
               "}\n", settingsUnix64);
         ASSERT_EQUALS("[test.cpp:2:14]: (style) Comparing expression of type 'char' against value 128. Condition is always false. [compareValueOutOfTypeRangeError]\n",
                       errout_str());
+
+        check("enum E : std::uint8_t { X };\n" // #11243
+              "void f(E e) {\n"
+              "    if (e == 256) {}\n"
+              "    if (e <= X) {}\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:14]: (style) Comparing expression of type 'unsigned char' against value 256. Condition is always false. [compareValueOutOfTypeRangeError]\n",
+                      errout_str());
     }
 
     void knownConditionCast() {
