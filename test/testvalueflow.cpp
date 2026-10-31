@@ -4439,6 +4439,12 @@ private:
                "  return x;\n"
                "}\n";
         ASSERT_EQUALS(true, testValueOfXImpossible(code, 3U, 0));
+
+        code = "bool f(const std::optional<bool>& o) {\n"
+               "    const bool x = o | []() { return std::make_optional(false); };\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(false, testValueOfXImpossible(code, 3U, 0));
     }
 
     void valueFlowForwardInconclusiveImpossible() {

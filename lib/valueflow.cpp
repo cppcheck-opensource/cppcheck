@@ -1098,6 +1098,8 @@ static void valueFlowImpossibleValues(TokenList& tokenList, const Settings& sett
             bool nonNull = false;
             for (const Token *op : {tok->astOperand1(), tok->astOperand2()}) {
                 for (const ValueFlow::Value& v : op->values()) {
+                    if (!op->valueType() || !op->valueType()->isIntegral())
+                        continue;
                     if (v.valueType != ValueFlow::Value::ValueType::INT)
                         continue;
                     if ((v.isKnown() && v.intvalue != 0) || (v.isImpossible() && v.intvalue == 0)) {
