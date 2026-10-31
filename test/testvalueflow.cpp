@@ -4332,6 +4332,45 @@ private:
                "}\n";
         auto values = tokenValues(code, "s :", ValueFlow::Value::ValueType::FLOAT);
         ASSERT_EQUALS(0, values.size());
+
+        code = "int a[5];\n" // 15034
+               "int g(int i) {\n"
+               "    return a[i < 0 ? -i : i];\n"
+               "}\n"
+               "int f() {\n"
+               "    return g(-5);\n"
+               "}\n";
+        values = tokenValues(code, "?");
+        ASSERT_EQUALS(2, values.size());
+        auto it = values.begin();
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueType::INT, it->valueType);
+        ASSERT_EQUALS(0, it->intvalue);
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::Bound::Lower, it->bound);
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueKind::Possible, it->valueKind);
+        ++it;
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueType::INT, it->valueType);
+        ASSERT_EQUALS(5, it->intvalue);
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::Bound::Point, it->bound);
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueKind::Possible, it->valueKind);
+
+        code = "int f(int a, int b) {\n"
+               "    if (b <= 0)\n"
+               "        return b;\n"
+               "    int a = (a > 0) ? a : -a;\n"
+               "    return 1 / (a < b ? b : a);\n"
+               "}\n";
+        values = tokenValues(code, "? b");
+        ASSERT_EQUALS(2, values.size());
+        it = values.begin();
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueType::SYMBOLIC, it->valueType);
+        ASSERT_EQUALS(-1, it->intvalue);
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::Bound::Upper, it->bound);
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueKind::Impossible, it->valueKind);
+        ++it;
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueType::SYMBOLIC, it->valueType);
+        ASSERT_EQUALS(-1, it->intvalue);
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::Bound::Upper, it->bound);
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueKind::Impossible, it->valueKind);
     }
 
     void valueFlowForwardLambda() {
