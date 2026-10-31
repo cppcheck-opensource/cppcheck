@@ -268,6 +268,7 @@ private:
         TEST_CASE(minsize_sizeof);
         TEST_CASE(minsize_strlen);
         TEST_CASE(minsize_mul);
+        TEST_CASE(minsize_overflow);
         TEST_CASE(unknownType);
 
         TEST_CASE(terminateStrncpy1);
@@ -4903,6 +4904,33 @@ private:
               "    myfread(c, 1, 6, stdin);\n"
               "}\n", settings);
         ASSERT_EQUALS("[test.cpp:3:13]: (error) Buffer is accessed out of bounds: c [bufferAccessOutOfBounds]\n", errout_str());
+    }
+
+    void minsize_overflow() {
+        // the computed minimum size must not wrap around
+        check("void f() {\n"
+              "    char buf[10];\n"
+              "    sprintf(buf, \"%2000000000d%2000000000d\", 1, 2);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("[test.cpp:3:13]: (error) Buffer is accessed out of bounds: buf [bufferAccessOutOfBounds]\n", errout_str());
+
+        check("void f() {\n"
+              "    char buf[10];\n"
+              "    sprintf(buf, \"%4294967296d\", 1);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("[test.cpp:3:13]: (error) Buffer is accessed out of bounds: buf [bufferAccessOutOfBounds]\n", errout_str());
+
+        check("void f(FILE *fp) {\n"
+              "    char buf[10];\n"
+              "    fread(buf, 0x100000000LL, 0x100000000LL, fp);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("[test.cpp:3:11]: (error) Buffer is accessed out of bounds: buf [bufferAccessOutOfBounds]\n", errout_str());
+
+        check("void f() {\n"
+              "    wchar_t buf[10];\n"
+              "    (void)wmemchr(buf, L'a', 0x4000000000000000LL);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("[test.cpp:3:19]: (error) Buffer is accessed out of bounds: buf [bufferAccessOutOfBounds]\n", errout_str());
     }
 
     // extracttests.enable
