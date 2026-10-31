@@ -45,7 +45,7 @@ public:
     // Parse current tokens and determine..
     // * Check what functions are used
     // * What functions are declared
-    void parseTokens(const Tokenizer &tokenizer, const Library &library);
+    void parseTokens(const Tokenizer &tokenizer, const Library &library, const std::set<std::string>& exportedFunctions = {});
 
     std::string analyzerInfo(const Tokenizer &tokenizer) const;
 
