@@ -1675,18 +1675,9 @@ void CheckClassImpl::checkMemsetType(const Scope *start, const Token *tok, const
         }
         // don't warn if variable static or const, pointer or array of pointers
         if (!var.isStatic() && !var.isConst() && !var.isPointer() && (!var.isArray() || var.typeEndToken()->str() != "*")) {
-            const Token *tok1 = var.typeStartToken();
             const Scope *typeScope = var.typeScope();
 
-            std::string typeName;
-            if (Token::Match(tok1, "%type% ::")) {
-                const Token *typeTok = tok1;
-                while (Token::Match(typeTok, "%type% ::")) {
-                    typeName += typeTok->str() + "::";
-                    typeTok = typeTok->tokAt(2);
-                }
-                typeName += typeTok->str();
-            }
+            const std::string typeName = var.getTypeName();
 
             // check for std:: type
             if (var.isStlType() && typeName != "std::array" && !mSettings.library.podtype(typeName)) {
