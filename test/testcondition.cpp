@@ -5011,6 +5011,14 @@ private:
                       "[test.cpp:9:9]: (style) Condition '0b101010' is always true [knownConditionTrueFalse]\n"
                       "[test.cpp:10:9]: (style) Condition '!42' is always false [knownConditionTrueFalse]\n",
                       errout_str());
+
+        check("bool g(int = 1) __attribute__((pure));\n"
+              "void f() {\n"
+              "    int n = 0;\n"
+              "    if (g(), n) {}\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:12]: (style) Condition 'g(),n' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
     }
 
     void alwaysTrueSymbolic()

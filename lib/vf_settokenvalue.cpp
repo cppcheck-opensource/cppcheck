@@ -216,6 +216,25 @@ namespace ValueFlow
         return false;
     }
 
+    static bool isFunctionCall(const Token* tok, const Settings& settings)
+    {
+        if (!tok)
+            return false;
+        if (tok->str() == "{")
+            return true;
+        if (tok->str() == "(") {
+            if (tok->astOperand1() && tok->astOperand1()->isControlFlowKeyword())
+                return false;
+            if (Token::Match(tok->next(), "%name%") && !settings.library.isNotLibraryFunction(tok->next()))
+                return true;
+            if (Token::Match(tok->previous(), "%name%|>"))
+                return true;
+            if (Token::Match(tok->astOperand1(), "%name%|(|[|*|."))
+                return true;
+        }
+        return false;
+    }
+
     /** set ValueFlow value and perform calculations if possible */
     void setTokenValue(Token* tok,
                        Value value,
@@ -254,9 +273,7 @@ namespace ValueFlow
                 return !Token::simpleMatch(p, ",");
             });
             // Ensure that the comma isn't a function call
-            if (!callParent || (!Token::Match(callParent->previous(), "%name%|> (") && !Token::simpleMatch(callParent, "{") &&
-                                (!Token::Match(callParent, "( %name%") || settings.library.isNotLibraryFunction(callParent->next())) &&
-                                !(callParent->str() == "(" && Token::Match(callParent->astOperand1(), "%name%|(|[|*|.")))) {
+            if (!isFunctionCall(callParent, settings)) {
                 setTokenValue(parent, std::move(value), settings);
                 return;
             }
