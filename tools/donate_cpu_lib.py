@@ -16,7 +16,7 @@ import copy
 # Version scheme (MAJOR.MINOR.PATCH) should orientate on "Semantic Versioning" https://semver.org/
 # Every change in this script should result in increasing the version number accordingly (exceptions may be cosmetic
 # changes)
-CLIENT_VERSION = "1.4.0"
+CLIENT_VERSION = "1.4.1"
 
 # Timeout for analysis with Cppcheck in seconds
 CPPCHECK_TIMEOUT = 30 * 60
@@ -344,10 +344,19 @@ def download_package(work_path, package, bandwidth_limit):
     return destfile
 
 
+def __is_inside_path(base_path, path):
+    try:
+        return os.path.commonpath([base_path, path]) == base_path
+    except ValueError:
+        # paths are on different drives
+        return False
+
+
 def unpack_package(work_path, tgz, cpp_only=False, c_only=False, skip_files=None):
     temp_path = os.path.join(work_path, 'temp')
     __remove_tree(temp_path)
     os.mkdir(temp_path)
+    real_temp_path = os.path.realpath(temp_path)
 
     header_endings = ('.hpp', '.h++', '.hxx', '.hh', '.h')
     cpp_source_endings = ('.cpp', '.c++', '.cxx', '.cc', '.tpp', '.txx', '.ipp', '.ixx', '.qml')
@@ -367,10 +376,19 @@ def unpack_package(work_path, tgz, cpp_only=False, c_only=False, skip_files=None
             total = 0
             extracted = 0
             skipped = 0
+            # Python versions with extraction filters reject members that leave temp_path as well
+            extract_args = {'filter': 'data'} if hasattr(tarfile, 'data_filter') else {}
             for member in tf:
                 total += 1
-                if member.name.startswith(('/', '..')):
-                    # Skip dangerous file names
+                member_path = os.path.realpath(os.path.join(temp_path, member.name))
+                link_path = None
+                if member.issym():
+                    link_path = os.path.realpath(os.path.join(os.path.dirname(member_path), member.linkname))
+                elif member.islnk():
+                    link_path = os.path.realpath(os.path.join(temp_path, member.linkname))
+                if not __is_inside_path(real_temp_path, member_path) or \
+                        (link_path is not None and not __is_inside_path(real_temp_path, link_path)):
+                    # Skip dangerous file names and links pointing outside of temp_path
                     # print('skipping dangerous file: ' + member.name)
                     skipped += 1
                     continue
@@ -388,13 +406,15 @@ def unpack_package(work_path, tgz, cpp_only=False, c_only=False, skip_files=None
                             skipped += 1
                             continue
                     try:
-                        tf.extract(member.name, temp_path)
+                        tf.extract(member.name, temp_path, **extract_args)
                         if is_source:
                             source_found = True
                         extracted += 1
                     except OSError:
                         pass
                     except AttributeError:
+                        pass
+                    except tarfile.TarError:
                         pass
             print('extracted {} of {} files (skipped {}{})'.format(extracted, total, skipped, (' / only headers' if (extracted and not source_found) else '')))
     return temp_path, source_found

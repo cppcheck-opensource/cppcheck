@@ -16,6 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import io
+import tarfile
+
 from donate_cpu_lib import *
 
 def _test_library_includes(tmpdir, libs, content, libinc_obj=None):
@@ -66,3 +69,30 @@ def test_match_multiple_time(tmpdir):
     # there was a bug that we would only match each library once successfully
     _test_library_includes(tmpdir, ['posix', 'gnu', 'bsd', 'zlib'], '#include <zlib.h>', libinc)
     _test_library_includes(tmpdir, ['posix', 'gnu', 'bsd', 'zlib'], '#include <zlib.h>', libinc)
+
+def _add_tar_member(tf, name, linkname=None):
+    info = tarfile.TarInfo(name)
+    data = b''
+    if linkname is not None:
+        info.type = tarfile.SYMTYPE
+        info.linkname = linkname
+    else:
+        data = b'int x;\n'
+        info.size = len(data)
+    tf.addfile(info, io.BytesIO(data))
+
+def test_unpack_package_outside_temp(tmpdir):
+    work_path = str(tmpdir)
+    outside_path = os.path.join(work_path, 'outside')
+    os.mkdir(outside_path)
+    tgz = os.path.join(work_path, 'temp.tgz')
+    with tarfile.open(tgz, 'w:gz') as tf:
+        _add_tar_member(tf, 'pkg/main.c')
+        _add_tar_member(tf, 'pkg/../../outside/dotdot.c')
+        _add_tar_member(tf, 'pkg/inc.h', linkname=outside_path)
+        _add_tar_member(tf, 'pkg/inc.h/symlink.c')
+
+    temp_path, source_found = unpack_package(work_path, tgz)
+    assert source_found
+    assert os.path.isfile(os.path.join(temp_path, 'pkg', 'main.c'))
+    assert os.listdir(outside_path) == []
