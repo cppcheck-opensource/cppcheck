@@ -1067,7 +1067,7 @@ def test_showtime_top5_summary_compdb(tmp_path):
 
 
 def __test_showtime_file(tmp_path, use_compdb=False, use_addons=False, use_clang_tidy=False):
-    exp_res = 78
+    exp_res = 79
     # project analysis does not call Preprocessor::getConfig()
     if use_compdb:
         exp_res -= 1
@@ -1101,7 +1101,7 @@ def test_showtime_file_clang_tidy_compdb(tmp_path):
 
 
 def __test_showtime_summary(tmp_path, use_compdb=False, use_addons=False, use_clang_tidy=False):
-    exp_res = 78
+    exp_res = 79
     # project analysis does not call Preprocessor::getConfig()
     if use_compdb:
         exp_res -= 1

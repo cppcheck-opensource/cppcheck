@@ -5001,6 +5001,21 @@ private:
               "    printf(\"%i\", fp());\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct S { int a; };\n" // a pointer to a function or to a member is a pointer
+              "void test(int (*cb)(int), int S::*pm) {\n"
+              "    auto acb = cb;\n"
+              "    printf(\"%d %d %d %p %p\", cb, pm, acb, cb, acb);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:5]: (warning) %d in format string (no. 1) requires 'int' but the argument type is 'function *'. [invalidPrintfArgType_sint]\n"
+                      "[test.cpp:4:5]: (warning) %d in format string (no. 2) requires 'int' but the argument type is 'member-pointer *'. [invalidPrintfArgType_sint]\n"
+                      "[test.cpp:4:5]: (warning) %d in format string (no. 3) requires 'int' but the argument type is 'function *'. [invalidPrintfArgType_sint]\n", errout_str());
+
+        check("void test(char* (*cs)(int)) {\n" // a call through a copy of the pointer has the return type of the function
+              "    auto acs = cs;\n"
+              "    printf(\"%d %s\", acs(1), (*cs)(2));\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:5]: (warning) %d in format string (no. 1) requires 'int' but the argument type is 'char *'. [invalidPrintfArgType_sint]\n", errout_str());
     }
 
     void testPrintf0WithSuffix() { // ticket #7069

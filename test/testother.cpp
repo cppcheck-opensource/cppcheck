@@ -9700,6 +9700,15 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
+        // template parameter type is deduced as unsigned from the call
+        check("template<class T> bool pos(T x) { return x >= 0; }\n"
+              "void use() { unsigned u = 3; pos(u); }\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("template<class T> bool neg(T x) { return 0 <= x; }\n"
+              "void use() { unsigned u = 3; neg(u); }\n");
+        ASSERT_EQUALS("", errout_str());
+
         // #13734
         check("void f() {\n"
               "    uint8_t a[N + 1];\n"
@@ -13138,6 +13147,16 @@ private:
               "    g(*w);\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:5:10]: (style) Variable 'w' can be declared as pointer to const [constVariablePointer]\n", errout_str());
+
+        check("struct S { int a; };\n" // moving a pointer to a function or to a member copies it
+              "void h(int (*)(int));\n"
+              "int f(int (*cb)(int), const S& s, int S::*pm) {\n"
+              "    int (*c)(int) = std::move(cb);\n"
+              "    int S::*q = std::move(pm);\n"
+              "    h(std::move(cb));\n"
+              "    return cb(1) + c(2) + s.*pm + s.*q;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void moveAndAddressOf() {

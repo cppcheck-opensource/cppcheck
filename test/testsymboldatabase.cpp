@@ -548,6 +548,7 @@ private:
         TEST_CASE(findFunction64); // overloaded operator()
         TEST_CASE(findFunction65);
         TEST_CASE(findFunction66); // #15104 - object passed for pointer to its class
+        TEST_CASE(findFunction67); // member template of a class template instantiation
         TEST_CASE(findFunctionRef1);
         TEST_CASE(findFunctionRef2); // #13328
         TEST_CASE(findFunctionContainer);
@@ -598,6 +599,8 @@ private:
         TEST_CASE(valueTypeChar);
         TEST_CASE(valueTypeRValueReference);
         TEST_CASE(valueTypeGeneric);
+        TEST_CASE(valueTypeFunctionPointer); // pointer or reference to function, pointer to member
+        TEST_CASE(valueTypeFunctionPointerBits);
 
         TEST_CASE(variadic1); // #7453
         TEST_CASE(variadic2); // #7649
@@ -9222,6 +9225,22 @@ private:
         }
     }
 
+    void findFunction67()
+    { // the out of line definition of a member template instantiation is linked to the
+      // declaration in the class template instantiation
+        GET_SYMBOL_DB("template<class T> struct A {\n"
+                      "    template<class U> void put(U* p) const { *p = 1; }\n"
+                      "};\n"
+                      "void g(const A<int>& a) { long* p = nullptr; a.put<long>(p); }\n");
+        const Token* call = Token::findsimplematch(tokenizer.tokens(), "a .");
+        ASSERT(call);
+        call = call->tokAt(2);
+        ASSERT_EQUALS("put < long >", call->str());
+        ASSERT(call->function() && call->function()->hasBody());
+        ASSERT(call->function()->functionScope);
+        ASSERT(Token::simpleMatch(call->function()->functionScope->bodyStart, "{ * p = 1 ; }"));
+    }
+
     void findFunctionRef1() {
         GET_SYMBOL_DB("struct X {\n"
                       "    const std::vector<int> getInts() const & { return mInts; }\n"
@@ -10699,6 +10718,77 @@ private:
                           "    const int *controlvar;\n"
                           "    auto testvar = _Generic(controlvar, int*: floatfunc, default: intfunc)();\n"
                           "}\n", "testvar"));
+    }
+
+    // the type of the argument of the first call after start that matches callPattern
+    // ("g ( cbs [ 0 ] )")
+    static std::string argumentType(const Token* start, const char callPattern[]) {
+        const Token* const call = Token::findsimplematch(start, callPattern, strlen(callPattern));
+        const Token* const arg = call ? call->next()->astOperand2() : nullptr;
+        const ValueType* const vt = arg ? arg->valueType() : nullptr;
+        if (!vt)
+            return "";
+        return vt->str();
+    }
+
+    void valueTypeFunctionPointer() {
+        GET_SYMBOL_DB("struct S { int a; static int s; };\n"
+                      "void g(int);\n"
+                      "void f(int (*cb)(int), int S::*pm, S s, int* p, int (&rf)(int)) {\n"
+                      "    int (**pcb)(int); int (*cbs[2])(int); int (*pa)[3]; int (S::*pmf)(int); int* (*pf)(int);\n"
+                      "    auto acb = cb; auto apm = &S::a;\n"
+                      "    g(cb); g(rf); g(*pcb); g(cbs[0]); g(pa); g(pmf); g(pm); g(&S::a); g(&S::s); g(&s.a); g(p); g(acb); g(apm);\n"
+                      "    g(cb(1)); g(rf(2)); g(pf(3));\n"
+                      "    g(acb(4)); g((*cb)(5)); g(cbs[0](6)); g((*pcb)(7));\n"
+                      "    decltype(cb) dcb = cb; g(dcb(8));\n"
+                      "}\n");
+        ASSERT(db != nullptr);
+        const Token* const tokens = tokenizer.tokens();
+        ASSERT_EQUALS("function *", argumentType(tokens, "g ( cb )"));
+        ASSERT_EQUALS("function &", argumentType(tokens, "g ( rf )"));
+        ASSERT_EQUALS("function *", argumentType(tokens, "g ( * pcb )"));
+        ASSERT_EQUALS("function *", argumentType(tokens, "g ( cbs [ 0 ] )"));
+        ASSERT_EQUALS("signed int * *", argumentType(tokens, "g ( pa )")); // the dimension of a pointer to an array is a pointer level
+        ASSERT_EQUALS("function *", argumentType(tokens, "g ( pmf )"));
+        ASSERT_EQUALS("member-pointer *", argumentType(tokens, "g ( pm )"));
+        ASSERT_EQUALS("member-pointer *", argumentType(tokens, "g ( & S :: a )"));
+        ASSERT_EQUALS("signed int *", argumentType(tokens, "g ( & S :: s )"));
+        ASSERT_EQUALS("signed int *", argumentType(tokens, "g ( & s . a )"));
+        ASSERT_EQUALS("signed int *", argumentType(tokens, "g ( p )"));
+        ASSERT_EQUALS("function *", argumentType(tokens, "g ( acb )"));
+        ASSERT_EQUALS("member-pointer *", argumentType(tokens, "g ( apm )"));
+        // a call through a pointer or reference to a function has the return type
+        ASSERT_EQUALS("signed int", argumentType(tokens, "g ( cb ( 1 ) )"));
+        ASSERT_EQUALS("signed int", argumentType(tokens, "g ( rf ( 2 ) )"));
+        ASSERT_EQUALS("signed int *", argumentType(tokens, "g ( pf ( 3 ) )"));
+        // also when the pointer is not the declared variable: a copy, a dereference, an element
+        ASSERT_EQUALS("signed int", argumentType(tokens, "g ( acb ( 4 ) )"));
+        ASSERT_EQUALS("signed int", argumentType(tokens, "g ( ( * cb ) ( 5 ) )"));
+        ASSERT_EQUALS("signed int", argumentType(tokens, "g ( cbs [ 0 ] ( 6 ) )"));
+        ASSERT_EQUALS("signed int", argumentType(tokens, "g ( ( * pcb ) ( 7 ) )"));
+        ASSERT_EQUALS("signed int", argumentType(tokens, "g ( dcb ( 8 ) )"));
+    }
+
+    // the bit count of the ValueType of the first token after start that matches pattern:
+    // the width of a bit field, -1 for any other variable, -2 when there is no ValueType
+    static int declaredBits(const Token* start, const char pattern[]) {
+        const Token* const tok = Token::findsimplematch(start, pattern, strlen(pattern));
+        const ValueType* const vt = tok ? tok->valueType() : nullptr;
+        return vt ? vt->bits : -2;
+    }
+
+    void valueTypeFunctionPointerBits() {
+        // a pointer to function or to member is not a bit field: the dump must not report
+        // "valueType-bits" for it (the misra addon checks rule 6.1 on struct members with bits)
+        GET_SYMBOL_DB("struct S { int a; };\n"
+                      "struct T { int S::*pm; int (*cb)(int); int (&rf)(int); int x : 3; int y; };\n");
+        ASSERT(db != nullptr);
+        const Token* const tokens = tokenizer.tokens();
+        ASSERT_EQUALS(-1, declaredBits(tokens, "pm ;"));
+        ASSERT_EQUALS(-1, declaredBits(tokens, "cb )"));
+        ASSERT_EQUALS(-1, declaredBits(tokens, "rf )"));
+        ASSERT_EQUALS(3, declaredBits(tokens, "x ;"));
+        ASSERT_EQUALS(-1, declaredBits(tokens, "y ;"));
     }
 
     void variadic1() { // #7453

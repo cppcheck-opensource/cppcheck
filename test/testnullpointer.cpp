@@ -148,6 +148,7 @@ private:
         TEST_CASE(nullpointer108);
         TEST_CASE(nullpointer109);
         TEST_CASE(nullpointer110); // #14937
+        TEST_CASE(nullpointer111); // member template of a base class template instantiation
         TEST_CASE(nullpointer_addressOf); // address of
         TEST_CASE(nullpointerSwitch); // #2626
         TEST_CASE(nullpointer_cast); // #4692
@@ -3145,6 +3146,18 @@ private:
               "}\n",
               dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void nullpointer111()
+    { // the call instantiates a member template of a base class that is a class template
+      // instantiation: the instantiation is linked to its definition
+        check("template<class T> struct A {\n"
+              "    template<class U> void put(U* p) const { *p = 1; }\n"
+              "};\n"
+              "struct B : A<int> {\n"
+              "    void h() const { long* p = nullptr; put(p); }\n"
+              "};\n");
+        ASSERT_EQUALS("[test.cpp:2:47]: (warning) Possible null pointer dereference: p [nullPointer]\n", errout_str());
     }
 
     void nullpointer_addressOf() { // address of

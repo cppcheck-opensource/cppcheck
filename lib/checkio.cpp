@@ -1554,7 +1554,7 @@ CheckIOImpl::ArgumentInfo::ArgumentInfo(const Token * arg, const Settings &setti
         while (top->astParent() && top->astParent()->str() != "," && top->astParent() != arg->previous())
             top = top->astParent();
         const ValueType *valuetype = top->argumentType();
-        if (valuetype && valuetype->type >= ValueType::Type::BOOL) {
+        if (valuetype && valuetype->isPrimitive()) {
             typeToken = tempToken = new Token(top);
             if (valuetype->pointer && valuetype->constness & 1) {
                 tempToken->str("const");
@@ -1583,7 +1583,10 @@ CheckIOImpl::ArgumentInfo::ArgumentInfo(const Token * arg, const Settings &setti
             else if (valuetype->type == ValueType::LONGDOUBLE) {
                 tempToken->str("double");
                 tempToken->isLong(true);
-            }
+            } else if (valuetype->type == ValueType::FUNCTION)
+                tempToken->str("function");
+            else if (valuetype->type == ValueType::MEMBER_POINTER)
+                tempToken->str("member-pointer");
             if (valuetype->isIntegral()) {
                 if (valuetype->sign == ValueType::Sign::UNSIGNED)
                     tempToken->isUnsigned(true);
