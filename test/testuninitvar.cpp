@@ -95,6 +95,7 @@ private:
         TEST_CASE(valueFlowUninitBreak);
         TEST_CASE(valueFlowUninitStructMembers);
         TEST_CASE(valueFlowUninitForLoop);
+        TEST_CASE(valueFlowUninitErrorPath);
         TEST_CASE(uninitvar_ipa);
         TEST_CASE(uninitvar_memberfunction);
         TEST_CASE(uninitvar_nonmember); // crash in ycmd test
@@ -7943,6 +7944,23 @@ private:
                         "    return x;\n"
                         "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void valueFlowUninitErrorPath()
+    {
+        setMultiline();
+
+        valueFlowUninit("void f(bool b) {\n"
+                        "    int i;\n"
+                        "    if (b)\n"
+                        "        return i;\n"
+                        "    i = 1;\n"
+                        "    return i;\n"
+                        "}\n");
+        ASSERT_EQUALS("[test.cpp:4:16]: warning: Uninitialized variable: i [uninitvar]\n"
+                      "[test.cpp:3:9]: note: Assuming condition is true\n"
+                      "[test.cpp:4:16]: note: Uninitialized variable: i\n",
+                      errout_str());
     }
 
     void uninitvar_memberfunction() {
