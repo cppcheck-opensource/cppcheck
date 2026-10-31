@@ -526,6 +526,42 @@ private:
                     "        v.resize(entries + 2);\n"
                     "    v[0] = 1;\n"
                     "}\n");
+        ASSERT_EQUALS("[test.cpp:5:6]: warning: Out of bounds access in expression 'v[0]' because 'v' is empty. [containerOutOfBounds]\n", errout_str());
+
+        checkNormal("void f(void) {\n"
+                    "    std::vector<uint8_t> v;\n"
+                    "    unsigned entries = 0xfffffffeU;\n"
+                    "    if (v.size() < entries + 2U)\n"
+                    "        v.resize(entries + 2U);\n"
+                    "    v[0] = 1;\n"
+                    "}\n");
+        ASSERT_EQUALS("[test.cpp:6:6]: error: Out of bounds access in expression 'v[0]' because 'v' is empty. [containerOutOfBounds]\n", errout_str());
+
+        checkNormal("void f(void) {\n"
+                    "    std::vector<uint8_t> v;\n"
+                    "    unsigned entries = 0xffffffffU;\n"
+                    "    if (v.size() < entries + 2U)\n"
+                    "        v.resize(entries + 2U);\n"
+                    "    v[0] = 1;\n"
+                    "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        checkNormal("void f(void) {\n"
+                    "    std::vector<uint8_t> v;\n"
+                    "    unsigned entries = 4;\n"
+                    "    if (v.size() < entries + 2U)\n"
+                    "        v.resize(entries + 2U);\n"
+                    "    v[0] = 1;\n"
+                    "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        checkNormal("void f(unsigned entries) {\n"
+                    "    if (entries > 1000U) return;\n"
+                    "    std::vector<uint8_t> v;\n"
+                    "    if (v.size() < entries + 2U)\n"
+                    "        v.resize(entries + 2U);\n"
+                    "    v[0] = 1;\n"
+                    "}\n");
         ASSERT_EQUALS("", errout_str());
 
         checkNormal("void f(size_t entries) {\n"

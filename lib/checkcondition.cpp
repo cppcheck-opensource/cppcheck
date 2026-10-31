@@ -1994,123 +1994,336 @@ void CheckConditionImpl::assignmentInCondition(const Token *eq)
         Certainty::normal);
 }
 
+struct IntegralRange
+{
+    bool inImage;
+    bool below;
+    bool above;
+    bool atMinimum;
+    bool atMaximum;
+};
+
+struct IntegralRangeComparison
+{
+    bool skip;
+    bool error;
+    bool result;
+};
+
+static IntegralRangeComparison getIntegralRangeComparison(const Token* tok,
+                                                          int operand,
+                                                          bool plainChar,
+                                                          bool charInvariant,
+                                                          bool charResult,
+                                                          bool hasKnownIntValue,
+                                                          std::size_t sourceBits,
+                                                          std::size_t commonBits,
+                                                          const IntegralRange& range)
+{
+    IntegralRangeComparison comparison{};
+    if (plainChar) {
+        comparison.error = charInvariant;
+        comparison.result = charResult;
+    } else if (hasKnownIntValue && range.inImage && sourceBits == commonBits) {
+        comparison.skip = true;
+    } else {
+        const std::string& op = tok->str();
+        if (op == "==" || op == "!=") {
+            comparison.error = !range.inImage;
+            comparison.result = op == "!=";
+        } else if (range.below || range.above) {
+            comparison.error = true;
+            if (operand == 0)
+                comparison.result = range.below ? (op == "<" || op == "<=") : (op == ">" || op == ">=");
+            else
+                comparison.result = range.below ? (op == ">" || op == ">=") : (op == "<" || op == "<=");
+        } else if (operand == 0 && range.atMinimum && op == "<=") {
+            comparison.error = true;
+            comparison.result = true;
+        } else if (operand == 0 && range.atMinimum && op == ">") {
+            comparison.error = true;
+        } else if (operand == 0 && range.atMaximum && op == ">=") {
+            comparison.error = true;
+            comparison.result = true;
+        } else if (operand == 0 && range.atMaximum && op == "<") {
+            comparison.error = true;
+        } else if (operand == 1 && range.atMinimum && op == ">=") {
+            comparison.error = true;
+            comparison.result = true;
+        } else if (operand == 1 && range.atMinimum && op == "<") {
+            comparison.error = true;
+        } else if (operand == 1 && range.atMaximum && op == "<=") {
+            comparison.error = true;
+            comparison.result = true;
+        } else if (operand == 1 && range.atMaximum && op == ">") {
+            comparison.error = true;
+        }
+    }
+    return comparison;
+}
+
 void CheckConditionImpl::checkCompareValueOutOfTypeRange()
 {
     if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("compareValueOutOfTypeRangeError"))
         return;
-
     if (mSettings.platform.type == Platform::Type::Unspecified)
         return;
 
     logChecker("CheckCondition::checkCompareValueOutOfTypeRange"); // style,platform
 
-    const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
-    for (const Scope * scope : symbolDatabase->functionScopes) {
+    const auto getBits = [&](const ValueType& type) {
+        if (type.type == ValueType::Type::BOOL)
+            return std::size_t{1};
+        return type.getSizeOf(mSettings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointee) *
+               mSettings.platform.char_bit;
+    };
+    const auto getSignedBounds = [](std::size_t bits, MathLib::bigint& minimum, MathLib::bigint& maximum) {
+        if (bits == 0 || bits > 64)
+            return false;
+        if (bits == 64) {
+            minimum = std::numeric_limits<long long>::min();
+            maximum = std::numeric_limits<long long>::max();
+        } else {
+            const MathLib::bigint halfRange = MathLib::bigint{1} << (bits - 1);
+            minimum = -halfRange;
+            maximum = halfRange - 1;
+        }
+        return true;
+    };
+    const auto getUnsignedMaximum = [](std::size_t bits, MathLib::biguint& maximum) {
+        const std::size_t carrierBits = std::numeric_limits<MathLib::biguint>::digits;
+        if (bits == 0 || bits > carrierBits)
+            return false;
+        maximum = bits == carrierBits ? std::numeric_limits<MathLib::biguint>::max()
+                                      : (MathLib::biguint{1} << bits) - 1;
+        return true;
+    };
+    const auto toUnsigned = [](MathLib::bigint value, std::size_t bits) {
+        auto converted = static_cast<MathLib::biguint>(value);
+        const std::size_t carrierBits = std::numeric_limits<MathLib::biguint>::digits;
+        if (bits < carrierBits)
+            converted &= (MathLib::biguint{1} << bits) - 1;
+        return converted;
+    };
+
+    const SymbolDatabase* symbolDatabase = mTokenizer->getSymbolDatabase();
+    for (const Scope* scope : symbolDatabase->functionScopes) {
         for (const Token* tok = scope->bodyStart; tok != scope->bodyEnd; tok = tok->next()) {
             if (!tok->isComparisonOp() || !tok->isBinaryOp())
                 continue;
 
             for (int i = 0; i < 2; ++i) {
-                const Token * const valueTok = (i == 0) ? tok->astOperand1() : tok->astOperand2();
-                const Token * const typeTok = valueTok->astSibling();
-                const ValueType* const typeVt = typeTok->valueType();
-                if (!valueTok->hasKnownIntValue() || !typeVt || typeVt->pointer)
-                    continue;
-                if (valueTok->getKnownIntValue() < 0 && valueTok->valueType() && valueTok->valueType()->sign != ValueType::Sign::SIGNED)
-                    continue;
-                if (typeTok->isLiteral())
-                    continue;
-                std::uint8_t bits = 0;
-                switch (typeVt->type) {
-                case ValueType::Type::BOOL:
-                    bits = 1;
-                    break;
-                case ValueType::Type::CHAR:
-                    bits = mSettings.platform.char_bit;
-                    break;
-                case ValueType::Type::SHORT:
-                    bits = mSettings.platform.short_bit;
-                    break;
-                case ValueType::Type::INT:
-                    bits = mSettings.platform.int_bit;
-                    break;
-                case ValueType::Type::LONG:
-                    bits = mSettings.platform.long_bit;
-                    break;
-                case ValueType::Type::LONGLONG:
-                    bits = mSettings.platform.long_long_bit;
-                    break;
-                default:
-                    break;
-                }
-                if (bits == 0 || bits >= 63)
+                const Token* const valueTok = (i == 0) ? tok->astOperand1() : tok->astOperand2();
+                const Token* const typeTok = valueTok->astSibling();
+                const ValueType* const valueType = valueTok->valueType();
+                const ValueType* const type = typeTok ? typeTok->valueType() : nullptr;
+                if (!valueTok->hasKnownIntValue() || !valueType || !type || valueType->pointer || type->pointer ||
+                    !valueType->isIntegral() || !type->isIntegral() || typeTok->isLiteral())
                     continue;
 
-                const auto typeMinValue = (typeVt->sign == ValueType::Sign::UNSIGNED) ? 0 : (-(1LL << (bits-1)));
-                const auto unsignedTypeMaxValue = (1LL << bits) - 1LL;
-                long long typeMaxValue;
-                if (typeVt->sign != ValueType::Sign::SIGNED && !(typeVt->sign == ValueType::Sign::UNKNOWN_SIGN && typeVt->type == ValueType::Type::CHAR && mSettings.platform.defaultSign == 's'))
-                    typeMaxValue = unsignedTypeMaxValue;
-                else if (bits >= mSettings.platform.int_bit && (!valueTok->valueType() || valueTok->valueType()->sign != ValueType::Sign::SIGNED))
-                    typeMaxValue = unsignedTypeMaxValue;
-                else
-                    typeMaxValue = unsignedTypeMaxValue / 2;
-
-                bool result{};
-                const auto kiv = valueTok->getKnownIntValue();
-                if (kiv == 0)
+                const MathLib::bigint knownValue = valueTok->getKnownIntValue();
+                if (knownValue == 0)
                     continue; // prevent overlap with TestOther::unsignedPositive/unsignedLessThanZero
-                if (tok->str() == "==")
-                    result = false;
-                else if (tok->str() == "!=")
-                    result = true;
-                else if (tok->str()[0] == '>' && i == 0)
-                    // num > var
-                    result = (kiv > 0);
-                else if (tok->str()[0] == '>' && i == 1)
-                    // var > num
-                    result = (kiv < 0);
-                else if (tok->str()[0] == '<' && i == 0)
-                    // num < var
-                    result = (kiv < 0);
-                else if (tok->str()[0] == '<' && i == 1)
-                    // var < num
-                    result = (kiv > 0);
 
-                bool error = false;
-                if (kiv < typeMinValue || kiv > typeMaxValue) {
-                    error = true;
-                } else {
-                    switch (i) {
-                    case 0: // num cmp var
-                        if (kiv == typeMinValue) {
-                            if (tok->str() == "<=") {
-                                result = true;
-                                error = true;
-                            } else if (tok->str() == ">")
-                                error = true;
-                        }
-                        else if (kiv == typeMaxValue && (tok->str() == ">=" || tok->str() == "<")) {
-                            error = true;
-                        }
-                        break;
-                    case 1: // var cmp num
-                        if (kiv == typeMinValue) {
-                            if (tok->str() == ">=") {
-                                result = true;
-                                error = true;
-                            } else if (tok->str() == "<")
-                                error = true;
-                        }
-                        else if (kiv == typeMaxValue && (tok->str() == "<=" || tok->str() == ">")) {
-                            error = true;
-                        }
-                        break;
-                    }
-                }
-                if (!error || diag(tok))
+                const ValueType commonType = ValueType::getCommonIntegralType(type, valueType, mSettings);
+                const bool plainChar = type->type == ValueType::Type::CHAR && type->sign == ValueType::Sign::UNKNOWN_SIGN;
+                if (!commonType.isIntegral() || commonType.type == ValueType::Type::UNKNOWN_INT ||
+                    commonType.sign == ValueType::Sign::UNKNOWN_SIGN)
                     continue;
-                compareValueOutOfTypeRangeError(valueTok, typeVt->str(), kiv, result);
+
+                const std::size_t sourceBits = getBits(*type);
+                const std::size_t commonBits = getBits(commonType);
+                if (sourceBits == 0 || sourceBits > 64 || commonBits == 0 || commonBits > 64)
+                    continue;
+
+                bool commonUnsigned = commonType.sign == ValueType::Sign::UNSIGNED;
+                IntegralRange range{};
+
+                bool charInvariant = false;
+                bool charResult = false;
+                if (plainChar) {
+                    const std::string& op = tok->str();
+                    const bool equality = op == "==" || op == "!=";
+                    bool sawTrue = false;
+                    bool sawFalse = false;
+                    if (commonUnsigned) {
+                        MathLib::biguint commonMaximum{};
+                        MathLib::biguint sourceMaximum{};
+                        MathLib::biguint known{};
+                        if (sourceBits > commonBits || !getUnsignedMaximum(commonBits, commonMaximum) ||
+                            !getUnsignedMaximum(sourceBits, sourceMaximum))
+                            continue;
+                        MathLib::bigint signedMinimum{}, signedMaximum{};
+                        if (!getSignedBounds(sourceBits, signedMinimum, signedMaximum))
+                            continue;
+                        const MathLib::biguint negativeCount = MathLib::biguint{1} << (sourceBits - 1);
+                        const MathLib::biguint negativeMinimum = commonMaximum - negativeCount + 1;
+                        known = toUnsigned(knownValue, commonBits);
+                        const auto evaluate = [&](MathLib::biguint sourceValue) {
+                            if (i == 0) {
+                                if (op == "==") return sourceValue == known;
+                                if (op == "!=") return sourceValue != known;
+                                if (op == "<") return known < sourceValue;
+                                if (op == "<=") return known <= sourceValue;
+                                if (op == ">") return known > sourceValue;
+                                return known >= sourceValue;
+                            }
+                            if (op == "==") return known == sourceValue;
+                            if (op == "!=") return known != sourceValue;
+                            if (op == "<") return sourceValue < known;
+                            if (op == "<=") return sourceValue <= known;
+                            if (op == ">") return sourceValue > known;
+                            return sourceValue >= known;
+                        };
+                        const auto inspect = [&](MathLib::biguint lower, MathLib::biguint upper) {
+                            const bool lowResult = evaluate(lower);
+                            const bool highResult = evaluate(upper);
+                            sawTrue = sawTrue || lowResult || highResult;
+                            sawFalse = sawFalse || !lowResult || !highResult;
+                            if (equality && known >= lower && known <= upper) {
+                                sawTrue = true;
+                                sawFalse = true;
+                            }
+                        };
+                        inspect(0, sourceMaximum); // unsigned-char image
+                        inspect(negativeMinimum, commonMaximum); // signed-char negatives after unsigned conversion
+                    } else {
+                        MathLib::bigint commonMinimum{}, commonMaximum{};
+                        MathLib::bigint signedMinimum{}, signedMaximum{};
+                        MathLib::biguint sourceMaximum{};
+                        if (!getSignedBounds(commonBits, commonMinimum, commonMaximum) ||
+                            !getSignedBounds(sourceBits, signedMinimum, signedMaximum) ||
+                            !getUnsignedMaximum(sourceBits, sourceMaximum) ||
+                            sourceBits >= commonBits || sourceMaximum > static_cast<MathLib::biguint>(commonMaximum))
+                            continue;
+                        const MathLib::bigint known = knownValue;
+                        const auto evaluate = [&](MathLib::bigint sourceValue) {
+                            if (i == 0) {
+                                if (op == "==") return sourceValue == known;
+                                if (op == "!=") return sourceValue != known;
+                                if (op == "<") return known < sourceValue;
+                                if (op == "<=") return known <= sourceValue;
+                                if (op == ">") return known > sourceValue;
+                                return known >= sourceValue;
+                            }
+                            if (op == "==") return known == sourceValue;
+                            if (op == "!=") return known != sourceValue;
+                            if (op == "<") return sourceValue < known;
+                            if (op == "<=") return sourceValue <= known;
+                            if (op == ">") return sourceValue > known;
+                            return sourceValue >= known;
+                        };
+                        const auto inspect = [&](MathLib::bigint lower, MathLib::bigint upper) {
+                            const bool lowResult = evaluate(lower);
+                            const bool highResult = evaluate(upper);
+                            sawTrue = sawTrue || lowResult || highResult;
+                            sawFalse = sawFalse || !lowResult || !highResult;
+                            if (equality && known >= lower && known <= upper) {
+                                sawTrue = true;
+                                sawFalse = true;
+                            }
+                        };
+                        inspect(signedMinimum, signedMaximum); // signed-char image
+                        inspect(0, static_cast<MathLib::bigint>(sourceMaximum)); // unsigned-char image
+                    }
+                    charInvariant = !(sawTrue && sawFalse);
+                    charResult = sawTrue;
+                }
+
+                if (!plainChar && commonUnsigned) {
+                    MathLib::biguint unsignedValue{};
+                    MathLib::biguint unsignedMinimum{};
+                    MathLib::biguint unsignedMaximum{};
+                    if (!getUnsignedMaximum(commonBits, unsignedMaximum))
+                        continue;
+                    MathLib::biguint intervalLower[2]{};
+                    MathLib::biguint intervalUpper[2]{};
+                    std::size_t intervalCount = 0;
+                    const bool sourceUnsigned = type->sign == ValueType::Sign::UNSIGNED ||
+                                                type->type == ValueType::Type::BOOL;
+                    if (sourceUnsigned) {
+                        MathLib::biguint sourceMaximum{};
+                        if (sourceBits > commonBits || !getUnsignedMaximum(sourceBits, sourceMaximum))
+                            continue;
+                        intervalLower[0] = 0;
+                        intervalUpper[0] = sourceMaximum;
+                        intervalCount = 1;
+                    } else if (type->sign == ValueType::Sign::SIGNED) {
+                        MathLib::bigint sourceMinimum{}, sourceMaximum{};
+                        if (sourceBits > commonBits || !getSignedBounds(sourceBits, sourceMinimum, sourceMaximum))
+                            continue;
+                        if (sourceBits == commonBits) {
+                            intervalLower[0] = 0;
+                            intervalUpper[0] = unsignedMaximum;
+                            intervalCount = 1;
+                        } else {
+                            const MathLib::biguint negativeCount = MathLib::biguint{1} << (sourceBits - 1);
+                            intervalLower[0] = 0;
+                            intervalUpper[0] = static_cast<MathLib::biguint>(sourceMaximum);
+                            intervalLower[1] = unsignedMaximum - negativeCount + 1;
+                            intervalUpper[1] = unsignedMaximum;
+                            intervalCount = 2;
+                        }
+                    } else {
+                        continue;
+                    }
+
+                    unsignedValue = toUnsigned(knownValue, commonBits);
+                    unsignedMinimum = intervalLower[0];
+                    unsignedMaximum = intervalUpper[intervalCount - 1];
+                    range.inImage = (unsignedValue >= intervalLower[0] && unsignedValue <= intervalUpper[0]) ||
+                                    (intervalCount == 2 && unsignedValue >= intervalLower[1] && unsignedValue <= intervalUpper[1]);
+                    range.below = unsignedValue < unsignedMinimum;
+                    range.above = unsignedValue > unsignedMaximum;
+                    range.atMinimum = unsignedValue == unsignedMinimum;
+                    range.atMaximum = unsignedValue == unsignedMaximum;
+                } else if (!plainChar) {
+                    MathLib::bigint signedValue{};
+                    MathLib::bigint signedMinimum{};
+                    MathLib::bigint signedMaximum{};
+                    if (!getSignedBounds(commonBits, signedMinimum, signedMaximum))
+                        continue;
+                    if (type->type == ValueType::Type::BOOL) {
+                        signedMinimum = 0;
+                        signedMaximum = 1;
+                    } else if (type->sign == ValueType::Sign::SIGNED) {
+                        if (sourceBits > commonBits || !getSignedBounds(sourceBits, signedMinimum, signedMaximum))
+                            continue;
+                    } else if (type->sign == ValueType::Sign::UNSIGNED) {
+                        MathLib::biguint sourceMaximum{};
+                        if (sourceBits >= commonBits || !getUnsignedMaximum(sourceBits, sourceMaximum) ||
+                            sourceMaximum > static_cast<MathLib::biguint>(signedMaximum))
+                            continue;
+                        signedMinimum = 0;
+                        signedMaximum = static_cast<MathLib::bigint>(sourceMaximum);
+                    } else {
+                        continue;
+                    }
+                    if (valueType->sign == ValueType::Sign::UNSIGNED && knownValue < 0)
+                        continue;
+                    signedValue = knownValue;
+                    range.below = signedValue < signedMinimum;
+                    range.above = signedValue > signedMaximum;
+                    range.inImage = !range.below && !range.above;
+                    range.atMinimum = signedValue == signedMinimum;
+                    range.atMaximum = signedValue == signedMaximum;
+                }
+
+                const IntegralRangeComparison outcome = getIntegralRangeComparison(tok,
+                                                                                   i,
+                                                                                   plainChar,
+                                                                                   charInvariant,
+                                                                                   charResult,
+                                                                                   !plainChar && tok->hasKnownIntValue(),
+                                                                                   sourceBits,
+                                                                                   commonBits,
+                                                                                   range);
+                if (outcome.skip || !outcome.error || diag(tok))
+                    continue;
+                compareValueOutOfTypeRangeError(valueTok,
+                                                type->str(),
+                                                knownValue,
+                                                outcome.result);
             }
         }
     }

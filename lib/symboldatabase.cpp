@@ -57,6 +57,12 @@
 #include <utility>
 //---------------------------------------------------------------------------
 
+// wchar_t is unsigned 16-bit on Windows and signed 32-bit on common Unix ABIs
+static ValueType::Sign wcharSign(const Platform& platform)
+{
+    return platform.sizeof_wchar_t == 2 ? ValueType::Sign::UNSIGNED : ValueType::Sign::SIGNED;
+}
+
 SymbolDatabase::SymbolDatabase(Tokenizer& tokenizer)
     : mTokenizer(tokenizer)
     , mSettings(tokenizer.getSettings())
@@ -7473,8 +7479,15 @@ void SymbolDatabase::setValueType(Token* tok, const ValueType& valuetype, const 
                 return;
             }
 
-            if (vt1->isTypeEqual(vt2)) {
+            if (vt1->isTypeEqual(vt2) && vt1->sign == vt2->sign) {
                 setValueType(parent, *vt1);
+                return;
+            }
+
+            if (vt1->pointer == 0U && vt2 && vt2->pointer == 0U && vt1->isIntegral() && vt2->isIntegral()) {
+                const ValueType commonType = ValueType::getCommonIntegralType(vt1, vt2, mSettings);
+                if (commonType.type != ValueType::Type::UNKNOWN_TYPE)
+                    setValueType(parent, commonType);
                 return;
             }
         }
@@ -7516,36 +7529,97 @@ void SymbolDatabase::setValueType(Token* tok, const ValueType& valuetype, const 
     if (vt1->isIntegral() && vt1->pointer == 0U &&
         (!vt2 || (vt2->isIntegral() && vt2->pointer == 0U)) &&
         (ternary || parent->isArithmeticalOp() || parent->tokType() == Token::eBitOp || parent->tokType() == Token::eIncDecOp || parent->isAssignmentOp())) {
-
-        ValueType vt;
-        if (!vt2 || vt1->type > vt2->type) {
-            vt.type = vt1->type;
-            vt.sign = vt1->sign;
-            vt.originalTypeName = vt1->originalTypeName;
-        } else if (vt1->type == vt2->type) {
-            vt.type = vt1->type;
-            if (vt1->sign == ValueType::Sign::UNSIGNED || vt2->sign == ValueType::Sign::UNSIGNED)
-                vt.sign = ValueType::Sign::UNSIGNED;
-            else if (vt1->sign == ValueType::Sign::UNKNOWN_SIGN || vt2->sign == ValueType::Sign::UNKNOWN_SIGN)
-                vt.sign = ValueType::Sign::UNKNOWN_SIGN;
-            else
-                vt.sign = ValueType::Sign::SIGNED;
-            vt.originalTypeName = (vt1->originalTypeName.empty() ? vt2 : vt1)->originalTypeName;
-        } else {
-            vt.type = vt2->type;
-            vt.sign = vt2->sign;
-            vt.originalTypeName = vt2->originalTypeName;
+        if (parent->isAssignmentOp()) {
+            setValueType(parent, *vt1);
+            return;
         }
-        if (vt.type < ValueType::Type::INT && !(ternary && vt.type==ValueType::Type::BOOL)) {
-            vt.type = ValueType::Type::INT;
-            vt.sign = ValueType::Sign::SIGNED;
-            vt.originalTypeName.clear();
+        if (parent->tokType() == Token::eIncDecOp) {
+            // Build a fresh type so bitfield width, constness, references
+            // and similar operand properties are not copied to the result.
+            setValueType(parent, ValueType(vt1->sign, vt1->type, 0, 0, vt1->originalTypeName));
+            return;
         }
-
-        setValueType(parent, vt);
+        if (parent->tokType() == Token::eBitOp && Token::Match(parent, "<<|>>")) {
+            setValueType(parent, ValueType::getCommonIntegralType(vt1, nullptr, mSettings));
+            return;
+        }
+        const ValueType vt = ValueType::getCommonIntegralType(vt1, vt2, mSettings);
+        if (vt.type != ValueType::Type::UNKNOWN_TYPE)
+            setValueType(parent, vt);
         return;
     }
 }
+
+ValueType ValueType::getCommonIntegralType(const ValueType* lhs, const ValueType* rhs, const Settings& settings)
+{
+    if (!lhs || !lhs->isIntegral() || lhs->pointer || (rhs && (!rhs->isIntegral() || rhs->pointer)))
+        return {};
+
+    const auto getBits = [&](const ValueType& type) {
+        return type.getSizeOf(settings, Accuracy::ExactOrZero, SizeOf::Pointee) * settings.platform.char_bit;
+    };
+    const auto promote = [&](const ValueType& type) {
+        if (type.type == Type::BOOL)
+            return ValueType(Sign::SIGNED, Type::INT, 0);
+        if (type.type != Type::CHAR && type.type != Type::SHORT && type.type != Type::WCHAR_T) {
+            // Not promoted: build a fresh type so bitfield width, constness,
+            // references and similar operand properties are not copied to the result.
+            return ValueType(type.sign, type.type, 0, 0, type.originalTypeName);
+        }
+
+        ValueType result(Sign::UNKNOWN_SIGN, Type::INT, 0);
+        const std::size_t sourceBits = getBits(type);
+        const std::size_t intBits = settings.platform.int_bit;
+        if (sourceBits == 0 || intBits == 0)
+            return result;
+        if (type.sign == Sign::SIGNED)
+            result.sign = sourceBits <= intBits ? Sign::SIGNED : Sign::UNSIGNED;
+        else if (type.sign == Sign::UNSIGNED)
+            result.sign = sourceBits < intBits ? Sign::SIGNED : Sign::UNSIGNED;
+        else if (sourceBits < intBits)
+            result.sign = Sign::SIGNED;
+        return result;
+    };
+
+    const ValueType first = promote(*lhs);
+    if (!rhs)
+        return first;
+    const ValueType second = promote(*rhs);
+    if (first.type == Type::UNKNOWN_INT || second.type == Type::UNKNOWN_INT) {
+        if (first.type == second.type && first.sign == second.sign)
+            return first;
+        const Sign commonSign = first.sign == second.sign ? first.sign : Sign::UNKNOWN_SIGN;
+        return ValueType(commonSign, Type::UNKNOWN_INT, 0);
+    }
+    const ValueType* const higherRank = first.type >= second.type ? &first : &second;
+    ValueType result(Sign::UNKNOWN_SIGN, higherRank->type, 0);
+    result.originalTypeName = higherRank->originalTypeName;
+
+    if (first.sign == second.sign) {
+        result.sign = first.sign;
+        return result;
+    }
+    if (first.sign == Sign::UNKNOWN_SIGN || second.sign == Sign::UNKNOWN_SIGN)
+        return result;
+
+    const ValueType& unsignedType = first.sign == Sign::UNSIGNED ? first : second;
+    const ValueType& signedType = first.sign == Sign::SIGNED ? first : second;
+    if (unsignedType.type >= signedType.type) {
+        result.type = unsignedType.type;
+        result.sign = Sign::UNSIGNED;
+        result.originalTypeName = unsignedType.originalTypeName;
+    } else if (getBits(signedType) > getBits(unsignedType)) {
+        result.type = signedType.type;
+        result.sign = Sign::SIGNED;
+        result.originalTypeName = signedType.originalTypeName;
+    } else {
+        result.type = signedType.type;
+        result.sign = Sign::UNSIGNED;
+        result.originalTypeName.clear();
+    }
+    return result;
+}
+
 
 static ValueType::Type getEnumType(const Scope* scope, const Platform& platform) // TODO: also determine sign?
 {
@@ -7796,7 +7870,9 @@ static const Token* parsedecl(const Token* type,
 
     // Set signedness for integral types..
     if (valuetype->isIntegral() && valuetype->sign == ValueType::Sign::UNKNOWN_SIGN) {
-        if (valuetype->type >= ValueType::Type::SHORT)
+        if (valuetype->type == ValueType::Type::WCHAR_T)
+            valuetype->sign = wcharSign(settings.platform);
+        else if (valuetype->type >= ValueType::Type::SHORT)
             valuetype->sign = ValueType::Sign::SIGNED;
     }
 
@@ -8151,7 +8227,8 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
                 else if (tok->previous()->isSigned())
                     valuetype.sign = ValueType::Sign::SIGNED;
                 else if (valuetype.isIntegral() && valuetype.type != ValueType::UNKNOWN_INT)
-                    valuetype.sign = (valuetype.type == ValueType::Type::CHAR) ? mDefaultSignedness : ValueType::Sign::SIGNED;
+                    valuetype.sign = (valuetype.type == ValueType::Type::CHAR) ? mDefaultSignedness :
+                                     (valuetype.type == ValueType::Type::WCHAR_T) ? wcharSign(mSettings.platform) : ValueType::Sign::SIGNED;
                 setValueType(tok, valuetype);
             }
 
@@ -8381,7 +8458,8 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
                 else if (typeTok->isSigned())
                     vt.sign = ValueType::Sign::SIGNED;
                 if (vt.sign == ValueType::Sign::UNKNOWN_SIGN && vt.isIntegral())
-                    vt.sign = (vt.type == ValueType::Type::CHAR) ? mDefaultSignedness : ValueType::Sign::SIGNED;
+                    vt.sign = (vt.type == ValueType::Type::CHAR) ? mDefaultSignedness :
+                              (vt.type == ValueType::Type::WCHAR_T) ? wcharSign(mSettings.platform) : ValueType::Sign::SIGNED;
             }
             setValueType(tok, vt);
             if (Token::simpleMatch(tok->astOperand1(), "(")) {

@@ -164,6 +164,10 @@ private:
         TEST_CASE(array_index_74); // #11088
         TEST_CASE(array_index_75);
         TEST_CASE(array_index_76);
+        TEST_CASE(array_index_77);
+        TEST_CASE(array_index_loop_guard);
+        TEST_CASE(array_index_loop_guard_partial_cond_after_loop);
+        TEST_CASE(array_index_cast_range);
         TEST_CASE(array_index_multidim);
         TEST_CASE(array_index_switch_in_for);
         TEST_CASE(array_index_for_in_for);   // FP: #2634
@@ -200,6 +204,9 @@ private:
         TEST_CASE(array_index_container_data); // pointer from data()/c_str() carries the container size
         TEST_CASE(array_index_two_for_loops);
         TEST_CASE(array_index_new); // #7690
+        TEST_CASE(array_index_guile);
+        TEST_CASE(array_index_abiword);
+        TEST_CASE(array_index_caller_inference);
 
         TEST_CASE(buffer_overrun_2_struct);
         TEST_CASE(buffer_overrun_3);
@@ -2013,6 +2020,311 @@ private:
                       errout_str());
     }
 
+    void array_index_77()
+    {
+        const Settings settingsUnix64 = settingsBuilder(settings0_i).platform(Platform::Type::Unix64).build();
+        // The loop index x is at least colsToTranslate, and the cast range of
+        // (int)cloudDx only provides the trivial floor of int. x - colsToTranslate
+        // must not be reported as a negative index.
+        check("static float cloudDx;\n"
+              "static int g_dst[400];\n"
+              "static int g_src[400];\n"
+              "void updateClouds(float elapsedTime) {\n"
+              "  cloudDx += elapsedTime * 5;\n"
+              "  if (cloudDx >= 1.0f) {\n"
+              "    const int colsToTranslate = (int)cloudDx;\n"
+              "    for (int x = colsToTranslate; x < 400; ++x) {\n"
+              "      g_dst[x - colsToTranslate] = g_src[x];\n"
+              "    }\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+        check("int a[10];\n"
+              "void mixed(int x) {\n"
+              "    if (x >= 0) {}\n"
+              "    for (int i = x; i < 10; ++i) a[i] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT(errout_str().find("[negativeIndex]") != std::string::npos);
+
+        check("int a[10];\n"
+              "void guarded(int x) {\n"
+              "    if (x < 0) return;\n"
+              "    for (int i = x; i < 10; ++i) a[i] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("void negative_index(int idx) {\n"
+              "    int buf[10];\n"
+              "    if (idx < 0) return;\n"
+              "    buf[idx - 1] = 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:13] -> [test.cpp:4:8]: (warning) Either the condition 'idx<0' is redundant or the array 'buf[10]' is accessed at index -1, which is out of bounds. [negativeIndex]\n",
+                      errout_str());
+
+        // A genuinely negative literal index must still be reported
+        check("static int a[10];\n"
+              "void f() {\n"
+              "  a[-1] = 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:4]: (error) Array 'a[10]' accessed at index -1, which is out of bounds. [negativeIndex]\n",
+                      errout_str());
+
+        check("class SyncEvolution {\n"
+              "    enum class Status : unsigned { None, First, Last };\n"
+              "public:\n"
+              "    static void update(Status status) {\n"
+              "        int dst[10];\n"
+              "        if (status == Status::First) {}\n"
+              "        const int offset = static_cast<int>(status);\n"
+              "        for (int x = offset; x < 10; ++x)\n"
+              "            dst[x - offset] = 0;\n"
+              "    }\n"
+              "};\n");
+        ASSERT(errout_str().find("[negativeIndex]") == std::string::npos);
+        check("int a[10];\n"
+              "enum class Status : unsigned { None, First, Last };\n"
+              "void f(Status status, bool flag) {\n"
+              "    int offset = static_cast<int>(status);\n"
+              "    if (flag) offset = 4;\n"
+              "    for (int i = offset; i < 10; ++i)\n"
+              "        a[i] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT(errout_str().find("[negativeIndex]") == std::string::npos);
+
+
+        check("void f() {\n"
+              "    int a[4];\n"
+              "    for (unsigned int i = 0; i < 1; ++i)\n"
+              "        a[(int)i - 1] = 0;\n"
+              "}\n");
+        ASSERT(errout_str().find("[negativeIndex]") != std::string::npos);
+
+        check("void f() {\n"
+              "    int a[4];\n"
+              "    for (unsigned int i = 0; i < 1; ++i)\n"
+              "        a[i - 1] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT(errout_str().find("[negativeIndex]") == std::string::npos);
+
+        check("enum E { Negative = -1 };\n"
+              "void f() {\n"
+              "    int a[4];\n"
+              "    for (int i = Negative; i < 1; ++i)\n"
+              "        a[i] = 0;\n"
+              "}\n");
+        ASSERT(errout_str().find("[negativeIndex]") != std::string::npos);
+
+        check("void f() {\n"
+              "    int a[4];\n"
+              "    for (int i = -1; i < 1; ++i)\n"
+              "        a[i] = 0;\n"
+              "}\n");
+        ASSERT(errout_str().find("[negativeIndex]") != std::string::npos);
+    }
+
+    void array_index_loop_guard()
+    {
+        const Settings settingsUnix64 = settingsBuilder(settings0_i).platform(Platform::Type::Unix64).build();
+
+        check("int a[10];\n"
+              "void lower_first(int x) {\n"
+              "    if (x >= 0) {}\n"
+              "    for (int i = x; i >= 0 && i < 10; ++i) a[i] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("int a[10];\n"
+              "void upper_first(int x) {\n"
+              "    if (x >= 0) {}\n"
+              "    for (int i = x; i < 10 && i >= 0; ++i) a[i] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("int a[10];\n"
+              "void reversed_lower(int x) {\n"
+              "    if (x >= 0) {}\n"
+              "    for (int i = x; 0 <= i && i < 10; ++i) a[i] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("int a[10];\n"
+              "void never_enters() {\n"
+              "    for (int i = -1; i >= 0 && i < 10; ++i) a[i] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("int a[10];\n"
+              "void never_enters_upper_first() {\n"
+              "    for (int i = -1; i < 10 && i >= 0; ++i) a[i] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("int a[10];\n"
+              "void strict_lower(int x) {\n"
+              "    if (x >= 0) {}\n"
+              "    for (int i = x; i > -2 && i < 10; ++i) a[i] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT(errout_str().find("[negativeIndex]") != std::string::npos);
+
+        check("int a[10];\n"
+              "void negative_or_branch(int x) {\n"
+              "    if (x >= 0) {}\n"
+              "    for (int i = x; (i >= 0 && i < 10) || i == -1; ++i) a[i] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT(errout_str().find("[negativeIndex]") != std::string::npos);
+
+        check("int a[10];\n"
+              "void high_or_branch() {\n"
+              "    for (int i = 100; i < 10 || i == 100; ++i) a[i] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT(errout_str().find("[arrayIndexOutOfBounds]") != std::string::npos);
+    }
+    void array_index_loop_guard_partial_cond_after_loop()
+    {
+        // the compound condition does not prove the exact final value,
+        // but the exceeding increment is still a feasible exit
+        check("int a[10];\n"
+              "void p4(int* x) {\n"
+              "    int i;\n"
+              "    for (i = 0; i < 10 && x[i]; i++) {}\n"
+              "    a[i] = 0;\n"
+              "}\n");
+        ASSERT(errout_str().find("[arrayIndexOutOfBounds]") != std::string::npos);
+    }
+
+
+    void array_index_cast_range()
+    {
+        const Settings settingsUnix64 = settingsBuilder(settings0_i).platform(Platform::Type::Unix64).build();
+        const Settings settingsUnix32 = settingsBuilder(settings0_i).platform(Platform::Type::Unix32).build();
+        const Settings* const platforms[] = {&settingsUnix64, &settingsUnix32};
+
+        const char assignment[] = "void f(int x) {\n"
+                                  "    int a[10];\n"
+                                  "    if (x < 0) {}\n"
+                                  "    unsigned int u = x;\n"
+                                  "    a[u] = 0;\n"
+                                  "}\n";
+        const char cast[] = "void f(int x) {\n"
+                            "    int a[10];\n"
+                            "    if (x < 0) {}\n"
+                            "    a[(unsigned int)x] = 0;\n"
+                            "}\n";
+        const char operand[] = "void f(int x) {\n"
+                               "    int a[10];\n"
+                               "    if (x < 0) {}\n"
+                               "    a[x + 0u] = 0;\n"
+                               "}\n";
+        for (const Settings* platform : platforms) {
+            check(assignment, *platform);
+            ASSERT(errout_str().find("[arrayIndexOutOfBoundsCond]") != std::string::npos);
+            check(cast, *platform);
+            ASSERT(errout_str().find("[arrayIndexOutOfBoundsCond]") != std::string::npos);
+            check(operand, *platform);
+            ASSERT(errout_str().find("[arrayIndexOutOfBoundsCond]") != std::string::npos);
+        }
+
+        check("void f(int x) {\n"
+              "    int a[10];\n"
+              "    if (x == -1) {}\n"
+              "    a[(unsigned int)x] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT(errout_str().find("[arrayIndexOutOfBoundsCond]") != std::string::npos);
+
+        check("void f(int x) {\n"
+              "    int a[10];\n"
+              "    if (x < 0 || x >= 10) return;\n"
+              "    a[(unsigned int)x] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f(int x) {\n"
+              "    int a[10];\n"
+              "    if (x == -256) {}\n"
+              "    a[(unsigned char)x] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        // Model size_t's target width explicitly for SimpleTokenizer's platform settings.
+        const char sizeT64[] = "typedef unsigned long size_t;\n"
+                               "void f(int x) {\n"
+                               "    int a[10];\n"
+                               "    if (x < 0) {}\n"
+                               "    a[(size_t)x] = 0;\n"
+                               "}\n";
+        check(sizeT64, settingsUnix64);
+        ASSERT(errout_str().find("[arrayIndexOutOfBoundsCond]") != std::string::npos);
+        const char sizeT32[] = "typedef unsigned int size_t;\n"
+                               "void f(int x) {\n"
+                               "    int a[10];\n"
+                               "    if (x < 0) {}\n"
+                               "    a[(size_t)x] = 0;\n"
+                               "}\n";
+        check(sizeT32, settingsUnix32);
+        ASSERT(errout_str().find("[arrayIndexOutOfBoundsCond]") != std::string::npos);
+
+        const char opaqueSource[] = "const char *xlat[10];\n"
+                                    "struct Unknown;\n"
+                                    "const char *lookup(Unknown *p) {\n"
+                                    "    if (p->type < 0 || p->type >= 20) return 0;\n"
+                                    "    return xlat[(int)p->type];\n"
+                                    "}\n";
+        check(opaqueSource, settingsUnix64);
+        ASSERT(errout_str().find("[arrayIndexOutOfBoundsCond]") != std::string::npos);
+        const char adjustedOpaqueSource[] = "const char *xlat[10];\n"
+                                            "struct Unknown;\n"
+                                            "const char *lookup(Unknown *p) {\n"
+                                            "    if (p->type >= 20) p->type -= 20;\n"
+                                            "    if (p->type < 0 || p->type >= 20) return 0;\n"
+                                            "    return xlat[(int)p->type];\n"
+                                            "}\n";
+        check(adjustedOpaqueSource, settingsUnix64);
+        ASSERT(errout_str().find("[arrayIndexOutOfBoundsCond]") != std::string::npos);
+        const char guardedOpaqueSource[] = "const char *xlat[10];\n"
+                                           "struct Unknown;\n"
+                                           "void report(void);\n"
+                                           "const char *lookup(Unknown *p) {\n"
+                                           "    if (p->type >= 20) p->type -= 20;\n"
+                                           "    if (p->type < 0 || p->type >= 20) { report(); return 0; }\n"
+                                           "    return xlat[(int)p->type];\n"
+                                           "}\n";
+        check(guardedOpaqueSource, settingsUnix64);
+        ASSERT(errout_str().find("[arrayIndexOutOfBoundsCond]") != std::string::npos);
+
+        const char typedSource[] = "const char *xlat[10];\n"
+                                   "struct Unknown { char type; };\n"
+                                   "const char *lookup(Unknown *p) {\n"
+                                   "    if (p->type < 0 || p->type >= 20) return 0;\n"
+                                   "    return xlat[(int)p->type];\n"
+                                   "}\n";
+        check(typedSource, settingsUnix64);
+        ASSERT(errout_str().find("[arrayIndexOutOfBoundsCond]") != std::string::npos);
+
+        check("const char *xlat[10];\n"
+              "struct Unknown;\n"
+              "const char *lookup(Unknown *p) {\n"
+              "    if (p->type < 0 || p->type >= 10) return 0;\n"
+              "    return xlat[(int)p->type];\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("const char *xlat[20];\n"
+              "struct Unknown;\n"
+              "const char *lookup(Unknown *p) {\n"
+              "    if (p->type < 0 || p->type >= 20) return 0;\n"
+              "    return xlat[(int)p->type];\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("const char *xlat[10];\n"
+              "struct Unknown;\n"
+              "const char *lookup(Unknown *p) {\n"
+              "    if (p->type < 0 || p->type >= 20) return 0;\n"
+              "    return xlat[(int)p->type % 10];\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+    }
+
     void array_index_multidim() {
         check("void f()\n"
               "{\n"
@@ -2424,6 +2736,40 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:5:12]: (error) Array 'val[5]' accessed at index -9994, which is out of bounds. [negativeIndex]\n"
                       "[test.cpp:5:23]: (error) Array 'val[5]' accessed at index -9995, which is out of bounds. [negativeIndex]\n", errout_str());
+
+        check("void f(void) {\n"
+              "    int a[10];\n"
+              "    for (int i = 0; i-- > -3; i++) {\n"
+              "        a[i] = 0;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:10]: (error) Array 'a[10]' accessed at index -1, which is out of bounds. [negativeIndex]\n", errout_str());
+
+        check("void f(void) {\n"
+              "    int a[10];\n"
+              "    for (int i = 0; (i = 0) < 1; i++) {\n"
+              "        a[i] = 0;\n"
+              "        break;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f(void) {\n"
+              "    int a[10];\n"
+              "    for (int i = 0; --i > -3; i++) {\n"
+              "        a[i] = 0;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:10]: (error) Array 'a[10]' accessed at index -1, which is out of bounds. [negativeIndex]\n", errout_str());
+
+        check("void f(void) {\n"
+              "    int n = 10;\n"
+              "    int a[10];\n"
+              "    for (int i = 0; i < n; i++) {\n"
+              "        a[i] = 0;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
 
@@ -4044,6 +4390,22 @@ private:
               "    dostuff(x+i);\n"
               "}\n", settings0_p);
         ASSERT_EQUALS("[test.cpp:3:11] -> [test.cpp:4:14]: (portability) Undefined behaviour, when 'i' is -1 the pointer arithmetic 'x+i' is out of bounds. [pointerOutOfBoundsCond]\n", errout_str());
+
+        check("void decimal_remainder(uint32_t i) {\n"
+              "    char table[200];\n"
+              "    while (i != 0U) {\n"
+              "        uint32_t q = i / 100U;\n"
+              "        uint32_t offset = (i - q * 100U) << 1;\n"
+              "        char *p = table + offset;\n"
+              "        (void)p;\n"
+              "        i = q;\n"
+              "    }\n"
+              "}\n"
+              "void actual_overrun(void) {\n"
+              "    char table[200];\n"
+              "    char *p = table + 201;\n"
+              "}\n", settings0_p);
+        ASSERT_EQUALS("[test.cpp:13:21]: (portability) Undefined behaviour, pointer arithmetic 'table+201' is out of bounds. [pointerOutOfBounds]\n", errout_str());
 
         check("void f() {\n" // #6350 - fp when there is cast of buffer
               "  wchar_t buf[64];\n"
@@ -6098,6 +6460,77 @@ private:
               "  }\n"
               "}\n", settings);
         ASSERT_EQUALS("", errout_str());
+    }
+    void array_index_guile() {
+        check("#include <math.h>\n"
+              "double f(double x) {\n"
+              "    if (x <= -1.0) {\n"
+              "        if (x == -1.0) return -100.0;\n"
+              "        else return 0.0 / 0.0;\n"
+              "    }\n"
+              "    if (x < -0.5 || x > 1.0) return log(1.0 + x);\n"
+              "    if (x == 0.0) return x;\n"
+              "    double m = round(x * 256.0);\n"
+              "    const double table[385] = {0};\n"
+              "    return table[128 + (int)m];\n"
+              "}\n", dinit(CheckOptions, $.cpp = false));
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void array_index_abiword() {
+        const Settings settingsUnix64 = settingsBuilder(settings0_i).platform(Platform::Type::Unix64).build();
+        check("void f(unsigned int keyval) {\n"
+              "    int table[256];\n"
+              "    if (keyval > 0xFFFF) return;\n"
+              "    if (keyval > 0xFF00) return;\n"
+              "    if (keyval > 0xFE00) table[keyval - 0xFE00] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:4:16] -> [test.cpp:5:31]: (warning) Either the condition 'keyval>0xFF00' is redundant or the array 'table[256]' is accessed at index 256, which is out of bounds. [arrayIndexOutOfBoundsCond]\n", errout_str());
+
+        check("void f(unsigned int keyval) {\n"
+              "    int table[256];\n"
+              "    if (keyval <= 0xFFFF && keyval <= 0xFF00 && keyval > 0xFE00)\n"
+              "        table[keyval - 0xFE00] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:3:36] -> [test.cpp:4:14]: (warning) Either the condition 'keyval<=0xFF00' is redundant or the array 'table[256]' is accessed at index 256, which is out of bounds. [arrayIndexOutOfBoundsCond]\n", errout_str());
+
+        check("void f(unsigned int keyval) {\n"
+              "    int table[256];\n"
+              "    if (0xFFFF < keyval || 0xFF00 < keyval) return;\n"
+              "    if (0xFE00 >= keyval) return;\n"
+              "    table[keyval - 0xFE00] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:3:35] -> [test.cpp:5:10]: (warning) Either the condition '0xFF00<keyval' is redundant or the array 'table[256]' is accessed at index 256, which is out of bounds. [arrayIndexOutOfBoundsCond]\n", errout_str());
+
+        check("void f(unsigned int keyval) {\n"
+              "    int table[256];\n"
+              "    if (keyval > 0xFFFF) return;\n"
+              "    if (keyval >= 0xFF00) return;\n"
+              "    if (keyval > 0xFE00) table[keyval - 0xFE00] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f(unsigned int keyval) {\n"
+              "    int table[257];\n"
+              "    if (keyval > 0xFFFF) return;\n"
+              "    if (keyval > 0xFF00) return;\n"
+              "    if (keyval > 0xFE00) table[keyval - 0xFE00] = 0;\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+    }
+    void array_index_caller_inference()
+    {
+        check("struct Scope { unsigned short sp; };\n"
+              "int buffer[4];\n"
+              "void pop_n(Scope *s, int n) {\n"
+              "    if ((int)s->sp - n < 0)\n"
+              "        buffer[(int)s->sp - n] = 1;\n"
+              "}\n"
+              "void caller_underflow(Scope *s) {\n"
+              "    s->sp = 0;\n"
+              "    pop_n(s, 1);\n"
+              "}\n", settings0_i);
+        ASSERT(errout_str().find("[negativeIndex]") != std::string::npos);
     }
 };
 

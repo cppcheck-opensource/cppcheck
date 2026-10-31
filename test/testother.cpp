@@ -10498,6 +10498,12 @@ private:
         check("const int x = -1 >> 2;\n");
         ASSERT_EQUALS("[test.cpp:1:18]: (portability) Shifting a negative value is technically undefined behaviour [shiftNegativeLHS]\n", errout_str());
 
+        check("int negative_lhs(int value) {\n"
+              "    if (value < -16 || value > 15) return 0;\n"
+              "    return value << 10;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:15] -> [test.cpp:3:18]: (portability) Shifting a negative value is technically undefined behaviour [shiftNegativeLHS]\n", errout_str());
+
         // #6383 - unsigned type
         check("const int x = (unsigned int)(-1) >> 2;\n");
         ASSERT_EQUALS("", errout_str());
@@ -14201,7 +14207,7 @@ private:
               "    }\n"
               "    return false;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:4:17]: (style) Pointer expression 'a.x' converted to bool is always true. [knownPointerToBool]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:10] -> [test.cpp:4:17]: (style) Pointer expression 'a.x' converted to bool is always true. [knownPointerToBool]\n", errout_str());
 
         check("void f(bool* b) { if (b) *b = true; }\n");
         ASSERT_EQUALS("", errout_str());
