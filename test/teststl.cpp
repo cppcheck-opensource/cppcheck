@@ -75,6 +75,7 @@ private:
         TEST_CASE(iterator29);
         TEST_CASE(iterator30);
         TEST_CASE(iterator31);
+        TEST_CASE(iterator32);
         TEST_CASE(iteratorExpression);
         TEST_CASE(iteratorSameExpression);
         TEST_CASE(mismatchingContainerIterator);
@@ -1914,13 +1915,13 @@ private:
         check("void f(int a, int b) {\n"
               "  if (std::for_each(&a, &b + 1, [](auto) {})) {}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:22]: (error) Iterators of different containers 'a' and 'b' are used together. [mismatchingContainers]\n",
+        ASSERT_EQUALS("[test.cpp:2:22]: (error) Addresses of different objects 'a' and 'b' are used together. [mismatchingContainers]\n",
                       errout_str());
 
         check("void f(int a, int b) {\n"
               "  if (std::for_each(&a, &b, [](auto) {})) {}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:22]: (error) Iterators of different containers 'a' and 'b' are used together. [mismatchingContainers]\n",
+        ASSERT_EQUALS("[test.cpp:2:22]: (error) Addresses of different objects 'a' and 'b' are used together. [mismatchingContainers]\n",
                       errout_str());
 
         check("void f(int a) {\n"
@@ -2061,8 +2062,21 @@ private:
               "    std::string b;\n"
               "    return t.s.a.c_str() == b.c_str();\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:9:13]: (error) Iterators of different containers 's.a' and 'b' are used together. [mismatchingContainers]\n"
-                      "[test.cpp:13:15]: (error) Iterators of different containers 't.s.a' and 'b' are used together. [mismatchingContainers]\n",
+        ASSERT_EQUALS("[test.cpp:9:13]: (error) Pointers of different containers 's.a' and 'b' are used together. [mismatchingContainers]\n"
+                      "[test.cpp:13:15]: (error) Pointers of different containers 't.s.a' and 'b' are used together. [mismatchingContainers]\n",
+                      errout_str());
+    }
+
+    void iterator32()
+    {
+        check("bool f(const std::string& a, const std::string& b) {\n" // #15158
+              "    return a.data() != b.data();\n"
+              "}\n"
+              "bool g(const std::unique_ptr<int>& a, const std::unique_ptr<int>& b) {\n"
+              "    return a.get() != b.get();\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:12]: (error) Pointers of different containers 'a' and 'b' are used together. [mismatchingContainers]\n"
+                      "[test.cpp:5:12]: (error) Pointers of different objects 'a' and 'b' are used together. [mismatchingContainers]\n",
                       errout_str());
     }
 
