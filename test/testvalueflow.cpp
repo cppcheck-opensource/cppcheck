@@ -1862,6 +1862,20 @@ private:
         ASSERT_EQUALS(1U, values.size());
         ASSERT_EQUALS(settings.platform.sizeof_int, values.back().intvalue);
         ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueKind::Known, values.back().valueKind);
+
+        code = "struct S {\n"
+               "    union {\n"
+               "        int i;\n"
+               "        struct {\n"
+               "            char a[24];\n"
+               "        } x;\n"
+               "    };\n"
+               "};\n"
+               "int f() { return sizeof(S); }\n";
+        values = tokenValues(code, "( S");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(24, values.back().intvalue);
+        ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueKind::Known, values.back().valueKind);
     }
 
     void valueFlowComma()

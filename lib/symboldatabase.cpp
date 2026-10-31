@@ -8690,7 +8690,6 @@ template<class F>
 static Result accumulateStructMembers(const Scope* scope, F f, ValueType::Accuracy accuracy, const Settings& settings)
 {
     size_t total = 0;
-    std::set<const Scope*> anonScopes;
     for (const Variable& var : scope->varlist) {
         if (var.isStatic())
             continue;
@@ -8701,12 +8700,7 @@ static Result accumulateStructMembers(const Scope* scope, F f, ValueType::Accura
             const MathLib::bigint dim = std::accumulate(var.dimensions().cbegin(), var.dimensions().cend(), MathLib::bigint(1), [](MathLib::bigint i1, const Dimension& dim) {
                 return i1 * dim.num;
             });
-            if (var.nameToken()->scope() != scope && var.nameToken()->scope()->definedType) { // anonymous union
-                const auto ret = anonScopes.insert(var.nameToken()->scope());
-                if (ret.second)
-                    total = f(total, *vt, dim, bits);
-            }
-            else if (vt->container && vt->container->startPattern == "std :: array <") {
+            if (vt->container && vt->container->startPattern == "std :: array <") {
                 const ValueType vtElement = ValueType::parseDecl(vt->containerTypeToken, settings);
                 total = f(total, vtElement, dim, bits);
             }
@@ -8840,7 +8834,8 @@ size_t ValueType::getSizeOf( const Settings& settings, Accuracy accuracy, SizeOf
                 currentBitfieldAlloc = 0;
                 currentBitCount = 0;
             }
-            return typeScope->type == ScopeType::eUnion ? std::max(total, n) : total + padding + n;
+            const bool isUnion = typeScope->type == ScopeType::eUnion || (vt2.typeScope && vt2.typeScope->nestedIn->type == ScopeType::eUnion && vt2.typeScope->nestedIn->className.empty());
+            return isUnion ? std::max(total, n) : total + padding + n;
         };
         Result result = accumulateStructMembers(typeScope, accHelper, accuracy, settings);
         size_t total = result.total;

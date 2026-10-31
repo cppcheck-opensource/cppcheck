@@ -2787,6 +2787,17 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
+        check("struct S {\n" // #15130
+              "    union {\n"
+              "        int i;\n"
+              "        struct {\n"
+              "            char a[24];\n"
+              "        } x;\n"
+              "    };\n"
+              "};\n"
+              "int f(S s) { return s.i; }\n");
+        ASSERT_EQUALS("[test.cpp:9:9]: (performance) Function parameter 's' should be passed by const reference. [passedByValue]\n", errout_str());
+
         /*const*/ Settings settingsWin64 = settingsBuilder().platform(Platform::Type::Win64).build();
         check("using ui64 = unsigned __int64;\n"
               "ui64 Test(ui64 one, ui64 two) { return one + two; }\n",
