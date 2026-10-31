@@ -2113,6 +2113,33 @@ void CheckClassImpl::virtualDestructor()
 
     logChecker("CheckClass::virtualDestructor");
 
+    // pointer variables of type 'Base *', for each type 'Base'
+    std::unordered_map<const Type *, std::vector<int>> pointersByType;
+
+    // for each pointer variable, the classes 'Derived' of a "ptr = new Derived" that is followed by a "delete ptr;"
+    std::unordered_map<int, std::set<std::string>> deletedAfterNew;
+
+    for (const Variable* var : mSymbolDatabase->variableList()) {
+        if (var && var->isPointer() && var->type() && var->nameToken())
+            pointersByType[var->type()].push_back(var->declarationId());
+    }
+
+    {
+        // the classes 'Derived' of the "ptr = new Derived" seen so far
+        std::unordered_map<int, std::set<std::string>> newClasses;
+
+        for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
+            if (Token::Match(tok, "[;{}] %var% = new %name%"))
+                newClasses[tok->next()->varId()].insert(tok->strAt(4));
+
+            else if (Token::Match(tok, "delete %var% ;")) {
+                const auto it = newClasses.find(tok->next()->varId());
+                if (it != newClasses.end())
+                    deletedAfterNew[it->first].insert(it->second.cbegin(), it->second.cend());
+            }
+        }
+    }
+
     for (const Scope * scope : mSymbolDatabase->classAndStructScopes) {
 
         // Skip base classes (unless inconclusive)
@@ -2162,39 +2189,15 @@ void CheckClassImpl::virtualDestructor()
                 // If this pattern is not seen then bailout the checking of these base/derived classes
                 {
                     // pointer variables of type 'Base *'
-                    std::set<int> baseClassPointers;
-
-                    for (const Variable* var : mSymbolDatabase->variableList()) {
-                        if (var && var->isPointer() && var->type() == derivedFrom)
-                            baseClassPointers.insert(var->declarationId());
-                    }
-
-                    // pointer variables of type 'Base *' that should not be deleted
-                    std::set<int> dontDelete;
-
-                    // No deletion of derived class instance through base class pointer found => the code is ok
-                    bool ok = true;
-
-                    for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
-                        if (Token::Match(tok, "[;{}] %var% =") &&
-                            baseClassPointers.find(tok->next()->varId()) != baseClassPointers.end()) {
-                            // new derived class..
-                            const std::string tmp("new " + derivedClass->str());
-                            if (Token::simpleMatch(tok->tokAt(3), tmp.c_str(), tmp.size())) {
-                                dontDelete.insert(tok->next()->varId());
-                            }
-                        }
-
-                        // Delete base class pointer that might point at derived class
-                        else if (Token::Match(tok, "delete %var% ;") &&
-                                 dontDelete.find(tok->next()->varId()) != dontDelete.end()) {
-                            ok = false;
-                            break;
-                        }
-                    }
+                    const auto pointers = pointersByType.find(derivedFrom);
+                    if (pointers == pointersByType.end())
+                        continue;
 
                     // No base class pointer that points at a derived class is deleted
-                    if (ok)
+                    if (std::none_of(pointers->second.cbegin(), pointers->second.cend(), [&](int varId) {
+                        const auto deleted = deletedAfterNew.find(varId);
+                        return deleted != deletedAfterNew.end() && deleted->second.count(derivedClass->str()) > 0;
+                    }))
                         continue;
                 }
 

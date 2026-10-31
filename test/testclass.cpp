@@ -2839,6 +2839,36 @@ private:
         checkVirtualDestructor("class Base { public: ~Base(); };\n"
                                "class Derived : public Base { public: ~Derived() { (void)11; } };\n");
         ASSERT_EQUALS("", errout_str());
+
+        // the pointer is deleted before it points at the derived class, or another pointer is deleted
+        checkVirtualDestructor("class Base { public: ~Base(); };\n"
+                               "class Derived : public Base { public: ~Derived() { (void)11; } };\n"
+                               "void f(Base *p, Base *q) {\n"
+                               "    delete p;\n"
+                               "    p = new Derived;\n"
+                               "    delete q;\n"
+                               "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // only the derived class that the deleted pointer points at
+        checkVirtualDestructor("class Base { public: ~Base(); };\n"
+                               "class Derived1 : public Base { public: ~Derived1() { (void)11; } };\n"
+                               "class Derived2 : public Base { public: ~Derived2() { (void)11; } };\n"
+                               "void f(Base *p, Base *q) {\n"
+                               "    p = new Derived1;\n"
+                               "    q = new Derived2;\n"
+                               "    delete q;\n"
+                               "}\n");
+        ASSERT_EQUALS("[test.cpp:1:23]: (error) Class 'Base' which is inherited by class 'Derived2' does not have a virtual destructor. [virtualDestructor]\n", errout_str());
+
+        // the derived class is a template instantiation, its name contains spaces
+        checkVirtualDestructor("class Base { public: ~Base(); };\n"
+                               "template<class T> class Derived : public Base { public: ~Derived() { (void)11; } };\n"
+                               "void f(Base *p) {\n"
+                               "    p = new Derived<unsigned int>;\n"
+                               "    delete p;\n"
+                               "}\n");
+        ASSERT_EQUALS("[test.cpp:1:23]: (error) Class 'Base' which is inherited by class 'Derived < unsigned int >' does not have a virtual destructor. [virtualDestructor]\n", errout_str());
     }
 
     void virtualDestructorProtected() {
