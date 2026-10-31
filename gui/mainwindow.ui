@@ -363,7 +363,7 @@
   <action name="mActionReanalyzeModified">
    <property name="icon">
     <iconset resource="gui.qrc">
-     <normaloff>:/images/view-refresh.png</normaloff>:/images/view-refresh.png</iconset>
+     <normaloff>:/images/refresh-file.png</normaloff>:/images/refresh-file.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Reanalyze modified files</string>
@@ -461,7 +461,7 @@
    </property>
    <property name="icon">
     <iconset resource="gui.qrc">
-     <normaloff>:/images/showerrors.png</normaloff>:/images/showerrors.png</iconset>
+     <normaloff>:/images/dialog-error.png</normaloff>:/images/dialog-error.png</iconset>
    </property>
    <property name="text">
     <string>E&amp;rrors</string>
@@ -539,7 +539,7 @@
   <action name="mActionOpenProjectFile">
    <property name="icon">
     <iconset resource="gui.qrc">
-     <normaloff>:/images/openproject.png</normaloff>:/images/openproject.png</iconset>
+     <normaloff>:/images/folder.png</normaloff>:/images/folder.png</iconset>
    </property>
    <property name="text">
     <string>Open P&amp;roject File...</string>
@@ -551,7 +551,7 @@
   <action name="mActionShowScratchpad">
    <property name="icon">
     <iconset resource="gui.qrc">
-     <normaloff>:/images/scratchpad.png</normaloff>:/images/scratchpad.png</iconset>
+     <normaloff>:/images/accessories-text-editor.png</normaloff>:/images/accessories-text-editor.png</iconset>
    </property>
    <property name="text">
     <string>Sh&amp;ow Scratchpad...</string>
@@ -607,7 +607,7 @@
    </property>
    <property name="icon">
     <iconset resource="gui.qrc">
-     <normaloff>:/images/showwarnings.png</normaloff>:/images/showwarnings.png</iconset>
+     <normaloff>:/images/dialog-warning.png</normaloff>:/images/dialog-warning.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Warnings</string>
@@ -625,7 +625,7 @@
    </property>
    <property name="icon">
     <iconset resource="gui.qrc">
-     <normaloff>:/images/showperformance.png</normaloff>:/images/showperformance.png</iconset>
+     <normaloff>:/images/utilities-system-monitor.png</normaloff>:/images/utilities-system-monitor.png</iconset>
    </property>
    <property name="text">
     <string>Per&amp;formance warnings</string>
