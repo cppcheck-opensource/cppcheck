@@ -130,6 +130,7 @@ private:
         TEST_CASE(knownConditionAfterBailout); // #12526
         TEST_CASE(knownConditionIncDecOperator);
         TEST_CASE(knownConditionFloating);
+        TEST_CASE(knownConditionRecordedComparison);
     }
 
     struct CheckOptions
@@ -932,6 +933,20 @@ private:
         check("#define O_RDONLY 0\n"
               "void f(const char* s, int* pFd) {\n"
               "    *pFd = open(s, O_RDONLY | O_BINARY, 0);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // the condition 'length > 1' does not make length equal to 2, so 'length > 2' is not dead
+        check("void f(int length, unsigned int& dst) {\n"
+              "    unsigned int src2 = 0U;\n"
+              "    if (length > 1) {\n"
+              "        if (length > 2) {\n"
+              "            src2 = 15U;\n"
+              "        }\n"
+              "    }\n"
+              "    if (length >= 2) {\n"
+              "        dst = ((0x80) | (src2 >> 2));\n"
+              "    }\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
@@ -5808,6 +5823,17 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:2:26]: (style) Condition 'i<20' is always false [knownConditionTrueFalse]\n", errout_str());
 
+        check("void f(int n) {\n" // the loop runs but its simulation does not change the state
+              "    if (n > 0) {\n"
+              "        int i, j;\n"
+              "        for (i = j = 0; i < n; i = j) {\n"
+              "            while (j < n)\n"
+              "                j++;\n"
+              "        }\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
         check("int foo(int foo, int bar, bool baz, bool flag) {\n"
               "    if (baz && flag) {\n"
               "        do {\n"
@@ -6921,6 +6947,94 @@ private:
             "[test.cpp:3]: (style) Condition 'nf>-1.0' is always false\n",
             "",
             errout_str());
+    }
+
+    // TODO: a comparison of two expressions without values should decide the comparisons of the pair
+    // that move a constant to the other side: "(x + 1) < w[0]" is "x < w[0] - 1". At the normal check
+    // level the forward analysis forks on a few unknown conditions only, so the condition has to be
+    // decided for the analysis of the conditional value of z to go on into the right hand side of the
+    // "&&" (reduced from rpp local_binary_pattern.cpp, DACA report for PR #8899).
+    void knownConditionRecordedComparison() {
+        const Settings settings = settingsBuilder().severity(Severity::style).checkLevel(Settings::CheckLevel::normal).build();
+        check("void f(const unsigned char* in, const unsigned int* w, int y, int x, int z, int c, unsigned char* n) {\n"
+              "    if (x < w[0] - 1 && x > 0 && z > 0) {\n"
+              "        if (z >= y) {\n"
+              "            for (int i = 0; i < c; i++) {\n"
+              "                if ((x - 1) >= 0 && (z - 1) >= 0)\n"
+              "                    n[i] = in[0];\n"
+              "                else\n"
+              "                    n[i] = 0;\n"
+              "                if ((z - 1) >= 0)\n"
+              "                    n[i] = in[1];\n"
+              "                else\n"
+              "                    n[i] = 0;\n"
+              "                if ((x + 1) < w[0] && (z - 1) >= 0)\n"
+              "                    n[i] = in[2];\n"
+              "                else\n"
+              "                    n[i] = 0;\n"
+              "            }\n"
+              "        }\n"
+              "    }\n"
+              "}\n", settings);
+        TODO_ASSERT_EQUALS("[test.cpp:2:27] -> [test.cpp:5:29]: (style) Condition '(x-1)>=0' is always true [knownConditionTrueFalse]\n"
+                           "[test.cpp:2:36] -> [test.cpp:5:45]: (style) Condition '(z-1)>=0' is always true [knownConditionTrueFalse]\n"
+                           "[test.cpp:2:36] -> [test.cpp:9:29]: (style) Condition '(z-1)>=0' is always true [knownConditionTrueFalse]\n"
+                           "[test.cpp:5:45] -> [test.cpp:13:47]: (style) Condition '(z-1)>=0' is always true [knownConditionTrueFalse]\n",
+                           "[test.cpp:2:27] -> [test.cpp:5:29]: (style) Condition '(x-1)>=0' is always true [knownConditionTrueFalse]\n"
+                           "[test.cpp:2:36] -> [test.cpp:5:45]: (style) Condition '(z-1)>=0' is always true [knownConditionTrueFalse]\n"
+                           "[test.cpp:2:36] -> [test.cpp:9:29]: (style) Condition '(z-1)>=0' is always true [knownConditionTrueFalse]\n",
+                           errout_str());
+
+        // a comparison that moves a different constant does not follow, nor one of a changed operand
+        check("void f(const unsigned char* in, const unsigned int* w, int y, int x, int z, int c, unsigned char* n) {\n"
+              "    if (x < w[0] - 1 && x > 0 && z > 0) {\n"
+              "        if (z >= y) {\n"
+              "            for (int i = 0; i < c; i++) {\n"
+              "                if ((x - 1) >= 0 && (z - 1) >= 0)\n"
+              "                    n[i] = in[0];\n"
+              "                else\n"
+              "                    n[i] = 0;\n"
+              "                if ((z - 1) >= 0)\n"
+              "                    n[i] = in[1];\n"
+              "                else\n"
+              "                    n[i] = 0;\n"
+              "                if ((x + 2) < w[0] && (z - 1) >= 0)\n"
+              "                    n[i] = in[2];\n"
+              "                else\n"
+              "                    n[i] = 0;\n"
+              "            }\n"
+              "        }\n"
+              "    }\n"
+              "}\n", settings);
+        ASSERT_EQUALS("[test.cpp:2:27] -> [test.cpp:5:29]: (style) Condition '(x-1)>=0' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:2:36] -> [test.cpp:5:45]: (style) Condition '(z-1)>=0' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:2:36] -> [test.cpp:9:29]: (style) Condition '(z-1)>=0' is always true [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        check("void f(const unsigned char* in, const unsigned int* w, int y, int x, int z, int c, unsigned char* n) {\n"
+              "    if (x < w[0] - 1 && x > 0 && z > 0) {\n"
+              "        if (z >= y) {\n"
+              "            for (int i = 0; i < c; i++) {\n"
+              "                if ((x - 1) >= 0 && (z - 1) >= 0)\n"
+              "                    n[i] = in[0];\n"
+              "                else\n"
+              "                    n[i] = 0;\n"
+              "                if ((z - 1) >= 0)\n"
+              "                    n[i] = in[1];\n"
+              "                else\n"
+              "                    n[i] = 0;\n"
+              "                x++;\n"
+              "                if ((x + 1) < w[0] && (z - 1) >= 0)\n"
+              "                    n[i] = in[2];\n"
+              "                else\n"
+              "                    n[i] = 0;\n"
+              "            }\n"
+              "        }\n"
+              "    }\n"
+              "}\n", settings);
+        ASSERT_EQUALS("[test.cpp:2:36] -> [test.cpp:5:45]: (style) Condition '(z-1)>=0' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:2:36] -> [test.cpp:9:29]: (style) Condition '(z-1)>=0' is always true [knownConditionTrueFalse]\n",
+                      errout_str());
     }
 };
 

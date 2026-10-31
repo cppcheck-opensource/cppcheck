@@ -102,7 +102,9 @@ void CheckTypeImpl::checkTooBigBitwiseShift()
         const ValueFlow::Value * value = tok->astOperand2()->getValueGE(lhsbits, mSettings);
         if (value && mSettings.isEnabled(value, false))
             tooBigBitwiseShiftError(tok, lhsbits, *value);
-        else if (lhstype->sign == ValueType::Sign::SIGNED) {
+        else if (lhstype->sign == ValueType::Sign::SIGNED && Token::Match(tok, "<<|<<=")) {
+            // Shifting a signed value left by its width minus one bit is undefined. A right shift by
+            // that many bits is defined (implementation-defined for a negative value, as any right shift).
             value = tok->astOperand2()->getValueGE(lhsbits-1, mSettings);
             if (value && mSettings.isEnabled(value, false))
                 tooBigSignedBitwiseShiftError(tok, lhsbits, *value);
