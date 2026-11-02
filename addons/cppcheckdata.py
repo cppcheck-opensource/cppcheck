@@ -8,11 +8,11 @@ License: No restrictions, use this as you need.
 
 import argparse
 import contextlib
+import functools
 import gc
 import json
 import mmap
 import os
-import re
 import sys
 import subprocess
 
@@ -45,8 +45,7 @@ current_dumpfile_suppressions = []
 # Size of the chunks that are fed to the XML parser
 _PARSE_CHUNK_SIZE = 1 << 16
 
-# Start tag of a <dump> element (but not of the <dumps> element)
-_DUMP_START_TAG_RE = re.compile(rb'<dump[\s>]')
+_DUMP_START_TAG = b'<dump '
 _DUMP_END_TAG = b'</dump>'
 
 
@@ -76,21 +75,13 @@ def _feed_without_configurations(parser, filename):
         if os.fstat(f.fileno()).st_size == 0:
             return
         with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as data:
-            first = _DUMP_START_TAG_RE.search(data)
+            first = data.find(_DUMP_START_TAG)
             last = data.rfind(_DUMP_END_TAG)
-            if first is None or last < first.start():
+            if first < 0 or last < first:
                 parser.feed(data[:])
             else:
-                parser.feed(data[:first.start()])
+                parser.feed(data[:first])
                 parser.feed(data[last + len(_DUMP_END_TAG):])
-
-
-def _read_chunks(f):
-    while True:
-        chunk = f.read(_PARSE_CHUNK_SIZE)
-        if not chunk:
-            return
-        yield chunk
 
 
 def _load_location(location, element):
@@ -1271,8 +1262,6 @@ class _ConfigurationBuilder:
         self.configurations = []  # completed configurations
         self.cfg = None
         self.cfg_arguments = []  # function arguments for Configuration node initialization
-        self.cfg_function = None
-        self.cfg_valueflow = None
 
         # Iterating <varlist> in a <scope>.
         self.iter_scope_varlist = False
@@ -1299,10 +1288,9 @@ class _ConfigurationBuilder:
 
         # Parse valueflows (list of values)
         elif tag == 'value':
-            self.cfg_valueflow.values.append(Value(attrib))
+            cfg.valueflow[-1].values.append(Value(attrib))
         elif tag == 'values':
-            self.cfg_valueflow = ValueFlow(attrib)
-            cfg.valueflow.append(self.cfg_valueflow)
+            cfg.valueflow.append(ValueFlow(attrib))
 
         # Parse scopes
         elif tag == 'scope':
@@ -1323,14 +1311,13 @@ class _ConfigurationBuilder:
 
         # Parse functions
         elif tag == 'function':
-            self.cfg_function = Function(attrib, cfg.scopes[-1])
-            cfg.functions.append(self.cfg_function)
+            cfg.functions.append(Function(attrib, cfg.scopes[-1]))
 
         # Parse function arguments
         elif tag == 'arg':
             arg_nr = int(attrib.get('nr'))
             arg_variable_id = attrib.get('variable')
-            self.cfg_function.argumentId[arg_nr] = arg_variable_id
+            cfg.functions[-1].argumentId[arg_nr] = arg_variable_id
 
         # Parse directives list
         elif tag == 'directive':
@@ -1355,10 +1342,6 @@ class _ConfigurationBuilder:
         elif tag == 'info':
             if self.iter_typedef_info:
                 cfg.typedefInfo.append(TypedefInfo(attrib))
-
-        # Parse template-token
-        #elif tag == 'TokenAndName': #todo add processing of containers
-        #    cfg.containers.append(Container(attrib))
 
         # Serialize new configuration node
         elif tag == 'dump':
@@ -1476,7 +1459,7 @@ class CppcheckData:
         builder = _ConfigurationBuilder()
         parser = ElementTree.XMLParser(target=builder)
         with open(self.filename, 'rb') as f:
-            for chunk in _read_chunks(f):
+            for chunk in iter(functools.partial(f.read, _PARSE_CHUNK_SIZE), b''):
                 with _gc_disabled():
                     parser.feed(chunk)
                 yield from builder.take_configurations()
