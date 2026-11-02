@@ -1033,6 +1033,8 @@ namespace {
                 to = to->next();
                 to->isSimplifiedTypedef(true);
                 to->isExternC(from->isExternC());
+                if (from->isExpandedMacro())
+                    to->setMacroName(from->getMacroName());
             }
             return to;
         }
