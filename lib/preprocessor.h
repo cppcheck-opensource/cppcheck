@@ -105,6 +105,8 @@ public:
     static char macroChar;
 
     Preprocessor(simplecpp::TokenList& tokens, const Settings& settings, ErrorLogger &errorLogger, Standards::Language lang);
+    Preprocessor(const Preprocessor &) = delete;
+    Preprocessor &operator=(const Preprocessor &) = delete;
 
     void inlineSuppressions(SuppressionList &suppressions) const;
 
@@ -182,7 +184,7 @@ private:
     simplecpp::TokenList& mTokens;
 
     const Settings& mSettings;
-    ErrorLogger &mErrorLogger;
+    ErrorLogger& mErrorLogger;
 
     simplecpp::FileDataCache mFileCache;
 

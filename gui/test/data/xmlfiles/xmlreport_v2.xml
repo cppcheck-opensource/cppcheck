@@ -2,10 +2,10 @@
 <results version="2">
     <cppcheck version="1.47"/>
     <errors>
-        <error id="unreadVariable" severity="style" msg="Variable &amp;#039;a&amp;#039; is assigned a value that is never used" verbose="Variable &amp;#039;a&amp;#039; is assigned a value that is never used">
+        <error id="unreadVariable" severity="style" msg="Variable 'a' is assigned a value that is never used" verbose="Variable 'a' is assigned a value that is never used">
             <location file="test.cxx" line="11"/>
         </error>
-        <error id="unreadVariable" severity="style" msg="Variable &amp;#039;b&amp;#039; is assigned a value that is never used" verbose="Variable &amp;#039;b&amp;#039; is assigned a value that is never used">
+        <error id="unreadVariable" severity="style" msg="Variable 'b' is assigned a value that is never used" verbose="Variable 'b' is assigned a value that is never used">
             <location file="test.cxx" line="28"/>
         </error>
         <error id="memleak" severity="error" msg="Memory leak: b" verbose="Memory leak: b">
@@ -15,7 +15,7 @@
             <location file="test.cxx" line="32"/>
             <location file="test.cxx" line="16"/>
         </error>
-        <error id="obsoleteFunctionsgets" severity="style" msg="Found obsolescent function &amp;#039;gets&amp;#039;. It is recommended to use the function &amp;#039;fgets&amp;#039; instead" verbose="Found obsolescent function &amp;#039;gets&amp;#039;. With gets you&amp;#039;ll get buffer overruns if the input data too big for the buffer. It is recommended to use the function &amp;#039;fgets&amp;#039; instead.">
+        <error id="obsoleteFunctionsgets" severity="style" msg="Found obsolescent function 'gets'. It is recommended to use the function 'fgets' instead" verbose="Found obsolescent function 'gets'. With gets you'll get buffer overruns if the input data too big for the buffer. It is recommended to use the function 'fgets' instead.">
             <location file="test.cxx" line="31"/>
         </error>
         <error id="postfixOperator" severity="performance" msg="Prefer prefix ++/-- operators for non-primitive types." verbose="Prefix ++/-- operators should be preferred for non-primitive types. Pre-increment/decrement can be more efficient than post-increment/decrement. Post-increment/decrement usually involves keeping a copy of the previous value around and adds a little extra code.">
