@@ -4907,18 +4907,18 @@ class MisraChecker:
         from cppcheckdata import Location
 
         def is_different_location(loc1, loc2):
-            return loc1['file'] != loc2['file'] or loc1['line'] != loc2['line']
+            return is_different_file(loc1, loc2) or loc1['line'] != loc2['line']
 
         def is_different_file(loc1, loc2):
-            return loc1['file'] != loc2['file']
+            return os.path.realpath(loc1['file']) != os.path.realpath(loc2['file'])
 
-        def add_declaration(all_info, new_info, num1, num2):
+        def add_declaration(all_info, new_info, num1=None, num2=None):
             declarations = all_info.setdefault(new_info['name'], [])
             for info in declarations:
                 if not is_different_location(info, new_info):
                     info['used'] = info['used'] or new_info['used']
                     return
-            if declarations:
+            if declarations and num1 is not None:
                 self.reportError(Location(declarations[0]), num1, num2)
                 self.reportError(Location(new_info), num1, num2)
             declarations.append(new_info)
@@ -4946,12 +4946,7 @@ class MisraChecker:
 
                     if summary_type == 'MisraMacro':
                         for new_macro in summary_data:
-                            key = new_macro['name']
-                            existing_macro = all_macro_info.get(key, None)
-                            if existing_macro:
-                                existing_macro['used'] = existing_macro['used'] or new_macro['used']
-                            else:
-                                all_macro_info[key] = new_macro
+                            add_declaration(all_macro_info, new_macro)
 
                     if summary_type == 'MisraExternalIdentifiers':
                         for s in sorted(summary_data, key=lambda d: "%s %s %s" %(d['file'],d['line'], d['column'] )):
@@ -5001,7 +4996,7 @@ class MisraChecker:
         for tag in unused_tags:
             self.reportError(Location(tag), 2, 4)
 
-        unused_macros = [m for m in all_macro_info.values() if not m['used']]
+        unused_macros = [m for ms in all_macro_info.values() for m in ms if not m['used']]
         for m in unused_macros:
             self.reportError(Location(m), 2, 5)
 
