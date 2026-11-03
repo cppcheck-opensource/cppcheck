@@ -2147,7 +2147,7 @@ void CheckOtherImpl::checkConstPointer()
             //     continue;
             if (!isConstPointerVariable(p, mSettings))
                 continue;
-            if (p->typeStartToken() && p->typeStartToken()->isSimplifiedTypedef() && !(Token::simpleMatch(p->typeEndToken(), "*") && !p->typeEndToken()->isSimplifiedTypedef()))
+            if (p->typeStartToken() && p->typeStartToken()->isSimplifiedTypedef() && Token::simpleMatch(p->typeEndToken(), "*") && p->typeEndToken()->isSimplifiedTypedef())
                 continue;
             constVariableError(p, p->isArgument() ? p->scope()->function : nullptr, foundAllBaseClasses);
         }
