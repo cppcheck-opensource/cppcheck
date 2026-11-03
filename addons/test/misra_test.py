@@ -6,6 +6,7 @@ import pytest
 import re
 import sys
 import os
+import json
 
 from .util import dump_create, dump_remove, convert_json_output
 from addons.misra import C11_STDLIB_IDENTIFIERS, C99_STDLIB_IDENTIFIERS,C90_STDLIB_IDENTIFIERS, isStdLibId, isKeyword
@@ -186,6 +187,24 @@ def test_read_ctu_info_line(checker):
     assert checker.read_ctu_info_line('{"summary":"123"}') is None
     assert checker.read_ctu_info_line('{"data":123}') is None
     assert checker.read_ctu_info_line('{"summary":"123","data":123}') is not None
+
+@pytest.mark.parametrize('summary,rule,used_first', [
+    ('MisraTypedefInfo', 203, False),
+    ('MisraTypedefInfo', 203, True),
+    ('MisraTagName', 204, False),
+    ('MisraTagName', 204, True)
+])
+def test_ctu_unused_declaration(checker, tmp_path, summary, rule, used_first):
+    # The same name declared in two files, unused in a.c and used in b.c
+    unused = {'name': 'X', 'file': 'a.c', 'line': 1, 'column': 13, 'used': False}
+    used = {'name': 'X', 'file': 'b.c', 'line': 1, 'column': 13, 'used': True}
+    ctu_info = tmp_path / 'test.ctu-info'
+    with open(ctu_info, 'wt') as f:
+        for declaration in ([used, unused] if used_first else [unused, used]):
+            f.write(json.dumps({'summary': summary, 'data': [declaration]}) + '\n')
+    checker.analyse_ctu_info([str(ctu_info)])
+    assert 'a.c-1-13-%d' % rule in checker.existing_violations
+    assert 'b.c-1-13-%d' % rule not in checker.existing_violations
 
 def test_platform(checker):
     test_file = os.path.join('addons','test','misra','misra-test.c')
