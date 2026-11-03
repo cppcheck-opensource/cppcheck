@@ -107,7 +107,7 @@ class TestCppcheckData:
     def test_iterconfigurations_not_kept(self, multi_cfg_data):
         data = cppcheckdata.parsedump(multi_cfg_data.filename)
         first = next(data.iterconfigurations())
-        # without the configurations property each call parses the dump file again
+        # each call parses the dump file again
         assert next(data.iterconfigurations()) is not first
         assert len(data.configurations) == 2
         assert data.configurations[0] is not first

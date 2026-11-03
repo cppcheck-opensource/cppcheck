@@ -1386,10 +1386,9 @@ class CppcheckData:
         suppressions      List of Suppressions
         files             Source files for elements occurred in this configuration
 
-    The configurations property loads all configurations once and keeps them,
-    which is best when the configurations are iterated more than once.
-    iterconfigurations() parses the dump file on each call but creates one
-    configuration at a time, which uses less memory for a single iteration.
+    To iterate more than once, use the configurations property: it parses the
+    dump file once and keeps all configurations. To iterate once, use
+    iterconfigurations(): it parses on each call but uses less memory.
 
     To iterate through all configurations use such code:
     @code
@@ -1450,9 +1449,8 @@ class CppcheckData:
     def configurations(self):
         """
         Return the list of all available Configuration objects.
-        The configurations are loaded on the first access and kept, so later
-        accesses and iterconfigurations() do not parse the dump file again.
-        All configurations stay in memory as long as this object exists.
+        The list is loaded on first access and kept for later accesses and
+        iterconfigurations().
         """
         if self._configurations is None:
             self._configurations = list(self.iterconfigurations())
@@ -1462,10 +1460,8 @@ class CppcheckData:
         """
         Create and return iterator for the available Configuration objects.
         The iterator loops over all Configurations in the dump file tree, in document order.
-        If the configurations property has been used then the kept configurations
-        are returned. Otherwise the dump file is parsed and each configuration is
-        created when the iterator reaches it, so a configuration can be freed when
-        the caller is done with it. Each call parses the dump file again.
+        Uses the kept list if the configurations property has been accessed,
+        otherwise parses the dump file one configuration at a time.
         """
         if self._configurations is not None:
             yield from self._configurations
