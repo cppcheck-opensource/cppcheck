@@ -124,7 +124,7 @@ std::string CTU::FileInfo::FunctionCall::toXmlString() const
 std::string CTU::FileInfo::NestedCall::toXmlString() const
 {
     std::ostringstream out;
-    out << "<function-call"
+    out << "<nested-call"
         << toBaseXmlString()
         << " " << ATTR_MY_ID << "=\"" << myId << "\""
         << " " << ATTR_MY_ARGNR << "=\"" << myArgNr << "\""

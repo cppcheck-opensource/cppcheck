@@ -26,6 +26,7 @@
 #include "settings.h"
 #include "standards.h"
 #include "token.h"
+#include "xml.h"
 
 #include <cstddef>
 #include <list>
@@ -183,6 +184,7 @@ private:
         TEST_CASE(isPointerDeRefFunctionDecl);
 
         TEST_CASE(ctuTest);
+        TEST_CASE(ctuXml);
     }
 
     struct CheckOptions
@@ -5088,6 +5090,26 @@ private:
             "    g(x);\n"
             "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void ctuXml() {
+        SimpleTokenizer tokenizer(settings, *this);
+        ASSERT(tokenizer.tokenize("void use(int *p) { a = *p + 3; }\n"
+                                  "void call(int x, int *p) { x++; use(p); }\n"
+                                  "int main() {\n"
+                                  "  call(4,0);\n"
+                                  "}\n"));
+        const CTU::FileInfo *fi1 = CTU::getFileInfo(tokenizer);
+        ASSERT_EQUALS(1U, fi1->nestedCalls.size());
+
+        tinyxml2::XMLDocument doc;
+        const tinyxml2::XMLError xmlError = doc.Parse(("<FileInfo>" + fi1->toString() + "</FileInfo>").c_str());
+        ASSERT_EQUALS(tinyxml2::XML_SUCCESS, xmlError);
+        CTU::FileInfo fi2;
+        fi2.loadFromXml(doc.FirstChildElement());
+        ASSERT_EQUALS(1U, fi2.nestedCalls.size());
+        ASSERT_EQUALS(fi1->toString(), fi2.toString());
+        delete fi1;
     }
 };
 
