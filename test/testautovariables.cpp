@@ -4587,6 +4587,17 @@ private:
               "    return &*x.a;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct S { int a[1]; };\n"
+              "int& f(S s) {\n"
+              "    return *s.a;\n"
+              "}\n"
+              "int* g(S s) {\n"
+              "    return &*s.a;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:12]: (error) Reference to local variable returned. [returnReference]\n"
+                      "[test.cpp:6:12] -> [test.cpp:5:10] -> [test.cpp:6:12]: (error) Returning pointer to local variable 's' that will be invalid when returning. [returnDanglingLifetime]\n",
+                      errout_str());
     }
 
     void danglingLifetimeClassMemberFunctions()

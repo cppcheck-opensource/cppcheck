@@ -1473,6 +1473,19 @@ ValueFlow::Value ValueFlow::getLifetimeObjValue(const Token *tok, bool inconclus
     return std::move(values.front());
 }
 
+static bool checkDotLifetime(const Token* dot, const Token* tok)
+{
+    if (Token::simpleMatch(dot->astOperand1(), "."))
+        return false;
+    if (!dot->astOperand2())
+        return true;
+    if (dot->astOperand2()->varId() && tok->isUnaryOp("*"))
+        return dot->astOperand2()->variable() && dot->astOperand2()->variable()->isArray();
+    if (dot->astOperand2()->valueType() && dot->astOperand2()->valueType()->reference != Reference::None)
+        return false;
+    return true;
+}
+
 template<class Predicate>
 static std::vector<ValueFlow::LifetimeToken> getLifetimeTokens(const Token* tok,
                                                                bool escape,
@@ -1585,8 +1598,7 @@ static std::vector<ValueFlow::LifetimeToken> getLifetimeTokens(const Token* tok,
             if (vartok->str() == "[" || vartok->isUnaryOp("*"))
                 vartok = vartok->astOperand1();
             else if (vartok->str() == ".") {
-                if (!Token::simpleMatch(vartok->astOperand1(), ".") &&
-                    !(vartok->astOperand2() && ((vartok->astOperand2()->varId() && tok->isUnaryOp("*")) || (vartok->astOperand2()->valueType() && vartok->astOperand2()->valueType()->reference != Reference::None))))
+                if (checkDotLifetime(vartok, tok))
                     vartok = vartok->astOperand1();
                 else
                     break;
