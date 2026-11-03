@@ -93,6 +93,25 @@ class TestCppcheckData:
         assert not find_tokens(cfgs[0], 'foo')
         assert find_tokens(cfgs[1], 'foo')
 
+    def test_configurations_kept(self, multi_cfg_data):
+        data = cppcheckdata.parsedump(multi_cfg_data.filename)
+        cfgs = data.configurations
+        assert len(cfgs) == 2
+        # later accesses and iterconfigurations() return the same objects
+        assert data.configurations is cfgs
+        iterated = list(data.iterconfigurations())
+        assert len(iterated) == 2
+        assert iterated[0] is cfgs[0]
+        assert iterated[1] is cfgs[1]
+
+    def test_iterconfigurations_not_kept(self, multi_cfg_data):
+        data = cppcheckdata.parsedump(multi_cfg_data.filename)
+        first = next(data.iterconfigurations())
+        # without the configurations property each call parses the dump file again
+        assert next(data.iterconfigurations()) is not first
+        assert len(data.configurations) == 2
+        assert data.configurations[0] is not first
+
     def test_standards(self, sample_cfg, sample_cpp_cfg):
         assert sample_cfg.standards.c.startswith('c')
         assert sample_cpp_cfg.standards.cpp.startswith('c++')

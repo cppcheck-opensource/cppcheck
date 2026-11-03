@@ -1386,6 +1386,11 @@ class CppcheckData:
         suppressions      List of Suppressions
         files             Source files for elements occurred in this configuration
 
+    The configurations property loads all configurations once and keeps them,
+    which is best when the configurations are iterated more than once.
+    iterconfigurations() parses the dump file on each call but creates one
+    configuration at a time, which uses less memory for a single iteration.
+
     To iterate through all configurations use such code:
     @code
     data = cppcheckdata.parsedump(...)
@@ -1424,6 +1429,7 @@ class CppcheckData:
         self.platform = None
         self.suppressions = []
         self.files = [] # source files for elements occurred in this configuration
+        self._configurations = None # set by the configurations property
 
         # Parse general configuration options from <dumps> node, the raw tokens
         # and the suppressions. The configurations are parsed by iterconfigurations.
@@ -1444,14 +1450,26 @@ class CppcheckData:
     def configurations(self):
         """
         Return the list of all available Configuration objects.
+        The configurations are loaded on the first access and kept, so later
+        accesses and iterconfigurations() do not parse the dump file again.
+        All configurations stay in memory as long as this object exists.
         """
-        return list(self.iterconfigurations())
+        if self._configurations is None:
+            self._configurations = list(self.iterconfigurations())
+        return self._configurations
 
     def iterconfigurations(self):
         """
         Create and return iterator for the available Configuration objects.
         The iterator loops over all Configurations in the dump file tree, in document order.
+        If the configurations property has been used then the kept configurations
+        are returned. Otherwise the dump file is parsed and each configuration is
+        created when the iterator reaches it, so a configuration can be freed when
+        the caller is done with it. Each call parses the dump file again.
         """
+        if self._configurations is not None:
+            yield from self._configurations
+            return
         # Parse the dump file incrementally to avoid large memory consumption.
         # A configuration is returned as soon as its </dump> has been parsed.
         # The garbage collector is only disabled while parsing, not while the
