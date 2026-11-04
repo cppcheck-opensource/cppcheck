@@ -2014,6 +2014,12 @@ static void valueFlowForwardLifetime(Token * tok, const TokenList &tokenlist, Er
     } else if (tok->variable() && tok->variable()->scope()) {
         const Variable *var = tok->variable();
         const Token *endOfVarScope = var->scope()->bodyEnd;
+        // Non-local variable: do not forward past the end of the current function
+        if (!var->isLocal() && !var->isArgument()) {
+            const Token* endOfFunction = ValueFlow::getEndOfExprScope(tok);
+            if (endOfFunction && (!endOfVarScope || precedes(endOfFunction, endOfVarScope)))
+                endOfVarScope = endOfFunction;
+        }
 
         std::list<ValueFlow::Value> values = tok->values();
         Token *nextExpression = nextAfterAstRightmostLeaf(parent);
