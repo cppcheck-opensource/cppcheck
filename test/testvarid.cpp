@@ -1631,13 +1631,17 @@ private:
                 "A f2(true);\n"
                 "A g();\n"
                 "A e(int c);\n"
-                "A h(T (*p)[16]);\n", dinit(TokenizeOptions, $.cpp = false));
+                "A h(T (*p)[16]);\n"
+                "int x(g(1)[0]);\n"
+                "A u(T (*)[16]);\n", dinit(TokenizeOptions, $.cpp = false));
 
             const char expected[] = "1: A f@1 ( 3 ) ;\n"
                                     "2: A f2@2 ( true ) ;\n"
                                     "3: A g ( ) ;\n"
                                     "4: A e ( int c@3 ) ;\n"
-                                    "5: A h ( T ( * p@4 ) [ 16 ] ) ;\n";
+                                    "5: A h ( T ( * p@4 ) [ 16 ] ) ;\n"
+                                    "6: int x@5 ( g ( 1 ) [ 0 ] ) ;\n"
+                                    "7: A u ( T ( * ) [ 16 ] ) ;\n";
 
             ASSERT_EQUALS(expected, actual);
         }
