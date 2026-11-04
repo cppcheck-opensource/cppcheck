@@ -837,6 +837,15 @@ private:
         }
 
         {
+            // array of pointers is not decayed when it is subscripted
+            const char code[] = "const char* x[10];\n"
+                                "void f() {\n"
+                                "    x[0] = \"a\";\n"
+                                "}\n";
+            ASSERT_EQUALS(false, testLifetimeOfX(code, 3, "x ["));
+        }
+
+        {
             const char code[] = "void f() {\n"
                                 "    std::vector<int> v;\n"
                                 "    auto x = v.begin();\n"
