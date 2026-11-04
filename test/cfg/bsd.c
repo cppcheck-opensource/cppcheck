@@ -11,6 +11,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <sys/mman.h>
 #include <sys/time.h>
 #include <sys/uio.h>
 
@@ -179,4 +180,10 @@ void reallocarray_notused(void)
 {
     // cppcheck-suppress [leakReturnValNotUsed, ignoredReturnValue]
     reallocarray(NULL, 10, 10);
+}
+
+void mmap_fixed(void *addr) // No constParameterPointer: mmap() may replace the mapping at addr
+{
+    // cppcheck-suppress valueFlowBailoutIncompleteVar
+    (void)mmap(addr, 0x1000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
 }
