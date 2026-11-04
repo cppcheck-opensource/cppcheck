@@ -129,9 +129,9 @@ protected:
     void resizeEvent(QResizeEvent *event) override;
 
 private slots:
-    void updateLineNumberAreaWidth(int newBlockCount);
+    void updateLineNumberAreaWidth(int /*newBlockCount*/);
     void highlightErrorLine();
-    void updateLineNumberArea(const QRect & /*rect*/, int /*dy*/);
+    void updateLineNumberArea(const QRect& rect, int dy);
 
 private:
     QString generateStyleString();

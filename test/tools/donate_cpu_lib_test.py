@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # Cppcheck - A tool for static C/C++ code analysis
-# Copyright (C) 2007-2022 Cppcheck team.
+# Copyright (C) 2007-2026 Cppcheck team.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -58,6 +58,7 @@ def test_library_includes(tmpdir):
     _test_library_includes(tmpdir, ['posix', 'gnu', 'bsd', 'opengl'], '#include\t  <GL/glut.h>')
     _test_library_includes(tmpdir, ['posix', 'gnu', 'bsd', 'nspr'], '#include\t"prtypes.h"')
     _test_library_includes(tmpdir, ['posix', 'gnu', 'bsd', 'lua'], '#include  \t<lua.h>')
+    _test_library_includes(tmpdir, ['posix', 'gnu', 'bsd', 'microsoft_gsl'], '#include <gsl/gsl>')
 
 def test_match_multiple_time(tmpdir):
     libinc = LibraryIncludes()

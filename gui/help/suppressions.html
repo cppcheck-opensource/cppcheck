@@ -1,0 +1,158 @@
+<html>
+<head>
+<title>Hiding and suppressing warnings</title>
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+
+<h1>Hiding and suppressing warnings</h1>
+
+<p>There are several ways to get rid of warnings you do not want to see. They
+differ in how long they last and where they are stored:</p>
+
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Method</th><th>Lasts</th><th>Stored in</th><th>Best for</th></tr>
+<tr><td><a href="#hide">Hide</a></td><td>Until the next analysis</td>
+    <td>Nowhere</td><td>Getting warnings out of the way while you work</td></tr>
+<tr><td><a href="#severity">Severity buttons and filter</a></td>
+    <td>Until you change them</td><td>GUI settings</td>
+    <td>Concentrating on some kinds of warnings</td></tr>
+<tr><td><a href="#suppress">Suppress from the context menu</a></td>
+    <td>Permanent</td><td>Project file</td>
+    <td>Turning off a kind of warning for the whole project</td></tr>
+<tr><td><a href="#projectsuppressions">Suppressions in the project dialog</a></td>
+    <td>Permanent</td><td>Project file</td>
+    <td>Suppressions for some files, lines or symbols</td></tr>
+<tr><td><a href="#inline">Inline suppressions</a></td><td>Permanent</td>
+    <td>Source code</td><td>A single false warning</td></tr>
+<tr><td><a href="#exclude">Excluding files</a></td><td>Permanent</td>
+    <td>Project file</td><td>Code you do not want to analyze at all</td></tr>
+</table>
+
+<p>The difference between <b>hiding</b> and <b>suppressing</b>: a hidden warning
+comes back the next time you analyze the code. A suppressed warning is not
+reported again until you remove the suppression.</p>
+
+<a name="hide"></a>
+<h2>Hiding warnings</h2>
+
+<p>Select one or more warnings, right-click and choose <i>Hide N
+result(s)</i>. To hide all warnings with the same id as the selected warning,
+choose <i>Hide all with id</i>.</p>
+
+<p class="figure"><img src="images/context-menu.png"></p>
+
+<p>Hidden warnings are not deleted. Use <i>View &gt; Show hidden</i> to show
+them again. They are also shown again after the next analysis.</p>
+
+<p>By default, hidden warnings are not saved when you save the results to a
+file. Enable <i>Save all errors when creating report</i> in the
+<a href="preferences.html">preferences</a> to save them too.</p>
+
+<a name="severity"></a>
+<h2>Severity buttons and the quick filter</h2>
+
+<p>The buttons in the severity toolbar show or hide all warnings of a
+severity, and the quick filter shows only warnings that contain some text. See
+<a href="mainwindow.html">The main window</a>. These do not change the results;
+they only change what you see.</p>
+
+<a name="suppress"></a>
+<h2>Suppressing from the context menu</h2>
+
+<p>Select one or more warnings, right-click and choose <i>Suppress selected
+id(s)</i>. All warnings with the ids of the selected warnings are removed from
+the list, and a suppression for each id is added to the project file. The
+warnings are not reported in future analyses.</p>
+
+<p class="note"><b>Note:</b> this suppresses the id in <b>all files</b> of the
+project, not only the selected warning. If you only want to suppress one
+warning, use an <a href="#inline">inline suppression</a>, or add a suppression
+with a file name or line number in the project dialog.</p>
+
+<p>This only works when a project is open. Without a project the warnings are
+removed from the list, but nothing is saved. Critical errors, such as syntax
+errors, can not be suppressed this way.</p>
+
+<a name="projectsuppressions"></a>
+<h2>Suppressions in the project dialog</h2>
+
+<p>Open <i>File &gt; Edit Project File...</i> and go to the <i>Warning
+options</i> tab. The <i>Suppressions</i> list shows all suppressions of the
+project, including the ones made with the context menu.</p>
+
+<p class="figure"><img src="images/new-suppression.png"></p>
+
+<p>Click <i>Add</i> to add a suppression. You must give the <b>Error ID</b>;
+the other fields make the suppression more specific:</p>
+<ul>
+<li><b>File name</b>: only in files that match. Wildcards <code>*</code> and
+    <code>?</code> can be used, for example <code>src/legacy/*</code>.</li>
+<li><b>Line number</b>: only on this line of the file.</li>
+<li><b>Symbol name</b>: only for warnings about this variable or
+    function.</li>
+</ul>
+
+<p>Some examples:</p>
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Error ID</th><th>File name</th><th>Line</th><th>Effect</th></tr>
+<tr><td><code>unusedFunction</code></td><td>&nbsp;</td><td>&nbsp;</td>
+    <td>No unused function warnings at all, for example for a library whose
+    functions are called by other programs.</td></tr>
+<tr><td><code>*</code></td><td><code>src/generated/*</code></td><td>&nbsp;</td>
+    <td>No warnings in generated code (but the code is still analyzed).</td></tr>
+<tr><td><code>nullPointer</code></td><td><code>src/io.c</code></td>
+    <td>120</td><td>No null pointer warning on line 120 of
+    <code>src/io.c</code>.</td></tr>
+</table>
+
+<p>Double-click a suppression to edit it, or select it and click
+<i>Remove</i> to remove it. After you click <i>OK</i>, the project is analyzed
+again.</p>
+
+<a name="inline"></a>
+<h2>Inline suppressions</h2>
+
+<p>An inline suppression is a comment in the source code, just before the line
+with the warning, or at the end of that line:</p>
+
+<pre>void f()
+{
+    char *p = get_buffer();
+    // cppcheck-suppress nullPointer
+    *p = 0;
+
+    *p = 1; // cppcheck-suppress nullPointer
+}</pre>
+
+<p>You can suppress several ids at once, and add a comment that explains
+why:</p>
+
+<pre>// cppcheck-suppress[nullPointer,uninitvar] get_buffer() never returns NULL</pre>
+
+<p>Inline suppressions are the best way to suppress a single false warning:
+they stay with the code when it is moved, and the next person who reads the
+code sees that the warning was looked at. See the Cppcheck manual for more
+forms, for example suppressing a whole block or file.</p>
+
+<p>Inline suppressions must be enabled:</p>
+<ul>
+<li>for a project, with <i>Enable inline suppressions</i> on the <i>Warning
+    options</i> tab of the project dialog (enabled by default for new
+    projects),</li>
+<li>without a project, with <i>Enable inline suppressions</i> in the
+    <a href="preferences.html">preferences</a>.</li>
+</ul>
+
+<a name="exclude"></a>
+<h2>Excluding files</h2>
+
+<p>To not analyze some files or folders at all, add them to <i>Exclude source
+files</i> on the <i>Warning options</i> tab of the project dialog. See
+<a href="projectfiledialog.html#exclude">Exclude source files</a>.</p>
+
+<p class="nav">Previous: <a href="severities.html">Severities and report
+types</a> | Next: <a href="tagging.html">Tagging warnings</a></p>
+
+</body>
+</html>

@@ -31,7 +31,9 @@
 #include <string>
 #include <vector>
 
+#ifdef HAVE_RULES
 class TokenList;
+#endif
 struct FileSettings;
 class CheckUnusedFunctions;
 class Tokenizer;
@@ -151,6 +153,9 @@ private:
      * @brief Get dumpfile <rawtokens> contents, this is only public for testing purposes
      */
     std::string getDumpFileContentsRawTokens(const std::vector<std::string>& files, const simplecpp::TokenList& tokens1) const;
+    static std::string getDumpFileContentsRawTokens(const std::string& header, const std::string& footer);
+    std::string getDumpFileContentsRawTokensHeader(const std::vector<std::string>& files) const;
+    static std::string getDumpFileContentsRawTokensFooter(const simplecpp::TokenList& tokens1);
 
     std::string getLibraryDumpData() const;
 
@@ -181,7 +186,7 @@ private:
      */
     unsigned int checkFile(const FileWithDetails& file, const std::string &cfgname);
 
-    void checkPlistOutput(const FileWithDetails& file, const std::vector<std::string>& files);
+    void checkPlistOutput(const FileWithDetails& file);
 
     /**
      * @brief Check a file using buffer
@@ -248,7 +253,7 @@ private:
     bool mUseGlobalSuppressions;
 
     /** File info used for whole program analysis */
-    std::list<Check::FileInfo*> mFileInfo;
+    std::list<const Check::FileInfo*> mFileInfo;
 
     /** Callback for executing a shell command (exe, args, output) */
     ExecuteCmdFn mExecuteCommand;

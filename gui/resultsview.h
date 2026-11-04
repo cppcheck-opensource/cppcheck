@@ -388,11 +388,6 @@ private:
 
     Settings* mCheckSettings = nullptr;
 
-    /**
-     * Set to true when checking finish successfully. Set to false whenever analysis starts.
-     */
-    bool mSuccess = false;
-
     /** Critical error ids */
     QString mCriticalErrors;
 

@@ -39,7 +39,7 @@ private:
     }
 
     void copyOnWrite() const {
-        SimpleTokenList tokenlist("1+1;");
+        SimpleTokenList tokenlist("1+1;\n");
         Token* tok = tokenlist.front();
         const nonneg int id = 123;
         tok->exprId(id);

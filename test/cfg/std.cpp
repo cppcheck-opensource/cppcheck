@@ -869,7 +869,7 @@ char * overlappingWriteFunction_strncat(const char *src, char *dest, const std::
     // cppcheck-suppress overlappingWriteFunction
     (void)strncat(dest, dest+1, 2);
     char buffer[] = "strncat";
-    // cppcheck-suppress overlappingWriteFunction
+    // cppcheck-suppress [overlappingWriteFunction,returnDanglingLifetime]
     return strncat(buffer, buffer + 1, 3);
 }
 
@@ -882,7 +882,7 @@ wchar_t * overlappingWriteFunction_wcsncat(const wchar_t *src, wchar_t *dest, co
     // cppcheck-suppress overlappingWriteFunction
     (void)wcsncat(dest, dest+1, 2);
     wchar_t buffer[] = L"strncat";
-    // cppcheck-suppress overlappingWriteFunction
+    // cppcheck-suppress [overlappingWriteFunction,returnDanglingLifetime]
     return wcsncat(buffer, buffer + 1, 3);
 }
 
@@ -917,8 +917,8 @@ char * overlappingWriteFunction_strncpy(char *buf, const std::size_t count)
 
 void * overlappingWriteFunction_memmove(void)
 {
-    // No warning shall be shown:
     char str[] = "memmove handles overlapping data well";
+    // cppcheck-suppress returnDanglingLifetime
     return memmove(str,str+3,4);
 }
 
@@ -1058,7 +1058,7 @@ void returnValue_std_isgreater(void)
 {
     // cppcheck-suppress knownConditionTrueFalse
     if (std::isgreater(4,2) == 0) {}
-    // @todo support floats
+    // cppcheck-suppress knownConditionTrueFalse
     if (std::isgreater(4.0f,2.0f) == 0) {}
 }
 
@@ -1066,7 +1066,7 @@ void returnValue_std_isgreaterequal(void)
 {
     // cppcheck-suppress knownConditionTrueFalse
     if (std::isgreaterequal(4,2) == 0) {}
-    // @todo support floats
+    // cppcheck-suppress knownConditionTrueFalse
     if (std::isgreaterequal(4.0f,2.0f) == 0) {}
 }
 
@@ -1074,7 +1074,7 @@ void returnValue_std_isless(void)
 {
     // cppcheck-suppress knownConditionTrueFalse
     if (std::isless(4,2) == 0) {}
-    // @todo support floats
+    // cppcheck-suppress knownConditionTrueFalse
     if (std::isless(4.0f,2.0f) == 0) {}
 }
 
@@ -1082,7 +1082,7 @@ void returnValue_std_islessequal(void)
 {
     // cppcheck-suppress knownConditionTrueFalse
     if (std::islessequal(4,2) == 0) {}
-    // @todo support floats
+    // cppcheck-suppress knownConditionTrueFalse
     if (std::islessequal(4.0f,2.0f) == 0) {}
 }
 
@@ -1093,8 +1093,10 @@ void returnValue_std_islessgreater(void)
     // cppcheck-suppress knownConditionTrueFalse
     if (std::islessgreater(2,4) == 0) {}
 
-    if (std::islessgreater(4.0f,2.0f) == 0) {} // @todo support floats
-    if (std::islessgreater(2.0f,4.0f) == 0) {} // @todo support floats
+    // cppcheck-suppress knownConditionTrueFalse
+    if (std::islessgreater(4.0f,2.0f) == 0) {}
+    // cppcheck-suppress knownConditionTrueFalse
+    if (std::islessgreater(2.0f,4.0f) == 0) {}
 }
 
 void bufferAccessOutOfBounds(void)
@@ -2836,6 +2838,13 @@ void uninitvar_logb(void)
     (void)std::logbl(ld);
 }
 
+void bool_isless(float f1, float f2)
+{
+    // cppcheck-suppress compareBoolExpressionWithInt
+    // cppcheck-suppress compareValueOutOfTypeRangeError
+    if (std::isless(f1,f2)==123) {}
+}
+
 void uninitvar_isless(void)
 {
     float f1,f2;
@@ -2851,6 +2860,13 @@ void uninitvar_isless(void)
     (void)std::isless(ld1,ld2);
 }
 
+void bool_islessequal(float f1, float f2)
+{
+    // cppcheck-suppress compareBoolExpressionWithInt
+    // cppcheck-suppress compareValueOutOfTypeRangeError
+    if (std::islessequal(f1,f2)==123) {}
+}
+
 void uninitvar_islessequal(void)
 {
     float f1,f2;
@@ -2864,6 +2880,13 @@ void uninitvar_islessequal(void)
     long double ld1,ld2;
     // cppcheck-suppress uninitvar
     (void)std::islessequal(ld1,ld2);
+}
+
+void bool_islessgreater(float f1, float f2)
+{
+    // cppcheck-suppress compareBoolExpressionWithInt
+    // cppcheck-suppress compareValueOutOfTypeRangeError
+    if (std::islessgreater(f1,f2)==123) {}
 }
 
 void uninitvar_islessgreater(void)
@@ -2892,6 +2915,13 @@ void uninitvar_nan(void)
     (void)std::nanl(tagp3);
 }
 
+void bool_isnan(float f)
+{
+    // cppcheck-suppress compareBoolExpressionWithInt
+    // cppcheck-suppress compareValueOutOfTypeRangeError
+    if (std::isnan(f)==123) {}
+}
+
 void uninitvar_isnan(void)
 {
     double d;
@@ -2899,11 +2929,25 @@ void uninitvar_isnan(void)
     (void)std::isnan(d);
 }
 
+void bool_isnormal(float f)
+{
+    // cppcheck-suppress compareBoolExpressionWithInt
+    // cppcheck-suppress compareValueOutOfTypeRangeError
+    if (std::isnormal(f)==123) {}
+}
+
 void uninitvar_isnormal(void)
 {
     double d;
     // cppcheck-suppress uninitvar
     (void)std::isnormal(d);
+}
+
+void bool_isunordered(float f1, float f2)
+{
+    // cppcheck-suppress compareBoolExpressionWithInt
+    // cppcheck-suppress compareValueOutOfTypeRangeError
+    if (std::isunordered(f1,f2)==123) {}
 }
 
 void uninitvar_isunordered(void)
@@ -3439,6 +3483,13 @@ void uninivar_scalbln(void)
     long int i3;
     // cppcheck-suppress uninitvar
     (void)std::scalblnl(ld,i3);
+}
+
+void bool_signbit(float f)
+{
+    // cppcheck-suppress compareBoolExpressionWithInt
+    // cppcheck-suppress compareValueOutOfTypeRangeError
+    if (std::signbit(f)==123) {}
 }
 
 void uninitvar_signbit(void)
@@ -4980,6 +5031,18 @@ std::span<const int> returnDanglingLifetime_std_span1() {
 }
 #endif
 
+void* returnDanglingLifetime_memcpy() { // #14833
+    char a[4];
+    // cppcheck-suppress returnDanglingLifetime
+    return memcpy(a, "abc", 4);
+}
+
+wchar_t* returnDanglingLifetime_wcscat() {
+    wchar_t a[10]{L"abc"};
+    // cppcheck-suppress returnDanglingLifetime
+    return wcscat(a, L"def");
+}
+
 void beginEnd()
 {
     std::vector<int> v;
@@ -5055,6 +5118,11 @@ int f_constVariable_std_begin() {
     g_constVariable_std_begin(std::begin(arr));
     *std::begin(arr) = 1;
     return arr[0];
+}
+
+std::size_t uninitvar_std_size() { // #14976
+    int a[3];
+    return std::size(a);
 }
 
 void smartPtr_get()
@@ -5364,4 +5432,14 @@ int containerOutOfBounds_std_initializer_list() { // #14340
     // cppcheck-suppress derefInvalidIterator
     int i = *x.end();
     return i + containerOutOfBounds_std_initializer_list_access(x);
+}
+
+int* missingReturn_std_throw_with_nested() { // #14374
+    try {
+        int* p = new int();
+        return p;
+    }
+    catch (...) {
+        std::throw_with_nested(std::runtime_error("xyz"));
+    }
 }

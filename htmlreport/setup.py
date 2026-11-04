@@ -16,7 +16,7 @@ setup(
     ),
     long_description=readme,
     author="Cppcheck Team",
-    url="https://github.com/danmar/cppcheck",
+    url="https://github.com/cppcheck-opensource/cppcheck",
     license="GPL",
     packages=find_packages(exclude=("tests", "docs")),
     use_scm_version={"root": ".."},

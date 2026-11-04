@@ -23,7 +23,6 @@
 #include "importproject.h"
 #include "library.h"
 #include "newsuppressiondialog.h"
-#include "path.h"
 #include "platform.h"
 #include "platforms.h"
 #include "projectfile.h"
@@ -138,8 +137,6 @@ ProjectFileDialog::ProjectFileDialog(ProjectFile *projectFile, bool premium, QWi
     QString title = tr("Project file: %1").arg(filename);
     setWindowTitle(title);
     loadSettings();
-
-    mUI->premiumLicense->setVisible(false);
 
     QStringList libs;
     // Search the std.cfg first since other libraries could depend on it
@@ -464,7 +461,6 @@ void ProjectFileDialog::loadFromProjectFile(const ProjectFile *projectFile)
         mUI->mToolClangTidy->setEnabled(false);
     }
     mUI->mEditTags->setText(projectFile->getTags().join(';'));
-    mUI->mEditLicenseFile->setText(projectFile->getLicenseFile());
     updatePathsAndDefines();
 }
 
@@ -552,7 +548,6 @@ void ProjectFileDialog::saveToProjectFile(ProjectFile *projectFile) const
     projectFile->setBughunting(mUI->mBughunting->isChecked());
     projectFile->setClangAnalyzer(mUI->mToolClangAnalyzer->isChecked());
     projectFile->setClangTidy(mUI->mToolClangTidy->isChecked());
-    projectFile->setLicenseFile(mUI->mEditLicenseFile->text());
     projectFile->setTags(mUI->mEditTags->text().split(";", Qt::SkipEmptyParts));
 }
 
@@ -576,10 +571,7 @@ QString ProjectFileDialog::getExistingDirectory(const QString &caption, bool tra
 
     // Check if the path is relative to project file's path and if so
     // make it a relative path instead of absolute path.
-    const QDir dir(projectPath);
-    const QString relpath(dir.relativeFilePath(selectedDir));
-    if (!relpath.startsWith("../.."))
-        selectedDir = relpath;
+    selectedDir = mProjectFile->getRelativePath(selectedDir);
 
     // Trailing slash..
     if (trailingSlash && !selectedDir.endsWith('/'))
@@ -629,14 +621,14 @@ void ProjectFileDialog::browseImportProject()
     const QFileInfo inf(mProjectFile->getFilename());
     const QDir &dir = inf.absoluteDir();
     QMap<QString,QString> filters;
-    filters[tr("Visual Studio")] = "*.sln *.slnx *.vcxproj";
+    filters["Visual Studio"] = "*.sln *.slnx *.vcxproj";
     filters[tr("Compile database")] = "compile_commands.json";
-    filters[tr("Borland C++ Builder 6")] = "*.bpr";
+    filters["Borland C++ Builder 6"] = "*.bpr";
     QString fileName = QFileDialog::getOpenFileName(this, tr("Import Project"),
                                                     dir.canonicalPath(),
                                                     toFilterString(filters));
     if (!fileName.isEmpty()) {
-        mUI->mEditImportProject->setText(dir.relativeFilePath(fileName));
+        mUI->mEditImportProject->setText(mProjectFile->getRelativePath(fileName));
         updatePathsAndDefines();
         setProjectConfigurations(getProjectConfigs(fileName));
         for (int row = 0; row < mUI->mListVsConfigs->count(); ++row) {
@@ -657,7 +649,7 @@ void ProjectFileDialog::browseUserInclude()
                                                     dir.canonicalPath(),
                                                     toFilterString(filters));
     if (!fileName.isEmpty()) {
-        mUI->mEditUserInclude->setText(dir.relativeFilePath(fileName));
+        mUI->mEditUserInclude->setText(mProjectFile->getRelativePath(fileName));
     }
 }
 
@@ -896,7 +888,9 @@ void ProjectFileDialog::addExcludeFile()
     QMap<QString,QString> filters;
     filters[tr("Source files")] = "*.c *.cpp";
     filters[tr("All files")] = "*.*";
-    addExcludePath(QFileDialog::getOpenFileName(this, tr("Exclude file"), dir.canonicalPath(), toFilterString(filters)));
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Exclude file"), dir.canonicalPath(), toFilterString(filters));
+    if (!fileName.isEmpty())
+        addExcludePath(mProjectFile->getRelativePath(fileName));
 }
 
 void ProjectFileDialog::editExcludePath()

@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -51,6 +51,8 @@
 #endif
 #if defined(__APPLE__)
 #include <mach-o/dyld.h>
+#elif defined(__HAIKU__)
+#include <image.h>
 #endif
 
 
@@ -158,6 +160,17 @@ std::string Path::getCurrentExecutablePath(const char* fallback)
 #elif defined(__APPLE__)
     uint32_t size = sizeof(buf);
     success = (_NSGetExecutablePath(buf, &size) == 0);
+#elif defined(__HAIKU__)
+    int32 cookie = 0;
+    image_info info;
+    while (get_next_image_info(B_CURRENT_TEAM, &cookie, &info) == B_OK)
+    {
+        if (info.type == B_APP_IMAGE)
+        {
+            break;
+        }
+    }
+    return std::string(info.name);
 #else
     const char* procPath =
 #ifdef __SVR4 // Solaris

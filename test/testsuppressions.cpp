@@ -38,6 +38,7 @@
 #include <map>
 #include <memory>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -116,8 +117,10 @@ private:
         TEST_CASE(addSuppressionDuplicate);
         TEST_CASE(updateSuppressionState);
         TEST_CASE(addSuppressionLineMultiple);
+        TEST_CASE(hashSuppression);
 
         TEST_CASE(suppressionsParseXmlFile);
+        TEST_CASE(xmlMacroSuppressions);
 
         TEST_CASE(toString);
 
@@ -188,12 +191,12 @@ private:
         ASSERT_THROW_EQUALS(SuppressionList::parseLine("id::1"), std::runtime_error, "filename is missing");
 
         // missing/invalid line
-        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer)");
-        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:\n"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer)");
-        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:\n1"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer)");
-        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:#1"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer)"); // TODO: looks like a valid filename
-        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c://1"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer)");
-        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:zero"), std::runtime_error, "invalid line number (converting 'zero' to integer failed - not an integer)");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer (invalid_argument))");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:\n"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer (invalid_argument))");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:\n1"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer (invalid_argument))");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:#1"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer (invalid_argument))"); // TODO: looks like a valid filename
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c://1"), std::runtime_error, "invalid line number (converting '' to integer failed - not an integer (invalid_argument))");
+        ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:zero"), std::runtime_error, "invalid line number (converting 'zero' to integer failed - not an integer (invalid_argument))");
 
         // invalid extras
         ASSERT_THROW_EQUALS(SuppressionList::parseLine("id:1.c:1\n"), std::runtime_error, "unexpected extra ''");
@@ -745,7 +748,7 @@ private:
                                         "    int a;\n"
                                         "    // cppcheck-suppress uninitvar\n"
                                         "    a++;\n"
-                                        "}",
+                                        "}\n",
                                         ""));
         ASSERT_EQUALS("", errout_str());
 
@@ -967,7 +970,7 @@ private:
                                         "    b++;\n"
                                         "    // cppcheck-suppress-end uninitvar\n"
                                         "}\n"
-                                        "// cppcheck-suppress-end [uninitvar, syntaxError]",
+                                        "// cppcheck-suppress-end [uninitvar, syntaxError]\n",
                                         ""));
         ASSERT_EQUALS("[test.cpp:1:1]: (information) Unmatched suppression: syntaxError [unmatchedSuppression]\n", errout_str());
 
@@ -1122,38 +1125,45 @@ private:
         SuppressionList suppressions1;
         ASSERT_EQUALS("", suppressions1.parseFile(file1));
         ASSERT_EQUALS(true, suppressions1.isSuppressed(errorMessage("abc", "test.cpp", 123)));
+        ASSERT_EQUALS("", suppressions1.getSuppressions().cbegin()->extraComment);
 
         std::istringstream file2("// comment\n"
                                  "abc");
         SuppressionList suppressions2;
         ASSERT_EQUALS("", suppressions2.parseFile(file2));
         ASSERT_EQUALS(true, suppressions2.isSuppressed(errorMessage("abc", "test.cpp", 123)));
+        ASSERT_EQUALS("", suppressions2.getSuppressions().cbegin()->extraComment);
 
         std::istringstream file3("abc // comment");
         SuppressionList suppressions3;
         ASSERT_EQUALS("", suppressions3.parseFile(file3));
         ASSERT_EQUALS(true, suppressions3.isSuppressed(errorMessage("abc", "test.cpp", 123)));
+        ASSERT_EQUALS("comment", suppressions3.getSuppressions().cbegin()->extraComment);
 
         std::istringstream file4("abc\t\t # comment");
         SuppressionList suppressions4;
         ASSERT_EQUALS("", suppressions4.parseFile(file4));
         ASSERT_EQUALS(true, suppressions4.isSuppressed(errorMessage("abc", "test.cpp", 123)));
+        ASSERT_EQUALS("comment", suppressions4.getSuppressions().cbegin()->extraComment);
 
         std::istringstream file5("abc:test.cpp\t\t # comment");
         SuppressionList suppressions5;
         ASSERT_EQUALS("", suppressions5.parseFile(file5));
         ASSERT_EQUALS(true, suppressions5.isSuppressed(errorMessage("abc", "test.cpp", 123)));
+        ASSERT_EQUALS("comment", suppressions5.getSuppressions().cbegin()->extraComment);
 
         std::istringstream file6("abc:test.cpp:123\t\t # comment with . inside");
         SuppressionList suppressions6;
         ASSERT_EQUALS("", suppressions6.parseFile(file6));
         ASSERT_EQUALS(true, suppressions6.isSuppressed(errorMessage("abc", "test.cpp", 123)));
+        ASSERT_EQUALS("comment with . inside", suppressions6.getSuppressions().cbegin()->extraComment);
 
         std::istringstream file7(" // comment\n" // #11450
                                  "abc");
         SuppressionList suppressions7;
         ASSERT_EQUALS("", suppressions7.parseFile(file7));
         ASSERT_EQUALS(true, suppressions7.isSuppressed(errorMessage("abc", "test.cpp", 123)));
+        ASSERT_EQUALS("", suppressions7.getSuppressions().cbegin()->extraComment);
     }
 
     void inlinesuppress() const {
@@ -1238,14 +1248,37 @@ private:
     }
 
     void inlinesuppress_comment() const {
-        SuppressionList::Suppression s;
         std::string errMsg;
-        ASSERT_EQUALS(true, s.parseComment("// cppcheck-suppress abc ; some comment", &errMsg));
-        ASSERT_EQUALS("", errMsg);
-        ASSERT_EQUALS(true, s.parseComment("// cppcheck-suppress abc // some comment", &errMsg));
-        ASSERT_EQUALS("", errMsg);
-        ASSERT_EQUALS(true, s.parseComment("// cppcheck-suppress abc -- some comment", &errMsg));
-        ASSERT_EQUALS("", errMsg);
+        {
+            SuppressionList::Suppression s;
+            ASSERT_EQUALS(true, s.parseComment("// cppcheck-suppress abc ; some comment // extra stuff", &errMsg));
+            ASSERT_EQUALS("", errMsg);
+            ASSERT_EQUALS("some comment // extra stuff", s.extraComment);
+        }
+        {
+            SuppressionList::Suppression s;
+            ASSERT_EQUALS(true, s.parseComment("// cppcheck-suppress abc; some comment // extra stuff", &errMsg));
+            ASSERT_EQUALS("", errMsg);
+            ASSERT_EQUALS("some comment // extra stuff", s.extraComment);
+        }
+        {
+            SuppressionList::Suppression s;
+            ASSERT_EQUALS(true, s.parseComment("// cppcheck-suppress abc // some comment ; extra stuff", &errMsg));
+            ASSERT_EQUALS("", errMsg);
+            ASSERT_EQUALS("some comment ; extra stuff", s.extraComment);
+        }
+        {
+            SuppressionList::Suppression s;
+            ASSERT_EQUALS(true, s.parseComment("// cppcheck-suppress abc// some comment ; extra stuff", &errMsg));
+            ASSERT_EQUALS("", errMsg);
+            ASSERT_EQUALS("some comment ; extra stuff", s.extraComment);
+        }
+        {
+            SuppressionList::Suppression s;
+            ASSERT_EQUALS(true, s.parseComment("// cppcheck-suppress abc -- some comment", &errMsg));
+            ASSERT_EQUALS("", errMsg);
+            ASSERT_EQUALS("", s.extraComment);
+        }
     }
 
     // TODO: tests internal function - should it be private?
@@ -1386,6 +1419,48 @@ private:
         suppressions=SuppressionList::parseMultiSuppressComment("/*cppcheck-suppress[errorId1, errorId2 symbolName=arr]*/", &errMsg);
         ASSERT_EQUALS(2, suppressions.size());
         ASSERT_EQUALS(true, errMsg.empty());
+
+        errMsg = "";
+        suppressions=SuppressionList::parseMultiSuppressComment("//cppcheck-suppress[errorId1, errorId2 symbolName=arr] ; extra comment", &errMsg);
+        ASSERT_EQUALS(2, suppressions.size());
+        ASSERT_EQUALS(true, errMsg.empty());
+        ASSERT_EQUALS("extra comment", suppressions[0].extraComment);
+        ASSERT_EQUALS("extra comment", suppressions[1].extraComment);
+
+        errMsg = "";
+        suppressions=SuppressionList::parseMultiSuppressComment("//cppcheck-suppress[errorId1, errorId2 symbolName=arr] // extra comment", &errMsg);
+        ASSERT_EQUALS(2, suppressions.size());
+        ASSERT_EQUALS(true, errMsg.empty());
+        ASSERT_EQUALS("extra comment", suppressions[0].extraComment);
+        ASSERT_EQUALS("extra comment", suppressions[1].extraComment);
+
+        errMsg = "";
+        suppressions=SuppressionList::parseMultiSuppressComment("/*cppcheck-suppress[errorId1, errorId2 symbolName=arr] ; extra comment */", &errMsg);
+        ASSERT_EQUALS(2, suppressions.size());
+        ASSERT_EQUALS(true, errMsg.empty());
+        ASSERT_EQUALS("extra comment", suppressions[0].extraComment);
+        ASSERT_EQUALS("extra comment", suppressions[1].extraComment);
+
+        errMsg = "";
+        suppressions=SuppressionList::parseMultiSuppressComment("/*cppcheck-suppress[errorId1, errorId2 symbolName=arr] // extra comment */", &errMsg);
+        ASSERT_EQUALS(2, suppressions.size());
+        ASSERT_EQUALS(true, errMsg.empty());
+        ASSERT_EQUALS("extra comment", suppressions[0].extraComment);
+        ASSERT_EQUALS("extra comment", suppressions[1].extraComment);
+
+        errMsg = "";
+        suppressions=SuppressionList::parseMultiSuppressComment("/*cppcheck-suppress[errorId1, errorId2 symbolName=arr] ; extra comment // more */", &errMsg);
+        ASSERT_EQUALS(2, suppressions.size());
+        ASSERT_EQUALS(true, errMsg.empty());
+        ASSERT_EQUALS("extra comment // more", suppressions[0].extraComment);
+        ASSERT_EQUALS("extra comment // more", suppressions[1].extraComment);
+
+        errMsg = "";
+        suppressions=SuppressionList::parseMultiSuppressComment("/*cppcheck-suppress[errorId1, errorId2 symbolName=arr] // extra comment ; more */", &errMsg);
+        ASSERT_EQUALS(2, suppressions.size());
+        ASSERT_EQUALS(true, errMsg.empty());
+        ASSERT_EQUALS("extra comment ; more", suppressions[0].extraComment);
+        ASSERT_EQUALS("extra comment ; more", suppressions[1].extraComment);
     }
 
     void globalSuppressions() { // Testing that Cppcheck::useGlobalSuppressions works (#8515)
@@ -1399,8 +1474,8 @@ private:
 
         CppCheck cppCheck(settings, supprs, *this, nullptr, false, nullptr); // <- do not "use global suppressions". pretend this is a thread that just checks a file.
 
-        const char code[] = "int f() { int a; return a; }";
-        ASSERT_EQUALS(0, cppCheck.checkBuffer(FileWithDetails("test.c", Standards::Language::C, 0),code, sizeof(code))); // <- no unsuppressed error is seen
+        const char code[] = "int f() { int a; return a; }\n";
+        ASSERT_EQUALS(0, cppCheck.checkBuffer(FileWithDetails("test.c", Standards::Language::C, 0),code, sizeof(code)-1)); // <- no unsuppressed error is seen
         ASSERT_EQUALS("[test.c:1:25]: (error) Uninitialized variable: a [uninitvar]\n", errout_str()); // <- report error so ThreadExecutor can suppress it and make sure the global suppression is matched.
     }
 
@@ -1438,9 +1513,9 @@ private:
             "    int x;\n"
             "    // cppcheck-suppress unusedStructMember\n"
             "    int y;\n"
-            "};";
+            "};\n";
         CppCheck cppCheck(settings, supprs, *this, nullptr, true, nullptr);
-        ASSERT_EQUALS(0, cppCheck.checkBuffer(FileWithDetails("/somewhere/test.cpp", Standards::Language::CPP, 0), code, sizeof(code)));
+        ASSERT_EQUALS(0, cppCheck.checkBuffer(FileWithDetails("/somewhere/test.cpp", Standards::Language::CPP, 0), code, sizeof(code)-1));
         ASSERT_EQUALS("",errout_str());
     }
 
@@ -1469,7 +1544,7 @@ private:
                             "   fld   TBYTE PTR [EAX]   ; load an extended real (10 bytes)\n"
                             "   fstp  QWORD PTR result  ; store a double (8 bytes)\n"
                             "   pop   EAX               ; restore EAX\n"
-                            "}";
+                            "}\n";
         ASSERT_EQUALS(0, (this->*check)(code, ""));
         ASSERT_EQUALS("", errout_str());
     }
@@ -1535,7 +1610,7 @@ private:
     }
 
     void unusedFunctionInternal(unsigned int (TestSuppressions::*check)(const char[], const std::string &)) {
-        ASSERT_EQUALS(0, (this->*check)("void f() {}", "unusedFunction"));
+        ASSERT_EQUALS(0, (this->*check)("void f() {}\n", "unusedFunction"));
     }
 
     void unusedFunctionFiles() {
@@ -1547,7 +1622,7 @@ private:
     }
 
     void suppressingSyntaxErrorAndExitCodeInternal(unsigned int (TestSuppressions::*check)(const char[], const std::string &)) {
-        const char code[] = "fi if;";
+        const char code[] = "fi if;\n";
 
         ASSERT_EQUALS(0, (this->*check)(code, "*:test.cpp"));
         ASSERT_EQUALS("", errout_str());
@@ -1580,8 +1655,8 @@ private:
     void suppressingSyntaxErrorAndExitCodeMultiFileInternal(unsigned int (TestSuppressions::*check)(std::map<std::string, std::string> &f, const std::string &)) {
         // multi files, but only suppression one
         std::map<std::string, std::string> mfiles;
-        mfiles["test.cpp"] = "fi if;";
-        mfiles["test2.cpp"] = "fi if";
+        mfiles["test.cpp"] = "fi if;\n";
+        mfiles["test2.cpp"] = "fi if\n";
         ASSERT_EQUALS(1, (this->*check)(mfiles, "*:test.cpp"));
         ASSERT_EQUALS("[test2.cpp:1:4]: (error) syntax error [syntaxError]\n", errout_str());
     }
@@ -1704,6 +1779,25 @@ private:
             ASSERT_EQUALS("sym", suppr.symbolName);
         }
 
+        {
+            ScopedFile file("suppressparsexml.xml",
+                            "<suppressions>\n"
+                            "<suppress>\n"
+                            "<id>uninitvar</id>\n"
+                            "<macroName>MACRO_NAME</macroName>\n"
+                            "</suppress>\n"
+                            "</suppressions>");
+
+            SuppressionList supprList;
+            ASSERT_EQUALS("", supprList.parseXmlFile(file.path().c_str()));
+            const auto& supprs = supprList.getSuppressions();
+            ASSERT_EQUALS(1, supprs.size());
+            const auto& suppr = *supprs.cbegin();
+            ASSERT_EQUALS("uninitvar", suppr.errorId);
+            ASSERT_EQUALS("MACRO_NAME", suppr.macroName);
+            ASSERT_EQUALS_ENUM(SuppressionList::Type::macro, suppr.type);
+        }
+
         // no file specified
         {
             SuppressionList supprList;
@@ -1757,6 +1851,67 @@ private:
         }
     }
 
+    #define testXmlSuppressions(...) testXmlSuppressions_(__FILE__,__LINE__,__VA_ARGS__)
+    void testXmlSuppressions_(const char *thisfile,
+                              int thisline,
+                              const std::string &xml,
+                              const std::string &code,
+                              const std::string &expected)
+    {
+        const char *xmlpath = "testsupressions.xml";
+        const char *sourcepath = "test.c";
+
+        Suppressions supprs;
+        const ScopedFile xmlfile(xmlpath, xml);
+        ASSERT_EQUALS_LOC("", supprs.nomsg.parseXmlFile(xmlpath), thisfile, thisline);
+
+        Settings settings;
+        settings.templateFormat = templateFormat;
+        settings.quiet = true;
+
+        const FileWithDetails sourcefile(sourcepath, Standards::Language::C, 0);
+        CppCheck instance(settings, supprs, *this, nullptr, true, nullptr);
+        instance.checkBuffer(sourcefile, code.c_str(), code.size());
+
+        ASSERT_EQUALS_LOC(expected, errout_str(), thisfile, thisline);
+    }
+
+    void xmlMacroSuppressions()
+    {
+        testXmlSuppressions(
+            "<suppressions>\n"
+            "<suppress>\n"
+            "<id>uninitvar</id>\n"
+            "<macroName>VAR</macroName>\n"
+            "</suppress>\n"
+            "</suppressions>",
+
+            "#define VAR x\n"
+            "int f(void) {\n"
+            "    int VAR;\n"
+            "    return VAR;\n"
+            "}\n",
+
+            ""
+            );
+        testXmlSuppressions(
+            "<suppressions>\n"
+            "<suppress>\n"
+            "<id>uninitvar</id>\n"
+            "<macroName>WRONG</macroName>\n"
+            "</suppress>\n"
+            "</suppressions>",
+
+            "#define VAR x\n"
+            "int f(void) {\n"
+            "    int VAR;\n"
+            "    return VAR;\n"
+            "}\n",
+
+            "[test.c:4:12]: (error) Uninitialized variable: x [uninitvar]\n"
+            );
+    }
+
     void addSuppressionDuplicate() const {
         SuppressionList supprs;
 
@@ -1803,6 +1958,36 @@ private:
             const std::list<SuppressionList::Suppression> l = supprs.getUnmatchedGlobalSuppressions();
             ASSERT_EQUALS(0, l.size());
         }
+    }
+
+    void hashSuppression() const {
+        SuppressionList supprs;
+        SuppressionList::Suppression s;
+        s.errorId = "id";
+        s.hash = 1;
+        ASSERT_EQUALS("", supprs.addSuppression(s));
+        ASSERT_EQUALS("suppression 'id' already exists", supprs.addSuppression(s));
+        ASSERT_EQUALS(true, supprs.updateSuppressionState(s));
+        s.hash = 2;
+        ASSERT_EQUALS(false, supprs.updateSuppressionState(s));
+        // same hash, different id
+        s.errorId = "id2";
+        s.hash = 1;
+        ASSERT_EQUALS("", supprs.addSuppression(s));
+        ASSERT_EQUALS(true, supprs.updateSuppressionState(s));
+
+        SuppressionList::ErrorMessage error = errorMessage("id");
+        error.hash = 1;
+        ASSERT_EQUALS(true, supprs.isSuppressed(error));
+        error.hash = 2;
+        ASSERT_EQUALS(false, supprs.isSuppressed(error));
+        error.hash = 0;
+        ASSERT_EQUALS(false, supprs.isSuppressed(error));
+        error.hash = 1;
+        error.errorId = "id2";
+        ASSERT_EQUALS(true, supprs.isSuppressed(error));
+        error.errorId = "id3";
+        ASSERT_EQUALS(false, supprs.isSuppressed(error));
     }
 
     void addSuppressionLineMultiple() const {

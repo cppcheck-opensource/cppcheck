@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,8 +23,10 @@
 //---------------------------------------------------------------------------
 
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 #include "errortypes.h"
+#include "mathlib.h"
 
 #include <cstdint>
 #include <string>
@@ -48,15 +50,43 @@ namespace ValueFlow
 class CPPCHECKLIB CheckStl : public Check {
 public:
     /** This constructor is used when registering the CheckClass */
-    CheckStl() : Check(myName()) {}
+    CheckStl() : Check("STL usage") {}
 
 private:
-    /** This constructor is used when running checks. */
-    CheckStl(const Tokenizer* tokenizer, const Settings* settings, ErrorLogger* errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
-
     /** run checks, the token list is not simplified */
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
+
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings& settings) const override;
+
+    std::string classInfo() const override {
+        return "Check for invalid usage of STL:\n"
+               "- out of bounds errors\n"
+               "- misuse of iterators when iterating through a container\n"
+               "- mismatching containers in calls\n"
+               "- same iterators in calls\n"
+               "- dereferencing an erased iterator\n"
+               "- for vectors: using iterator/pointer after push_back has been used\n"
+               "- optimisation: use empty() instead of size() to guarantee fast code\n"
+               "- suspicious condition when using find\n"
+               "- unnecessary searching in associative containers\n"
+               "- redundant condition\n"
+               "- common mistakes when using string::c_str()\n"
+               "- useless calls of string and STL functions\n"
+               "- dereferencing an invalid iterator\n"
+               "- erasing an iterator that is out of bounds\n"
+               "- out of bounds access of an iterator passed to an STL algorithm\n"
+               "- reading from empty STL container\n"
+               "- iterating over an empty STL container\n"
+               "- consider using an STL algorithm instead of raw loop\n"
+               "- incorrect locking with mutex\n";
+    }
+};
+
+class CPPCHECKLIB CheckStlImpl : public CheckImpl {
+public:
+    /** This constructor is used when running checks. */
+    CheckStlImpl(const Tokenizer* tokenizer, const Settings& settings, ErrorLogger& errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** Accessing container out of bounds using ValueFlow */
     void outOfBounds();
@@ -155,6 +185,12 @@ private:
 
     void eraseIteratorOutOfBounds();
 
+    /**
+     * Check that the iterator given to an STL algorithm is not accessed
+     * out of bounds: std::equal(in.begin(), in.end(), out.begin())
+     */
+    void algorithmOutOfBounds();
+
     void checkMutexes();
 
     bool isContainerSize(const Token *containerToken, const Token *expr) const;
@@ -183,11 +219,12 @@ private:
     void sameIteratorExpressionError(const Token *tok);
     void stlBoundariesError(const Token* tok);
     void if_findError(const Token* tok, bool str);
-    void checkFindInsertError(const Token *tok);
+    /** @param condTok the comparison in the if condition, nullptr => no specific suggestion */
+    void checkFindInsertError(const Token* tok, const Token* condTok);
     void sizeError(const Token* tok);
     void redundantIfRemoveError(const Token* tok);
     void invalidContainerLoopError(const Token* tok, const Token* loopTok, ErrorPath errorPath);
-    void invalidContainerError(const Token *tok, const Token * contTok, const ValueFlow::Value *val, ErrorPath errorPath);
+    void invalidContainerError(const Token *tok, const ValueFlow::Value *val, ErrorPath errorPath);
     void invalidContainerReferenceError(const Token* tok, const Token* contTok, ErrorPath errorPath);
 
     void uselessCallsReturnValueError(const Token* tok, const std::string& varname, const std::string& function);
@@ -207,36 +244,16 @@ private:
 
     void eraseIteratorOutOfBoundsError(const Token* ftok, const Token* itertok, const ValueFlow::Value* val = nullptr);
 
+    void algorithmOutOfBoundsError(const Token* tok,
+                                   const std::string& algoName,
+                                   MathLib::bigint accessed,
+                                   MathLib::bigint available,
+                                   const ValueFlow::Value* value,
+                                   bool mayAccessFewer,
+                                   bool inconclusive);
+
     void globalLockGuardError(const Token *tok);
     void localMutexError(const Token *tok);
-
-    void getErrorMessages(ErrorLogger* errorLogger, const Settings* settings) const override;
-
-    static std::string myName() {
-        return "STL usage";
-    }
-
-    std::string classInfo() const override {
-        return "Check for invalid usage of STL:\n"
-               "- out of bounds errors\n"
-               "- misuse of iterators when iterating through a container\n"
-               "- mismatching containers in calls\n"
-               "- same iterators in calls\n"
-               "- dereferencing an erased iterator\n"
-               "- for vectors: using iterator/pointer after push_back has been used\n"
-               "- optimisation: use empty() instead of size() to guarantee fast code\n"
-               "- suspicious condition when using find\n"
-               "- unnecessary searching in associative containers\n"
-               "- redundant condition\n"
-               "- common mistakes when using string::c_str()\n"
-               "- useless calls of string and STL functions\n"
-               "- dereferencing an invalid iterator\n"
-               "- erasing an iterator that is out of bounds\n"
-               "- reading from empty STL container\n"
-               "- iterating over an empty STL container\n"
-               "- consider using an STL algorithm instead of raw loop\n"
-               "- incorrect locking with mutex\n";
-    }
 };
 /// @}
 //---------------------------------------------------------------------------

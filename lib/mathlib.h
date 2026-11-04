@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -115,6 +115,8 @@ public:
 
     static bool isInt(const std::string & str);
     static bool isFloat(const std::string &str);
+    /** @brief a long double literal out of the range of double, such as 1e400L, which toDoubleNumber() makes infinity */
+    static bool isLongDoubleOutOfDoubleRange(const std::string &str);
     static bool isDecimalFloat(const std::string &str);
     static bool isNegative(const std::string &str);
     static bool isPositive(const std::string &str);

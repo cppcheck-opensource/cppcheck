@@ -116,7 +116,7 @@ bool TestFixture::prepareTest(const char testname[])
         std::cout << fullTestName << std::endl;
     }
     if (timer_results)
-        mTimer.reset(new Timer(fullTestName, ShowTime::TOP5_SUMMARY, timer_results));
+        mTimer.reset(new Timer(fullTestName, timer_results));
     return !dry_run;
 }
 
@@ -423,11 +423,7 @@ std::size_t TestFixture::runTests(const options& args)
         const auto f = [&](){
             fixture = test->create();
         };
-        // TODO: Timer::run() needs proper handling if no results should be collected
-        if (args.timer_results())
-            Timer::run(test->classname + " - create", ShowTime::TOP5_SUMMARY, args.timer_results(), f);
-        else
-            f();
+        Timer::run(test->classname + " - create", args.timer_results(), f);
         fixture->processOptions(args);
         fixture->run(tests);
     }
@@ -513,7 +509,7 @@ TestFixture::SettingsBuilder& TestFixture::SettingsBuilder::library(const char l
     if (REDUNDANT_CHECK && std::find(settings.libraries.cbegin(), settings.libraries.cend(), lib) != settings.libraries.cend())
         throw std::runtime_error("redundant setting: libraries (" + std::string(lib) + ")");
     // TODO: exename is not yet set
-    const Library::ErrorCode lib_error = settings.library.load(fixture.exename.c_str(), lib).errorcode;
+    const Library::ErrorCode lib_error = settings.library.load(fixture().exename.c_str(), lib).errorcode;
     if (lib_error != Library::ErrorCode::OK)
         throw std::runtime_error("loading library '" + std::string(lib) + "' failed - " + std::to_string(static_cast<int>(lib_error)));
     // strip extension
@@ -535,7 +531,7 @@ TestFixture::SettingsBuilder& TestFixture::SettingsBuilder::platform(Platform::T
 
     std::string errstr;
     // TODO: exename is not yet set
-    if (!settings.platform.set(platformStr, errstr, {fixture.exename}))
+    if (!settings.platform.set(platformStr, errstr, {fixture().exename}))
         throw std::runtime_error("platform '" + platformStr + "' not found");
     return *this;
 }

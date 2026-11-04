@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2021 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -137,7 +137,7 @@ void MainWindow::load(QTextStream &textStream)
         QString line = textStream.readLine();
         if (line.isNull())
             break;
-        if (line.startsWith("ftp://") || (line.startsWith(DACA2_PACKAGES) && line.endsWith(".tar.xz"))) {
+        if (line.startsWith("ftp://") || line.startsWith("https://") || (line.startsWith(DACA2_PACKAGES) && line.endsWith(".tar.xz"))) {
             local = line.startsWith(DACA2_PACKAGES) && line.endsWith(".tar.xz");
             url = line;
             if (!errorMessage.isEmpty())
@@ -181,12 +181,12 @@ void MainWindow::refreshResults()
     filter(ui->version->currentText());
 }
 
-void MainWindow::filter(const QString& filter)
+void MainWindow::filter(const QString& filterStr)
 {
     QStringList allErrors;
 
     for (const QString &errorItem : mAllErrors) {
-        if (filter.isEmpty()) {
+        if (filterStr.isEmpty()) {
             allErrors << errorItem;
             continue;
         }
@@ -195,7 +195,7 @@ void MainWindow::filter(const QString& filter)
         if (lines.size() < 2)
             continue;
 
-        if (lines[1].startsWith(filter))
+        if (lines[1].startsWith(filterStr))
             allErrors << errorItem;
     }
 
@@ -293,7 +293,7 @@ void MainWindow::showResult(QListWidgetItem *item)
 {
     ui->statusBar->clearMessage();
     const bool local = item->text().startsWith(DACA2_PACKAGES);
-    if (!item->text().startsWith("ftp://") && !local)
+    if (!item->text().startsWith("ftp://") && !item->text().startsWith("https://") && !local)
         return;
     const QStringList lines = item->text().split("\n");
     if (lines.size() < 2)

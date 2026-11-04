@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include "infer.h"
 #include "library.h"
 #include "mathlib.h"
+#include "refthunk.h"
 #include "settings.h"
 #include "standards.h"
 #include "symboldatabase.h"
@@ -150,11 +151,11 @@ bool ProgramMemory::getContainerEmptyValue(nonneg int exprid, MathLib::bigint& r
     return false;
 }
 
-void ProgramMemory::setContainerSizeValue(const Token* expr, MathLib::bigint value, bool isEqual)
+void ProgramMemory::setContainerSizeValue(const Token* expr, MathLib::bigint value, bool equal)
 {
     ValueFlow::Value v(value);
     v.valueType = ValueFlow::Value::ValueType::CONTAINER_SIZE;
-    if (!isEqual)
+    if (!equal)
         v.valueKind = ValueFlow::Value::ValueKind::Impossible;
     setValue(expr, v);
 }
@@ -262,26 +263,33 @@ ProgramMemory::Map::iterator ProgramMemory::find(nonneg int exprid)
     return mValues->find(ExprIdToken::create(exprid));
 }
 
-static ValueFlow::Value execute(const Token* expr, ProgramMemory& pm, const Settings& settings);
+static ValueFlow::Value execute(const Token* expr,
+                                ProgramMemory& pm,
+                                const Settings& settings,
+                                const ProgramMemory::Map& vars = {});
 
-static bool evaluateCondition(MathLib::bigint r, const Token* condition, ProgramMemory& pm, const Settings& settings)
+static bool evaluateCondition(MathLib::bigint r,
+                              const Token* condition,
+                              ProgramMemory& pm,
+                              const Settings& settings,
+                              const ProgramMemory::Map& vars = {})
 {
     if (!condition)
         return false;
     MathLib::bigint result = 0;
     bool error = false;
-    execute(condition, pm, &result, &error, settings);
+    execute(condition, pm, &result, &error, settings, vars);
     return !error && result == r;
 }
 
-bool conditionIsFalse(const Token* condition, ProgramMemory pm, const Settings& settings)
+bool conditionIsFalse(const Token* condition, ProgramMemory pm, const Settings& settings, const ProgramMemory::Map& vars)
 {
-    return evaluateCondition(0, condition, pm, settings);
+    return evaluateCondition(0, condition, pm, settings, vars);
 }
 
-bool conditionIsTrue(const Token* condition, ProgramMemory pm, const Settings& settings)
+bool conditionIsTrue(const Token* condition, ProgramMemory pm, const Settings& settings, const ProgramMemory::Map& vars)
 {
-    return evaluateCondition(1, condition, pm, settings);
+    return evaluateCondition(1, condition, pm, settings, vars);
 }
 
 static bool frontIs(const std::vector<MathLib::bigint>& v, bool i)
@@ -337,7 +345,13 @@ static bool isBasicForLoop(const Token* tok)
     return true;
 }
 
-static void programMemoryParseCondition(ProgramMemory& pm, const Token* tok, const Token* endTok, const Settings& settings, bool then)
+// findChanged: optional cached findExpressionChanged (see ProgramMemoryState::FindChangedFn).
+static void programMemoryParseCondition(ProgramMemory& pm,
+                                        const Token* tok,
+                                        const Token* endTok,
+                                        const Settings& settings,
+                                        bool then,
+                                        const ProgramMemoryState::FindChangedFn& findChanged = {})
 {
     auto eval = [&](const Token* t) -> std::vector<MathLib::bigint> {
         if (!t)
@@ -351,6 +365,10 @@ static void programMemoryParseCondition(ProgramMemory& pm, const Token* tok, con
             return {result};
         return std::vector<MathLib::bigint>{};
     };
+    // Use the cached closure if given, else compute directly.
+    auto changed = [&](const Token* e, const Token* s, const Token* en) -> const Token* {
+        return findChanged ? findChanged(e, s, en) : findExpressionChanged(e, s, en, settings);
+    };
     if (Token::Match(tok, "==|>=|<=|<|>|!=")) {
         ValueFlow::Value truevalue;
         ValueFlow::Value falsevalue;
@@ -361,7 +379,7 @@ static void programMemoryParseCondition(ProgramMemory& pm, const Token* tok, con
             return;
         if (!truevalue.isIntValue())
             return;
-        if (endTok && findExpressionChanged(vartok, tok->next(), endTok, settings))
+        if (endTok && changed(vartok, tok->next(), endTok))
             return;
         const bool impossible = (tok->str() == "==" && !then) || (tok->str() == "!=" && then);
         const ValueFlow::Value& v = then ? truevalue : falsevalue;
@@ -370,26 +388,26 @@ static void programMemoryParseCondition(ProgramMemory& pm, const Token* tok, con
         if (containerTok)
             pm.setContainerSizeValue(containerTok, v.intvalue, !impossible);
     } else if (Token::simpleMatch(tok, "!")) {
-        programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, !then);
+        programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, !then, findChanged);
     } else if (then && Token::simpleMatch(tok, "&&")) {
-        programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, then);
-        programMemoryParseCondition(pm, tok->astOperand2(), endTok, settings, then);
+        programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, then, findChanged);
+        programMemoryParseCondition(pm, tok->astOperand2(), endTok, settings, then, findChanged);
     } else if (!then && Token::simpleMatch(tok, "||")) {
-        programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, then);
-        programMemoryParseCondition(pm, tok->astOperand2(), endTok, settings, then);
+        programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, then, findChanged);
+        programMemoryParseCondition(pm, tok->astOperand2(), endTok, settings, then, findChanged);
     } else if (Token::Match(tok, "&&|%oror%")) {
         std::vector<MathLib::bigint> lhs = eval(tok->astOperand1());
         std::vector<MathLib::bigint> rhs = eval(tok->astOperand2());
         if (lhs.empty() || rhs.empty()) {
             if (frontIs(lhs, !then))
-                programMemoryParseCondition(pm, tok->astOperand2(), endTok, settings, then);
+                programMemoryParseCondition(pm, tok->astOperand2(), endTok, settings, then, findChanged);
             else if (frontIs(rhs, !then))
-                programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, then);
+                programMemoryParseCondition(pm, tok->astOperand1(), endTok, settings, then, findChanged);
             else
                 pm.setIntValue(tok, 0, then);
         }
     } else if (tok && tok->exprId() > 0) {
-        if (endTok && findExpressionChanged(tok, tok->next(), endTok, settings))
+        if (endTok && changed(tok, tok->next(), endTok))
             return;
         pm.setIntValue(tok, 0, then);
         const Token* containerTok = settings.library.getContainerFromYield(tok, Library::Container::Yield::EMPTY);
@@ -398,14 +416,18 @@ static void programMemoryParseCondition(ProgramMemory& pm, const Token* tok, con
     }
 }
 
-static void fillProgramMemoryFromConditions(ProgramMemory& pm, const Scope* scope, const Token* endTok, const Settings& settings)
+static void fillProgramMemoryFromConditions(ProgramMemory& pm,
+                                            const Scope* scope,
+                                            const Token* endTok,
+                                            const Settings& settings,
+                                            const ProgramMemoryState::FindChangedFn& findChanged)
 {
     if (!scope)
         return;
     if (!scope->isLocal())
         return;
     assert(scope != scope->nestedIn);
-    fillProgramMemoryFromConditions(pm, scope->nestedIn, endTok, settings);
+    fillProgramMemoryFromConditions(pm, scope->nestedIn, endTok, settings, findChanged);
     if (scope->type == ScopeType::eIf || scope->type == ScopeType::eWhile || scope->type == ScopeType::eElse || scope->type == ScopeType::eFor) {
         const Token* condTok = getCondTokFromEnd(scope->bodyEnd);
         if (!condTok)
@@ -414,13 +436,16 @@ static void fillProgramMemoryFromConditions(ProgramMemory& pm, const Scope* scop
         bool error = false;
         execute(condTok, pm, &result, &error, settings);
         if (error)
-            programMemoryParseCondition(pm, condTok, endTok, settings, scope->type != ScopeType::eElse);
+            programMemoryParseCondition(pm, condTok, endTok, settings, scope->type != ScopeType::eElse, findChanged);
     }
 }
 
-static void fillProgramMemoryFromConditions(ProgramMemory& pm, const Token* tok, const Settings& settings)
+static void fillProgramMemoryFromConditions(ProgramMemory& pm,
+                                            const Token* tok,
+                                            const Settings& settings,
+                                            const ProgramMemoryState::FindChangedFn& findChanged = {})
 {
-    fillProgramMemoryFromConditions(pm, tok->scope(), tok, settings);
+    fillProgramMemoryFromConditions(pm, tok->scope(), tok, settings, findChanged);
 }
 
 static void fillProgramMemoryFromAssignments(ProgramMemory& pm, const Token* tok, const Settings& settings, const ProgramMemory& state, const ProgramMemory::Map& vars)
@@ -429,22 +454,12 @@ static void fillProgramMemoryFromAssignments(ProgramMemory& pm, const Token* tok
     for (const Token *tok2 = tok; tok2; tok2 = tok2->previous()) {
         if ((Token::simpleMatch(tok2, "=") || Token::Match(tok2->previous(), "%var% (|{")) && tok2->astOperand1() &&
             tok2->astOperand2()) {
-            bool setvar = false;
             const Token* vartok = tok2->astOperand1();
-            for (const auto& p:vars) {
-                if (p.first.getExpressionId() != vartok->exprId())
-                    continue;
-                if (vartok == tok)
-                    continue;
-                pm.setValue(vartok, p.second);
-                setvar = true;
-            }
-            if (!setvar) {
-                if (!pm.hasValue(vartok->exprId())) {
-                    const Token* valuetok = tok2->astOperand2();
-                    ProgramMemory local = state;
-                    pm.setValue(vartok, execute(valuetok, local, settings));
-                }
+            if (!pm.hasValue(vartok->exprId())) {
+                const Token* valuetok = tok2->astOperand2();
+                ProgramMemory local = state;
+                // Tracked values are substituted by execute() when the expression is evaluated.
+                pm.setValue(vartok, execute(valuetok, local, settings, vars));
             }
         } else if (Token::simpleMatch(tok2, ")") && tok2->link() &&
                    Token::Match(tok2->link()->previous(), "assert|ASSERT ( !!)")) {
@@ -516,7 +531,7 @@ static ProgramMemory getInitialProgramState(const Token* tok,
     return pm;
 }
 
-ProgramMemoryState::ProgramMemoryState(const Settings& s) : settings(s)
+ProgramMemoryState::ProgramMemoryState(const Settings& s) : settings(s), changedCache(std::make_shared<ChangedCache>())
 {}
 
 void ProgramMemoryState::replace(ProgramMemory pm, const Token* origin)
@@ -539,7 +554,7 @@ void ProgramMemoryState::addState(const Token* tok, const ProgramMemory::Map& va
 {
     ProgramMemory local = state;
     addVars(local, vars);
-    fillProgramMemoryFromConditions(local, tok, settings);
+    fillProgramMemoryFromConditions(local, tok, settings, getCachedFindExpressionChanged(/*skipDeadCode*/ false));
     ProgramMemory pm;
     fillProgramMemoryFromAssignments(pm, tok, settings, local, vars);
     local.replace(std::move(pm));
@@ -547,44 +562,73 @@ void ProgramMemoryState::addState(const Token* tok, const ProgramMemory::Map& va
     replace(std::move(local), tok);
 }
 
-void ProgramMemoryState::assume(const Token* tok, bool b, bool isEmpty)
+void ProgramMemoryState::assume(const Token* tok, bool b, bool isEmpty, const Token* origin)
 {
     ProgramMemory pm = state;
     if (isEmpty)
         pm.setContainerSizeValue(tok, 0, b);
     else
         programMemoryParseCondition(pm, tok, nullptr, settings, b);
-    const Token* origin = tok;
-    const Token* top = tok->astTop();
-    if (Token::Match(top->previous(), "for|while|if (") && !Token::simpleMatch(tok->astParent(), "?")) {
-        origin = top->link()->next();
-        if (!b && origin->link()) {
-            origin = origin->link();
+    if (!origin) {
+        origin = tok;
+        const Token* top = tok->astTop();
+        if (Token::Match(top->previous(), "for|while|if (") && !Token::simpleMatch(tok->astParent(), "?")) {
+            origin = top->link()->next();
+            if (!b && origin->link()) {
+                origin = origin->link();
+            }
         }
     }
     replace(std::move(pm), origin);
 }
 
+ProgramMemoryState::FindChangedFn ProgramMemoryState::getCachedFindExpressionChanged(bool skipDeadCode) const
+{
+    // Structural findExpressionChanged() is pure, so memoize it in changedCache (never invalidated).
+    // skipDeadCode adds the dead-code walk; it evaluates guards against a fixed state snapshot (so every
+    // variable follows the same path) and memoizes those evals in evalCache for the closure's lifetime.
+    using EvalCache = std::map<const Token*, std::vector<MathLib::bigint>>;
+    const std::shared_ptr<ChangedCache> cache = changedCache;
+    const Settings* const sp = &settings();
+    ProgramMemory snapshot = state;
+    const std::shared_ptr<EvalCache> evalCache = skipDeadCode ? std::make_shared<EvalCache>() : nullptr;
+    return [cache, sp, snapshot, skipDeadCode, evalCache](const Token* expr,
+                                                          const Token* start,
+                                                          const Token* end) -> const Token* {
+        const auto key = std::make_tuple(expr, start, end);
+        const auto it = cache->find(key);
+        const Token* modified = (it != cache->end())
+                                    ? it->second
+                                    : cache->emplace(key, findExpressionChanged(expr, start, end, *sp)).first->second;
+        if (!skipDeadCode || !modified)
+            return modified;
+        auto eval = [&](const Token* cond) -> std::vector<MathLib::bigint> {
+            const auto cit = evalCache->find(cond);
+            if (cit != evalCache->end())
+                return cit->second;
+            ProgramMemory pm2 = snapshot;
+            const auto result = execute(cond, pm2, *sp);
+            std::vector<MathLib::bigint> r;
+            if (isTrue(result))
+                r = {1};
+            else if (isFalse(result))
+                r = {0};
+            return evalCache->emplace(cond, std::move(r)).first->second;
+        };
+        return findExpressionChangedSkipDeadCode(expr, start, end, *sp, eval);
+    };
+}
+
 void ProgramMemoryState::removeModifiedVars(const Token* tok)
 {
-    const ProgramMemory& pm = state;
-    auto eval = [&](const Token* cond) -> std::vector<MathLib::bigint> {
-        ProgramMemory pm2 = pm;
-        auto result = execute(cond, pm2, settings);
-        if (isTrue(result))
-            return {1};
-        if (isFalse(result))
-            return {0};
-        return {};
-    };
+    const auto findChanged = getCachedFindExpressionChanged(/*skipDeadCode*/ true);
     state.erase_if([&](const ExprIdToken& e) {
         const Token* start = origins[e.getExpressionId()];
         const Token* expr = e.tok;
-        if (!expr || findExpressionChangedSkipDeadCode(expr, start, tok, settings, eval)) {
+        const bool changed = !expr || findChanged(expr, start, tok);
+        if (changed)
             origins.erase(e.getExpressionId());
-            return true;
-        }
-        return false;
+        return changed;
     });
 }
 
@@ -632,10 +676,6 @@ static MathLib::bigint asInt(const ValueFlow::Value& value)
     return value.isFloatValue() ? static_cast<MathLib::bigint>(value.floatValue) : value.intvalue;
 }
 
-static std::string removeAssign(const std::string& assign) {
-    return std::string{assign.cbegin(), assign.cend() - 1};
-}
-
 namespace {
     struct assign {
         template<class T, class U>
@@ -651,22 +691,23 @@ static bool isIntegralValue(const ValueFlow::Value& value)
     return value.isIntValue() || value.isIteratorValue() || value.isSymbolicValue();
 }
 
-static ValueFlow::Value evaluate(const std::string& op, const ValueFlow::Value& lhs, const ValueFlow::Value& rhs)
+static ValueFlow::Value evaluate(const Token* op, const ValueFlow::Value& lhs, const ValueFlow::Value& rhs, bool removeAssign = false)
 {
+    const std::string opStr = removeAssign ? op->str().substr(0, op->str().size() - 1) : op->str();
     ValueFlow::Value result;
     if (lhs.isImpossible() && rhs.isImpossible())
         return ValueFlow::Value::unknown();
     if (lhs.isImpossible() || rhs.isImpossible()) {
         // noninvertible
-        if (contains({"%", "/", "&", "|"}, op))
+        if (contains({"%", "/", "&", "|"}, opStr))
             return ValueFlow::Value::unknown();
         result.setImpossible();
     }
     if (isNumericValue(lhs) && isNumericValue(rhs)) {
         if (lhs.isFloatValue() || rhs.isFloatValue()) {
-            result.valueType = ValueFlow::Value::ValueType::FLOAT;
+            result.valueType = op->isArithmeticalOp() ? ValueFlow::Value::ValueType::FLOAT : ValueFlow::Value::ValueType::INT;
             bool error = false;
-            result.floatValue = calculate(op, asFloat(lhs), asFloat(rhs), &error);
+            result.floatValue = calculate(opStr, asFloat(lhs), asFloat(rhs), &error);
             if (error)
                 return ValueFlow::Value::unknown();
             return result;
@@ -678,12 +719,12 @@ static ValueFlow::Value evaluate(const std::string& op, const ValueFlow::Value& 
     // If not the same type then one must be int
     if (lhs.valueType != rhs.valueType && !lhs.isIntValue() && !rhs.isIntValue())
         return ValueFlow::Value::unknown();
-    const bool compareOp = contains({"==", "!=", "<", ">", ">=", "<="}, op);
+    const bool compareOp = op->isComparisonOp();
     // Comparison must be the same type
     if (compareOp && lhs.valueType != rhs.valueType)
         return ValueFlow::Value::unknown();
     // Only add, subtract, and compare for non-integers
-    if (!compareOp && !contains({"+", "-"}, op) && !lhs.isIntValue() && !rhs.isIntValue())
+    if (!compareOp && !contains({"+", "-"}, opStr) && !lhs.isIntValue() && !rhs.isIntValue())
         return ValueFlow::Value::unknown();
     // Both can't be iterators for non-compare
     if (!compareOp && lhs.isIteratorValue() && rhs.isIteratorValue())
@@ -701,10 +742,10 @@ static ValueFlow::Value evaluate(const std::string& op, const ValueFlow::Value& 
         result.valueType = ValueFlow::Value::ValueType::INT;
     }
     bool error = false;
-    result.intvalue = calculate(op, lhs.intvalue, rhs.intvalue, &error);
+    result.intvalue = calculate(opStr, lhs.intvalue, rhs.intvalue, &error);
     if (error)
         return ValueFlow::Value::unknown();
-    if (result.isImpossible() && op == "!=") {
+    if (result.isImpossible() && opStr == "!=") {
         if (isTrue(result)) {
             result.intvalue = 1;
         } else if (isFalse(result)) {
@@ -1318,13 +1359,36 @@ static void pruneConditions(std::vector<const Token*>& conds,
 namespace {
     struct Executor {
         ProgramMemory* pm;
-        const Settings& settings;
+        RefThunk<const Settings> settings;
+        // Values tracked by the forward/reverse analysis. A tracked value is the authoritative
+        // current value of its expression and takes precedence over the program memory.
+        const ProgramMemory::Map* vars = nullptr;
         int fdepth = 4;
         int depth = 10;
 
         Executor(ProgramMemory* pm, const Settings& settings) : pm(pm), settings(settings)
         {
             assert(pm != nullptr);
+        }
+
+        // Is the tracked value for this expression available?
+        const ValueFlow::Value* getTrackedValue(const Token* expr) const
+        {
+            if (!vars || expr->exprId() == 0)
+                return nullptr;
+            const auto it = vars->find(ExprIdToken::create(expr->exprId()));
+            return it == vars->end() ? nullptr : &it->second;
+        }
+
+        // Does the expression read a tracked value? If so, any value cached for it may be stale
+        // (the tracked value may have changed since), so it must be re-evaluated, not served cached.
+        bool dependsOnTrackedValue(const Token* expr) const
+        {
+            if (!vars || vars->empty())
+                return false;
+            return findAstNode(expr, [&](const Token* tok) {
+                return getTrackedValue(tok) != nullptr;
+            }) != nullptr;
         }
 
         static ValueFlow::Value unknown() {
@@ -1449,6 +1513,31 @@ namespace {
             return unknown();
         }
 
+        // Get the size of the container. If the container itself is not tracked in the program
+        // memory then check if it is symbolically equal to a container whose size is tracked.
+        ValueFlow::Value executeContainerSize(const Token* containerTok)
+        {
+            ValueFlow::Value v = execute(containerTok);
+            if (v.isContainerSizeValue())
+                return v;
+            for (const ValueFlow::Value& value : containerTok->values()) {
+                if (!value.isSymbolicValue())
+                    continue;
+                if (value.isImpossible())
+                    continue;
+                if (value.intvalue != 0)
+                    continue;
+                if (!value.tokvalue)
+                    continue;
+                if (value.tokvalue->exprId() == 0)
+                    continue;
+                const ValueFlow::Value* sizeValue = pm->getValue(value.tokvalue->exprId());
+                if (sizeValue && sizeValue->isContainerSizeValue())
+                    return *sizeValue;
+            }
+            return unknown();
+        }
+
         ValueFlow::Value executeImpl(const Token* expr)
         {
             const ValueFlow::Value* value = nullptr;
@@ -1477,14 +1566,14 @@ namespace {
                 const Token* containerTok = expr->tokAt(-2)->astOperand1();
                 const Library::Container::Yield yield = containerTok->valueType()->container->getYield(expr->strAt(-1));
                 if (yield == Library::Container::Yield::SIZE) {
-                    ValueFlow::Value v = execute(containerTok);
+                    ValueFlow::Value v = executeContainerSize(containerTok);
                     if (!v.isContainerSizeValue())
                         return unknown();
                     v.valueType = ValueFlow::Value::ValueType::INT;
                     return v;
                 }
                 if (yield == Library::Container::Yield::EMPTY) {
-                    ValueFlow::Value v = execute(containerTok);
+                    ValueFlow::Value v = executeContainerSize(containerTok);
                     if (!v.isContainerSizeValue())
                         return unknown();
                     if (v.isImpossible() && v.intvalue == 0)
@@ -1501,7 +1590,7 @@ namespace {
                     if (!pm->hasValue(expr->astOperand1()->exprId()))
                         return unknown();
                     ValueFlow::Value& lhs = pm->at(expr->astOperand1()->exprId());
-                    rhs = evaluate(removeAssign(expr->str()), lhs, rhs);
+                    rhs = evaluate(expr, lhs, rhs, /*removeAssign*/ true);
                     if (lhs.isIntValue())
                         ValueFlow::Value::visitValue(rhs, std::bind(assign{}, std::ref(lhs.intvalue), std::placeholders::_1));
                     else if (lhs.isFloatValue())
@@ -1555,7 +1644,7 @@ namespace {
                     return unknown();
                 const MathLib::bigint index = rhs.intvalue;
                 if (index >= 0 && index < strValue.size())
-                    return ValueFlow::Value{strValue[static_cast<std::size_t>(index)]};
+                    return ValueFlow::Value{strValue[index]};
                 if (index == strValue.size())
                     return ValueFlow::Value{};
             } else if (Token::Match(expr, "%cop%") && expr->astOperand1() && expr->astOperand2()) {
@@ -1565,7 +1654,7 @@ namespace {
                 ValueFlow::Value rhs = execute(expr->astOperand2());
                 if (rhs.isUninitValue())
                     return unknown();
-                ValueFlow::Value r = evaluate(expr->str(), lhs, rhs);
+                ValueFlow::Value r = evaluate(expr, lhs, rhs);
                 if (expr->isComparisonOp() && (r.isUninitValue() || r.isImpossible())) {
                     if (rhs.isIntValue() && !expr->astOperand1()->values().empty()) {
                         std::vector<ValueFlow::Value> result = infer(makeIntegralInferModel(),
@@ -1625,7 +1714,15 @@ namespace {
                 }
                 return execute(expr->astOperand1());
             }
-            if (expr->exprId() > 0 && pm->hasValue(expr->exprId())) {
+            // Return the tracked value and write it back when it differs, so later reads see the
+            // same value (as fillProgramMemoryFromAssignments used to do).
+            if (const ValueFlow::Value* tracked = getTrackedValue(expr)) {
+                const ValueFlow::Value* stored = pm->getValue(expr->exprId(), /*impossible*/ true);
+                if (!stored || *stored != *tracked)
+                    pm->setValue(expr, *tracked);
+                return *tracked;
+            }
+            if (expr->exprId() > 0 && pm->hasValue(expr->exprId()) && !dependsOnTrackedValue(expr)) {
                 ValueFlow::Value result = utils::as_const(*pm).at(expr->exprId());
                 if (result.isImpossible() && result.isIntValue() && result.intvalue == 0 && isUsedAsBool(expr, settings)) {
                     result.intvalue = !result.intvalue;
@@ -1666,7 +1763,7 @@ namespace {
                         BuiltinLibraryFunction lf = getBuiltinLibraryFunction(ftok->str());
                         if (lf)
                             return lf(args);
-                        const std::string& returnValue = settings.library.returnValue(ftok);
+                        const std::string& returnValue = settings().library.returnValue(ftok);
                         if (!returnValue.empty()) {
                             std::unordered_map<nonneg int, ValueFlow::Value> arg_map;
                             int argn = 0;
@@ -1818,9 +1915,13 @@ namespace {
     };
 }     // namespace
 
-static ValueFlow::Value execute(const Token* expr, ProgramMemory& pm, const Settings& settings)
+static ValueFlow::Value execute(const Token* expr,
+                                ProgramMemory& pm,
+                                const Settings& settings,
+                                const ProgramMemory::Map& vars)
 {
     Executor ex{&pm, settings};
+    ex.vars = &vars;
     return ex.execute(expr);
 }
 
@@ -1837,7 +1938,7 @@ static std::shared_ptr<Token> createTokenFromExpression(const std::string& retur
 {
     std::shared_ptr<TokenList> tokenList = std::make_shared<TokenList>(settings, cpp ? Standards::Language::CPP : Standards::Language::C);
     {
-        const std::string code = "return " + returnValue + ";";
+        const std::string code = "return " + returnValue + ";\n";
         if (!tokenList->createTokensFromBuffer(code.data(), code.size()))
             return nullptr;
     }
@@ -1910,9 +2011,10 @@ void execute(const Token* expr,
              ProgramMemory& programMemory,
              MathLib::bigint* result,
              bool* error,
-             const Settings& settings)
+             const Settings& settings,
+             const ProgramMemory::Map& vars)
 {
-    ValueFlow::Value v = execute(expr, programMemory, settings);
+    ValueFlow::Value v = execute(expr, programMemory, settings, vars);
     if (!v.isIntValue() || v.isImpossible()) {
         if (error)
             *error = true;

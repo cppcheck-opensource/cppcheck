@@ -47,6 +47,8 @@ struct newInstantiation;
 class CPPCHECKLIB TemplateSimplifier {
 public:
     explicit TemplateSimplifier(Tokenizer &tokenizer);
+    TemplateSimplifier(const TemplateSimplifier &) = delete;
+    TemplateSimplifier &operator=(const TemplateSimplifier &) = delete;
 
     const std::string& dump() const {
         return mDump;
@@ -58,7 +60,7 @@ public:
 
     /**
      */
-    void checkComplicatedSyntaxErrorsInTemplates();
+    void checkComplicatedSyntaxErrorsInTemplates() const;
 
     /**
      * is the token pointing at a template parameters block
@@ -333,7 +335,7 @@ private:
      * @return true if modifications to token-list are done.
      *         false if no modifications are done.
      */
-    bool simplifyCalculations(Token* frontToken = nullptr, const Token *backToken = nullptr, bool isTemplate = true);
+    bool simplifyCalculations(Token* frontToken = nullptr, const Token *backToken = nullptr, bool isTemplate = true) const;
 
     /** Simplify template instantiation arguments.
      * @param start first token of arguments
@@ -463,7 +465,7 @@ private:
     /**
      * Remove a specific "template < ..." template class/function
      */
-    static bool removeTemplate(Token *tok, std::map<Token*, Token*>* forwardDecls = nullptr);
+    static bool removeTemplate(Token *tok, std::map<const Token*, Token*>* forwardDecls = nullptr);
 
     /** Syntax error
      * @throws InternalError thrown unconditionally
@@ -504,17 +506,17 @@ private:
         const std::string &indent = "    ") const;
     void printOut(const std::string &text = "") const;
 
-    Tokenizer &mTokenizer;
-    TokenList &mTokenList;
-    const Settings &mSettings;
-    ErrorLogger &mErrorLogger;
+    Tokenizer& mTokenizer;
+    TokenList& mTokenList;
+    const Settings& mSettings;
+    ErrorLogger& mErrorLogger;
     bool mChanged{};
 
     std::list<TokenAndName> mTemplateDeclarations;
     std::list<TokenAndName> mTemplateForwardDeclarations;
-    std::map<Token *, Token *> mTemplateForwardDeclarationsMap;
-    std::map<Token *, Token *> mTemplateSpecializationMap;
-    std::map<Token *, Token *> mTemplatePartialSpecializationMap;
+    std::map<const Token *, Token *> mTemplateForwardDeclarationsMap;
+    std::map<const Token *, Token *> mTemplateSpecializationMap;
+    std::map<const Token *, Token *> mTemplatePartialSpecializationMap;
     std::list<TokenAndName> mTemplateInstantiations;
     std::list<TokenAndName> mInstantiatedTemplates;
     std::list<TokenAndName> mMemberFunctionsToDelete;

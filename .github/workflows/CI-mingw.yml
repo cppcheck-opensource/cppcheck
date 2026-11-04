@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 19 # max + 3*std of the last 7K runs
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
@@ -49,7 +49,7 @@ jobs:
             mingw-w64-x86_64-gcc
 
       - name: ccache
-        uses: hendrikmuhs/ccache-action@v1.2
+        uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.os }}
 

@@ -79,7 +79,7 @@ public:
     /**
      * ErrorLogger methods
      */
-    void reportOut(const std::string &outmsg, Color c = Color::Reset) override;
+    void reportOut(const std::string &outmsg, Color /*c*/ = Color::Reset) override;
     void reportErr(const ErrorMessage &msg) override;
     void reportMetric(const std::string &metric) override
     {

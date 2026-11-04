@@ -26,7 +26,7 @@ mkdir -p "$bisect_dir" || exit 1
 cd "$bisect_dir" || exit 1
 
 if [ ! -d 'cppcheck' ]; then
-  git clone https://github.com/danmar/cppcheck.git || exit 1
+  git clone https://github.com/cppcheck-opensource/cppcheck.git || exit 1
 fi
 
 bisect_repo_dir="$bisect_dir/cppcheck"

@@ -18,6 +18,7 @@ Checks: >
         -objc-*,
         -openmp-*,
         -zircon-*,
+        cppcoreguidelines-avoid-const-or-ref-data-members,
         cppcoreguidelines-pro-type-static-cast-downcast,
         cppcoreguidelines-rvalue-reference-param-not-moved,
         google-explicit-constructor,

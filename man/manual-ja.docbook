@@ -1702,11 +1702,11 @@ Checking unusedvar.cpp...
 
         <itemizedlist>
           <listitem>
-            <para>Cppcheck プロジェクトはいくつかのアドオンを以下の場所で提供しています。: <uri>http://github.com/danmar/cppcheck/blob/master/addons</uri></para>
+            <para>Cppcheck プロジェクトはいくつかのアドオンを以下の場所で提供しています。: <uri>http://github.com/cppcheck-opensource/cppcheck/blob/master/addons</uri></para>
           </listitem>
 
           <listitem>
-            <para>ublinterは規格で定義されていない未定義動作に注力した&quot;lint&quot;です。: <uri>http://github.com/danmar/ublinter</uri></para>
+            <para>ublinterは規格で定義されていない未定義動作に注力した&quot;lint&quot;です。: <uri>http://github.com/cppcheck-opensource/ublinter</uri></para>
           </listitem>
         </itemizedlist>
 

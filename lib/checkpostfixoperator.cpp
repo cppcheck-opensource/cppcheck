@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,19 +34,12 @@
 //---------------------------------------------------------------------------
 
 
-// Register this check class (by creating a static instance of it)
-namespace {
-    CheckPostfixOperator instance;
-}
-
-
 // CWE ids used
 static const CWE CWE398(398U);   // Indicator of Poor Code Quality
 
-
-void CheckPostfixOperator::postfixOperator()
+void CheckPostfixOperatorImpl::postfixOperator()
 {
-    if (!mSettings->severity.isEnabled(Severity::performance))
+    if (!mSettings.severity.isEnabled(Severity::performance))
         return;
 
     logChecker("CheckPostfixOperator::postfixOperator"); // performance
@@ -90,7 +83,7 @@ void CheckPostfixOperator::postfixOperator()
 //---------------------------------------------------------------------------
 
 
-void CheckPostfixOperator::postfixOperatorError(const Token *tok)
+void CheckPostfixOperatorImpl::postfixOperatorError(const Token *tok)
 {
     reportError(tok, Severity::performance, "postfixOperator",
                 "Prefer prefix ++/-- operators for non-primitive types.\n"
@@ -101,17 +94,17 @@ void CheckPostfixOperator::postfixOperatorError(const Token *tok)
                 "adds a little extra code.", CWE398, Certainty::normal);
 }
 
-void CheckPostfixOperator::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckPostfixOperator::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     if (tokenizer.isC())
         return;
 
-    CheckPostfixOperator checkPostfixOperator(&tokenizer, &tokenizer.getSettings(), errorLogger);
+    CheckPostfixOperatorImpl checkPostfixOperator(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkPostfixOperator.postfixOperator();
 }
 
-void CheckPostfixOperator::getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const
+void CheckPostfixOperator::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
-    CheckPostfixOperator c(nullptr, settings, errorLogger);
+    CheckPostfixOperatorImpl c(nullptr, settings, errorLogger);
     c.postfixOperatorError(nullptr);
 }

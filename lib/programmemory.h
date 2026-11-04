@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 
 #include "config.h"
 #include "mathlib.h"
+#include "refthunk.h"
 #include "vfvalue.h" // needed for alias
 
 #include <cstddef>
@@ -28,6 +29,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -102,7 +104,7 @@ private:
 };
 
 struct CPPCHECKLIB ProgramMemory {
-    using Map = std::unordered_map<ExprIdToken, ValueFlow::Value, ExprIdToken::Hash>;
+    using Map = std::map<ExprIdToken, ValueFlow::Value>;
 
     ProgramMemory() : mValues(new Map()) {}
 
@@ -116,7 +118,7 @@ struct CPPCHECKLIB ProgramMemory {
 
     bool getContainerSizeValue(nonneg int exprid, MathLib::bigint& result) const;
     bool getContainerEmptyValue(nonneg int exprid, MathLib::bigint& result) const;
-    void setContainerSizeValue(const Token* expr, MathLib::bigint value, bool isEqual = true);
+    void setContainerSizeValue(const Token* expr, MathLib::bigint value, bool equal = true);
 
     void setUnknown(const Token* expr);
 
@@ -161,9 +163,26 @@ private:
 };
 
 struct ProgramMemoryState {
+    struct ChangedKeyHash {
+        std::size_t operator()(const std::tuple<const Token*, const Token*, const Token*>& t) const
+        {
+            const std::hash<const Token*> h;
+            std::size_t seed = h(std::get<0>(t));
+            seed ^= h(std::get<1>(t)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= h(std::get<2>(t)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            return seed;
+        }
+    };
+    using ChangedCache =
+        std::unordered_map<std::tuple<const Token*, const Token*, const Token*>, const Token*, ChangedKeyHash>;
+    // The token modifying expr between start and end, or nullptr.
+    using FindChangedFn = std::function<const Token*(const Token* expr, const Token* start, const Token* end)>;
+
     ProgramMemory state;
     std::map<nonneg int, const Token*> origins;
-    const Settings& settings;
+    RefThunk<const Settings> settings;
+    // Memoized findExpressionChanged() pre-filter; structural, so never invalidated.
+    std::shared_ptr<ChangedCache> changedCache;
 
     explicit ProgramMemoryState(const Settings& s);
 
@@ -171,9 +190,12 @@ struct ProgramMemoryState {
 
     void addState(const Token* tok, const ProgramMemory::Map& vars);
 
-    void assume(const Token* tok, bool b, bool isEmpty = false);
+    void assume(const Token* tok, bool b, bool isEmpty = false, const Token* origin = nullptr);
 
     void removeModifiedVars(const Token* tok);
+
+    // A findExpressionChanged() closure memoized in changedCache
+    FindChangedFn getCachedFindExpressionChanged(bool skipDeadCode) const;
 
     ProgramMemory get(const Token* tok, const Token* ctx, const ProgramMemory::Map& vars) const;
 };
@@ -184,21 +206,30 @@ void execute(const Token* expr,
              ProgramMemory& programMemory,
              MathLib::bigint* result,
              bool* error,
-             const Settings& settings);
+             const Settings& settings,
+             const ProgramMemory::Map& vars = {});
 
 /**
  * Is condition always false when variable has given value?
  * \param condition   top ast token in condition
  * \param pm   program memory
+ * \param vars  optional tracked values that take precedence over the program memory
  */
-bool conditionIsFalse(const Token* condition, ProgramMemory pm, const Settings& settings);
+bool conditionIsFalse(const Token* condition,
+                      ProgramMemory pm,
+                      const Settings& settings,
+                      const ProgramMemory::Map& vars = {});
 
 /**
  * Is condition always true when variable has given value?
  * \param condition   top ast token in condition
  * \param pm   program memory
+ * \param vars  optional tracked values that take precedence over the program memory
  */
-bool conditionIsTrue(const Token* condition, ProgramMemory pm, const Settings& settings);
+bool conditionIsTrue(const Token* condition,
+                     ProgramMemory pm,
+                     const Settings& settings,
+                     const ProgramMemory::Map& vars = {});
 
 /**
  * Get program memory by looking backwards from given token.

@@ -107,6 +107,7 @@
               <File Id='lua.cfg' Name='lua.cfg' Source='$(var.CfgsDir)\lua.cfg' />
               <File Id='mfc.cfg' Name='mfc.cfg' Source='$(var.CfgsDir)\mfc.cfg' />
               <File Id='microsoft_atl.cfg' Name='microsoft_atl.cfg' Source='$(var.CfgsDir)\microsoft_atl.cfg' />
+              <File Id='microsoft_gsl.cfg' Name='microsoft_gsl.cfg' Source='$(var.CfgsDir)\microsoft_gsl.cfg' />
               <File Id='microsoft_sal.cfg' Name='microsoft_sal.cfg' Source='$(var.CfgsDir)\microsoft_sal.cfg' />
               <File Id='microsoft_unittest.cfg' Name='microsoft_unittest.cfg' Source='$(var.CfgsDir)\microsoft_unittest.cfg' />
               <File Id='motif.cfg' Name='motif.cfg' Source='$(var.CfgsDir)\motif.cfg' />
@@ -139,6 +140,9 @@
               <File Id='aix_ppc64.xml' Name='aix_ppc64.xml' Source='$(var.PtfsDir)\aix_ppc64.xml' />
               <File Id='arm32wchar_t2.xml' Name='arm32-wchar_t2.xml' Source='$(var.PtfsDir)\arm32-wchar_t2.xml' />
               <File Id='arm32wchar_t4.xml' Name='arm32-wchar_t4.xml' Source='$(var.PtfsDir)\arm32-wchar_t4.xml' />
+              <File Id='arm64linux.xml' Name='arm64-linux.xml' Source='$(var.PtfsDir)\arm64-linux.xml' />
+              <File Id='arm64macos.xml' Name='arm64-macos.xml' Source='$(var.PtfsDir)\arm64-macos.xml' />
+              <File Id='arm64windows.xml' Name='arm64-windows.xml' Source='$(var.PtfsDir)\arm64-windows.xml' />
               <File Id='arm64wchar_t2.xml' Name='arm64-wchar_t2.xml' Source='$(var.PtfsDir)\arm64-wchar_t2.xml' />
               <File Id='arm64wchar_t4.xml' Name='arm64-wchar_t4.xml' Source='$(var.PtfsDir)\arm64-wchar_t4.xml' />
               <File Id='avr8.xml' Name='avr8.xml' Source='$(var.PtfsDir)\avr8.xml' />

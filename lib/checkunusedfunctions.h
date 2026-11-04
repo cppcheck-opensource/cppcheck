@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@ class ErrorLogger;
 class Function;
 class Settings;
 class Tokenizer;
+class Library;
 
 /** @brief Check for functions never called */
 /// @{
@@ -44,7 +45,7 @@ public:
     // Parse current tokens and determine..
     // * Check what functions are used
     // * What functions are declared
-    void parseTokens(const Tokenizer &tokenizer, const Settings &settings);
+    void parseTokens(const Tokenizer &tokenizer, const Library &library);
 
     std::string analyzerInfo(const Tokenizer &tokenizer) const;
 
@@ -56,9 +57,9 @@ public:
     }
 
     // Return true if an error is reported.
-    bool check(const Settings& settings, ErrorLogger& errorLogger) const;
+    bool check(const Library& library, ErrorLogger& errorLogger) const;
 
-    void updateFunctionData(const CheckUnusedFunctions& check);
+    void updateFunctionData(const CheckUnusedFunctions& checkUnusedFunctions);
 
 private:
     static void unusedFunctionError(ErrorLogger& errorLogger,

@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
  */
 
 #include "check.h"
+#include "checks.h"
 #include "fixture.h"
 
 #include <list>
@@ -28,23 +29,12 @@ public:
 
 private:
     void run() override {
-        TEST_CASE(instancesSorted);
         TEST_CASE(classInfoFormat);
     }
 
-    void instancesSorted() const {
-        for (auto i = Check::instances().cbegin(); i != Check::instances().cend(); ++i) {
-            auto j = i;
-            ++j;
-            if (j != Check::instances().cend()) {
-                ASSERT_EQUALS(true, (*i)->name() < (*j)->name());
-            }
-        }
-    }
-
     void classInfoFormat() const {
-        for (auto i = Check::instances().cbegin(); i != Check::instances().cend(); ++i) {
-            const std::string info = (*i)->classInfo();
+        for (const Check * const c : CheckInstances::get()) {
+            const std::string info = c->classInfo();
             if (!info.empty()) {
                 ASSERT('\n' != info[0]);         // No \n in the beginning
                 ASSERT('\n' == info.back());     // \n at end

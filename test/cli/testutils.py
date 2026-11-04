@@ -5,6 +5,7 @@ import select
 import subprocess
 import time
 import tempfile
+import json
 
 # Create Cppcheck project file
 import sys
@@ -43,6 +44,22 @@ def create_gui_project_file(project_file, root_path=None, import_project=None, p
 
     with open(project_file, 'wt') as f:
         f.write(cppcheck_xml)
+
+
+def create_compile_commands(compdb_file, files):
+    compdb = []
+    # TODO: bail out on empty list
+    for f in files:
+        compdb.append(
+            {
+                "file": str(f),
+                "directory": os.path.dirname(f),
+                "command": "gcc -c {}".format(os.path.basename(f))
+            }
+        )
+    compdb_j = json.dumps(compdb)
+    with open(compdb_file, 'wt') as f:
+        f.write(compdb_j)
 
 
 def __lookup_cppcheck_exe():

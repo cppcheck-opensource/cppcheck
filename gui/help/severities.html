@@ -1,47 +1,188 @@
 <html>
 <head>
-<title>Severities</title>
+<title>Severities and report types</title>
+<link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
 
-<h1>Severities</h1>
+<h1>Severities and report types</h1>
 
-<h2>error</h2>
+<p>Every warning has a <i>severity</i> that tells you what kind of problem it
+is and how serious it is. The severity is shown in the <i>Severity</i> column
+and as an icon in the results list. Use the buttons in the severity toolbar,
+or the <i>View</i> menu, to show or hide each severity.</p>
 
-<img src="images/severities-error.png"><br>
-<p>when code is executed there is some bad behavior (undefined behavior, leak)</p>
+<h2><img src="images/severities-error.png"> error</h2>
 
-<h2>warning</h2>
+<p>The code has a bug that causes bad behavior when it is executed: undefined
+behavior, a crash, a memory or resource leak, and similar. Errors should
+always be fixed.</p>
 
-<img src="images/severities-warning.png"><br>
-<p>when code is executed there might be undefined behavior</p>
+<p>Examples: array index out of bounds (<code>arrayIndexOutOfBounds</code>),
+null pointer dereference (<code>nullPointer</code>), use of an uninitialized
+variable (<code>uninitvar</code>), memory leak (<code>memleak</code>), resource
+leak (<code>resourceLeak</code>), use after free
+(<code>deallocuse</code>), division by zero (<code>zerodiv</code>),
+mismatching allocation and deallocation (<code>mismatchAllocDealloc</code>).</p>
 
-<h2>style</h2>
+<pre>void f()
+{
+    char buf[10];
+    buf[10] = 0;     // error: arrayIndexOutOfBounds
+}</pre>
 
-<img src="images/severities-style.png"><br>
-<p>point out possible mistakes, and suggest more defensive programming. Examples:
+<h2><img src="images/severities-warning.png"> warning</h2>
+
+<p>The code can cause bad behavior in some situations, or there is code that is
+almost certainly not doing what the programmer wanted. Warnings should be
+looked at carefully; most of them are bugs.</p>
+
+<p>Examples: a null pointer check after the pointer has already been used
+(<code>nullPointerRedundantCheck</code>), not checking the result of
+<code>malloc()</code> (<code>nullPointerOutOfMemory</code>), wrong argument type
+for a printf format (<code>invalidPrintfArgType_sint</code>), assignment in a
+condition where a comparison was meant, a member variable that is not
+initialized in a constructor (<code>uninitMemberVar</code>).</p>
+
+<pre>void f(struct S *s)
+{
+    int x = s-&gt;x;
+    if (!s)          // warning: nullPointerRedundantCheck
+        return;
+}</pre>
+
+<h2><img src="images/severities-style.png"> style</h2>
+
+<p>The code is not wrong, but it can be improved: it is confusing, redundant,
+or not as safe as it could be. Style warnings often point to real bugs, for
+example a condition that is always true can mean that the wrong variable is
+used. They also suggest more defensive programming.</p>
+
+<p>Examples:</p>
 <ul>
-  <li>unused code/variables/functions
-  <li>conditions that are always true/false
-  <li>constness
-  <li>operator precedence
+<li>unused variables, functions and code (<code>unusedVariable</code>,
+    <code>unreadVariable</code>, <code>unusedFunction</code>),</li>
+<li>conditions that are always true or false
+    (<code>knownConditionTrueFalse</code>),</li>
+<li>variables, parameters and member functions that can be const
+    (<code>constVariable</code>, <code>constParameterPointer</code>,
+    <code>functionConst</code>),</li>
+<li>the scope of a variable can be reduced (<code>variableScope</code>),</li>
+<li>duplicate code in if/else branches (<code>duplicateBranch</code>),</li>
+<li>suspicious operator precedence (<code>clarifyCalculation</code>).</li>
 </ul>
-</p>
 
-<h2>performance</h2>
+<pre>int f(int x)
+{
+    if (x &gt; 0 &amp;&amp; x &gt; 10)   // style: the first condition is redundant
+        return 1;
+    return 0;
+}</pre>
 
-<img src="images/severities-performance.png"><br>
-<p>Suggestions for making the code faster. These suggestions are only based on common knowledge. It is not certain you'll get any measurable difference in speed by fixing these messages.</p>
+<h2><img src="images/severities-performance.png"> performance</h2>
 
-<h2>portability</h2>
+<p>Suggestions to make the code faster. They are based on common knowledge
+about what is slow. It is not certain that you get a measurable speed
+improvement by fixing them; it depends on how often the code runs.</p>
 
-<img src="images/severities-portability.png"><br>
-<p>portability warnings. Implementation defined behavior. 64-bit portability. Some undefined behavior that probably works &quot;as you want&quot;. etc.</p>
+<p>Examples: passing a large object by value instead of by const reference
+(<code>passedByValue</code>), using <code>it++</code> instead of
+<code>++it</code> for iterators (<code>postfixOperator</code>), inefficient use
+of STL containers.</p>
 
-<h2>information</h2>
+<pre>void print(std::vector&lt;std::string&gt; names);   // performance: passedByValue</pre>
 
-<img src="images/severities-information.png"><br>
-<p>Configuration problems. If you get such output then your code is ok but your cppcheck configuration could be improved.</p>
+<h2><img src="images/severities-portability.png"> portability</h2>
+
+<p>The code may work on your platform but not on others: implementation
+defined behavior, 64-bit problems, or undefined behavior that happens to work
+"as you want" with your compiler.</p>
+
+<p>Examples: storing a pointer in an <code>int</code>
+(<code>AssignmentAddressToInteger</code>), shifting a negative value, casting
+between incompatible pointer types (<code>invalidPointerCast</code>), assuming
+the size of a type.</p>
+
+<p>Some portability warnings depend on the platform you have selected; see
+<a href="projectfiledialog.html#platform">Platform</a>.</p>
+
+<h2><img src="images/severities-information.png"> information</h2>
+
+<p>Messages about the analysis itself, not about your code. If you get
+information messages, your code may be fine but the Cppcheck configuration can
+be improved. Fixing the configuration usually gives better results.</p>
+
+<p>Examples:</p>
+<ul>
+<li><code>missingInclude</code>: an include file of your project was not
+    found. Add the folder to the <a href="projectfiledialog.html#includepaths">
+    include paths</a>.</li>
+<li><code>missingIncludeSystem</code>: a standard or system header was not
+    found. This is normal and you do not need to do anything; Cppcheck has
+    built-in knowledge of the standard library. You can hide these with the
+    severity toolbar or suppress the id.</li>
+<li><code>toomanyconfigs</code>: a file has more preprocessor configurations
+    than Cppcheck analyzes by default. See
+    <a href="projectfiledialog.html#defines">Defines</a>.</li>
+<li><code>normalCheckLevelMaxBranches</code>: the analysis of a function was
+    limited. Use the <i>Exhaustive</i> check level to analyze it fully.</li>
+<li>messages from <i>Analyze &gt; Reanalyze and check library</i> about
+    functions that are not configured.</li>
+</ul>
+
+<h2>note</h2>
+
+<p>Notes are not warnings. They are shown as child items of a warning and
+explain the path through the code that leads to it. See
+<a href="investigating-warnings.html">Investigating warnings</a>.</p>
+
+<a name="reports"></a>
+<h2>Report types</h2>
+
+<p>If you work with a coding standard, you can show the results classified
+according to that standard. Select the standard in <i>View &gt; Report</i>:</p>
+
+<p class="figure"><img src="images/menu-view-report.png"></p>
+
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Report</th><th>Classifications</th><th>Extra columns</th></tr>
+<tr><td>Normal</td><td>The Cppcheck severities described above.</td>
+    <td>&nbsp;</td></tr>
+<tr><td>Autosar</td><td>Required, Advisory</td>
+    <td>Classification, Guideline</td></tr>
+<tr><td>Cert C, Cert C++</td><td>L1, L2, L3 (the CERT priority levels; L1 is
+    the most severe)</td><td>Level, Rule</td></tr>
+<tr><td>Misra C, Misra C++ 2023</td><td>Mandatory, Required, Advisory</td>
+    <td>Classification, Guideline</td></tr>
+<tr><td>Misra C++ 2008</td><td>Required, Advisory, Document</td>
+    <td>Classification, Guideline</td></tr>
+</table>
+
+<p>With a compliance report type:</p>
+<ul>
+<li>Each warning is mapped to the guideline or rule of the standard that it
+    relates to. The <i>Guideline</i> or <i>Rule</i> column shows it, and the
+    <i>Classification</i> or <i>Level</i> column shows how strict the
+    guideline is.</li>
+<li>The icons and the buttons in the severity toolbar follow the
+    classification: Mandatory and L1 use the error icon, Required and L2 the
+    warning icon, Advisory and L3 the style icon, and Document the
+    information icon.</li>
+<li>Warnings that are not related to any guideline of the standard are not
+    shown.</li>
+</ul>
+
+<p class="figure"><img src="images/report-misra.png"></p>
+
+<p>The report type only changes how results are shown; the analysis is the
+same. To check the code against the rules of a coding standard, enable the
+standard on the <a href="projectfiledialog.html#addons">Addons</a> tab of the
+project. Open source Cppcheck has a Misra C addon; checking the other
+standards needs Cppcheck Premium.</p>
+
+<p class="nav">Previous: <a href="investigating-warnings.html">Investigating
+warnings</a> | Next: <a href="suppressions.html">Hiding and suppressing
+warnings</a></p>
 
 </body>
 </html>

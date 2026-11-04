@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2024 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -47,10 +47,10 @@ private slots:
     void addFunction();
     void changeFunction();
     void editArg();
-    void editFunctionName(QListWidgetItem* /*item*/);
-    void filterFunctions(const QString& /*filter*/);
+    void editFunctionName(QListWidgetItem* item);
+    void filterFunctions(const QString& filter);
     void selectFunction();
-    void sortFunctions(bool /*sort*/);
+    void sortFunctions(bool sort);
 
 private:
     Ui::LibraryDialog *mUi;

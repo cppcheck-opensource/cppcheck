@@ -22,6 +22,7 @@
 #include "token.h"
 #include "tokenlist.h"
 
+#include <cmath>
 #include <limits>
 #include <memory>
 #include <string>
@@ -44,6 +45,7 @@ private:
         TEST_CASE(isnegative);
         TEST_CASE(ispositive);
         TEST_CASE(isFloat);
+        TEST_CASE(isLongDoubleOutOfDoubleRange);
         TEST_CASE(isDecimalFloat);
         TEST_CASE(isGreater);
         TEST_CASE(isGreaterEqual);
@@ -598,6 +600,16 @@ private:
         // TODO: test with 128-bit values
     }
 
+    void isLongDoubleOutOfDoubleRange() const {
+        ASSERT_EQUALS(true, MathLib::isLongDoubleOutOfDoubleRange("1e400L"));
+        ASSERT_EQUALS(true, MathLib::isLongDoubleOutOfDoubleRange("1.0e4931l"));
+        ASSERT_EQUALS(false, MathLib::isLongDoubleOutOfDoubleRange("1e300L"));
+        ASSERT_EQUALS(false, MathLib::isLongDoubleOutOfDoubleRange("1e10000"));
+        ASSERT_EQUALS(false, MathLib::isLongDoubleOutOfDoubleRange("1e10000f"));
+        ASSERT_EQUALS(false, MathLib::isLongDoubleOutOfDoubleRange("10L"));
+        ASSERT_EQUALS(false, MathLib::isLongDoubleOutOfDoubleRange(""));
+    }
+
     void toDoubleNumber() const {
         // float values
         ASSERT_EQUALS_DOUBLE(1.0,    MathLib::toDoubleNumber("1."),       0.001);
@@ -676,6 +688,13 @@ private:
         ASSERT_EQUALS_DOUBLE(static_cast<double>('\100'), MathLib::toDoubleNumber("'\\100'"), 0.000001);
         ASSERT_EQUALS_DOUBLE(static_cast<double>('\200'), MathLib::toDoubleNumber("'\\200'"), 0.000001);
         ASSERT_EQUALS_DOUBLE(static_cast<double>(L'A'),   MathLib::toDoubleNumber("L'A'"), 0.000001);
+
+        // out of the range of double, like glibc's HUGE_VAL for compilers other than GCC
+        ASSERT_EQUALS(true, std::isinf(MathLib::toDoubleNumber("1e10000")));
+        ASSERT_EQUALS(true, std::isinf(MathLib::toDoubleNumber("1e10000f")));
+        ASSERT_EQUALS(true, std::isinf(MathLib::toDoubleNumber("1e10000L")));
+        ASSERT_EQUALS(true, std::isinf(MathLib::toDoubleNumber("1.5E+400")));
+        ASSERT_EQUALS(true, std::isinf(MathLib::toDoubleNumber("1.0e4931L"))); // #12282
 
         ASSERT_THROW_INTERNAL_EQUALS(MathLib::toDoubleNumber("invalid"), INTERNAL, "Internal Error. MathLib::toDoubleNumber: conversion failed: invalid");
 

@@ -26,7 +26,6 @@
 #include "filesettings.h"
 #include "settings.h"
 #include "suppressions.h"
-#include "timer.h"
 
 #include <cassert>
 #include <cstdlib>

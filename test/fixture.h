@@ -25,6 +25,7 @@
 #include "config.h"
 #include "errorlogger.h"
 #include "errortypes.h"
+#include "refthunk.h"
 #include "platform.h"
 #include "settings.h"
 #include "standards.h"
@@ -32,7 +33,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <exception>
-#include <list>
 #include <memory>
 #include <set>
 #include <sstream>
@@ -135,21 +135,13 @@ protected:
 
     void processOptions(const options& args);
 
-    template<typename T>
-    static T& getCheck()
+    static Check& getCheck(Check& check)
     {
-        for (Check *check : Check::instances()) {
-            //cppcheck-suppress useStlAlgorithm
-            if (T* c = dynamic_cast<T*>(check))
-                return *c;
-        }
-        throw std::runtime_error("instance not found");
+        return check;
     }
 
-    template<typename T>
-    static void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+    static void runChecks(Check& check, const Tokenizer &tokenizer, ErrorLogger& errorLogger)
     {
-        Check& check = getCheck<T>();
         check.runChecks(tokenizer, errorLogger);
     }
 
@@ -248,7 +240,7 @@ protected:
     private:
         SettingsBuilder& libraryxml(const char xmldata[], std::size_t len);
 
-        const TestFixture &fixture;
+        RefThunk<const TestFixture> fixture;
         Settings settings;
 
         static constexpr bool REDUNDANT_CHECK = false;
@@ -291,7 +283,7 @@ private:
 
     std::unique_ptr<Timer> mTimer;
 
-    void reportOut(const std::string &outmsg, Color c = Color::Reset) override;
+    void reportOut(const std::string &outmsg, Color /*c*/ = Color::Reset) override;
     void reportErr(const ErrorMessage &msg) override;
     void reportMetric(const std::string &metric) override
     {

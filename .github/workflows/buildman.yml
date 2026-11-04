@@ -19,7 +19,7 @@ jobs:
   convert_via_pandoc:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
@@ -38,7 +38,7 @@ jobs:
         with:
           args: --output=output/manual-premium.pdf man/manual-premium.md
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: output
           path: output
@@ -46,7 +46,7 @@ jobs:
   manpage:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
@@ -59,7 +59,7 @@ jobs:
         run: |
           make man
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cppcheck.1
           path: cppcheck.1

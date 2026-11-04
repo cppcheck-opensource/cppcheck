@@ -274,9 +274,9 @@ public:
     /* Position struct */
     struct Pos {
         /* String pointer */
-        const char *p;
+        const char *p{};
         /* Raw characters left */
-        std::size_t l;
+        std::size_t l{};
         /* Buffered character */
         int c {EOF};
     };

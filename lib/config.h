@@ -203,7 +203,7 @@
 #if HAVE_EXECINFO_H
 #define USE_UNIX_BACKTRACE_SUPPORT
 #endif
-#elif defined(__GNUC__) && !defined(__APPLE__) && !defined(__CYGWIN__) && !defined(__MINGW32__) && !defined(__NetBSD__) && !defined(__OpenBSD__) && !defined(__SVR4) && !defined(__QNX__) && !defined(_AIX)
+#elif __has_include(<execinfo.h>)
 #define USE_UNIX_BACKTRACE_SUPPORT
 #endif
 #endif

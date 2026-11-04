@@ -19,66 +19,69 @@
 #include "timer.h"
 
 #include <algorithm>
-#include <cassert>
-#include <cstddef>
 #include <iostream>
+#include <numeric>
 #include <utility>
 #include <vector>
 
 namespace {
-    using dataElementType = std::pair<std::string, TimerResultsData>;
-    bool more_second_sec(const dataElementType& lhs, const dataElementType& rhs)
-    {
-        return lhs.second.getSeconds() > rhs.second.getSeconds();
-    }
-
     // TODO: remove and print through (synchronized) ErrorLogger instead
     std::mutex stdCoutLock;
 }
 
 // TODO: this does not include any file context when SHOWTIME_FILE thus rendering it useless - should we include the logging with the progress logging?
 // that could also get rid of the broader locking
-void TimerResults::showResults(ShowTime mode, bool metrics, bool format) const
+void TimerResults::showResults(size_t max_results, bool metrics) const
 {
-    if (mode == ShowTime::NONE)
-        return;
-    std::vector<dataElementType> data;
+    using dataElementType = std::pair<std::string, std::vector<std::chrono::milliseconds>>;
 
+    std::vector<dataElementType> data;
     {
         std::lock_guard<std::mutex> l(mResultsSync);
 
         data.reserve(mResults.size());
         data.insert(data.begin(), mResults.cbegin(), mResults.cend());
     }
-    std::sort(data.begin(), data.end(), more_second_sec);
+
+    const auto asSeconds = [](std::chrono::milliseconds ms) -> std::chrono::duration<double> {
+        return std::chrono::duration_cast<std::chrono::duration<double>>(ms);
+    };
+
+    const auto getSeconds = [&asSeconds](const std::vector<std::chrono::milliseconds>& results) -> std::chrono::duration<double> {
+        return std::accumulate(results.cbegin(), results.cend(), std::chrono::duration<double>{}, [&asSeconds](std::chrono::duration<double> secs, std::chrono::milliseconds duration) {
+            return secs + asSeconds(duration);
+        });
+    };
+
+    std::sort(data.begin(), data.end(), [&getSeconds](const dataElementType& lhs, const dataElementType& rhs) -> bool {
+        return getSeconds(lhs.second) > getSeconds(rhs.second);
+    });
 
     // lock the whole logging operation to avoid multiple threads printing their results at the same time
     std::lock_guard<std::mutex> l(stdCoutLock);
 
     size_t ordinal = 1; // maybe it would be nice to have an ordinal in output later!
     for (auto iter=data.cbegin(); iter!=data.cend(); ++iter) {
-        const double sec = iter->second.getSeconds().count();
-        const double secAverage = sec / static_cast<double>(iter->second.mNumberOfResults);
-        if ((mode != ShowTime::TOP5_FILE && mode != ShowTime::TOP5_SUMMARY) || (ordinal<=5)) {
-            std::cout << iter->first << ": ";
-            if (format)
-                std::cout << TimerResultsData::durationToString(iter->second.mDuration);
-            else
-                std::cout << sec << "s";
-            if (metrics)
-                std::cout << " (avg. " << secAverage << "s - " << iter->second.mNumberOfResults  << " result(s))";
+        if (ordinal <= max_results) {
+            const double sec = getSeconds(iter->second).count();
+            std::cout << iter->first << ": " << sec << "s";
+            if (metrics) {
+                const double secAverage = sec / static_cast<double>(iter->second.size());
+                const double secMin = asSeconds(*std::min_element(iter->second.cbegin(), iter->second.cend())).count();
+                const double secMax = asSeconds(*std::max_element(iter->second.cbegin(), iter->second.cend())).count();
+                std::cout << " (avg. " << secAverage << "s / min " << secMin << "s / max " << secMax << "s - " << iter->second.size() << " result(s))";
+            }
             std::cout << std::endl;
         }
         ++ordinal;
     }
 }
 
-void TimerResults::addResults(const std::string& str, std::chrono::milliseconds duration)
+void TimerResults::addResults(const std::string& name, std::chrono::milliseconds duration)
 {
     std::lock_guard<std::mutex> l(mResultsSync);
 
-    mResults[str].mDuration += duration;
-    mResults[str].mNumberOfResults++;
+    mResults[name].push_back(duration);
 }
 
 void TimerResults::reset()
@@ -87,13 +90,14 @@ void TimerResults::reset()
     mResults.clear();
 }
 
-Timer::Timer(std::string str, ShowTime showtimeMode, TimerResultsIntf* timerResults, Type type)
+Timer::Timer(std::string str, TimerResultsIntf* timerResults)
     : mName(std::move(str))
-    , mMode(showtimeMode)
-    , mType(type)
-    , mStart(Clock::now())
     , mResults(timerResults)
-{}
+{
+    if (!mResults)
+        return;
+    mStart = Clock::now();
+}
 
 Timer::~Timer()
 {
@@ -102,29 +106,16 @@ Timer::~Timer()
 
 void Timer::stop()
 {
-    if (mMode == ShowTime::NONE)
+    if (mStart == TimePoint{})
         return;
-    if (mType == Type::OVERALL && mMode != ShowTime::TOP5_SUMMARY && mMode != ShowTime::SUMMARY) {
-        mMode = ShowTime::NONE;
-        return;
-    }
-    if (mType == Type::FILE && mMode != ShowTime::TOP5_FILE && mMode != ShowTime::FILE && mMode != ShowTime::FILE_TOTAL) {
-        mMode = ShowTime::NONE;
-        return;
-    }
-    if (mStart != TimePoint{}) {
-        if (!mResults) {
-            assert(false);
-        }
-        else {
-            auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - mStart);
-            mResults->addResults(mName, diff);
-        }
-    }
-    mMode = ShowTime::NONE; // prevent multiple stops
+
+    const auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - mStart);
+    mResults->addResults(mName, diff);
+
+    mStart = TimePoint{}; // prevent multiple stops
 }
 
-std::string TimerResultsData::durationToString(std::chrono::milliseconds duration)
+static std::string durationToString(std::chrono::milliseconds duration)
 {
     // Extract hours
     auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
@@ -147,4 +138,22 @@ std::string TimerResultsData::durationToString(std::chrono::milliseconds duratio
     if (pos != std::string::npos && (pos + 4) < secondsStr.size())
         secondsStr.resize(pos + 4); // keep three decimal
     return (ellapsedTime + secondsStr + "s");
+}
+
+OneShotTimer::OneShotTimer(std::string name)
+{
+    class MyResults : public TimerResultsIntf
+    {
+    private:
+        void addResults(const std::string &name, std::chrono::milliseconds duration) override
+        {
+            std::lock_guard<std::mutex> l(stdCoutLock);
+
+            // TODO: do not use std::cout directly
+            std::cout << name << ": " << durationToString(duration) << std::endl;
+        }
+    };
+
+    mResults.reset(new MyResults);
+    mTimer.reset(new Timer(std::move(name), mResults.get()));
 }

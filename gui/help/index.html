@@ -1,21 +1,103 @@
 <html>
 <head>
 <title>Cppcheck GUI</title>
+<link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
 
 <h1>Cppcheck GUI</h1>
 
-<p>With the Cppcheck GUI you can analyze your code.</p>
+<p>Cppcheck is a static analysis tool for C and C++ code. It looks for bugs
+such as undefined behavior, memory leaks, buffer overruns, null pointer
+dereferences and uninitialized variables, and it points out code that is
+suspicious, slow or hard to maintain. Cppcheck tries hard to avoid false
+positives: when it reports something there is usually a reason to look at
+it.</p>
+
+<p>The Cppcheck GUI is a graphical front end for Cppcheck. With the GUI you
+can:</p>
+<ul>
+<li>create and edit project files that describe what code to analyze and how
+    to analyze it,</li>
+<li>import Visual Studio solutions and projects, compile databases
+    (<code>compile_commands.json</code>) and Borland C++ Builder 6 projects,</li>
+<li>run the analysis in several threads and watch the results come in,</li>
+<li>browse the warnings, read the source code next to them and follow the
+    path that leads to each bug,</li>
+<li>filter, hide, suppress and tag warnings,</li>
+<li>open the code in your favorite editor,</li>
+<li>save results as XML, text or CSV and print them,</li>
+<li>try out small pieces of code in the scratchpad,</li>
+<li>write configuration files for your own libraries.</li>
+</ul>
+
+<p class="figure"><img src="images/main-window.png"></p>
 
 <h2>Contents</h2>
 
-<p>If you want to get started, look at the <a href="walkthrough.html">walk through</a>.</p>
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Page</th><th>What you will find there</th></tr>
+<tr><td><a href="walkthrough.html">Getting started</a></td>
+    <td>A step by step walk through: create a project, run the analysis and
+        look at the first results. Start here if you are new to Cppcheck.</td></tr>
+<tr><td><a href="mainwindow.html">The main window</a></td>
+    <td>All menus, toolbars and panels of the main window.</td></tr>
+<tr><td><a href="standalone-analysis.html">Analyzing without a project</a></td>
+    <td>Quick analysis of files and folders, and the settings in the
+        <i>Analyze</i> menu.</td></tr>
+<tr><td><a href="projectfiledialog.html">Project files</a></td>
+    <td>Every option in the project file dialog explained in detail.</td></tr>
+<tr><td><a href="investigating-warnings.html">Investigating warnings</a></td>
+    <td>How to read the results list, the warning details and the code
+        view, and how to decide if a warning is a real bug.</td></tr>
+<tr><td><a href="severities.html">Severities and report types</a></td>
+    <td>What error, warning, style, performance, portability and information
+        mean, and how the compliance report types classify warnings.</td></tr>
+<tr><td><a href="suppressions.html">Hiding and suppressing warnings</a></td>
+    <td>Temporary hiding, permanent suppressions in the project file, and
+        inline suppressions in the code.</td></tr>
+<tr><td><a href="tagging.html">Tagging warnings</a></td>
+    <td>Categorize warnings with your own tags.</td></tr>
+<tr><td><a href="reports.html">Results files, printing and statistics</a></td>
+    <td>Save and open results, print reports and view statistics.</td></tr>
+<tr><td><a href="tools.html">Scratchpad, library editor and other tools</a></td>
+    <td>Tools for trying out code and for describing your own libraries.</td></tr>
+<tr><td><a href="preferences.html">Preferences</a></td>
+    <td>Every option in the preferences dialog.</td></tr>
+<tr><td><a href="commandline.html">Command line options</a></td>
+    <td>How to start the GUI with a project or a results file.</td></tr>
+<tr><td><a href="troubleshooting.html">Troubleshooting</a></td>
+    <td>Answers to common questions and problems.</td></tr>
+</table>
 
-<h2>Example</h2>
+<h2>Projects or quick analysis?</h2>
 
-<blockquote><img src="images/index-mainwindow.png"></blockquote>
+<p>There are two ways to use the GUI:</p>
+<ul>
+<li><b>With a project file</b> (recommended). A project file
+    (<code>*.cppcheck</code>) stores where your code is, the include paths,
+    the preprocessor defines, the libraries you use, suppressions, tags and
+    much more. The analysis is more accurate when Cppcheck knows these
+    things, and you only configure them once. See
+    <a href="walkthrough.html">Getting started</a> and
+    <a href="projectfiledialog.html">Project files</a>.</li>
+<li><b>Without a project file</b>. Use <i>Analyze &gt; Files...</i> or
+    <i>Analyze &gt; Directory...</i> to analyze some code quickly. See
+    <a href="standalone-analysis.html">Analyzing without a project</a>.</li>
+</ul>
+
+<h2>More information</h2>
+
+<p>The Cppcheck manual describes the analysis itself in more detail, including
+the command line tool, the configuration file format and addons. You can find
+it at <a href="https://cppcheck.sourceforge.io/manual.pdf">https://cppcheck.sourceforge.io/manual.pdf</a>.</p>
+
+<p>The Cppcheck home page is
+<a href="https://cppcheck.sourceforge.io/">https://cppcheck.sourceforge.io/</a>.
+There you can download new versions, read about the checks and report
+problems.</p>
+
+<p class="nav">Next: <a href="walkthrough.html">Getting started</a></p>
 
 </body>
 </html>
-

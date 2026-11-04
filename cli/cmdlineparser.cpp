@@ -20,6 +20,7 @@
 
 #include "addoninfo.h"
 #include "check.h"
+#include "checks.h"
 #include "checkers.h"
 #include "color.h"
 #include "config.h"
@@ -36,7 +37,6 @@
 #include "settings.h"
 #include "standards.h"
 #include "suppressions.h"
-#include "timer.h"
 #include "utils.h"
 
 #include "frontend.h"
@@ -50,7 +50,6 @@
 #include <iostream>
 #include <iterator>
 #include <list>
-#include <memory>
 #include <set>
 #include <sstream>
 #include <unordered_set>
@@ -58,9 +57,12 @@
 
 #ifdef HAVE_RULES
 #include "regex.h"
+#include "rule.h"
 
 // xml is used for rules
 #include "xml.h"
+
+#include <memory>
 #endif
 
 static bool addFilesToList(const std::string& fileList, std::vector<std::string>& pathNames)
@@ -360,9 +362,9 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         if (std::strcmp(argv[i], "--doc") == 0) {
             std::ostringstream doc;
             // Get documentation..
-            for (const Check * it : Check::instances()) {
-                const std::string& name(it->name());
-                const std::string info(it->classInfo());
+            for (const Check * const c : CheckInstances::get()) {
+                const std::string& name(c->name());
+                const std::string info(c->classInfo());
                 if (!name.empty() && !info.empty())
                     doc << "## " << name << " ##\n"
                         << info << "\n";
@@ -457,6 +459,11 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         else if (std::strcmp(argv[i], "-E") == 0) {
             mSettings.preprocessOnly = true;
             mSettings.quiet = true;
+        }
+
+        // -CC
+        else if (std::strcmp(argv[i], "-CC") == 0) {
+            mSettings.keepComments = true;
         }
 
         // Include paths
@@ -631,6 +638,9 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         // Show debug messages for ignored files
         else if (std::strcmp(argv[i], "--debug-ignore") == 0)
             mSettings.debugignore = true;
+
+        else if (std::strcmp(argv[i], "--debug-ipc") == 0)
+            mSettings.debugipc = true;
 
         // Show --debug output after the first simplifications
         else if (std::strcmp(argv[i], "--debug") == 0 ||
@@ -1149,7 +1159,15 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                 mLogger.printError("invalid --premium option '" + (p2.empty() ? p : p2) + "'.");
                 return Result::Fail;
             }
-            mSettings.premiumArgs += "--" + p;
+            if (p2 == "cert-c-int-precision") {
+                int tmp;
+                if (!parseNumberArg(argv[i], 31, tmp, true))
+                    return Result::Fail;
+            }
+            if (p.find(' ') != std::string::npos)
+                mSettings.premiumArgs += "\"--" + p + "\"";
+            else
+                mSettings.premiumArgs += "--" + p;
             if (isCodingStandard) {
                 // All checkers related to the coding standard should be enabled. The coding standards
                 // do not all undefined behavior or portability issues.
@@ -1295,7 +1313,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         // Rule given at command line
         else if (std::strncmp(argv[i], "--rule=", 7) == 0) {
 #ifdef HAVE_RULES
-            Settings::Rule rule;
+            Rule rule;
             rule.pattern = 7 + argv[i];
 
             if (rule.pattern.empty()) {
@@ -1331,7 +1349,8 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                 if (node && strcmp(node->Value(), "rules") == 0)
                     node = node->FirstChildElement("rule");
                 for (; node && strcmp(node->Value(), "rule") == 0; node = node->NextSiblingElement()) {
-                    Settings::Rule rule;
+                    Rule rule;
+                    Regex::Engine regexEngine = Regex::Engine::Pcre;
 
                     for (const tinyxml2::XMLElement *subnode = node->FirstChildElement(); subnode; subnode = subnode->NextSiblingElement()) {
                         const char * const subname = subnode->Name();
@@ -1364,7 +1383,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                         else if (std::strcmp(subname, "engine") == 0) {
                             const char * const engine = empty_if_null(subtext);
                             if (std::strcmp(engine, "pcre") == 0) {
-                                rule.engine = Regex::Engine::Pcre;
+                                regexEngine = Regex::Engine::Pcre;
                             }
                             else {
                                 mLogger.printError(std::string("unknown regex engine '") + engine + "'.");
@@ -1398,7 +1417,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                     }
 
                     std::string regex_err;
-                    auto regex = Regex::create(rule.pattern, rule.engine, regex_err);
+                    auto regex = Regex::create(rule.pattern, regexEngine, regex_err);
                     if (!regex) {
                         mLogger.printError("unable to load rule-file '" + ruleFile + "' - pattern '" + rule.pattern + "' failed to compile (" + regex_err + ").");
                         return Result::Fail;
@@ -1430,17 +1449,17 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         else if (std::strncmp(argv[i], "--showtime=", 11) == 0) {
             const std::string showtimeMode = argv[i] + 11;
             if (showtimeMode == "file")
-                mSettings.showtime = ShowTime::FILE;
+                mSettings.showtime = Settings::ShowTime::FILE;
             else if (showtimeMode == "file-total")
-                mSettings.showtime = ShowTime::FILE_TOTAL;
+                mSettings.showtime = Settings::ShowTime::FILE_TOTAL;
             else if (showtimeMode == "summary")
-                mSettings.showtime = ShowTime::SUMMARY;
+                mSettings.showtime = Settings::ShowTime::SUMMARY;
             else if (showtimeMode == "top5_file")
-                mSettings.showtime = ShowTime::TOP5_FILE;
+                mSettings.showtime = Settings::ShowTime::TOP5_FILE;
             else if (showtimeMode == "top5_summary")
-                mSettings.showtime = ShowTime::TOP5_SUMMARY;
+                mSettings.showtime = Settings::ShowTime::TOP5_SUMMARY;
             else if (showtimeMode == "none")
-                mSettings.showtime = ShowTime::NONE;
+                mSettings.showtime = Settings::ShowTime::NONE;
             else if (showtimeMode.empty()) {
                 mLogger.printError("no mode provided for --showtime");
                 return Result::Fail;
@@ -1723,6 +1742,12 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
     if (mSettings.basePaths.empty() && mSettings.relativePaths)
         mSettings.basePaths = mPathNames;
 
+    if (mSettings.keepComments && !mSettings.preprocessOnly) {
+        mLogger.printError("-CC may only be used on conjunciton with -E");
+        return Result::Fail;
+    }
+
+
     return Result::Success;
 }
 
@@ -1746,6 +1771,7 @@ void CmdLineParser::printHelp() const
         "                         addon json files or through this command line option.\n"
         "                         If not present, Cppcheck will try \"python3\" first and\n"
         "                         then \"python\".\n"
+        "    -CC                  Do not remove comments during preprocessing (requires -E).\n"
         "    --cppcheck-build-dir=<dir>\n"
         "                         Cppcheck work folder. Advantages:\n"
         "                          * whole program analysis\n"

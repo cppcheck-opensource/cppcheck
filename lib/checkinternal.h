@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,10 @@
 #define checkinternalH
 //---------------------------------------------------------------------------
 
+#ifdef CHECK_INTERNAL
+
 #include "check.h"
+#include "checkimpl.h"
 #include "config.h"
 
 #include <string>
@@ -40,14 +43,25 @@ class Settings;
 class CPPCHECKLIB CheckInternal : public Check {
 public:
     /** This constructor is used when registering the CheckClass */
-    CheckInternal() : Check(myName()) {}
+    CheckInternal() : Check("cppcheck internal API usage") {}
 
 private:
-    /** This constructor is used when running checks. */
-    CheckInternal(const Tokenizer *tokenizer, const Settings *settings, ErrorLogger *errorLogger)
-        : Check(myName(), tokenizer, settings, errorLogger) {}
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
+
+    std::string classInfo() const override {
+        // Don't include these checks on the WIKI where people can read what
+        // checks there are. These checks are not intended for users.
+        return "";
+    }
+};
+
+class CPPCHECKLIB CheckInternalImpl : public CheckImpl {
+public:
+    /** This constructor is used when running checks. */
+    CheckInternalImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
+        : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** @brief %Check if a simple pattern is used inside Token::Match or Token::findmatch */
     void checkTokenMatchPatterns();
@@ -78,19 +92,10 @@ private:
     void orInComplexPattern(const Token *tok, const std::string &pattern, const std::string &funcname);
     void extraWhitespaceError(const Token *tok, const std::string &pattern, const std::string &funcname);
     void checkRedundantTokCheckError(const Token *tok);
-
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings *settings) const override;
-
-    static std::string myName() {
-        return "cppcheck internal API usage";
-    }
-
-    std::string classInfo() const override {
-        // Don't include these checks on the WIKI where people can read what
-        // checks there are. These checks are not intended for users.
-        return "";
-    }
 };
 /// @}
 //---------------------------------------------------------------------------
+
+#endif // CHECK_INTERNAL
+
 #endif // checkinternalH

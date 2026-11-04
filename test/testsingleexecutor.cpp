@@ -61,7 +61,7 @@ private:
     struct CheckOptions
     {
         bool quiet = true;
-        ShowTime showtime = ShowTime::NONE;
+        Settings::ShowTime showtime = Settings::ShowTime::NONE;
         const char* plistOutput = nullptr;
         std::vector<std::string> filesList;
     };
@@ -94,13 +94,15 @@ private:
         s.quiet = opt.quiet;
         if (opt.plistOutput)
             s.plistOutput = opt.plistOutput;
-        s.templateFormat = "{callstack}: ({severity}) {inconclusive:inconclusive: }{message}"; // TODO: remove when we only longer rely on toString() in unique message handling?
+        s.templateFormat = "{callstack}: ({severity}) {inconclusive:inconclusive: }{message}\n"; // TODO: remove when we only longer rely on toString() in unique message handling?
 
         Suppressions supprs;
-        TimerResults timerResults;
+        std::unique_ptr<TimerResults> timerResults;
+        if (s.showtime != Settings::ShowTime::NONE)
+            timerResults.reset(new TimerResults);
 
         // NOLINTNEXTLINE(performance-unnecessary-value-param)
-        CppCheck cppcheck(s, supprs, *this, &timerResults, true, [](std::string,std::vector<std::string>,std::string,std::string&){
+        CppCheck cppcheck(s, supprs, *this, timerResults.get(), true, [](std::string,std::vector<std::string>,std::string,std::string&){
             return EXIT_SUCCESS;
         });
 
@@ -113,7 +115,7 @@ private:
         if (useFS)
             filelist.clear();
 
-        SingleExecutor executor(cppcheck, filelist, fileSettings, s, supprs, *this, &timerResults);
+        SingleExecutor executor(cppcheck, filelist, fileSettings, s, supprs, *this, timerResults.get());
         ASSERT_EQUALS(result, executor.check());
     }
 
@@ -140,8 +142,8 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}", dinit(CheckOptions,
-                         $.quiet = false));
+              "}\n", dinit(CheckOptions,
+                           $.quiet = false));
         {
             std::string expected;
             for (int i = 1; i <= num_files; ++i) {
@@ -165,7 +167,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}", dinit(CheckOptions, $.showtime = ShowTime::SUMMARY));
+              "}\n", dinit(CheckOptions, $.showtime = Settings::ShowTime::SUMMARY));
         // we are not interested in the results - so just consume them
         ignore_errout();
     }
@@ -178,7 +180,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}", dinit(CheckOptions, $.plistOutput = plistOutput.c_str()));
+              "}\n", dinit(CheckOptions, $.plistOutput = plistOutput.c_str()));
         // we are not interested in the results - so just consume them
         ignore_errout();
     }
@@ -188,7 +190,7 @@ private:
               "int main()\n"
               "{\n"
               "  return 0;\n"
-              "}");
+              "}\n");
     }
 
     void no_errors_less_files() {
@@ -196,7 +198,7 @@ private:
               "int main()\n"
               "{\n"
               "  return 0;\n"
-              "}");
+              "}\n");
     }
 
     void no_errors_equal_amount_files() {
@@ -204,7 +206,7 @@ private:
               "int main()\n"
               "{\n"
               "  return 0;\n"
-              "}");
+              "}\n");
     }
 
     void one_error_less_files() {
@@ -212,7 +214,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[" + fprefix() + "_" + zpad3(1) + ".c:3:12]: (error) Null pointer dereference: (int*)0 [nullPointer]\n", errout_str());
     }
 
@@ -222,7 +224,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}");
+              "}\n");
         {
             std::string expected;
             for (int i = 1; i <= num_files; ++i) {
@@ -237,9 +239,9 @@ private:
     void showtime_top5_file() {
         REDIRECT;
         check(2, 0,
-              "int main() {}",
+              "int main() {}\n",
               dinit(CheckOptions,
-                    $.showtime = ShowTime::TOP5_FILE));
+                    $.showtime = Settings::ShowTime::TOP5_FILE));
         const std::string output_s = GET_REDIRECT_OUTPUT;
         // for each file: top5 results + check time
         ASSERT_EQUALS((5 + 1) * 2LL, cppcheck::count_all_of(output_s, '\n'));
@@ -248,9 +250,9 @@ private:
     void showtime_file() {
         REDIRECT;
         check(2, 0,
-              "int main() {}",
+              "int main() {}\n",
               dinit(CheckOptions,
-                    $.showtime = ShowTime::FILE));
+                    $.showtime = Settings::ShowTime::FILE));
         const std::string output_s = GET_REDIRECT_OUTPUT;
         ASSERT_EQUALS(0, cppcheck::count_all_of(output_s, "Overall time:"));
     }
@@ -258,9 +260,9 @@ private:
     void showtime_file_total() {
         REDIRECT;
         check(2, 0,
-              "int main() {}",
+              "int main() {}\n",
               dinit(CheckOptions,
-                    $.showtime = ShowTime::FILE_TOTAL));
+                    $.showtime = Settings::ShowTime::FILE_TOTAL));
         const std::string output_s = GET_REDIRECT_OUTPUT;
         ASSERT(output_s.find("Check time: " + fprefix() + "_" + zpad3(1) + ".c: ") != std::string::npos);
         ASSERT(output_s.find("Check time: " + fprefix() + "_" + zpad3(2) + ".c: ") != std::string::npos);
@@ -275,7 +277,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
         settings = settingsOld;
     }
@@ -286,9 +288,9 @@ private:
                          "inline void f()\n"
                          "{\n"
                          "  (void)(*((int*)0));\n"
-                         "}");
+                         "}\n");
         check(2, 2,
-              "#include \"" + inc_h.name() + "\"");
+              "#include \"" + inc_h.name() + "\"\n");
         // these are not actually made unique by the implementation. That needs to be done by the given ErrorLogger
         ASSERT_EQUALS(
             "[" + inc_h.name() + ":3:12]: (error) Null pointer dereference: (int*)0 [nullPointer]\n"

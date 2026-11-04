@@ -88,7 +88,6 @@ void ProjectFile::clear()
     mBughunting = false;
     mCertIntPrecision = 0;
     mCodingStandards.clear();
-    mPremiumLicenseFile.clear();
 }
 
 bool ProjectFile::read(const QString &filename)
@@ -233,8 +232,6 @@ bool ProjectFile::read(const QString &filename)
                 readStringList(mCodingStandards, xmlReader, CppcheckXml::CodingStandardElementName);
             if (xmlReader.name() == QString(CppcheckXml::CertIntPrecisionElementName))
                 mCertIntPrecision = readInt(xmlReader, 0);
-            if (xmlReader.name() == QString(CppcheckXml::LicenseFileElementName))
-                mPremiumLicenseFile = readString(xmlReader);
             if (xmlReader.name() == QString(CppcheckXml::ProjectNameElementName))
                 mProjectName = readString(xmlReader);
 
@@ -1053,12 +1050,6 @@ bool ProjectFile::write(const QString &filename)
         xmlWriter.writeEndElement();
     }
 
-    if (!mPremiumLicenseFile.isEmpty()) {
-        xmlWriter.writeStartElement(CppcheckXml::LicenseFileElementName);
-        xmlWriter.writeCharacters(mPremiumLicenseFile);
-        xmlWriter.writeEndElement();
-    }
-
     xmlWriter.writeEndDocument();
     file.close();
     return true;
@@ -1076,6 +1067,12 @@ void ProjectFile::writeStringList(QXmlStreamWriter &xmlWriter, const QStringList
         xmlWriter.writeEndElement();
     }
     xmlWriter.writeEndElement();
+}
+
+void ProjectFile::setSettingsUserIncludes(Settings &settings) const
+{
+    if (!mUserInclude.isEmpty())
+        settings.userIncludes.push_back(mUserInclude.toStdString());
 }
 
 QStringList ProjectFile::fromNativeSeparators(const QStringList &paths)
@@ -1196,10 +1193,19 @@ QStringList ProjectFile::getSearchPaths(const QString& projectPath, const QStrin
     return ret;
 }
 
+QString ProjectFile::getRelativePath(const QString &absolutePath) const
+{
+    const QDir dir(QFileInfo(mFilename).absolutePath());
+    const QString relativePath(dir.relativeFilePath(absolutePath));
+    if (relativePath.startsWith("../../..") || absolutePath.length() < relativePath.length())
+        return absolutePath;
+    return relativePath;
+}
+
 QStringList ProjectFile::getSearchPaths(const QString& dir) const {
     const QFileInfo inf(mFilename);
     const QString applicationFilePath = QCoreApplication::applicationFilePath();
     const QString appPath = QFileInfo(applicationFilePath).canonicalPath();
     const QString datadir = getDataDir();
-    return getSearchPaths(inf.canonicalFilePath(), appPath, datadir, dir);
+    return getSearchPaths(inf.canonicalPath(), appPath, datadir, dir);
 }

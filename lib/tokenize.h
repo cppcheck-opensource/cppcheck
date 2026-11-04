@@ -327,7 +327,7 @@ private:
 
     void checkForEnumsWithTypedef();
 
-    void findComplicatedSyntaxErrorsInTemplates();
+    void findComplicatedSyntaxErrorsInTemplates() const;
 
 protected:
     /**
@@ -529,6 +529,11 @@ private:
     void simplifyNamespaceAliases();
 
     /**
+     * Handle std::aligned_storage<...>
+     */
+    void simplifyAlignedStorage();
+
+    /**
      * Convert C++17 style nested namespace to older style
      */
     void simplifyNestedNamespace();
@@ -693,13 +698,14 @@ private:
     };
     struct TypedefInfo {
         std::string name;
+        std::string originalName;
         std::string filename;
-        int lineNumber;
-        int column;
+        int lineNumber{};
+        int column{};
         int tagLine{-1};
         int tagColumn{-1};
-        bool used;
-        bool isFunctionPointer;
+        bool used{};
+        bool isFunctionPointer{};
         std::vector<TypedefToken> typedefInfoTokens;
     };
     std::vector<TypedefInfo> mTypedefInfo;

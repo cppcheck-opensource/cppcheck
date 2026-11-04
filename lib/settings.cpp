@@ -16,12 +16,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "addoninfo.h"
 #include "config.h"
+#include "errortypes.h"
 #include "settings.h"
 #include "path.h"
 #include "summaries.h"
 #include "suppressions.h"
 #include "vfvalue.h"
+
+#ifdef HAVE_RULES
+#include "rule.h"
+#endif
 
 #include <cctype>
 #include <cstdlib>
@@ -67,6 +73,14 @@ Settings::Settings()
     executor = defaultExecutor();
     pid = getPid();
 }
+
+Settings::~Settings() = default;
+
+Settings::Settings(const Settings&) = default;
+Settings & Settings::operator=(const Settings &) = default;
+
+Settings::Settings(Settings&&) CPPCHECK_NOEXCEPT = default;
+Settings & Settings::operator=(Settings &&) CPPCHECK_NOEXCEPT = default;
 
 std::string Settings::loadCppcheckCfg(Settings& settings, Suppressions& suppressions, bool debug)
 {
@@ -321,6 +335,7 @@ void Settings::setCheckLevel(CheckLevel level)
         vfOptions.maxIfCount = 100;
         vfOptions.doConditionExpressionAnalysis = false;
         vfOptions.maxForwardBranches = 4;
+        vfOptions.maxForwardConditionForkDepth = 0;
         vfOptions.maxIterations = 1;
     }
     else if (level == CheckLevel::normal) {
@@ -330,6 +345,7 @@ void Settings::setCheckLevel(CheckLevel level)
         vfOptions.maxIfCount = 100;
         vfOptions.doConditionExpressionAnalysis = false;
         vfOptions.maxForwardBranches = 4;
+        vfOptions.maxForwardConditionForkDepth = 1;
     }
     else if (level == CheckLevel::exhaustive) {
         // Checking can take a little while. ~ 10 times slower than normal analysis is OK.
@@ -338,6 +354,8 @@ void Settings::setCheckLevel(CheckLevel level)
         vfOptions.maxSubFunctionArgs = 256;
         vfOptions.doConditionExpressionAnalysis = true;
         vfOptions.maxForwardBranches = -1;
+        vfOptions.maxForwardConditionForkDepth = 4;
+        vfOptions.maxForwardConditionForks = 256;
     }
 }
 
@@ -351,6 +369,7 @@ static const std::set<std::string> autosarCheckers{
     "arrayIndexThenCheck",
     "bufferAccessOutOfBounds",
     "comparePointers",
+    "compareValueOutOfTypeRangeError",
     "constParameter",
     "ctuOneDefinitionRuleViolation",
     "doubleFree",
@@ -510,6 +529,7 @@ static const std::set<std::string> certCppCheckers{
     "uninitdata",
     "uninitvar",
     "useClosedFile",
+    "uselessCallsRemove",
     "virtualCallInConstructor",
     "virtualDestructor",
     "wrongPrintfScanfArgNum",
@@ -518,34 +538,45 @@ static const std::set<std::string> certCppCheckers{
 
 static const std::set<std::string> misrac2012Checkers{
     "argumentSize",
+    "arrayIndexOutOfBounds",
+    "arrayIndexOutOfBoundsCond",
+    "autoVariables",
     "autovarInvalidDeallocation",
     "bufferAccessOutOfBounds",
     "comparePointers",
     "compareValueOutOfTypeRangeError",
+    "constParameter",
+    "constParameterCallback",
     "constParameterPointer",
     "constStatement",
+    "constVariablePointer",
     "danglingLifetime",
     "danglingTemporaryLifetime",
+    "directiveAsMacroParameter",
     "duplicateBreak",
     "funcArgNamesDifferent",
     "incompatibleFileOpen",
+    "incorrectLogicOperator",
     "invalidFunctionArg",
+    "invalidFunctionArgStr",
     "knownConditionTrueFalse",
     "leakNoVarFunctionCall",
     "leakReturnValNotUsed",
+    "legacyUninitvar",
     "memleak",
     "memleakOnRealloc",
     "missingReturn",
+    "negativeIndex",
     "overlappingWriteFunction",
     "overlappingWriteUnion",
     "pointerOutOfBounds",
-    "preprocessorErrorDirective",
     "redundantAssignInSwitch",
     "redundantAssignment",
     "redundantCondition",
     "resourceLeak",
     "returnDanglingLifetime",
     "shadowVariable",
+    "shiftNegative",
     "sizeofCalculation",
     "sizeofwithsilentarraypointer",
     "syntaxError",
@@ -562,34 +593,45 @@ static const std::set<std::string> misrac2012Checkers{
 
 static const std::set<std::string> misrac2023Checkers{
     "argumentSize",
+    "arrayIndexOutOfBounds",
+    "arrayIndexOutOfBoundsCond",
+    "autoVariables",
     "autovarInvalidDeallocation",
     "bufferAccessOutOfBounds",
     "comparePointers",
     "compareValueOutOfTypeRangeError",
+    "constParameter",
+    "constParameterCallback",
     "constParameterPointer",
     "constStatement",
+    "constVariablePointer",
     "danglingLifetime",
     "danglingTemporaryLifetime",
+    "directiveAsMacroParameter",
     "duplicateBreak",
     "funcArgNamesDifferent",
     "incompatibleFileOpen",
+    "incorrectLogicOperator",
     "invalidFunctionArg",
+    "invalidFunctionArgStr",
     "knownConditionTrueFalse",
     "leakNoVarFunctionCall",
     "leakReturnValNotUsed",
+    "legacyUninitvar",
     "memleak",
     "memleakOnRealloc",
     "missingReturn",
+    "negativeIndex",
     "overlappingWriteFunction",
     "overlappingWriteUnion",
     "pointerOutOfBounds",
-    "preprocessorErrorDirective",
     "redundantAssignInSwitch",
     "redundantAssignment",
     "redundantCondition",
     "resourceLeak",
     "returnDanglingLifetime",
     "shadowVariable",
+    "shiftNegative",
     "sizeofCalculation",
     "sizeofwithsilentarraypointer",
     "syntaxError",
@@ -606,34 +648,45 @@ static const std::set<std::string> misrac2023Checkers{
 
 static const std::set<std::string> misrac2025Checkers{
     "argumentSize",
+    "arrayIndexOutOfBounds",
+    "arrayIndexOutOfBoundsCond",
+    "autoVariables",
     "autovarInvalidDeallocation",
     "bufferAccessOutOfBounds",
     "comparePointers",
     "compareValueOutOfTypeRangeError",
+    "constParameter",
+    "constParameterCallback",
     "constParameterPointer",
     "constStatement",
+    "constVariablePointer",
     "danglingLifetime",
     "danglingTemporaryLifetime",
+    "directiveAsMacroParameter",
     "duplicateBreak",
     "funcArgNamesDifferent",
     "incompatibleFileOpen",
+    "incorrectLogicOperator",
     "invalidFunctionArg",
+    "invalidFunctionArgStr",
     "knownConditionTrueFalse",
     "leakNoVarFunctionCall",
     "leakReturnValNotUsed",
+    "legacyUninitvar",
     "memleak",
     "memleakOnRealloc",
     "missingReturn",
+    "negativeIndex",
     "overlappingWriteFunction",
     "overlappingWriteUnion",
     "pointerOutOfBounds",
-    "preprocessorErrorDirective",
     "redundantAssignInSwitch",
     "redundantAssignment",
     "redundantCondition",
     "resourceLeak",
     "returnDanglingLifetime",
     "shadowVariable",
+    "shiftNegative",
     "sizeofCalculation",
     "sizeofwithsilentarraypointer",
     "syntaxError",
@@ -651,6 +704,7 @@ static const std::set<std::string> misrac2025Checkers{
 static const std::set<std::string> misracpp2008Checkers{
     "autoVariables",
     "comparePointers",
+    "compareValueOutOfTypeRangeError",
     "constParameter",
     "constVariable",
     "cstyleCast",
@@ -737,18 +791,31 @@ static const std::set<std::string> misracpp2023Checkers{
 
 bool Settings::isPremiumEnabled(const char id[]) const
 {
-    if (premiumArgs.find("autosar") != std::string::npos && autosarCheckers.count(id))
-        return true;
-    if (premiumArgs.find("cert-c-") != std::string::npos && certCCheckers.count(id))
-        return true;
-    if (premiumArgs.find("cert-c++") != std::string::npos && certCppCheckers.count(id))
-        return true;
-    if (premiumArgs.find("misra-c-") != std::string::npos && (misrac2012Checkers.count(id) || misrac2023Checkers.count(id) || misrac2025Checkers.count(id)))
-        return true;
-    if (premiumArgs.find("misra-c++-2008") != std::string::npos && misracpp2008Checkers.count(id))
-        return true;
-    if (premiumArgs.find("misra-c++-2023") != std::string::npos && misracpp2023Checkers.count(id))
-        return true;
+    for (std::string arg: splitString(premiumArgs, ' ')) {
+        std::transform(arg.cbegin(), arg.cend(), arg.begin(), [](char c) {
+            return c=='+' ? 'p' : c;
+        });
+        if (endsWith(arg, ":all"))
+            arg.erase(arg.size()-4);
+        if (arg == "--autosar" && autosarCheckers.count(id))
+            return true;
+        if (arg == "--cert-c" && certCCheckers.count(id))
+            return true;
+        if (arg == "--cert-c-2016" && certCCheckers.count(id))
+            return true;
+        if (startsWith(arg, "--cert-cpp") && certCppCheckers.count(id))
+            return true;
+        if (arg == "--misra-c-2012" && misrac2012Checkers.count(id))
+            return true;
+        if (arg == "--misra-c-2023" && misrac2023Checkers.count(id))
+            return true;
+        if (arg == "--misra-c-2025" && misrac2025Checkers.count(id))
+            return true;
+        if (arg == "--misra-cpp-2008" && misracpp2008Checkers.count(id))
+            return true;
+        if (arg == "--misra-cpp-2023" && misracpp2023Checkers.count(id))
+            return true;
+    }
     return false;
 }
 
@@ -767,4 +834,19 @@ bool Settings::unusedFunctionOnly()
 {
     const char* unusedFunctionOnly = std::getenv("UNUSEDFUNCTION_ONLY");
     return unusedFunctionOnly && (std::strcmp(unusedFunctionOnly, "1") == 0);
+}
+
+bool Settings::collectLogCheckers(bool* summary, bool* xmlReport, bool* textReport) const
+{
+    const bool s = safety || severity.isEnabled(Severity::information);
+    if (summary)
+        *summary = s;
+    const bool x = outputFormat == Settings::OutputFormat::xml && xml_version == 3;
+    if (xmlReport)
+        *xmlReport = x;
+    const bool t = !checkersReportFilename.empty();
+    if (textReport)
+        *textReport = t;
+
+    return s || x || t;
 }

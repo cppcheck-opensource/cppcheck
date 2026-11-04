@@ -45,7 +45,7 @@ void test_int32_min() {
 }
 
 void test_int64_min() {
-    // cppcheck-suppress compareValueOutOfTypeRangeError ; tests that INT64_MIN is a signed expression
+    // TODO cppcheck-suppress knownConditionTrueFalse // #13814
     if (INT64_MIN < 0) {}
 }
 
@@ -78,6 +78,9 @@ void invalidFunctionArgStr_strncat(void)
     // No warning is expected for
     strncat (str1, &src, 1);
     puts (str1);
+    char d[] = {'a','b','c'};
+    // cppcheck-suppress invalidFunctionArgStr
+    strncat(d, "def", 1);
 }
 
 char * invalidFunctionArgStr_strpbrk( const char *p )
@@ -285,6 +288,13 @@ char* nullPointer_fgets(char *buffer, int n, FILE *stream)
     (void)fgets(buffer,n,NULL);
     // No warning is expected
     return fgets(buffer, n, stream);
+}
+
+void nullPointer_fseek(void) { // #10948
+    FILE *p = fopen("foo", "r");
+    // cppcheck-suppress nullPointerOutOfResources
+    fseek(p, 1, SEEK_SET);
+    fclose(p);
 }
 
 void memleak_aligned_alloc(void)
@@ -607,6 +617,20 @@ void bufferAccessOutOfBounds_wcsncpy()
     wcsncpy(s, L"abc", 16);
     // cppcheck-suppress bufferAccessOutOfBounds
     wcsncpy(s, L"abc", 17);
+}
+
+void bufferAccessOutOfBounds_wmemcpy()
+{
+    wchar_t a[4];
+    // cppcheck-suppress bufferAccessOutOfBounds
+    wmemcpy(a, L"abcd", 5);
+}
+
+int bufferAccessOutOfBounds_wmemcmp(const wchar_t* b)
+{
+    const wchar_t a[4] = { L'a', L'b', L'c', L'd' };
+    // cppcheck-suppress bufferAccessOutOfBounds
+    return wmemcmp(a, b, 5);
 }
 
 int nullPointer_wcsncmp(const wchar_t* s1, const wchar_t* s2, size_t n)
@@ -2930,6 +2954,27 @@ void *bufferAccessOutOfBounds_memchr(const void *s, int c, size_t n)
     return memchr(s,c,n);
 }
 
+bool bufferAccessOutOfBounds_wmemchr(wchar_t c)
+{
+    const wchar_t buf[] = {'a', 'b', 'c'};
+    // cppcheck-suppress bufferAccessOutOfBounds
+    return wmemchr(buf, c, 5) != NULL;
+}
+
+void bufferAccessOutOfBounds_wmemset(wchar_t c)
+{
+    wchar_t buf[3];
+    // cppcheck-suppress bufferAccessOutOfBounds
+    wmemset(buf, c, 5);
+}
+
+void bufferAccessOutOfBounds_wmemmove(const wchar_t* s)
+{
+    wchar_t d[3];
+    // cppcheck-suppress bufferAccessOutOfBounds
+    wmemmove(d, s, 5);
+}
+
 void uninitvar_wmemchr(void)
 {
     const wchar_t *cs;
@@ -3510,6 +3555,13 @@ void invalidFunctionArg_strchr(const char *cs, int c)
 
     // cppcheck-suppress invalidFunctionArg
     (void)strchr(cs, 256);
+}
+
+void constParameterPointer_strchr(char *str) // #14453
+{
+	char *sep = strchr(str, ':');
+	if (sep)
+		*sep = '\0';
 }
 
 void invalidFunctionArg_log10(float f, double d, const long double ld)
@@ -4899,6 +4951,10 @@ void invalidFunctionArgString(char c)
     char d='d';
     /* cppcheck-suppress invalidFunctionArgStr */
     (void)strcat(str,&d);
+
+    char a[] = { 'a', 'b', 'c' };
+    /* cppcheck-suppress [bufferAccessOutOfBounds,invalidFunctionArgStr] */
+    (void)strcat(a, "def");
 }
 
 void ignoredReturnValue_abs(int i)

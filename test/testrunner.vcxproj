@@ -87,6 +87,7 @@
     <ClCompile Include="testpreprocessor.cpp" />
     <ClCompile Include="testprocessexecutor.cpp" />
     <ClCompile Include="testprogrammemory.cpp" />
+    <ClCompile Include="testrefthunk.cpp" />
     <ClCompile Include="testregex.cpp" />
     <ClCompile Include="testsarifreport.cpp" />
     <ClCompile Include="testsettings.cpp" />

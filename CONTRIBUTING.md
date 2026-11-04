@@ -6,7 +6,7 @@ These are some guidelines *any* contributor should follow. They will help to mak
 
 ## Code Changes
 
-Code contributions are handled via GitHub pull requests: https://github.com/danmar/cppcheck/pulls.
+Code contributions are handled via GitHub pull requests: https://github.com/cppcheck-opensource/cppcheck/pulls.
 
 If you file a pull request you might not get a reply immediately. We are a very small team and it might not fit in the current scope or time.
 
@@ -18,7 +18,7 @@ Also after you filed a pull request please be ready to reply to questions and fe
 
 Please do not be discouraged if your change was rejected or if the review process might not have been as smooth as it could have been.
 
-Each change should be accompanied with a unit ([C++](https://github.com/danmar/cppcheck/tree/main/test)) or integration ([Python](https://github.com/danmar/cppcheck/tree/main/test/cli)) test to ensure that it doesn't regress with future changes. Negative tests (testing the opposite behavior) would be favorable but might not be required or might already exist depending on the change. Tests which introduce `TODO_ASSERT_` or `@pytest.mark.skip`/`@pytest.mark.xfail` should have tickets filed.
+Each change should be accompanied with a unit ([C++](https://github.com/cppcheck-opensource/cppcheck/tree/main/test)) or integration ([Python](https://github.com/cppcheck-opensource/cppcheck/tree/main/test/cli)) test to ensure that it doesn't regress with future changes. Negative tests (testing the opposite behavior) would be favorable but might not be required or might already exist depending on the change. Tests which introduce `TODO_ASSERT_` or `@pytest.mark.skip`/`@pytest.mark.xfail` should have tickets filed.
 
 If the change is modifying existing behavior (i.e. adding a feature or fixing a bug) it should be accompanied by an issue in the [tracker](https://trac.cppcheck.net) (if you do not have access we can assist with that). Depending on the change it might also warrant an entry in `releasenotes.txt`.
 
@@ -56,7 +56,7 @@ So if you start spending a lot of time on these, you might want to get into touc
 
 ## simplecpp
 
-At its core Cppcheck is relying on the `simplecpp` library which is a preprocessor implementation which was spun off into its [separate project](https://github.com/danmar/simplecpp) with its own [bug tracker](https://github.com/danmar/simplecpp/issues). This is also maintained by the Cppcheck developers and contributions to it are also welcome.
+At its core Cppcheck is relying on the `simplecpp` library which is a preprocessor implementation which was spun off into its [separate project](https://github.com/cppcheck-opensource/simplecpp) with its own [bug tracker](https://github.com/cppcheck-opensource/simplecpp/issues). This is also maintained by the Cppcheck developers and contributions to it are also welcome.
 
 ## Translations
 

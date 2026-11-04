@@ -40,27 +40,32 @@ if (BUILD_CLI)
     endif()
 
     install(TARGETS cppcheck
-        RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         COMPONENT applications)
 
     install(PROGRAMS ${CMAKE_SOURCE_DIR}/htmlreport/cppcheck-htmlreport
-        DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
+        DESTINATION ${CMAKE_INSTALL_BINDIR}
         COMPONENT applications)
 
+    # TODO: leverage CMAKE_INSTALL_DATAROOTDIR (share)?
+
     install(FILES ${addons_py}
-       DESTINATION ${FILESDIR_DEF}/addons
+       DESTINATION ${FILESDIR_INSTALL}/addons
        COMPONENT headers)
 
     install(FILES ${addons_json}
-       DESTINATION ${FILESDIR_DEF}/addons
+       DESTINATION ${FILESDIR_INSTALL}/addons
        COMPONENT headers)
 
     install(FILES ${cfgs}
-       DESTINATION ${FILESDIR_DEF}/cfg
+       DESTINATION ${FILESDIR_INSTALL}/cfg
        COMPONENT headers)
 
     install(FILES ${platforms}
-       DESTINATION ${FILESDIR_DEF}/platforms
+       DESTINATION ${FILESDIR_INSTALL}/platforms
        COMPONENT headers)
+
+    # TODO: install manpage into CMAKE_INSTALL_MANDIR
+    # TODO: install documentation into CMAKE_INSTALL_DOCDIR?
 
 endif()

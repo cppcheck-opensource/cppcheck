@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -220,7 +221,7 @@ bool strToInt(const std::string& str, T &num, std::string* err = nullptr)
         tmp = std::stoll(str, &idx);
         if (idx != str.size()) {
             if (err)
-                *err = "not an integer";
+                *err = "not an integer (pos)";
             return false;
         }
     } catch (const std::out_of_range&) {
@@ -229,12 +230,22 @@ bool strToInt(const std::string& str, T &num, std::string* err = nullptr)
         return false;
     } catch (const std::invalid_argument &) {
         if (err)
-            *err = "not an integer";
+            *err = "not an integer (invalid_argument)";
         return false;
     }
     if (str.front() == '-' && std::numeric_limits<T>::min() == 0) {
         if (err)
             *err = "needs to be positive";
+        return false;
+    }
+    if (str.front() != '+' && str.front() != '-' && isdigit(str.front()) == 0) {
+        if (err)
+            *err = "not an integer";
+        return false;
+    }
+    if (str.size() > 1 && str.front() == '0') {
+        if (err)
+            *err = "not an integer";
         return false;
     }
     if (tmp < std::numeric_limits<T>::min() || tmp > std::numeric_limits<T>::max()) {
@@ -255,7 +266,7 @@ bool strToInt(const std::string& str, T &num, std::string* err = nullptr)
         tmp = std::stoull(str, &idx);
         if (idx != str.size()) {
             if (err)
-                *err = "not an integer";
+                *err = "not an integer (pos)";
             return false;
         }
     } catch (const std::out_of_range&) {
@@ -264,12 +275,22 @@ bool strToInt(const std::string& str, T &num, std::string* err = nullptr)
         return false;
     } catch (const std::invalid_argument &) {
         if (err)
-            *err = "not an integer";
+            *err = "not an integer (invalid_argument)";
         return false;
     }
     if (str.front() == '-') {
         if (err)
             *err = "needs to be positive";
+        return false;
+    }
+    if (str.front() != '+' && isdigit(str.front()) == 0) {
+        if (err)
+            *err = "not an integer";
+        return false;
+    }
+    if (str.size() > 1 && str.front() == '0') {
+        if (err)
+            *err = "not an integer";
         return false;
     }
     if (tmp > std::numeric_limits<T>::max()) {

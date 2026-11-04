@@ -46,9 +46,9 @@ public:
             throw std::runtime_error("empty path specified");
     }
 
-    void setPath(std::string path)
+    void setPath(std::string p)
     {
-        mPath = std::move(path);
+        mPath = std::move(p);
         mPathSimplified = Path::simplifyPath(mPath);
         mPathAbsolute.clear();
     }
@@ -76,9 +76,9 @@ public:
         return mSize;
     }
 
-    void setLang(Standards::Language lang)
+    void setLang(Standards::Language language)
     {
-        mLang = lang;
+        mLang = language;
     }
 
     Standards::Language lang() const
@@ -91,9 +91,9 @@ public:
         return mFsFileId;
     }
 
-    void setFsFileId(std::size_t fsFileId)
+    void setFsFileId(std::size_t id)
     {
-        mFsFileId = fsFileId;
+        mFsFileId = id;
     }
 private:
     std::string mPath;
@@ -148,6 +148,7 @@ struct CPPCHECKLIB FileSettings {
     }
     std::set<std::string> undefs;
     std::list<std::string> includePaths;
+    std::list<std::string> forcedIncludes;
     // only used by clang mode
     std::list<std::string> systemIncludePaths;
     std::string standard;

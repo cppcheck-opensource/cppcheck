@@ -122,7 +122,7 @@ static QStringList getLabels() {
         QObject::tr("Rule"),
         QObject::tr("Since date"),
         QObject::tr("Tags"),
-        QObject::tr("CWE")};
+        "CWE"};
 }
 
 static Severity getSeverity(ReportType reportType, const ErrorItem& errorItem) {
@@ -246,7 +246,7 @@ bool ResultsTree::addErrorItem(const ErrorItem& errorItem)
     const QString s = errorItem.toString();
     if (mErrorList.contains(s))
         return false;
-    mErrorList.append(s);
+    mErrorList.insert(s);
 
     QSharedPointer<ErrorItem> errorItemPtr{new ErrorItem(errorItem)};
 
@@ -427,8 +427,8 @@ void ResultsTree::clear(const QString &filename)
 
         if (stripped == fileItem->text() ||
             filename == fileItem->errorItem->file0) {
+            removeFileErrorsFromErrorList(fileItem);
             mModel->removeRow(i);
-            mErrorList.removeAll(fileItem->errorItem->toString());
             break;
         }
     }
@@ -445,8 +445,8 @@ void ResultsTree::clearRecheckFile(const QString &filename)
         QString storedfile = fileItem->getErrorPathItem().file;
         storedfile = ((!mCheckPath.isEmpty() && storedfile.startsWith(mCheckPath)) ? storedfile.mid(mCheckPath.length() + 1) : storedfile);
         if (actualfile == storedfile) {
+            removeFileErrorsFromErrorList(fileItem);
             mModel->removeRow(i);
-            mErrorList.removeAll(fileItem->errorItem->toString());
             break;
         }
     }
@@ -741,7 +741,7 @@ void ResultsTree::startApplication(const ResultItem *target, int application)
     //If there are no applications specified, tell the user about it
     if (mApplications->getApplicationCount() == 0) {
         QMessageBox msg(QMessageBox::Critical,
-                        tr("Cppcheck"),
+                        "Cppcheck",
                         tr("No editor application configured.\n\n"
                            "Configure the editor application for Cppcheck in preferences/Applications."),
                         QMessageBox::Ok,
@@ -755,7 +755,7 @@ void ResultsTree::startApplication(const ResultItem *target, int application)
 
     if (application == -1) {
         QMessageBox msg(QMessageBox::Critical,
-                        tr("Cppcheck"),
+                        "Cppcheck",
                         tr("No default editor application selected.\n\n"
                            "Please select the default editor application in preferences/Applications."),
                         QMessageBox::Ok,
@@ -1132,6 +1132,15 @@ void ResultsTree::saveErrors(Report *report, const ResultItem *fileItem) const
     }
 }
 
+void ResultsTree::removeFileErrorsFromErrorList(const ResultItem *fileItem)
+{
+    for (int i{0}; i < fileItem->rowCount(); ++i) {
+        const auto *errorItem = dynamic_cast<const ResultItem*>(fileItem->child(i, COLUMN_FILE));
+        if (errorItem && errorItem->errorItem)
+            mErrorList.remove(errorItem->errorItem->toString());
+    }
+}
+
 void ResultsTree::updateFromOldReport(const QString &filename)
 {
     showColumn(COLUMN_SINCE_DATE);
@@ -1194,7 +1203,15 @@ void ResultsTree::updateSettings(bool showFullPath,
 
 void ResultsTree::setCheckDirectory(const QString &dir)
 {
+    if (mCheckPath == dir)
+        return;
+
     mCheckPath = dir;
+
+    // A partial recheck keeps results whose displayed paths are relative to the check path, so
+    // they are recalculated. Not without a check path, QDir("") would turn absolute paths into "../..".
+    if (!mCheckPath.isEmpty())
+        refreshFilePaths();
 }
 
 const QString& ResultsTree::getCheckDirectory() const

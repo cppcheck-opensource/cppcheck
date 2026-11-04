@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -177,7 +177,11 @@ namespace {
         }
 
         std::string compile();
-        std::string match(const std::string& str, const MatchFn& match) const override;
+        std::string match(const std::string& str, const MatchFn& matchFn) const override;
+
+        Engine engine() const override {
+            return Engine::Pcre;
+        }
 
     private:
         std::string mPattern;
@@ -219,7 +223,7 @@ namespace {
         return "";
     }
 
-    std::string PcreRegex::match(const std::string& str, const MatchFn& match) const
+    std::string PcreRegex::match(const std::string& str, const MatchFn& matchFn) const
     {
         if (!mRe)
             return "regular expression has not been compiled yet";
@@ -236,7 +240,7 @@ namespace {
             const auto pos1 = static_cast<unsigned int>(ovector[0]);
             const auto pos2 = static_cast<unsigned int>(ovector[1]);
 
-            match(pos1, pos2);
+            matchFn(pos1, pos2);
 
             // jump to the end of the match for the next pcre_exec
             pos = static_cast<int>(pos2);

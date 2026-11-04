@@ -56,6 +56,7 @@
 #include <iostream>
 #include <list>
 #include <map>
+#include <memory>
 #include <set>
 #include <sstream>
 #include <unordered_set>
@@ -267,8 +268,9 @@ int CppCheckExecutor::check(int argc, const char* const argv[])
         return EXIT_SUCCESS;
     }
 
-    TimerResults overallTimerResults;
-    Timer realTimeClock("Overall time", settings.showtime, &overallTimerResults, Timer::Type::OVERALL);
+    std::unique_ptr<OneShotTimer> overallTimer;
+    if (settings.showtime == Settings::ShowTime::SUMMARY || settings.showtime == Settings::ShowTime::TOP5_SUMMARY)
+        overallTimer.reset(new OneShotTimer("Overall time"));
 
     settings.loadSummaries();
 
@@ -276,9 +278,6 @@ int CppCheckExecutor::check(int argc, const char* const argv[])
     mFileSettings = parser.getFileSettings();
 
     const int ret = check_wrapper(settings, supprs);
-
-    realTimeClock.stop();
-    overallTimerResults.showResults(settings.showtime, false, true);
 
     return ret;
 }
@@ -422,7 +421,9 @@ bool CppCheckExecutor::reportUnmatchedSuppressions(const Settings &settings, con
 int CppCheckExecutor::check_internal(const Settings& settings, Suppressions& supprs) const
 {
     StdLogger stdLogger(settings);
-    TimerResults timerResults;
+    std::unique_ptr<TimerResults> timerResults;
+    if (settings.showtime != Settings::ShowTime::NONE)
+        timerResults.reset(new TimerResults);
 
     if (settings.reportProgress >= 0)
         stdLogger.resetLatestProgressOutputTime();
@@ -443,31 +444,35 @@ int CppCheckExecutor::check_internal(const Settings& settings, Suppressions& sup
     if (!settings.checkersReportFilename.empty())
         std::remove(settings.checkersReportFilename.c_str());
 
-    CppCheck cppcheck(settings, supprs, stdLogger, &timerResults, true, executeCommand);
+    CppCheck cppcheck(settings, supprs, stdLogger, timerResults.get(), true, executeCommand);
 
     unsigned int returnValue = 0;
     if (settings.useSingleJob()) {
         // Single process
-        SingleExecutor executor(cppcheck, mFiles, mFileSettings, settings, supprs, stdLogger, &timerResults);
+        SingleExecutor executor(cppcheck, mFiles, mFileSettings, settings, supprs, stdLogger, timerResults.get());
         returnValue = executor.check();
     } else {
 #if defined(HAS_THREADING_MODEL_THREAD)
         if (settings.executor == Settings::ExecutorType::Thread) {
-            ThreadExecutor executor(mFiles, mFileSettings, settings, supprs, stdLogger, &timerResults, CppCheckExecutor::executeCommand);
+            ThreadExecutor executor(mFiles, mFileSettings, settings, supprs, stdLogger, timerResults.get(), CppCheckExecutor::executeCommand);
             returnValue = executor.check();
         }
 #endif
 #if defined(HAS_THREADING_MODEL_FORK)
         if (settings.executor == Settings::ExecutorType::Process) {
-            ProcessExecutor executor(mFiles, mFileSettings, settings, supprs, stdLogger, &timerResults, CppCheckExecutor::executeCommand);
+            ProcessExecutor executor(mFiles, mFileSettings, settings, supprs, stdLogger, timerResults.get(), CppCheckExecutor::executeCommand);
             returnValue = executor.check();
         }
 #endif
     }
 
     // TODO: show time *after* the whole program analysis
-    if (settings.showtime == ShowTime::SUMMARY || settings.showtime == ShowTime::TOP5_SUMMARY)
-        timerResults.showResults(settings.showtime);
+    if (timerResults) {
+        if (settings.showtime == Settings::ShowTime::SUMMARY)
+            timerResults->showResults();
+        else if (settings.showtime == Settings::ShowTime::TOP5_SUMMARY)
+            timerResults->showResults(5);
+    }
 
     // TODO: is this run again instead of using previously cached results?
     returnValue |= cppcheck.analyseWholeProgram(settings.buildDir, mFiles, mFileSettings, stdLogger.getCtuInfo());
@@ -496,6 +501,7 @@ int CppCheckExecutor::check_internal(const Settings& settings, Suppressions& sup
 
 void StdLogger::writeCheckersReport(const Suppressions& supprs)
 {
+    // TODO: only necessary when we actually issue a checkers report?
     if (!mCheckersFile.empty())
     {
         std::ofstream fout(mCheckersFile);
@@ -505,15 +511,14 @@ void StdLogger::writeCheckersReport(const Suppressions& supprs)
         }
     }
 
-    const bool summary = mSettings.safety || mSettings.severity.isEnabled(Severity::information);
-    const bool xmlReport = mSettings.outputFormat == Settings::OutputFormat::xml && mSettings.xml_version == 3;
-    const bool textReport = !mSettings.checkersReportFilename.empty();
+    bool summary, xmlReport, textReport;
 
-    if (!summary && !xmlReport && !textReport)
+    if (!mSettings.collectLogCheckers(&summary, &xmlReport, &textReport))
         return;
 
     CheckersReport checkersReport(mSettings, mActiveCheckers);
 
+    // TODO: include in summary boolean
     const auto& suppressions = supprs.nomsg.getSuppressions();
     const bool summarySuppressed = std::any_of(suppressions.cbegin(), suppressions.cend(), [](const SuppressionList::Suppression& s) {
         return s.errorId == "checkersReport";
@@ -656,8 +661,13 @@ void StdLogger::reportErr(const ErrorMessage &msg)
     msgCopy.classification = getClassification(msgCopy.guideline, mSettings.reportType);
 
     // TODO: there should be no need for verbose and default messages here
+    // Don't perform redundant reads for these formats, the code is not needed
+    // for deduplication
+    const bool noCode = mSettings.outputFormat == Settings::OutputFormat::xml ||
+                        mSettings.outputFormat == Settings::OutputFormat::sarif;
     const std::string msgStr =
-        msgCopy.toString(mSettings.verbose, mSettings.templateFormat, mSettings.templateLocation);
+        msgCopy.toString(mSettings.verbose, mSettings.templateFormat,
+                         mSettings.templateLocation, noCode);
 
     // Alert only about unique errors
     if (!mSettings.emitDuplicates && !mShownErrors.insert(msgStr).second)

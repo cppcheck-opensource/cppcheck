@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2021 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,11 +18,16 @@
 
 #include "testprojectfile.h"
 
+#include "addoninfo.h"
 #include "library.h"
 #include "platform.h"
 #include "projectfile.h"
 #include "settings.h"
 #include "suppressions.h"
+
+#ifdef HAVE_RULES
+#include "rule.h"
+#endif
 
 #include <QFile>
 #include <QIODevice>
@@ -38,6 +43,7 @@ const char Settings::SafeChecks::XmlExternalFunctions[] = "external-functions";
 const char Settings::SafeChecks::XmlInternalFunctions[] = "internal-functions";
 const char Settings::SafeChecks::XmlExternalVariables[] = "external-variables";
 Settings::Settings() : maxCtuDepth(10) {}
+Settings::~Settings() = default;
 Platform::Platform() = default;
 Library::Library() = default;
 Library::~Library() = default;
@@ -197,6 +203,55 @@ void TestProjectFile::getCheckingSuppressionsStar() const
     projectFile.setFilename("/some/path/123.cppcheck");
     projectFile.setSuppressions(suppressions);
     QCOMPARE(projectFile.getCheckingSuppressions()[0].fileName, "*.cpp");
+}
+
+void TestProjectFile::emptyUserInclude() const
+{
+    ProjectFile projectFile;
+    Settings settings;
+    projectFile.setUserInclude("   ");
+    projectFile.setSettingsUserIncludes(settings);
+    QCOMPARE(settings.userIncludes.size(), 0);
+}
+
+// Absolute path is made relative when it does not require walking up more than 3 parent folders
+void TestProjectFile::getRelativePathRelative() const
+{
+    ProjectFile projectFile;
+    projectFile.setFilename("/some/path/sub/123.cppcheck");
+    QCOMPARE(projectFile.getRelativePath("/some/path/externals/foo.cpp"), QString("../externals/foo.cpp"));
+}
+
+// Absolute path is made relative even when it requires walking up 2 parent folders
+void TestProjectFile::getRelativePathTwoUp() const
+{
+    ProjectFile projectFile;
+    projectFile.setFilename("/some/path/sub/123.cppcheck");
+    QCOMPARE(projectFile.getRelativePath("/some/externals/foo.cpp"), QString("../../externals/foo.cpp"));
+}
+
+// Absolute path is kept as-is when making it relative would require walking up more than 3 parent folders
+void TestProjectFile::getRelativePathTooFarUp() const
+{
+    ProjectFile projectFile;
+    projectFile.setFilename("/some/path/sub/123.cppcheck");
+    QCOMPARE(projectFile.getRelativePath("/other/deep/foo.cpp"), QString("/other/deep/foo.cpp"));
+}
+
+// Absolute path in a subfolder of the project path is made relative without walking up at all
+void TestProjectFile::getRelativePathSubfolder() const
+{
+    ProjectFile projectFile;
+    projectFile.setFilename("/some/path/sub/123.cppcheck");
+    QCOMPARE(projectFile.getRelativePath("/some/path/sub/src/file1.c"), QString("src/file1.c"));
+}
+
+// Absolute path is kept as-is when it is shorter than the relative path, even if it does not require walking up 3 or more parent folders
+void TestProjectFile::getRelativePathAbsoluteShorter() const
+{
+    ProjectFile projectFile;
+    projectFile.setFilename("/ab/path/sub/123.cppcheck");
+    QCOMPARE(projectFile.getRelativePath("/ab/foo.cpp"), QString("/ab/foo.cpp"));
 }
 
 QTEST_MAIN(TestProjectFile)

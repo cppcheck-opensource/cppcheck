@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2023 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -297,6 +297,7 @@ static std::vector<std::string> prioritizelib(const std::vector<std::string>& li
     std::map<std::string, std::size_t> priorities;
     std::size_t prio = libfiles.size();
     for (const auto &l : libfiles) {
+        // cppcheck-suppress useStlAlgorithm - std::transform is cumbersome
         priorities.emplace(l, prio--);
     }
     priorities["lib/valueflow.cpp"] = 1000;
@@ -495,12 +496,15 @@ int main(int argc, char **argv)
     }
     libfiles_h.emplace("analyzer.h");
     libfiles_h.emplace("calculate.h");
+    libfiles_h.emplace("check.h");
     libfiles_h.emplace("config.h");
     libfiles_h.emplace("filesettings.h");
     libfiles_h.emplace("findtoken.h");
     libfiles_h.emplace("json.h");
     libfiles_h.emplace("matchcompiler.h");
+    libfiles_h.emplace("refthunk.h");
     libfiles_h.emplace("precompiled.h");
+    libfiles_h.emplace("rule.h");
     libfiles_h.emplace("smallvector.h");
     libfiles_h.emplace("sourcelocation.h");
     libfiles_h.emplace("tokenrange.h");
@@ -559,7 +563,7 @@ int main(int argc, char **argv)
 
         for (const std::string &libfile: libfiles_prio) {
             const std::string l = libfile.substr(4);
-            outstr += make_vcxproj_cl_entry(l, l == "check.cpp" ? Precompile : Compile);
+            outstr += make_vcxproj_cl_entry(l, l == "checkimpl.cpp" ? Precompile : Compile);
         }
     }, [&](std::string &outstr){
         outstr += make_vcxproj_cl_entry(R"(..\externals\simplecpp\simplecpp.h)", Include);
@@ -771,8 +775,13 @@ int main(int argc, char **argv)
          << "    $(error invalid HAVE_RULES value '$(HAVE_RULES)')\n"
          << "endif\n\n";
 
-    // the # needs to be escaped on older make versions
-    fout << "HAVE_EXECINFO_H=$(shell echo \"\\#include <execinfo.h>\" | $(CXX) -c -xc - 2> /dev/null && echo \"1\" || echo \"0\")\n"
+    fout << "# older make versions do not support # in $(shell) and newer ones handle the escape sequence literally\n"
+         << "REQUIRE_ESCAPE=$(shell echo \"\\#define DEF\" | $(CXX) -c -xc - 2> /dev/null && echo \"1\" || echo \"0\")\n"
+         << "ifeq ($(REQUIRE_ESCAPE),1)\n"
+         << "    HAVE_EXECINFO_H=$(shell echo \"\\#include <execinfo.h>\" | $(CXX) -c -xc - 2> /dev/null && echo \"1\" || echo \"0\")\n"
+         << "else\n"
+         << "    HAVE_EXECINFO_H=$(shell echo \"#include <execinfo.h>\" | $(CXX) -c -xc - 2> /dev/null && echo \"1\" || echo \"0\")\n"
+         << "endif\n"
          << "override CPPFLAGS += -DHAVE_EXECINFO_H=$(HAVE_EXECINFO_H)\n\n";
 
     fout << "override CXXFLAGS += $(CXXOPTS)\n";

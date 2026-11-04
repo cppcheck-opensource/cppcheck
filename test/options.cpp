@@ -1,5 +1,5 @@
 // Cppcheck - A tool for static C/C++ code analysis
-// Copyright (C) 2007-2025 Cppcheck team.
+// Copyright (C) 2007-2026 Cppcheck team.
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -58,11 +58,8 @@ options::options(int argc, const char* const argv[])
 
 options::~options()
 {
-    // TODO: allow more than 5 results to be shown
-    // TODO: provide higher resolution in output
-    // TODO: disable the metrics
     if (mTimerResults)
-        mTimerResults->showResults(ShowTime::TOP5_FILE);
+        mTimerResults->showResults(10, false);
 }
 
 bool options::quiet() const

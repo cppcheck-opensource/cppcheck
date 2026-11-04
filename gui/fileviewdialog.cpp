@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -54,7 +54,7 @@ void FileViewDialog::loadTextFile(const QString &filename, QTextEdit *edit)
         msg = msg.arg(filename);
 
         QMessageBox msgbox(QMessageBox::Critical,
-                           tr("Cppcheck"),
+                           "Cppcheck",
                            msg,
                            QMessageBox::Ok,
                            this);
@@ -68,7 +68,7 @@ void FileViewDialog::loadTextFile(const QString &filename, QTextEdit *edit)
         msg = msg.arg(filename);
 
         QMessageBox msgbox(QMessageBox::Critical,
-                           tr("Cppcheck"),
+                           "Cppcheck",
                            msg,
                            QMessageBox::Ok,
                            this);

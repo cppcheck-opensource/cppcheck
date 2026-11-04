@@ -64,7 +64,7 @@ private:
     struct CheckOptions
     {
         bool quiet = true;
-        ShowTime showtime = ShowTime::NONE;
+        Settings::ShowTime showtime = Settings::ShowTime::NONE;
         const char* plistOutput = nullptr;
         std::vector<std::string> filesList;
     };
@@ -105,7 +105,9 @@ private:
         s.templateFormat = "{callstack}: ({severity}) {inconclusive:inconclusive: }{message}"; // TODO: remove when we only longer rely on toString() in unique message handling?
 
         Suppressions supprs;
-        TimerResults timerResults;
+        std::unique_ptr<TimerResults> timerResults;
+        if (s.showtime != Settings::ShowTime::NONE)
+            timerResults.reset(new TimerResults);
 
         // NOLINTNEXTLINE(performance-unnecessary-value-param)
         auto executeFn = [](std::string,std::vector<std::string>,std::string,std::string&){
@@ -121,7 +123,7 @@ private:
         if (useFS)
             filelist.clear();
 
-        ThreadExecutor executor(filelist, fileSettings, s, supprs, *this, &timerResults, executeFn);
+        ThreadExecutor executor(filelist, fileSettings, s, supprs, *this, timerResults.get(), executeFn);
         ASSERT_EQUALS(result, executor.check());
     }
 #endif // HAS_THREADING_MODEL_THREAD
@@ -167,7 +169,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS(num_files, cppcheck::count_all_of(errout_str(), "(error) Null pointer dereference: (int*)0"));
     }
 
@@ -178,7 +180,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}", dinit(CheckOptions, $.showtime = ShowTime::SUMMARY));
+              "}\n", dinit(CheckOptions, $.showtime = Settings::ShowTime::SUMMARY));
         // we are not interested in the results - so just consume them
         ignore_errout();
     }
@@ -191,7 +193,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}", dinit(CheckOptions, $.plistOutput = plistOutput.c_str()));
+              "}\n", dinit(CheckOptions, $.plistOutput = plistOutput.c_str()));
         // we are not interested in the results - so just consume them
         ignore_errout();
     }
@@ -201,7 +203,7 @@ private:
               "int main()\n"
               "{\n"
               "  return 0;\n"
-              "}");
+              "}\n");
     }
 
     void no_errors_less_files() {
@@ -209,7 +211,7 @@ private:
               "int main()\n"
               "{\n"
               "  return 0;\n"
-              "}");
+              "}\n");
     }
 
     void no_errors_equal_amount_files() {
@@ -217,7 +219,7 @@ private:
               "int main()\n"
               "{\n"
               "  return 0;\n"
-              "}");
+              "}\n");
     }
 
     void one_error_less_files() {
@@ -225,7 +227,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("[" + fprefix() + "_1.c:3:12]: (error) Null pointer dereference: (int*)0 [nullPointer]\n", errout_str());
     }
 
@@ -235,7 +237,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS(num_files, cppcheck::count_all_of(errout_str(), "(error) Null pointer dereference: (int*)0"));
     }
 
@@ -245,9 +247,9 @@ private:
     void showtime_top5_file() {
         REDIRECT; // should not cause TSAN failures as the showtime logging is synchronized
         check(2, 2, 0,
-              "int main() {}",
+              "int main() {}\n",
               dinit(CheckOptions,
-                    $.showtime = ShowTime::TOP5_FILE));
+                    $.showtime = Settings::ShowTime::TOP5_FILE));
         const std::string output_s = GET_REDIRECT_OUTPUT;
         // for each file: top5 results + check time
         ASSERT_EQUALS((5 + 1) * 2LL, cppcheck::count_all_of(output_s, '\n'));
@@ -256,9 +258,9 @@ private:
     void showtime_file() {
         REDIRECT; // should not cause TSAN failures as the showtime logging is synchronized
         check(2, 2, 0,
-              "int main() {}",
+              "int main() {}\n",
               dinit(CheckOptions,
-                    $.showtime = ShowTime::FILE));
+                    $.showtime = Settings::ShowTime::FILE));
         const std::string output_s = GET_REDIRECT_OUTPUT;
         ASSERT_EQUALS(0, cppcheck::count_all_of(output_s, "Overall time:"));
     }
@@ -266,9 +268,9 @@ private:
     void showtime_file_total() {
         REDIRECT; // should not cause TSAN failures as the showtime logging is synchronized
         check(2, 2, 0,
-              "int main() {}",
+              "int main() {}\n",
               dinit(CheckOptions,
-                    $.showtime = ShowTime::FILE_TOTAL));
+                    $.showtime = Settings::ShowTime::FILE_TOTAL));
         const std::string output_s = GET_REDIRECT_OUTPUT;
         ASSERT(output_s.find("Check time: " + fprefix() + "_1.c: ") != std::string::npos);
         ASSERT(output_s.find("Check time: " + fprefix() + "_2.c: ") != std::string::npos);
@@ -283,7 +285,7 @@ private:
               "void f()\n"
               "{\n"
               "  (void)(*((int*)0));\n"
-              "}");
+              "}\n");
         ASSERT_EQUALS("", errout_str());
         settings = settingsOld;
     }
@@ -294,9 +296,9 @@ private:
                          "inline void f()\n"
                          "{\n"
                          "  (void)(*((int*)0));\n"
-                         "}");
+                         "}\n");
         check(2, 2, 2,
-              "#include \"" + inc_h.name() +"\"");
+              "#include \"" + inc_h.name() +"\"\n");
         // this is made unique by the executor
         ASSERT_EQUALS("[" + inc_h.name() + ":3:12]: (error) Null pointer dereference: (int*)0 [nullPointer]\n", errout_str());
     }

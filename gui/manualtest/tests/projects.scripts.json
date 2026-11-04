@@ -1,0 +1,771 @@
+{
+  "tf9fc8bf6": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File...",
+        "role": "menu item",
+        "label": "Choose Open Project File in the File menu"
+      },
+      {
+        "expect": "visible",
+        "name": "Select Project File",
+        "role": "dialog",
+        "label": "The project file dialog is shown"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:basic-project}/basic.cppcheck",
+        "label": "Enter the path of basic.cppcheck"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Confirm the dialog to open the project"
+      },
+      {
+        "expect": "visible",
+        "name": "Project: basic.cppcheck",
+        "role": "frame",
+        "timeout": 15,
+        "label": "The title of the main window names basic.cppcheck"
+      },
+      {
+        "do": "wait",
+        "name": "Select Project File",
+        "gone": true,
+        "label": "The dialog is closed"
+      },
+      {
+        "do": "sleep",
+        "seconds": 4,
+        "label": "Wait for the analysis to finish"
+      },
+      {
+        "do": "focus",
+        "role": "tree",
+        "label": "Focus the results tree"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Home",
+          "Down",
+          "Down",
+          "Right",
+          "Up",
+          "Right",
+          "Up",
+          "Right",
+          "Home"
+        ],
+        "label": "Expand the results of all three files and go to the top"
+      },
+      {
+        "expect": "visible",
+        "name": "nullPointer",
+        "role": "table cell",
+        "timeout": 10,
+        "label": "nullPointer errors are shown for util.h and a.c"
+      },
+      {
+        "expect": "text",
+        "contains": "src/a.c",
+        "label": "Results for a.c are shown"
+      },
+      {
+        "expect": "text",
+        "contains": "include/util.h",
+        "label": "Results for util.h are shown"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "End"
+        ],
+        "label": "Scroll to the results of b.c"
+      },
+      {
+        "expect": "visible",
+        "name": "arrayIndexOutOfBounds",
+        "role": "table cell",
+        "timeout": 10,
+        "label": "arrayIndexOutOfBounds error is shown for b.c"
+      }
+    ],
+    "script_for": "7128457516b3"
+  },
+  "t6bb11424": {
+    "script": [
+      {
+        "do": "click",
+        "name": "Open Project File",
+        "role": "button",
+        "label": "Open the first project"
+      },
+      {
+        "do": "type",
+        "value": "{project:switch-project}/one/p1.cppcheck",
+        "label": "Enter path of p1.cppcheck"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Confirm the file dialog"
+      },
+      {
+        "expect": "visible",
+        "name": "Project: p1.cppcheck",
+        "role": "frame",
+        "timeout": 10,
+        "label": "First project is loaded"
+      },
+      {
+        "expect": "visible",
+        "name": "a.c",
+        "role": "table cell",
+        "timeout": 20,
+        "label": "Results of the first project show a.c"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File",
+        "role": "button",
+        "label": "Open the second project"
+      },
+      {
+        "do": "type",
+        "value": "{project:switch-project}/two/p2.cppcheck",
+        "label": "Enter path of p2.cppcheck"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Confirm the file dialog"
+      },
+      {
+        "expect": "visible",
+        "name": "Project: p2.cppcheck",
+        "role": "frame",
+        "timeout": 10,
+        "label": "Second project is loaded"
+      },
+      {
+        "expect": "visible",
+        "name": "b.c",
+        "role": "table cell",
+        "timeout": 20,
+        "label": "Results of the second project show b.c"
+      },
+      {
+        "expect": "gone",
+        "name": "a.c",
+        "role": "table cell",
+        "label": "Results of the first project are gone"
+      }
+    ],
+    "script_for": "70097c80a6ed"
+  },
+  "t176fd17f": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File...",
+        "role": "menu item",
+        "label": "Choose Open Project File"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:switch-project}/one/p1.cppcheck",
+        "label": "Enter the path of p1.cppcheck"
+      },
+      {
+        "do": "click",
+        "name": "Open",
+        "role": "button",
+        "exact": true,
+        "label": "Open p1.cppcheck"
+      },
+      {
+        "expect": "text",
+        "contains": "Project: p1.cppcheck",
+        "timeout": 10,
+        "label": "Project p1 is open"
+      },
+      {
+        "expect": "visible",
+        "name": "Checking a.c",
+        "timeout": 15,
+        "label": "Analysis of p1 is done"
+      },
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File...",
+        "role": "menu item",
+        "label": "Choose Open Project File"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:switch-project}/two/p2.cppcheck",
+        "label": "Enter the path of p2.cppcheck"
+      },
+      {
+        "do": "click",
+        "name": "Open",
+        "role": "button",
+        "exact": true,
+        "label": "Open p2.cppcheck"
+      },
+      {
+        "expect": "text",
+        "contains": "Project: p2.cppcheck",
+        "timeout": 10,
+        "label": "Project p2 is open"
+      },
+      {
+        "do": "sleep",
+        "seconds": 3,
+        "label": "Wait until the analysis of p2 is done"
+      },
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "p1.cppcheck",
+        "role": "menu item",
+        "label": "Click p1.cppcheck in the recent projects list"
+      },
+      {
+        "expect": "text",
+        "contains": "Project: p1.cppcheck",
+        "timeout": 10,
+        "label": "Main window title names p1.cppcheck"
+      },
+      {
+        "expect": "text",
+        "not_contains": "Project: p2.cppcheck",
+        "label": "Title does not name p2.cppcheck"
+      }
+    ],
+    "script_for": "2ea42621479d"
+  },
+  "t1e899c1c": {
+    "script": [
+      {
+        "label": "Open File menu",
+        "do": "click",
+        "name": "File",
+        "role": "menu item"
+      },
+      {
+        "label": "Open File > New Project File",
+        "do": "click",
+        "name": "New Project File",
+        "role": "menu item"
+      },
+      {
+        "label": "Wait for the file name dialog",
+        "do": "wait",
+        "name": "Select Project Filename",
+        "role": "dialog"
+      },
+      {
+        "label": "Enter the file name OSgui.cppcheck",
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:basic-project}/OSgui.cppcheck"
+      },
+      {
+        "label": "Confirm the file name",
+        "do": "key",
+        "keys": [
+          "Return"
+        ]
+      },
+      {
+        "label": "Project file dialog is shown",
+        "expect": "visible",
+        "name": "Project file: OSgui.cppcheck",
+        "role": "dialog"
+      },
+      {
+        "label": "Add a path to check",
+        "do": "click",
+        "name": "Add...",
+        "role": "button",
+        "nth": 0
+      },
+      {
+        "label": "Wait for the directory dialog",
+        "do": "wait",
+        "name": "Select a directory to check",
+        "role": "dialog"
+      },
+      {
+        "label": "Enter the src folder",
+        "do": "settext",
+        "name": "Directory:",
+        "role": "text",
+        "value": "{project:basic-project}/src"
+      },
+      {
+        "label": "Choose the src folder",
+        "do": "click",
+        "name": "Choose",
+        "role": "button"
+      },
+      {
+        "label": "src is in the paths list",
+        "expect": "visible",
+        "name": "src",
+        "role": "list item"
+      },
+      {
+        "label": "Save the project file without selecting an addon",
+        "do": "click",
+        "name": "OK",
+        "role": "button"
+      },
+      {
+        "label": "Create the build dir when asked",
+        "do": "click",
+        "name": "Yes",
+        "role": "button"
+      },
+      {
+        "label": "Wait until the analysis has checked b.c",
+        "expect": "text",
+        "contains": "Checking src/b.c",
+        "timeout": 30
+      },
+      {
+        "label": "Wait for the results of a.c",
+        "expect": "visible",
+        "name": "src/a.c",
+        "role": "table cell",
+        "timeout": 30
+      },
+      {
+        "label": "Select a.c results",
+        "do": "click",
+        "name": "src/a.c",
+        "role": "table cell",
+        "nth": 0,
+        "mouse": true
+      },
+      {
+        "label": "Collapse a.c results to get a known state",
+        "do": "key",
+        "keys": [
+          "Left"
+        ]
+      },
+      {
+        "label": "Expand a.c results",
+        "do": "key",
+        "keys": [
+          "Right"
+        ]
+      },
+      {
+        "label": "nullPointer is reported in a.c",
+        "expect": "visible",
+        "name": "nullPointer",
+        "role": "table cell",
+        "timeout": 10
+      },
+      {
+        "label": "Select b.c results",
+        "do": "click",
+        "name": "src/b.c",
+        "role": "table cell",
+        "nth": 0,
+        "mouse": true
+      },
+      {
+        "label": "Collapse b.c results to get a known state",
+        "do": "key",
+        "keys": [
+          "Left"
+        ]
+      },
+      {
+        "label": "Expand b.c results",
+        "do": "key",
+        "keys": [
+          "Right"
+        ]
+      },
+      {
+        "label": "arrayIndexOutOfBounds is reported in b.c",
+        "expect": "visible",
+        "name": "arrayIndexOutOfBounds",
+        "role": "table cell",
+        "timeout": 10
+      },
+      {
+        "label": "util.h is not checked",
+        "expect": "text",
+        "not_contains": "Checking include/util.h"
+      },
+      {
+        "label": "Project file contains the src path",
+        "expect": "file",
+        "path": "{project:basic-project}/OSgui.cppcheck",
+        "contains": "<dir name=\"src\"/>"
+      },
+      {
+        "label": "Project file has no addon",
+        "expect": "file",
+        "path": "{project:basic-project}/OSgui.cppcheck",
+        "not_contains": "addon"
+      },
+      {
+        "label": "Project file has no include path",
+        "expect": "file",
+        "path": "{project:basic-project}/OSgui.cppcheck",
+        "not_contains": "include"
+      }
+    ],
+    "script_for": "b3616d866fea"
+  },
+  "t202b9515": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "New Project File...",
+        "role": "menu item",
+        "label": "Open File > New Project File"
+      },
+      {
+        "do": "wait",
+        "name": "Select Project Filename",
+        "role": "dialog",
+        "label": "Wait for the file name dialog"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:basic-project}/OSgui.cppcheck",
+        "label": "Enter the file name OSgui.cppcheck"
+      },
+      {
+        "do": "focus",
+        "name": "File name:",
+        "role": "text",
+        "label": "Focus the file name field"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Confirm the file name"
+      },
+      {
+        "do": "wait",
+        "name": "Project file: OSgui.cppcheck",
+        "role": "dialog",
+        "timeout": 10,
+        "label": "Wait for the project file dialog"
+      },
+      {
+        "do": "click",
+        "name": "Paths and Defines",
+        "role": "page tab",
+        "label": "Go to the Paths and Defines tab"
+      },
+      {
+        "do": "click",
+        "name": "Add...",
+        "role": "button",
+        "nth": 0,
+        "label": "Add a path to check"
+      },
+      {
+        "do": "wait",
+        "name": "Select a directory to check",
+        "role": "dialog",
+        "label": "Wait for the directory dialog"
+      },
+      {
+        "do": "settext",
+        "name": "Directory:",
+        "role": "text",
+        "value": "{project:basic-project}/src",
+        "label": "Enter the folder src"
+      },
+      {
+        "do": "click",
+        "name": "Choose",
+        "role": "button",
+        "label": "Choose the folder src"
+      },
+      {
+        "do": "wait",
+        "name": "Select a directory to check",
+        "role": "dialog",
+        "gone": true,
+        "label": "Directory dialog closes"
+      },
+      {
+        "expect": "visible",
+        "name": "src",
+        "role": "list item",
+        "exact": true,
+        "label": "src is in the paths to check"
+      },
+      {
+        "do": "click",
+        "name": "Addons",
+        "role": "page tab",
+        "label": "Go to the Addons tab"
+      },
+      {
+        "do": "click",
+        "name": "{addon}",
+        "role": "check box",
+        "nth": 0,
+        "label": "Tick the addon checkbox"
+      },
+      {
+        "expect": "state",
+        "name": "{addon}",
+        "role": "check box",
+        "nth": 0,
+        "state": "checked",
+        "label": "The addon checkbox is ticked"
+      },
+      {
+        "do": "click",
+        "name": "OK",
+        "role": "button",
+        "label": "Save the project file"
+      },
+      {
+        "do": "wait",
+        "name": "Yes",
+        "role": "button",
+        "timeout": 10,
+        "label": "Question to create the build dir"
+      },
+      {
+        "do": "click",
+        "name": "Yes",
+        "role": "button",
+        "label": "Create the build dir"
+      },
+      {
+        "do": "wait",
+        "name": "src/b.c",
+        "role": "table cell",
+        "timeout": 120,
+        "label": "Wait for the analysis results"
+      },
+      {
+        "do": "sleep",
+        "seconds": 3
+      },
+      {
+        "expect": "state",
+        "name": "Stop analysis",
+        "role": "button",
+        "not_state": "enabled",
+        "timeout": 120,
+        "label": "The analysis is done"
+      },
+      {
+        "do": "focus",
+        "name": "src/a.c",
+        "role": "table cell",
+        "label": "Select the results of a.c"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "asterisk",
+          "End",
+          "asterisk"
+        ],
+        "label": "Expand the results of all files"
+      },
+      {
+        "do": "sleep",
+        "seconds": 1
+      },
+      {
+        "expect": "file",
+        "path": "{project:basic-project}/OSgui.cppcheck",
+        "contains": "<addon>{addon}",
+        "label": "Project file has the addon entry"
+      },
+      {
+        "expect": "file",
+        "path": "{project:basic-project}/OSgui.cppcheck",
+        "contains": "<dir name=\"src\"/>",
+        "label": "Project file has the path src"
+      },
+      {
+        "expect": "visible",
+        "name": "src/a.c",
+        "role": "table cell",
+        "label": "Analysis results are shown"
+      },
+      {
+        "expect": "text",
+        "not_contains": "internalError",
+        "label": "No internalError about the addon in the results"
+      }
+    ],
+    "script_for": "60cd34c48191"
+  },
+  "tf6da2cfd": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File...",
+        "role": "menu item",
+        "label": "Choose Open Project File"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:basic-project}/basic.cppcheck",
+        "label": "Enter the project file path"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Confirm the file dialog"
+      },
+      {
+        "do": "wait",
+        "name": "Checking src/b.c",
+        "timeout": 20,
+        "label": "Wait for the first analysis to run"
+      },
+      {
+        "do": "sleep",
+        "seconds": 3,
+        "label": "Let the first analysis finish"
+      },
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Edit Project File",
+        "role": "menu item",
+        "label": "Choose Edit Project File"
+      },
+      {
+        "expect": "visible",
+        "name": "Project file: basic.cppcheck",
+        "role": "dialog",
+        "label": "Project file dialog is open"
+      },
+      {
+        "do": "click",
+        "name": "Addons",
+        "role": "page tab",
+        "label": "Go to the Addons tab"
+      },
+      {
+        "do": "click",
+        "name": "Misra C 2012",
+        "role": "check box",
+        "label": "Select MISRA C 2012"
+      },
+      {
+        "expect": "state",
+        "name": "Misra C 2012",
+        "state": "checked",
+        "label": "MISRA C 2012 is checked"
+      },
+      {
+        "do": "click",
+        "name": "OK",
+        "role": "button",
+        "label": "Save the project file"
+      },
+      {
+        "expect": "gone",
+        "name": "Project file: basic.cppcheck",
+        "label": "Project file dialog is closed"
+      },
+      {
+        "do": "sleep",
+        "seconds": 4,
+        "label": "Wait for the second analysis to finish"
+      },
+      {
+        "expect": "file",
+        "path": "{project:basic-project}/basic.cppcheck",
+        "contains": "<addon>misra</addon>",
+        "label": "Project file has the misra addon"
+      },
+      {
+        "expect": "visible",
+        "name": "Checking src/b.c",
+        "role": "list item",
+        "nth": 1,
+        "label": "The analysis was run again"
+      }
+    ],
+    "script_for": "452f351f0fb2"
+  }
+}

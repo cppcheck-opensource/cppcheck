@@ -2,7 +2,7 @@
 
 | Linux ビルド状態 | Windows ビルド状態 | Coverity Scan Build 状態 |
 |:--:|:--:|:--:|
-| [![Linux ビルド状態](https://img.shields.io/travis/danmar/cppcheck/master.svg?label=Linux%20build)](https://travis-ci.org/danmar/cppcheck) | [![Windows ビルド状態](https://img.shields.io/appveyor/ci/danmar/cppcheck/master.svg?label=Windows%20build)](https://ci.appveyor.com/project/danmar/cppcheck/branch/master) | [![Coverity Scan Build 状態](https://img.shields.io/coverity/scan/512.svg)](https://scan.coverity.com/projects/512) |
+| [![Linux ビルド状態](https://img.shields.io/travis/cppcheck-opensource/cppcheck/master.svg?label=Linux%20build)](https://travis-ci.org/cppcheck-opensource/cppcheck) | [![Windows ビルド状態](https://img.shields.io/appveyor/ci/cppcheck-opensource/cppcheck/master.svg?label=Windows%20build)](https://ci.appveyor.com/project/cppcheck-opensource/cppcheck/branch/master) | [![Coverity Scan Build 状態](https://img.shields.io/coverity/scan/512.svg)](https://scan.coverity.com/projects/512) |
 
 ## 名前について
 
