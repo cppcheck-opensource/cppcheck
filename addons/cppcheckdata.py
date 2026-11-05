@@ -1563,6 +1563,72 @@ patterns = {
     '<*>': lambda tok: tok.link if tok.str == '<' and tok.link else None,
 }
 
+_literal_atoms = frozenset(['!', '|', '||', '%', '!=', '*'])
+_link_open = frozenset(['(', '[', '<', '{'])
+
+def _match_literal(p):
+    def m(tok):
+        return tok if tok.str == p else None
+    return m
+
+def _match_none(tok):
+    return None
+
+def _match_alternatives(p, alternatives):
+    def m(tok):
+        # a token whose str contains '|' (such as '|=') matches the whole word
+        if tok.str == p:
+            return tok
+        for a in alternatives:
+            t = a(tok)
+            if t:
+                return t
+        return None
+    return m
+
+def _match_negation(inner):
+    def m(tok):
+        return None if inner(tok) else tok
+    return m
+
+def _match_forward(inner):
+    def m(tok):
+        t = tok
+        while t:
+            if inner(t):
+                return t
+            if t.link and t.str in _link_open:
+                t = t.link
+            t = t.next
+        return None
+    return m
+
+# pattern atom -> function(token) that returns the last matched token or None
+_atom_cache = {}
+
+def _compile_atom(p):
+    """Compile one pattern word into a matcher: function(token) -> token or None.
+    The token passed to the matcher must not be None."""
+    m = _atom_cache.get(p)
+    if m is not None:
+        return m
+    if not p:
+        m = _match_none
+    elif p in _literal_atoms:
+        m = _match_literal(p)
+    elif p in patterns:
+        m = patterns[p]
+    elif '|' in p:
+        m = _match_alternatives(p, [_compile_atom(x) for x in p.split('|')])
+    elif p.startswith('!!'):
+        m = _match_negation(_compile_atom(p[2:]))
+    elif p.startswith('**'):
+        m = _match_forward(_compile_atom(p[2:]))
+    else:
+        m = _match_literal(p)
+    _atom_cache[p] = m
+    return m
+
 def match_atom(token, p):
     if not token:
         return None
@@ -1570,29 +1636,7 @@ def match_atom(token, p):
         return None
     if token.str == p:
         return token
-    if p in ['!', '|', '||', '%', '!=', '*']:
-        return None
-    if p in patterns:
-        return patterns[p](token)
-    if '|' in p:
-        for x in p.split('|'):
-            t = match_atom(token, x)
-            if t:
-                return t
-    elif p.startswith('!!'):
-        t = match_atom(token, p[2:])
-        if not t:
-            return token
-    elif p.startswith('**'):
-        a = p[2:]
-        t = token
-        while t:
-            if match_atom(t, a):
-                return t
-            if t.link and t.str in ['(', '[', '<', '{']:
-                t = t.link
-            t = t.next
-    return None
+    return _compile_atom(p)(token)
 
 class MatchResult:
     def __init__(self, matches, bindings=None, keys=None):
@@ -1617,18 +1661,35 @@ def bind_split(s):
         return (p[0], p[2])
     return (s, None)
 
+# pattern -> (list of (matcher, binding name), MatchResult for a failed match)
+_pattern_cache = {}
+
+def _compile_pattern(pattern):
+    words = [bind_split(word) for word in pattern.split()]
+    atoms = [(_compile_atom(p), b) for p, b in words]
+    keys = [b for p, b in words] + ['end'] if words else []
+    compiled = (atoms, MatchResult(False, keys=keys))
+    _pattern_cache[pattern] = compiled
+    return compiled
+
 def match(token, pattern):
-    if not pattern:
-        return MatchResult(False)
+    compiled = _pattern_cache.get(pattern)
+    if compiled is None:
+        compiled = _compile_pattern(pattern)
+    atoms, failed = compiled
+    if not atoms:
+        # empty pattern (or only whitespace) never matches
+        return failed
     end = None
     bindings = {}
-    words = [bind_split(word) for word in pattern.split()]
-    for p, b in words:
-        t = match_atom(token, p)
+    for m, b in atoms:
+        if token is None:
+            return failed
+        t = m(token)
         if b:
             bindings[b] = token
-        if not t:
-            return MatchResult(False, keys=[xx for pp, xx in words]+['end'])
+        if t is None:
+            return failed
         end = t
         token = t.next
     bindings['end'] = end

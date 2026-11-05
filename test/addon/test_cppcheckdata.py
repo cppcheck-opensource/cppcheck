@@ -553,6 +553,23 @@ class TestMatch:
         assert cppcheckdata.match(mod, '%')
         assert cppcheckdata.match(mod.previous, '%var% % %var% ;')
 
+    def test_literal_or_assign(self, match_cfg):
+        or_assign = find_token(match_cfg, '|=')
+        assert cppcheckdata.match(or_assign, '|=')
+        assert cppcheckdata.match(or_assign.previous, '%var% |= %var% ;')
+        assert cppcheckdata.match(or_assign, '%assign%')
+        assert not cppcheckdata.match(find_token(match_cfg, '|'), '|=')
+        # quirk, shared with the C++ Token::Match: the '|' in '|=' is also
+        # read as an alternation of '' and '=', so a '=' token matches too
+        assert cppcheckdata.match(find_token(match_cfg, '='), '|=')
+
+    def test_whitespace_only_pattern(self, match_cfg):
+        calc_def = find_token(match_cfg, 'calc')
+        res = cppcheckdata.match(calc_def, '   ')
+        assert not res
+        with pytest.raises(AttributeError):
+            res.end # pylint: disable=W0104
+
     def test_literal_parentheses(self, match_cfg):
         calc_call = find_token(match_cfg, 'calc', skip=1)
         assert cppcheckdata.match(calc_call, 'calc ( %var% , %var% ) ;')
