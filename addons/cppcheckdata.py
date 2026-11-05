@@ -1602,9 +1602,6 @@ class CompiledPattern:
     _literal_atoms = frozenset(['!', '|', '||', '%', '!=', '*'])
     _link_open = frozenset(['(', '[', '<', '{'])
 
-    # pattern word -> matcher, shared by all patterns
-    _atom_cache = {}
-
     def __init__(self, pattern):
         self.pattern = pattern
         words = [bind_split(word) for word in pattern.split()]
@@ -1637,25 +1634,19 @@ class CompiledPattern:
     @classmethod
     def compile_atom(cls, p):
         """Compile one pattern word into a matcher."""
-        m = cls._atom_cache.get(p)
-        if m is not None:
-            return m
         if not p:
-            m = cls._match_none
-        elif p in cls._literal_atoms:
-            m = cls._match_literal(p)
-        elif p in patterns:
-            m = patterns[p]
-        elif '|' in p:
-            m = cls._match_alternatives(p, [cls.compile_atom(x) for x in p.split('|')])
-        elif p.startswith('!!'):
-            m = cls._match_negation(cls.compile_atom(p[2:]))
-        elif p.startswith('**'):
-            m = cls._match_forward(cls.compile_atom(p[2:]))
-        else:
-            m = cls._match_literal(p)
-        cls._atom_cache[p] = m
-        return m
+            return cls._match_none
+        if p in cls._literal_atoms:
+            return cls._match_literal(p)
+        if p in patterns:
+            return patterns[p]
+        if '|' in p:
+            return cls._match_alternatives(p, [cls.compile_atom(x) for x in p.split('|')])
+        if p.startswith('!!'):
+            return cls._match_negation(cls.compile_atom(p[2:]))
+        if p.startswith('**'):
+            return cls._match_forward(cls.compile_atom(p[2:]))
+        return cls._match_literal(p)
 
     @staticmethod
     def _match_none(tok):
@@ -1702,15 +1693,6 @@ class CompiledPattern:
 
 # pattern string -> CompiledPattern
 _pattern_cache = {}
-
-def match_atom(token, p):
-    if not token:
-        return None
-    if not p:
-        return None
-    if token.str == p:
-        return token
-    return CompiledPattern.compile_atom(p)(token)
 
 def match(token, pattern):
     compiled = _pattern_cache.get(pattern)
