@@ -1110,6 +1110,12 @@ private:
                "    g(std::move(x)).f(1);\n"
                "}\n";
         ASSERT_EQUALS(false, testValueOfX(code, 5U, ValueFlow::Value::MoveKind::MovedVariable));
+
+        code = "void f(std::string x) {\n" // #15155
+               "    std::string a{ std::move(x) };\n"
+               "    x += \"abc\";\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 3U, ValueFlow::Value::MoveKind::MovedVariable));
     }
 
     void valueFlowCalculations() {
