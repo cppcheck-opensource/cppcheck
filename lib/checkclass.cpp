@@ -127,6 +127,12 @@ bool CheckClassImpl::isInitialized(const Usage& usage, FunctionType funcType) co
     if (var.isConst() && funcType == FunctionType::eOperatorEqual) // We can't set const members in assignment operator
         return true;
 
+    if (var.nameToken()->isBitfield() && mSettings.standards.cpp < Standards::CPP20)
+        return true;
+
+    if (var.isArray() && ((var.dimensionKnown(0) && var.dimensions()[0].num == 0) || Token::simpleMatch(var.nameToken()->next(), "[ ]"))) // HACK for unreliable dimensions
+        return true;
+
     // Check if this is a class constructor
     if (!var.isPointer() && !var.isPointerArray() && var.isClass() && funcType == FunctionType::eConstructor) {
         // Unknown type so assume it is initialized
