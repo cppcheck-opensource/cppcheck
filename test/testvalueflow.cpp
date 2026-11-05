@@ -8351,6 +8351,20 @@ private:
     void valueFlowCrash() {
         const char* code;
 
+        code = "struct N {\n" // isAliasOf() was called with expr=nullptr
+               "    N* r;\n"
+               "    N root() const;\n"
+               "    N f(const char* path, char d) const;\n"
+               "};\n"
+               "N N::f(const char* path, char d) const {\n"
+               "    N c = path[0] == d ? root() : *this;\n"
+               "    if (!c.r) return N();\n"
+               "    const char* p = path;\n"
+               "    while (*p == d) ++p;\n"
+               "    return c;\n"
+               "}\n";
+        (void)valueOfTok(code, "p");
+
         code = "void f(int x) {\n"
                "    if (0 * (x > 2)) {}\n"
                "}\n";
