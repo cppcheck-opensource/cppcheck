@@ -7422,7 +7422,29 @@ struct ValueFlowPassRunner {
         return false;
     }
 
-    // Number of values in each function scope (same order as symboldatabase.functionScopes)
+    static std::size_t hashValue(const ValueFlow::Value& v)
+    {
+        std::size_t h = std::hash<MathLib::bigint>{}(v.intvalue);
+        const auto combine = [&h](std::size_t x) {
+            h ^= x + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+        };
+        combine(static_cast<std::size_t>(v.valueType));
+        combine(static_cast<std::size_t>(v.valueKind));
+        combine(static_cast<std::size_t>(v.bound));
+        combine(std::hash<const Token*>{}(v.tokvalue));
+        combine(std::hash<const Token*>{}(v.condition));
+        combine(std::hash<double>{}(v.floatValue));
+        combine(std::hash<MathLib::bigint>{}(v.varvalue));
+        combine(std::hash<MathLib::bigint>{}(v.path));
+        combine(v.varId);
+        combine(static_cast<std::size_t>(v.conditional));
+        combine(static_cast<std::size_t>(v.moveKind));
+        combine(static_cast<std::size_t>(v.lifetimeKind));
+        combine(static_cast<std::size_t>(v.lifetimeScope));
+        return h;
+    }
+
+    // Hash of the values in each function scope (same order as symboldatabase.functionScopes)
     std::vector<std::size_t> getFunctionValues() const
     {
         const std::vector<const Scope*>& functionScopes = state.symboldatabase().functionScopes;
@@ -7431,8 +7453,12 @@ struct ValueFlowPassRunner {
             const Scope* scope = functionScopes[i];
             if (!scope->bodyStart)
                 continue;
-            for (const Token* tok = scope->bodyStart; tok != scope->bodyEnd; tok = tok->next())
-                result[i] += tok->values().size();
+            std::size_t h = 0;
+            for (const Token* tok = scope->bodyStart; tok != scope->bodyEnd; tok = tok->next()) {
+                for (const ValueFlow::Value& v : tok->values())
+                    h += hashValue(v) * (2 * reinterpret_cast<std::uintptr_t>(tok) + 1);
+            }
+            result[i] = h;
         }
         return result;
     }
