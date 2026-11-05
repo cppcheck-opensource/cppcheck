@@ -4925,6 +4925,40 @@ def test_ipc_inline_suppressions(tmp_path):
     assert stdout_lines == stdout_exp
     assert stderr.splitlines() == []
 
+
+@pytest.mark.skipif(sys.platform == 'win32', reason="requires ProcessExecutor")
+def test_ipc_hash_suppressions(tmp_path):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, "w") as f:
+        f.write('void f() { int x = 1; }')
+
+    _, _, stderr = cppcheck(['--enable=style', '--xml-version=3', str(test_file)])
+    error_hash = ElementTree.fromstring(stderr).find('.//error').get('hash')
+
+    suppr_file = tmp_path / 'suppr.xml'
+    with open(suppr_file, "w") as f:
+        f.write(f'<suppressions><suppress><id>unreadVariable</id><fileName>{test_file}</fileName><hash>{error_hash}</hash></suppress></suppressions>')
+
+    args = [
+        '-q',
+        '--debug-ipc',
+        '-j2',
+        '--executor=process',
+        '--no-cppcheck-build-dir',
+        '--enable=style',
+        f'--suppress-xml={suppr_file}',
+        str(test_file)
+    ]
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0
+    # the hash suppression is not sent to the parent
+    assert stdout.splitlines() == [
+        'writeToPipe - 5 - 0',
+        'handleRead - 5 - 0'
+    ]
+    assert stderr.splitlines() == []
+
 test_redundant_file_reads_params = [
     ([],                       3),
     (['--suppress=zerodiv'],   1),

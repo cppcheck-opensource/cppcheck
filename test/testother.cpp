@@ -4238,6 +4238,25 @@ private:
               "using FR = int&(&)();\n"
               "void f6(FR f) { f(); }\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct S {\n" // #15087
+              "    int a, b;\n"
+              "};\n"
+              "int& f(S& s, bool b) {\n"
+              "    return b ? s.a : s.b;\n"
+              "}\n"
+              "int* g(U& u) {\n"
+              "    return &(u.i);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("typedef int I;\n" // #15167
+              "I f() {\n"
+              "    I a[1] = { 0 };\n"
+              "    return a[0];\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:7]: (style) Variable 'a' can be declared as const array [constVariable]\n",
+                      errout_str());
     }
 
     void constParameterCallback() {

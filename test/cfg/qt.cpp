@@ -83,6 +83,12 @@ void assertWithSideEffect_QDir_exists(const char *path) { // #14720
     (void)dir;
 }
 
+void assertWithSideEffect_QDir_mkdir(const char *path) { // #12468
+    QDir dir;
+    // cppcheck-suppress [assertWithSideEffect, checkLibraryNoReturn] // TODO: #8329
+    Q_ASSERT(dir.mkdir(path));
+}
+
 void unusedVariable_QTransform()
 {
     // cppcheck-suppress unusedVariable

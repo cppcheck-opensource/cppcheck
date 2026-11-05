@@ -2838,6 +2838,13 @@ void uninitvar_logb(void)
     (void)std::logbl(ld);
 }
 
+void bool_isless(float f1, float f2)
+{
+    // cppcheck-suppress compareBoolExpressionWithInt
+    // cppcheck-suppress compareValueOutOfTypeRangeError
+    if (std::isless(f1,f2)==123) {}
+}
+
 void uninitvar_isless(void)
 {
     float f1,f2;
@@ -2853,6 +2860,13 @@ void uninitvar_isless(void)
     (void)std::isless(ld1,ld2);
 }
 
+void bool_islessequal(float f1, float f2)
+{
+    // cppcheck-suppress compareBoolExpressionWithInt
+    // cppcheck-suppress compareValueOutOfTypeRangeError
+    if (std::islessequal(f1,f2)==123) {}
+}
+
 void uninitvar_islessequal(void)
 {
     float f1,f2;
@@ -2866,6 +2880,13 @@ void uninitvar_islessequal(void)
     long double ld1,ld2;
     // cppcheck-suppress uninitvar
     (void)std::islessequal(ld1,ld2);
+}
+
+void bool_islessgreater(float f1, float f2)
+{
+    // cppcheck-suppress compareBoolExpressionWithInt
+    // cppcheck-suppress compareValueOutOfTypeRangeError
+    if (std::islessgreater(f1,f2)==123) {}
 }
 
 void uninitvar_islessgreater(void)
@@ -2894,6 +2915,13 @@ void uninitvar_nan(void)
     (void)std::nanl(tagp3);
 }
 
+void bool_isnan(float f)
+{
+    // cppcheck-suppress compareBoolExpressionWithInt
+    // cppcheck-suppress compareValueOutOfTypeRangeError
+    if (std::isnan(f)==123) {}
+}
+
 void uninitvar_isnan(void)
 {
     double d;
@@ -2901,11 +2929,25 @@ void uninitvar_isnan(void)
     (void)std::isnan(d);
 }
 
+void bool_isnormal(float f)
+{
+    // cppcheck-suppress compareBoolExpressionWithInt
+    // cppcheck-suppress compareValueOutOfTypeRangeError
+    if (std::isnormal(f)==123) {}
+}
+
 void uninitvar_isnormal(void)
 {
     double d;
     // cppcheck-suppress uninitvar
     (void)std::isnormal(d);
+}
+
+void bool_isunordered(float f1, float f2)
+{
+    // cppcheck-suppress compareBoolExpressionWithInt
+    // cppcheck-suppress compareValueOutOfTypeRangeError
+    if (std::isunordered(f1,f2)==123) {}
 }
 
 void uninitvar_isunordered(void)
@@ -3441,6 +3483,13 @@ void uninivar_scalbln(void)
     long int i3;
     // cppcheck-suppress uninitvar
     (void)std::scalblnl(ld,i3);
+}
+
+void bool_signbit(float f)
+{
+    // cppcheck-suppress compareBoolExpressionWithInt
+    // cppcheck-suppress compareValueOutOfTypeRangeError
+    if (std::signbit(f)==123) {}
 }
 
 void uninitvar_signbit(void)

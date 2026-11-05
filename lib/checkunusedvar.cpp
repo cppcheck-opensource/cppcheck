@@ -1173,7 +1173,7 @@ static bool isReturnedByRef(const Variable* var, const Function* func)
 
 void CheckUnusedVarImpl::checkFunctionVariableUsage()
 {
-    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.checkLibrary && !mSettings.isPremiumEnabled("unusedVariable"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.checkLibrary && !mSettings.isPremiumEnabled("unusedVariable") && !mSettings.isPremiumEnabled("unreadVariable"))
         return;
 
     logChecker("CheckUnusedVar::checkFunctionVariableUsage"); // style
@@ -1500,7 +1500,7 @@ void CheckUnusedVarImpl::allocatedButUnusedVariableError(const Token *tok, const
 
 void CheckUnusedVarImpl::unreadVariableError(const Token *tok, const std::string &varname, bool modified)
 {
-    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("unusedVariable"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("unusedVariable") && !mSettings.isPremiumEnabled("unreadVariable"))
         return;
 
     if (modified)
