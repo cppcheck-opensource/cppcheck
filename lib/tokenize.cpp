@@ -6359,6 +6359,8 @@ void Tokenizer::dump(std::ostream &out) const
             outs += " isAttributeMaybeUnused=\"true\"";
         if (tok->isAttributeUnused())
             outs += " isAttributeUnused=\"true\"";
+        if (tok->isAttributeUsed())
+            outs += " isAttributeUsed=\"true\"";
         if (tok->isAttributeFallthrough())
             outs += " isAttributeFallthrough=\"true\"";
         if (tok->isInitBracket())
