@@ -228,7 +228,8 @@ struct ValueFlowAnalyzer : Analyzer {
         if (inconclusive)
             return Action::Read | Action::Inconclusive;
         if (isVariableChanged(tok, getIndirect(tok), getSettings())) {
-            if (Token::Match(tok->astParent(), "*|[|.|++|--"))
+            if (Token::Match(tok->astParent(), "*|[|.|++|--") ||
+                (tok->astParent() && tok->astParent()->isAssignmentOp() && tok->astParent()->str().size() == 2)) // compound assignment
                 return Action::Read | Action::Invalid;
             // Check if its assigned to the same value
             if (value && !value->isImpossible() && Token::simpleMatch(tok->astParent(), "=") && astIsLHS(tok) &&
