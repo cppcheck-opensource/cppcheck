@@ -1887,6 +1887,16 @@ private:
                "}\n";
         values = tokenValues(code, ",");
         ASSERT_EQUALS(0U, values.size());
+
+        code = "void f() {\n"
+               "    int a = 4;\n"
+               "    if (g(), a) {}\n"
+               "}\n";
+        values = tokenValues(code, ",");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT(values.front().isKnown());
+        ASSERT(values.front().isIntValue());
+        ASSERT_EQUALS(4, values.front().intvalue);
     }
 
     void valueFlowErrorPath() {
