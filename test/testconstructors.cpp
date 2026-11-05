@@ -893,6 +893,19 @@ private:
               "    return S{ {}, v.cbegin() };\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        const char code2[] = "struct S {\n" // #15177
+                             "    int i = 0;\n"
+                             "    unsigned u : 1;\n"
+                             "    int a[];\n"
+                             "    int b[0];\n"
+                            "};\n";
+        const Settings s17 = settingsBuilder(settings).cpp(Standards::CPP17).build();
+        check(code2, s17);
+        ASSERT_EQUALS("", errout_str());
+        check(code2);
+        ASSERT_EQUALS("[test.cpp:3:14]: (warning) Member variable 'S::u' has no initializer. [uninitMemberVarNoCtor]\n",
+                      errout_str());
     }
 
     // ticket #4290 "False Positive: style (noConstructor): The class 'foo' does not have a constructor."
