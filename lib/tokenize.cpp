@@ -4393,7 +4393,15 @@ void VariableMap::addVariable(const std::string& varname, bool globalNamespace)
 /**
  * @throws Token* thrown when closing brackets are missing
  */
-static bool setVarIdParseDeclaration(Token*& tok, const VariableMap& variableMap, bool executableScope, Standards::cstd_t cStandard)
+namespace {
+    // Result of the last backward search from a comma in setVarIdParseDeclaration()
+    struct CommaSearchCache {
+        const Token* comma = nullptr;
+        const Token* result = nullptr;
+    };
+}
+
+static bool setVarIdParseDeclaration(Token*& tok, const VariableMap& variableMap, bool executableScope, Standards::cstd_t cStandard, CommaSearchCache& commaCache)
 {
     const Token* const tok1 = tok;
     Token* tok2 = tok;
@@ -4484,11 +4492,19 @@ static bool setVarIdParseDeclaration(Token*& tok, const VariableMap& variableMap
         {
             const Token *tok3 = tok->previous();
             if (tok3 && tok3->str() == ",") {
+                // In a long comma separated list the search from the previous comma gives the same result
+                const Token* const comma = tok3;
                 while (tok3 && !Token::Match(tok3,";|(|[|{")) {
+                    if (tok3 != comma && tok3 == commaCache.comma) {
+                        tok3 = commaCache.result;
+                        break;
+                    }
                     if (Token::Match(tok3, ")|]"))
                         tok3 = tok3->link();
                     tok3 = tok3->previous();
                 }
+                commaCache.comma = comma;
+                commaCache.result = tok3;
 
                 if (tok3 && executableScope && Token::Match(tok3->previous(), "%name% (")) {
                     const Token *fdecl = tok3->previous();
@@ -4791,6 +4807,7 @@ void Tokenizer::setVarIdPass1()
 
     VariableMap variableMap;
     std::map<nonneg int, std::map<std::string, nonneg int>> structMembers;
+    CommaSearchCache commaCache;
 
     std::stack<VarIdScopeInfo> scopeStack;
 
@@ -4991,7 +5008,7 @@ void Tokenizer::setVarIdPass1()
             }
 
             try { /* Ticket #8151 */
-                decl = setVarIdParseDeclaration(tok2, variableMap, scopeStack.top().isExecutable, mSettings.standards.c);
+                decl = setVarIdParseDeclaration(tok2, variableMap, scopeStack.top().isExecutable, mSettings.standards.c, commaCache);
             } catch (const Token * errTok) {
                 syntaxError(errTok);
             }
