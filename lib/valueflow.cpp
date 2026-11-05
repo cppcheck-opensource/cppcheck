@@ -7350,12 +7350,27 @@ struct ValueFlowPassRunner {
         });
     }
 
-    bool run(std::initializer_list<ValuePtr<ValueFlowPass>> passes) const
+    bool run(std::initializer_list<ValuePtr<ValueFlowPass>> passes)
     {
         std::size_t values = 0;
         std::size_t n = state.settings().vfOptions.maxIterations;
         const bool doProgress = state.settings().reportProgress >= 0;
+        // A function where no value changed in the previous iteration is skipped in the next iteration
+        const std::set<const Scope*> skippedFunctions = state.skippedFunctions;
+        std::vector<std::size_t> functionValues = getFunctionValues();
+        bool first = true;
         while (n > 0 && values != getTotalValues()) {
+            if (!first) {
+                std::vector<std::size_t> newFunctionValues = getFunctionValues();
+                state.skippedFunctions = skippedFunctions;
+                const std::vector<const Scope*>& functionScopes = state.symboldatabase().functionScopes;
+                for (std::size_t i = 0; i < functionScopes.size(); ++i) {
+                    if (newFunctionValues[i] == functionValues[i])
+                        state.skippedFunctions.insert(functionScopes[i]);
+                }
+                functionValues = std::move(newFunctionValues);
+            }
+            first = false;
             values = getTotalValues();
             const std::size_t passnum = state.settings().vfOptions.maxIterations - n + 1;
             const std::string passnum_s = std::to_string(passnum);
@@ -7368,6 +7383,7 @@ struct ValueFlowPassRunner {
                 return true;
             --n;
         }
+        state.skippedFunctions = skippedFunctions;
         if (state.settings().debugwarnings) {
             if (n == 0 && values != getTotalValues()) {
                 ErrorMessage::FileLocation loc(state.tokenlist().getFiles()[0], 0, 0);
@@ -7404,6 +7420,21 @@ struct ValueFlowPassRunner {
             pass->run(state);
         }
         return false;
+    }
+
+    // Number of values in each function scope (same order as symboldatabase.functionScopes)
+    std::vector<std::size_t> getFunctionValues() const
+    {
+        const std::vector<const Scope*>& functionScopes = state.symboldatabase().functionScopes;
+        std::vector<std::size_t> result(functionScopes.size());
+        for (std::size_t i = 0; i < functionScopes.size(); ++i) {
+            const Scope* scope = functionScopes[i];
+            if (!scope->bodyStart)
+                continue;
+            for (const Token* tok = scope->bodyStart; tok != scope->bodyEnd; tok = tok->next())
+                result[i] += tok->values().size();
+        }
+        return result;
     }
 
     std::size_t getTotalValues() const
