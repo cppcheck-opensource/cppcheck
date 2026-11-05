@@ -1563,81 +1563,6 @@ patterns = {
     '<*>': lambda tok: tok.link if tok.str == '<' and tok.link else None,
 }
 
-_literal_atoms = frozenset(['!', '|', '||', '%', '!=', '*'])
-_link_open = frozenset(['(', '[', '<', '{'])
-
-def _match_literal(p):
-    def m(tok):
-        return tok if tok.str == p else None
-    return m
-
-def _match_none(tok):
-    return None
-
-def _match_alternatives(p, alternatives):
-    def m(tok):
-        # a token whose str contains '|' (such as '|=') matches the whole word
-        if tok.str == p:
-            return tok
-        for a in alternatives:
-            t = a(tok)
-            if t:
-                return t
-        return None
-    return m
-
-def _match_negation(inner):
-    def m(tok):
-        return None if inner(tok) else tok
-    return m
-
-def _match_forward(inner):
-    def m(tok):
-        t = tok
-        while t:
-            if inner(t):
-                return t
-            if t.link and t.str in _link_open:
-                t = t.link
-            t = t.next
-        return None
-    return m
-
-# pattern atom -> function(token) that returns the last matched token or None
-_atom_cache = {}
-
-def _compile_atom(p):
-    """Compile one pattern word into a matcher: function(token) -> token or None.
-    The token passed to the matcher must not be None."""
-    m = _atom_cache.get(p)
-    if m is not None:
-        return m
-    if not p:
-        m = _match_none
-    elif p in _literal_atoms:
-        m = _match_literal(p)
-    elif p in patterns:
-        m = patterns[p]
-    elif '|' in p:
-        m = _match_alternatives(p, [_compile_atom(x) for x in p.split('|')])
-    elif p.startswith('!!'):
-        m = _match_negation(_compile_atom(p[2:]))
-    elif p.startswith('**'):
-        m = _match_forward(_compile_atom(p[2:]))
-    else:
-        m = _match_literal(p)
-    _atom_cache[p] = m
-    return m
-
-def match_atom(token, p):
-    if not token:
-        return None
-    if not p:
-        return None
-    if token.str == p:
-        return token
-    return _compile_atom(p)(token)
-
 class MatchResult:
     def __init__(self, matches, bindings=None, keys=None):
         self.__dict__.update(bindings or {})
@@ -1661,39 +1586,138 @@ def bind_split(s):
         return (p[0], p[2])
     return (s, None)
 
-# pattern -> (list of (matcher, binding name), MatchResult for a failed match)
+class CompiledPattern:
+    """
+    A match() pattern compiled once so it can be matched against many tokens.
+
+    Each word of the pattern is compiled into a matcher: a function that takes
+    a token (never None) and returns the last token the word matched, or None.
+
+    Attributes:
+        pattern   The pattern string
+        atoms     List of (matcher, binding name) for each word in the pattern
+        failed    The MatchResult returned when the pattern does not match
+    """
+
+    _literal_atoms = frozenset(['!', '|', '||', '%', '!=', '*'])
+    _link_open = frozenset(['(', '[', '<', '{'])
+
+    # pattern word -> matcher, shared by all patterns
+    _atom_cache = {}
+
+    def __init__(self, pattern):
+        self.pattern = pattern
+        words = [bind_split(word) for word in pattern.split()]
+        self.atoms = [(self.compile_atom(p), b) for p, b in words]
+        keys = [b for p, b in words] + ['end'] if words else []
+        self.failed = MatchResult(False, keys=keys)
+
+    def __repr__(self):
+        return "CompiledPattern(pattern={})".format(repr(self.pattern))
+
+    def match(self, token):
+        if not self.atoms:
+            # empty pattern (or only whitespace) never matches
+            return self.failed
+        end = None
+        bindings = {}
+        for m, b in self.atoms:
+            if token is None:
+                return self.failed
+            t = m(token)
+            if b:
+                bindings[b] = token
+            if t is None:
+                return self.failed
+            end = t
+            token = t.next
+        bindings['end'] = end
+        return MatchResult(True, bindings=bindings)
+
+    @classmethod
+    def compile_atom(cls, p):
+        """Compile one pattern word into a matcher."""
+        m = cls._atom_cache.get(p)
+        if m is not None:
+            return m
+        if not p:
+            m = cls._match_none
+        elif p in cls._literal_atoms:
+            m = cls._match_literal(p)
+        elif p in patterns:
+            m = patterns[p]
+        elif '|' in p:
+            m = cls._match_alternatives(p, [cls.compile_atom(x) for x in p.split('|')])
+        elif p.startswith('!!'):
+            m = cls._match_negation(cls.compile_atom(p[2:]))
+        elif p.startswith('**'):
+            m = cls._match_forward(cls.compile_atom(p[2:]))
+        else:
+            m = cls._match_literal(p)
+        cls._atom_cache[p] = m
+        return m
+
+    @staticmethod
+    def _match_none(tok):
+        return None
+
+    @staticmethod
+    def _match_literal(p):
+        def m(tok):
+            return tok if tok.str == p else None
+        return m
+
+    @staticmethod
+    def _match_alternatives(p, alternatives):
+        def m(tok):
+            # a token whose str contains '|' (such as '|=') matches the whole word
+            if tok.str == p:
+                return tok
+            for a in alternatives:
+                t = a(tok)
+                if t:
+                    return t
+            return None
+        return m
+
+    @staticmethod
+    def _match_negation(inner):
+        def m(tok):
+            return None if inner(tok) else tok
+        return m
+
+    @classmethod
+    def _match_forward(cls, inner):
+        link_open = cls._link_open
+        def m(tok):
+            t = tok
+            while t:
+                if inner(t):
+                    return t
+                if t.link and t.str in link_open:
+                    t = t.link
+                t = t.next
+            return None
+        return m
+
+# pattern string -> CompiledPattern
 _pattern_cache = {}
 
-def _compile_pattern(pattern):
-    words = [bind_split(word) for word in pattern.split()]
-    atoms = [(_compile_atom(p), b) for p, b in words]
-    keys = [b for p, b in words] + ['end'] if words else []
-    compiled = (atoms, MatchResult(False, keys=keys))
-    _pattern_cache[pattern] = compiled
-    return compiled
+def match_atom(token, p):
+    if not token:
+        return None
+    if not p:
+        return None
+    if token.str == p:
+        return token
+    return CompiledPattern.compile_atom(p)(token)
 
 def match(token, pattern):
     compiled = _pattern_cache.get(pattern)
     if compiled is None:
-        compiled = _compile_pattern(pattern)
-    atoms, failed = compiled
-    if not atoms:
-        # empty pattern (or only whitespace) never matches
-        return failed
-    end = None
-    bindings = {}
-    for m, b in atoms:
-        if token is None:
-            return failed
-        t = m(token)
-        if b:
-            bindings[b] = token
-        if t is None:
-            return failed
-        end = t
-        token = t.next
-    bindings['end'] = end
-    return MatchResult(True, bindings=bindings)
+        compiled = CompiledPattern(pattern)
+        _pattern_cache[pattern] = compiled
+    return compiled.match(token)
 
 def get_function_call_name_args(token):
     """Get function name and arguments for function call
