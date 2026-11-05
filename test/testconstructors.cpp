@@ -899,7 +899,7 @@ private:
                              "    unsigned u : 1;\n"
                              "    int a[];\n"
                              "    int b[0];\n"
-                            "};\n";
+                             "};\n";
         const Settings s17 = settingsBuilder(settings).cpp(Standards::CPP17).build();
         check(code2, s17);
         ASSERT_EQUALS("", errout_str());
