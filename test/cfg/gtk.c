@@ -687,3 +687,46 @@ void g_ascii_formatd_format_test(const gchar *format, int i)
     g_ascii_formatd(buf, sizeof(buf), format, s.x);
     g_print("%s", buf);
 }
+
+#define MY_APP_TYPE_WINDOW my_app_window_get_type()
+G_DECLARE_FINAL_TYPE(MyAppWindow, my_app_window, MY_APP, WINDOW, GtkWindow)
+struct _MyAppWindow {
+    GtkWindow parent;
+};
+G_DEFINE_TYPE(MyAppWindow, my_app_window, GTK_TYPE_WINDOW)
+// cppcheck-suppress constParameterPointer
+static void my_app_window_class_init(MyAppWindowClass *class) {
+}
+// cppcheck-suppress constParameterPointer
+static void my_app_window_init(MyAppWindow *window) {
+}
+
+void g_declare_and_define_type_test(void) {
+    // cppcheck-suppress checkLibraryFunction
+    MyAppWindow *window = g_object_new(MY_APP_TYPE_WINDOW, NULL);
+    gtk_widget_show(GTK_WIDGET(window));
+    g_object_unref(window);
+}
+
+#if GLIB_CHECK_VERSION(2, 74, 0)
+typedef enum {
+    MY_ENUM_A,
+    MY_ENUM_B,
+} MyEnum;
+G_DEFINE_ENUM_TYPE (MyEnum, my_enum,
+    G_DEFINE_ENUM_VALUE (MY_ENUM_A, "a"),
+    G_DEFINE_ENUM_VALUE (MY_ENUM_B, "b"))
+typedef enum {
+    MY_FLAGS_A = 1 << 0,
+    MY_FLAGS_B = 1 << 1,
+} MyFlags;
+G_DEFINE_FLAGS_TYPE (MyFlags, my_flags,
+    G_DEFINE_ENUM_VALUE (MY_FLAGS_A, "a"),
+    G_DEFINE_ENUM_VALUE (MY_FLAGS_B, "b"))
+
+int g_define_enum_and_flags_type_test(void) {
+    MyEnum e = MY_ENUM_A;
+    MyFlags f = MY_FLAGS_A;
+    return e + f;
+}
+#endif
