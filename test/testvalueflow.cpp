@@ -1116,6 +1116,16 @@ private:
                "    x += \"abc\";\n"
                "}\n";
         ASSERT_EQUALS(true, testValueOfX(code, 3U, ValueFlow::Value::MoveKind::MovedVariable));
+
+        code = "struct S {\n"
+               "    S& operator<<=(int i);\n"
+               "    std::string m;\n"
+               "};\n"
+               "void f(S x) {\n"
+               "    S a{ std::move(x) };\n"
+               "    x <<= 5;\n"
+               "}";
+        ASSERT_EQUALS(true, testValueOfX(code, 7U, ValueFlow::Value::MoveKind::MovedVariable));
     }
 
     void valueFlowCalculations() {
