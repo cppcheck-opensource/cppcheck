@@ -1281,7 +1281,7 @@ std::string Token::stringify(const stringifyOptions& options) const
                 ret += "long ";
         }
     }
-    if (options.macro && isExpandedMacro())
+    if (options.macro && hasMacroName())
         ret += '$';
     if (isName() && mStr.find(' ') != std::string::npos) {
         for (const char i : mStr) {
@@ -1697,7 +1697,7 @@ static void indent(std::string &str, const nonneg int indent1, const nonneg int 
 
 void Token::astStringVerboseRecursive(std::string& ret, const nonneg int indent1, const nonneg int indent2) const
 {
-    if (isExpandedMacro())
+    if (hasMacroName())
         ret += '$';
     ret += mStr;
     if (mImpl->mValueType)

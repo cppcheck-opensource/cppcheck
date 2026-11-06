@@ -7508,6 +7508,16 @@ private:
               "  {}\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        // typedef of macro, same typedef in both branches
+        checkP("#define INT int\n"
+               "typedef INT T;\n"
+               "void g(T);\n"
+               "void f(bool c) {\n"
+               "  if (c) { T x = 1; g(x); }\n"
+               "  else { T x = 1; g(x); }\n"
+               "}\n");
+        ASSERT_EQUALS("[test.cpp:6:3] -> [test.cpp:5:3]: (style, inconclusive) Found duplicate branches for 'if' and 'else'. [duplicateBranch]\n", errout_str());
     }
 
     void duplicateBranch2() {
@@ -7634,6 +7644,14 @@ private:
     }
 
     void duplicateExpression1() {
+        // typedef of macro is not macro code at the point of use
+        checkP("#define INT int\n"
+               "typedef INT T;\n"
+               "void foo(int a) {\n"
+               "    if ((T)a == (T)a) { }\n"
+               "}\n");
+        ASSERT_EQUALS("[test.cpp:4:14]: (style) Same expression on both sides of '=='. [duplicateExpression]\n", errout_str());
+
         check("void foo(int a) {\n"
               "    if (a == a) { }\n"
               "}\n");

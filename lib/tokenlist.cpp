@@ -267,7 +267,7 @@ Token *TokenList::copyTokens(Token *dest, const Token *first, const Token *last,
         tok2->flags(tok->flags());
         tok2->varId(tok->varId());
         tok2->setTokenDebug(tok->getTokenDebug());
-        if (tok->isExpandedMacro())
+        if (tok->hasMacroName())
             tok2->setMacroName(tok->getMacroName());
 
         // Check for links and fix them up
