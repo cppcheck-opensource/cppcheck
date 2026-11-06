@@ -913,10 +913,10 @@ private:
                              "};\n";
         check(code3, s17);
         ASSERT_EQUALS("[test.cpp:2:5]: (warning) Member variable 'S::u' is not initialized in the constructor. [uninitMemberVar]\n",
-            errout_str());
+                      errout_str());
         check(code3);
         ASSERT_EQUALS("[test.cpp:2:5]: (warning) Member variable 'S::u' is not initialized in the constructor. [uninitMemberVar]\n",
-            errout_str());
+                      errout_str());
     }
 
     // ticket #4290 "False Positive: style (noConstructor): The class 'foo' does not have a constructor."
