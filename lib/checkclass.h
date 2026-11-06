@@ -251,7 +251,12 @@ public:
 
     static void handleUnionMembers(std::vector<Usage>& usageList);
 
-    bool isInitialized(const Usage& usage, FunctionType funcType, bool noConstructor = false) const;
+    enum class Initialization : std::uint8_t {
+        Missing, // a member that is missing initialization
+        Initialized, // a member that has a constructor or an explicit initializer
+        None // a member that cannot be initialized (does not trigger a warning for other uninitialized members)
+    };
+    Initialization checkInitialization(const Usage& usage, FunctionType funcType, bool noConstructor = false) const;
 
     static bool isBaseClassMutableMemberFunc(const Token *tok, const Scope *scope);
 
