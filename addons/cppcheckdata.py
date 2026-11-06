@@ -1599,7 +1599,7 @@ class CompiledPattern:
         failed    The MatchResult returned when the pattern does not match
     """
 
-    _literal_atoms = frozenset(['!', '|', '||', '%', '!=', '*'])
+    _literal_atoms = frozenset(['!', '|', '||', '|=', '%', '!=', '*'])
     _link_open = frozenset(['(', '[', '<', '{'])
 
     def __init__(self, pattern):
@@ -1641,7 +1641,7 @@ class CompiledPattern:
         if p in patterns:
             return patterns[p]
         if '|' in p:
-            return cls._match_alternatives(p, [cls.compile_atom(x) for x in p.split('|')])
+            return cls._match_alternatives([cls.compile_atom(x) for x in p.split('|')])
         if p.startswith('!!'):
             return cls._match_negation(cls.compile_atom(p[2:]))
         if p.startswith('**'):
@@ -1659,11 +1659,8 @@ class CompiledPattern:
         return m
 
     @staticmethod
-    def _match_alternatives(p, alternatives):
+    def _match_alternatives(alternatives):
         def m(tok):
-            # a token whose str contains '|' (such as '|=') matches the whole word
-            if tok.str == p:
-                return tok
             for a in alternatives:
                 t = a(tok)
                 if t:
