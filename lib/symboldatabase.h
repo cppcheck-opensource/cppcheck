@@ -705,7 +705,7 @@ private:
     void evaluate(const Settings& settings);
 };
 
-enum class FunctionType : std::uint8_t { eConstructor, eCopyConstructor, eMoveConstructor, eOperatorEqual, eDestructor, eFunction, eLambda, eNoConstructor };
+enum class FunctionType : std::uint8_t { eConstructor, eCopyConstructor, eMoveConstructor, eOperatorEqual, eDestructor, eFunction, eLambda };
 
 class CPPCHECKLIB Function {
     // only symbol database can change this
