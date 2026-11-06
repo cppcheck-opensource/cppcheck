@@ -117,6 +117,7 @@ private:
         TEST_CASE(addSuppressionDuplicate);
         TEST_CASE(updateSuppressionState);
         TEST_CASE(addSuppressionLineMultiple);
+        TEST_CASE(hashSuppression);
 
         TEST_CASE(suppressionsParseXmlFile);
         TEST_CASE(xmlMacroSuppressions);
@@ -1957,6 +1958,36 @@ private:
             const std::list<SuppressionList::Suppression> l = supprs.getUnmatchedGlobalSuppressions();
             ASSERT_EQUALS(0, l.size());
         }
+    }
+
+    void hashSuppression() const {
+        SuppressionList supprs;
+        SuppressionList::Suppression s;
+        s.errorId = "id";
+        s.hash = 1;
+        ASSERT_EQUALS("", supprs.addSuppression(s));
+        ASSERT_EQUALS("suppression 'id' already exists", supprs.addSuppression(s));
+        ASSERT_EQUALS(true, supprs.updateSuppressionState(s));
+        s.hash = 2;
+        ASSERT_EQUALS(false, supprs.updateSuppressionState(s));
+        // same hash, different id
+        s.errorId = "id2";
+        s.hash = 1;
+        ASSERT_EQUALS("", supprs.addSuppression(s));
+        ASSERT_EQUALS(true, supprs.updateSuppressionState(s));
+
+        SuppressionList::ErrorMessage error = errorMessage("id");
+        error.hash = 1;
+        ASSERT_EQUALS(true, supprs.isSuppressed(error));
+        error.hash = 2;
+        ASSERT_EQUALS(false, supprs.isSuppressed(error));
+        error.hash = 0;
+        ASSERT_EQUALS(false, supprs.isSuppressed(error));
+        error.hash = 1;
+        error.errorId = "id2";
+        ASSERT_EQUALS(true, supprs.isSuppressed(error));
+        error.errorId = "id3";
+        ASSERT_EQUALS(false, supprs.isSuppressed(error));
     }
 
     void addSuppressionLineMultiple() const {

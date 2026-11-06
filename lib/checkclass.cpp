@@ -195,6 +195,65 @@ void CheckClassImpl::handleUnionMembers(std::vector<Usage>& usageList)
     }
 }
 
+static std::vector<const Token *> getInheritedConstructors(const Scope *scope)
+{
+    std::vector<const Token *> result;
+
+    if (!scope || !scope->bodyStart || !scope->definedType)
+        return result;
+
+    const auto isInherited = [](const Function &baseCtor, const Scope *scope) {
+        if (baseCtor.type != FunctionType::eConstructor || baseCtor.argCount() == 0)
+            return false;
+        if (baseCtor.isDelete() || baseCtor.access == AccessControl::Private)
+            return false;
+        return std::none_of(scope->functionList.cbegin(), scope->functionList.cend(), [&](const Function &func) {
+            return func.isConstructor() && func.argCount() == baseCtor.argCount() &&
+                   func.argsMatch(baseCtor.nestedIn, baseCtor.argDef, func.argDef, "", 0);
+        });
+    };
+
+    const std::vector<Type::BaseInfo> &bases = scope->definedType->derivedFrom;
+    const Token *baseName = nullptr;
+    const std::list<Function> *baseFuncs = nullptr;
+    for (const Token *tok = scope->bodyStart->next(); tok != scope->bodyEnd; tok = tok->next()) {
+        if (Token::Match(tok, "using %name%")) {
+            const auto base = std::find_if(
+                bases.cbegin(),
+                bases.cend(),
+                [&tok](const Type::BaseInfo &info) {
+                return info.name == tok->strAt(1);
+            }
+                );
+            if (base != bases.cend() && base->type && base->type->classScope) {
+                baseName = tok->next();
+                baseFuncs = &base->type->classScope->functionList;
+            }
+            continue;
+        }
+
+        if (tok->str() == ";") {
+            baseName = nullptr;
+            continue;
+        }
+
+        if (tok->str() == "{") {
+            baseName = nullptr;
+            tok = tok->link();
+            continue;
+        }
+
+        if (baseName && Token::Match(tok, "%name% :: %name% ;") &&
+            tok->str() == baseName->str() && tok->strAt(2) == baseName->str() &&
+            std::any_of(baseFuncs->cbegin(), baseFuncs->cend(), [&](const Function &func) {
+            return isInherited(func, scope);
+        }))
+            result.push_back(tok->tokAt(2));
+    }
+
+    return result;
+}
+
 //---------------------------------------------------------------------------
 // ClassCheck: Check that all class constructors are ok.
 //---------------------------------------------------------------------------
@@ -223,9 +282,11 @@ void CheckClassImpl::constructors()
             });
         });
 
+        const std::vector<const Token *> inheritedCtors = getInheritedConstructors(scope);
+
         // There are no constructors.
         std::set<const Variable*> diagVars;
-        if (scope->numConstructors == 0 && printStyle && !usedInUnion) {
+        if (scope->numConstructors == 0 && inheritedCtors.empty() && printStyle && !usedInUnion) {
             // If there is a private variable, there should be a constructor..
             int needInit = 0, haveInit = 0;
             std::vector<const Variable*> uninitVars;
@@ -335,6 +396,30 @@ void CheckClassImpl::constructors()
                         missingMemberCopyError(func.token, func.type, var.scope()->className, var.name());
                     else
                         uninitVarError(func.token, func.access == AccessControl::Private, func.type, var.scope()->className, var.name(), derived, false);
+                }
+            }
+        }
+
+        if (!inheritedCtors.empty()) {
+            clearAllVar(usageList);
+
+            for (Usage &usage : usageList) {
+                if (usage.var->hasDefault())
+                    usage.init = true;
+            }
+
+            handleUnionMembers(usageList);
+
+            // Inherited constructors don't initialize members of the derived class
+            for (const Token *baseCtorTok : inheritedCtors) {
+                for (const Usage &usage : usageList) {
+                    if (isInitialized(usage, FunctionType::eConstructor))
+                        continue;
+                    const Variable& var = *usage.var;
+                    if (var.typeScope() && var.typeScope()->numConstructors > 0)
+                        continue;
+                    uninitVarError(baseCtorTok, false, FunctionType::eConstructor, var.scope()->className, var.name(), scope != var.scope(), false, false, true);
+                    diagVars.emplace(&var);
                 }
             }
         }
@@ -1182,12 +1267,15 @@ void CheckClassImpl::noExplicitConstructorError(const Token *tok, const std::str
     reportError(tok, Severity::style, "noExplicitConstructor", "$symbol:" + classname + '\n' + message + '\n' + verbose, CWE398, Certainty::normal);
 }
 
-void CheckClassImpl::uninitVarError(const Token *tok, bool isprivate, FunctionType functionType, const std::string &classname, const std::string &varname, bool derived, bool inconclusive, bool noCtor)
+void CheckClassImpl::uninitVarError(const Token *tok, bool isprivate, FunctionType functionType, const std::string &classname, const std::string &varname, bool derived, bool inconclusive, bool noCtor, bool inheritedCtor)
 {
     std::string message("Member variable '$symbol' ");
     if (noCtor)
         message += "has no initializer.";
-    else {
+    else if (inheritedCtor) {
+        message += tok ? "is not initialized in the constructor inherited from '" + tok->str() + "'." :
+                   "is not initialized in the inherited constructor.";
+    } else {
         message += "is not initialized in the ";
         if (functionType == FunctionType::eCopyConstructor)
             message += "copy ";
@@ -1587,18 +1675,9 @@ void CheckClassImpl::checkMemsetType(const Scope *start, const Token *tok, const
         }
         // don't warn if variable static or const, pointer or array of pointers
         if (!var.isStatic() && !var.isConst() && !var.isPointer() && (!var.isArray() || var.typeEndToken()->str() != "*")) {
-            const Token *tok1 = var.typeStartToken();
             const Scope *typeScope = var.typeScope();
 
-            std::string typeName;
-            if (Token::Match(tok1, "%type% ::")) {
-                const Token *typeTok = tok1;
-                while (Token::Match(typeTok, "%type% ::")) {
-                    typeName += typeTok->str() + "::";
-                    typeTok = typeTok->tokAt(2);
-                }
-                typeName += typeTok->str();
-            }
+            const std::string typeName = var.getTypeName();
 
             // check for std:: type
             if (var.isStlType() && typeName != "std::array" && !mSettings.library.podtype(typeName)) {
@@ -1836,7 +1915,7 @@ void CheckClassImpl::operatorEqToSelf()
                 if (func.argumentList.empty())
                     continue;
                 const Token* typeTok = func.argumentList.front().typeEndToken();
-                while (typeTok->str() == "const" || typeTok->str() == "&" || typeTok->str() == "*")
+                while (typeTok->str() == "const" || typeTok->str() == "&" || typeTok->str() == "&&" || typeTok->str() == "*")
                     typeTok = typeTok->previous();
                 if (typeTok->str() != scope->className)
                     continue;
@@ -2025,6 +2104,33 @@ void CheckClassImpl::virtualDestructor()
 
     logChecker("CheckClass::virtualDestructor");
 
+    // pointer variables of type 'Base *', for each type 'Base'
+    std::unordered_map<const Type *, std::vector<int>> pointersByType;
+
+    // for each pointer variable, the classes 'Derived' of a "ptr = new Derived" that is followed by a "delete ptr;"
+    std::unordered_map<int, std::set<std::string>> deletedAfterNew;
+
+    for (const Variable* var : mSymbolDatabase->variableList()) {
+        if (var && var->isPointer() && var->type() && var->nameToken())
+            pointersByType[var->type()].push_back(var->declarationId());
+    }
+
+    {
+        // the classes 'Derived' of the "ptr = new Derived" seen so far
+        std::unordered_map<int, std::set<std::string>> newClasses;
+
+        for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
+            if (Token::Match(tok, "[;{}] %var% = new %name%"))
+                newClasses[tok->next()->varId()].insert(tok->strAt(4));
+
+            else if (Token::Match(tok, "delete %var% ;")) {
+                const auto it = newClasses.find(tok->next()->varId());
+                if (it != newClasses.end())
+                    deletedAfterNew[it->first].insert(it->second.cbegin(), it->second.cend());
+            }
+        }
+    }
+
     for (const Scope * scope : mSymbolDatabase->classAndStructScopes) {
 
         // Skip base classes (unless inconclusive)
@@ -2074,39 +2180,15 @@ void CheckClassImpl::virtualDestructor()
                 // If this pattern is not seen then bailout the checking of these base/derived classes
                 {
                     // pointer variables of type 'Base *'
-                    std::set<int> baseClassPointers;
-
-                    for (const Variable* var : mSymbolDatabase->variableList()) {
-                        if (var && var->isPointer() && var->type() == derivedFrom)
-                            baseClassPointers.insert(var->declarationId());
-                    }
-
-                    // pointer variables of type 'Base *' that should not be deleted
-                    std::set<int> dontDelete;
-
-                    // No deletion of derived class instance through base class pointer found => the code is ok
-                    bool ok = true;
-
-                    for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
-                        if (Token::Match(tok, "[;{}] %var% =") &&
-                            baseClassPointers.find(tok->next()->varId()) != baseClassPointers.end()) {
-                            // new derived class..
-                            const std::string tmp("new " + derivedClass->str());
-                            if (Token::simpleMatch(tok->tokAt(3), tmp.c_str(), tmp.size())) {
-                                dontDelete.insert(tok->next()->varId());
-                            }
-                        }
-
-                        // Delete base class pointer that might point at derived class
-                        else if (Token::Match(tok, "delete %var% ;") &&
-                                 dontDelete.find(tok->next()->varId()) != dontDelete.end()) {
-                            ok = false;
-                            break;
-                        }
-                    }
+                    const auto pointers = pointersByType.find(derivedFrom);
+                    if (pointers == pointersByType.end())
+                        continue;
 
                     // No base class pointer that points at a derived class is deleted
-                    if (ok)
+                    if (std::none_of(pointers->second.cbegin(), pointers->second.cend(), [&](int varId) {
+                        const auto deleted = deletedAfterNew.find(varId);
+                        return deleted != deletedAfterNew.end() && deleted->second.count(derivedClass->str()) > 0;
+                    }))
                         continue;
                 }
 
