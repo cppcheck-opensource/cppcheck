@@ -251,7 +251,7 @@ public:
 
     static void handleUnionMembers(std::vector<Usage>& usageList);
 
-    bool isInitialized(const Usage& usage, FunctionType funcType) const;
+    bool isInitialized(const Usage& usage, FunctionType funcType, bool noConstructor = false) const;
 
     static bool isBaseClassMutableMemberFunc(const Token *tok, const Scope *scope);
 
