@@ -12,6 +12,7 @@ The original name of this program was "C++check", but it was later changed to "C
 
 Despite the name, Cppcheck is designed for both C and C++.
 
+
 ## Manual
 
 A manual is available [online](https://cppcheck.sourceforge.io/manual.pdf).
