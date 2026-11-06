@@ -111,7 +111,7 @@ CheckClassImpl::CheckClassImpl(const Tokenizer *tokenizer, const Settings &setti
     mSymbolDatabase(tokenizer?tokenizer->getSymbolDatabase():nullptr)
 {}
 
-bool CheckClassImpl::isInitialized(const Usage& usage, FunctionType funcType) const
+bool CheckClassImpl::isInitialized(const Usage& usage, FunctionType funcType, bool noConstructor) const
 {
     const Variable& var = *usage.var;
 
@@ -127,14 +127,14 @@ bool CheckClassImpl::isInitialized(const Usage& usage, FunctionType funcType) co
     if (var.isConst() && funcType == FunctionType::eOperatorEqual) // We can't set const members in assignment operator
         return true;
 
-    if (funcType == FunctionType::eNoConstructor && var.nameToken()->isBitfield() && mSettings.standards.cpp < Standards::CPP20)
+    if (funcType == FunctionType::eConstructor && noConstructor && var.nameToken()->isBitfield() && mSettings.standards.cpp < Standards::CPP20)
         return true;
 
     if (var.isArray() && ((var.dimensionKnown(0) && var.dimensions()[0].num == 0) || Token::simpleMatch(var.nameToken()->next(), "[ ]"))) // HACK for unreliable dimensions
         return true;
 
     // Check if this is a class constructor
-    if (!var.isPointer() && !var.isPointerArray() && var.isClass() && (funcType == FunctionType::eConstructor || funcType == FunctionType::eNoConstructor)) {
+    if (!var.isPointer() && !var.isPointerArray() && var.isClass() && funcType == FunctionType::eConstructor) {
         // Unknown type so assume it is initialized
         if (!var.type()) {
             if (var.isStlType() && var.valueType() && var.valueType()->containerTypeToken) {
@@ -463,7 +463,7 @@ void CheckClassImpl::constructors()
 
             // Check if any variables are uninitialized
             for (const Usage& usage : usageList) {
-                if (isInitialized(usage, FunctionType::eConstructor))
+                if (isInitialized(usage, FunctionType::eConstructor, /*noConstructor*/ true))
                     continue;
 
                 const Variable& var = *usage.var;
