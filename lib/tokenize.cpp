@@ -5062,7 +5062,8 @@ void Tokenizer::setVarIdPass1()
 
                                 if (tok3->isLiteral() ||
                                     (tok3->isName() && (variableMap.hasVariable(tok3->str()) ||
-                                                        (tok3->strAt(-1) == "(" && Token::simpleMatch(tok3->next(), "(") && !Token::simpleMatch(tok3->linkAt(1)->next(), "(")))) ||
+                                                        (tok3->strAt(-1) == "(" && Token::simpleMatch(tok3->next(), "(") && !Token::simpleMatch(tok3->linkAt(1)->next(), "(") &&
+                                                         !(Token::Match(tok3->next(), "( *|&|&& %name%| ) [") && !variableMap.hasVariable(tok3->strAt(3)))))) ||
                                     tok3->isOp() ||
                                     tok3->str() == "(" ||
                                     notstart.find(tok3->str()) != notstart.end()) {
