@@ -2037,6 +2037,7 @@ private:
                       "void i ( ) & override { try { } catch ( ... ) { } }\n"
                       "void j ( ) const && override { try { } catch ( ... ) { } }\n"
                       "auto k ( ) . std :: nullptr_t override { try { } catch ( ... ) { } }\n"
+                      "auto l ( ) . W < decltype ( 1 ) > override { try { } catch ( ... ) { } }\n"
                       "} ;",
                       tokenizeAndStringify("struct D : B {\n"
                                            "    void f() override try {} catch (...) {}\n"
@@ -2044,8 +2045,11 @@ private:
                                            "    void i() & override try {} catch (...) {}\n"
                                            "    void j() const && override try {} catch (...) {}\n"
                                            "    auto k() -> std::nullptr_t override try {} catch (...) {}\n"
+                                           "    auto l() -> W<decltype(1)> override try {} catch (...) {}\n"
                                            "};\n"));
-        ASSERT_EQUALS("[test.cpp:6:5]: (debug) auto token with no type. [autoNoType]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:6:5]: (debug) auto token with no type. [autoNoType]\n"
+                      "[test.cpp:7:5]: (debug) auto token with no type. [autoNoType]\n",
+                      errout_str());
     }
 
     // Simplify "((..))" into "(..)"
