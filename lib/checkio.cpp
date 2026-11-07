@@ -35,6 +35,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <functional>
+#include <limits>
 #include <list>
 #include <map>
 #include <set>
@@ -794,6 +795,20 @@ void CheckIOImpl::checkWrongPrintfScanfArguments()
     }
 }
 
+// Convert the digits of a format string width or parameter position.
+// A value that does not fit in an int is clamped to INT_MAX so a huge
+// width or position is still reported instead of aborting the check.
+static int formatStringNumber(const std::string& digits)
+{
+    MathLib::bigint value = 0;
+    for (const char c : digits) {
+        value = value * 10 + (c - '0');
+        if (value > std::numeric_limits<int>::max())
+            return std::numeric_limits<int>::max();
+    }
+    return static_cast<int>(value);
+}
+
 void CheckIOImpl::checkFormatString(const Token * const tok,
                                     const Token * const formatStringTok,
                                     const Token *       argListTok,
@@ -853,8 +868,10 @@ void CheckIOImpl::checkFormatString(const Token * const tok,
                 } else if (std::isdigit(*i)) {
                     width += *i;
                 } else if (*i == '$') {
-                    parameterPosition = strToInt<int>(width);
-                    hasParameterPosition = true;
+                    if (!width.empty()) {
+                        parameterPosition = formatStringNumber(width);
+                        hasParameterPosition = true;
+                    }
                     width.clear();
                 }
                 ++i;
@@ -906,7 +923,7 @@ void CheckIOImpl::checkFormatString(const Token * const tok,
                                 specifier += (*i == 's' || bracketBeg == formatString.end()) ? std::string{ 's' } : std::string{ bracketBeg, i + 1 };
                                 if (argInfo.variableInfo && argInfo.isKnownType() && argInfo.variableInfo->isArray() && (argInfo.variableInfo->dimensions().size() == 1) && argInfo.variableInfo->dimensions()[0].known) {
                                     if (!width.empty()) {
-                                        const int numWidth = strToInt<int>(width);
+                                        const int numWidth = formatStringNumber(width);
                                         if (numWidth != (argInfo.variableInfo->dimension(0) - 1))
                                             invalidScanfFormatWidthError(tok, numFormat, numWidth, argInfo.variableInfo, specifier);
                                     }
@@ -929,7 +946,7 @@ void CheckIOImpl::checkFormatString(const Token * const tok,
                             case 'c':
                                 if (argInfo.variableInfo && argInfo.isKnownType() && argInfo.variableInfo->isArray() && (argInfo.variableInfo->dimensions().size() == 1) && argInfo.variableInfo->dimensions()[0].known) {
                                     if (!width.empty()) {
-                                        const int numWidth = strToInt<int>(width);
+                                        const int numWidth = formatStringNumber(width);
                                         if (numWidth > argInfo.variableInfo->dimension(0))
                                             invalidScanfFormatWidthError(tok, numFormat, numWidth, argInfo.variableInfo, std::string(1, *i));
                                     }
