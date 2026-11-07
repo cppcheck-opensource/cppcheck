@@ -150,9 +150,8 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
-      # see https://www.pcre.org/original/changelog.txt
-      PCRE_VERSION: 8.45
-
+      # see https://github.com/PCRE2Project/pcre2/blob/master/ChangeLog
+      PCRE2_VERSION: 10.49
     steps:
       - uses: actions/checkout@v6
         with:
@@ -170,32 +169,31 @@ jobs:
         with:
           arch: x64
 
-      - name: Cache PCRE
-        id: cache-pcre
+      - name: Cache PCRE2
+        id: cache-pcre2
         uses: actions/cache@v5
         with:
           path: |
-            externals\pcre.h
-            externals\pcre.lib
-            externals\pcre64.lib
-          key: pcre-${{ env.PCRE_VERSION }}-x64-bin-win
+            externals\pcre2.h
+            externals\pcre2-8.lib
+          key: pcre2-${{ env.PCRE2_VERSION }}-x64-bin-win
 
-      - name: Download PCRE
-        if: steps.cache-pcre.outputs.cache-hit != 'true'
+      - name: Download PCRE2
+        if: steps.cache-pcre2.outputs.cache-hit != 'true'
         run: |
-          curl -fsSL https://github.com/pfultz2/pcre/archive/refs/tags/%PCRE_VERSION%.zip -o pcre-%PCRE_VERSION%.zip || exit /b !errorlevel!
+          curl -fsSL https://github.com/PCRE2Project/pcre2/releases/download/pcre2-%PCRE2_VERSION%/pcre2-%PCRE2_VERSION%.zip -o pcre2-%PCRE2_VERSION%.zip || exit /b !errorlevel!
 
-      - name: Install PCRE
-        if: steps.cache-pcre.outputs.cache-hit != 'true'
+      - name: Install PCRE2
+        if: steps.cache-pcre2.outputs.cache-hit != 'true'
         run: |
           @echo on
-          7z x pcre-%PCRE_VERSION%.zip || exit /b !errorlevel!
-          cd pcre-%PCRE_VERSION% || exit /b !errorlevel!
-          git apply --ignore-space-change ..\externals\pcre.patch || exit /b !errorlevel!
-          cmake . -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DPCRE_BUILD_PCRECPP=Off -DPCRE_BUILD_TESTS=Off -DPCRE_BUILD_PCREGREP=Off -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_COMPILE_WARNING_AS_ERROR=On || exit /b !errorlevel!
-          nmake || exit /b !errorlevel!
-          copy pcre.h ..\externals || exit /b !errorlevel!
-          copy pcre.lib ..\externals\pcre64.lib || exit /b !errorlevel!
+          7z x pcre2-%PCRE2_VERSION%.zip || exit /b !errorlevel!
+          cd pcre2-%PCRE2_VERSION% || exit /b !errorlevel!
+          cmake -S . -B build -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=Off -DBUILD_STATIC_LIBS=On -DPCRE2_SUPPORT_JIT=On -DPCRE2_BUILD_PCRE2GREP=Off -DPCRE2_BUILD_TESTS=Off || exit /b !errorlevel!
+          cmake --build build || exit /b !errorlevel!
+          cmake --install build --prefix install || exit /b !errorlevel!
+          copy install\include\pcre2.h ..\externals || exit /b !errorlevel!
+          copy install\lib\pcre2-8-static.lib ..\externals\pcre2-8.lib || exit /b !errorlevel!
         env:
           CL: /MP
 

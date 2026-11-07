@@ -1,5 +1,5 @@
-PCRE is a library that is used by the optional "rules" feature for the command
-line version of cppcheck. It is readily available on Linux and Mac OS X, but
+PCRE2 is a library that is used by the optional "rules" feature for the command
+line version of cppcheck. It is readily available on Linux and macOS, but
 must be obtained separately for Windows.
 
 Build instructions
@@ -10,26 +10,17 @@ Windows
 
 Visual Studio
 
-To build PCRE, download the source code from www.pcre.org and
-CMake (https://cmake.org/download/). We assume you use Visual Studio 2015 -
-otherwise adapt the commands for your version.
+Download the PCRE2 source code from https://github.com/PCRE2Project/pcre2/releases
+and CMake (https://cmake.org/download/). Then build a static library from a
+Visual Studio developer command prompt:
 
-VS Solution file
-  cmake . -G "Visual Studio 14 2015"
-  Open PCRE.sln with VS IDE or via cmd:
-    call "%VS140COMNTOOLS%..\..\VC\vcvarsall.bat" x86
-    MSBuild PCRE.sln /target:Build /property:Configuration="Release"
+  cmake -S . -B build -A x64 -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DPCRE2_SUPPORT_JIT=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF
+  cmake --build build --config Release
+  cmake --install build --config Release --prefix install
 
-  For 64-bit target: cmake . -G "Visual Studio 14 2015 Win64"
-
-or using NMake
-  call "%VS140COMNTOOLS%..\..\VC\vcvarsall.bat" x86
-  cmake . -G "NMake Makefiles"
-  nmake
-
-or using MSYS
-  cmake . -G "MSYS Makefiles"
-  make
+Copy install\include\pcre2.h and install\lib\pcre2-8-static.lib (renamed to
+pcre2-8.lib) into the /externals directory and select the "Release-PCRE" or
+"Debug-PCRE" configuration in cppcheck.sln.
 
 
 Linux
@@ -37,27 +28,19 @@ Linux
 
 The normal Makefile should work.
 
-Install PCRE on Ubuntu might be needed:
-  sudo apt-get install libpcre3 libpcre3-dev
+Install PCRE2 on Debian/Ubuntu might be needed:
+  sudo apt-get install libpcre2-dev
 
 
 Mac OSX
 -------
 
-Install PCRE:
+Install PCRE2:
 
-homebre
-  brew install pcre
+homebrew
+  brew install pcre2
 
-or macport
-  sudo port install pcre
+or macports
+  sudo port install pcre2
 
-Ensure /path/to/pcre.h is in CXXFLAGS, e.g:
-
-for homebrew
-  export CXXFLAGS=${CXXFLAGS}:/usr/local/include
-
-or macport
-  export CXXFLAGS=${CXXFLAGS}:/opt/local/include
-
-Or for MSVC copy pcre.lib and pcre.h in /externals directory.
+The Makefile uses pcre2-config to find the include and library paths.

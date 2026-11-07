@@ -20,7 +20,7 @@ C++11に対応したコンパイラが利用できます。部分的にC++11に�
 
 GUIも利用する場合、Qtライブラリが必要です。
 
-コマンドラインツールをビルドする場合、[PCRE](http://www.pcre.org/)はオプションです。これはルールを作成するために利用します。
+コマンドラインツールをビルドする場合、[PCRE2](https://www.pcre.org/)はオプションです。これはルールを作成するために利用します。
 
 コンパイル上の選択肢がいくつかあります。
 * cmake - クロスプラットフォームのビルドツール
@@ -47,19 +47,18 @@ C++標準を指定する必要がある場合次のオプションを指定し�
 CppcheckのGUIが必要な場合次のフラグを指定します。
 -DBUILD_GUI=ON
 
-pcreが必要になりますが、正規表現のルールサポートが必要な場合次のフラグを指定します。
+PCRE2が必要になりますが、正規表現のルールサポートが必要な場合次のフラグを指定します。
 -DHAVE_RULES=ON
 
 ### Visual Studio
 
 cppcheck.slnファイルが利用できます。このファイルは、Visual Studio 2019向けです。しかし、このプラットフォームツールセットはこれより新しいバージョンまたは古いバージョン向けに変更できます。このソルーションには、プラットフォームターゲットとしてx86とx64があります。
 
-ルールをコンパイルするためには、"Release-PCRE" または "Debug-PCRE" 設定を選択してください。pcre.lib (または pcre64.lib x64ビルド向け) と pcre.h を /externals にコピーしてください。Visual Studio のための PCRE の最新バージョンは [vcpkg](https://github.com/microsoft/vcpkg) から取得できます。
+ルールをコンパイルするためには、"Release-PCRE" または "Debug-PCRE" 設定を選択してください。pcre2-8.lib と pcre2.h を /externals にコピーしてください。ビルド方法は build-pcre.txt を参照してください。
 
 ### Qt Creator + MinGW
 
-コマンドラインツールをビルドするには、PCRE.dllが必要です。これは以下のURLからダウンロードできます。:
-http://software-download.name/pcre-library-windows/
+ルール機能付きでコマンドラインツールをビルドするには PCRE2 が必要です。build-pcre.txt を参照してください。
 
 ### GNU make
 
@@ -84,7 +83,7 @@ cppcheckの最適化にPythonを使用します。Token::Match パターンは�
 cppcheckの設定ファイル(addon や cfg や platform)を置くディレクトリを指定します。
 
 3. `HAVE_RULES=yes`
-ルール機能の有効化 (ルール機能には PCRE が必要です)設定です。
+ルール機能の有効化 (ルール機能には PCRE2 が必要です)設定です。
 
 4. `CXXOPTS="-O2 -DNDEBUG"`
 ほとんどのコンパイラの最適化オプション、cppcheckの内部デバッグコードの無効化、基本的なコンパイラ警告の有効化
@@ -100,7 +99,7 @@ g++ -o cppcheck -std=c++11 -Iexternals -Iexternals/simplecpp -Iexternals/tinyxml
 `--rule` や `--rule-file` を利用する場合、依存ライブラリが必要です。
 
 ```shell
-g++ -o cppcheck -std=c++11 -lpcre -DHAVE_RULES -Iexternals -Iexternals/simplecpp -Iexternals/tinyxml2 -Ilib cli/*.cpp lib/*.cpp externals/simplecpp/simplecpp.cpp externals/tinyxml2/*.cpp
+g++ -o cppcheck -std=c++11 -lpcre2-8 -DHAVE_RULES -Iexternals -Iexternals/simplecpp -Iexternals/tinyxml2 -Ilib cli/*.cpp lib/*.cpp externals/simplecpp/simplecpp.cpp externals/tinyxml2/*.cpp
 ```
 
 ### MinGW

@@ -126,6 +126,6 @@ stage
 # ccache folder in CI
 /.ccache
 
-# PCRE Windows files
-/externals/pcre.h
-/externals/pcre64.lib
+# PCRE2 Windows files
+/externals/pcre2.h
+/externals/pcre2-8.lib

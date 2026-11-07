@@ -68,7 +68,7 @@ jobs:
       - name: Install missing software on ubuntu
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake make libpcre3-dev libboost-container-dev libxml2-utils
+          sudo apt-get install -y cmake make libpcre2-dev libboost-container-dev libxml2-utils
           sudo apt-get install -y libcups2-dev  # required for Qt6PrintSupport in CMake since Qt 6.7.3
 
       - name: Install clang

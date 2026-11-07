@@ -2132,7 +2132,7 @@ void CmdLineParser::printHelp() const
         "Many thanks to the 3rd party libraries we use:\n"
         " * tinyxml2 -- loading project/library/ctu files.\n"
         " * picojson -- loading compile database.\n"
-        " * pcre -- rules.\n"
+        " * pcre2 -- rules.\n"
         " * qt -- used in GUI\n";
 
     mLogger.printRaw(oss.str());
