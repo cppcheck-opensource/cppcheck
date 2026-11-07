@@ -775,7 +775,6 @@ public:
         return this;
     }
 
-    // cppcheck-suppress unusedFunction
     bool isBitfield() const {
         return mImpl->mBits >= 0;
     }
