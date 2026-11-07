@@ -928,6 +928,18 @@ private:
               "    int a[];\n"
               "};");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct S {\n"
+              "    static std::string s;\n"
+              "    int x;\n"
+              "};\n"
+              "struct T {\n"
+              "    static const int i = 0;\n"
+              "    int x;\n"
+              "};");
+        ASSERT_EQUALS("[test.cpp:3:9]: (warning) Member variable 'S::x' has no initializer. [uninitMemberVarNoCtor]\n"
+                      "[test.cpp:7:9]: (warning) Member variable 'T::x' has no initializer. [uninitMemberVarNoCtor]\n",
+                      errout_str());
     }
 
     // ticket #4290 "False Positive: style (noConstructor): The class 'foo' does not have a constructor."

@@ -115,11 +115,8 @@ CheckClassImpl::Initialization CheckClassImpl::checkInitialization(const Usage& 
 {
     const Variable& var = *usage.var;
 
-    if (usage.assign || usage.init)
+    if (usage.assign || usage.init || var.isStatic())
         return Initialization::Initialized;
-
-    if (var.isStatic())
-        return Initialization::None;
 
     if (!var.nameToken() || var.nameToken()->isAnonymous())
         return Initialization::None;
