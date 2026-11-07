@@ -28,6 +28,7 @@
 #include <functional>
 #include <list>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -215,7 +216,8 @@ private:
      * @param tokenizer tokenizer instance
      * @param analyzerInformation the analyzer information
      */
-    void checkNormalTokens(const Tokenizer &tokenizer, AnalyzerInformation* analyzerInformation, const std::string& currentConfig);
+    void checkNormalTokens(const Tokenizer &tokenizer, AnalyzerInformation* analyzerInformation, const std::string& currentConfig,
+                           const std::set<std::string>& exportedFunctions = {});
 
     /**
      * Execute addons
