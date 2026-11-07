@@ -712,6 +712,15 @@ private:
               "    p->f();\n"
               "}\n", dinit(CheckOptions, $.cpp = true));
         ASSERT_EQUALS("[test.cpp:9:1]: (error) Memory leak: p [memleak]\n", errout_str());
+
+        check("struct S { int (*cb)(int); };\n" // a pointer to a function or to a member is a primitive member
+              "struct T { int S::*pm; };\n"
+              "void f() {\n"
+              "    S* s = new S;\n"
+              "    T* t = new T;\n"
+              "}\n", dinit(CheckOptions, $.cpp = true));
+        ASSERT_EQUALS("[test.cpp:6:1]: (error) Memory leak: s [memleak]\n"
+                      "[test.cpp:6:1]: (error) Memory leak: t [memleak]\n", errout_str());
     }
 
     void realloc1() {

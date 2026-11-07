@@ -83,6 +83,7 @@ private:
         TEST_CASE(structmember35);
         TEST_CASE(structmember_macro);
         TEST_CASE(structmember_template_argument); // #13887 - do not report that member used in template argument is unused
+        TEST_CASE(structmember_template_function); // member used through a function template that is instantiated for another type
         TEST_CASE(classmember);
         TEST_CASE(structmemberStructuredBinding); // #13107
 
@@ -2122,6 +2123,22 @@ private:
     void structmember_macro() {
         checkStructMemberUsageP("#define S(n) struct n { int a, b, c; };\n"
                                 "S(unused);\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void structmember_template_function() {
+        // the generic get() is still called from the uninstantiated Box: it must not be
+        // removed when get<Bag> is instantiated, otherwise Box::count has no use left
+        checkStructMemberUsage("template<class T> int get(const T& t) { return t.count; }\n"
+                               "template<class U> struct Box { U item; int count; int size() const { return get(*this); } };\n"
+                               "struct Bag { int count; };\n"
+                               "int total(const Bag& b) { return get(b); }\n");
+        ASSERT_EQUALS("", errout_str());
+
+        checkStructMemberUsage("template<class T> int get(const T& t) { return t.count; }\n"
+                               "template<class U> struct Box { U item; int count; int size() const { return get(*this); } };\n"
+                               "struct Bag { int count; };\n"
+                               "int total(const Bag& b) { return get<Bag>(b); }\n");
         ASSERT_EQUALS("", errout_str());
     }
 
