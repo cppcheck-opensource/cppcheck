@@ -42,11 +42,18 @@ jobs:
         with:
           release: false # use pre-installed
           # TODO: install mingw-w64-x86_64-make and use mingw32.make instead - currently fails with "Windows Subsystem for Linux has no installed distributions."
-          install: >-
-            mingw-w64-x86_64-lld
-            mingw-w64-x86_64-ccache
-            make
-            mingw-w64-x86_64-gcc
+
+      - name: Install MSYS2 packages
+        run: |
+          for attempt in 1 2 3; do
+            if pacman --noconfirm -S --needed --overwrite '*' mingw-w64-x86_64-lld mingw-w64-x86_64-ccache make mingw-w64-x86_64-gcc; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep 10
+          done
 
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2.24
