@@ -195,6 +195,17 @@ static std::string getRelativeFilename(const simplecpp::TokenList &tokens, const
     return Path::simplifyPath(std::move(relativeFilename));
 }
 
+static void addInlineSuppression(SuppressionList::Suppression suppr, SuppressionList &suppressions, std::list<BadInlineSuppression> &bad)
+{
+    const unsigned int fileIndex = suppr.fileIndex;
+    const unsigned int line = suppr.lineNumber;
+    const unsigned int col = suppr.column;
+    const std::string errmsg = suppressions.addSuppression(std::move(suppr));
+    if (!errmsg.empty()) {
+        bad.emplace_back(simplecpp::Location{fileIndex, line, col}, errmsg);
+    }
+}
+
 static void addInlineSuppressions(const simplecpp::TokenList &tokens, const Settings &settings, SuppressionList &suppressions, std::list<BadInlineSuppression> &bad)
 {
     std::list<SuppressionList::Suppression> inlineSuppressionsBlockBegin;
@@ -282,7 +293,7 @@ static void addInlineSuppressions(const simplecpp::TokenList &tokens, const Sett
                             suppr.column = supprBegin->column;
                             suppr.type = SuppressionList::Type::block;
                             inlineSuppressionsBlockBegin.erase(supprBegin);
-                            suppressions.addSuppression(std::move(suppr)); // TODO: check result
+                            addInlineSuppression(std::move(suppr), suppressions, bad);
                             throwError = false;
                             break;
                         }
@@ -312,10 +323,10 @@ static void addInlineSuppressions(const simplecpp::TokenList &tokens, const Sett
                 suppr.lineNumber = tok->location.line;
                 suppr.column = tok->location.col;
                 suppr.macroName = macroName;
-                suppressions.addSuppression(std::move(suppr)); // TODO: check result
+                addInlineSuppression(std::move(suppr), suppressions, bad);
             } else if (SuppressionList::Type::file == suppr.type) {
                 if (onlyComments)
-                    suppressions.addSuppression(std::move(suppr)); // TODO: check result
+                    addInlineSuppression(std::move(suppr), suppressions, bad);
                 else {
                     simplecpp::Location loc;
                     loc.fileIndex = suppr.fileIndex;
