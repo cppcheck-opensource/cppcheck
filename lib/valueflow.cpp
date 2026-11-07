@@ -1089,11 +1089,32 @@ static void valueFlowImpossibleValues(TokenList& tokenList, const Settings& sett
                 setTokenValue(tok, std::move(value), settings);
             }
 
-        } else if (Token::simpleMatch(tok, "%") && tok->astOperand2() && tok->astOperand2()->hasKnownIntValue()) {
+        } else if (tok->isBinaryOp() && tok->str() == "%" && tok->astOperand2()->hasKnownIntValue()) {
             ValueFlow::Value value{tok->astOperand2()->getKnownIntValue()};
             value.bound = ValueFlow::Value::Bound::Lower;
             value.setImpossible();
             setTokenValue(tok, std::move(value), settings);
+        } else if (tok->isBinaryOp() && tok->str() == "|") {
+            bool nonNull = false;
+            for (const Token *op : {tok->astOperand1(), tok->astOperand2()}) {
+                for (const ValueFlow::Value& v : op->values()) {
+                    if (!op->valueType() || !op->valueType()->isIntegral())
+                        continue;
+                    if (v.valueType != ValueFlow::Value::ValueType::INT)
+                        continue;
+                    if ((v.isKnown() && v.intvalue != 0) || (v.isImpossible() && v.intvalue == 0)) {
+                        nonNull = true;
+                        break;
+                    }
+                }
+                if (nonNull)
+                    break;
+            }
+            if (nonNull) {
+                ValueFlow::Value value{0};
+                value.setImpossible();
+                setTokenValue(tok, std::move(value), settings);
+            }
         } else if (Token::Match(tok, "abs|labs|llabs|fabs|fabsf|fabsl (")) {
             ValueFlow::Value value{-1};
             value.bound = ValueFlow::Value::Bound::Upper;
