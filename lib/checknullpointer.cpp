@@ -454,7 +454,7 @@ void CheckNullPointerImpl::nullPointerError(const Token *tok, const std::string 
     } else if (value->defaultArg) {
         reportError(std::move(errorPath), Severity::warning, "nullPointerDefaultArg", errmsgdefarg, CWE_NULL_POINTER_DEREFERENCE, inconclusive || value->isInconclusive() ? Certainty::inconclusive : Certainty::normal);
     } else {
-        std::string errmsg = std::string(value->isKnown() ? "Null" : "Possible null") + " pointer dereference";
+        std::string errmsg = std::string(value->isKnown() && !value->conditional ? "Null" : "Possible null") + " pointer dereference";
 
         std::string id = "nullPointer";
         if (value->unknownFunctionReturn == ValueFlow::Value::UnknownFunctionReturn::outOfMemory) {
@@ -470,7 +470,7 @@ void CheckNullPointerImpl::nullPointerError(const Token *tok, const std::string 
             errmsg = "$symbol:" + varname + '\n' + errmsg + ": $symbol";
 
         reportError(std::move(errorPath),
-                    value->isKnown() ? Severity::error : Severity::warning,
+                    value->isKnown() && !value->conditional ? Severity::error : Severity::warning,
                     id.c_str(),
                     errmsg,
                     CWE_NULL_POINTER_DEREFERENCE, inconclusive || value->isInconclusive() ? Certainty::inconclusive : Certainty::normal);
