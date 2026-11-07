@@ -139,6 +139,7 @@ int calc(int a, int b)
     int arr[3];
     arr[0] = a;
     a += 1;
+    a |= b;
     if (a > b) {
         return a;
     }
