@@ -1016,10 +1016,56 @@ void CheckLeakAutoVarImpl::changeAllocStatus(VarInfo &varInfo, const VarInfo::Al
     }
 }
 
+static const Token* addressedMemberOwner(const Token* arg, const Token* argStart, const Token* callOpening)
+{
+    if (!arg || !arg->isUnaryOp("&"))
+        return nullptr;
+    const Token* nextArg = argStart->nextArgument();
+    const Token* argEnd = nextArg ? nextArg->previous() : callOpening->link();
+    const Token* parent = arg->astParent();
+    // The address must be the passed value, not a comparison, discarded
+    // comma operand, or scalar cast. Commas outside this argument are separators.
+    while (parent && parent->index() >= argStart->index() && parent->index() < argEnd->index()) {
+        if (!parent->isCast() || !parent->valueType() || !parent->valueType()->pointer)
+            return nullptr;
+        parent = parent->astParent();
+    }
+    if (parent != callOpening && !Token::simpleMatch(parent, ","))
+        return nullptr;
+    const Token* member = arg->astOperand1();
+    if (arg->isCpp()) {
+        // A class/enum address-of expression may call a member, inherited or
+        // free operator& that returns storage unrelated to this object.
+        const ValueType* vt = member ? member->valueType() : nullptr;
+        if (!vt || vt->typeScope || (!vt->pointer && !vt->isIntegral() && !vt->isFloat()))
+            return nullptr;
+    }
+    while (Token::simpleMatch(member, ".")) {
+        const Token* field = member->astOperand2();
+        if (!field || (field->variable() && (field->variable()->isStatic() || field->variable()->isReference())))
+            return nullptr;
+        const Token* object = member->astOperand1();
+        const ValueType* vt = object ? object->valueType() : nullptr;
+        if (!vt)
+            return nullptr;
+        if (vt->pointer) {
+            // Stop at a pointer member: its pointee is not embedded storage
+            // of the allocation containing that member.
+            return vt->pointer == 1 && object->variable() && object->isName() ? object : nullptr;
+        }
+        if (member->originalName() == "->")
+            return nullptr; // overloaded member access
+        member = object;
+    }
+    return nullptr;
+}
+
 void CheckLeakAutoVarImpl::functionCall(const Token *tokName, const Token *tokOpeningPar, VarInfo &varInfo, const VarInfo::AllocInfo& allocation, const Library::AllocFunc* af)
 {
     // Ignore function call?
-    const bool isLeakIgnore = mSettings.library.isLeakIgnore(mSettings.library.getFunctionName(tokName));
+    const std::string functionName = mSettings.library.getFunctionName(tokName);
+    const bool isLeakIgnore = mSettings.library.isLeakIgnore(functionName);
+    const bool isPure = mSettings.library.isFunctionConst(functionName, true);
     if (mSettings.library.getReallocFuncInfo(tokName))
         return;
     if (tokName->next()->valueType() && tokName->next()->valueType()->container && tokName->next()->valueType()->container->stdStringLike)
@@ -1053,6 +1099,13 @@ void CheckLeakAutoVarImpl::functionCall(const Token *tokName, const Token *tokOp
         while (arg && arg->isCast())
             arg = arg->astOperand2() ? arg->astOperand2() : arg->astOperand1();
         const Token * const argTypeStartTok = arg;
+
+        if (!isLeakIgnore && !isPure && allocation.status == VarInfo::NOALLOC) {
+            if (const Token* owner = addressedMemberOwner(arg, funcArg, tokOpeningPar)) {
+                if (varInfo.alloctype.count(owner->varId()))
+                    varInfo.possibleUsage[owner->varId()] = {tokName, VarInfo::USED};
+            }
+        }
 
         if (Token::simpleMatch(arg, "."))
             arg = arg->next();
