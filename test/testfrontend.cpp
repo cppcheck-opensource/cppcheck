@@ -24,7 +24,6 @@
 #include "standards.h"
 
 #include <list>
-#include <string>
 
 class TestFrontend : public TestFixture {
 public:

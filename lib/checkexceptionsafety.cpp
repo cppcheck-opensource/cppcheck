@@ -30,7 +30,6 @@
 #include <list>
 #include <set>
 #include <utility>
-#include <vector>
 
 //---------------------------------------------------------------------------
 
