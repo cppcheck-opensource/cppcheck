@@ -56,9 +56,9 @@ jobs:
           cd pcre2-%PCRE2_VERSION% || exit /b !errorlevel!
           cmake -S . -B build -A x64 -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DPCRE2_SUPPORT_JIT=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF || exit /b !errorlevel!
           cmake --build build --config Release || exit /b !errorlevel!
-          cmake --install build --config Release --prefix install || exit /b !errorlevel!
-          copy install\include\pcre2.h ..\externals || exit /b !errorlevel!
-          copy install\lib\pcre2-8-static.lib ..\externals\pcre2-8.lib || exit /b !errorlevel!
+          cmake --install build --config Release --prefix pcre2-dist || exit /b !errorlevel!
+          copy pcre2-dist\include\pcre2.h ..\externals || exit /b !errorlevel!
+          copy pcre2-dist\lib\pcre2-8-static.lib ..\externals\pcre2-8.lib || exit /b !errorlevel!
 
       - name: Download Boost
         run: |

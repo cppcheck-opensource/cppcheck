@@ -16,9 +16,9 @@ Visual Studio developer command prompt:
 
   cmake -S . -B build -A x64 -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DPCRE2_SUPPORT_JIT=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF
   cmake --build build --config Release
-  cmake --install build --config Release --prefix install
+  cmake --install build --config Release --prefix pcre2-dist
 
-Copy install\include\pcre2.h and install\lib\pcre2-8-static.lib (renamed to
+Copy pcre2-dist\include\pcre2.h and pcre2-dist\lib\pcre2-8-static.lib (renamed to
 pcre2-8.lib) into the /externals directory and select the "Release-PCRE" or
 "Debug-PCRE" configuration in cppcheck.sln.
 

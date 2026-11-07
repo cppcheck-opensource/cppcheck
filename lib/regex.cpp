@@ -95,7 +95,7 @@ namespace {
         if (!matchData)
             return "failed to allocate PCRE2 match data";
 
-        const auto subject = reinterpret_cast<PCRE2_SPTR>(str.c_str());
+        const auto * const subject = reinterpret_cast<PCRE2_SPTR>(str.c_str());
         const PCRE2_SIZE length = str.size();
         PCRE2_SIZE pos = 0;
         while (pos < length) {
