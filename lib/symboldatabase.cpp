@@ -8690,7 +8690,6 @@ template<class F>
 static Result accumulateStructMembers(const Scope* scope, F f, ValueType::Accuracy accuracy, const Settings& settings)
 {
     size_t total = 0;
-    std::set<const Scope*> anonScopes;
     for (const Variable& var : scope->varlist) {
         if (var.isStatic())
             continue;
@@ -8701,17 +8700,12 @@ static Result accumulateStructMembers(const Scope* scope, F f, ValueType::Accura
             const MathLib::bigint dim = std::accumulate(var.dimensions().cbegin(), var.dimensions().cend(), MathLib::bigint(1), [](MathLib::bigint i1, const Dimension& dim) {
                 return i1 * dim.num;
             });
-            if (var.nameToken()->scope() != scope && var.nameToken()->scope()->definedType) { // anonymous union
-                const auto ret = anonScopes.insert(var.nameToken()->scope());
-                if (ret.second)
-                    total = f(total, *vt, dim, bits);
-            }
-            else if (vt->container && vt->container->startPattern == "std :: array <") {
+            if (vt->container && vt->container->startPattern == "std :: array <") {
                 const ValueType vtElement = ValueType::parseDecl(vt->containerTypeToken, settings);
-                total = f(total, vtElement, dim, bits);
+                total = f(total, vtElement, dim, bits, /*isAnonUnion*/ false);
             }
             else
-                total = f(total, *vt, dim, bits);
+                total = f(total, *vt, dim, bits, var.nameToken()->scope() != scope);
         }
         if (accuracy == ValueType::Accuracy::ExactOrZero && total == 0 && bits == -1)
             return {0, false};
@@ -8745,7 +8739,7 @@ static size_t getAlignOf(const ValueType& vt, const Settings& settings, ValueTyp
         return align == 0 ? 0 : bitCeil(align);
     }
     if (vt.type == ValueType::Type::RECORD && vt.typeScope) {
-        auto accHelper = [&](size_t max, const ValueType& vt2, size_t /*dim*/, MathLib::bigint /*bits*/) {
+        auto accHelper = [&](size_t max, const ValueType& vt2, size_t /*dim*/, MathLib::bigint /*bits*/, bool /*isAnonUnion*/) {
             size_t a = getAlignOf(vt2, settings, accuracy, ValueType::SizeOf::Pointer, ++maxRecursion);
             return std::max(max, a);
         };
@@ -8797,7 +8791,7 @@ size_t ValueType::getSizeOf( const Settings& settings, Accuracy accuracy, SizeOf
     if (type == ValueType::Type::RECORD && typeScope) {
         size_t currentBitCount = 0;
         size_t currentBitfieldAlloc = 0;
-        auto accHelper = [&](size_t total, const ValueType& vt2, size_t dim, MathLib::bigint nBits) -> size_t {
+        auto accHelper = [&](size_t total, const ValueType& vt2, size_t dim, MathLib::bigint nBits, bool isAnonUnion) -> size_t {
             const size_t charBit = settings.platform.char_bit;
             size_t n = vt2.getSizeOf(settings, accuracy, SizeOf::Pointer, ++maxRecursion);
             size_t a = getAlignOf(vt2, settings, accuracy, SizeOf::Pointer);
@@ -8840,7 +8834,8 @@ size_t ValueType::getSizeOf( const Settings& settings, Accuracy accuracy, SizeOf
                 currentBitfieldAlloc = 0;
                 currentBitCount = 0;
             }
-            return typeScope->type == ScopeType::eUnion ? std::max(total, n) : total + padding + n;
+            const bool isUnion = isAnonUnion || typeScope->type == ScopeType::eUnion;
+            return isUnion ? std::max(total, n) : total + padding + n;
         };
         Result result = accumulateStructMembers(typeScope, accHelper, accuracy, settings);
         size_t total = result.total;
