@@ -42,6 +42,7 @@
 #include <functional>
 #include <initializer_list>
 #include <iterator>
+#include <limits>
 #include <list>
 #include <set>
 #include <type_traits>
@@ -956,10 +957,14 @@ bool extractForLoopValues(const Token *forToken,
                           nonneg int &varid,
                           bool &knownInitValue,
                           MathLib::bigint &initValue,
+                          const ValueFlow::Value*& initValueSource,
+                          const ValueFlow::Value*& initValueWitnessSource,
                           bool &partialCond,
                           MathLib::bigint &stepValue,
                           MathLib::bigint &lastValue)
 {
+    initValueSource = nullptr;
+    initValueWitnessSource = nullptr;
     if (!Token::simpleMatch(forToken, "for (") || !Token::simpleMatch(forToken->next()->astOperand2(), ";"))
         return false;
     const Token *initExpr = forToken->next()->astOperand2()->astOperand1();
@@ -967,18 +972,43 @@ bool extractForLoopValues(const Token *forToken,
     const Token *incExpr  = forToken->next()->astOperand2()->astOperand2()->astOperand2();
     if (!initExpr || !initExpr->isBinaryOp() || initExpr->str() != "=" || !Token::Match(initExpr->astOperand1(), "%var%"))
         return false;
-    std::vector<MathLib::bigint> minInitValue =
-        getMinValue(makeIntegralInferModel(), initExpr->astOperand2()->values());
+    const Token* const initToken = initExpr->astOperand2();
+    const std::vector<MathLib::bigint> minInitValue =
+        getMinValue(makeIntegralInferModel(), initToken->values(), &initValueSource);
     if (minInitValue.empty()) {
-        const ValueFlow::Value* v = initExpr->astOperand2()->getMinValue(true);
-        if (v)
-            minInitValue.push_back(v->intvalue);
+        knownInitValue = false;
+        initValue = 0;
+    } else {
+        knownInitValue = initToken->hasKnownIntValue();
+        initValue = minInitValue.front();
+        if (knownInitValue && initValueSource && initValueSource->bound != ValueFlow::Value::Bound::Point) {
+            const auto it = std::find_if(initToken->values().cbegin(),
+                                         initToken->values().cend(),
+                                         [initValue](const ValueFlow::Value& value) {
+                return value.isIntValue() && !value.isImpossible() && !value.isInconclusive() &&
+                       value.bound == ValueFlow::Value::Bound::Point && value.intvalue == initValue;
+            });
+            if (it != initToken->values().cend())
+                initValueSource = &*it;
+        }
     }
-    if (minInitValue.empty())
+    const auto isNegativeEvidence = [](const ValueFlow::Value& candidate) {
+        return candidate.isIntValue() && !candidate.isImpossible() && !candidate.isInconclusive() &&
+               (candidate.isKnown() || candidate.isPossible()) && candidate.path >= 0 && candidate.intvalue < 0 &&
+               (candidate.bound == ValueFlow::Value::Bound::Point || candidate.bound == ValueFlow::Value::Bound::Upper);
+    };
+    if (initValueSource && isNegativeEvidence(*initValueSource)) {
+        initValueWitnessSource = initValueSource;
+    } else {
+        const auto it = std::find_if(initToken->values().cbegin(),
+                                     initToken->values().cend(),
+                                     isNegativeEvidence);
+        if (it != initToken->values().cend())
+            initValueWitnessSource = &*it;
+    }
+    if (minInitValue.empty() && !initValueWitnessSource)
         return false;
     varid = initExpr->astOperand1()->varId();
-    knownInitValue = initExpr->astOperand2()->hasKnownIntValue();
-    initValue = minInitValue.front();
     partialCond = Token::Match(condExpr, "%oror%|&&");
     visitAstNodes(condExpr, [varid, &condExpr](const Token *tok) {
         if (Token::Match(tok, "%oror%|&&"))
@@ -994,10 +1024,14 @@ bool extractForLoopValues(const Token *forToken,
     if (!incExpr || !incExpr->isUnaryOp("++") || incExpr->astOperand1()->varId() != varid)
         return false;
     stepValue = 1;
-    if (condExpr->str() == "<")
-        lastValue = condExpr->astOperand2()->getKnownIntValue() - 1;
-    else
+    if (condExpr->str() == "<") {
+        const MathLib::bigint limit = condExpr->astOperand2()->getKnownIntValue();
+        if (limit == std::numeric_limits<MathLib::bigint>::min())
+            return false;
+        lastValue = limit - 1;
+    } else {
         lastValue = condExpr->astOperand2()->getKnownIntValue();
+    }
     return true;
 }
 

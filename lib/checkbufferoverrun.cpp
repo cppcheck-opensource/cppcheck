@@ -355,6 +355,7 @@ void CheckBufferOverrunImpl::arrayIndex()
                 arrayIndexError(tok, dimensions, indexValues);
         }
 
+
         // Negative index
         bool neg = false;
         std::vector<ValueFlow::Value> negativeIndexes;
