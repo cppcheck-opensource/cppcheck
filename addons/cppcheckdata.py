@@ -7,7 +7,11 @@ License: No restrictions, use this as you need.
 """
 
 import argparse
+import contextlib
+import functools
+import gc
 import json
+import mmap
 import os
 import sys
 import subprocess
@@ -38,11 +42,46 @@ EXIT_CODE = 0
 
 current_dumpfile_suppressions = []
 
-def _iterparse(filename, events):
-    # Open the file here so it is closed even when the caller stops iterating
-    # early. Python 3.15 warns about unclosed iterparse iterators otherwise.
+# Size of the chunks that are fed to the XML parser
+_PARSE_CHUNK_SIZE = 1 << 16
+
+_DUMP_START_TAG = b'<dump '
+_DUMP_END_TAG = b'</dump>'
+
+
+@contextlib.contextmanager
+def _gc_disabled():
+    # Loading a dump file creates a lot of objects and none of them become
+    # garbage. The cyclic garbage collector would traverse them again and
+    # again, which takes about half of the loading time.
+    enabled = gc.isenabled()
+    gc.disable()
+    try:
+        yield
+    finally:
+        if enabled:
+            gc.enable()
+
+
+def _feed_without_configurations(parser, filename):
+    """
+    Feed the dump file to the parser, except for the <dump> elements.
+    The configurations are most of the file, and skipping them avoids
+    parsing the whole file to get the data that is written after them.
+    A '<' in attribute values is escaped, so the tags are found with a
+    plain search.
+    """
     with open(filename, 'rb') as f:
-        yield from ElementTree.iterparse(f, events=events)
+        if os.fstat(f.fileno()).st_size == 0:
+            return
+        with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as data:
+            first = data.find(_DUMP_START_TAG)
+            last = data.rfind(_DUMP_END_TAG)
+            if first < 0 or last < first:
+                parser.feed(data[:])
+            else:
+                parser.feed(data[:first])
+                parser.feed(data[last + len(_DUMP_END_TAG):])
 
 
 def _load_location(location, element):
@@ -1187,6 +1226,155 @@ class Standards:
         )
 
 
+class _DumpInfoBuilder:
+    """
+    XML parser target that loads the data that is not part of a configuration:
+    the language, platform, raw tokens and suppressions.
+    """
+
+    def __init__(self, cppcheck_data):
+        # Note: a 'data' attribute would be called by the parser for character data
+        self.cppcheck_data = cppcheck_data
+
+    def start(self, tag, attrib):
+        data = self.cppcheck_data
+        if tag == 'tok':
+            tok = Token(attrib)
+            tok.file = data.files[int(attrib.get('fileIndex'))]
+            data.rawTokens.append(tok)
+        elif tag == 'file':
+            data.files.append(attrib.get('name'))
+        elif tag == 'suppression':
+            data.suppressions.append(Suppression(attrib))
+        elif tag == 'platform':
+            data.platform = Platform(attrib)
+        elif tag == 'dumps':
+            data.language = attrib.get('language')
+
+
+class _ConfigurationBuilder:
+    """
+    XML parser target that creates a Configuration for each <dump> element.
+    The objects are created directly from the attributes, no element tree is built.
+    """
+
+    def __init__(self):
+        self.configurations = []  # completed configurations
+        self.cfg = None
+        self.cfg_arguments = []  # function arguments for Configuration node initialization
+
+        # Iterating <varlist> in a <scope>.
+        self.iter_scope_varlist = False
+
+        # Iterating <typedef-info>
+        self.iter_typedef_info = False
+
+        # Iterating <directive>
+        self.iter_directive = False
+
+    def take_configurations(self):
+        configurations = self.configurations
+        self.configurations = []
+        return configurations
+
+    def start(self, tag, attrib):
+        # The most common elements are checked first
+        cfg = self.cfg
+
+        # Parse tokens
+        if tag == 'token':
+            if not self.iter_directive and not self.iter_typedef_info:
+                cfg.tokenlist.append(Token(attrib))
+
+        # Parse valueflows (list of values)
+        elif tag == 'value':
+            cfg.valueflow[-1].values.append(Value(attrib))
+        elif tag == 'values':
+            cfg.valueflow.append(ValueFlow(attrib))
+
+        # Parse scopes
+        elif tag == 'scope':
+            cfg.scopes.append(Scope(attrib))
+        elif tag == 'varlist':
+            self.iter_scope_varlist = True
+
+        # Parse variables
+        elif tag == 'var':
+            if self.iter_scope_varlist:
+                cfg.scopes[-1].varlistId.append(attrib.get('id'))
+            else:
+                var = Variable(attrib)
+                if var.nameTokenId:
+                    cfg.variables.append(var)
+                else:
+                    self.cfg_arguments.append(var)
+
+        # Parse functions
+        elif tag == 'function':
+            cfg.functions.append(Function(attrib, cfg.scopes[-1]))
+
+        # Parse function arguments
+        elif tag == 'arg':
+            arg_nr = int(attrib.get('nr'))
+            arg_variable_id = attrib.get('variable')
+            cfg.functions[-1].argumentId[arg_nr] = arg_variable_id
+
+        # Parse directives list
+        elif tag == 'directive':
+            cfg.directives.append(Directive(attrib))
+            self.iter_directive = True
+
+        # Parse macro usage
+        elif tag == 'macro':
+            cfg.macro_usage.append(MacroUsage(attrib))
+
+        # Preprocessor #if/#elif condition
+        elif tag == 'if-cond':
+            cfg.preprocessor_if_conditions.append(PreprocessorIfCondition(attrib))
+
+        # Parse containers
+        elif tag == 'container':
+            cfg.containers.append(Container(attrib))
+
+        # Parse typedef info
+        elif tag == 'typedef-info':
+            self.iter_typedef_info = True
+        elif tag == 'info':
+            if self.iter_typedef_info:
+                cfg.typedefInfo.append(TypedefInfo(attrib))
+
+        # Serialize new configuration node
+        elif tag == 'dump':
+            self.cfg = Configuration(attrib.get('cfg'))
+
+        elif tag == 'clang-warning':
+            cfg.clang_warnings.append({'file': attrib.get('file'),
+                                       'line': int(attrib.get('line')),
+                                       'column': int(attrib.get('column')),
+                                       'message': attrib.get('message')})
+
+        # Parse standards
+        elif tag == 'c':
+            cfg.standards.set_c(attrib)
+        elif tag == 'cpp':
+            cfg.standards.set_cpp(attrib)
+        elif tag == 'posix':
+            cfg.standards.set_posix(attrib)
+
+    def end(self, tag):
+        if tag == 'directive':
+            self.iter_directive = False
+        elif tag == 'varlist':
+            self.iter_scope_varlist = False
+        elif tag == 'typedef-info':
+            self.iter_typedef_info = False
+        elif tag == 'dump':
+            self.cfg.setIdMap(self.cfg_arguments)
+            self.configurations.append(self.cfg)
+            self.cfg = None
+            self.cfg_arguments = []
+
+
 class CppcheckData:
     """
     Class that makes cppcheck dump data available
@@ -1197,6 +1385,10 @@ class CppcheckData:
         rawTokens         List of rawToken elements
         suppressions      List of Suppressions
         files             Source files for elements occurred in this configuration
+
+    To iterate more than once, use the configurations property: it parses the
+    dump file once and keeps all configurations. To iterate once, use
+    iterconfigurations(): it parses on each call but uses less memory.
 
     To iterate through all configurations use such code:
     @code
@@ -1236,35 +1428,14 @@ class CppcheckData:
         self.platform = None
         self.suppressions = []
         self.files = [] # source files for elements occurred in this configuration
+        self._configurations = None # set by the configurations property
 
-        platform_done = False
-        rawtokens_done = False
-        suppressions_done = False
-
-        # Parse general configuration options from <dumps> node
-        # We intentionally don't clean node resources here because we
-        # want to serialize in memory only small part of the XML tree.
-        for event, node in _iterparse(self.filename, events=('start', 'end')):
-            if platform_done and rawtokens_done and suppressions_done:
-                break
-            if node.tag == 'dumps':
-                self.language = node.get('language')
-            if node.tag == 'platform' and event == 'start':
-                self.platform = Platform(node)
-                platform_done = True
-            elif node.tag == 'rawtokens' and event == 'end':
-                for rawtokens_node in node:
-                    if rawtokens_node.tag == 'file':
-                        self.files.append(rawtokens_node.get('name'))
-                    elif rawtokens_node.tag == 'tok':
-                        tok = Token(rawtokens_node)
-                        tok.file = self.files[int(rawtokens_node.get('fileIndex'))]
-                        self.rawTokens.append(tok)
-                rawtokens_done = True
-            elif node.tag == 'suppressions' and event == 'end':
-                for suppressions_node in node:
-                    self.suppressions.append(Suppression(suppressions_node))
-                suppressions_done = True
+        # Parse general configuration options from <dumps> node, the raw tokens
+        # and the suppressions. The configurations are parsed by iterconfigurations.
+        parser = ElementTree.XMLParser(target=_DumpInfoBuilder(self))
+        with _gc_disabled():
+            _feed_without_configurations(parser, self.filename)
+            parser.close()
 
         global current_dumpfile_suppressions
         current_dumpfile_suppressions = self.suppressions
@@ -1278,151 +1449,37 @@ class CppcheckData:
     def configurations(self):
         """
         Return the list of all available Configuration objects.
+        The list is loaded on first access and kept for later accesses and
+        iterconfigurations().
         """
-        return list(self.iterconfigurations())
+        if self._configurations is None:
+            self._configurations = list(self.iterconfigurations())
+        return self._configurations
 
     def iterconfigurations(self):
         """
         Create and return iterator for the available Configuration objects.
         The iterator loops over all Configurations in the dump file tree, in document order.
+        Uses the kept list if the configurations property has been accessed,
+        otherwise parses the dump file one configuration at a time.
         """
-        cfg = None
-        cfg_arguments = []  # function arguments for Configuration node initialization
-        cfg_function = None
-        cfg_valueflow = None
-
-        # Iterating <varlist> in a <scope>.
-        iter_scope_varlist = False
-
-        # Iterating <typedef-info>
-        iter_typedef_info = False
-
-        # Iterating <directive>
-        iter_directive = False
-
-        # Use iterable objects to traverse XML tree for dump files incrementally.
-        # Iterative approach is required to avoid large memory consumption.
-        # Calling .clear() is necessary to let the element be garbage collected.
-        for event, node in _iterparse(self.filename, events=('start', 'end')):
-            # Serialize new configuration node
-            if node.tag == 'dump':
-                if event == 'start':
-                    cfg = Configuration(node.get('cfg'))
-                    continue
-                if event == 'end':
-                    cfg.setIdMap(cfg_arguments)
-                    yield cfg
-                    cfg = None
-                    cfg_arguments = []
-
-            elif node.tag == 'clang-warning' and event == 'start':
-                cfg.clang_warnings.append({'file': node.get('file'),
-                                           'line': int(node.get('line')),
-                                           'column': int(node.get('column')),
-                                           'message': node.get('message')})
-            # Parse standards
-            elif node.tag == "standards" and event == 'start':
-                continue
-            elif node.tag == 'c' and event == 'start':
-                cfg.standards.set_c(node)
-            elif node.tag == 'cpp' and event == 'start':
-                cfg.standards.set_cpp(node)
-            elif node.tag == 'posix' and event == 'start':
-                cfg.standards.set_posix(node)
-
-            # Parse directives list
-            elif node.tag == 'directive':
-                if event == 'start':
-                    cfg.directives.append(Directive(node))
-                    iter_directive = True
-                elif event == 'end':
-                    iter_directive = False
-            # Parse macro usage
-            elif node.tag == 'macro' and event == 'start':
-                cfg.macro_usage.append(MacroUsage(node))
-
-            # Preprocessor #if/#elif condition
-            elif node.tag == "if-cond" and event == 'start':
-                cfg.preprocessor_if_conditions.append(PreprocessorIfCondition(node))
-
-            # Parse tokens
-            elif node.tag == 'tokenlist' and event == 'start':
-                continue
-            elif node.tag == 'token' and event == 'start' and not iter_directive and not iter_typedef_info:
-                cfg.tokenlist.append(Token(node))
-
-            # Parse scopes
-            elif node.tag == 'scopes' and event == 'start':
-                continue
-            elif node.tag == 'scope' and event == 'start':
-                cfg.scopes.append(Scope(node))
-            elif node.tag == 'varlist':
-                if event == 'start':
-                    iter_scope_varlist = True
-                elif event == 'end':
-                    iter_scope_varlist = False
-
-            # Parse functions
-            elif node.tag == 'functionList' and event == 'start':
-                continue
-            elif node.tag == 'function':
-                if event == 'start':
-                    cfg_function = Function(node, cfg.scopes[-1])
-                    continue
-                if event == 'end':
-                    cfg.functions.append(cfg_function)
-                    cfg_function = None
-
-            # Parse function arguments
-            elif node.tag == 'arg' and event == 'start':
-                arg_nr = int(node.get('nr'))
-                arg_variable_id = node.get('variable')
-                cfg_function.argumentId[arg_nr] = arg_variable_id
-
-            # Parse variables
-            elif node.tag == 'var' and event == 'start':
-                if iter_scope_varlist:
-                    cfg.scopes[-1].varlistId.append(node.get('id'))
-                else:
-                    var = Variable(node)
-                    if var.nameTokenId:
-                        cfg.variables.append(var)
-                    else:
-                        cfg_arguments.append(var)
-
-            # Parse containers
-            elif node.tag == 'containers' and event == 'start':
-                continue
-            elif node.tag == 'container' and event == 'start':
-                cfg.containers.append(Container(node))
-
-            # Parse typedef info
-            elif node.tag == 'typedef-info':
-                iter_typedef_info = (event == 'start')
-            elif iter_typedef_info and node.tag == 'info' and event == 'start':
-                cfg.typedefInfo.append(TypedefInfo(node))
-
-            # Parse template-token
-            #elif node.tag == 'TokenAndName' and event == 'start': #todo add processing of containers
-            #    cfg.containers.append(Container(node))
-
-            # Parse valueflows (list of values)
-            elif node.tag == 'valueflow' and event == 'start':
-                continue
-            elif node.tag == 'values':
-                if event == 'start':
-                    cfg_valueflow = ValueFlow(node)
-                    continue
-                if event == 'end':
-                    cfg.valueflow.append(cfg_valueflow)
-                    cfg_valueflow = None
-
-            # Parse values
-            elif node.tag == 'value' and event == 'start':
-                cfg_valueflow.values.append(Value(node))
-
-            # Remove links to the sibling nodes
-            node.clear()
+        if self._configurations is not None:
+            yield from self._configurations
+            return
+        # Parse the dump file incrementally to avoid large memory consumption.
+        # A configuration is returned as soon as its </dump> has been parsed.
+        # The garbage collector is only disabled while parsing, not while the
+        # caller uses the configuration.
+        builder = _ConfigurationBuilder()
+        parser = ElementTree.XMLParser(target=builder)
+        with open(self.filename, 'rb') as f:
+            for chunk in iter(functools.partial(f.read, _PARSE_CHUNK_SIZE), b''):
+                with _gc_disabled():
+                    parser.feed(chunk)
+                yield from builder.take_configurations()
+        with _gc_disabled():
+            parser.close()
+        yield from builder.take_configurations()
 
     def __repr__(self):
         attrs = ["configurations", "platform"]
