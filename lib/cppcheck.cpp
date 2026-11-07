@@ -1106,8 +1106,16 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         }
 
         if (mSettings.checkConfiguration) {
-            for (const std::string &config : configurations)
-                (void)preprocessor.getcode(config, files, false);
+            for (const std::string &config : configurations) {
+                simplecpp::OutputList outputList_cfg;
+                const simplecpp::TokenList tokensP = preprocessor.preprocess(config, files, outputList_cfg);
+                const simplecpp::Output* output = preprocessor.handleErrors(outputList_cfg);
+                // Other failures, and #error with explicit defines, are already reported by handleErrors.
+                if (output && output->type == simplecpp::Output::ERROR && startsWith(output->msg, "#error") &&
+                    (mSettings.userDefines.empty() || mSettings.force)) {
+                    invalidConfigurationMessage(file.spath(), tokensP.file(output->location), config, *output);
+                }
+            }
 
             if (configurations.size() > maxConfigs)
                 tooManyConfigsError(Path::toNativeSeparators(file.spath()), configurations.size());
@@ -1752,6 +1760,33 @@ void CppCheck::purgedConfigurationMessage(const std::string &file, const std::st
     mErrorLogger.reportErr(errmsg);
 }
 
+void CppCheck::invalidConfigurationMessage(const std::string& file0, const std::string& file,
+                                           const std::string& configuration, const simplecpp::Output& output)
+{
+    std::list<ErrorMessage::FileLocation> locations;
+    if (!file.empty()) {
+        std::string filename = Path::fromNativeSeparators(file);
+        if (mSettings.relativePaths)
+            filename = Path::getRelativePath(filename, mSettings.basePaths);
+        locations.emplace_back(filename, output.location.line, output.location.col);
+    }
+
+    // preprocess() also applies userDefines; include them in the configuration shown to the user.
+    std::string effectiveConfig = mSettings.userDefines;
+    const std::vector<std::string> userDefines = split(mSettings.userDefines, ";");
+    for (const std::string& define : split(configuration, ";")) {
+        if (define.empty() || std::find(userDefines.cbegin(), userDefines.cend(), define) != userDefines.cend())
+            continue;
+        if (!effectiveConfig.empty())
+            effectiveConfig += ';';
+        effectiveConfig += define;
+    }
+
+    mErrorLogger.reportErr(ErrorMessage(std::move(locations), file0, Severity::information,
+                                        "The configuration '" + effectiveConfig + "' was not checked because of a preprocessor error: " + output.msg,
+                                        "invalidConfiguration", Certainty::normal));
+}
+
 //---------------------------------------------------------------------------
 
 void CppCheck::getErrorMessages(ErrorLogger &errorlogger)
@@ -1763,6 +1798,7 @@ void CppCheck::getErrorMessages(ErrorLogger &errorlogger)
     CppCheck cppcheck(settings, supprs, errorlogger, nullptr, true, nullptr);
     cppcheck.purgedConfigurationMessage("","");
     cppcheck.tooManyConfigsError("",0U);
+    cppcheck.invalidConfigurationMessage("", "", "", simplecpp::Output(simplecpp::Output::ERROR, {}, "#error"));
     // TODO: add functions to get remaining error messages
 
     Settings s;
