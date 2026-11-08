@@ -2728,7 +2728,7 @@ bool isVariableChanged(const Token *tok, int indirect, const Settings &settings,
             Token::findsimplematch(lhsScope->bodyStart, "friend", lhsScope->bodyEnd))
             return true;
         // Non-member operators can compete with members. Avoid ranking them.
-        for (const Scope& scope : lhsScope->symdb.scopeList) {
+        for (const Scope& scope : lhsScope->symdb().scopeList) {
             const auto functions = scope.functionMap.equal_range("operator>>=");
             for (auto it = functions.first; it != functions.second; ++it) {
                 if (!scope.isClassOrStruct() || it->second->isFriend())
