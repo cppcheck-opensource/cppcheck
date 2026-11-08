@@ -7988,9 +7988,13 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
 
     std::unordered_map<const Scope*, ValueType::Type> enumTypes;
     struct EnumTypeCacheGuard {
-        explicit EnumTypeCacheGuard(std::unordered_map<const Scope*, ValueType::Type>* cache) : prev(enumTypeCache) { enumTypeCache = cache; }
-        ~EnumTypeCacheGuard() { enumTypeCache = prev; }
-        std::unordered_map<const Scope*, ValueType::Type>* prev;
+        explicit EnumTypeCacheGuard(std::unordered_map<const Scope*, ValueType::Type>* cache) {
+            enumTypeCache = cache;
+        }
+        ~EnumTypeCacheGuard() {
+            enumTypeCache = prev;
+        }
+        std::unordered_map<const Scope*, ValueType::Type>* prev{enumTypeCache};
     } enumTypeCacheGuard(&enumTypes);
 
     for (Token *tok = tokens; tok; tok = tok->next())

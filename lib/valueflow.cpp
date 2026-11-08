@@ -122,6 +122,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <numeric>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -7455,8 +7456,10 @@ struct ValueFlowPassRunner {
                 continue;
             std::size_t h = 0;
             for (const Token* tok = scope->bodyStart; tok != scope->bodyEnd; tok = tok->next()) {
-                for (const ValueFlow::Value& v : tok->values())
-                    h += hashValue(v) * (2 * reinterpret_cast<std::uintptr_t>(tok) + 1);
+                const std::size_t k = (2 * reinterpret_cast<std::uintptr_t>(tok)) + 1;
+                h = std::accumulate(tok->values().cbegin(), tok->values().cend(), h, [&](std::size_t acc, const ValueFlow::Value& v) {
+                    return acc + (hashValue(v) * k);
+                });
             }
             result[i] = h;
         }
