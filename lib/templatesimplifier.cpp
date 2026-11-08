@@ -1138,6 +1138,28 @@ namespace {
     };
 } // namespace
 
+// The class scope that a member call "obj . f ( x )" looks the member name up in: the
+// class of the object expression, or of the pointee for "ptr -> f ( x )". nullptr when the
+// type of the object is not known (unknown type, container, ...).
+static const Scope* memberCallObjectScope(const Token* dotTok)
+{
+    const Token* objectTok = dotTok->astOperand1();
+    const ValueType* objectType = objectTok ? objectTok->valueType() : nullptr;
+    if (!objectType)
+        return nullptr;
+    const bool isArrow = dotTok->originalName() == "->";
+    if (objectType->smartPointerType) {
+        if (!isArrow)
+            return nullptr; // a member of the smart pointer class itself
+        const Scope* classScope = objectType->smartPointerType->classScope;
+        return (classScope && classScope->isClassOrStructOrUnion()) ? classScope : nullptr;
+    }
+    if (objectType->pointer != (isArrow ? 1 : 0))
+        return nullptr;
+    const Scope* typeScope = objectType->typeScope;
+    return (typeScope && typeScope->isClassOrStructOrUnion()) ? typeScope : nullptr;
+}
+
 // Insert the tokens of a deduced type after tok
 static void insertDeducedType(Token* tok, const DeducedType& deduced)
 {
@@ -1239,8 +1261,16 @@ std::string TemplateSimplifier::deduceFunctionTemplateArguments(
     std::vector<const Token*> instantiationArgs;
     getFunctionArguments(tok, instantiationArgs);
 
+    // a member call "obj . f ( x )" or "obj . A :: f ( x )": the name is a member of the
+    // class of the object expression, not a name visible at the call site
+    const Token* beforeName = tok;
+    while (Token::Match(beforeName->tokAt(-2), "%name% ::"))
+        beforeName = beforeName->tokAt(-2);
+    beforeName = beforeName->previous();
+    const bool isMemberCall = beforeName && beforeName->str() == ".";
+
     // deduction from literal arguments - works without type information
-    for (auto pos = range.first; pos != range.second; ++pos) {
+    for (auto pos = range.first; !isMemberCall && pos != range.second; ++pos) {
         // look for declaration with same qualification or constructor with same qualification
         if (pos->second->fullName() == fullName ||
             (pos->second->scope() == fullName && tok->str() == pos->second->name())) {
@@ -1363,7 +1393,13 @@ std::string TemplateSimplifier::deduceFunctionTemplateArguments(
     CallLookupLevels lookup;
     if (!qualification.empty())
         lookup.levels.push_back(LookupLevel{qualification, nullptr, false});
-    else {
+    else if (isMemberCall) {
+        // the class of the object expression and its base classes
+        const Scope* objectScope = memberCallObjectScope(beforeName);
+        if (!objectScope)
+            return "";
+        lookup.addClassLevels(objectScope);
+    } else {
         // use the symbol database scopes
         for (const Scope* scope = tok->scope(); scope; scope = scope->nestedIn) {
             if (scope->functionOf && scope->functionOf->isClassOrStructOrUnion()) {

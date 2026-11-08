@@ -325,6 +325,7 @@ private:
         TEST_CASE(templateTypeDeductionArray);       // array arguments: only the decayed dimension is a pointer
         TEST_CASE(templateTypeDeductionConstPointer); // "const T *": the parameter provides the pointee const
         TEST_CASE(templateTypeDeductionFunctionPointer); // pointers to functions and to members are not deduced
+        TEST_CASE(templateTypeDeductionMemberCall);  // "obj . f ( x )": lookup in the class of the object, not at the call site
 
         TEST_CASE(simplifyTemplateArgs1);
         TEST_CASE(simplifyTemplateArgs2);
@@ -7866,6 +7867,63 @@ private:
                            "int f<int*> ( int * x ) { return 0 ; }";
         ASSERT_EQUALS(exp, tok(code));
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void templateTypeDeductionMemberCall()
+    {
+        { // a free template with the same name and arity is not what "r . check ( p )" calls
+            const char code[] = "template<class T> void check(T* x) { (void)x; }\n"
+                                "struct Range { template<class T> bool check(T x) { return x != 1000; } };\n"
+                                "bool g(Range& r, unsigned char* p) { return r.check(p); }";
+            const char exp[] = "template < class T > void check ( T * x ) { ( void ) x ; } "
+                               "struct Range { bool check<unsignedchar*> ( unsigned char * x ) ; } ; "
+                               "bool g ( Range & r , unsigned char * p ) { return r . check<unsignedchar*> ( p ) ; } "
+                               "bool Range :: check<unsignedchar*> ( unsigned char * x ) { return x != 1000 ; }";
+            ASSERT_EQUALS(exp, tok(code));
+            ASSERT_EQUALS("", errout_str());
+        }
+        { // a literal argument: the free template is not considered either
+            const char code[] = "template<class T> void check(T* x) { (void)x; }\n"
+                                "struct Range { template<class T> bool check(T x) { return x != 1000; } };\n"
+                                "bool g(Range& r) { return r.check(5); }";
+            const char exp[] = "template < class T > void check ( T * x ) { ( void ) x ; } "
+                               "struct Range { bool check<int> ( int x ) ; } ; "
+                               "bool g ( Range & r ) { return r . check<int> ( 5 ) ; } "
+                               "bool Range :: check<int> ( int x ) { return x != 1000 ; }";
+            ASSERT_EQUALS(exp, tok(code));
+            ASSERT_EQUALS("", errout_str());
+        }
+        { // the type of the object is unknown: nothing is deduced, the call is not rewritten
+            const char code[] = "template<class T> T f(T x) { return 10 / x; }\n"
+                                "int g(Unknown& o) { int a = 0; return o.f(a); }";
+            const char exp[] = "template < class T > T f ( T x ) { return 10 / x ; } "
+                               "int g ( Unknown & o ) { int a ; a = 0 ; return o . f ( a ) ; }";
+            ASSERT_EQUALS(exp, tok(code));
+            ASSERT_EQUALS("", errout_str());
+        }
+        { // object, pointer, dereferenced pointer, smart pointer, derived object: the member template is found
+            const char code[] = "struct P { template<class T> int f(T x) { return x; } };\n"
+                                "struct Q : P {};\n"
+                                "int g(P& p, P* q, std::shared_ptr<P> sp, Q& d, int* ip) {\n"
+                                "    return p.f(ip) + q->f(ip) + (*q).f(ip) + sp->f(ip) + d.f(ip);\n"
+                                "}";
+            const char exp[] = "struct P { int f<int*> ( int * x ) ; } ; "
+                               "struct Q : P { } ; "
+                               "int g ( P & p , P * q , std :: shared_ptr < P > sp , Q & d , int * ip ) { "
+                               "return p . f<int*> ( ip ) + q . f<int*> ( ip ) + ( * q ) . f<int*> ( ip ) + sp . f<int*> ( ip ) + d . P :: f<int*> ( ip ) ; "
+                               "} "
+                               "int P :: f<int*> ( int * x ) { return x ; }";
+            ASSERT_EQUALS(exp, tok(code));
+            ASSERT_EQUALS("", errout_str());
+        }
+        { // a container is not a class with member templates; a smart pointer's own members are not deduced
+            const char code[] = "template<class T> int f(T x) { return x; }\n"
+                                "int g(std::vector<int>& v, std::shared_ptr<int> sp, int* ip) { return v.f(ip) + sp.f(ip); }";
+            const char exp[] = "template < class T > int f ( T x ) { return x ; } "
+                               "int g ( std :: vector < int > & v , std :: shared_ptr < int > sp , int * ip ) { return v . f ( ip ) + sp . f ( ip ) ; }";
+            ASSERT_EQUALS(exp, tok(code));
+            ASSERT_EQUALS("", errout_str());
+        }
     }
 
     void simplifyTemplateArgs1() {
