@@ -504,6 +504,7 @@ class TestMatch:
     def test_empty_pattern_and_no_token(self, match_cfg):
         calc_def = find_token(match_cfg, 'calc')
         assert not cppcheckdata.match(calc_def, '')
+        assert not cppcheckdata.match(calc_def, None)
         assert not cppcheckdata.match(None, 'calc')
 
     def test_end(self, match_cfg):

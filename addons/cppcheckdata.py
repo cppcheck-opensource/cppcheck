@@ -1695,6 +1695,8 @@ class CompiledPattern:
 _pattern_cache = {}
 
 def match(token, pattern):
+    if not pattern:
+        return MatchResult(False)
     compiled = _pattern_cache.get(pattern)
     if compiled is None:
         compiled = CompiledPattern(pattern)
