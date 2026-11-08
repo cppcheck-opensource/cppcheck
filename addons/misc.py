@@ -48,7 +48,7 @@ def isStringLiteral(tokenString):
 def stringConcatInArrayInit(data):
     # Get all string macros
     stringMacros = []
-    for cfg in data.iterconfigurations():
+    for cfg in data.configurations:
         for directive in cfg.directives:
             res = re.match(r'#define[ ]+([A-Za-z0-9_]+)[ ]+".*', directive.str)
             if res:
@@ -76,7 +76,7 @@ def stringConcatInArrayInit(data):
 
 
 def implicitlyVirtual(data):
-    for cfg in data.iterconfigurations():
+    for cfg in data.configurations:
         for function in cfg.functions:
             if function.isImplicitlyVirtual is None:
                 continue
@@ -85,7 +85,7 @@ def implicitlyVirtual(data):
             reportError(function.tokenDef, 'style', 'Function \'' + function.name + '\' overrides base class function but is not marked with \'virtual\' keyword.', 'implicitlyVirtual')
 
 def ellipsisStructArg(data):
-    for cfg in data.iterconfigurations():
+    for cfg in data.configurations:
         for tok in cfg.tokenlist:
             if tok.str != '(':
                 continue
