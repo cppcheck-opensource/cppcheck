@@ -8195,6 +8195,17 @@ private:
 
         ASSERT_EQUALS(";", tokenizeAndStringify("typedef std::size_t size_t;\n")); // #14809
         ASSERT_EQUALS("struct S { int i { 0 } ; } ;", tokenizeAndStringify("struct S { int i : 1{0}; };\n")); // #15070
+
+        ASSERT_EQUALS( // #15183
+            "int f ( int i ) {\n"
+            "if ( i > 0 ) {\n"
+            "return - ! ! i ; }\n"
+            "return - ~ i ;\n"
+            "}", tokenizeAndStringify("int f(int i) {\n"
+                                      "    if (i > 0)\n"
+                                      "        return -!!i;\n"
+                                      "    return -~i;\n"
+                                      "}\n"));
     }
 
 
