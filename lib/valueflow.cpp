@@ -7331,6 +7331,8 @@ struct ValueFlowPass {
     virtual void run(const ValueFlowState& state) const = 0;
     // Returns true if pass needs C++
     virtual bool cpp() const = 0;
+    // Returns true if pass does not analyse the skipped functions
+    virtual bool usesSkippedFunctions() const = 0;
     virtual ~ValueFlowPass() noexcept = default;
 };
 
@@ -7356,22 +7358,26 @@ struct ValueFlowPassRunner {
         std::size_t values = 0;
         std::size_t n = state.settings().vfOptions.maxIterations;
         const bool doProgress = state.settings().reportProgress >= 0;
-        // A function where no value changed in the previous iteration is skipped in the next iteration
+        // A function is skipped in the next iteration when no value changed in the previous iteration
+        // and the passes that can skip it did not change it either. Other passes can remove a value that
+        // a skipping pass adds again; such a function must not be skipped.
         const std::set<const Scope*> skippedFunctions = state.skippedFunctions;
+        const std::vector<const Scope*>& functionScopes = state.symboldatabase().functionScopes;
         std::vector<std::size_t> functionValues = getFunctionValues();
+        std::vector<bool> changedBySkippingPass(functionScopes.size(), false);
         bool first = true;
         while (n > 0 && values != getTotalValues()) {
             if (!first) {
                 std::vector<std::size_t> newFunctionValues = getFunctionValues();
                 state.skippedFunctions = skippedFunctions;
-                const std::vector<const Scope*>& functionScopes = state.symboldatabase().functionScopes;
                 for (std::size_t i = 0; i < functionScopes.size(); ++i) {
-                    if (newFunctionValues[i] == functionValues[i])
+                    if (newFunctionValues[i] == functionValues[i] && !changedBySkippingPass[i])
                         state.skippedFunctions.insert(functionScopes[i]);
                 }
                 functionValues = std::move(newFunctionValues);
             }
             first = false;
+            changedBySkippingPass.assign(functionScopes.size(), false);
             values = getTotalValues();
             const std::size_t passnum = state.settings().vfOptions.maxIterations - n + 1;
             const std::string passnum_s = std::to_string(passnum);
@@ -7379,7 +7385,16 @@ struct ValueFlowPassRunner {
                 // the string concatination is a hot spot in TestIO::testScanfArgument and TestIO::testPrintfArgumentVariables
                 std::string stage = doProgress ? std::string("ValueFlow::") + pass->name() + (' ' + passnum_s) : "";
                 ProgressReporter progressReporter(state.errorLogger, state.settings().reportProgress, state.tokenlist().getSourceFilePath(), std::move(stage));
-                return run(pass, passnum);
+                if (!pass->usesSkippedFunctions())
+                    return run(pass, passnum);
+                const std::vector<std::size_t> before = getFunctionValues(true);
+                const bool ret = run(pass, passnum);
+                const std::vector<std::size_t> after = getFunctionValues(true);
+                for (std::size_t i = 0; i < functionScopes.size(); ++i) {
+                    if (before[i] != after[i])
+                        changedBySkippingPass[i] = true;
+                }
+                return ret;
             }))
                 return true;
             --n;
@@ -7446,13 +7461,16 @@ struct ValueFlowPassRunner {
     }
 
     // Hash of the values in each function scope (same order as symboldatabase.functionScopes)
-    std::vector<std::size_t> getFunctionValues() const
+    // onlyAnalysed: the skipped functions get hash 0
+    std::vector<std::size_t> getFunctionValues(bool onlyAnalysed = false) const
     {
         const std::vector<const Scope*>& functionScopes = state.symboldatabase().functionScopes;
         std::vector<std::size_t> result(functionScopes.size());
         for (std::size_t i = 0; i < functionScopes.size(); ++i) {
             const Scope* scope = functionScopes[i];
             if (!scope->bodyStart)
+                continue;
+            if (onlyAnalysed && state.skippedFunctions.count(scope) != 0)
                 continue;
             std::size_t h = 0;
             for (const Token* tok = scope->bodyStart; tok != scope->bodyEnd; tok = tok->next()) {
@@ -7526,8 +7544,10 @@ template<class F>
 struct ValueFlowPassAdaptor : ValueFlowPass {
     const char* mName = nullptr;
     bool mCPP = false;
+    bool mUsesSkippedFunctions = false;
     F mRun;
-    ValueFlowPassAdaptor(const char* pname, bool pcpp, F prun) : ValueFlowPass(), mName(pname), mCPP(pcpp), mRun(prun) {}
+    ValueFlowPassAdaptor(const char* pname, bool pcpp, F prun)
+        : ValueFlowPass(), mName(pname), mCPP(pcpp), mUsesSkippedFunctions(std::strstr(pname, "skippedFunctions") != nullptr), mRun(prun) {}
     const char* name() const override {
         return mName;
     }
@@ -7537,6 +7557,9 @@ struct ValueFlowPassAdaptor : ValueFlowPass {
     }
     bool cpp() const override {
         return mCPP;
+    }
+    bool usesSkippedFunctions() const override {
+        return mUsesSkippedFunctions;
     }
 };
 
