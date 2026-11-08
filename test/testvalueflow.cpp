@@ -4641,6 +4641,73 @@ private:
                "}\n";
         ASSERT_EQUALS(false, testValueOfX(code, 5U, 0));
 
+        // a container size in the state covers size() and empty() conditions
+        code = "void f(const std::vector<int>& v) {\n"
+               "    int x = 0;\n"
+               "    if (v.size() > 3) { x = 1; }\n"
+               "    if (!v.empty()) { int a = x; }\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 0));
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 1));
+
+        code = "void f(const std::vector<int>& v) {\n"
+               "    int x = 0;\n"
+               "    if (v.size() > 3) { x = 1; }\n"
+               "    if (v.size() > 1) { int a = x; }\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 0));
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 1));
+
+        // decided by the assumed container size
+        code = "void f(const std::vector<int>& v) {\n"
+               "    int x = 0;\n"
+               "    if (v.size() > 3) { x = 1; }\n"
+               "    if (v.size() > 5) { int a = x; }\n"
+               "}\n";
+        ASSERT_EQUALS(false, testValueOfX(code, 4U, 0));
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 1));
+
+        code = "void f(const std::vector<int>& v) {\n"
+               "    int x = 0;\n"
+               "    if (!v.empty()) { x = 1; }\n"
+               "    if (v.size() > 0) { int a = x; }\n"
+               "}\n";
+        ASSERT_EQUALS(false, testValueOfX(code, 4U, 0));
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 1));
+
+        // a cast around the variable is looked through
+        code = "void f(int n) {\n"
+               "    int x = 0;\n"
+               "    if (n > 5) { x = 1; }\n"
+               "    if ((long)n > 3) { int a = x; }\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 0));
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 1));
+
+        code = "void f(int n) {\n"
+               "    int x = 0;\n"
+               "    if (n > 5) { x = 1; }\n"
+               "    if (static_cast<long>(n) > 3) { int a = x; }\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 0));
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 1));
+
+        code = "void f(int n) {\n"
+               "    int x = 0;\n"
+               "    if (n > 5) { x = 1; }\n"
+               "    if ((long)n > 5) { int a = x; }\n"
+               "}\n";
+        ASSERT_EQUALS(false, testValueOfX(code, 4U, 0));
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 1));
+
+        // one side of '||' is not covered: no split, although 'n > 3' decides the then-path
+        code = "void f(int n, int m) {\n"
+               "    int x = 0;\n"
+               "    if (n > 5) { x = 1; }\n"
+               "    if (n > 3 || m > 0) { int a = x; }\n"
+               "}\n";
+        TODO_ASSERT_EQUALS(true, false, testValueOfX(code, 4U, 0));
+
         // no fork: the main path still knows the condition is false
         /*const*/ Settings s(settings);
         s.vfOptions.maxForwardConditionForkDepth = 0;
