@@ -8201,10 +8201,20 @@ private:
             "if ( i > 0 ) {\n"
             "return - ! ! i ; }\n"
             "return - ~ i ;\n"
+            "}\n"
+            "int * g ( int & i ) {\n"
+            "if ( - -- i ) { }\n"
+            "if ( - ++ i ) { }\n"
+            "return + & i ;\n"
             "}", tokenizeAndStringify("int f(int i) {\n"
                                       "    if (i > 0)\n"
                                       "        return -!!i;\n"
                                       "    return -~i;\n"
+                                      "}\n"
+                                      "int* g(int& i) {\n"
+                                      "    if (- --i) {}\n"
+                                      "    if (- ++i) {}\n"
+                                      "    return +&i;\n"
                                       "}\n"));
     }
 
