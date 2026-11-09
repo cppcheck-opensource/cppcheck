@@ -1100,6 +1100,29 @@ static bool scopeHasNonTemplateFunction(const Scope* scope, const std::string& n
     });
 }
 
+// Does this executable scope declare a (non template) function with this name? Such a
+// declaration hides the function templates of the enclosing scopes. The symbol database
+// records only "extern" prototypes declared in a block scope, so the tokens of the scope
+// are scanned for the other prototypes - nested blocks are separate scopes.
+static bool executableScopeDeclaresFunction(const Scope* scope, const std::string& name)
+{
+    if (scopeHasNonTemplateFunction(scope, name))
+        return true;
+    for (const Token* tok = scope->bodyStart->next(); tok && tok != scope->bodyEnd; tok = tok->next()) {
+        if (tok->str() == "{") {
+            tok = tok->link();
+            continue;
+        }
+        if (tok->str() != name || !Token::Match(tok, "%name% (") || !Token::simpleMatch(tok->linkAt(1), ") ;"))
+            continue;
+        // "int f ( long ) ;" is a declaration, "return f ( i ) ;" is a call
+        const Token* prev = tok->previous();
+        if (Token::Match(prev, "%type%|*|&|::") && !prev->isKeyword())
+            return true;
+    }
+    return false;
+}
+
 namespace {
 // The scopes where a call name is looked up, in lookup order: the innermost scope
 // with matching declarations wins. At class scopes the transitive base classes are
@@ -1402,6 +1425,9 @@ std::string TemplateSimplifier::deduceFunctionTemplateArguments(
     } else {
         // use the symbol database scopes
         for (const Scope* scope = tok->scope(); scope; scope = scope->nestedIn) {
+            // a function declared in an enclosing block scope hides the templates of the outer scopes
+            if (scope->isExecutable() && executableScopeDeclaresFunction(scope, tok->str()))
+                return "";
             if (scope->functionOf && scope->functionOf->isClassOrStructOrUnion()) {
                 // out of class member function body: the class, its base classes and
                 // its enclosing scopes come before the lexically enclosing scopes

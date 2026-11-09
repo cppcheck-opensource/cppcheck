@@ -7022,6 +7022,31 @@ private:
                                "int :: type f<int> ( int x ) { return x ; }";
             TODO_ASSERT_EQUALS(exp, act, tok(code));
         }
+        {
+            // a function declared in a block scope hides the template: name lookup stops there
+            const char code[] = "template<class T> int f(T x) { return 100 / x; }\n"
+                                "int g() { int f(long); int i = 0; return f(i); }";
+            const char exp[] = "template < class T > int f ( T x ) { return 100 / x ; } "
+                               "int g ( ) { int f ( long ) ; int i ; i = 0 ; return f ( i ) ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // "extern" declaration in an enclosing block, the call in a nested block
+            const char code[] = "template<class T> int f(T x) { return 100 / x; }\n"
+                                "int g(bool b) { extern int f(long); int i = 0; if (b) { return f(i); } return 0; }";
+            const char exp[] = "template < class T > int f ( T x ) { return 100 / x ; } "
+                               "int g ( bool b ) { extern int f ( long ) ; int i ; i = 0 ; if ( b ) { return f ( i ) ; } return 0 ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
+        {
+            // a declaration in a sibling block does not hide the template
+            const char code[] = "template<class T> int f(T x) { return x; }\n"
+                                "int g() { { int f(long); } int i = 0; return f(i); }";
+            const char exp[] = "int f<int> ( int x ) ; "
+                               "int g ( ) { { int f ( long ) ; } int i ; i = 0 ; return f<int> ( i ) ; } "
+                               "int f<int> ( int x ) { return x ; }";
+            ASSERT_EQUALS(exp, tok(code));
+        }
     }
 
     void templateTypeDeduction15()
