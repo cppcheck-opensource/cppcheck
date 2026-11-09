@@ -1935,10 +1935,17 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        // Array of function pointers
+        // array of function pointers
         check("void f() {\n"
               "    void *buf = malloc(1);\n"
               "    arr[0](buf);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+        
+        // multidim array of function pointers
+        check("void f() {\n"
+              "    void *buf = malloc(1);\n"
+              "    arr[0][1][2](buf);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
 

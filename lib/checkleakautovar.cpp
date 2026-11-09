@@ -296,6 +296,8 @@ static const Token *isAnonymousFunctionCall(const Token *tok)
     } else if (tok->isName() && (isLparNotCast(tok->next()) || tok->strAt(1) == "[")) {
         // call to result of a function
         tok = tok->linkAt(1)->next();
+        while (Token::simpleMatch(tok->previous(), "] ["))
+            tok = tok->link()->next();
     } else {
         return nullptr;
     }
