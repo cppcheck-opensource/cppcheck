@@ -2367,6 +2367,11 @@ private:
                                  "    return N::f(float_ptr(b.data()));\n" // <- the cast is safe
                                  "}\n");
         ASSERT_EQUALS("[test.cpp:9:17]: (style) C-style pointer casting [cstyleCast]\n", errout_str());
+
+        checkOldStylePointerCast("void f(const T& x) {\n" // #13766
+                                 "    const U& y = (typename const U&)(x);\n"
+                                 "}\n");
+        ASSERT_EQUALS("[test.cpp:2:18]: (warning) Potentially invalid type conversion in old-style C cast, clarify/fix with C++ cast [dangerousTypeCast]\n", errout_str());
     }
 
 #define checkIntToPointerCast(...) checkIntToPointerCast_(__FILE__, __LINE__, __VA_ARGS__)
