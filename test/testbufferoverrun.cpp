@@ -164,6 +164,7 @@ private:
         TEST_CASE(array_index_74); // #11088
         TEST_CASE(array_index_75);
         TEST_CASE(array_index_76);
+        TEST_CASE(array_index_77);
         TEST_CASE(array_index_multidim);
         TEST_CASE(array_index_switch_in_for);
         TEST_CASE(array_index_for_in_for);   // FP: #2634
@@ -2011,6 +2012,21 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:3:12]: (error) Array 's[1]' accessed at index 1, which is out of bounds. [arrayIndexOutOfBounds]\n"
                       "[test.cpp:7:12]: (error) Array 's[1]' accessed at index 1, which is out of bounds. [arrayIndexOutOfBounds]\n",
+                      errout_str());
+    }
+
+    void array_index_77()
+    {
+        check("int f(bool b) {\n" // #6092
+              "    const int a[2] = {};\n"
+              "    int i = 0, s = 0;\n"
+              "    s += a[i++];\n"
+              "    if (b)\n"
+              "        s += a[i++];\n"
+              "    s += a[i++];\n"
+              "    return s + i;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:7:11]: (error) Array 'a[2]' accessed at index 2, which is out of bounds. [arrayIndexOutOfBounds]\n",
                       errout_str());
     }
 
