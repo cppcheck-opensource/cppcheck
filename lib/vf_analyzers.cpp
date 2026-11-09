@@ -59,10 +59,9 @@ static bool isDereferenceOp(const Token* tok)
     return tok->str() == "." && tok->originalName() == "->";
 }
 
-// Every leaf is a constant or has an int or container size value or constraint in the memory, so
-// an undecided condition can go either way. This mirrors what Executor::execute can evaluate from
-// the memory: variables, member accesses, container size/empty yields and casts.
-static bool stateCoversCondition(const Token* tok, const ProgramMemory& pm, const Settings& settings, int depth = 20)
+// Every leaf is a constant or has an int value or constraint in the memory, so an undecided
+// condition can go either way.
+static bool stateCoversCondition(const Token* tok, const ProgramMemory& pm, int depth = 20)
 {
     if (!tok || depth < 0)
         return false;
@@ -71,24 +70,13 @@ static bool stateCoversCondition(const Token* tok, const ProgramMemory& pm, cons
     if (tok->varId() > 0 || Token::simpleMatch(tok, ".")) {
         const ProgramMemory::Values* values = pm.getValues(tok->exprId());
         return values && !values->empty() && std::all_of(values->cbegin(), values->cend(), [](const ValueFlow::Value& v) {
-            return v.isIntValue() || v.isContainerSizeValue();
+            return v.isIntValue();
         });
     }
-    if (tok->isCast()) {
-        if (!tok->astOperand2())
-            return stateCoversCondition(tok->astOperand1(), pm, settings, depth - 1);
-        if (Token::simpleMatch(tok->astOperand1(), "dynamic_cast"))
-            return false;
-        return stateCoversCondition(tok->astOperand2(), pm, settings, depth - 1);
-    }
-    if (const Token* containerTok = settings.library.getContainerFromYield(tok, Library::Container::Yield::SIZE))
-        return stateCoversCondition(containerTok, pm, settings, depth - 1);
-    if (const Token* containerTok = settings.library.getContainerFromYield(tok, Library::Container::Yield::EMPTY))
-        return stateCoversCondition(containerTok, pm, settings, depth - 1);
     if (!tok->astOperand2())
-        return Token::Match(tok, "!|-|~") && stateCoversCondition(tok->astOperand1(), pm, settings, depth - 1);
-    return tok->isConstOp() && stateCoversCondition(tok->astOperand1(), pm, settings, depth - 1) &&
-           stateCoversCondition(tok->astOperand2(), pm, settings, depth - 1);
+        return Token::Match(tok, "!|-|~") && stateCoversCondition(tok->astOperand1(), pm, depth - 1);
+    return tok->isConstOp() && stateCoversCondition(tok->astOperand1(), pm, depth - 1) &&
+           stateCoversCondition(tok->astOperand2(), pm, depth - 1);
 }
 
 struct ValueFlowAnalyzer : Analyzer {
@@ -421,7 +409,7 @@ struct ValueFlowAnalyzer : Analyzer {
     {
         if (!condTok)
             return false;
-        return stateCoversCondition(condTok, pms.get(condTok, nullptr, getProgramState()), getSettings());
+        return stateCoversCondition(condTok, pms.get(condTok, nullptr, getProgramState()));
     }
 
 private:
