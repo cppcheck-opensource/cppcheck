@@ -2893,7 +2893,7 @@ void Variable::evaluate(const Settings& settings)
     bool isContainer = false;
     if (mNameToken) {
         setFlag(fIsArray, arrayDimensions(settings, isContainer));
-        setFlag(fIsMaybeUnused, mNameToken->isAttributeMaybeUnused());
+        setFlag(fIsMaybeUnused, mNameToken->isAttributeMaybeUnused() || mNameToken->isAttributeUnused());
     }
 
 

@@ -1766,7 +1766,7 @@ static bool isCastToVoid(const Variable* var)
 
 void CheckOtherImpl::checkConstVariable()
 {
-    if ((!mSettings.severity.isEnabled(Severity::style) || mTokenizer->isC()) && !mSettings.isPremiumEnabled("constVariable"))
+    if ((!mSettings.severity.isEnabled(Severity::style) || mTokenizer->isC()) && !mSettings.isPremiumEnabled("constVariable") && !mSettings.isPremiumEnabled("constParameterReference"))
         return;
 
     logChecker("CheckOther::checkConstVariable"); // style,c++

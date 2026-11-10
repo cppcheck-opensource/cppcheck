@@ -140,6 +140,25 @@ class TestHTMLReport(unittest.TestCase):
 
                 output_directory.cleanup()
 
+    def testPremiumLicenseMessage(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            xml_filename = os.path.join(tmpdir, 'premium.xml')
+            with open(xml_filename, 'w') as f:
+                f.write('<?xml version="1.0" encoding="UTF-8"?>\n'
+                        '<results version="2"><cppcheck version="2.18"/><errors>\n'
+                        '<error id="premium-licenseExpiresSoon" severity="information" msg="license will expire" verbose="license will expire">\n'
+                        '<location file="Cppcheck Premium" line="0" column="0"/>\n'
+                        '</error>\n'
+                        '</errors></results>\n')
+            output_directory = os.path.join(tmpdir, 'out')
+            p = subprocess.run([*HTML_REPORT_BIN, '--file=' + xml_filename, '--report-dir=' + output_directory],
+                               capture_output=True, text=True, check=True)
+            self.assertNotIn('not found', p.stderr)
+            with open(os.path.join(output_directory, 'index.html')) as index_file:
+                report = index_file.read()
+            self.assertIn('license will expire', report)
+            self.assertNotIn('0.html#line-0', report)
+
 
 @contextlib.contextmanager
 def runCheck(source_filename=None, xml_version='1', xml_filename=None, checkers_filename=None):

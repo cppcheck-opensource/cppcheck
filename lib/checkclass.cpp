@@ -111,21 +111,28 @@ CheckClassImpl::CheckClassImpl(const Tokenizer *tokenizer, const Settings &setti
     mSymbolDatabase(tokenizer?tokenizer->getSymbolDatabase():nullptr)
 {}
 
-bool CheckClassImpl::isInitialized(const Usage& usage, FunctionType funcType) const
+CheckClassImpl::Initialization CheckClassImpl::checkInitialization(const Usage& usage, FunctionType funcType, bool noConstructor) const
 {
     const Variable& var = *usage.var;
 
     if (usage.assign || usage.init || var.isStatic())
-        return true;
+        return Initialization::Initialized;
 
     if (!var.nameToken() || var.nameToken()->isAnonymous())
-        return true;
+        return Initialization::None;
 
     if (var.valueType() && var.valueType()->pointer == 0 && var.type() && var.type()->needInitialization == Type::NeedInitialization::False && var.type()->derivedFrom.empty())
-        return true;
+        return Initialization::Initialized;
 
-    if (var.isConst() && funcType == FunctionType::eOperatorEqual) // We can't set const members in assignment operator
-        return true;
+    if (var.isConst() && (funcType == FunctionType::eOperatorEqual || // We can't set const members in assignment operator
+                          (funcType == FunctionType::eConstructor && noConstructor))) // a const member of class type is default constructed or makes the class not default constructible
+        return Initialization::None;
+
+    if (funcType == FunctionType::eConstructor && noConstructor && var.nameToken()->isBitfield() && mSettings.standards.cpp < Standards::CPP20)
+        return Initialization::None;
+
+    if (var.isArray() && ((var.dimensionKnown(0) && var.dimensions()[0].num == 0) || Token::simpleMatch(var.nameToken()->next(), "[ ]"))) // HACK for unreliable dimensions
+        return Initialization::None;
 
     // Check if this is a class constructor
     if (!var.isPointer() && !var.isPointerArray() && var.isClass() && funcType == FunctionType::eConstructor) {
@@ -141,33 +148,33 @@ bool CheckClassImpl::isInitialized(const Usage& usage, FunctionType funcType) co
                     if (!ctt->isStandardType() &&
                         (!ctt->type() || ctt->type()->needInitialization != Type::NeedInitialization::True) &&
                         !mSettings.library.podtype(ctt->str())) // TODO: handle complex type expression
-                        return true;
+                        return Initialization::Initialized;
                 }
                 else
-                    return true;
+                    return Initialization::Initialized;
             }
             else
-                return true;
+                return Initialization::Initialized;
         }
 
         // Known type that doesn't need initialization or
         // known type that has member variables of an unknown type
         else if (var.type()->needInitialization != Type::NeedInitialization::True)
-            return true;
+            return Initialization::Initialized;
     }
 
     // Check if type can't be copied
     if (!var.isPointer() && !var.isPointerArray() && var.typeScope()) {
         if (funcType == FunctionType::eMoveConstructor) {
             if (canNotMove(var.typeScope()))
-                return true;
+                return Initialization::None;
         }
         else {
             if (canNotCopy(var.typeScope()))
-                return true;
+                return Initialization::None;
         }
     }
-    return false;
+    return Initialization::Missing;
 }
 
 void CheckClassImpl::handleUnionMembers(std::vector<Usage>& usageList)
@@ -348,7 +355,7 @@ void CheckClassImpl::constructors()
 
             // Check if any variables are uninitialized
             for (const Usage &usage : usageList) {
-                if (isInitialized(usage, func.type))
+                if (checkInitialization(usage, func.type) != Initialization::Missing)
                     continue;
 
                 // Is there missing member copy in copy/move constructor or assignment operator?
@@ -413,7 +420,7 @@ void CheckClassImpl::constructors()
             // Inherited constructors don't initialize members of the derived class
             for (const Token *baseCtorTok : inheritedCtors) {
                 for (const Usage &usage : usageList) {
-                    if (isInitialized(usage, FunctionType::eConstructor))
+                    if (checkInitialization(usage, FunctionType::eConstructor) != Initialization::Missing)
                         continue;
                     const Variable& var = *usage.var;
                     if (var.typeScope() && var.typeScope()->numConstructors > 0)
@@ -436,17 +443,14 @@ void CheckClassImpl::constructors()
             const bool cpp14OrLater = mSettings.standards.cpp >= Standards::CPP14;
             for (Usage& usage : usageList) {
                 const Variable& var = *usage.var;
-                // isReference() is also true for a function pointer that returns a reference
-                const bool isReferenceMember = var.isReference() && var.nameToken() && Token::Match(var.nameToken()->previous(), "&|&&");
-
                 // check for C++11 initializer
                 if (var.hasDefault()) {
                     usage.init = true;
                     hasAnyDefaultInit = true;
-                } else if (!var.isStatic() && (isReferenceMember || (var.isConst() && !var.isClass()))) {
+                } else if (!var.isStatic() && (var.isReference() || (var.isConst() && !var.isClass()))) {
                     // the default constructor is deleted, so all members are initialized by every instance
                     isDefaultConstructible = false;
-                } else if (cpp14OrLater && !hasAnySelfInit && isInitialized(usage, FunctionType::eConstructor)) {
+                } else if (cpp14OrLater && !hasAnySelfInit && checkInitialization(usage, FunctionType::eConstructor) == Initialization::Initialized) {
                     hasAnySelfInit = true;
                 }
             }
@@ -457,15 +461,11 @@ void CheckClassImpl::constructors()
 
             // Check if any variables are uninitialized
             for (const Usage& usage : usageList) {
-                if (isInitialized(usage, FunctionType::eConstructor))
+                if (checkInitialization(usage, FunctionType::eConstructor, /*noConstructor*/ true) != Initialization::Missing)
                     continue;
 
                 const Variable& var = *usage.var;
                 if (var.typeScope() && var.typeScope()->numConstructors > 0)
-                    continue;
-
-                // a const member of class type is default constructed or makes the class not default constructible
-                if (var.isConst())
                     continue;
 
                 if (diagVars.count(&var) == 0)
@@ -2104,6 +2104,33 @@ void CheckClassImpl::virtualDestructor()
 
     logChecker("CheckClass::virtualDestructor");
 
+    // pointer variables of type 'Base *', for each type 'Base'
+    std::unordered_map<const Type *, std::vector<int>> pointersByType;
+
+    // for each pointer variable, the classes 'Derived' of a "ptr = new Derived" that is followed by a "delete ptr;"
+    std::unordered_map<int, std::set<std::string>> deletedAfterNew;
+
+    for (const Variable* var : mSymbolDatabase->variableList()) {
+        if (var && var->isPointer() && var->type() && var->nameToken())
+            pointersByType[var->type()].push_back(var->declarationId());
+    }
+
+    {
+        // the classes 'Derived' of the "ptr = new Derived" seen so far
+        std::unordered_map<int, std::set<std::string>> newClasses;
+
+        for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
+            if (Token::Match(tok, "[;{}] %var% = new %name%"))
+                newClasses[tok->next()->varId()].insert(tok->strAt(4));
+
+            else if (Token::Match(tok, "delete %var% ;")) {
+                const auto it = newClasses.find(tok->next()->varId());
+                if (it != newClasses.end())
+                    deletedAfterNew[it->first].insert(it->second.cbegin(), it->second.cend());
+            }
+        }
+    }
+
     for (const Scope * scope : mSymbolDatabase->classAndStructScopes) {
 
         // Skip base classes (unless inconclusive)
@@ -2153,39 +2180,15 @@ void CheckClassImpl::virtualDestructor()
                 // If this pattern is not seen then bailout the checking of these base/derived classes
                 {
                     // pointer variables of type 'Base *'
-                    std::set<int> baseClassPointers;
-
-                    for (const Variable* var : mSymbolDatabase->variableList()) {
-                        if (var && var->isPointer() && var->type() == derivedFrom)
-                            baseClassPointers.insert(var->declarationId());
-                    }
-
-                    // pointer variables of type 'Base *' that should not be deleted
-                    std::set<int> dontDelete;
-
-                    // No deletion of derived class instance through base class pointer found => the code is ok
-                    bool ok = true;
-
-                    for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
-                        if (Token::Match(tok, "[;{}] %var% =") &&
-                            baseClassPointers.find(tok->next()->varId()) != baseClassPointers.end()) {
-                            // new derived class..
-                            const std::string tmp("new " + derivedClass->str());
-                            if (Token::simpleMatch(tok->tokAt(3), tmp.c_str(), tmp.size())) {
-                                dontDelete.insert(tok->next()->varId());
-                            }
-                        }
-
-                        // Delete base class pointer that might point at derived class
-                        else if (Token::Match(tok, "delete %var% ;") &&
-                                 dontDelete.find(tok->next()->varId()) != dontDelete.end()) {
-                            ok = false;
-                            break;
-                        }
-                    }
+                    const auto pointers = pointersByType.find(derivedFrom);
+                    if (pointers == pointersByType.end())
+                        continue;
 
                     // No base class pointer that points at a derived class is deleted
-                    if (ok)
+                    if (std::none_of(pointers->second.cbegin(), pointers->second.cend(), [&](int varId) {
+                        const auto deleted = deletedAfterNew.find(varId);
+                        return deleted != deletedAfterNew.end() && deleted->second.count(derivedClass->str()) > 0;
+                    }))
                         continue;
                 }
 

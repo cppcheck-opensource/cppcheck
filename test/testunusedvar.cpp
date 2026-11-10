@@ -2069,6 +2069,11 @@ private:
                                "    int i3 __attribute__((unused)) {};\n"
                                "};\n");
         ASSERT_EQUALS("", errout_str());
+
+        checkStructMemberUsage("struct S {\n"
+                               "    int a __attribute__((unused)), b;\n"
+                               "};\n");
+        ASSERT_EQUALS("[test.cpp:2:36]: (style) struct member 'S::b' is never used. [unusedStructMember]\n", errout_str());
     }
 
     void structmember31() { // #14130
@@ -5700,6 +5705,20 @@ private:
                               "    a[0].b = 0;\n"
                               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        functionVariableUsage("struct S {\n" // #9995
+                              "    int& operator[](int i) { return r[i]; }\n"
+                              "    std::map<int, int>& r;\n"
+                              "};\n"
+                              "struct T {\n"
+                              "    std::map<int, int>& m;\n"
+                              "    S get() { return { m }; }\n"
+                              "};\n"
+                              "void f(T& t) {\n"
+                              "    S s = t.get();\n"
+                              "    s[1] = 0;\n"
+                              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void localvarUnion1() {
@@ -6032,6 +6051,12 @@ private:
                               "    char b[1][2] __attribute__((unused));\n"
                               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        functionVariableUsage("int foo()\n"
+                              "{\n"
+                              "    int x __attribute__((unused)), y;\n"
+                              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:36]: (style) Unused variable: y [unusedVariable]\n", errout_str());
     }
 
     void localvarFunction() {

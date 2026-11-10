@@ -42,6 +42,7 @@
 #include <cstdlib>
 #include <functional>
 #include <iterator>
+#include <limits>
 #include <numeric> // std::accumulate
 #include <sstream>
 #include <utility>
@@ -82,7 +83,16 @@ static const Token* getRealBufferTok(const Token* tok) {
     return (op->valueType() && op->valueType()->pointer) ? op : tok;
 }
 
-static int getMinFormatStringOutputLength(const std::vector<const Token*> &parameters, nonneg int formatStringArgNr, const Settings& settings)
+// Field width or precision of a format specifier. Values that do not fit in an int are clamped to INT_MAX.
+static int getFormatDigits(const std::string &digits)
+{
+    const long long value = std::strtoll(digits.c_str(), nullptr, 10);
+    if (value < -std::numeric_limits<int>::max() || value > std::numeric_limits<int>::max())
+        return std::numeric_limits<int>::max();
+    return std::abs(static_cast<int>(value));
+}
+
+static MathLib::bigint getMinFormatStringOutputLength(const std::vector<const Token*> &parameters, nonneg int formatStringArgNr, const Settings& settings)
 {
     if (formatStringArgNr <= 0 || formatStringArgNr > parameters.size())
         return 0;
@@ -90,7 +100,7 @@ static int getMinFormatStringOutputLength(const std::vector<const Token*> &param
         return 0;
     const std::string &formatString = parameters[formatStringArgNr - 1]->str();
     bool percentCharFound = false;
-    int outputStringSize = 0;
+    MathLib::bigint outputStringSize = 0;
     bool handleNextParameter = false;
     std::string digits_string;
     bool i_d_x_f_found = false;
@@ -155,15 +165,13 @@ static int getMinFormatStringOutputLength(const std::vector<const Token*> &param
             outputStringSize++;
 
         if (handleNextParameter) {
-            // NOLINTNEXTLINE(bugprone-unchecked-string-to-number-conversion) - intentional use
-            int tempDigits = std::abs(std::atoi(digits_string.c_str()));
+            int tempDigits = getFormatDigits(digits_string);
             if (i_d_x_f_found)
                 tempDigits = std::max(tempDigits, 1);
 
             if (digits_string.find('.') != std::string::npos) {
                 const std::string endStr = digits_string.substr(digits_string.find('.') + 1);
-                // NOLINTNEXTLINE(bugprone-unchecked-string-to-number-conversion) - intentional use
-                const int maxLen = std::max(std::abs(std::atoi(endStr.c_str())), 1);
+                const int maxLen = std::max(getFormatDigits(endStr), 1);
 
                 if (formatString[i] == 's') {
                     // For strings, the length after the dot "%.2s" will limit
@@ -638,6 +646,18 @@ ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok, cons
 }
 //---------------------------------------------------------------------------
 
+// Return true if a * b does not fit in a MathLib::bigint
+static bool mulOverflows(MathLib::bigint a, MathLib::bigint b)
+{
+    const MathLib::bigint maxValue = std::numeric_limits<MathLib::bigint>::max();
+    const MathLib::bigint minValue = std::numeric_limits<MathLib::bigint>::min();
+    if (a > 0)
+        return b > 0 ? a > maxValue / b : b < minValue / a;
+    if (a < 0)
+        return b > 0 ? a < minValue / b : (b < 0 && a < maxValue / b);
+    return false;
+}
+
 static bool checkBufferSize(const Token *ftok, const Library::ArgumentChecks::MinSize &minsize, const std::vector<const Token *> &args, ValueFlow::Value& bufferSize, const Settings &settings, const Tokenizer* tokenizer)
 {
     const Token * const arg = (minsize.arg > 0 && minsize.arg - 1 < args.size()) ? args[minsize.arg - 1] : nullptr;
@@ -662,9 +682,10 @@ static bool checkBufferSize(const Token *ftok, const Library::ArgumentChecks::Mi
                 break;
             MathLib::bigint myMinsize = argVal->intvalue;
             const int baseSize = tokenizer->sizeOfType(minsize.baseType);
-            if (baseSize != 0)
+            const bool overflow = baseSize != 0 && mulOverflows(myMinsize, baseSize);
+            if (baseSize != 0 && !overflow)
                 myMinsize *= baseSize;
-            const bool ok = myMinsize <= bufferSize.intvalue;
+            const bool ok = !overflow && myMinsize <= bufferSize.intvalue;
             if (!ok) {
                 bufferSize.errorPath.insert(bufferSize.errorPath.end(), argVal->errorPath.begin(), argVal->errorPath.end());
                 if (!bufferSize.condition)
@@ -678,14 +699,20 @@ static bool checkBufferSize(const Token *ftok, const Library::ArgumentChecks::Mi
         // TODO
         break;
     case Library::ArgumentChecks::MinSize::Type::MUL:
-        if (arg && arg2 && arg->hasKnownIntValue() && arg2->hasKnownIntValue())
+        if (arg && arg2 && arg->hasKnownIntValue() && arg2->hasKnownIntValue()) {
+            if (mulOverflows(arg->getKnownIntValue(), arg2->getKnownIntValue()))
+                return false;
             return (arg->getKnownIntValue() * arg2->getKnownIntValue()) <= bufferSize.intvalue;
+        }
         break;
     case Library::ArgumentChecks::MinSize::Type::VALUE: {
         MathLib::bigint myMinsize = minsize.value;
         const int baseSize = tokenizer->sizeOfType(minsize.baseType);
-        if (baseSize != 0)
+        if (baseSize != 0) {
+            if (mulOverflows(myMinsize, baseSize))
+                return false;
             myMinsize *= baseSize;
+        }
         return myMinsize <= bufferSize.intvalue;
     }
     case Library::ArgumentChecks::MinSize::Type::NONE:

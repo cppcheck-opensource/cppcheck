@@ -537,6 +537,7 @@ private:
         TEST_CASE(simplifyPlatformTypes);
 
         TEST_CASE(dumpFallthrough);
+        TEST_CASE(dumpAttributeUsed);
 
         TEST_CASE(simplifyRedundantParentheses);
 
@@ -9387,6 +9388,16 @@ private:
         tokenizer.dump(ostr);
         const std::string dump = ostr.str();
         ASSERT(dump.find(" isAttributeFallthrough=\"true\"") != std::string::npos);
+    }
+
+    void dumpAttributeUsed() {
+        const char code[] = "static int x __attribute__((used));\n";
+        SimpleTokenizer tokenizer(settingsDefault, *this, false);
+        ASSERT(tokenizer.tokenize(code));
+        std::ostringstream ostr;
+        tokenizer.dump(ostr);
+        const std::string dump = ostr.str();
+        ASSERT(dump.find(" isAttributeUsed=\"true\"") != std::string::npos);
     }
 
     void simplifyRedundantParentheses() {

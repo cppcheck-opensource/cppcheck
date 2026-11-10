@@ -164,6 +164,7 @@ private:
         TEST_CASE(array_index_74); // #11088
         TEST_CASE(array_index_75);
         TEST_CASE(array_index_76);
+        TEST_CASE(array_index_77);
         TEST_CASE(array_index_multidim);
         TEST_CASE(array_index_switch_in_for);
         TEST_CASE(array_index_for_in_for);   // FP: #2634
@@ -268,6 +269,7 @@ private:
         TEST_CASE(minsize_sizeof);
         TEST_CASE(minsize_strlen);
         TEST_CASE(minsize_mul);
+        TEST_CASE(minsize_overflow);
         TEST_CASE(unknownType);
 
         TEST_CASE(terminateStrncpy1);
@@ -2010,6 +2012,21 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:3:12]: (error) Array 's[1]' accessed at index 1, which is out of bounds. [arrayIndexOutOfBounds]\n"
                       "[test.cpp:7:12]: (error) Array 's[1]' accessed at index 1, which is out of bounds. [arrayIndexOutOfBounds]\n",
+                      errout_str());
+    }
+
+    void array_index_77()
+    {
+        check("int f(bool b) {\n" // #6092
+              "    const int a[2] = {};\n"
+              "    int i = 0, s = 0;\n"
+              "    s += a[i++];\n"
+              "    if (b)\n"
+              "        s += a[i++];\n"
+              "    s += a[i++];\n"
+              "    return s + i;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:7:11]: (error) Array 'a[2]' accessed at index 2, which is out of bounds. [arrayIndexOutOfBounds]\n",
                       errout_str());
     }
 
@@ -4903,6 +4920,33 @@ private:
               "    myfread(c, 1, 6, stdin);\n"
               "}\n", settings);
         ASSERT_EQUALS("[test.cpp:3:13]: (error) Buffer is accessed out of bounds: c [bufferAccessOutOfBounds]\n", errout_str());
+    }
+
+    void minsize_overflow() {
+        // the computed minimum size must not wrap around
+        check("void f() {\n"
+              "    char buf[10];\n"
+              "    sprintf(buf, \"%2000000000d%2000000000d\", 1, 2);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("[test.cpp:3:13]: (error) Buffer is accessed out of bounds: buf [bufferAccessOutOfBounds]\n", errout_str());
+
+        check("void f() {\n"
+              "    char buf[10];\n"
+              "    sprintf(buf, \"%4294967296d\", 1);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("[test.cpp:3:13]: (error) Buffer is accessed out of bounds: buf [bufferAccessOutOfBounds]\n", errout_str());
+
+        check("void f(FILE *fp) {\n"
+              "    char buf[10];\n"
+              "    fread(buf, 0x100000000LL, 0x100000000LL, fp);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("[test.cpp:3:11]: (error) Buffer is accessed out of bounds: buf [bufferAccessOutOfBounds]\n", errout_str());
+
+        check("void f() {\n"
+              "    wchar_t buf[10];\n"
+              "    (void)wmemchr(buf, L'a', 0x4000000000000000LL);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("[test.cpp:3:19]: (error) Buffer is accessed out of bounds: buf [bufferAccessOutOfBounds]\n", errout_str());
     }
 
     // extracttests.enable
