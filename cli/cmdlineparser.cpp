@@ -2233,6 +2233,8 @@ bool CmdLineParser::loadAddons(Settings& settings)
             result = false;
             continue;
         }
+        if (!settings.buildDir.empty())
+            addonInfo.initContentHash();
         settings.addonInfos.emplace_back(std::move(addonInfo));
     }
     return result;

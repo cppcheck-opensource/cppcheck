@@ -1259,8 +1259,11 @@ bool MainWindow::getCppcheckSettings(Settings& settings, Suppressions& supprs)
     settings.severity.enable(Severity::portability);
     settings.severity.enable(Severity::information);
     settings.checks.enable(Checks::missingInclude);
-    if (!settings.buildDir.empty())
+    if (!settings.buildDir.empty()) {
         settings.checks.enable(Checks::unusedFunction);
+        for (AddonInfo& addonInfo : settings.addonInfos)
+            addonInfo.initContentHash();
+    }
     settings.debugwarnings = mSettings->value(SETTINGS_SHOW_DEBUG_WARNINGS, false).toBool();
     settings.quiet = false;
     settings.verbose = true;

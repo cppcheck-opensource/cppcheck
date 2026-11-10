@@ -35,6 +35,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
 #include <list>
 #include <string>
 #include <unordered_set>
@@ -100,6 +101,13 @@ private:
         TEST_CASE(getDumpFileContentsLibrary);
         TEST_CASE(checkPlistOutput);
         TEST_CASE(premiumResultsCache);
+        TEST_CASE(addonScriptHash);
+        TEST_CASE(addonJsonHash);
+        TEST_CASE(addonArgsHash);
+        TEST_CASE(addonQuotedArgsHash);
+#ifndef _WIN32
+        TEST_CASE(addonSingleQuotedArgsHash);
+#endif
         TEST_CASE(purgedConfiguration);
         TEST_CASE(recheckInclude);
     }
@@ -611,6 +619,77 @@ private:
         // cppcheck-suppress knownConditionTrueFalse
         ASSERT(hash1 != hash2);
     }
+
+    void addonHashInternal(AddonInfo addon, const ScopedFile& file) const
+    {
+        Settings settings;
+        Suppressions supprs;
+        ErrorLogger2 errorLogger;
+
+        std::vector<std::string> files;
+
+        const char code[] = "void f();\nint x;\n";
+        simplecpp::TokenList tokens(code, files, "m1.c");
+
+        Preprocessor preprocessor(tokens, settings, errorLogger, Standards::Language::C);
+        ASSERT(preprocessor.loadAllIncludes(files));
+
+        addon.name = "testaddon";
+        settings.addons.insert(addon.name);
+        settings.addonInfos.push_back(std::move(addon));
+        settings.addonInfos.back().initContentHash();
+
+        CppCheck check(settings, supprs, errorLogger, nullptr, false, {});
+        const size_t hash1 = check.calculateHash(preprocessor);
+
+        settings.addonInfos.back().initContentHash();
+        ASSERT_EQUALS(hash1, check.calculateHash(preprocessor));
+
+        {
+            std::ofstream of(file.path());
+            of << "changed content\n";
+        }
+        settings.addonInfos.back().initContentHash();
+        // cppcheck-suppress knownConditionTrueFalse
+        ASSERT(hash1 != check.calculateHash(preprocessor));
+    }
+
+    void addonScriptHash() const {
+        ScopedFile addon_script("testaddon.py", "# addon v1\n");
+        AddonInfo addon;
+        addon.scriptFile = addon_script.path();
+        addonHashInternal(addon, addon_script);
+    }
+
+    void addonJsonHash() const {
+        ScopedFile addon_config("testaddon.json", "{ \"script\": \"x.py\" }\n");
+        AddonInfo addon;
+        addon.jsonFile = addon_config.path();
+        addonHashInternal(addon, addon_config);
+    }
+
+    void addonArgsHash() const {
+        ScopedFile rule_texts("testrules.txt", "rule v1\n");
+        AddonInfo addon;
+        addon.args = "--rule-texts=" + rule_texts.path();
+        addonHashInternal(addon, rule_texts);
+    }
+
+    void addonQuotedArgsHash() const {
+        ScopedFile rule_texts("test rules.txt", "rule v1\n");
+        AddonInfo addon;
+        addon.args = "--rule-texts=\"" + rule_texts.path() + "\"";
+        addonHashInternal(addon, rule_texts);
+    }
+
+#ifndef _WIN32
+    void addonSingleQuotedArgsHash() const {
+        ScopedFile rule_texts("test rules.txt", "rule v1\n");
+        AddonInfo addon;
+        addon.args = "--rule-texts='" + rule_texts.path() + "'";
+        addonHashInternal(addon, rule_texts);
+    }
+#endif
 
     void purgedConfiguration() const
     {

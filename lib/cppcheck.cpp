@@ -888,6 +888,7 @@ std::size_t CppCheck::calculateHash(const Preprocessor& preprocessor, const std:
     for (const auto &a : mSettings.addonInfos) {
         toolinfo << a.name;
         toolinfo << a.args;
+        toolinfo << a.contentHash;
     }
     toolinfo << mSettings.premiumArgs;
     // TODO: do we need to add more options?
