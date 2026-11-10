@@ -898,6 +898,43 @@ private:
               "    if (!num) {}\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        // clamp before the check
+        check("int f(int x) {\n"
+              "    int d = 0;\n"
+              "    if (x > 5) x = 0;\n"
+              "    if (x <= 5) d = 1;\n"
+              "    return 10 / d;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("int f(int x) {\n"
+              "    int d = 0;\n"
+              "    if (x >= 0) {\n"
+              "        if (x > 5) x = 0;\n"
+              "        if (x <= 5) d = 1;\n"
+              "        return 10 / d;\n"
+              "    }\n"
+              "    return d;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // the else block changes the value
+        check("int f(int x, int c) {\n"
+              "    if (x == 0) return 1;\n"
+              "    if (c) {} else { x = 0; }\n"
+              "    return 10 / x;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:15]: (warning) Division by zero. [zerodivcond]\n", errout_str());
+
+        // a range condition overlapping the assumed one
+        check("int f(int n) {\n"
+              "    int x = 0;\n"
+              "    if (n > 5) { x = 1; }\n"
+              "    if (n > 3) return 10 / x;\n"
+              "    return 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:26]: (warning) Division by zero. [zerodivcond]\n", errout_str());
     }
 
     void zeroDivErrorPath() {
