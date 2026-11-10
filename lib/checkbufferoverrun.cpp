@@ -585,6 +585,10 @@ ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok, cons
             }
             bufTok = bufTok->astOperand1();
         }
+        while (Token::Match(bufTok, ".|::"))
+            bufTok = bufTok->astOperand2();
+        if (!bufTok)
+            return ValueFlow::Value(-1);
     }
     const Variable *var = bufTok->variable();
 
@@ -756,8 +760,16 @@ void CheckBufferOverrunImpl::bufferOverflow()
                 if (bufferSize.intvalue <= 0)
                     continue;
                 // buffer size == 1 => do not warn for dynamic memory
-                if (bufferSize.intvalue == 1 && Token::simpleMatch(argtok->astParent(), ".")) { // TODO: check if parent was allocated dynamically
-                    const Token *tok2 = argtok;
+                const Token *memberTok = argtok;
+                if (memberTok->isUnaryOp("&")) {
+                    memberTok = memberTok->astOperand1();
+                    if (Token::simpleMatch(memberTok, "["))
+                        memberTok = memberTok->astOperand1();
+                    while (Token::Match(memberTok, ".|::"))
+                        memberTok = memberTok->astOperand2();
+                }
+                if (bufferSize.intvalue == 1 && memberTok && Token::simpleMatch(memberTok->astParent(), ".")) { // TODO: check if parent was allocated dynamically
+                    const Token *tok2 = memberTok;
                     while (Token::simpleMatch(tok2->astParent(), "."))
                         tok2 = tok2->astParent();
                     while (Token::Match(tok2, "[|."))
