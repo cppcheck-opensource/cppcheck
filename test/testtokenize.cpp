@@ -4697,6 +4697,23 @@ private:
                           tokenizeAndStringify(code));
             ASSERT_EQUALS("", errout_str());
         }
+        {
+            const char code[] = "namespace N {\n" // #15192
+                                "    template <typename... Ts>\n"
+                                "    struct S {};\n"
+                                "}\n"
+                                "template <typename... Ts, typename = N::S<decltype(Ts())...>>\n"
+                                "void f() {}\n";
+            ASSERT_EQUALS("namespace N {\n"
+                          "template < typename ... Ts >\n"
+                          "struct S { } ;\n"
+                          "}\n"
+                          "template < typename ... Ts , typename = N :: S < decltype ( Ts ( ) ) ... > >\n"
+                          "void f ( ) { }",
+                          tokenizeAndStringify(code));
+            ASSERT_EQUALS("", errout_str());
+        }
+
     }
 
     void cpp03template1() {
