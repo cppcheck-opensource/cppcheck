@@ -876,7 +876,7 @@ void constParameterPointer_QMap_contains(const QMap<int*, int*>& m, int* k) {
     if (m.contains(k)) {}
 }
 
-int constParameterPointer_QMap_value(const QMap<int*, int*>& m, int* k) {
+int* constParameterPointer_QMap_value(const QMap<int*, int*>& m, int* k) {
     return m.value(k);
 }
 
