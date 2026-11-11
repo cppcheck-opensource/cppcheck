@@ -1100,6 +1100,26 @@ static bool scopeHasNonTemplateFunction(const Scope* scope, const std::string& n
     });
 }
 
+// Is "name (" a function declaration in a block scope? Everything from the statement start
+// to the name must be a return type, so "2 * f ( i ) ;" and "x * f ( i ) ;" are calls.
+static bool isBlockScopeFunctionDeclaration(const Token* nameTok)
+{
+    if (Token::Match(nameTok->previous(), "::|.") || !TokenList::isFunctionHead(nameTok->next(), ";"))
+        return false;
+    bool hasType = false;
+    const Token* prev = nameTok->previous();
+    for (; prev; prev = prev->previous()) {
+        if (prev->str() == ">" && prev->link())
+            prev = prev->link();
+        else if (Token::Match(prev, "%type%") &&
+                 (!prev->isKeyword() || Token::Match(prev, "auto|const|volatile|struct|class|union|enum|typename|extern")))
+            hasType = true;
+        else if (!Token::Match(prev, "*|&|&&|::"))
+            break;
+    }
+    return hasType && Token::Match(prev, "[;{}]");
+}
+
 // Does this executable scope declare a (non template) function with this name? Such a
 // declaration hides the function templates of the enclosing scopes. The symbol database
 // records only "extern" prototypes declared in a block scope, so the tokens of the scope
@@ -1113,11 +1133,7 @@ static bool executableScopeDeclaresFunction(const Scope* scope, const std::strin
             tok = tok->link();
             continue;
         }
-        if (tok->str() != name || !Token::Match(tok, "%name% (") || !Token::simpleMatch(tok->linkAt(1), ") ;"))
-            continue;
-        // "int f ( long ) ;" is a declaration, "return f ( i ) ;" is a call
-        const Token* prev = tok->previous();
-        if (Token::Match(prev, "%type%|*|&|::") && !prev->isKeyword())
+        if (tok->str() == name && Token::Match(tok, "%name% (") && isBlockScopeFunctionDeclaration(tok))
             return true;
     }
     return false;

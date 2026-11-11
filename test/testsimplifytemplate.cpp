@@ -7047,6 +7047,55 @@ private:
                                "int f<int> ( int x ) { return x ; }";
             ASSERT_EQUALS(exp, tok(code));
         }
+        {
+            // exception specifications and trailing return types
+            const char code1[] = "template<class T> int f(T x) { return 100 / x; }\n"
+                                 "int g() { int f(long) noexcept; int i = 0; return f(i); }";
+            const char exp1[] = "template < class T > int f ( T x ) { return 100 / x ; } "
+                                "int g ( ) { int f ( long ) noexcept ( true ) ; int i ; i = 0 ; return f ( i ) ; }";
+            ASSERT_EQUALS(exp1, tok(code1));
+
+            const char code2[] = "template<class T> int f(T x) { return 100 / x; }\n"
+                                 "int g() { int f(long) throw(); int i = 0; return f(i); }";
+            const char exp2[] = "template < class T > int f ( T x ) { return 100 / x ; } "
+                                "int g ( ) { int f ( long ) throw ( ) ; int i ; i = 0 ; return f ( i ) ; }";
+            ASSERT_EQUALS(exp2, tok(code2));
+
+            const char code3[] = "template<class T> int f(T x) { return 100 / x; }\n"
+                                 "int g() { auto f(long) -> int; int i = 0; return f(i); }";
+            const char exp3[] = "template < class T > int f ( T x ) { return 100 / x ; } "
+                                "int g ( ) { auto f ( long ) . int ; int i ; i = 0 ; return f ( i ) ; }";
+            ASSERT_EQUALS(exp3, tok(code3));
+
+            const char code4[] = "template<class T> int f(T x) { return 100 / x; }\n"
+                                 "int g() { const std::vector<int>* f(long); int i = 0; return f(i) != nullptr; }";
+            const char exp4[] = "template < class T > int f ( T x ) { return 100 / x ; } "
+                                "int g ( ) { const std :: vector < int > * f ( long ) ; int i ; i = 0 ; return f ( i ) != nullptr ; }";
+            ASSERT_EQUALS(exp4, tok(code4));
+        }
+        {
+            // calls in expressions are not declarations
+            const char code1[] = "template<class T> int f(T x) { return x; }\n"
+                                 "int g() { int i = 0; int y = 2 * f(i); return y; }";
+            const char exp1[] = "int f<int> ( int x ) ; "
+                                "int g ( ) { int i ; i = 0 ; int y ; y = 2 * f<int> ( i ) ; return y ; } "
+                                "int f<int> ( int x ) { return x ; }";
+            ASSERT_EQUALS(exp1, tok(code1));
+
+            const char code2[] = "template<class T> int* f(T x) { return &x; }\n"
+                                 "int g() { int i = 0; return *f(i); }";
+            const char exp2[] = "int * f<int> ( int x ) ; "
+                                "int g ( ) { int i ; i = 0 ; return * f<int> ( i ) ; } "
+                                "int * f<int> ( int x ) { return & x ; }";
+            ASSERT_EQUALS(exp2, tok(code2));
+
+            const char code3[] = "template<class T> int f(T x) { return x; }\n"
+                                 "int g(int y) { int i = 0; y * f(i); return y; }";
+            const char exp3[] = "int f<int> ( int x ) ; "
+                                "int g ( int y ) { int i ; i = 0 ; y * f<int> ( i ) ; return y ; } "
+                                "int f<int> ( int x ) { return x ; }";
+            ASSERT_EQUALS(exp3, tok(code3));
+        }
     }
 
     void templateTypeDeduction15()
