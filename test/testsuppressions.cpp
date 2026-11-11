@@ -1052,6 +1052,17 @@ private:
                        "a = DIV(10,1);\n",
                        "");
         ASSERT_EQUALS("[test.cpp:2:1]: (information) Unmatched suppression: abc [unmatchedSuppression]\n", errout_str());
+
+        // #15208 - macro whose body is a single call to another macro
+        ASSERT_EQUALS(0,
+                      (this->*check)("#define DIV(A,B) A/B\n"
+                                     "// cppcheck-suppress-macro zerodiv\n"
+                                     "#define ALIAS(A,B) DIV(A,B)\n"
+                                     "void f() {\n"
+                                     "    int a = ALIAS(10,0);\n"
+                                     "}\n",
+                                     ""));
+        ASSERT_EQUALS("", errout_str());
     }
 
     void suppressionsSettingsFiles() {

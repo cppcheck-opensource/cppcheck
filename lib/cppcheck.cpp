@@ -106,13 +106,16 @@ public:
         mRemarkComments.insert(mRemarkComments.end(), remarkComments.begin(), remarkComments.end());
     }
 
-    void setLocationMacros(const Token* startTok, const std::vector<std::string>& files)
+    void setLocationMacros(const Token* startTok, const std::vector<std::string>& files, const std::list<simplecpp::MacroUsage>& macroUsage)
     {
         mLocationMacros.clear();
         for (const Token* tok = startTok; tok; tok = tok->next()) {
             if (!tok->getMacroName().empty())
                 mLocationMacros[Location(files[tok->fileIndex()], tok->linenr())].emplace(tok->getMacroName());
         }
+        // a token only knows the innermost macro it was expanded from
+        for (const simplecpp::MacroUsage& usage : macroUsage)
+            mLocationMacros[Location(files[usage.useLocation.fileIndex], usage.useLocation.line)].emplace(usage.macroName);
     }
 
     void resetExitCode()
@@ -1228,7 +1231,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
                 tokenizer.setDirectives(directives); // TODO: how to avoid repeated copies?
 
                 // locations macros
-                mLogger->setLocationMacros(tokenizer.tokens(), files);
+                mLogger->setLocationMacros(tokenizer.tokens(), files, preprocessor.getMacroUsage());
 
                 // If only errors are printed, print filename after the check
                 if (!mSettings.quiet && (!currentConfig.empty() || checkCount > 1)) {

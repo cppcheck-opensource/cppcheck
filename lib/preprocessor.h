@@ -124,6 +124,10 @@ public:
 
     std::vector<RemarkComment> getRemarkComments(const simplecpp::TokenList &tokens) const;
 
+    const std::list<simplecpp::MacroUsage>& getMacroUsage() const {
+        return mMacroUsage;
+    }
+
     bool loadAllIncludes(std::vector<std::string> &files);
 
     simplecpp::FileData *loadFile(std::vector<std::string> &files, const std::string &file);
