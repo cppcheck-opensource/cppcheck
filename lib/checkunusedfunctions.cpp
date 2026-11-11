@@ -275,8 +275,8 @@ void CheckUnusedFunctions::parseTokens(const Tokenizer &tokenizer, const Library
         if (Token::Match(funcname, "%name% (|<") && funcname->linkAt(1)) {
             const Token *ftok = funcname->next();
             if (ftok->str() == "<")
-                ftok = ftok->link();
-            if (Token::Match(ftok->linkAt(1), ") const|throw|{"))
+                ftok = ftok->link()->next();
+            if (Token::simpleMatch(ftok, "(") && Token::Match(ftok->link(), ") const|throw|{"))
                 funcname = nullptr;
         }
 

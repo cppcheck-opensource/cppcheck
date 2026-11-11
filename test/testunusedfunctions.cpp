@@ -87,6 +87,7 @@ private:
         TEST_CASE(attributeMaybeUnused);
         TEST_CASE(staticFunction);
         TEST_CASE(unnamedArg);
+        TEST_CASE(compoundLiteralArg);
     }
 
     struct CheckOptions
@@ -837,6 +838,16 @@ private:
               "[[unused]] void f(Type) {}\n"
               "[[unused]] void g(Type, Type) {}\n");
         ASSERT_EQUALS("[test.cpp:2:10]: (style) The function 'Type' is never used. [unusedFunction]\n", errout_str());
+    }
+
+    void compoundLiteralArg()
+    {
+        check("struct S { int i; };\n"
+              "static struct S f(struct S s) { return s; }\n"
+              "int main(void) {\n"
+              "    return f((struct S){0}).i;\n"
+              "}\n", dinit(CheckOptions, $.cpp = false));
+        ASSERT_EQUALS("", errout_str());
     }
 };
 
