@@ -1211,6 +1211,14 @@ private:
         ASSERT_EQUALS("3", cppcheck::testing::expandMSBuildExpression("$([MSBuild]::Divide(9, 3))"));
         ASSERT_EQUALS("2", cppcheck::testing::expandMSBuildExpression("$([MSBuild]::Modulo(5, 3))"));
 
+        // Overflow wraps around like MSBuild (.NET unchecked arithmetic).
+        ASSERT_EQUALS("-9223372036854775808", cppcheck::testing::expandMSBuildExpression("$([MSBuild]::Add(9223372036854775807, 1))"));
+        ASSERT_EQUALS("9223372036854775807", cppcheck::testing::expandMSBuildExpression("$([MSBuild]::Subtract(-9223372036854775808, 1))"));
+        ASSERT_EQUALS("7766279611452241921", cppcheck::testing::expandMSBuildExpression("$([MSBuild]::Multiply(9999999999, 9999999999))"));
+        // .NET throws OverflowException for LLONG_MIN / -1 and LLONG_MIN % -1.
+        ASSERT_EQUALS("", cppcheck::testing::expandMSBuildExpression("$([MSBuild]::Divide(-9223372036854775808, -1))"));
+        ASSERT_EQUALS("", cppcheck::testing::expandMSBuildExpression("$([MSBuild]::Modulo(-9223372036854775808, -1))"));
+
         // --- $([MSBuild]::...) path helpers ---
         ASSERT_EQUALS("foo/", cppcheck::testing::expandMSBuildExpression("$([MSBuild]::EnsureTrailingSlash('foo'))"));
         ASSERT_EQUALS("foo/", cppcheck::testing::expandMSBuildExpression("$([MSBuild]::EnsureTrailingSlash('foo/'))"));
@@ -1319,6 +1327,12 @@ private:
         ASSERT_EQUALS("5", cppcheck::testing::expandMSBuildExpression("$([System.Math]::Abs(5))"));
         ASSERT_EQUALS("2", cppcheck::testing::expandMSBuildExpression("$([System.Math]::Floor(2.9))"));
         ASSERT_EQUALS("3", cppcheck::testing::expandMSBuildExpression("$([System.Math]::Ceiling(2.1))"));
+        ASSERT_EQUALS("2", cppcheck::testing::expandMSBuildExpression("$([System.Math]::Round(2.5))"));
+        ASSERT_EQUALS("4", cppcheck::testing::expandMSBuildExpression("$([System.Math]::Round(3.5))"));
+        ASSERT_EQUALS("-2", cppcheck::testing::expandMSBuildExpression("$([System.Math]::Round(-2.5))"));
+        ASSERT_EQUALS("1000000000000000019884624838656.000000", cppcheck::testing::expandMSBuildExpression("$([System.Math]::Pow(10, 30))"));
+        ASSERT_EQUALS("1000000000000000019884624838656.000000", cppcheck::testing::expandMSBuildExpression("$([System.Math]::Round(1e30))"));
+        ASSERT_EQUALS("-1000000000000000019884624838656.000000", cppcheck::testing::expandMSBuildExpression("$([System.Math]::Floor(-1e30))"));
 
         // --- $([System.IO.Path]::...) ---
         ASSERT_EQUALS("bar.cpp", cppcheck::testing::expandMSBuildExpression("$([System.IO.Path]::GetFileName('C:/foo/bar.cpp'))"));

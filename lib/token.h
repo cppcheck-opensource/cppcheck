@@ -60,7 +60,7 @@ struct ReferenceToken;
 struct ScopeInfo2 {
     ScopeInfo2(std::string name_, const Token *bodyEnd_, std::set<std::string> usingNamespaces_ = std::set<std::string>()) : name(std::move(name_)), bodyEnd(bodyEnd_), usingNamespaces(std::move(usingNamespaces_)) {}
     std::string name;
-    const Token* const bodyEnd{};
+    const Token* bodyEnd{};
     std::set<std::string> usingNamespaces;
 };
 
@@ -775,7 +775,6 @@ public:
         return this;
     }
 
-    // cppcheck-suppress unusedFunction
     bool isBitfield() const {
         return mImpl->mBits >= 0;
     }
@@ -1420,6 +1419,12 @@ public:
 
     /** Add token value. Return true if value is added. */
     bool addValue(const ValueFlow::Value &value);
+
+    /**
+     * Remove the values that contradict each other and merge adjacent ranges, as addValue() does
+     * after adding a value.
+     */
+    static void removeContradictions(std::list<ValueFlow::Value>& values);
 
     void removeValues(std::function<bool(const ValueFlow::Value &)> pred) {
         if (mImpl->mValues)

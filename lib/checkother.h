@@ -310,7 +310,7 @@ public:
     void unsignedPositiveError(const Token *tok, const ValueFlow::Value *v, const std::string &varname);
     void pointerPositiveError(const Token *tok, const ValueFlow::Value *v);
     void suspiciousSemicolonError(const Token *tok);
-    void negativeBitwiseShiftError(const Token *tok, int op);
+    void negativeBitwiseShiftError(const Token *tok, bool isLHS, const ValueFlow::Value *v = nullptr);
     void redundantCopyError(const Token *tok, const std::string &varname);
     void incompleteArrayFillError(const Token* tok, const std::string& buffer, const std::string& function, bool boolean);
     void varFuncNullUBError(const Token *tok);

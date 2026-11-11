@@ -26,6 +26,7 @@ private slots:
     void duplicateResults() const;
     void multiLineResult() const;
     void resultsInSameFile() const;
+    void clearRecheckFile() const;
     void testReportType() const;
     void testReportTypeIcon() const;
     void testGetGuidelineError() const;

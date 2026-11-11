@@ -71,7 +71,7 @@ namespace {
             return tokenAndName.token() == mToken;
         }
     private:
-        const Token * const mToken;
+        const Token * mToken;
     };
 
     class FindName {
@@ -81,7 +81,7 @@ namespace {
             return tokenAndName.name() == mName;
         }
     private:
-        const std::string mName;
+        std::string mName;
     };
 
     class FindFullName {
@@ -91,7 +91,7 @@ namespace {
             return tokenAndName.fullName() == mFullName;
         }
     private:
-        const std::string mFullName;
+        std::string mFullName;
     };
 }
 
@@ -281,7 +281,7 @@ TemplateSimplifier::TemplateSimplifier(Tokenizer &tokenizer)
     mErrorLogger(mTokenizer.getErrorLogger())
 {}
 
-void TemplateSimplifier::checkComplicatedSyntaxErrorsInTemplates()
+void TemplateSimplifier::checkComplicatedSyntaxErrorsInTemplates() const
 {
     // check for more complicated syntax errors when using templates..
     for (const Token *tok = mTokenList.front(); tok; tok = tok->next()) {
@@ -394,13 +394,14 @@ unsigned int TemplateSimplifier::templateParameters(const Token *tok)
         return 0;
     if (tok->str() != "<")
         return 0;
-    if (Token::Match(tok->previous(), "%var% <"))
+    if (Token::Match(tok->previous(), "%var%|) <") && !(tok->linkAt(-1) && Token::simpleMatch(tok->linkAt(-1)->tokAt(-1), "operator")))
         return 0;
     tok = tok->next();
     if (!tok || tok->str() == ">")
         return 0;
 
     unsigned int level = 0;
+    unsigned int ternaryLevel = 0;
 
     while (tok) {
         // skip template template
@@ -460,8 +461,16 @@ unsigned int TemplateSimplifier::templateParameters(const Token *tok)
         }
 
         // Skip '=', '?', ':'
-        if (Token::Match(tok, "=|?|:"))
+        if (Token::Match(tok, "=|?|:")) {
+            if (tok->str()[0] == '?')
+                ++ternaryLevel;
+            else if (tok->str()[0] == ':') {
+                if (ternaryLevel == 0)
+                    return 0;
+                --ternaryLevel;
+            }
             tok = tok->next();
+        }
         if (!tok)
             return 0;
 
@@ -2724,7 +2733,7 @@ static bool validTokenEnd(bool bounded, const Token *tok, const Token *backToken
 
 // TODO: This is not the correct class for simplifyCalculations(), so it
 // should be moved away.
-bool TemplateSimplifier::simplifyCalculations(Token* frontToken, const Token *backToken, bool isTemplate)
+bool TemplateSimplifier::simplifyCalculations(Token* frontToken, const Token *backToken, bool isTemplate) const
 {
     bool ret = false;
     const bool bounded = frontToken || backToken;

@@ -148,6 +148,11 @@ private:
         TEST_CASE(nullpointer108);
         TEST_CASE(nullpointer109);
         TEST_CASE(nullpointer110); // #14937
+        TEST_CASE(nullpointer111); // ranges from conditions
+        TEST_CASE(nullpointer112); // unknown values in program memory
+        TEST_CASE(nullpointer113); // a variable is clamped before the check
+        TEST_CASE(nullpointer114); // the else block changes the value
+        TEST_CASE(nullpointer115); // a range condition overlapping the assumed one
         TEST_CASE(nullpointer_addressOf); // address of
         TEST_CASE(nullpointerSwitch); // #2626
         TEST_CASE(nullpointer_cast); // #4692
@@ -3147,6 +3152,227 @@ private:
         ASSERT_EQUALS("", errout_str());
     }
 
+    void nullpointer111() { // a condition 'x > 3' does not give x the value 4
+        check("void f(int x) {\n"
+              "    int* p = 0;\n"
+              "    if (x > 3) {\n"
+              "        if (x < 10) {}\n"
+              "        else { *p = 1; }\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:17]: (error) Null pointer dereference: p [nullPointer]\n", errout_str());
+
+        check("void f(int x) {\n"
+              "    int* p = 0;\n"
+              "    if (x > 3) {\n"
+              "        if (x == 15) { *p = 1; }\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:25]: (error) Null pointer dereference: p [nullPointer]\n", errout_str());
+
+        // 3 < x < 10: x == 15 is impossible, x == 5 is not
+        check("void f(int x) {\n"
+              "    int* p = 0;\n"
+              "    if (x > 3 && x < 10) {\n"
+              "        if (x == 15) { *p = 1; }\n"
+              "        if (x == 5) { *p = 1; }\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:24]: (error) Null pointer dereference: p [nullPointer]\n", errout_str());
+
+        // the range of a product is solved exactly: -2 * x > 3 is x <= -2
+        check("void f(int x) {\n"
+              "    int* p = 0;\n"
+              "    if (-2 * x > 3) {\n"
+              "        if (x <= -2) p = &x;\n"
+              "        *p = 1;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // x * 2 < 3 is x <= 1, so x == 1 is possible
+        check("void f(int x) {\n"
+              "    int* p = 0;\n"
+              "    if (x * 2 < 3) {\n"
+              "        if (x == 1) p = &x;\n"
+              "        *p = 1;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:10]: (warning) Possible null pointer dereference: p [nullPointer]\n", errout_str());
+
+        // the range follows the value through arithmetic
+        check("void f(int x) {\n"
+              "    int* p = 0;\n"
+              "    if (x > 3) {\n"
+              "        if ((x << 1) >= 8) p = &x;\n"
+              "        *p = 1;\n"
+              "    }\n"
+              "    if (x > 6) {\n"
+              "        if (x / 2 > 2) p = &x;\n"
+              "        *p = 1;\n"
+              "    }\n"
+              "    if (x > 3) {\n"
+              "        if (10 - x < 7) p = &x;\n"
+              "        *p = 1;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // a range that excludes zero is true; one that includes zero is not known
+        check("void f(int x) {\n"
+              "    int* p = 0;\n"
+              "    if (x > 3) {\n"
+              "        if (x) p = &x;\n"
+              "        *p = 1;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+        check("void f(int x) {\n"
+              "    int* p = 0;\n"
+              "    if (x > -5) {\n"
+              "        if (x) p = &x;\n"
+              "        *p = 1;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:10]: (warning) Possible null pointer dereference: p [nullPointer]\n", errout_str());
+
+        // x >= 0 and x != 0 is x > 0
+        check("void f(int x) {\n"
+              "    int* p = 0;\n"
+              "    if (x < 0) return;\n"
+              "    if (x == 0) return;\n"
+              "    if (x > 0) p = &x;\n"
+              "    *p = 1;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void nullpointer112() { // a variable whose value is unknown is still known through its aliases
+        // result is unknown, but result == p and the check on result is a check on p
+        check("char* g(char* path) {\n"
+              "    char* result;\n"
+              "    char* p;\n"
+              "    result = path;\n"
+              "    p = result;\n"
+              "    if (!result)\n"
+              "        return NULL;\n"
+              "    while ((p = strchr(p, '/'))) {\n"
+              "        p++;\n"
+              "    }\n"
+              "    return result;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // g is unknown; it does not hide that 'ctx = g' is 0 when ctx is 0
+        check("struct S { int a; };\n"
+              "static struct S* g;\n"
+              "void f(const int* rsl) {\n"
+              "    static int inited = 0;\n"
+              "    struct S* ctx;\n"
+              "    if ((ctx = g) == 0)\n"
+              "        ctx = g = (struct S*)malloc(sizeof(struct S));\n"
+              "    if (inited && rsl == 0)\n"
+              "        return;\n"
+              "    inited = 1;\n"
+              "    ctx->a = 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:11:5]: (warning) If memory allocation fails, then there is a possible null pointer dereference: ctx [nullPointerOutOfMemory]\n", errout_str());
+    }
+
+    void nullpointer113() { // clamp before the check: 'if (x > N) x = N;'
+        // inside a range condition
+        check("int f(int len, int *buf) {\n"
+              "    int *p = 0;\n"
+              "    if (len >= 0) {\n"
+              "        if (len > 16)\n"
+              "            len = 16;\n"
+              "        if (len <= 16)\n"
+              "            p = buf;\n"
+              "        return *p;\n"
+              "    }\n"
+              "    return 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // false on both paths
+        check("int f(int x) {\n"
+              "    int *p = 0;\n"
+              "    if (x > 5) x = 5;\n"
+              "    if (x > 5) return *p;\n"
+              "    return x;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("int f(int x) {\n"
+              "    int *p = 0;\n"
+              "    if (x > 5) x = 5;\n"
+              "    if (x <= 5) return x;\n"
+              "    return *p;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // else block assigns too
+        check("int f(int x) {\n"
+              "    int *p = 0;\n"
+              "    if (x > 5) x = 5;\n"
+              "    else x = 0;\n"
+              "    if (x > 5) return *p;\n"
+              "    return x;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // still possible
+        check("int f(int x) {\n"
+              "    int *p = 0;\n"
+              "    if (x > 5) x = 5;\n"
+              "    if (x < 5) return *p;\n"
+              "    return x;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:24]: (error) Null pointer dereference: p [nullPointer]\n", errout_str());
+
+        // unrelated condition
+        check("int f(int x, int y) {\n"
+              "    int *p = 0;\n"
+              "    if (x > 5) x = 5;\n"
+              "    if (y) return *p;\n"
+              "    return x;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:20]: (error) Null pointer dereference: p [nullPointer]\n", errout_str());
+
+        // TODO: 'len >= 0' is a loop invariant
+        check("int f(int len, int *buf) {\n"
+              "    int *p = 0;\n"
+              "    if (len >= 0) {\n"
+              "        while (len > 0)\n"
+              "            len--;\n"
+              "        if (len == 0)\n"
+              "            p = buf;\n"
+              "        return *p;\n"
+              "    }\n"
+              "    return 0;\n"
+              "}\n");
+        TODO_ASSERT_EQUALS("", "[test.cpp:8:17]: (warning) Possible null pointer dereference: p [nullPointer]\n", errout_str());
+    }
+
+    void nullpointer114() { // the else block changes the value
+        check("int f(int *p, int c) {\n"
+              "    if (!p) return 1;\n"
+              "    if (c) {} else { p = 0; }\n"
+              "    return *p;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:13]: (warning) Possible null pointer dereference: p [nullPointer]\n", errout_str());
+    }
+
+    void nullpointer115() { // a range condition overlapping the assumed one
+        check("int f(int n, int *q) {\n"
+              "    int *p = 0;\n"
+              "    if (n > 5) p = q;\n"
+              "    if (n > 3) return *p;\n"
+              "    return 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:24]: (warning) Possible null pointer dereference: p [nullPointer]\n", errout_str());
+    }
+
     void nullpointer_addressOf() { // address of
         check("void f() {\n"
               "  struct X *x = 0;\n"
@@ -4871,6 +5097,14 @@ private:
 
         check("int* f9() { int *x = NULL; return x--; }\n");
         ASSERT_EQUALS("[test.cpp:1:36]: (error) Overflow in pointer arithmetic, NULL pointer is subtracted. [nullPointerArithmetic]\n", errout_str());
+
+        // The condition of an assert() is not redundant (sqlite3MemRealloc)
+        check("void foo(void *pPrior, int nByte) {\n"
+              "  long long *p = (long long*)pPrior;\n"
+              "  assert(pPrior != 0 && nByte > 0);\n"
+              "  p--;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void addNull() {

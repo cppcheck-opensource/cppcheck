@@ -240,6 +240,8 @@ private:
         TEST_CASE(usingNamespace1);
         TEST_CASE(usingNamespace2);
         TEST_CASE(usingNamespace3);
+        TEST_CASE(usingNamespace4);
+        TEST_CASE(usingNamespace5);
 
         TEST_CASE(setVarIdStructMembers1);
 
@@ -3624,6 +3626,66 @@ private:
                            "8: memset ( :: Z :: b@3 . a , 123 , 5 ) ;\n"
                            "9: }\n";
         ASSERT_EQUALS(exp, tokenize(code));
+
+        const char code2[] = "double d(int);\n" // #15098
+                             "void g(double d);\n"
+                             "void f() {\n"
+                             "    int i = 1;\n"
+                             "    double d = 0;\n"
+                             "    if (d == ::d(i)) {\n"
+                             "        d = ::d(2);\n"
+                             "    }\n"
+                             "}\n";
+        const char exp2[] = "1: double d ( int ) ;\n"
+                            "2: void g ( double d@1 ) ;\n"
+                            "3: void f ( ) {\n"
+                            "4: int i@2 ; i@2 = 1 ;\n"
+                            "5: double d@3 ; d@3 = 0 ;\n"
+                            "6: if ( d@3 == :: d ( i@2 ) ) {\n"
+                            "7: d@3 = :: d ( 2 ) ;\n"
+                            "8: }\n"
+                            "9: }\n";
+        ASSERT_EQUALS(exp2, tokenize(code2));
+
+        const char code3[] = "double d(int);\n"
+                             "void g(int, double d);\n"
+                             "void f() {\n"
+                             "    int i = 1;\n"
+                             "    double d = 0;\n"
+                             "    if (d == ::d(i)) {\n"
+                             "        d = ::d(2);\n"
+                             "    }\n"
+                             "}\n";
+        const char exp3[] = "1: double d ( int ) ;\n"
+                            "2: void g ( int , double d@1 ) ;\n"
+                            "3: void f ( ) {\n"
+                            "4: int i@2 ; i@2 = 1 ;\n"
+                            "5: double d@3 ; d@3 = 0 ;\n"
+                            "6: if ( d@3 == :: d ( i@2 ) ) {\n"
+                            "7: d@3 = :: d ( 2 ) ;\n"
+                            "8: }\n"
+                            "9: }\n";
+        ASSERT_EQUALS(exp3, tokenize(code3));
+
+        const char code4[] = "double d(int);\n"
+                             "void g(int, double d) { (void)d; }\n"
+                             "void f() {\n"
+                             "    int i = 1;\n"
+                             "    double d = 0;\n"
+                             "    if (d == ::d(i)) {\n"
+                             "        d = ::d(2);\n"
+                             "    }\n"
+                             "}\n";
+        const char exp4[] = "1: double d ( int ) ;\n"
+                            "2: void g ( int , double d@1 ) { ( void ) d@1 ; }\n"
+                            "3: void f ( ) {\n"
+                            "4: int i@2 ; i@2 = 1 ;\n"
+                            "5: double d@3 ; d@3 = 0 ;\n"
+                            "6: if ( d@3 == :: d ( i@2 ) ) {\n"
+                            "7: d@3 = :: d ( 2 ) ;\n"
+                            "8: }\n"
+                            "9: }\n";
+        ASSERT_EQUALS(exp4, tokenize(code4));
     }
 
     void varid_function_pointer_args() {
@@ -4346,6 +4408,48 @@ private:
                                 "8: }\n"
                                 "9: using namespace A :: B ;\n"
                                 "10: C :: C ( ) : m@1 ( 42 ) { }\n";
+
+        ASSERT_EQUALS(expected, tokenize(code));
+    }
+
+    void usingNamespace4() {
+        // the innermost scope name is matched by the qualification of the member, after a template argument list
+        const char code[] = "namespace A {\n"
+                            "    namespace B {\n"
+                            "        template<class T> struct C {\n"
+                            "            struct D { int x; void f(); };\n"
+                            "        };\n"
+                            "    }\n"
+                            "}\n"
+                            "using namespace A;\n"
+                            "template<class T> void B::C<T>::D::f() { x = 0; }\n";
+
+        const char expected[] = "1: namespace A {\n"
+                                "2: namespace B {\n"
+                                "3: template < class T > struct C {\n"
+                                "4: struct D { int x@1 ; void f ( ) ; } ;\n"
+                                "5: } ;\n"
+                                "6: }\n"
+                                "7: }\n"
+                                "8: using namespace A ;\n"
+                                "9: template < class T > void B :: C < T > :: D :: f ( ) { x@1 = 0 ; }\n";
+
+        ASSERT_EQUALS(expected, tokenize(code));
+    }
+
+    void usingNamespace5() {
+        // the innermost scope name is matched by the "using namespace"
+        const char code[] = "namespace A {\n"
+                            "    namespace B { int x; }\n"
+                            "}\n"
+                            "using namespace A::B;\n"
+                            "void f() { x = 0; }\n";
+
+        const char expected[] = "1: namespace A {\n"
+                                "2: namespace B { int x@1 ; }\n"
+                                "3: }\n"
+                                "4: using namespace A :: B ;\n"
+                                "5: void f ( ) { x@1 = 0 ; }\n";
 
         ASSERT_EQUALS(expected, tokenize(code));
     }

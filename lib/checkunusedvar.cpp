@@ -1008,7 +1008,7 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage_iterateScopes(const Scope* c
             const Token * const equal = skipBracketsAndMembers(tok->next());
 
             // checked for chained assignments
-            if (tok != start && equal && equal->str() == "=") {
+            if (tok != start && (Token::simpleMatch(equal, "=") || (start->astParent() && Token::simpleMatch(start->astParent()->astParent(), "=")))) {
                 const nonneg int varId = tok->varId();
                 const Variables::VariableUsage * const var = variables.find(varId);
 
@@ -1170,7 +1170,7 @@ static bool isReturnedByRef(const Variable* var, const Function* func)
 
 void CheckUnusedVarImpl::checkFunctionVariableUsage()
 {
-    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.checkLibrary && !mSettings.isPremiumEnabled("unusedVariable"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.checkLibrary && !mSettings.isPremiumEnabled("unusedVariable") && !mSettings.isPremiumEnabled("unreadVariable"))
         return;
 
     logChecker("CheckUnusedVar::checkFunctionVariableUsage"); // style
@@ -1497,7 +1497,7 @@ void CheckUnusedVarImpl::allocatedButUnusedVariableError(const Token *tok, const
 
 void CheckUnusedVarImpl::unreadVariableError(const Token *tok, const std::string &varname, bool modified)
 {
-    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("unusedVariable"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("unusedVariable") && !mSettings.isPremiumEnabled("unreadVariable"))
         return;
 
     if (modified)

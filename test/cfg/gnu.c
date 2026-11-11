@@ -12,6 +12,7 @@
 #define _GNU_SOURCE
 
 #include <string.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -157,6 +158,132 @@ int nullPointer_getopt_long_only(int argc, char* const* argv, const char* optstr
     return getopt_long_only(argc, argv, optstring, longopts, longindex);
 }
 
+bool nullPointer_builtin_add_overflow(char a, char b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_add_overflow(a, b, (char *)0);
+}
+
+bool nullPointer_builtin_sadd_overflow(int a, int b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_sadd_overflow(a, b, (int *)0);
+}
+
+bool nullPointer_builtin_saddl_overflow(long int a, long int b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_saddl_overflow(a, b, (long int *)0);
+}
+
+bool nullPointer_builtin_saddll_overflow(long long int a, long long int b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_saddll_overflow(a, b, (long long int *)0);
+}
+
+bool nullPointer_builtin_uadd_overflow(unsigned int a, unsigned int b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_uadd_overflow(a, b, (unsigned int *)0);
+}
+
+bool nullPointer_builtin_uaddl_overflow(unsigned long int a, unsigned long int b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_uaddl_overflow(a, b, (unsigned long int *)0);
+}
+
+bool nullPointer_builtin_uaddll_overflow(unsigned long long int a, unsigned long long int b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_uaddll_overflow(a, b, (unsigned long long int *)0);
+}
+
+bool nullPointer_builtin_sub_overflow(char a, char b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_sub_overflow(a, b, (char *)0);
+}
+
+bool nullPointer_builtin_ssub_overflow(int a, int b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_ssub_overflow(a, b, (int *)0);
+}
+
+bool nullPointer_builtin_ssubl_overflow(long int a, long int b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_ssubl_overflow(a, b, (long int *)0);
+}
+
+bool nullPointer_builtin_ssubll_overflow(long long int a, long long int b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_ssubll_overflow(a, b, (long long int *)0);
+}
+
+bool nullPointer_builtin_usub_overflow(unsigned int a, unsigned int b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_usub_overflow(a, b, (unsigned int *)0);
+}
+
+bool nullPointer_builtin_usubl_overflow(unsigned long int a, unsigned long int b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_usubl_overflow(a, b, (unsigned long int *)0);
+}
+
+bool nullPointer_builtin_usubll_overflow(unsigned long long int a, unsigned long long int b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_usubll_overflow(a, b, (unsigned long long int *)0);
+}
+
+bool nullPointer_builtin_mul_overflow(char a, char b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_mul_overflow(a, b, (char *)0);
+}
+
+bool nullPointer_builtin_smul_overflow(int a, int b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_smul_overflow(a, b, (int *)0);
+}
+
+bool nullPointer_builtin_smull_overflow(long int a, long int b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_smull_overflow(a, b, (long int *)0);
+}
+
+bool nullPointer_builtin_smulll_overflow(long long int a, long long int b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_smulll_overflow(a, b, (long long int *)0);
+}
+
+bool nullPointer_builtin_umul_overflow(unsigned int a, unsigned int b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_umul_overflow(a, b, (unsigned int *)0);
+}
+
+bool nullPointer_builtin_umull_overflow(unsigned long int a, unsigned long int b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_umull_overflow(a, b, (unsigned long int *)0);
+}
+
+bool nullPointer_builtin_umulll_overflow(unsigned long long int a, unsigned long long int b)
+{
+    // cppcheck-suppress nullPointer
+    return __builtin_umulll_overflow(a, b, (unsigned long long int *)0);
+}
+
 #if !defined(__APPLE__)
 int nullPointer_getservent_r(struct servent *restrict result_buf, const char *restrict buf, size_t buflen, struct servent **restrict result)
 {
@@ -247,6 +374,13 @@ wchar_t *nullPointer_wmempcpy(wchar_t *dest, const wchar_t *src, size_t n)
     // cppcheck-suppress nullPointer
     (void) wmempcpy(dest,NULL,n);
     return wmempcpy(dest,src,n);
+}
+
+void bufferAccessOutOfBounds_wmempcpy(const wchar_t *src)
+{
+    wchar_t buf[3];
+    // cppcheck-suppress bufferAccessOutOfBounds
+    wmempcpy(buf, src, 5);
 }
 
 int uninitvar_getpw(uid_t uid, char *buf)
@@ -486,6 +620,216 @@ void uninitvar__builtin_memset(void)
     (void)__builtin_memset(s,c,n);
 }
 
+void uninitvar__builtin_add_overflow(void)
+{
+    char a;
+    char b;
+    char c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_add_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_sadd_overflow(void)
+{
+    int a;
+    int b;
+    int c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_sadd_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_saddl_overflow(void)
+{
+    long int a;
+    long int b;
+    long int c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_saddl_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_saddll_overflow(void)
+{
+    long long int a;
+    long long int b;
+    long long int c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_saddll_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_uadd_overflow(void)
+{
+    unsigned int a;
+    unsigned int b;
+    unsigned int c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_uadd_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_uaddl_overflow(void)
+{
+    unsigned long int a;
+    unsigned long int b;
+    unsigned long int c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_uaddl_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_uaddll_overflow(void)
+{
+    unsigned long long int a;
+    unsigned long long int b;
+    unsigned long long int c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_uaddll_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_sub_overflow(void)
+{
+    char a;
+    char b;
+    char c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_sub_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_ssub_overflow(void)
+{
+    int a;
+    int b;
+    int c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_ssub_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_ssubl_overflow(void)
+{
+    long int a;
+    long int b;
+    long int c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_ssubl_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_ssubll_overflow(void)
+{
+    long long int a;
+    long long int b;
+    long long int c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_ssubll_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_usub_overflow(void)
+{
+    unsigned int a;
+    unsigned int b;
+    unsigned int c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_usub_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_usubl_overflow(void)
+{
+    unsigned long int a;
+    unsigned long int b;
+    unsigned long int c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_usubl_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_usubll_overflow(void)
+{
+    unsigned long long int a;
+    unsigned long long int b;
+    unsigned long long int c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_usubll_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_mul_overflow(void)
+{
+    char a;
+    char b;
+    char c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_mul_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_smul_overflow(void)
+{
+    int a;
+    int b;
+    int c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_smul_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_smull_overflow(void)
+{
+    long int a;
+    long int b;
+    long int c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_smull_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_smulll_overflow(void)
+{
+    long long int a;
+    long long int b;
+    long long int c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_smulll_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_umul_overflow(void)
+{
+    unsigned int a;
+    unsigned int b;
+    unsigned int c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_umul_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_umull_overflow(void)
+{
+    unsigned long int a;
+    unsigned long int b;
+    unsigned long int c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_umull_overflow(a, b, &c);
+}
+
+void uninitvar__builtin_umulll_overflow(void)
+{
+    unsigned long long int a;
+    unsigned long long int b;
+    unsigned long long int c;
+
+    // cppcheck-suppress uninitvar
+    (void)__builtin_umulll_overflow(a, b, &c);
+}
+
 void bufferAccessOutOfBounds__builtin_memset(void)
 {
     uint8_t buf[42];
@@ -561,3 +905,10 @@ int nullPointer_epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
     return epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
 }
 #endif
+
+void mmap_fixed(void *addr) // No constParameterPointer: mmap() may replace the mapping at addr
+{
+    // cppcheck-suppress valueFlowBailoutIncompleteVar
+    // cppcheck-suppress leakReturnValNotUsed
+    (void)mmap(addr, 0x1000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+}

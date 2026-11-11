@@ -106,12 +106,6 @@ Application& ApplicationList::getApplication(const int /*unused*/) {
 const Application& ApplicationList::getApplication(const int index) const {
     return mApplications.at(index);
 }
-QString XmlReport::quoteMessage(const QString &message) {
-    return message;
-}
-QString XmlReport::unquoteMessage(const QString &message) {
-    return message;
-}
 XmlReport::XmlReport(const QString& filename) : Report(filename) {}
 // NOLINTNEXTLINE(performance-unnecessary-value-param)
 void ThreadResult::finishCheck(CheckThread::Details /*unused*/) {
@@ -263,6 +257,31 @@ void TestResultsTree::resultsInSameFile() const
         QCOMPARE(item->errorItem.get(), res2->errorItem.get());
         QCOMPARE(item->getType(), ResultItem::Type::message);
     }
+}
+
+void TestResultsTree::clearRecheckFile() const
+{
+    // #14893 - rechecking a file removes its results, the results of the other files are kept
+    ResultsTree tree(nullptr);
+    QVERIFY(tree.addErrorItem(createErrorItem("file1.c", 10, Severity::style, "test", "bugId")));
+    QVERIFY(tree.addErrorItem(createErrorItem("file1.c", 20, Severity::style, "test", "bugId")));
+    QVERIFY(tree.addErrorItem(createErrorItem("file2.c", 10, Severity::style, "test", "bugId")));
+
+    const auto* model = dynamic_cast<QStandardItemModel*>(tree.model());
+    QVERIFY(model != nullptr);
+    QCOMPARE(model->rowCount(), 2);
+
+    tree.clearRecheckFile("file1.c");
+    QCOMPARE(model->rowCount(), 1);
+    QCOMPARE(model->item(0,0)->text(), "file2.c");
+
+    // the recheck reports the results of the rechecked file again, they must not be treated as duplicates
+    QVERIFY(tree.addErrorItem(createErrorItem("file1.c", 10, Severity::style, "test", "bugId")));
+    QVERIFY(tree.addErrorItem(createErrorItem("file1.c", 20, Severity::style, "test", "bugId")));
+    QCOMPARE(model->rowCount(), 2);
+
+    // the results of the other files are still known
+    QVERIFY(!tree.addErrorItem(createErrorItem("file2.c", 10, Severity::style, "test", "bugId")));
 }
 
 void TestResultsTree::testReportType() const

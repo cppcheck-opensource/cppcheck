@@ -190,8 +190,6 @@ def test_progress(tmpdir):
             "progress: ValueFlow::valueFlowCondition(SymbolicConditionHandler{}, tokenlist, symboldatabase, errorLogger, settings, skippedFunctions) 1 100%\n"
             "progress: ValueFlow::valueFlowSymbolicInfer(symboldatabase, settings) 1 0%\n"
             "progress: ValueFlow::valueFlowSymbolicInfer(symboldatabase, settings) 1 100%\n"
-            "progress: ValueFlow::valueFlowArrayBool(tokenlist, settings) 1 0%\n"
-            "progress: ValueFlow::valueFlowArrayBool(tokenlist, settings) 1 100%\n"
             "progress: ValueFlow::valueFlowArrayElement(tokenlist, settings) 1 0%\n"
             "progress: ValueFlow::valueFlowArrayElement(tokenlist, settings) 1 100%\n"
             "progress: ValueFlow::valueFlowRightShift(tokenlist, settings) 1 0%\n"
@@ -482,9 +480,9 @@ def test_addon_threadsafety(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
     with open(test_file, 'wt') as f:
         f.write("""
-extern const char* f()
+extern void f()
 {
-    return strerror(1);
+    elf_fill(1);
 }
         """)
 
@@ -496,7 +494,7 @@ extern const char* f()
     assert lines == [
         'Checking {} ...'.format(test_file)
     ]
-    assert stderr == '{}:4:12: warning: strerror is MT-unsafe [threadsafety-unsafe-call]\n'.format(test_file)
+    assert stderr == '{}:4:5: warning: elf_fill is MT-unsafe [threadsafety-unsafe-call]\n'.format(test_file)
 
 
 def test_addon_naming(tmpdir):
@@ -1069,7 +1067,7 @@ def test_showtime_top5_summary_compdb(tmp_path):
 
 
 def __test_showtime_file(tmp_path, use_compdb=False, use_addons=False, use_clang_tidy=False):
-    exp_res = 79
+    exp_res = 78
     # project analysis does not call Preprocessor::getConfig()
     if use_compdb:
         exp_res -= 1
@@ -1103,7 +1101,7 @@ def test_showtime_file_clang_tidy_compdb(tmp_path):
 
 
 def __test_showtime_summary(tmp_path, use_compdb=False, use_addons=False, use_clang_tidy=False):
-    exp_res = 79
+    exp_res = 78
     # project analysis does not call Preprocessor::getConfig()
     if use_compdb:
         exp_res -= 1
@@ -4575,6 +4573,47 @@ def test_analyzerinfo(tmp_path):
     # - internalError
 
 
+def test_analyzerinfo_include_order(tmp_path):  # #15132
+    with open(tmp_path / 'z.h', 'wt') as f:
+        f.write('int z;\n')
+    with open(tmp_path / 'a.h', 'wt') as f:
+        f.write('int a;\n')
+    test_file = tmp_path / 'test.c'
+    with open(test_file, 'wt') as f:
+        f.write(
+"""#include "z.h"
+#include "a.h"
+int f(void) { return a + z; }
+""")
+
+    build_dir = tmp_path / 'b1'
+    os.makedirs(build_dir)
+
+    args = [
+        '-q',
+        '--debug-analyzerinfo',
+        '--cppcheck-build-dir={}'.format(build_dir),
+        str(test_file)
+    ]
+
+    test_file_s = str(test_file).replace('\\', '/')
+    test_a1_file_s = str(build_dir / 'test.a1').replace('\\', '/')
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0, stdout
+    assert stdout.splitlines() == [
+        "no cached result '{}' for '{}' found".format(test_a1_file_s, test_file_s)
+    ]
+    assert stderr.splitlines() == []
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0, stdout
+    assert stdout.splitlines() == [
+        "skipping analysis - loaded 0 cached finding(s) from '{}' for '{}'".format(test_a1_file_s, test_file_s)
+    ]
+    assert stderr.splitlines() == []
+
+
 def test_ctu_function_call_path_slash(tmp_path):  # #14591
     test_file = tmp_path / 'test.cpp'
     with open(test_file, "w") as f:
@@ -4884,6 +4923,40 @@ def test_ipc_inline_suppressions(tmp_path):
     stdout_lines = stdout.splitlines()
     stdout_lines.sort()
     assert stdout_lines == stdout_exp
+    assert stderr.splitlines() == []
+
+
+@pytest.mark.skipif(sys.platform == 'win32', reason="requires ProcessExecutor")
+def test_ipc_hash_suppressions(tmp_path):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, "w") as f:
+        f.write('void f() { int x = 1; }')
+
+    _, _, stderr = cppcheck(['--enable=style', '--xml-version=3', str(test_file)])
+    error_hash = ElementTree.fromstring(stderr).find('.//error').get('hash')
+
+    suppr_file = tmp_path / 'suppr.xml'
+    with open(suppr_file, "w") as f:
+        f.write(f'<suppressions><suppress><id>unreadVariable</id><fileName>{test_file}</fileName><hash>{error_hash}</hash></suppress></suppressions>')
+
+    args = [
+        '-q',
+        '--debug-ipc',
+        '-j2',
+        '--executor=process',
+        '--no-cppcheck-build-dir',
+        '--enable=style',
+        f'--suppress-xml={suppr_file}',
+        str(test_file)
+    ]
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0
+    # the hash suppression is not sent to the parent
+    assert stdout.splitlines() == [
+        'writeToPipe - 5 - 0',
+        'handleRead - 5 - 0'
+    ]
     assert stderr.splitlines() == []
 
 test_redundant_file_reads_params = [

@@ -89,6 +89,7 @@
 #include "infer.h"
 #include "library.h"
 #include "mathlib.h"
+#include "refthunk.h"
 #include "path.h"
 #include "platform.h"
 #include "programmemory.h"
@@ -270,11 +271,6 @@ static void setConditionalValues(const Token* tok,
     setValueBound(false_value, tok, !lhs);
 }
 
-static bool isSaturated(MathLib::bigint value)
-{
-    return value == std::numeric_limits<MathLib::bigint>::max() || value == std::numeric_limits<MathLib::bigint>::min();
-}
-
 static void parseCompareEachInt(
     const Token* tok,
     const std::function<void(const Token* varTok, ValueFlow::Value true_value, ValueFlow::Value false_value)>& each,
@@ -292,7 +288,7 @@ static void parseCompareEachInt(
                 value1.clear();
         }
         for (const ValueFlow::Value& v1 : value1) {
-            if (isSaturated(v1.intvalue) || astIsFloat(tok->astOperand2(), /*unknown*/ false))
+            if (ValueFlow::isSaturated(v1.intvalue) || astIsFloat(tok->astOperand2(), /*unknown*/ false))
                 continue;
             ValueFlow::Value true_value = v1;
             ValueFlow::Value false_value = v1;
@@ -300,7 +296,7 @@ static void parseCompareEachInt(
             each(tok->astOperand2(), std::move(true_value), std::move(false_value));
         }
         for (const ValueFlow::Value& v2 : value2) {
-            if (isSaturated(v2.intvalue) || astIsFloat(tok->astOperand1(), /*unknown*/ false))
+            if (ValueFlow::isSaturated(v2.intvalue) || astIsFloat(tok->astOperand1(), /*unknown*/ false))
                 continue;
             ValueFlow::Value true_value = v2;
             ValueFlow::Value false_value = v2;
@@ -687,57 +683,6 @@ static void valueFlowArray(TokenList& tokenlist, const Settings& settings)
             constantArrays[vartok->varId()] = strtok;
             tok = strtok->next();
             continue;
-        }
-    }
-}
-
-static bool isNonZero(const Token* tok)
-{
-    return tok && (!tok->hasKnownIntValue() || tok->getKnownIntValue() != 0);
-}
-
-static const Token* getOtherOperand(const Token* tok)
-{
-    if (!tok)
-        return nullptr;
-    if (!tok->astParent())
-        return nullptr;
-    if (tok->astParent()->astOperand1() != tok)
-        return tok->astParent()->astOperand1();
-    if (tok->astParent()->astOperand2() != tok)
-        return tok->astParent()->astOperand2();
-    return nullptr;
-}
-
-static void valueFlowArrayBool(TokenList& tokenlist, const Settings& settings)
-{
-    for (Token* tok = tokenlist.front(); tok; tok = tok->next()) {
-        if (tok->hasKnownIntValue())
-            continue;
-        const Variable* var = nullptr;
-        bool known = false;
-        const auto val =
-            std::find_if(tok->values().cbegin(), tok->values().cend(), std::mem_fn(&ValueFlow::Value::isTokValue));
-        if (val == tok->values().end()) {
-            var = tok->variable();
-            known = true;
-        } else {
-            var = val->tokvalue->variable();
-            known = val->isKnown();
-        }
-        if (!var)
-            continue;
-        if (!var->isArray() || var->isArgument() || var->getTypeName() == "std::array")
-            continue;
-        if (isNonZero(getOtherOperand(tok)) && Token::Match(tok->astParent(), "%comp%"))
-            continue;
-        // TODO: Check for function argument
-        if ((astIsBool(tok->astParent()) && !Token::Match(tok->astParent(), "(|%name%")) ||
-            (tok->astParent() && Token::Match(tok->astParent()->previous(), "if|while|for ("))) {
-            ValueFlow::Value value{1};
-            if (known)
-                value.setKnown();
-            setTokenValue(tok, std::move(value), settings);
         }
     }
 }
@@ -1523,6 +1468,19 @@ ValueFlow::Value ValueFlow::getLifetimeObjValue(const Token *tok, bool inconclus
     return std::move(values.front());
 }
 
+static bool checkDotLifetime(const Token* dot, const Token* tok)
+{
+    if (Token::simpleMatch(dot->astOperand1(), "."))
+        return false;
+    if (!dot->astOperand2())
+        return true;
+    if (dot->astOperand2()->varId() && tok->isUnaryOp("*"))
+        return dot->astOperand2()->variable() && dot->astOperand2()->variable()->isArray();
+    if (dot->astOperand2()->valueType() && dot->astOperand2()->valueType()->reference != Reference::None)
+        return false;
+    return true;
+}
+
 template<class Predicate>
 static std::vector<ValueFlow::LifetimeToken> getLifetimeTokens(const Token* tok,
                                                                bool escape,
@@ -1635,8 +1593,7 @@ static std::vector<ValueFlow::LifetimeToken> getLifetimeTokens(const Token* tok,
             if (vartok->str() == "[" || vartok->isUnaryOp("*"))
                 vartok = vartok->astOperand1();
             else if (vartok->str() == ".") {
-                if (!Token::simpleMatch(vartok->astOperand1(), ".") &&
-                    !(vartok->astOperand2() && vartok->astOperand2()->valueType() && vartok->astOperand2()->valueType()->reference != Reference::None))
+                if (checkDotLifetime(vartok, tok))
                     vartok = vartok->astOperand1();
                 else
                     break;
@@ -3658,6 +3615,14 @@ static void valueFlowSymbolic(const TokenList& tokenlist, const SymbolDatabase& 
             lhs.errorPath.emplace_back(tok,
                                        tok->astOperand1()->expressionString() + " is assigned '" +
                                        tok->astOperand2()->expressionString() + "' here.");
+            // A pointer cast keeps the value: the left hand side is also equal to the expression that is cast
+            const Token* castExpr = tok->astOperand2();
+            while (castExpr->isCast() && castExpr->astOperand1() && !castExpr->astOperand2() &&
+                   astIsPointer(castExpr) && astIsPointer(castExpr->astOperand1()) &&
+                   castExpr->astOperand1()->exprId() > 0)
+                castExpr = castExpr->astOperand1();
+            if (castExpr != tok->astOperand2())
+                valueFlowForward(start, end, castExpr, lhs, tokenlist, errorLogger, settings);
             valueFlowForward(start, end, tok->astOperand2(), std::move(lhs), tokenlist, errorLogger, settings);
         }
     }
@@ -4131,7 +4096,7 @@ static std::list<ValueFlow::Value> truncateValues(std::list<ValueFlow::Value> va
         }
 
         if (value.isIntValue() && sz > 0 && sz < sizeof(MathLib::biguint))
-            value.intvalue = ValueFlow::truncateIntValue(value.intvalue, sz, dst->sign);
+            value.intvalue = ValueFlow::truncateIntValue(value.intvalue, sz, dst, settings.platform);
     }
     return values;
 }
@@ -5299,7 +5264,10 @@ static bool valueFlowForLoop2(const Token *tok,
     memory1.swap(startMemory);
     if (!error) {
         memory2.swap(endMemory);
-        memoryAfter.swap(programMemory);
+        // The state after the loop is only known when the condition became false. When the limit of
+        // iterations was reached the loop runs on, or exits later in a state that is not known.
+        if (result == 0)
+            memoryAfter.swap(programMemory);
     }
 
     return true;
@@ -5489,32 +5457,29 @@ static void valueFlowForLoop(const TokenList &tokenlist, const SymbolDatabase& s
                     }
                 } else {
                     for (const auto& p : mem1) {
-                        if (!p.second.isIntValue())
-                            continue;
-                        if (p.second.isImpossible())
+                        MathLib::bigint value = 0;
+                        if (!mem1.getIntValue(p.first.getExpressionId(), value))
                             continue;
                         if (p.first.tok->varId() == 0)
                             continue;
-                        valueFlowForLoopSimplify(bodyStart, p.first.tok, false, p.second.intvalue, tokenlist, errorLogger, settings);
+                        valueFlowForLoopSimplify(bodyStart, p.first.tok, false, value, tokenlist, errorLogger, settings);
                     }
                     for (const auto& p : mem2) {
-                        if (!p.second.isIntValue())
-                            continue;
-                        if (p.second.isImpossible())
+                        MathLib::bigint value = 0;
+                        if (!mem2.getIntValue(p.first.getExpressionId(), value))
                             continue;
                         if (p.first.tok->varId() == 0)
                             continue;
-                        valueFlowForLoopSimplify(bodyStart, p.first.tok, false, p.second.intvalue, tokenlist, errorLogger, settings);
+                        valueFlowForLoopSimplify(bodyStart, p.first.tok, false, value, tokenlist, errorLogger, settings);
                     }
                 }
                 for (const auto& p : memAfter) {
-                    if (!p.second.isIntValue())
-                        continue;
-                    if (p.second.isImpossible())
+                    MathLib::bigint value = 0;
+                    if (!memAfter.getIntValue(p.first.getExpressionId(), value))
                         continue;
                     if (p.first.tok->varId() == 0)
                         continue;
-                    valueFlowForLoopSimplifyAfter(tok, p.first.getExpressionId(), p.second.intvalue, tokenlist, errorLogger, settings);
+                    valueFlowForLoopSimplifyAfter(tok, p.first.getExpressionId(), value, tokenlist, errorLogger, settings);
                 }
             }
         }
@@ -5994,7 +5959,7 @@ static bool needsInitialization(const Variable* var)
             return true;
         if (var->valueType()->type == ValueType::Type::ITERATOR)
             return true;
-        if (var->isStlType() && var->isArray()) {
+        if (var->isStlType() && var->getTypeName() == "std::array") {
             if (const Token* ctt = var->valueType()->containerTypeToken) {
                 if (ctt->isStandardType())
                     return true;
@@ -6268,6 +6233,31 @@ static const Token* parseBinaryIntOp(const Token* expr,
     return varTok;
 }
 
+static MathLib::bigint floorDiv(MathLib::bigint x, MathLib::bigint y)
+{
+    MathLib::bigint q = x / y;
+    if (x % y != 0 && (x < 0) != (y < 0))
+        --q;
+    return q;
+}
+
+static MathLib::bigint ceilDiv(MathLib::bigint x, MathLib::bigint y)
+{
+    MathLib::bigint q = x / y;
+    if (x % y != 0 && (x < 0) == (y < 0))
+        ++q;
+    return q;
+}
+
+// Solve "x * divisor" for x when the value is a bound: divide the end of the range, rounding towards
+// the inside of the range so that it stays exact; a negative divisor turns the range around.
+static bool divideBound(ValueFlow::Value& value, MathLib::bigint divisor)
+{
+    const bool lowerAfter = (divisor > 0) == value.isLowerEdge();
+    const MathLib::bigint edge = value.rangeEdge();
+    return value.setRangeEdge(lowerAfter ? ceilDiv(edge, divisor) : floorDiv(edge, divisor), lowerAfter);
+}
+
 const Token* ValueFlow::solveExprValue(const Token* expr,
                                        const std::function<std::vector<MathLib::bigint>(const Token*)>& eval,
                                        ValueFlow::Value& value)
@@ -6291,19 +6281,32 @@ const Token* ValueFlow::solveExprValue(const Token* expr,
             return ValueFlow::solveExprValue(binaryTok, eval, value);
         }
         case '-': {
-            if (rhs)
+            if (rhs) {
                 value.intvalue = intval - value.intvalue;
-            else
+                // c - x >= a  <=>  x <= c - a
+                value.invertBound();
+            } else
                 value.intvalue += intval;
             return ValueFlow::solveExprValue(binaryTok, eval, value);
         }
         case '*': {
-            if (intval == 0)
+            // A bound at the limit of the type cannot be solved, nor can its edge be divided safely
+            if (intval == 0 || ValueFlow::isSaturated(value.intvalue) || ValueFlow::isSaturated(value.rangeEdge()))
                 break;
-            value.intvalue /= intval;
+            if (value.bound == ValueFlow::Value::Bound::Point) {
+                // x * k is v only for a v that k divides
+                if (value.intvalue % intval != 0)
+                    break;
+                value.intvalue /= intval;
+            } else if (!divideBound(value, intval)) {
+                break;
+            }
             return ValueFlow::solveExprValue(binaryTok, eval, value);
         }
         case '^': {
+            // xor does not keep a range together
+            if (value.bound != ValueFlow::Value::Bound::Point)
+                break;
             value.intvalue ^= intval;
             return ValueFlow::solveExprValue(binaryTok, eval, value);
         }
@@ -7302,10 +7305,10 @@ struct ValueFlowState {
         : tokenlist(tokenlist), symboldatabase(symboldatabase), errorLogger(errorLogger), settings(settings)
     {}
 
-    TokenList& tokenlist;
-    SymbolDatabase& symboldatabase;
-    ErrorLogger& errorLogger;
-    const Settings& settings;
+    RefThunk<TokenList> tokenlist;
+    RefThunk<SymbolDatabase> symboldatabase;
+    RefThunk<ErrorLogger> errorLogger;
+    RefThunk<const Settings> settings;
     std::set<const Scope*> skippedFunctions;
 };
 
@@ -7341,31 +7344,31 @@ struct ValueFlowPassRunner {
     bool run(std::initializer_list<ValuePtr<ValueFlowPass>> passes) const
     {
         std::size_t values = 0;
-        std::size_t n = state.settings.vfOptions.maxIterations;
-        const bool doProgress = state.settings.reportProgress >= 0;
+        std::size_t n = state.settings().vfOptions.maxIterations;
+        const bool doProgress = state.settings().reportProgress >= 0;
         while (n > 0 && values != getTotalValues()) {
             values = getTotalValues();
-            const std::size_t passnum = state.settings.vfOptions.maxIterations - n + 1;
+            const std::size_t passnum = state.settings().vfOptions.maxIterations - n + 1;
             const std::string passnum_s = std::to_string(passnum);
             if (std::any_of(passes.begin(), passes.end(), [&](const ValuePtr<ValueFlowPass>& pass) {
                 // the string concatination is a hot spot in TestIO::testScanfArgument and TestIO::testPrintfArgumentVariables
                 std::string stage = doProgress ? std::string("ValueFlow::") + pass->name() + (' ' + passnum_s) : "";
-                ProgressReporter progressReporter(state.errorLogger, state.settings.reportProgress, state.tokenlist.getSourceFilePath(), std::move(stage));
+                ProgressReporter progressReporter(state.errorLogger, state.settings().reportProgress, state.tokenlist().getSourceFilePath(), std::move(stage));
                 return run(pass, passnum);
             }))
                 return true;
             --n;
         }
-        if (state.settings.debugwarnings) {
+        if (state.settings().debugwarnings) {
             if (n == 0 && values != getTotalValues()) {
-                ErrorMessage::FileLocation loc(state.tokenlist.getFiles()[0], 0, 0);
+                ErrorMessage::FileLocation loc(state.tokenlist().getFiles()[0], 0, 0);
                 ErrorMessage errmsg({std::move(loc)},
                                     "",
                                     Severity::debug,
                                     "ValueFlow maximum iterations exceeded",
                                     "valueFlowMaxIterations",
                                     Certainty::normal);
-                state.errorLogger.reportErr(errmsg);
+                state.errorLogger().reportErr(errmsg);
             }
         }
         return false;
@@ -7378,7 +7381,7 @@ struct ValueFlowPassRunner {
             // TODO: add bailout message
             return true;
         }
-        if (!state.tokenlist.isCPP() && pass->cpp())
+        if (!state.tokenlist().isCPP() && pass->cpp())
             return false;
         if (timerResults) {
             std::string name = pass->name();
@@ -7397,15 +7400,15 @@ struct ValueFlowPassRunner {
     std::size_t getTotalValues() const
     {
         std::size_t n = 1;
-        for (Token* tok = state.tokenlist.front(); tok; tok = tok->next())
+        for (Token* tok = state.tokenlist().front(); tok; tok = tok->next())
             n += tok->values().size();
         return n;
     }
 
     void setSkippedFunctions()
     {
-        if (state.settings.vfOptions.maxIfCount > 0) {
-            for (const Scope* functionScope : state.symboldatabase.functionScopes) {
+        if (state.settings().vfOptions.maxIfCount > 0) {
+            for (const Scope* functionScope : state.symboldatabase().functionScopes) {
                 int countIfScopes = 0;
                 std::vector<const Scope*> scopes{functionScope};
                 while (!scopes.empty()) {
@@ -7417,22 +7420,22 @@ struct ValueFlowPassRunner {
                             ++countIfScopes;
                     }
                 }
-                if (countIfScopes > state.settings.vfOptions.maxIfCount) {
+                if (countIfScopes > state.settings().vfOptions.maxIfCount) {
                     state.skippedFunctions.emplace(functionScope);
 
-                    if (state.settings.severity.isEnabled(Severity::information)) {
+                    if (state.settings().severity.isEnabled(Severity::information)) {
                         const std::string& functionName = functionScope->className;
                         std::list<ErrorMessage::FileLocation> callstack(
                             1,
-                            ErrorMessage::FileLocation(functionScope->bodyStart, &state.tokenlist));
+                            ErrorMessage::FileLocation(functionScope->bodyStart, &state.tokenlist()));
                         const ErrorMessage errmsg(std::move(callstack),
-                                                  state.tokenlist.getSourceFilePath(),
+                                                  state.tokenlist().getSourceFilePath(),
                                                   Severity::information,
                                                   "Limiting ValueFlow analysis in function '" + functionName + "' since it is too complex. "
                                                   "Please specify --check-level=exhaustive to perform full analysis.",
                                                   "checkLevelNormal", // TODO: use more specific ID
                                                   Certainty::normal);
-                        state.errorLogger.reportErr(errmsg);
+                        state.errorLogger().reportErr(errmsg);
                     }
                 }
             }
@@ -7441,8 +7444,8 @@ struct ValueFlowPassRunner {
 
     void setStopTime()
     {
-        if (state.settings.vfOptions.maxTime >= 0)
-            stop = Clock::now() + std::chrono::seconds{state.settings.vfOptions.maxTime};
+        if (state.settings().vfOptions.maxTime >= 0)
+            stop = Clock::now() + std::chrono::seconds{state.settings().vfOptions.maxTime};
     }
 
     ValueFlowState state;
@@ -7540,7 +7543,6 @@ void ValueFlow::setValues(TokenList& tokenlist,
         VFA(valueFlowSymbolicOperators(symboldatabase, settings)),
         VFA(valueFlowCondition(SymbolicConditionHandler{}, tokenlist, symboldatabase, errorLogger, settings, skippedFunctions)),
         VFA(valueFlowSymbolicInfer(symboldatabase, settings)),
-        VFA(valueFlowArrayBool(tokenlist, settings)),
         VFA(valueFlowArrayElement(tokenlist, settings)),
         VFA(valueFlowRightShift(tokenlist, settings)),
         VFA_CPP(

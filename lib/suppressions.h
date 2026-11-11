@@ -29,6 +29,7 @@
 #include <mutex>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include <map>
@@ -51,14 +52,14 @@ public:
     };
 
     struct CPPCHECKLIB ErrorMessage {
-        std::size_t hash;
+        std::size_t hash{};
         std::string errorId;
         void setFileName(std::string s);
         const std::string &getFileName() const {
             return mFileName;
         }
-        int lineNumber; // TODO: need to be unsigned
-        Certainty certainty;
+        int lineNumber{}; // TODO: need to be unsigned
+        Certainty certainty{};
         std::string symbolNames;
         std::set<std::string> macroNames;
 
@@ -294,9 +295,20 @@ public:
     void markUnmatchedInlineSuppressionsAsChecked(const TokenList &tokenlist);
 
 private:
+    /**
+     * @brief Find a suppression with the same parameters. mSuppressionsSync must be locked.
+     * @param suppression the suppression to look for
+     * @return the found suppression, or nullptr
+     */
+    Suppression *findSameParameters(const Suppression &suppression);
+
     mutable std::mutex mSuppressionsSync;
     /** @brief List of error which the user doesn't want to see. */
     std::list<Suppression> mSuppressions;
+    /** @brief Suppressions in mSuppressions with hash > 0, indexed by hash */
+    std::unordered_map<std::size_t, std::vector<Suppression*>> mHashSuppressions;
+    /** @brief Suppressions in mSuppressions with hash == 0 */
+    std::vector<Suppression*> mNonHashSuppressions;
 };
 
 struct Suppressions

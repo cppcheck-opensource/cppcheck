@@ -21,6 +21,7 @@
 #include "checkthread.h"
 #include "common.h"
 #include "filesettings.h"
+#include "importproject.h"
 #include "resultsview.h"
 #include "settings.h"
 #include "utils.h"
@@ -52,6 +53,7 @@ ThreadHandler::~ThreadHandler()
 void ThreadHandler::clearFiles()
 {
     mLastFiles.clear();
+    mLastFileSettings.clear();
     mResults.clearFiles();
     mAnalyseWholeProgram = false;
     mCtuInfo.clear();
@@ -62,6 +64,7 @@ void ThreadHandler::clearFiles()
 void ThreadHandler::setFiles(std::list<FileWithDetails> files)
 {
     mLastFiles = files;
+    mLastFileSettings.clear();
     mResults.setFiles(std::move(files));
 }
 
@@ -69,6 +72,7 @@ void ThreadHandler::setProject(const ImportProject &prj)
 {
     mResults.setProject(prj);
     mLastFiles.clear();
+    mLastFileSettings = prj.fileSettings;
 }
 
 void ThreadHandler::setCheckFiles(bool all)
@@ -189,7 +193,7 @@ void ThreadHandler::threadDone()
         createThreads(1);
         mRunningThreadCount = 1;
         setupCheckThread(*mThreads[0]);
-        mThreads[0]->analyseWholeProgram(mLastFiles, mCtuInfo);
+        mThreads[0]->analyseWholeProgram(mLastFiles, mLastFileSettings, mCtuInfo);
         mAnalyseWholeProgram = false;
         mCtuInfo.clear();
         return;

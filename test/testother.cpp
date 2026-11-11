@@ -204,6 +204,7 @@ private:
         TEST_CASE(duplicateExpression20);
         TEST_CASE(duplicateExpression21);
         TEST_CASE(duplicateExpression22);
+        TEST_CASE(duplicateExpression23); // #12282
         TEST_CASE(duplicateExpressionLoop);
         TEST_CASE(duplicateValueTernary);
         TEST_CASE(duplicateValueTernarySizeof); // #13773
@@ -230,6 +231,7 @@ private:
         TEST_CASE(checkRedundantCopy);
 
         TEST_CASE(checkNegativeShift);
+        TEST_CASE(checkNegativeShiftErrorPath);
 
         TEST_CASE(incompleteArrayFill);
 
@@ -896,6 +898,43 @@ private:
               "    if (!num) {}\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        // clamp before the check
+        check("int f(int x) {\n"
+              "    int d = 0;\n"
+              "    if (x > 5) x = 0;\n"
+              "    if (x <= 5) d = 1;\n"
+              "    return 10 / d;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("int f(int x) {\n"
+              "    int d = 0;\n"
+              "    if (x >= 0) {\n"
+              "        if (x > 5) x = 0;\n"
+              "        if (x <= 5) d = 1;\n"
+              "        return 10 / d;\n"
+              "    }\n"
+              "    return d;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // the else block changes the value
+        check("int f(int x, int c) {\n"
+              "    if (x == 0) return 1;\n"
+              "    if (c) {} else { x = 0; }\n"
+              "    return 10 / x;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:15]: (warning) Division by zero. [zerodivcond]\n", errout_str());
+
+        // a range condition overlapping the assumed one
+        check("int f(int n) {\n"
+              "    int x = 0;\n"
+              "    if (n > 5) { x = 1; }\n"
+              "    if (n > 3) return 10 / x;\n"
+              "    return 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:26]: (warning) Division by zero. [zerodivcond]\n", errout_str());
     }
 
     void zeroDivErrorPath() {
@@ -2365,6 +2404,11 @@ private:
                                  "    return N::f(float_ptr(b.data()));\n" // <- the cast is safe
                                  "}\n");
         ASSERT_EQUALS("[test.cpp:9:17]: (style) C-style pointer casting [cstyleCast]\n", errout_str());
+
+        checkOldStylePointerCast("void f(const T& x) {\n" // #13766
+                                 "    const U& y = (typename const U&)(x);\n"
+                                 "}\n");
+        ASSERT_EQUALS("[test.cpp:2:18]: (warning) Potentially invalid type conversion in old-style C cast, clarify/fix with C++ cast [dangerousTypeCast]\n", errout_str());
     }
 
 #define checkIntToPointerCast(...) checkIntToPointerCast_(__FILE__, __LINE__, __VA_ARGS__)
@@ -4213,6 +4257,48 @@ private:
               "    }\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct DS;\n" // #15104
+              "void select(int a, int b);\n"
+              "class Query {\n"
+              "public:\n"
+              "    template <typename Callback>\n"
+              "    int select(DS &ds, Callback cb);\n"
+              "    template <typename Callback>\n"
+              "    int select(DS *ds, Callback cb);\n"
+              "    int select(DS &ds) { return select(ds, [](int) {}); }\n"
+              "};\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("int& g();\n" // reference to function
+              "int k();\n"
+              "int f1() { int& (&r)() = g; return r(); }\n"
+              "int f2() { int (&r)() = k; return r(); }\n"
+              "int& f3(int& (&f)()) { return f(); }\n"
+              "int f4(int&& (&f)()) { return f(); }\n"
+              "int f5(int (&f)()) { return f(); }\n"
+              "using FR = int&(&)();\n"
+              "void f6(FR f) { f(); }\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S {\n" // #15087
+              "    int a, b;\n"
+              "};\n"
+              "int& f(S& s, bool b) {\n"
+              "    return b ? s.a : s.b;\n"
+              "}\n"
+              "int* g(U& u) {\n"
+              "    return &(u.i);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("typedef int I;\n" // #15167
+              "I f() {\n"
+              "    I a[1] = { 0 };\n"
+              "    return a[0];\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:7]: (style) Variable 'a' can be declared as const array [constVariable]\n",
+                      errout_str());
     }
 
     void constParameterCallback() {
@@ -4995,6 +5081,11 @@ private:
               "};\n");
         ASSERT_EQUALS("[test.cpp:2:17]: (style) Either there is a missing override/final keyword, or the parameter 'p' can be declared as pointer to const [constParameterPointer]\n",
                       errout_str());
+
+        check("void f(int *p __attribute__((unused))) {}\n"
+              "void g(__attribute__((unused)) int *p) {}\n"
+              "void h(int *p) {}\n");
+        ASSERT_EQUALS("[test.cpp:3:13]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n", errout_str());
     }
 
     void constArray() {
@@ -8486,6 +8577,17 @@ private:
         ASSERT_EQUALS("", errout_str());
     }
 
+    void duplicateExpression23() { // #12282
+        // long double literals out of the range of double are different values
+        check("long double f() {\n"
+              "    return 1e400L / 1e500L;\n"
+              "}\n"
+              "int g(long double x) {\n"
+              "    return x == 1e400L || x == 1e500L;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
     void duplicateExpression22() {
         check("int f() {\n" // #14913
               "    return 0x1 | (0x2 | 0x4) | 0x1;\n"
@@ -10502,6 +10604,24 @@ private:
         ASSERT_EQUALS("", errout_str());
     }
 
+    void checkNegativeShiftErrorPath() {
+        setMultiline();
+        Settings s = settings1;
+        s.templateLocation = "{file}:{line}:note:{info}\n";
+
+        check("int f(int i, bool b) {\n"
+              "    int s = -1;\n"
+              "    if (b)\n"
+              "        return i;\n"
+              "    return i << s;\n"
+              "}\n", dinit(CheckOptions, $.settings = &s));
+        ASSERT_EQUALS("[test.cpp:5:14]: warning: Shifting by a negative value is undefined behaviour [shiftNegative]\n"
+                      "[test.cpp:2:14]: note: Assignment 's=-1', assigned value is -1\n"
+                      "[test.cpp:3:9]: note: Assuming condition is false\n"
+                      "[test.cpp:5:14]: note: Shifting by a negative value is undefined behaviour\n",
+                      errout_str());
+    }
+
     void incompleteArrayFill() {
         check("void f() {\n"
               "    int a[5];\n"
@@ -11554,6 +11674,46 @@ private:
                       "[test.cpp:9:7]: style: Redundant initialization for 'i'. The initialized value is overwritten before it is read. [redundantInitialization]\n"
                       "[test.cpp:8:10]: note: i is initialized\n"
                       "[test.cpp:9:7]: note: i is overwritten\n",
+                      errout_str());
+
+        check("struct S { int a, b; };\n" // #15021
+              "int f(S s) {\n"
+              "    auto [x, y] = s;\n"
+              "    x = 1;\n"
+              "    y = 2;\n"
+              "    return x + y;\n"
+              "}\n"
+              "struct T { int c; };\n"
+              "int g(T t) {\n"
+              "    auto [z] = t;\n"
+              "    z = 0;\n"
+              "    return z;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:7]: style: Redundant initialization for 'x'. The initialized value is overwritten before it is read. [redundantInitialization]\n"
+                      "[test.cpp:3:17]: note: x is initialized\n"
+                      "[test.cpp:4:7]: note: x is overwritten\n"
+                      "[test.cpp:5:7]: style: Redundant initialization for 'y'. The initialized value is overwritten before it is read. [redundantInitialization]\n"
+                      "[test.cpp:3:17]: note: y is initialized\n"
+                      "[test.cpp:5:7]: note: y is overwritten\n"
+                      "[test.cpp:11:7]: style: Redundant initialization for 'z'. The initialized value is overwritten before it is read. [redundantInitialization]\n"
+                      "[test.cpp:10:14]: note: z is initialized\n"
+                      "[test.cpp:11:7]: note: z is overwritten\n",
+                      errout_str());
+
+        check("struct S {\n"
+              "    int a, b;\n"
+              "};\n"
+              "void f(S& s) {\n"
+              "    auto& [x, y] = s;\n"
+              "    y = 1;\n"
+              "}\n"
+              "void f(S s) {\n"
+              "    auto [x, y] = s;\n"
+              "    y = 1;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:10:7]: style: Redundant initialization for 'y'. The initialized value is overwritten before it is read. [redundantInitialization]\n"
+                      "[test.cpp:9:17]: note: y is initialized\n"
+                      "[test.cpp:10:7]: note: y is overwritten\n",
                       errout_str());
     }
 
@@ -13480,6 +13640,24 @@ private:
 
         check("struct S { void g(float f) {} void f() {} };\n");
         ASSERT_EQUALS("[test.cpp:1:36] -> [test.cpp:1:25]: (style) Argument 'f' shadows outer function [shadowFunction]\n", errout_str());
+
+        check("int f() {\n" // #15114
+              "    int i = 0;\n"
+              "    return i;\n"
+              "}\n"
+              "int i = 1;\n");
+        ASSERT_EQUALS("", errout_str());
+
+        {
+            ScopedFile inc("test.h", "int pad1;\nint pad2;\nint pad3;\nint pad4;\nfloat f;\n");
+            checkP("void g() {\n"
+                   "    #include \"test.h\"\n"
+                   "    {\n"
+                   "        float f;\n"
+                   "    }\n"
+                   "}\n");
+            ASSERT_EQUALS("[test.h:5:7] -> [test.cpp:4:15]: (style) Local variable 'f' shadows outer variable [shadowVariable]\n", errout_str());
+        }
     }
 
     void knownArgument() {
@@ -13681,6 +13859,18 @@ private:
                "int f(int a) {\n"
                "    return MACRO(true);\n"
                "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S {\n" // #15063
+              "    int (*f)(int, int);\n"
+              "    int (*a[2])(int, int);\n"
+              "};\n"
+              "int g1(struct S* p, int x) {\n"
+              "    return (p->f)(x, 10);\n"
+              "}\n"
+              "int g2(struct S s, int x) {\n"
+              "    return s.a[0](x, 10);\n"
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
