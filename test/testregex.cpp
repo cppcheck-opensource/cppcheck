@@ -42,6 +42,7 @@ private:
         TEST_CASE(partialmatch);
         TEST_CASE(exactmatch);
         TEST_CASE(emptymatch);
+        TEST_CASE(emptymatchLookahead);
     }
 
 #define assertRegex(...) assertRegex_(__FILE__, __LINE__, __VA_ARGS__)
@@ -209,6 +210,21 @@ private:
         ASSERT_EQUALS(0, matches.front().second);
         ASSERT_EQUALS(1, matches.back().first);
         ASSERT_EQUALS(2, matches.back().second);
+    }
+
+    void emptymatchLookahead() const {
+        // an empty match must only be reported once
+        const auto r = assertRegex("(?=b)");
+
+        std::list<std::pair<int, int>> matches;
+        auto f = [&](int start, int end) {
+            matches.emplace_back(start, end);
+        };
+
+        ASSERT_EQUALS("", r->match("aab", std::move(f)));
+        ASSERT_EQUALS(1, matches.size());
+        ASSERT_EQUALS(2, matches.front().first);
+        ASSERT_EQUALS(2, matches.front().second);
     }
 
     // TODO: how to provoke a match() error?

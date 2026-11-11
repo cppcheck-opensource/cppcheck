@@ -112,7 +112,7 @@ namespace {
             matchFn(static_cast<int>(pos1), static_cast<int>(pos2));
 
             // continue at the end of the match - step forward on an empty match to avoid an endless loop
-            pos = (pos2 > pos) ? pos2 : (pos + 1);
+            pos = (pos2 > pos1) ? pos2 : (pos2 + 1);
         }
 
         return "";
