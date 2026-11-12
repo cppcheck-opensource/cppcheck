@@ -231,6 +231,7 @@ private:
         TEST_CASE(buffer_overrun_37);
         TEST_CASE(buffer_overrun_38);
         TEST_CASE(buffer_overrun_39);
+        TEST_CASE(buffer_overrun_40);
         TEST_CASE(buffer_overrun_errorpath);
         TEST_CASE(buffer_overrun_bailoutIfSwitch);  // ticket #2378 : bailoutIfSwitch
         TEST_CASE(buffer_overrun_function_array_argument);
@@ -3690,6 +3691,46 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:2:24]: (error) Buffer is accessed out of bounds: &\"abc\"[2] [bufferAccessOutOfBounds]\n",
                       errout_str());
+    }
+
+    void buffer_overrun_40() {
+        check("struct S { char a[4]; };\n"
+              "struct T { struct S s; };\n"
+              "int f(const struct T *p, const struct T *q) {\n"
+              "    return memcmp(&p->s.a, &q->s, 16);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:19]: (error) Buffer is accessed out of bounds: p->s.a [bufferAccessOutOfBounds]\n"
+                      "[test.cpp:4:28]: (error) Buffer is accessed out of bounds: &q->s [bufferAccessOutOfBounds]\n",
+                      errout_str());
+
+        check("struct S { char a[4]; };\n"
+              "struct T { struct S s; };\n"
+              "int f(const struct T *p, const struct T *q) {\n"
+              "    return memcmp(&p->s.a, &q->s, 4);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S { char a[4]; };\n"
+              "struct T { struct S s; };\n"
+              "void f(char *d) {\n"
+              "    struct S s;\n"
+              "    struct T t;\n"
+              "    memcpy(d, &s.a, 16);\n"
+              "    memcpy(d, &s.a[0], 16);\n"
+              "    memcpy(d, &t.s, 16);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:6:15]: (error) Buffer is accessed out of bounds: s.a [bufferAccessOutOfBounds]\n"
+                      "[test.cpp:7:15]: (error) Buffer is accessed out of bounds: &s.a[0] [bufferAccessOutOfBounds]\n"
+                      "[test.cpp:8:15]: (error) Buffer is accessed out of bounds: &t.s [bufferAccessOutOfBounds]\n",
+                      errout_str());
+
+        check("struct Foo { int n; char data[1]; };\n"
+              "void f(struct Foo *p, const char *src) {\n"
+              "    memcpy(p->data, src, 10);\n"
+              "    memcpy(&p->data, src, 10);\n"
+              "    memcpy(&p->data[0], src, 10);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void buffer_overrun_errorpath() {
