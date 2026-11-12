@@ -3432,14 +3432,15 @@ static ExprUsage getFunctionUsage(const Token* tok, int indirect, const Library&
     if (!ftok)
         return ExprUsage::None;
     const Function* func = ftok->function();
+    const Variable* var = ftok->variable();
     // variable init/constructor call?
-    if (!func && ftok->variable() && ftok == ftok->variable()->nameToken()) {
-        // STL types or containers don't initialize external variables
-        if (indirect == 0 && (ftok->variable()->isStlType() || (ftok->variable()->valueType() && ftok->variable()->valueType()->container)))
+    if (!func && var && ftok == var->nameToken()) {
+        // STL types/containers/primitive types don't initialize external variables
+        if (indirect == 0 && (var->isStlType() || (var->valueType() && (var->valueType()->container || var->valueType()->type > ValueType::Type::VOID))))
             return ExprUsage::Used;
         // TODO: resolve multiple constructors
-        if (ftok->variable()->type() && ftok->variable()->type()->classScope) {
-            const int nCtor = ftok->variable()->type()->classScope->numConstructors;
+        if (var->type() && var->type()->classScope) {
+            const int nCtor = var->type()->classScope->numConstructors;
             if (nCtor == 0) {
                 if (indirect > 0) {
                     const std::vector<const Variable*> argvar = getArgumentVars(ftok->astParent(), argnr);
@@ -3449,7 +3450,7 @@ static ExprUsage getFunctionUsage(const Token* tok, int indirect, const Library&
                 return ExprUsage::Used;
             }
             if (nCtor == 1) {
-                const Scope* scope = ftok->variable()->type()->classScope;
+                const Scope* scope = var->type()->classScope;
                 auto it = std::find_if(scope->functionList.begin(), scope->functionList.end(), [](const Function& f) {
                     return f.isConstructor();
                 });
