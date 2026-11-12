@@ -4416,8 +4416,8 @@ void CheckOtherImpl::checkKnownArgument()
                         return ChildrenToVisit::none;
                     if (astIsIntegral(child, false) && !astIsPointer(child) &&
                         std::none_of(child->values().begin(), child->values().end(), [](const ValueFlow::Value& v) {
-                            return v.isIntValue() && !v.isImpossible();
-                        })) {
+                        return v.isIntValue() && !v.isImpossible();
+                    })) {
                         vartok = child;
                         return ChildrenToVisit::done;
                     }
