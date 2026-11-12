@@ -898,6 +898,43 @@ private:
               "    if (!num) {}\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        // clamp before the check
+        check("int f(int x) {\n"
+              "    int d = 0;\n"
+              "    if (x > 5) x = 0;\n"
+              "    if (x <= 5) d = 1;\n"
+              "    return 10 / d;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("int f(int x) {\n"
+              "    int d = 0;\n"
+              "    if (x >= 0) {\n"
+              "        if (x > 5) x = 0;\n"
+              "        if (x <= 5) d = 1;\n"
+              "        return 10 / d;\n"
+              "    }\n"
+              "    return d;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // the else block changes the value
+        check("int f(int x, int c) {\n"
+              "    if (x == 0) return 1;\n"
+              "    if (c) {} else { x = 0; }\n"
+              "    return 10 / x;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:15]: (warning) Division by zero. [zerodivcond]\n", errout_str());
+
+        // a range condition overlapping the assumed one
+        check("int f(int n) {\n"
+              "    int x = 0;\n"
+              "    if (n > 5) { x = 1; }\n"
+              "    if (n > 3) return 10 / x;\n"
+              "    return 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:26]: (warning) Division by zero. [zerodivcond]\n", errout_str());
     }
 
     void zeroDivErrorPath() {
@@ -2367,6 +2404,11 @@ private:
                                  "    return N::f(float_ptr(b.data()));\n" // <- the cast is safe
                                  "}\n");
         ASSERT_EQUALS("[test.cpp:9:17]: (style) C-style pointer casting [cstyleCast]\n", errout_str());
+
+        checkOldStylePointerCast("void f(const T& x) {\n" // #13766
+                                 "    const U& y = (typename const U&)(x);\n"
+                                 "}\n");
+        ASSERT_EQUALS("[test.cpp:2:18]: (warning) Potentially invalid type conversion in old-style C cast, clarify/fix with C++ cast [dangerousTypeCast]\n", errout_str());
     }
 
 #define checkIntToPointerCast(...) checkIntToPointerCast_(__FILE__, __LINE__, __VA_ARGS__)
@@ -4238,6 +4280,25 @@ private:
               "using FR = int&(&)();\n"
               "void f6(FR f) { f(); }\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct S {\n" // #15087
+              "    int a, b;\n"
+              "};\n"
+              "int& f(S& s, bool b) {\n"
+              "    return b ? s.a : s.b;\n"
+              "}\n"
+              "int* g(U& u) {\n"
+              "    return &(u.i);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("typedef int I;\n" // #15167
+              "I f() {\n"
+              "    I a[1] = { 0 };\n"
+              "    return a[0];\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:7]: (style) Variable 'a' can be declared as const array [constVariable]\n",
+                      errout_str());
     }
 
     void constParameterCallback() {
@@ -5020,6 +5081,11 @@ private:
               "};\n");
         ASSERT_EQUALS("[test.cpp:2:17]: (style) Either there is a missing override/final keyword, or the parameter 'p' can be declared as pointer to const [constParameterPointer]\n",
                       errout_str());
+
+        check("void f(int *p __attribute__((unused))) {}\n"
+              "void g(__attribute__((unused)) int *p) {}\n"
+              "void h(int *p) {}\n");
+        ASSERT_EQUALS("[test.cpp:3:13]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n", errout_str());
     }
 
     void constArray() {

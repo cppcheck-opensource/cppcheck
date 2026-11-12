@@ -1464,6 +1464,23 @@ static void misra_15_3(int a) {
   }
 }
 
+struct misra_15_2_s {
+  int a;
+  int b;
+};
+
+static void misra_15_2_initializer_list(void) {
+  int err = 0;
+  if (err == 0) {
+    err = 1;
+    goto done; // 15.1
+  }
+  struct misra_15_2_s s = { 1, 2 };
+  (void)s;
+done:
+  return;
+}
+
 static void misra_15_4(void) {
   misra_15_4_label:
     return;

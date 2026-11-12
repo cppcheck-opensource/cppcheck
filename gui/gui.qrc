@@ -2,31 +2,67 @@
     <qresource prefix="/">
         <file>cppcheck-gui.png</file>
         <file>images/dialog-error.png</file>
+        <file>images/dialog-error@2x.png</file>
+        <file>images/dialog-error@3x.png</file>
         <file>images/dialog-information.png</file>
+        <file>images/dialog-information@2x.png</file>
+        <file>images/dialog-information@3x.png</file>
         <file>images/dialog-warning.png</file>
+        <file>images/dialog-warning@2x.png</file>
+        <file>images/dialog-warning@3x.png</file>
         <file>images/edit-clear.png</file>
+        <file>images/edit-clear@2x.png</file>
+        <file>images/edit-clear@3x.png</file>
         <file>images/go-down.png</file>
+        <file>images/go-down@2x.png</file>
+        <file>images/go-down@3x.png</file>
         <file>images/help-browser.png</file>
+        <file>images/help-browser@2x.png</file>
+        <file>images/help-browser@3x.png</file>
         <file>images/media-floppy.png</file>
+        <file>images/media-floppy@2x.png</file>
+        <file>images/media-floppy@3x.png</file>
         <file>images/preferences-system.png</file>
+        <file>images/preferences-system@2x.png</file>
+        <file>images/preferences-system@3x.png</file>
         <file>images/process-stop.png</file>
+        <file>images/process-stop@2x.png</file>
+        <file>images/process-stop@3x.png</file>
         <file>images/text-x-generic.png</file>
+        <file>images/text-x-generic@2x.png</file>
+        <file>images/text-x-generic@3x.png</file>
         <file>images/view-recheck.png</file>
-        <file>images/view-refresh.png</file>
-        <file>images/showerrors.png</file>
-        <file>images/showstylewarnings.png</file>
-        <file>images/openproject.png</file>
-        <file>images/scratchpad.png</file>
-        <file>images/showwarnings.png</file>
-        <file>images/showperformance.png</file>
+        <file>images/view-recheck@2x.png</file>
+        <file>images/view-recheck@3x.png</file>
+        <file>images/refresh-file.png</file>
+        <file>images/refresh-file@2x.png</file>
+        <file>images/refresh-file@3x.png</file>
+        <file>images/folder.png</file>
+        <file>images/folder@2x.png</file>
+        <file>images/folder@3x.png</file>
+        <file>images/accessories-text-editor.png</file>
+        <file>images/accessories-text-editor@2x.png</file>
+        <file>images/accessories-text-editor@3x.png</file>
         <file>images/utilities-system-monitor.png</file>
+        <file>images/utilities-system-monitor@2x.png</file>
+        <file>images/utilities-system-monitor@3x.png</file>
         <file alias="COPYING">../COPYING</file>
         <file alias="AUTHORS">../AUTHORS</file>
         <file>images/go-home.png</file>
+        <file>images/go-home@2x.png</file>
+        <file>images/go-home@3x.png</file>
         <file>images/go-next.png</file>
+        <file>images/go-next@2x.png</file>
+        <file>images/go-next@3x.png</file>
         <file>images/go-previous.png</file>
+        <file>images/go-previous@2x.png</file>
+        <file>images/go-previous@3x.png</file>
         <file>images/applications-development.png</file>
+        <file>images/applications-development@2x.png</file>
+        <file>images/applications-development@3x.png</file>
         <file>images/applications-system.png</file>
+        <file>images/applications-system@2x.png</file>
+        <file>images/applications-system@3x.png</file>
         <file>images/llvm-dragon.png</file>
         <file>images/verify.svg</file>
     </qresource>
