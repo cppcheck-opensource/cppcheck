@@ -13823,11 +13823,17 @@ private:
                       "[test.cpp:6:15]: (style) Argument 'x*0' to function dostuff is always 0. Constant literal calculation disable/hide variable expression 'x'. [knownArgumentHiddenVariableExpression]\n"
                       "[test.cpp:7:15]: (style) Argument '0*x' to function dostuff is always 0. Constant literal calculation disable/hide variable expression 'x'. [knownArgumentHiddenVariableExpression]\n", errout_str());
 
-        check("void f(int x) {\n" // #15145
+        check("void f1(int x) {\n" // #15145
               "    if (x != 0)\n"
               "        g(0 * x);\n"
+              "}\n"
+              "void f2(unsigned x) {\n"
+              "    g(x >= 0);\n"
+              "    if (x != 5)\n"
+              "        g(x == 5);\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:3:13]: (style) Argument '0*x' to function g is always 0. Constant literal calculation disable/hide variable expression 'x'. [knownArgumentHiddenVariableExpression]\n",
+        ASSERT_EQUALS("[test.cpp:6:9]: (style) Unsigned expression 'x' can't be negative so it is unnecessary to test it. [unsignedPositive]\n"
+                      "[test.cpp:3:13]: (style) Argument '0*x' to function g is always 0. Constant literal calculation disable/hide variable expression 'x'. [knownArgumentHiddenVariableExpression]\n",
                       errout_str());
     }
 
