@@ -709,6 +709,9 @@ class CppCheckHandler(XmlContentHandler):
             error = self.errors[-1]
             locations = error['locations']
             file = attributes['file']
+            # Cppcheck Premium reports license messages with this pseudo file name
+            if file == 'Cppcheck Premium':
+                file = ''
             line = int(attributes['line'])
             if not locations:
                 error['file'] = file

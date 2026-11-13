@@ -29,7 +29,6 @@
 #include "preprocessor.h"
 #include "settings.h"
 #include "standards.h"
-#include "summaries.h"
 #include "symboldatabase.h"
 #include "templatesimplifier.h"
 #include "timer.h"
@@ -3561,7 +3560,7 @@ void Tokenizer::simplifyUsingError(const Token* usingStart, const Token* usingEn
     }
 }
 
-bool Tokenizer::simplifyTokens1(const std::string &configuration, int fileIndex)
+bool Tokenizer::simplifyTokens1(const std::string &configuration)
 {
     // Fill the map mTypeSize..
     fillTypeSizes();
@@ -3590,9 +3589,6 @@ bool Tokenizer::simplifyTokens1(const std::string &configuration, int fileIndex)
         mSymbolDatabase->setValueTypeInTokenList(false);
         mSymbolDatabase->setValueTypeInTokenList(true);
     });
-
-    if (!mSettings.buildDir.empty())
-        Summaries::create(*this, configuration, fileIndex);
 
     // TODO: apply this through Settings::ValueFlowOptions
     // TODO: do not run valueflow if no checks are being performed at all - e.g. unusedFunctions only
@@ -5220,6 +5216,20 @@ static std::string getScopeName(const std::list<ScopeInfo2> &scopeInfo)
     return ret;
 }
 
+// If tok is the name in a qualification "name ::" or "name < ... > ::", return the token after the "::"
+static Token * skipQualification(Token *tok)
+{
+    if (!Token::Match(tok, "%name% ::|<"))
+        return nullptr;
+    if (tok->strAt(1) == "<") {
+        tok = tok->next()->findClosingBracket();
+        if (!Token::simpleMatch(tok, "> ::"))
+            return nullptr;
+    }
+    return tok->tokAt(2);
+}
+
+// indexMembersByScopeName() relies on how this matches the scope names: keep the two in sync
 static Token * matchMemberName(const std::list<std::string> &scope, const Token *nsToken, Token *memberToken, const std::list<ScopeInfo2> &scopeInfo)
 {
     auto scopeIt = scopeInfo.cbegin();
@@ -5252,16 +5262,11 @@ static Token * matchMemberName(const std::list<std::string> &scope, const Token 
 
     // Parse member tokens..
     while (scopeIt != scopeInfo.end()) {
-        if (!Token::Match(memberToken, "%name% ::|<"))
+        if (!Token::Match(memberToken, "%name%") || memberToken->str() != scopeIt->name)
             return nullptr;
-        if (memberToken->str() != scopeIt->name)
+        memberToken = skipQualification(memberToken);
+        if (!memberToken)
             return nullptr;
-        if (memberToken->strAt(1) == "<") {
-            memberToken = memberToken->next()->findClosingBracket();
-            if (!Token::simpleMatch(memberToken, "> ::"))
-                return nullptr;
-        }
-        memberToken = memberToken->tokAt(2);
         ++scopeIt;
     }
 
@@ -5286,6 +5291,47 @@ static Token * matchMemberName(const Member &member, const std::list<ScopeInfo2>
     }
 
     return nullptr;
+}
+
+using MembersByScopeName = std::unordered_map<std::string, std::vector<const Member *>>;
+
+// matchMemberName() can only match when the last scope name is matched by a name in the
+// member's scope, in one of its "using namespace" or in its qualification. Index the members
+// by these names, keeping their order, so that each scope only tries its candidates.
+static MembersByScopeName indexMembersByScopeName(const std::list<Member> &members)
+{
+    MembersByScopeName index;
+    for (const Member &member : members) {
+        // members are visited in order, so a member that is already a candidate is the last one
+        const auto addCandidate = [&](const std::string &name) {
+            std::vector<const Member *> &candidates = index[name];
+            if (candidates.empty() || candidates.back() != &member)
+                candidates.push_back(&member);
+        };
+        for (const std::string &name : member.scope)
+            addCandidate(name);
+        for (const Token *ns : member.usingnamespaces) {
+            for (; Token::Match(ns, "%name% ::"); ns = ns->tokAt(2))
+                addCandidate(ns->str());
+            if (Token::Match(ns, "%name%"))
+                addCandidate(ns->str());
+        }
+        Token *tok = member.tok;
+        while (Token *next = skipQualification(tok)) {
+            addCandidate(tok->str());
+            tok = next;
+        }
+    }
+    return index;
+}
+
+static const std::vector<const Member *> &membersForScope(const MembersByScopeName &index, const std::list<ScopeInfo2> &scopeInfo)
+{
+    static const std::vector<const Member *> none;
+    if (scopeInfo.empty())
+        return none;
+    const auto it = index.find(scopeInfo.back().name);
+    return it == index.end() ? none : it->second;
 }
 
 static Token * matchMemberVarName(const Member &var, const std::list<ScopeInfo2> &scopeInfo)
@@ -5398,6 +5444,9 @@ void Tokenizer::setVarIdPass2()
                 allMemberVars.emplace_back(scope, usingnamespaces, tok1);
         }
     }
+
+    const MembersByScopeName memberFunctionsByScopeName = indexMembersByScopeName(allMemberFunctions);
+    const MembersByScopeName memberVarsByScopeName = indexMembersByScopeName(allMemberVars);
 
     std::list<ScopeInfo2> scopeInfo;
 
@@ -5515,8 +5564,8 @@ void Tokenizer::setVarIdPass2()
             continue;
 
         // Member variables
-        for (const Member &var : allMemberVars) {
-            Token *tok2 = matchMemberVarName(var, scopeInfo);
+        for (const Member *var : membersForScope(memberVarsByScopeName, scopeInfo)) {
+            Token *tok2 = matchMemberVarName(*var, scopeInfo);
             if (!tok2)
                 continue;
             if (tok2->varId() == 0)
@@ -5527,8 +5576,8 @@ void Tokenizer::setVarIdPass2()
             continue;
 
         // Set variable ids in member functions for this class..
-        for (const Member &func : allMemberFunctions) {
-            Token *tok2 = matchMemberFunctionName(func, scopeInfo);
+        for (const Member *func : membersForScope(memberFunctionsByScopeName, scopeInfo)) {
+            Token *tok2 = matchMemberFunctionName(*func, scopeInfo);
             if (!tok2)
                 continue;
 
@@ -6359,6 +6408,8 @@ void Tokenizer::dump(std::ostream &out) const
             outs += " isAttributeMaybeUnused=\"true\"";
         if (tok->isAttributeUnused())
             outs += " isAttributeUnused=\"true\"";
+        if (tok->isAttributeUsed())
+            outs += " isAttributeUsed=\"true\"";
         if (tok->isAttributeFallthrough())
             outs += " isAttributeFallthrough=\"true\"";
         if (tok->isInitBracket())
@@ -9663,8 +9714,8 @@ static Token* getVariableTokenAfterAttributes(Token* tok) {
     Token *vartok = nullptr;
     Token *after = getTokenAfterAttributes(tok, true);
 
-    // check if after variable name
-    if (Token::Match(after, "[;={]")) {
+    // check if after variable or parameter name
+    if (Token::Match(after, "[;={,)]")) {
         Token *prev = tok->previous();
         while (Token::simpleMatch(prev, "]"))
             prev = prev->link()->previous();

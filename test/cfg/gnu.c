@@ -905,3 +905,10 @@ int nullPointer_epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
     return epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
 }
 #endif
+
+void mmap_fixed(void *addr) // No constParameterPointer: mmap() may replace the mapping at addr
+{
+    // cppcheck-suppress valueFlowBailoutIncompleteVar
+    // cppcheck-suppress leakReturnValNotUsed
+    (void)mmap(addr, 0x1000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+}

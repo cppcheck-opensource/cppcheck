@@ -537,6 +537,7 @@ private:
         TEST_CASE(simplifyPlatformTypes);
 
         TEST_CASE(dumpFallthrough);
+        TEST_CASE(dumpAttributeUsed);
 
         TEST_CASE(simplifyRedundantParentheses);
 
@@ -5453,6 +5454,19 @@ private:
         }
 
         {
+            const char code[] = "using namespace std;\n" // #8789
+                                "void f(int* p, int* q) {\n"
+                                "    search(p, q, p);\n"
+                                "    search(p, q, p, q);\n"
+                                "}\n";
+            ASSERT_EQUALS("void f ( int * p , int * q ) {\n"
+                          "search ( p , q , p ) ;\n"
+                          "std :: search ( p , q , p , q ) ;\n"
+                          "}",
+                          tokenizeAndStringify(code));
+        }
+
+        {
             const char code[] = "using namespace std;\n"
                                 "void foo() {map(a, b); }\n"; // That's obviously not std::map<>
             ASSERT_EQUALS("void foo ( ) { map ( a , b ) ; }", tokenizeAndStringify(code));
@@ -9387,6 +9401,16 @@ private:
         tokenizer.dump(ostr);
         const std::string dump = ostr.str();
         ASSERT(dump.find(" isAttributeFallthrough=\"true\"") != std::string::npos);
+    }
+
+    void dumpAttributeUsed() {
+        const char code[] = "static int x __attribute__((used));\n";
+        SimpleTokenizer tokenizer(settingsDefault, *this, false);
+        ASSERT(tokenizer.tokenize(code));
+        std::ostringstream ostr;
+        tokenizer.dump(ostr);
+        const std::string dump = ostr.str();
+        ASSERT(dump.find(" isAttributeUsed=\"true\"") != std::string::npos);
     }
 
     void simplifyRedundantParentheses() {

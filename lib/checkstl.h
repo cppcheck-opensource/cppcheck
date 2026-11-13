@@ -27,6 +27,7 @@
 #include "config.h"
 #include "errortypes.h"
 #include "mathlib.h"
+#include "vfvalue.h"
 
 #include <cstdint>
 #include <string>
@@ -37,10 +38,6 @@ class Token;
 class Variable;
 class ErrorLogger;
 class Tokenizer;
-namespace ValueFlow
-{
-    class Value;
-}
 
 /// @addtogroup Checks
 /// @{
@@ -214,7 +211,7 @@ public:
     void iteratorsError(const Token* tok, const std::string& containerName1, const std::string& containerName2);
     void iteratorsError(const Token* tok, const Token* containerTok, const std::string& containerName);
     void mismatchingContainerIteratorError(const Token* containerTok, const Token* iterTok, const Token* containerTok2);
-    void mismatchingContainersError(const Token* tok1, const Token* tok2);
+    void mismatchingContainersError(const Token* tok1, const Token* tok2, ValueFlow::Value::LifetimeKind ltk = ValueFlow::Value::LifetimeKind::Iterator);
     void mismatchingContainerExpressionError(const Token *tok1, const Token *tok2);
     void sameIteratorExpressionError(const Token *tok);
     void stlBoundariesError(const Token* tok);

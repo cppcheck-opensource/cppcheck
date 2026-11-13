@@ -96,6 +96,11 @@ namespace {
             bool hasGoto() const {
                 return endBlock ? ForwardTraversal::hasGoto(endBlock) : false;
             }
+            Progress progress = Progress::Continue;
+            // The path through this branch continues past the if
+            bool continues() const {
+                return progress != Progress::Break && !isEscape();
+            }
         };
 
         bool stopUpdates() {
@@ -330,6 +335,25 @@ namespace {
             }
             ft.actions = Analyzer::Action::None;
             return ft;
+        }
+
+        // Another condition-fork may continue past its if: forkDepth bounds nesting, forkBudget the
+        // total. <0 = off.
+        bool canFork() const {
+            assert(forkBudget != nullptr);
+            const int depthLimit = settings().vfOptions.maxForwardConditionForkDepth;
+            const int budgetLimit = settings().vfOptions.maxForwardConditionForks;
+            return (depthLimit < 0 || forkDepth < depthLimit) && (budgetLimit < 0 || *forkBudget < budgetLimit);
+        }
+
+        // A value changed in either branch is only possible past the if, on both paths. False if
+        // it cannot be lowered.
+        static bool lowerAfterBranches(Analyzer& a, const Branch& thenBranch, const Branch& elseBranch) {
+            if ((thenBranch.isModified() || elseBranch.isModified()) && !a.lowerToPossible())
+                return false;
+            if ((thenBranch.isInconclusive() || elseBranch.isInconclusive()) && !a.lowerToInconclusive())
+                return false;
+            return true;
         }
 
         std::vector<ForwardTraversal> tryForkScope(Token* endBlock, bool isModified = false) const {
@@ -778,64 +802,44 @@ namespace {
                                 return Break();
                         } else {
                             const bool conditional = stopOnCondition(condTok);
-                            // The value only flows into the then-branch when the condition can split
-                            // it; for an opaque or correlated condition (e.g. 'if (f(x))') it does
-                            // not, so fork in analyze-only mode: the branch's effect is still tracked
-                            // but nothing is reported in it.
+                            // The then-path runs on a fork, the else-path on this traversal. The value only
+                            // flows into the then-branch when the condition can split it; for an opaque or
+                            // correlated condition (e.g. 'if (f(x))') it does not, so the fork is analyze-only:
+                            // the branch's effect is still tracked but nothing is reported in it.
                             ForwardTraversal ft = fork(!analyzer->updateScope(thenBranch.endBlock, false));
-                            // The branch is traversed below, so don't record its boundary state here.
                             ft.analyzer->assume(condTok, true, Analyzer::Assume::Pending);
-                            Progress pThen = ft.updateBranch(thenBranch, depth - 1);
-                            // Merge the fork's actions so a modification in the then-branch bubbles up
-                            // to the enclosing branch's isModified().
+                            thenBranch.progress = ft.updateBranch(thenBranch, depth - 1);
                             actions |= thenBranch.action;
-
-                            // Commit the condition as false on the main path only when the then-branch
-                            // is dead. The else block, if any, is traversed separately (Pending); with
-                            // no else the false path continues past the closing brace, so record the
-                            // assumed state there (None).
-                            if (thenBranch.isDead())
-                                analyzer->assume(condTok,
-                                                 false,
-                                                 hasElse ? Analyzer::Assume::Pending : Analyzer::Assume::None);
-                            // The else block is traversed on the main path. If it kills the value
-                            // (modified) the main path stops, but the then-fork may still carry the
-                            // value forward, so defer the break until after the fork continues.
-                            Progress pElse = Progress::Continue;
-                            if (hasElse)
-                                pElse = updateBranch(elseBranch, depth - 1);
-                            if (thenBranch.isDead() || elseBranch.isDead()) {
-                                if (conditional && stopUpdates())
-                                    pElse = Break(Analyzer::Terminate::Conditional);
+                            // The condition is an assumption on the else-path only if the then-path drops
+                            // the value. With an else block the state is recorded after it.
+                            analyzer->assume(condTok,
+                                             false,
+                                             (thenBranch.isDead() ? Analyzer::Assume::None
+                                                                  : Analyzer::Assume::Quiet | Analyzer::Assume::Absolute) |
+                                             (hasElse ? Analyzer::Assume::Pending : Analyzer::Assume::None));
+                            if (hasElse) {
+                                elseBranch.progress = updateBranch(elseBranch, depth - 1);
+                                if (elseBranch.progress != Progress::Break)
+                                    analyzer->updateState(elseBranch.endBlock->previous());
                             }
-                            if (thenBranch.isModified() || elseBranch.isModified()) {
-                                if (!ft.analyzer->lowerToPossible())
-                                    pThen = Progress::Break;
-                                if (pElse != Progress::Break && !analyzer->lowerToPossible())
-                                    pElse = Break(Analyzer::Terminate::Bail);
-                            }
-                            if (thenBranch.isInconclusive() || elseBranch.isInconclusive()) {
-                                if (!ft.analyzer->lowerToInconclusive())
-                                    pThen = Progress::Break;
-                                if (pElse != Progress::Break && !analyzer->lowerToInconclusive())
-                                    pElse = Break(Analyzer::Terminate::Bail);
-                            }
-                            if (thenBranch.hasGoto() || elseBranch.hasGoto()) {
+                            if ((thenBranch.isDead() || elseBranch.isDead()) && conditional && stopUpdates())
+                                elseBranch.progress = Break(Analyzer::Terminate::Conditional);
+                            if (!lowerAfterBranches(*ft.analyzer, thenBranch, elseBranch))
+                                thenBranch.progress = Progress::Break;
+                            if (elseBranch.progress != Progress::Break && !lowerAfterBranches(*analyzer, thenBranch, elseBranch))
+                                elseBranch.progress = Break(Analyzer::Terminate::Bail);
+                            if (thenBranch.hasGoto() || elseBranch.hasGoto())
                                 return Break(Analyzer::Terminate::Bail);
-                            }
-                            // Carry the then-fork forward, unless a limit is hit - then only the linear main
-                            // path continues (no bail). forkDepth bounds nesting, forkBudget total. <0 = off.
-                            assert(forkBudget != nullptr);
-                            const int forkDepthLimit = settings().vfOptions.maxForwardConditionForkDepth;
-                            const int forkBudgetLimit = settings().vfOptions.maxForwardConditionForks;
-                            const bool depthOk = forkDepthLimit < 0 || forkDepth < forkDepthLimit;
-                            const bool budgetOk = forkBudgetLimit < 0 || *forkBudget < forkBudgetLimit;
-                            if (pThen != Progress::Break && !thenBranch.isEscape() && depthOk && budgetOk) {
+                            // Carry the then-path past the if. Skip the closing brace, whose handler is for
+                            // traversals that start inside the block; re-assume to anchor the state (and the
+                            // block's assignments) at the block end.
+                            if (thenBranch.continues() && canFork()) {
                                 ++(*forkBudget);
                                 ++ft.forkDepth;
-                                ft.updateRange(thenBranch.endBlock, end, depth - 1);
+                                ft.analyzer->assume(condTok, true, Analyzer::Assume::Quiet | Analyzer::Assume::Absolute);
+                                ft.updateRange(tok->next(), end, depth - 1);
                             }
-                            if (pElse == Progress::Break) {
+                            if (elseBranch.progress == Progress::Break) {
                                 // Only the else branch escaped; the then branch falls through, so
                                 // the scope as a whole does not always escape.
                                 if (terminate == Analyzer::Terminate::Escape && !thenBranch.isEscape())

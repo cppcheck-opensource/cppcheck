@@ -95,6 +95,7 @@ private:
         TEST_CASE(valueFlowUninitBreak);
         TEST_CASE(valueFlowUninitStructMembers);
         TEST_CASE(valueFlowUninitForLoop);
+        TEST_CASE(valueFlowUninitErrorPath);
         TEST_CASE(uninitvar_ipa);
         TEST_CASE(uninitvar_memberfunction);
         TEST_CASE(uninitvar_nonmember); // crash in ycmd test
@@ -4367,7 +4368,21 @@ private:
                         "  if (x == 1)\n"
                         "    v = value;\n"
                         "}\n");
-        TODO_ASSERT_EQUALS("[test.cpp:6:9]: (error) Uninitialized variable: value [legacyUninitvar]\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:9] -> [test.cpp:5:9] -> [test.cpp:6:9]: (warning) Uninitialized variable: value [uninitvar]\n", errout_str());
+
+        // false path: 'flag' is false past the block
+        valueFlowUninit("void getX(int *p);\n"
+                        "bool g();\n"
+                        "void f() {\n"
+                        "    int x;\n"
+                        "    bool flag, ok;\n"
+                        "    ok = g();\n"
+                        "    flag = ok;\n"
+                        "    if (ok == true) { getX(&x); }\n"
+                        "    if (flag == true) { int a = x; }\n"
+                        "    if (flag == false) { int b = x; }\n"
+                        "}\n");
+        ASSERT_EQUALS("[test.cpp:8:12] -> [test.cpp:10:14] -> [test.cpp:10:34]: (warning) Uninitialized variable: x [uninitvar]\n", errout_str());
 
         valueFlowUninit("void f(int x) {\n"
                         "  int value;\n"
@@ -6134,7 +6149,7 @@ private:
                         "    if (b == 'x') {}\n"
                         "    if (a) {}\n"
                         "}\n");
-        TODO_ASSERT_EQUALS("[test.cpp:8]: (error) Uninitialized variable: a\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:11] -> [test.cpp:5:11] -> [test.cpp:7:11] -> [test.cpp:8:9]: (warning) Uninitialized variable: a [uninitvar]\n", errout_str());
 
         valueFlowUninit("void h() {\n"
                         "  int i;\n"
@@ -7958,6 +7973,23 @@ private:
                         "    return x;\n"
                         "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void valueFlowUninitErrorPath()
+    {
+        setMultiline();
+
+        valueFlowUninit("void f(bool b) {\n"
+                        "    int i;\n"
+                        "    if (b)\n"
+                        "        return i;\n"
+                        "    i = 1;\n"
+                        "    return i;\n"
+                        "}\n");
+        ASSERT_EQUALS("[test.cpp:4:16]: warning: Uninitialized variable: i [uninitvar]\n"
+                      "[test.cpp:3:9]: note: Assuming condition is true\n"
+                      "[test.cpp:4:16]: note: Uninitialized variable: i\n",
+                      errout_str());
     }
 
     void uninitvar_memberfunction() {

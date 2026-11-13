@@ -864,6 +864,38 @@ int constParameterPointer_QHash_count(const QHash<int*, int*>& qh, int* k)
     return qh.count(k);
 }
 
+void constParameterPointer_QMap_insert(QMap<int*, int*>& m, int* k, int* v) {
+    m.insert(k, v);
+}
+
+void constParameterPointer_QMap_find(const QMap<int*, int*>& m, int* k) {
+    if (m.find(k) == m.end()) {}
+}
+
+void constParameterPointer_QMap_contains(const QMap<int*, int*>& m, int* k) {
+    if (m.contains(k)) {}
+}
+
+int* constParameterPointer_QMap_key(const QMap<int*, int*>& m, int* v, int* d) {
+    return m.key(v, d);
+}
+
+int* constParameterPointer_QMap_value(const QMap<int*, int*>& m, int* k) {
+    return m.value(k);
+}
+
+int* constParameterPointer_QMap_value(const QMap<int*, int*>& m, int* k, int* d) {
+    return m.value(k, d);
+}
+
+void constParameterPointer_QMap_remove(QMap<int*, int*>& m, int* k) {
+    m.remove(k);
+}
+
+void constParameterPointer_QHash_remove(QHash<int*, int*>& m, int* k) {
+    m.remove(k);
+}
+
 const QString& unassignedVariable_static_QString() // #12935
 {
     static QString qs;

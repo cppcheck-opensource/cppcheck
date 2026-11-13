@@ -1593,7 +1593,7 @@ void CheckUninitVarImpl::uninitvarError(const Token* tok, const ValueFlow::Value
     const std::string& varname = ltok ? ltok->expressionString() : "x";
     ErrorPath errorPath = v.errorPath;
     errorPath.emplace_back(tok, "");
-    auto severity = v.isKnown() ? Severity::error : Severity::warning;
+    auto severity = v.isKnown() && !v.conditional ? Severity::error : Severity::warning;
     auto certainty = v.isInconclusive() ? Certainty::inconclusive : Certainty::normal;
     if (v.subexpressions.empty()) {
         reportError(std::move(errorPath),
