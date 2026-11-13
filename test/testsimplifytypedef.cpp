@@ -254,6 +254,7 @@ private:
         TEST_CASE(simplifyTypedefShadow);  // #4445 - shadow variable
 
         TEST_CASE(simplifyTypedefMacro);
+        TEST_CASE(simplifyTypedefMacroName);
 
         TEST_CASE(simplifyTypedefOriginalName1);
         TEST_CASE(simplifyTypedefOriginalName2);
@@ -4545,6 +4546,16 @@ private:
                             "}\n";
         ASSERT_EQUALS("void foo ( uint32_t prev_segment ) { if ( prev_segment == ( ( uint32_t ) 12 ) ) { } }",
                       simplifyTypedefP(code));
+    }
+
+    void simplifyTypedefMacroName() {
+        const char code[] = "#define A int\n"
+                            "typedef void (*F)(A x);\n"
+                            "void f(F g);\n";
+        SimpleTokenizer2 tokenizer(settings0, *this, code, "test.c");
+        tokenizer.createLinks();
+        tokenizer.simplifyTypedef();
+        ASSERT_EQUALS("void f ( void ( * g ) ( $int x ) ) ;", tokenizer.tokens()->stringifyList(false, true, false, false, false));
     }
 
     void simplifyTypedefOriginalName1() {

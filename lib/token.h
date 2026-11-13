@@ -499,7 +499,18 @@ public:
     void isStandardType(const bool b) {
         setFlag(fIsStandardType, b);
     }
+    /**
+     * Is this token macro code at this location? Tokens copied from a
+     * typedef are excluded, see hasMacroName().
+     */
     bool isExpandedMacro() const {
+        return mImpl->mMacroName && !isSimplifiedTypedef();
+    }
+    /**
+     * Did the token text originate from a macro? Also true for tokens copied
+     * from a typedef. Intended for dump output and copying tokens.
+     */
+    bool hasMacroName() const {
         return !!mImpl->mMacroName;
     }
     bool isCast() const {
