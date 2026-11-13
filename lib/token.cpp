@@ -1058,7 +1058,7 @@ void Token::function(const Function *f)
         else
             tokType(eFunction);
     } else if (mTokType == eFunction)
-        tokType(eName);
+        update_property_info(); // eType for standard types, eKeyword for keywords, eName otherwise
 }
 
 Token* Token::insertToken(const std::string& tokenStr, bool prepend)
@@ -2341,7 +2341,7 @@ void Token::type(const ::Type *t)
         tokType(eType);
         isEnumType(mImpl->mType->isEnumType());
     } else if (mTokType == eType)
-        tokType(eName);
+        update_property_info(); // eType for standard types, eKeyword for keywords, eName otherwise
 }
 
 const ::Type* Token::typeOf(const Token* tok, const Token** typeTok)

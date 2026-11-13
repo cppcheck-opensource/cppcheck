@@ -8,7 +8,12 @@ New checks:
 -
 
 C/C++ support:
--
+- Fix #13630, #9676: function templates that are called without explicit template arguments are now
+  instantiated. The template arguments are deduced from the types of the call arguments (variables,
+  members, enums, arrays, pointers and expressions) using the symbol database, so the template simplifier
+  and the symbol database now run in a loop until no more calls can be deduced. The instantiated functions
+  are checked like any other function. The new option --template-full-rebuild recreates the symbol
+  database after each deduction round instead of updating it incrementally (for debugging).
 
 GUI:
 -

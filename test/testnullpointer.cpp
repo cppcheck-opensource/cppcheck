@@ -153,6 +153,7 @@ private:
         TEST_CASE(nullpointer113); // a variable is clamped before the check
         TEST_CASE(nullpointer114); // the else block changes the value
         TEST_CASE(nullpointer115); // a range condition overlapping the assumed one
+        TEST_CASE(nullpointer116); // member template of a base class template instantiation
         TEST_CASE(nullpointer_addressOf); // address of
         TEST_CASE(nullpointerSwitch); // #2626
         TEST_CASE(nullpointer_cast); // #4692
@@ -3371,6 +3372,18 @@ private:
               "    return 0;\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:4:24]: (warning) Possible null pointer dereference: p [nullPointer]\n", errout_str());
+    }
+
+    void nullpointer116()
+    { // the call instantiates a member template of a base class that is a class template
+      // instantiation: the instantiation is linked to its definition
+        check("template<class T> struct A {\n"
+              "    template<class U> void put(U* p) const { *p = 1; }\n"
+              "};\n"
+              "struct B : A<int> {\n"
+              "    void h() const { long* p = nullptr; put(p); }\n"
+              "};\n");
+        ASSERT_EQUALS("[test.cpp:2:47]: (warning) Possible null pointer dereference: p [nullPointer]\n", errout_str());
     }
 
     void nullpointer_addressOf() { // address of
