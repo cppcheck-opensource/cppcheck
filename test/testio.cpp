@@ -899,6 +899,14 @@ private:
               "  scanf (\"%70s\",str);\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:4:3]: (error) Width 70 given in format string (no. 1) is larger than destination buffer 'str[8]', use %7s to prevent overflowing it. [invalidScanfFormatWidth]\n", errout_str());
+
+        // width that does not fit in an int
+        check("void f()\n"
+              "{\n"
+              "  char str [8];\n"
+              "  scanf (\"%99999999999s\",str);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:3]: (error) Width 2147483647 given in format string (no. 1) is larger than destination buffer 'str[8]', use %7s to prevent overflowing it. [invalidScanfFormatWidth]\n", errout_str());
     }
 
     void testScanf5() { // #10632
@@ -4274,6 +4282,14 @@ private:
                       "[test.cpp:5:3]: (warning) scanf: referencing parameter 2 while 1 arguments given [wrongPrintfScanfParameterPositionError]\n"
                       "[test.cpp:6:3]: (warning) printf: parameter positions start at 1, not 0 [wrongPrintfScanfParameterPositionError]\n"
                       "", errout_str());
+
+        // parameter position without digits, with a leading zero or too large for an int
+        check("void foo() {\n"
+              "  printf(\"%$d\", 1);\n"
+              "  printf(\"%01$d\", 1);\n"
+              "  printf(\"%99999999999$d\", 1);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:3]: (warning) printf: referencing parameter 2147483647 while 1 arguments given [wrongPrintfScanfParameterPositionError]\n", errout_str());
     }
 
 
