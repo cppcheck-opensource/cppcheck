@@ -131,6 +131,8 @@ private:
         TEST_CASE(knownConditionIncDecOperator);
         TEST_CASE(knownConditionFloating);
         TEST_CASE(knownConditionRecordedComparison);
+        TEST_CASE(knownConditionShiftAssignment);
+        TEST_CASE(knownConditionShiftAssignmentFallback);
     }
 
     struct CheckOptions
@@ -6779,6 +6781,113 @@ private:
             "            ;\n"
             "    }\n"
             "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void knownConditionShiftAssignment() { // #6552
+        check("struct Value { void operator>>=(double&) const; };\n"
+              "bool f(const Value& value, bool extract) {\n"
+              "    double x = 0.5;\n"
+              "    if (extract) value >>= x;\n"
+              "    if (x < 0) return true;\n"
+              "    return false;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Value { void operator>>=(double) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    if (x < 0) return true;\n"
+              "    return false;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:11]: (style) Condition 'x<0' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("struct Value { void operator>>=(const double&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    if (x < 0) return true;\n"
+              "    return false;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:11]: (style) Condition 'x<0' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("bool f(int bits) {\n"
+              "    int shift = 1;\n"
+              "    bits >>= shift;\n"
+              "    if (shift < 0) return true;\n"
+              "    return bits == 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:15]: (style) Condition 'shift<0' is always false [knownConditionTrueFalse]\n", errout_str());
+    }
+
+    void knownConditionShiftAssignmentFallback() { // #6552
+        // Without overload resolution, assume the RHS may be changed.
+        check("struct Value { void operator>>=(double) const; void operator>>=(int&) const; };\n"
+              "bool f(const Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    if (x < 0) return true;\n"
+              "    return false;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("namespace CORBA { typedef int Long; struct Any {}; }\n"
+              "bool operator>>=(const CORBA::Any&, CORBA::Long&);\n"
+              "bool f(const CORBA::Any& a) {\n"
+              "    CORBA::Long x = 1;\n"
+              "    a >>= x;\n"
+              "    if (x < 0) return true;\n"
+              "    return false;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Base { void operator>>=(int&) const; };\n"
+              "struct Derived : Base {};\n"
+              "bool f(const Derived& d) {\n"
+              "    int x = 1;\n"
+              "    d >>= x;\n"
+              "    if (x < 0) return true;\n"
+              "    return false;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Value {};\n"
+              "bool f(const Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    if (x < 0) return true;\n"
+              "    return false;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Base { void operator>>=(double&) const; };\n"
+              "struct Derived : Base { using Base::operator>>=; void operator>>=(int) const; };\n"
+              "bool f(const Derived& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    if (x < 0) return true;\n"
+              "    return false;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Value { void operator>>=(double) const; };\n"
+              "void operator>>=(Value&, double&);\n"
+              "bool f(Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    if (x < 0) return true;\n"
+              "    return false;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Value { void operator>>=(double) const; friend void operator>>=(Value&, double&); };\n"
+              "bool f(Value& value) {\n"
+              "    double x = 0.5;\n"
+              "    value >>= x;\n"
+              "    if (x < 0) return true;\n"
+              "    return false;\n"
+              "}\n");
         ASSERT_EQUALS("", errout_str());
     }
 
