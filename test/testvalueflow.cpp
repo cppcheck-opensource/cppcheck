@@ -1148,6 +1148,10 @@ private:
         ASSERT_EQUALS(10, valueOfTok("x = static_cast<int>(10);\n", "( 10 )").intvalue);
         ASSERT_EQUALS(0, valueOfTok("x = sizeof (struct {int a;}) * 0;\n", "*").intvalue);
 
+        // out of range results wrap without signed integer overflow
+        ASSERT_EQUALS(LLONG_MIN, valueOfTok("x = 0x7fffffffffffffff + 1;\n", "+").intvalue);
+        ASSERT_EQUALS(-2, valueOfTok("x = 0x7fffffffffffffff * 2;\n", "*").intvalue);
+
         // Don't calculate or crash if there is UB or invalid operations
         ASSERT(tokenValues(";-1<<10;\n","<<").empty());
         ASSERT(tokenValues(";10<<-1;\n","<<").empty());

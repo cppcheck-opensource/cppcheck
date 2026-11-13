@@ -28,6 +28,7 @@
 #include "tokenlist.h"
 
 #include <algorithm>
+#include <climits>
 #include <cstdint>
 #include <cstring>
 #include <iterator>
@@ -470,6 +471,7 @@ private:
         TEST_CASE(enum18);
         TEST_CASE(enum19);
         TEST_CASE(enum20); // #14419
+        TEST_CASE(enum21);
 
         TEST_CASE(struct1);
 
@@ -7111,6 +7113,19 @@ private:
             ASSERT_EQUALS_ENUM(ValueType::CHAR, A->valueType()->type);
             ASSERT_EQUALS_ENUM(ValueType::UNSIGNED, A->valueType()->sign);
         }
+    }
+
+    void enum21() { // implicit values past the maximum wrap without signed integer overflow
+        GET_SYMBOL_DB("enum E { A = 0x7FFFFFFFFFFFFFFE, B, C };\n");
+        ASSERT(db != nullptr);
+        const Scope* scope = db->findScopeByName("E");
+        ASSERT(scope);
+        const Enumerator* B = scope->findEnumerator("B");
+        ASSERT(B && B->value_known);
+        ASSERT_EQUALS(0x7FFFFFFFFFFFFFFELL + 1, B->value);
+        const Enumerator* C = scope->findEnumerator("C");
+        ASSERT(C && C->value_known);
+        ASSERT_EQUALS(LLONG_MIN, C->value);
     }
 
     void struct1() {
