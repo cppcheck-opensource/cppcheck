@@ -523,7 +523,7 @@ static void programMemoryParseCondition(ProgramMemory& pm,
     if (Token::Match(tok, "==|>=|<=|<|>|!=")) {
         ValueFlow::Value truevalue;
         ValueFlow::Value falsevalue;
-        const Token* vartok = parseCompareInt(tok, truevalue, falsevalue, eval);
+        const Token* vartok = parseCompareInt(tok, truevalue, falsevalue, settings, eval);
         if (!vartok)
             return;
         if (vartok->exprId() == 0)
@@ -1767,7 +1767,7 @@ namespace {
             MathLib::bigint typeMax = 0;
             if (!ValueFlow::getMinMaxValues(expr->valueType(), settings().platform, typeMin, typeMax))
                 return true;
-            const std::vector<MathLib::bigint> low = getMinValue(makeIntegralInferModel(), values);
+            const std::vector<MathLib::bigint> low = getMinValue(makeIntegralInferModel(), values, nullptr);
             const std::vector<MathLib::bigint> high = getMaxValue(makeIntegralInferModel(), values);
             const MathLib::bigint ends[] = {low.empty() ? typeMin : low.front(), high.empty() ? typeMax : high.front()};
             return std::any_of(std::begin(ends), std::end(ends), [&](MathLib::bigint end) {

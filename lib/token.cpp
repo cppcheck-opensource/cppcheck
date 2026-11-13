@@ -2018,8 +2018,10 @@ const Token *Token::getValueTokenMaxStrLength() const
 
 static bool isAdjacent(const ValueFlow::Value& x, const ValueFlow::Value& y)
 {
-    if (x.bound != ValueFlow::Value::Bound::Point && x.bound == y.bound)
-        return true;
+    if (x.bound != ValueFlow::Value::Bound::Point && x.bound == y.bound) {
+        // Possible ranges are witnesses; do not widen them away by merging same-direction bounds.
+        return !(x.isPossible() || x.isInconclusive());
+    }
     if (x.valueType == ValueFlow::Value::ValueType::FLOAT)
         return false;
     // Compared without a difference, which could overflow

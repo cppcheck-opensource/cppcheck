@@ -97,8 +97,7 @@ namespace ValueFlow {
         }
     };
 
-    const Token *parseCompareInt(const Token *tok, Value &true_value, Value &false_value, const std::function<std::vector<MathLib::bigint>(const Token*)>& evaluate);
-    const Token *parseCompareInt(const Token *tok, Value &true_value, Value &false_value);
+    const Token *parseCompareInt(const Token *tok, Value &true_value, Value &false_value, const Settings& settings, const std::function<std::vector<MathLib::bigint>(const Token*)>& evaluate);
 
     const Token* solveExprValue(const Token* expr,
                                 const std::function<std::vector<MathLib::bigint>(const Token*)>& eval,

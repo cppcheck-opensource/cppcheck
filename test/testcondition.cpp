@@ -46,6 +46,7 @@ private:
         TEST_CASE(assignAndCompare);   // assignment and comparison don't match
         TEST_CASE(mismatchingBitAnd);  // overlapping bitmasks
         TEST_CASE(comparison);         // CheckCondition::comparison test cases
+        TEST_CASE(unsignedArithmeticNoWrap);
         TEST_CASE(multicompare);       // mismatching comparisons
         TEST_CASE(overlappingElseIfCondition);  // overlapping conditions in if and else-if
         TEST_CASE(oppositeElseIfCondition); // opposite conditions in if and else-if
@@ -125,6 +126,8 @@ private:
 
         TEST_CASE(checkAssignmentInCondition);
         TEST_CASE(compareOutOfTypeRange);
+        TEST_CASE(sizelessPodtypeConversions);
+        TEST_CASE(conditionInferenceProvenance);
         TEST_CASE(knownConditionCast); // #9976
         TEST_CASE(knownConditionIncrementLoop); // #9808
         TEST_CASE(knownConditionAfterBailout); // #12526
@@ -3727,7 +3730,7 @@ private:
               "    if (handle) return 1;\n"
               "    else return 0;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:3:9]: (style) Condition 'handle' is always true [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:16] -> [test.cpp:3:9]: (style) Condition 'handle' is always true [knownConditionTrueFalse]\n", errout_str());
 
         check("int f(void *handle) {\n"
               "    if (handle != 0) return 0;\n"
@@ -3815,7 +3818,7 @@ private:
               "        if(array){}\n"
               "    }\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:5:12]: (style) Condition 'array' is always true [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:18] -> [test.cpp:5:12]: (style) Condition 'array' is always true [knownConditionTrueFalse]\n", errout_str());
 
         check("void f(int *array, int size ) {\n"
               "    for(int i = 0; i < size; ++i) {\n"
@@ -3824,7 +3827,7 @@ private:
               "        else if(array){}\n"
               "    }\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:5:17]: (style) Condition 'array' is always true [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:18] -> [test.cpp:5:17]: (style) Condition 'array' is always true [knownConditionTrueFalse]\n", errout_str());
 
         // #9277
         check("int f() {\n"
@@ -4508,7 +4511,7 @@ private:
               "void S::f() {\n"
               "    if ((p == NULL) || ((p) && (g() >= *p))) {}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:7:26]: (style) Condition 'p' is always true [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:7:12] -> [test.cpp:7:26]: (style) Condition 'p' is always true [knownConditionTrueFalse]\n", errout_str());
 
         // #10749
         check("struct Interface {\n"
@@ -4707,7 +4710,7 @@ private:
               "        if (o[1] == '\\0') {}\n"
               "    }\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:6:18]: (style) Condition 'o[1]=='\\0'' is always false [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:4:25] -> [test.cpp:6:18]: (style) Condition 'o[1]=='\\0'' is always false [knownConditionTrueFalse]\n", errout_str());
 
         check("void f(int x) {\n" // #11449
               "    int i = x;\n"
@@ -4891,7 +4894,7 @@ private:
               "    const S* sp2 = s.get2();\n"
               "    if (sp2) {}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:12:9]: (style) Condition 'sp2' is always true [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:13] -> [test.cpp:12:9]: (style) Condition 'sp2' is always true [knownConditionTrueFalse]\n", errout_str());
 
         check("struct S {\n"
               "    void f(int i);\n"
@@ -5512,7 +5515,7 @@ private:
         check("bool f(const int *p, const int *q) {\n"
               "    return p != NULL && q != NULL && p == NULL;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:40]: (style) Condition 'p==NULL' is always false [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:14] -> [test.cpp:2:40]: (style) Condition 'p==NULL' is always false [knownConditionTrueFalse]\n", errout_str());
 
         check("struct S {\n" // #11789
               "    std::vector<int> v;\n"
@@ -5621,7 +5624,7 @@ private:
               "        return -1;\n"
               "    return *it;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:4:12]: (style) Condition 'it!=vector.end()' is always true [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:14] -> [test.cpp:4:12]: (style) Condition 'it!=vector.end()' is always true [knownConditionTrueFalse]\n", errout_str());
 
         // #11303
         check("void f(int n) {\n"
@@ -5630,7 +5633,7 @@ private:
               "       buffer.back() == '\\n' ||\n"
               "       buffer.back() == '\\0') {}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:5:22]: (style) Condition 'buffer.back()=='\\0'' is always false [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:22] -> [test.cpp:5:22]: (style) Condition 'buffer.back()=='\\0'' is always false [knownConditionTrueFalse]\n", errout_str());
 
         // #9353
         check("struct X { std::string s; };\n"
@@ -6562,6 +6565,78 @@ private:
 
     void compareOutOfTypeRange() {
         const Settings settingsUnix64 = settingsBuilder().severity(Severity::style).platform(Platform::Type::Unix64).build();
+        const Settings settingsUnix32 = settingsBuilder().severity(Severity::style).platform(Platform::Type::Unix32).build();
+        const Settings settingsWin64 = settingsBuilder().severity(Severity::style).platform(Platform::Type::Win64).build();
+        const char plainCharComparisons[] = "void f(char c) {\n"
+                                            "  if (c == 300) {}\n"
+                                            "  if (c > 300) {}\n"
+                                            "  if (c < -200) {}\n"
+                                            "  if (c == 128) {}\n"
+                                            "  if (c < -1) {}\n"
+                                            "  if (c > 300u) {}\n"
+                                            "  if (c == 300u) {}\n"
+                                            "  if (300 < c) {}\n"
+                                            "}\n";
+        const std::string plainCharDiagnostics = "[test.cpp:2:12]: (style) Comparing expression of type 'char' against value 300. Condition is always false. [compareValueOutOfTypeRangeError]\n"
+                                                 "[test.cpp:3:11]: (style) Comparing expression of type 'char' against value 300. Condition is always false. [compareValueOutOfTypeRangeError]\n"
+                                                 "[test.cpp:4:12]: (style) Comparing expression of type 'char' against value -200. Condition is always false. [compareValueOutOfTypeRangeError]\n"
+                                                 "[test.cpp:5:12]: (style) Comparing expression of type 'char' against value 128. Condition is always false. [compareValueOutOfTypeRangeError]\n"
+                                                 "[test.cpp:8:12]: (style) Comparing expression of type 'char' against value 300. Condition is always false. [compareValueOutOfTypeRangeError]\n"
+                                                 "[test.cpp:9:7]: (style) Comparing expression of type 'char' against value 300. Condition is always false. [compareValueOutOfTypeRangeError]\n";
+        const Settings* const platforms[] = {&settingsUnix64, &settingsUnix32, &settingsWin64};
+        for (const Settings* platform : platforms) {
+            check(plainCharComparisons, *platform);
+            ASSERT_EQUALS(plainCharDiagnostics, errout_str());
+        }
+
+        const char danmarPlainCharComparisons[] = "void f(char c, const char* s) {\n"
+                                                  "  if (c == 0xFF) {}\n"
+                                                  "  if (c == 200) {}\n"
+                                                  "  if (*s == 0xEF) {}\n"
+                                                  "  if (c > 127) {}\n"
+                                                  "  if (c == 128) {}\n"
+                                                  "}\n";
+        const std::string danmarPlainCharDiagnostics =
+            "[test.cpp:2:12]: (style) Comparing expression of type 'char' against value 255. Condition is always false. [compareValueOutOfTypeRangeError]\n"
+            "[test.cpp:3:12]: (style) Comparing expression of type 'char' against value 200. Condition is always false. [compareValueOutOfTypeRangeError]\n"
+            "[test.cpp:4:13]: (style) Comparing expression of type 'const char' against value 239. Condition is always false. [compareValueOutOfTypeRangeError]\n"
+            "[test.cpp:5:11]: (style) Comparing expression of type 'char' against value 127. Condition is always false. [compareValueOutOfTypeRangeError]\n"
+            "[test.cpp:6:12]: (style) Comparing expression of type 'char' against value 128. Condition is always false. [compareValueOutOfTypeRangeError]\n";
+        const Settings* const signedCharPlatforms[] = {&settingsUnix64, &settingsWin64};
+        for (const Settings* platform : signedCharPlatforms) {
+            check(danmarPlainCharComparisons, *platform);
+            ASSERT_EQUALS(danmarPlainCharDiagnostics, errout_str());
+        }
+
+        Settings settingsUnsignedChar = settingsBuilder().severity(Severity::style).platform(Platform::Type::Unix64).build();
+        settingsUnsignedChar.platform.defaultSign = 'u';
+        check("void f(char c) {\n"
+              "  if (c == 200) {}\n"
+              "  if (c == 300) {}\n"
+              "  if (c < 0) {}\n"
+              "}\n", settingsUnsignedChar);
+        ASSERT_EQUALS("[test.cpp:3:12]: (style) Comparing expression of type 'char' against value 300. Condition is always false. [compareValueOutOfTypeRangeError]\n"
+                      "[test.cpp:4:11]: (style) Comparing expression of type 'char' against value 0. Condition is always false. [compareValueOutOfTypeRangeError]\n",
+                      errout_str());
+
+        check("void f(char ch2) {\n"
+              "    if (ch2 == static_cast<char>(0xbb)) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        // wchar_t is unsigned 16-bit on Windows
+        check("void f(wchar_t w, const wchar_t* s, long long x) {\n"
+              "  if (w == 0xFFFF) {}\n"
+              "  if (w > 32767) {}\n"
+              "  if (*s == 0xFEFF) {}\n"
+              "  if ((wchar_t)x > 40000) {}\n"
+              "  int y = 0xFFFF;\n"
+              "  if ((wchar_t)y == 0xFFFF) {}\n"
+              "  if (w > 65535) {}\n"
+              "}\n", settingsWin64);
+        ASSERT_EQUALS("[test.cpp:8:11]: (style) Comparing expression of type 'unsigned wchar_t' against value 65535. Condition is always false. [compareValueOutOfTypeRangeError]\n"
+                      "[test.cpp:7:18]: (style) Condition '(wchar_t)y==0xFFFF' is always true [knownConditionTrueFalse]\n",
+                      errout_str());
 
         check("void f(unsigned char c) {\n"
               "  if (c == 256) {}\n"
@@ -6670,6 +6745,68 @@ private:
         ASSERT_EQUALS("[test.cpp:2:14]: (style) Comparing expression of type 'bool' against value 2. Condition is always true. [compareValueOutOfTypeRangeError]\n",
                       errout_str());
 
+        const Settings settingsUnspecified = settingsBuilder().severity(Severity::style).platform(Platform::Type::Unspecified).build();
+        check("void f(unsigned int u, short s) {\n"
+              "    if (u > 4294967295u) {}\n"
+              "    if (s == 65536) {}\n"
+              "}\n", settingsUnspecified);
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f(unsigned int u, short s) {\n"
+              "    if (u > 4294967295u) {}\n"
+              "    if (s == 65536) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:13]: (style) Comparing expression of type 'unsigned int' against value 4294967295. Condition is always false. [compareValueOutOfTypeRangeError]\n"
+                      "[test.cpp:3:14]: (style) Comparing expression of type 'signed short' against value 65536. Condition is always false. [compareValueOutOfTypeRangeError]\n",
+                      errout_str());
+
+        check("void f(short s) {\n"
+              "    if (s == 0xFFFFFFFFu) {}\n"
+              "    if (s == 0xFFFF8000u) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+        check("enum Flags { F_NONE = 0, F_HIGH = 0x80000000 };\n"
+              "void a(Flags f) { if (f == F_HIGH) {} }\n"
+              "enum G { G1 = 0xFFFFFFFFu };\n"
+              "void b(G g) { if (g == G1) {} }\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+        check("enum Flags { F_NONE = 0, F_HIGH = 0x80000000 };\n"
+              "void a(enum Flags f) { if (f == F_HIGH) {} }\n"
+              "enum G { G1 = 0xFFFFFFFFu };\n"
+              "void b(enum G g) { if (g == G1) {} }\n", settingsUnix64, false);
+        ASSERT_EQUALS("", errout_str());
+        check("enum Values { E_HIGH = 200 };\n"
+              "void f(signed char c) { if (c == E_HIGH) {} }\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:34]: (style) Comparing expression of type 'signed char' against value 200. Condition is always false. [compareValueOutOfTypeRangeError]\n",
+                      errout_str());
+
+        check("struct Unknown;\n"
+              "void one_bound(Unknown* p) {\n"
+              "    if (p->type >= 0) {\n"
+              "        if ((int)p->type < 0) {}\n"
+              "    }\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Unknown;\n"
+              "void alternative_paths(Unknown* p, bool choose) {\n"
+              "    if (choose) {\n"
+              "        if (p->type < 0) return;\n"
+              "    } else {\n"
+              "        if (p->type >= 20) return;\n"
+              "    }\n"
+              "    if ((int)p->type == 20) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Unknown;\n"
+              "void excluded_point(Unknown* p) {\n"
+              "    if (p->type != 1) {\n"
+              "        if ((int)p->type == 1) {}\n"
+              "    }\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:3:17] -> [test.cpp:4:26]: (style) Condition '(int)p->type==1' is always false [knownConditionTrueFalse]\n", errout_str());
+
         check("void f(const std::uint32_t& u) {\n" // #9078
               "    if (u >= UINT32_MAX) {}\n"
               "    if (u <= UINT32_MAX) {}\n"
@@ -6678,6 +6815,129 @@ private:
         ASSERT_EQUALS("[test.cpp:3:14]: (style) Comparing expression of type 'const unsigned int &' against value 4294967295. Condition is always true. [compareValueOutOfTypeRangeError]\n"
                       "[test.cpp:4:13]: (style) Comparing expression of type 'const unsigned int &' against value 4294967295. Condition is always false. [compareValueOutOfTypeRangeError]\n",
                       errout_str());
+
+        // no false positive when unsigned arithmetic wraps around
+        check("void f(int x) {\n"
+              "  if ((unsigned int)x - 1u == 0xFFFFFFFFu) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f(int x) {\n"
+              "  if ((unsigned short)x - 1u == 0xFFFFFFFFu) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        // ~ is decreasing: cast range bounds must be mirrored, not kept
+        check("void use(int);\n"
+              "void f(int x) { if (~(unsigned int)x == 0xFFFFFFFFu) use(2); }\n"
+              "void g(int x) { unsigned int m = ~(unsigned int)x; if (m == 0xFFFFFFFFu) use(1); }\n"
+              "void h(int x) { if (~(unsigned char)x == -256) use(1); }\n"
+              "void k(long long x) { if (~(int)x == 2147483647) use(7); }\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        // no false positive when narrow signed types wrap on in-place increment/decrement
+        check("void use(int);\n"
+              "void d1(int x) { signed char i = (signed char)x; i++; if (i == -128) use(1); }\n"
+              "void d2(int x) { short i = (short)x; i++; if (i == -32768) use(2); }\n"
+              "void d3(int x) { short i = (short)x; i += 1; if (i == -32768) use(3); }\n"
+              "void d4(int x) { short i = (short)x; i--; if (i == 32767) use(4); }\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f(int x) {\n"
+              "  if (~(unsigned char)x == -257) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:25]: (style) Condition '~(unsigned char)x==-257' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        // Signed result type after integer promotion must still warn
+        check("void f(int x) {\n"
+              "  if ((unsigned short)x + 1 == 0) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:29]: (style) Condition '(unsigned short)x+1==0' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        // Direct cast bounds are preserved
+        check("void f(int x) {\n"
+              "  if ((unsigned int)x > 4294967295ULL) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:25]: (style) Comparing expression of type 'unsigned int' against value 4294967295. Condition is always false. [compareValueOutOfTypeRangeError]\n",
+                      errout_str());
+
+        // Reproduce the original typedef-heavy Simulink-generated pattern from #15000.
+        check("void f(unsigned int x) {\n"
+              "    unsigned long long tmp = ((unsigned long long)x) + 1ULL;\n"
+              "    if (tmp > 4294967295ULL)\n"
+              "        tmp = 4294967295ULL;\n"
+              "    if ((((long long)((unsigned int)tmp)) - 1LL) < 0LL) {}\n"
+              "    if ((((long long)((unsigned int)tmp)) - 1LL) > 4294967295LL) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:6:50]: (style) Condition '(((long long)((unsigned int)tmp))-1LL)>4294967295LL' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
+        check("void f(unsigned int x) {\n"
+              "    unsigned long long tmp = ((unsigned long long)x) + 1ULL;\n"
+              "    if (tmp > 4294967295ULL)\n"
+              "        tmp = 4294967295ULL;\n"
+              "    if ((((long long)((unsigned int)tmp)) - 1LL) < 0LL) {}\n"
+              "    if ((((long long)((unsigned int)tmp)) - 1LL) > 4294967295LL) {}\n"
+              "}\n", settingsUnix64, false);
+        ASSERT_EQUALS("[test.c:6:50]: (style) Condition '(((long long)((unsigned int)tmp))-1LL)>4294967295LL' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        check("void f(unsigned long long tmp) {\n"
+              "    if (tmp > 4294967295ULL)\n"
+              "        tmp = 4294967295ULL;\n"
+              "    if (static_cast<long long>(static_cast<unsigned int>(tmp)) - 1LL > 4294967295LL) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:4:70]: (style) Condition 'static_cast<long long>(static_cast<unsigned int>(tmp))-1LL>4294967295LL' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        // cast directly around variable: both the range-based and the declared-type
+        // analysis can prove the condition invariant; diag() must prevent duplicates
+        check("void f(unsigned char c) {\n"
+              "    if ((unsigned char)c > 255) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:28]: (style) Comparing expression of type 'unsigned char' against value 255. Condition is always false. [compareValueOutOfTypeRangeError]\n",
+                      errout_str());
+
+        check("void f(unsigned char c) {\n"
+              "    if ((unsigned char)c == 256) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:29]: (style) Comparing expression of type 'unsigned char' against value 256. Condition is always false. [compareValueOutOfTypeRangeError]\n",
+                      errout_str());
+
+        check("void f(unsigned int u) {\n"
+              "    if ((unsigned int)u > 4294967295ULL) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:27]: (style) Comparing expression of type 'unsigned int' against value 4294967295. Condition is always false. [compareValueOutOfTypeRangeError]\n",
+                      errout_str());
+
+        check("void f(unsigned short s) {\n"
+              "    if ((unsigned int)s > 4294967295ULL) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:27]: (style) Comparing expression of type 'unsigned int' against value 4294967295. Condition is always false. [compareValueOutOfTypeRangeError]\n",
+                      errout_str());
+
+        // wchar_t range is derived through ValueType::getSizeOf()
+        check("void f(wchar_t c) {\n"
+              "    if ((wchar_t)c > 0x7fffffff) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:20]: (style) Condition '(wchar_t)c>0x7fffffff' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        check("void f(unsigned int x) {\n"
+              "    if (-(signed char)x < -129) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:25]: (style) Condition '-(char)x<-129' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        check("void f(int x) {\n"
+              "    if ((x) > 0) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f(unsigned int x) {\n"
+              "    if ((unsigned int)x > 0) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
 
         check("void f() {\n"
               "    long long ll = 1024 * 1024 * 1024;\n"
@@ -6704,7 +6964,209 @@ private:
               "}\n", settingsUnix64);
         ASSERT_EQUALS("[test.cpp:2:14]: (style) Comparing expression of type 'char' against value 128. Condition is always false. [compareValueOutOfTypeRangeError]\n",
                       errout_str());
+
+        // #15000: bounds that only prove a range together must survive a narrowing conversion, whichever
+        // order value flow creates them.
+        const char narrowAfterClamp[] =
+            "typedef signed char int8_t;\n"
+            "typedef unsigned char uint8_t;\n"
+            "void f(int x) {\n"
+            "    if (x < 0 || x > 100) return;\n"
+            "    if ((uint8_t)x > 200) {}\n"
+            "    if ((int8_t)x < 0) {}\n"
+            "    if ((short)x > 200) {}\n"
+            "    if ((char)x < 0) {}\n"
+            "}\n";
+        check(narrowAfterClamp, settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:4:20] -> [test.cpp:5:20]: (style) Condition '(unsigned char)x>200' is always false [knownConditionTrueFalse]\n"
+                      "[test.cpp:4:11] -> [test.cpp:6:19]: (style) Condition '(int8_t)x<0' is always false [knownConditionTrueFalse]\n"
+                      "[test.cpp:4:20] -> [test.cpp:7:18]: (style) Condition '(short)x>200' is always false [knownConditionTrueFalse]\n"
+                      "[test.cpp:4:11] -> [test.cpp:8:17]: (style) Condition '(char)x<0' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        // Same bounds, reversed condition order and an implicit narrowing conversion.
+        const char narrowAfterClampReversed[] =
+            "typedef signed char int8_t;\n"
+            "typedef unsigned char uint8_t;\n"
+            "void f(int x) {\n"
+            "    if (x > 100 || x < 0) return;\n"
+            "    if ((uint8_t)x > 200) {}\n"
+            "    if ((int8_t)x < 0) {}\n"
+            "}\n"
+            "void g(int x) {\n"
+            "    if (x < 0 || x > 100) return;\n"
+            "    uint8_t c = x;\n"
+            "    if (c > 200) {}\n"
+            "}\n";
+        check(narrowAfterClampReversed, settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:4:11] -> [test.cpp:5:20]: (style) Condition '(unsigned char)x>200' is always false [knownConditionTrueFalse]\n"
+                      "[test.cpp:4:22] -> [test.cpp:6:19]: (style) Condition '(int8_t)x<0' is always false [knownConditionTrueFalse]\n"
+                      "[test.cpp:9:20] -> [test.cpp:11:11]: (style) Condition 'c>200' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        // The narrowing cast is used inside the condition that holds the range facts, not in a
+        // separate statement: the operands to the left of `&&`, `||` and `?:` are already evaluated.
+        const char narrowInsideCondition[] =
+            "typedef signed char int8_t;\n"
+            "typedef unsigned char uint8_t;\n"
+            "void f(int x) {\n"
+            "    if (x >= 0 && x <= 100 && (uint8_t)x > 200) {}\n"
+            "    if (x >= 0 && x <= 100 && (int8_t)x < 0) {}\n"
+            "    if (x >= 0 && x <= 100 && (short)x > 200) {}\n"
+            "    if (x < 0 || x > 100 || (uint8_t)x > 200) {}\n"
+            "    while (x >= 0 && x <= 100 && (uint8_t)x > 200) x++;\n"
+            "    int t = (x >= 0 && x <= 100) ? (uint8_t)x > 200 : 0;\n"
+            "    int r = x >= 0 && x <= 100 && (uint8_t)x > 200;\n"
+            "}\n";
+        check(narrowInsideCondition, settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:4:21] -> [test.cpp:4:42]: (style) Condition '(unsigned char)x>200' is always false [knownConditionTrueFalse]\n"
+                      "[test.cpp:5:11] -> [test.cpp:5:41]: (style) Condition '(int8_t)x<0' is always false [knownConditionTrueFalse]\n"
+                      "[test.cpp:6:21] -> [test.cpp:6:40]: (style) Condition '(short)x>200' is always false [knownConditionTrueFalse]\n"
+                      "[test.cpp:7:20] -> [test.cpp:7:40]: (style) Condition '(unsigned char)x>200' is always false [knownConditionTrueFalse]\n"
+                      "[test.cpp:8:24] -> [test.cpp:8:45]: (style) Condition '(unsigned char)x>200' is always false [knownConditionTrueFalse]\n"
+                      "[test.cpp:10:25] -> [test.cpp:10:46]: (style) Condition '(unsigned char)x>200' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        const char signedToUnsigned[] =
+            "void gtkpod(void *p) {\n"
+            "    unsigned int position = (int)(long)p;\n"
+            "    if (position == -1) {}\n"
+            "    if (position == 4294967295u) {}\n"
+            "}\n";
+        check(signedToUnsigned, settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+        check(signedToUnsigned, settingsUnix64, false);
+        ASSERT_EQUALS("", errout_str());
+
+        // A signed variable compared against an unsigned constant of the same rank is converted to
+        // unsigned, so the constant does not bound the variable: 0xFFFFFFFFu is -1 for 'int' and
+        // 4294967295 cannot be reached at all.
+        const char signedVariableUnsignedConstant[] =
+            "void use(int);\n"
+            "void f1(int x) { if (x >= 0x80000000u) { if (x < 0) use(1); } }\n"
+            "void f2(int x) { if (x < 0x80000000u) return; if (x == -5) use(2); }\n"
+            "void f3(int x) { if (x == 0xFFFFFFFFu) { if (x == -1) use(3); } }\n"
+            "void f4(int x) { if (x < 4294967295u) return; if (x == -1) use(4); }\n"
+            "void f5(int x) { if (x < 4294967295u) return; if (x == -2) use(5); }\n";
+        check(signedVariableUnsignedConstant, settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:24] -> [test.cpp:2:48]: (style) Condition 'x<0' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:4:24] -> [test.cpp:4:48]: (style) Condition 'x==-1' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:5:24] -> [test.cpp:5:53]: (style) Condition 'x==-1' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:6:24] -> [test.cpp:6:53]: (style) Condition 'x==-2' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        // A relational comparison in the unsigned domain selects a union of intervals on the signed
+        // operand, so no bound may be derived from it: '(unsigned)x >= 1' also holds for every negative
+        // x, and the shifted counterpart of 'x < 1u' would exclude x = 5. Only the constant equal to the
+        // unsigned maximum pins the operand down, to -1.
+        const char unsignedDomainRelational[] =
+            "void use(int);\n"
+            "void m2(int x) { if (x < 1u || x >= 4294967295u) return; if (~x != 1) use(1); }\n"
+            "void m3(int x) { if (x < 1u) return; if (x == 0) use(2); }\n"
+            "void m4(int x) { if (x < 1u) return; if (x == 5) use(3); }\n"
+            "void m9(int x) { if (x < 4294967295u) return; if (x == -1) use(4); }\n";
+        check(unsignedDomainRelational, settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:3:24] -> [test.cpp:3:44]: (style) Condition 'x==0' is always false [knownConditionTrueFalse]\n"
+                      "[test.cpp:5:24] -> [test.cpp:5:53]: (style) Condition 'x==-1' is always true [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        // The unsigned constant need not be a literal: a variable, a const, a cast or a complement
+        // expression carries the same unsigned-domain value and must be read in the operand's type.
+        const char signedVariableNonLiteralUnsigned[] =
+            "void use(int);\n"
+            "void f1(int x) { unsigned u = 0xFFFFFFFFu; if (x == u) { if (x == -1) use(1); } }\n"
+            "void f2(int x) { const unsigned M = 0xFFFFFFFFu; if (x == M) { if (x == -1) use(2); } }\n"
+            "void f3(int x) { if (x == (unsigned)-1) { if (x == -1) use(3); } }\n"
+            "void f4(int x) { if (x == ~0u) { if (x == -1) use(4); } }\n"
+            "void f5(int x) { unsigned u = 0xFFFFFFFFu; if (x != u) return; if (x == -1) use(5); }\n"
+            "int  f6(int x) { unsigned u = 0xFFFFFFFFu; if (x == u) { return 10 / (x + 1); } return 0; }\n";
+        check(signedVariableNonLiteralUnsigned, settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:50] -> [test.cpp:2:64]: (style) Condition 'x==-1' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:3:56] -> [test.cpp:3:70]: (style) Condition 'x==-1' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:4:24] -> [test.cpp:4:49]: (style) Condition 'x==-1' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:5:24] -> [test.cpp:5:40]: (style) Condition 'x==-1' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:6:50] -> [test.cpp:6:70]: (style) Condition 'x==-1' is always true [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        // The comparison uses the common type, which is at least 'int' and at least as wide as the
+        // constant. A narrower signed operand is sign-extended first, so 0xFFFFu is not -1 for a
+        // 'short' and no 'short' value equals it.
+        const char signedOperandNarrowerThanConstant[] =
+            "void use(int);\n"
+            "void f1(short s) { if (s == 0xFFFFu) return; if (s == -1) use(1); }\n"
+            "void f2(int x) { if (x == 0xFFFFFFFFul) return; if (x == -1) use(2); }\n"
+            "void f3(signed char c) { if (c != 0xFFu) { if (c == -1) use(3); } }\n"
+            "void f4(short s) { if (s >= 0x8000u) return; if (s == -1) use(4); }\n";
+        check(signedOperandNarrowerThanConstant, settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:29]: (style) Comparing expression of type 'signed short' against value 65535. Condition is always false. [compareValueOutOfTypeRangeError]\n"
+                      "[test.cpp:3:27]: (style) Comparing expression of type 'signed int' against value 4294967295. Condition is always false. [compareValueOutOfTypeRangeError]\n"
+                      "[test.cpp:4:35]: (style) Comparing expression of type 'signed char' against value 255. Condition is always true. [compareValueOutOfTypeRangeError]\n"
+                      // 's >= 0x8000u' holds exactly for the negative s, so the fall-through knows s >= 0.
+                      "[test.cpp:5:26] -> [test.cpp:5:52]: (style) Condition 's==-1' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        const char narrowingSize[] =
+            "typedef unsigned long size_t;\n"
+            "void f(size_t len) {\n"
+            "    if (len > 1) {\n"
+            "        unsigned int end = (unsigned int)(len - 1);\n"
+            "        if (end > 0) {}\n"
+            "    }\n"
+            "}\n";
+        check(narrowingSize, settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+        check(narrowingSize, settingsUnix64, false);
+        ASSERT_EQUALS("", errout_str());
+
+        const char wideningUnsigned[] =
+            "void f(unsigned int input) {\n"
+            "    if (input == 0) return;\n"
+            "    long long widened = (long long)input;\n"
+            "    if (widened == 0) {}\n"
+            "}\n";
+        check(wideningUnsigned, settingsUnix64);
+        const std::string wideningCpp = errout_str();
+        ASSERT(wideningCpp.find("[test.cpp:2:15] -> [test.cpp:4:17]") != std::string::npos);
+        ASSERT(wideningCpp.find("Condition 'widened==0' is always false [knownConditionTrueFalse]") != std::string::npos);
+        check(wideningUnsigned, settingsUnix64, false);
+        const std::string wideningC = errout_str();
+        ASSERT(wideningC.find("[test.c:2:15] -> [test.c:4:17]") != std::string::npos);
+        ASSERT(wideningC.find("Condition 'widened==0' is always false [knownConditionTrueFalse]") != std::string::npos);
     }
+
+    void sizelessPodtypeConversions()
+    {
+        const Settings posixSettings = settingsBuilder().library("posix.cfg").severity(Severity::style)
+                                       .platform(Platform::Type::Unix64).build();
+        check("static long shim_enosys(long a) { return -1; }\n"
+              "void f(void) {\n"
+              "    pid_t ret = (pid_t)shim_enosys(0);\n"
+              "    if (ret >= 0) {}\n"
+              "    off_t o = (off_t)0;\n"
+              "    if (o > 0) {}\n"
+              "}\n", posixSettings);
+        ASSERT_EQUALS("[test.cpp:4:13]: (style) Condition 'ret>=0' is always false [knownConditionTrueFalse]\n"
+                      "[test.cpp:6:11]: (style) Condition 'o>0' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        const char podtypeXml[] = "<?xml version=\"1.0\"?>\n<def>\n"
+                                  "  <podtype name=\"gsize\" sign=\"u\"/>\n"
+                                  "  <podtype name=\"gssize\" sign=\"s\"/>\n"
+                                  "</def>";
+        const Settings gtkSettings = settingsBuilder().severity(Severity::style).platform(Platform::Type::Unix64)
+                                     .libraryxml(podtypeXml).build();
+        check("static gssize get(gsize len) { return len; }\n"
+              "void f(void) {\n"
+              "    gssize length = get(3);\n"
+              "    if (length < 0) {}\n"
+              "}\n", gtkSettings);
+        ASSERT_EQUALS("[test.cpp:4:16]: (style) Condition 'length<0' is always false [knownConditionTrueFalse]\n", errout_str());
+        check("void f(gsize n) {\n"
+              "    if (n == -1) {}\n"
+              "}\n", gtkSettings);
+        ASSERT_EQUALS("", errout_str());
+    }
+
 
     void knownConditionCast() {
         check("void f(int i) {\n" // #9976
@@ -6766,6 +7228,297 @@ private:
             "};\n"
             );
         ASSERT_EQUALS("[test.cpp:13:11] -> [test.cpp:18:13]: (style) Condition 'mS.b' is always false [knownConditionTrueFalse]\n", errout_str());
+    }
+
+    void conditionInferenceProvenance() {
+        const Settings settingsUnix64 = settingsBuilder().severity(Severity::style).platform(Platform::Type::Unix64).build();
+        const Settings settingsUnix32 = settingsBuilder().severity(Severity::style).platform(Platform::Type::Unix32).build();
+
+        check("void poplast(); void use(unsigned);\n"
+              "struct Array {\n"
+              "    unsigned length;\n"
+              "    void remove(unsigned index) {\n"
+              "        if (index == length - 1) poplast();\n"
+              "        else if (index < length) use(index);\n"
+              "    }\n"
+              "};\n"
+              "void call_remove(Array &a) { a.remove(0); }\n"
+              "void call_remove_any(Array &a, unsigned index) { a.remove(index); }\n"
+              "void call_remove_last(Array &a) { a.length = 1; a.remove(0); }\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("#define UINT_MAX 4294967295U\n"
+              "void gtkpod(void *p) {\n"
+              "    unsigned int position = (int)(long)p;\n"
+              "    if (position == -1) {}\n"
+              "    if (position == UINT_MAX) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+        check("#define UINT_MAX 4294967295U\n"
+              "void gtkpod(void *p) {\n"
+              "    unsigned int position = (int)(long)p;\n"
+              "    if (position == -1) {}\n"
+              "    if (position == UINT_MAX) {}\n"
+              "}\n", settingsUnix64, false);
+        ASSERT_EQUALS("", errout_str());
+        check("#define UINT_MAX 4294967295U\n"
+              "void gtkpod32(void *p) {\n"
+              "    unsigned int position = (int)(long)p;\n"
+              "    if (position == -1) {}\n"
+              "    if (position == UINT_MAX) {}\n"
+              "}\n", settingsUnix32);
+        ASSERT_EQUALS("", errout_str());
+        check("#define UINT_MAX 4294967295U\n"
+              "void gtkpod32_c(void *p) {\n"
+              "    unsigned int position = (int)(long)p;\n"
+              "    if (position == -1) {}\n"
+              "    if (position == UINT_MAX) {}\n"
+              "}\n", settingsUnix32, false);
+        ASSERT_EQUALS("", errout_str());
+        check("void known_sentinel32() {\n"
+              "    unsigned int position = (int)(long)-1;\n"
+              "    if (position == -1) {}\n"
+              "}\n", settingsUnix32);
+        ASSERT_EQUALS("[test.cpp:3:18]: (style) Condition 'position==-1' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("void known_sentinel() {\n"
+              "    unsigned int position = (int)(long)-1;\n"
+              "    if (position == -1) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:3:18]: (style) Condition 'position==-1' is always true [knownConditionTrueFalse]\n", errout_str());
+        check("void known_sentinel_c() {\n"
+              "    unsigned int position = (int)(long)-1;\n"
+              "    if (position == -1) {}\n"
+              "}\n", settingsUnix64, false);
+        ASSERT_EQUALS("[test.c:3:18]: (style) Condition 'position==-1' is always true [knownConditionTrueFalse]\n", errout_str());
+        const char pointExclusionCode[] =
+            "void excluded_signed_point(int value) {\n"
+            "    if (value != -1) {\n"
+            "        unsigned int converted = (unsigned int)value;\n"
+            "        if (converted == 4294967295U) {}\n"
+            "    }\n"
+            "}\n"
+            "void noninjective_exclusion(int value) {\n"
+            "    if (value != -1) {\n"
+            "        unsigned char narrowed = (unsigned char)value;\n"
+            "        if (narrowed == 255) {}\n"
+            "    }\n"
+            "}\n";
+        check(pointExclusionCode, settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:15] -> [test.cpp:4:23]: (style) Condition 'converted==4294967295U' is always false [knownConditionTrueFalse]\n", errout_str());
+        check(pointExclusionCode, settingsUnix64, false);
+        ASSERT_EQUALS("[test.c:2:15] -> [test.c:4:23]: (style) Condition 'converted==4294967295U' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("typedef unsigned long size_t;\n"
+              "void narrowed_size() {\n"
+              "    size_t len = 4294967297ULL;\n"
+              "    unsigned int position = (unsigned int)(len - 1);\n"
+              "    if (position > 0) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:5:18]: (style) Condition 'position>0' is always false [knownConditionTrueFalse]\n", errout_str());
+        check("typedef unsigned long size_t;\n"
+              "void narrowed_size_c() {\n"
+              "    size_t len = 4294967297ULL;\n"
+              "    unsigned int position = (unsigned int)(len - 1);\n"
+              "    if (position > 0) {}\n"
+              "}\n", settingsUnix64, false);
+        ASSERT_EQUALS("[test.c:5:18]: (style) Condition 'position>0' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("typedef unsigned long size_t;\n"
+              "void unknown_narrowed_size(size_t len) {\n"
+              "    unsigned int position = (unsigned int)(len - 1);\n"
+              "    if (position > 0) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+        check("typedef unsigned long size_t;\n"
+              "void unknown_narrowed_size_c(size_t len) {\n"
+              "    unsigned int position = (unsigned int)(len - 1);\n"
+              "    if (position > 0) {}\n"
+              "}\n", settingsUnix64, false);
+        ASSERT_EQUALS("", errout_str());
+
+        check("void compare_ternary_lhs(int result) {\n"
+              "    if (result == ((0) ? 315 : (-1-1u))) {}\n"
+              "}\n"
+              "void compare_ternary_rhs(int result) {\n"
+              "    if (((0) ? 315 : (-1-1u)) == result) {}\n"
+              "}\n"
+              "void compare_ternary_swapped_lhs(int result) {\n"
+              "    if (result == ((0) ? (-1-1u) : 315)) {}\n"
+              "}\n"
+              "void compare_ternary_swapped_rhs(int result) {\n"
+              "    if (((0) ? (-1-1u) : 315) == result) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("void compare_ternary_c_lhs(int result) {\n"
+              "    if (result == ((0) ? 315 : (-1-1u))) {}\n"
+              "}\n"
+              "void compare_ternary_c_rhs(int result) {\n"
+              "    if (((0) ? 315 : (-1-1u)) == result) {}\n"
+              "}\n"
+              "void compare_ternary_c_swapped_lhs(int result) {\n"
+              "    if (result == ((0) ? (-1-1u) : 315)) {}\n"
+              "}\n"
+              "void compare_ternary_c_swapped_rhs(int result) {\n"
+              "    if (((0) ? (-1-1u) : 315) == result) {}\n"
+              "}\n", settingsUnix64, false);
+        ASSERT_EQUALS("", errout_str());
+
+        check("void compare_known_ternary() {\n"
+              "    int result = -2;\n"
+              "    if (result != ((0) ? 315 : (-1-1u))) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:3:16]: (style) Condition 'result!=((0)?315:(-1-1u))' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("void compare_known_ternary_c() {\n"
+              "    int result = -2;\n"
+              "    if (result != ((0) ? 315 : (-1-1u))) {}\n"
+              "}\n", settingsUnix64, false);
+        ASSERT_EQUALS("[test.c:3:16]: (style) Condition 'result!=((0)?315:(-1-1u))' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("void plain_unsigned_expression() {\n"
+              "    if (-1-1u == 4294967294U) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:15]: (style) Condition '-1-1u==4294967294U' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("void plain_unsigned_expression_c() {\n"
+              "    if (-1-1u == 4294967294U) {}\n"
+              "}\n", settingsUnix64, false);
+        ASSERT_EQUALS("[test.c:2:15]: (style) Condition '-1-1u==4294967294U' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("void s3backer_guard() {\n"
+              "    if ((unsigned int)(4294967295U*.666666)==2863308666U) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:44]: (style) Condition '(unsigned int)(4294967295U*0.666666)==2863308666U' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("void s3backer_guard_c() {\n"
+              "    if ((unsigned int)(4294967295U*.666666)==2863308666U) {}\n"
+              "}\n", settingsUnix64, false);
+        ASSERT_EQUALS("[test.c:2:44]: (style) Condition '(unsigned int)(4294967295U*0.666666)==2863308666U' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("extern unsigned long getlength(); extern void use(int);\n"
+              "void f() {\n"
+              "    int length = (int)getlength();\n"
+              "    if (length != 1)\n"
+              "        if (length == 1) use(length);\n"
+              "}\n"
+              "void g() {\n"
+              "    int length = (int)getlength();\n"
+              "    if (length != 1)\n"
+              "        if (1 == length) use(length);\n"
+              "}\n"
+              "void h() {\n"
+              "    int length = (int)getlength();\n"
+              "    if (length != 1)\n"
+              "        if (length != 1) use(length);\n"
+              "}\n"
+              "void j() {\n"
+              "    int length = (int)getlength();\n"
+              "    if (length != 1)\n"
+              "        if (1 != length) use(length);\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:4:16] -> [test.cpp:5:20]: (style) Condition 'length==1' is always false [knownConditionTrueFalse]\n"
+                      "[test.cpp:9:16] -> [test.cpp:10:15]: (style) Condition '1==length' is always false [knownConditionTrueFalse]\n"
+                      "[test.cpp:14:16] -> [test.cpp:15:20]: (style) Condition 'length!=1' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:19:16] -> [test.cpp:20:15]: (style) Condition '1!=length' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("extern unsigned long getlength(); extern void use(int);\n"
+              "void oce() {\n"
+              "    int length = (int)getlength();\n"
+              "    if (length!=1)\n"
+              "        if (getlength()!=0)\n"
+              "            if ((length==1 && getlength()) || (length==2 && getlength()))\n"
+              "                use(length);\n"
+              "}\n", settingsUnix64);
+        const std::string oceOutput = errout_str();
+        ASSERT(oceOutput.find("Condition 'length==1' is always false [knownConditionTrueFalse]") != std::string::npos);
+        ASSERT(oceOutput.find("[test.cpp:4:") != std::string::npos);
+        ASSERT(oceOutput.find(" -> ") != std::string::npos);
+        check("extern unsigned long getlength(); extern void use(int);\n"
+              "void oce_reversed_exclusion() {\n"
+              "    int length = (int)getlength();\n"
+              "    if (length != 1) {\n"
+              "        if (1 == length) use(length);\n"
+              "        if (1 != length) use(length);\n"
+              "    }\n"
+              "}\n", settingsUnix64);
+        const std::string reversedExclusionOutput = errout_str();
+        ASSERT(reversedExclusionOutput.find("Condition '1==length' is always false [knownConditionTrueFalse]") != std::string::npos);
+        ASSERT(reversedExclusionOutput.find("Condition '1!=length' is always true [knownConditionTrueFalse]") != std::string::npos);
+        ASSERT(reversedExclusionOutput.find("[test.cpp:4:") != std::string::npos);
+        ASSERT(reversedExclusionOutput.find(" -> ") != std::string::npos);
+
+        check("extern unsigned long getlength(); extern void use(int);\n"
+              "void range_without_exclusion() {\n"
+              "    int length = (int)getlength();\n"
+              "    if (length >= 0)\n"
+              "        if (length == 1) use(length);\n"
+              "}\n"
+              "void exclude_a_different_point() {\n"
+              "    int length = (int)getlength();\n"
+              "    if (length != 2)\n"
+              "        if (length == 1) use(length);\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("extern unsigned long getlength(); extern void use(int);\n"
+              "void mutation_invalidates_exclusion() {\n"
+              "    int length = (int)getlength();\n"
+              "    if (length != 1) {\n"
+              "        length = 1;\n"
+              "        if (length == 1) use(length);\n"
+              "    }\n"
+              "}\n", settingsUnix64);
+        const std::string mutationOutput = errout_str();
+        ASSERT(mutationOutput.find("Condition 'length==1' is always true [knownConditionTrueFalse]") != std::string::npos);
+        ASSERT_EQUALS(std::string::npos, mutationOutput.find("[test.cpp:4:16] ->"));
+
+        check("extern unsigned long getlength(); extern void use(int);\n"
+              "void incompatible_paths(bool selector) {\n"
+              "    int length = (int)getlength();\n"
+              "    if (selector && length != 1) use(0);\n"
+              "    if (!selector && length == 1) use(length);\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("void use(int);\n"
+              "struct Scope { unsigned short sp; };\n"
+              "void pop_n(Scope *s, int n) {\n"
+              "    if ((int)s->sp-n < 0) use(1);\n"
+              "    s->sp -= n;\n"
+              "}\n"
+              "void call_pop(Scope *s, int n) {\n"
+              "    pop_n(s, n);\n"
+              "    if (n == 0) use(0);\n"
+              "}\n"
+              "void caller_n0(Scope *s) { call_pop(s, 0); }\n"
+              "void caller_n1(Scope *s) { call_pop(s, 1); }\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct Scope { unsigned short sp; };\n"
+              "void use(int);\n"
+              "void local_n0(Scope *s, int n) {\n"
+              "    if (n == 0)\n"
+              "        if ((int)s->sp - n < 0) use(1);\n"
+              "}\n"
+              "void local_sp0_n1(Scope *s) {\n"
+              "    s->sp = 0;\n"
+              "    if ((int)s->sp - 1 < 0) use(1);\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:4:11] -> [test.cpp:5:28]: (style) Condition '(int)s->sp-n<0' is always false [knownConditionTrueFalse]\n"
+                      "[test.cpp:9:24]: (style) Condition '(int)s->sp-1<0' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("void use(int);\n"
+              "struct Scope { unsigned short sp; };\n"
+              "void pop_n(Scope *s, int n) {\n"
+              "    if ((int)s->sp-n < 0) use(1);\n"
+              "}\n"
+              "void caller_underflow(Scope *s) {\n"
+              "    s->sp = 0;\n"
+              "    pop_n(s, 1);\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
     }
 
     void knownConditionIncDecOperator() {
@@ -6904,7 +7657,6 @@ private:
         ASSERT_EQUALS(
             "[test.cpp:3:12]: (style) Condition 'nf>+1.0' is always false [knownConditionTrueFalse]\n",
             errout_str());
-
         check("void foo() {\n" // #11200
               "    float f = 1.0;\n"
               "    if (f > -1.0) {}\n"
@@ -7043,6 +7795,186 @@ private:
         ASSERT_EQUALS("[test.cpp:2:36] -> [test.cpp:5:45]: (style) Condition '(z-1)>=0' is always true [knownConditionTrueFalse]\n"
                       "[test.cpp:2:36] -> [test.cpp:9:29]: (style) Condition '(z-1)>=0' is always true [knownConditionTrueFalse]\n",
                       errout_str());
+    }
+
+    void unsignedArithmeticNoWrap()
+    {
+        const Settings settingsUnix64 = settingsBuilder().severity(Severity::style).platform(Platform::Type::Unix64).build();
+        const Settings settingsUnix32 = settingsBuilder().severity(Severity::style).platform(Platform::Type::Unix32).build();
+        const Settings settingsUnix64Std = settingsBuilder().library("std.cfg").severity(Severity::style)
+                                           .platform(Platform::Type::Unix64).build();
+
+        check("int safe_subtraction(unsigned int count) {\n"
+              "    if (count < 2) return 0;\n"
+              "    if (count - 1 > 0) return 1;\n"
+              "    return 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:15] -> [test.cpp:3:19]: (style) Condition 'count-1>0' is always true [knownConditionTrueFalse]\n", errout_str());
+        check("void safe_subtraction_boundary(unsigned int x) {\n"
+              "    if (x < 1u) return;\n"
+              "    if (x - 1u == 4294967295u) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("void compound_after_cast(int x) {\n"
+              "    unsigned y = (unsigned char)x;\n"
+              "    y -= 1;\n"
+              "    if (y > 255) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+        check("void decrement_after_cast(int x) {\n"
+              "    unsigned y = (unsigned char)x;\n"
+              "    y--;\n"
+              "    if (y > 255) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+        check("unsigned long compound_after_cast_ge(unsigned short n) {\n"
+              "    unsigned long r = (unsigned short)n;\n"
+              "    r -= 1;\n"
+              "    if (r >= 65535) return 0;\n"
+              "    return r;\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+        check("void compound_after_condition(unsigned y) {\n"
+              "    if (y > 255) return;\n"
+              "    y -= 1;\n"
+              "    if (y > 255) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("void wrapping_subtraction_boundary(unsigned int x) {\n"
+              "    if (x - 1u == 4294967295u) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+        check("void possible_upper_zero_wrap(unsigned int len) {\n"
+              "    if (len > 0) return;\n"
+              "    if (len - 1u > 100u) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+        check("void possible_upper_zero_wrap_c(unsigned int len) {\n"
+              "    if (len > 0) return;\n"
+              "    if (len - 1u > 100u) {}\n"
+              "}\n", settingsUnix64, false);
+        ASSERT_EQUALS("", errout_str());
+        check("void non_dominating_guard(bool flag, unsigned int x) {\n"
+              "    if (flag) {\n"
+              "        if (x < 1u) return;\n"
+              "    }\n"
+              "    if (x - 1u == 4294967295u) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("int safe_addition(unsigned int value) {\n"
+              "    if (value < 10) {\n"
+              "        if (value + 1 > 10) return 1;\n"
+              "    }\n"
+              "    return 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:15] -> [test.cpp:3:23]: (style) Condition 'value+1>10' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("int tinyexr_range(unsigned long size) {\n"
+              "    if (size < 6) return 0;\n"
+              "    unsigned long offset = 2;\n"
+              "    if (size - offset < 4) return 1;\n"
+              "    return 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:14] -> [test.cpp:4:23]: (style) Condition 'size-offset<4' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("void use(int);\n"
+              "void f6(unsigned char c) {\n"
+              "    unsigned s = c;\n"
+              "    if (s + 1u == 0u) use(4);\n"
+              "}\n"
+              "void f4(unsigned long n) {\n"
+              "    for (unsigned long i = 0; i < n; i++) {\n"
+              "        if (i + 1 == 0) use(3);\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:16]: (style) Condition 's+1u==0u' is always false [knownConditionTrueFalse]\n"
+                      "[test.cpp:8:19]: (style) Condition 'i+1==0' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        check("void use(int);\n"
+              "void unguarded_assignment_wrap(unsigned long n) {\n"
+              "    unsigned long i = n - 1;\n"
+              "    if (i + 1 == 0) use(3);\n"
+              "}\n"
+              "void full_range_wrap(unsigned u) {\n"
+              "    if (u + 1u == 0u) use(1);\n"
+              "}\n"
+              "void possible_subtraction_wrap(unsigned x, unsigned y) {\n"
+              "    if (x < 10u && y < 20u && x - y > 100u) use(2);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void wrap_cases(int value) {\n"
+              "    if ((unsigned int)value - 1u == 4294967295u) {}\n"
+              "    if ((unsigned int)value + 1u == 0u) {}\n"
+              "    if ((unsigned int)value * 2u > 1u) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+        check("void wrap_check_less_than_addend(unsigned x) {\n"
+              "    if (x + 1u < 1u) {}\n"
+              "    if (x + 2u < 2u) {}\n"
+              "    if (x + 1u <= 1u) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("typedef unsigned long size_t;\n"
+              "int smenu(size_t len, char *str) {\n"
+              "    size_t start = 0;\n"
+              "    if (len > 1) {\n"
+              "        while (start <= len-1 && (str[start]=='{' || str[start]=='}')) start++;\n"
+              "        size_t end = len-1;\n"
+              "        if (end > 0) return 1;\n"
+              "    }\n"
+              "    return 0;\n"
+              "}\n", settingsUnix64, false);
+        ASSERT_EQUALS("[test.c:4:13] -> [test.c:7:17]: (style) Condition 'end>0' is always true [knownConditionTrueFalse]\n", errout_str());
+        check("typedef unsigned long size_t;\n"
+              "int smenu32(size_t len, char *str) {\n"
+              "    size_t start = 0;\n"
+              "    if (len > 1) {\n"
+              "        while (start <= len-1 && (str[start]=='{' || str[start]=='}')) start++;\n"
+              "        size_t end = len-1;\n"
+              "        if (end > 0) return 1;\n"
+              "    }\n"
+              "    return 0;\n"
+              "}\n", settingsUnix32, false);
+        ASSERT_EQUALS("[test.c:4:13] -> [test.c:7:17]: (style) Condition 'end>0' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("typedef unsigned long size_t;\n"
+              "int no_loop(size_t len) {\n"
+              "    if (len > 1) {\n"
+              "        size_t end = len-1;\n"
+              "        if (end > 0) return 1;\n"
+              "    }\n"
+              "    return 0;\n"
+              "}\n", settingsUnix64, false);
+        ASSERT_EQUALS("[test.c:3:13] -> [test.c:5:17]: (style) Condition 'end>0' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("typedef unsigned long size_t;\n"
+              "int narrow_size() {\n"
+              "    size_t len = 4294967297ULL;\n"
+              "    unsigned int end = (unsigned int)(len-1);\n"
+              "    if (end > 0) return 1;\n"
+              "    return 0;\n"
+              "}\n", settingsUnix64, false);
+        ASSERT_EQUALS("[test.c:5:13]: (style) Condition 'end>0' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        check("void f(const char* text) {\n"
+              "    size_t len = strlen(text) + 1;\n"
+              "    if (len > 0) {}\n"
+              "}\n", settingsUnix64Std, false);
+        ASSERT_EQUALS("[test.c:3:13]: (style) Condition 'len>0' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("void f(unsigned x, unsigned k) { if (x * k + 1U == 0U) {} }\n", settingsUnix64);
+        ASSERT_EQUALS("", errout_str());
+
+        check("void known_unsigned_point_wrap() {\n"
+              "    if (0u - 1u == 4294967295U) {}\n"
+              "}\n", settingsUnix64);
+        ASSERT_EQUALS("[test.cpp:2:17]: (style) Condition '0u-1u==4294967295U' is always true [knownConditionTrueFalse]\n", errout_str());
     }
 };
 

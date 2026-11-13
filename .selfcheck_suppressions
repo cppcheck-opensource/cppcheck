@@ -49,7 +49,6 @@ functionStatic:*/gui/ui_*.h
 # --debug-warnings suppressions
 valueFlowBailout
 valueFlowBailoutIncompleteVar
-valueFlowMaxIterations:gui/resultstree.cpp
 autoNoType:externals/simplecpp/simplecpp.cpp
 autoNoType:cli/*.cpp
 autoNoType:lib/*.cpp

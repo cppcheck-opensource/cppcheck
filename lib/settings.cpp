@@ -350,6 +350,9 @@ void Settings::setCheckLevel(CheckLevel level)
     else if (level == CheckLevel::exhaustive) {
         // Checking can take a little while. ~ 10 times slower than normal analysis is OK.
         checkLevel = CheckLevel::exhaustive;
+        // A conversion can be proven from range facts that are only derived in the previous pass,
+        // so the facts a cast exposes need one more pass to reach their fixpoint.
+        vfOptions.maxIterations = 5;
         vfOptions.maxIfCount = -1;
         vfOptions.maxSubFunctionArgs = 256;
         vfOptions.doConditionExpressionAnalysis = true;

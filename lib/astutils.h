@@ -230,12 +230,16 @@ const Token* getCondTokFromEnd(const Token* endBlock);
 const Token *findNextTokenFromBreak(const Token *breakToken);
 
 /**
- * Extract for loop values: loopvar varid, init value, step value, last value (inclusive)
+ * Extract for loop values: loopvar varid, init value, step value, last value (inclusive).
+ * `initValueSource` identifies the fact supplying the minimum; `initValueWitnessSource`
+ * identifies an actual negative point or upper bound, if present.
  */
 bool extractForLoopValues(const Token *forToken,
                           nonneg int &varid,
                           bool &knownInitValue,
                           MathLib::bigint &initValue,
+                          const ValueFlow::Value*& initValueSource,
+                          const ValueFlow::Value*& initValueWitnessSource,
                           bool &partialCond,
                           MathLib::bigint &stepValue,
                           MathLib::bigint &lastValue);
