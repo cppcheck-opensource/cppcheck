@@ -219,9 +219,7 @@ private:
               "    return 0;\n"
               "  return rm>> k;\n"
               "}\n");
-        ASSERT_EQUALS(
-            "[test.cpp:4] -> [test.cpp:6]: (warning) Shifting signed 32-bit value by 31 bits is undefined behaviour. See condition at line 4.\n",
-            errout_str());
+        ASSERT_EQUALS("", errout_str()); // a right shift by 31 bits is defined
 
         check("int f(int k, int rm) {\n"
               "  if (k == 0 || k == 32)\n"
@@ -231,9 +229,7 @@ private:
               "  else\n"
               "    return rm>> k;\n"
               "}\n");
-        ASSERT_EQUALS(
-            "[test.cpp:4] -> [test.cpp:7]: (warning) Shifting signed 32-bit value by 31 bits is undefined behaviour. See condition at line 4.\n",
-            errout_str());
+        ASSERT_EQUALS("", errout_str()); // a right shift by 31 bits is defined
 
         check("int f(int k, int rm) {\n"
               "  if (k == 0 || k == 32 || k == 31)\n"
@@ -268,6 +264,29 @@ private:
               "    }\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        // Shifting right by the width minus one bit is defined; shifting left is not
+        check("long long f(long long m, long long e) {\n"
+              "    if (e <= 0) {\n"
+              "        if (1 - e >= 64)\n"
+              "            m = 0;\n"
+              "        else\n"
+              "            m >>= 1 - e;\n"
+              "    }\n"
+              "    return m;\n"
+              "}\n", dinit(CheckOptions, $.settings = &settings));
+        ASSERT_EQUALS("", errout_str());
+
+        check("long long f(long long m, long long e) {\n"
+              "    if (e <= 0) {\n"
+              "        if (1 - e >= 64)\n"
+              "            m = 0;\n"
+              "        else\n"
+              "            m <<= 1 - e;\n"
+              "    }\n"
+              "    return m;\n"
+              "}\n", dinit(CheckOptions, $.settings = &settings));
+        ASSERT_EQUALS("[test.cpp:3] -> [test.cpp:6]: (warning) Shifting signed 64-bit value by 63 bits is undefined behaviour. See condition at line 3.\n", errout_str());
     }
 
     void checkIntegerOverflow() {

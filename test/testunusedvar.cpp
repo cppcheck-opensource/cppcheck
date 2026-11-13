@@ -5688,6 +5688,20 @@ private:
                               "    a[0].b = 0;\n"
                               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        functionVariableUsage("struct S {\n" // #9995
+                              "    int& operator[](int i) { return r[i]; }\n"
+                              "    std::map<int, int>& r;\n"
+                              "};\n"
+                              "struct T {\n"
+                              "    std::map<int, int>& m;\n"
+                              "    S get() { return { m }; }\n"
+                              "};\n"
+                              "void f(T& t) {\n"
+                              "    S s = t.get();\n"
+                              "    s[1] = 0;\n"
+                              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void localvarUnion1() {
