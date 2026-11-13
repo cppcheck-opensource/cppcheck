@@ -893,7 +893,128 @@ simplecpp::TokenList Preprocessor::preprocess(const std::string &cfgStr, std::ve
     if (!mSettings.keepComments)
         tokens2.removeComments();
 
+    mExportedFunctions.clear();
+    mExportedLocations.clear();
+    if (mSettings.library.isexporter("Q_PROPERTY"))
+        readQtAnnotations(tokens2);
+
     return tokens2;
+}
+
+static std::set<std::string> exporterFunctions(const simplecpp::Token* tok, const std::string& exporter, const Library& library)
+{
+    // Match configured exporter keywords without parsing library-specific grammar.
+    std::set<std::string> functions;
+    unsigned int depth = 0;
+    for (; tok; tok = tok->next) {
+        if (tok->str() == "(")
+            ++depth;
+        else if (tok->str() == ")") {
+            if (depth == 0)
+                break;
+            --depth;
+        } else if (depth == 0) {
+            if (library.isexportedsuffix(exporter, tok->str()) && tok->previous && tok->previous->name)
+                functions.insert(tok->previous->str());
+            if (!library.isexportedprefix(exporter, tok->str()))
+                continue;
+            const simplecpp::Token* name = tok->next;
+            const bool parenthesized = name && name->str() == "(";
+            if (parenthesized)
+                name = name->next;
+            if (name && name->str() == "::")
+                name = name->next;
+            if (!name || !name->name)
+                continue;
+            while (name->next && name->next->str() == "::" && name->next->next && name->next->next->name)
+                name = name->next->next;
+            if (parenthesized && (!name->next || name->next->str() != ")"))
+                continue;
+            if (name->str() != "true" && name->str() != "false" && name->str() != "default")
+                functions.insert(name->str());
+        }
+    }
+    return functions;
+}
+
+void Preprocessor::readQtAnnotations(simplecpp::TokenList& tokens)
+{
+    std::set<simplecpp::Location> locations;
+    for (const simplecpp::MacroUsage& usage : mMacroUsage) {
+        if (usage.macroName == "QT_ANNOTATE_CLASS")
+            locations.insert(usage.useLocation);
+    }
+    for (simplecpp::Token* tok = tokens.front(); tok;) {
+        if (tok->str() != "__cppcheck_qt_annotation__" ||
+            (tok->macro != "QT_ANNOTATE_CLASS" && locations.find(tok->location) == locations.end()) ||
+            !tok->next || tok->next->str() != "(") {
+            tok = tok->next;
+            continue;
+        }
+        const simplecpp::Token* tag = tok->next->next;
+        if (!tag || tag->str() != "\"cppcheck-qt-annotation\"" || !tag->next || tag->next->str() != ",") {
+            tok = tok->next;
+            continue;
+        }
+        const simplecpp::Token* end = tok->next;
+        unsigned int depth = 0;
+        do {
+            if (end->str() == "(")
+                ++depth;
+            else if (end->str() == ")")
+                --depth;
+            end = end->next;
+        } while (end && depth);
+        if (depth) {
+            tok = tok->next;
+            continue;
+        }
+        const simplecpp::Token* type = tag->next->next;
+        if (type && type->str() == "qt_property" && type->next && type->next->str() == ",") {
+            const auto functions = exporterFunctions(type->next->next, "Q_PROPERTY", mSettings.library);
+            mExportedFunctions.insert(functions.begin(), functions.end());
+            mExportedLocations.insert(tok->location);
+        }
+        // Qt's default annotation hook expands to nothing. Retain that C++
+        // token stream after recording the property metadata, including for
+        // annotations other than qt_property.
+        while (tok != end) {
+            simplecpp::Token* next = tok->next;
+            tokens.deleteToken(tok);
+            tok = next;
+        }
+    }
+}
+
+std::set<std::string> Preprocessor::getExportedFunctions() const
+{
+    std::set<simplecpp::Location> locations;
+    for (const simplecpp::MacroUsage& usage : mMacroUsage) {
+        if (mSettings.library.isexporter(usage.macroName) &&
+            mExportedLocations.find(usage.useLocation) == mExportedLocations.end())
+            locations.insert(usage.useLocation);
+    }
+
+    std::set<std::string> functions = mExportedFunctions;
+    if (locations.empty())
+        return functions;
+
+    // Source definitions can erase exporter macros without passing through the
+    // annotation hook. Inspect only invocations expanded in this configuration
+    // and not already handled by the hook, excluding inactive branches.
+    const auto collect = [&](const simplecpp::TokenList& tokens) {
+        for (const simplecpp::Token* tok = tokens.cfront(); tok; tok = tok->next) {
+            if (locations.find(tok->location) == locations.end() ||
+                !mSettings.library.isexporter(tok->str()) || !tok->next || tok->next->str() != "(")
+                continue;
+            const auto exported = exporterFunctions(tok->next->next, tok->str(), mSettings.library);
+            functions.insert(exported.begin(), exported.end());
+        }
+    };
+    collect(mTokens);
+    for (const auto& fileData : mFileCache)
+        collect(fileData->tokens);
+    return functions;
 }
 
 std::string Preprocessor::getcode(const std::string &cfgStr, std::vector<std::string> &files, const bool writeLocations)
