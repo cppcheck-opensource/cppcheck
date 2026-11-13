@@ -5039,6 +5039,17 @@ private:
               "};\n");
         ASSERT_EQUALS("[test.cpp:2:17]: (style) Either there is a missing override/final keyword, or the parameter 'p' can be declared as pointer to const [constParameterPointer]\n",
                       errout_str());
+
+        check("void f(int *r, int s, int N) {\n"
+              "    int *p = nullptr;\n"
+              "    for (int j = 0; j < N; j++) {\n"
+              "        if (p) {}\n"
+              "        p = r;\n"
+              "        r += s;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:10]: (style) Variable 'p' can be declared as pointer to const [constVariablePointer]\n",
+                      errout_str());
     }
 
     void constArray() {
