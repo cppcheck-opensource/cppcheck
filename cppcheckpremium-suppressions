@@ -1,8 +1,10 @@
 
 # open source warnings are handled by the selfcheck.yml
+knownConditionTrueFalse
 noExplicitConstructor
 postfixOperator
 shadowFunction
+uninitMemberVarNoCtor
 useStlAlgorithm
 normalCheckLevelMaxBranches
 
@@ -19,8 +21,20 @@ premium-cert-int36-c
 
 # too picky
 premium-cert-arr30-c
+premium-cert-ctr50-cpp
+premium-cert-dcl06-c
+premium-cert-dcl51-cpp
+premium-cert-exp20-c
+premium-cert-exp34-c
+premium-cert-int13-c
+premium-cert-int30-c
+premium-cert-int31-c
 premium-cert-int32-c
+premium-cert-pre05-c
+premium-cert-pre12-c
 premium-cert-str34-c
+premium-cert-str53-cpp
+
 
 # we intentionally pass structs
 premium-cert-dcl39-c-*

@@ -1,7 +1,7 @@
 # algorithmOutOfBounds
 
 **Message**: The algorithm 'std::copy' accesses 5 elements through the iterator 'v1.begin()' but only 3 elements are available.<br/>
-**Category**: Correctness<br/>
+**Category**: Undefined Behaviour<br/>
 **Severity**: Error<br/>
 **Language**: C++
 
@@ -11,8 +11,8 @@ Many STL algorithms take an iterator that denotes the beginning of a second rang
 assume that this range is large enough. If it is not, the algorithm writes or reads past the end of the container,
 which is undefined behavior.
 
-This checker uses the ValueFlow analysis to compare the number of elements an algorithm accesses with the number of
-elements that are actually available through the iterator, and warns when the access is out of bounds. Three groups
+This checker compares the number of elements an algorithm accesses with the number of elements that
+are actually available through the iterator, and warns when the access is out of bounds. Three groups
 of algorithms are checked:
 
 - Algorithms that access exactly `last1 - first1` elements through the other iterator: `std::copy`, `std::move`,

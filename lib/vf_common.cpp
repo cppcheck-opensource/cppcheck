@@ -96,7 +96,7 @@ namespace ValueFlow
         return true;
     }
 
-    MathLib::bigint truncateIntValue(MathLib::bigint value, size_t value_size, const ValueType::Sign dst_sign)
+    MathLib::bigint truncateIntValue(MathLib::bigint value, size_t value_size, const ValueType* dst, const Platform& platform)
     {
         if (value_size == 0)
             return value;
@@ -104,7 +104,7 @@ namespace ValueFlow
         const MathLib::biguint unsignedMaxValue = std::numeric_limits<MathLib::biguint>::max() >> ((sizeof(unsignedMaxValue) - value_size) * 8);
         const MathLib::biguint signBit = 1ULL << ((value_size * 8) - 1);
         value &= unsignedMaxValue;
-        if (dst_sign == ValueType::Sign::SIGNED && (value & signBit))
+        if ((dst->sign == ValueType::Sign::SIGNED || (dst->sign == ValueType::Sign::UNKNOWN_SIGN && dst->type == ValueType::Type::CHAR && platform.defaultSign == 's')) && (value & signBit))
             value |= ~unsignedMaxValue;
 
         return value;
@@ -139,12 +139,16 @@ namespace ValueFlow
                 // Bad character literal
             }
         } else if (tok->isNumber() && MathLib::isFloat(tok->str())) {
-            Value value;
-            value.valueType = Value::ValueType::FLOAT;
-            value.floatValue = MathLib::toDoubleNumber(tok);
-            if (!tok->isTemplateArg())
-                value.setKnown();
-            setTokenValue(tok, std::move(value), settings);
+            // A long double literal out of the range of double (1e400L) has no
+            // double value: infinity would make different literals compare equal.
+            if (!MathLib::isLongDoubleOutOfDoubleRange(tok->str())) {
+                Value value;
+                value.valueType = Value::ValueType::FLOAT;
+                value.floatValue = MathLib::toDoubleNumber(tok);
+                if (!tok->isTemplateArg())
+                    value.setKnown();
+                setTokenValue(tok, std::move(value), settings);
+            }
         } else if (tok->enumerator() && tok->enumerator()->value_known) {
             Value value(tok->enumerator()->value);
             if (!tok->isTemplateArg())

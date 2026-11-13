@@ -24,6 +24,7 @@
 
 #include <cstdint>
 #include <list>
+#include <string>
 
 #include <QFileDialog>
 #include <QMainWindow>
@@ -249,6 +250,19 @@ private slots:
     void changeReportType();
 private:
 
+    /** @brief How an analysis treats the files selected for a recheck */
+    enum class Recheck : std::uint8_t {
+        /** Not a recheck, everything is analyzed from scratch */
+        None,
+        /** Only the selected files are analyzed, the results of the other files are kept */
+        Selected,
+        /**
+         * Everything is analyzed. The analyzer information in the build directory is kept,
+         * except for the selected files, so the unchanged files are not analyzed again.
+         */
+        Cached
+    };
+
     bool isCppcheckPremium() const;
 
     /** Get filename for last results */
@@ -266,11 +280,11 @@ private:
     /**
      * @brief Analyze the project.
      * @param projectFile Pointer to the project to analyze.
-     * @param recheckFiles files to recheck, empty => check all files
+     * @param selectedFiles files to recheck, empty => check all files
      * @param checkLib Flag to indicate if the library should be checked.
      * @param checkConfig Flag to indicate if the configuration should be checked.
      */
-    void analyzeProject(const ProjectFile *projectFile, const QStringList& recheckFiles, bool checkLib = false, bool checkConfig = false);
+    void analyzeProject(const ProjectFile *projectFile, const QStringList& selectedFiles, bool checkLib = false, bool checkConfig = false);
 
     /**
      * @brief Set current language
@@ -308,8 +322,10 @@ private:
      * @param p imported project
      * @param checkLib Flag to indicate if library should be checked
      * @param checkConfig Flag to indicate if the configuration should be checked.
+     * @param selectedFiles Files selected for a recheck
+     * @param recheck How the selected files are rechecked
      */
-    void doAnalyzeProject(ImportProject p, bool checkLib = false, bool checkConfig = false, const QStringList& recheckFiles = QStringList());
+    void doAnalyzeProject(ImportProject p, bool checkLib = false, bool checkConfig = false, const QStringList& selectedFiles = QStringList(), Recheck recheck = Recheck::None);
 
     /**
      * @brief Analyze all files specified in parameter files
@@ -317,8 +333,18 @@ private:
      * @param files List of files and/or directories to analyze
      * @param checkLib Flag to indicate if library should be checked
      * @param checkConfig Flag to indicate if the configuration should be checked.
+     * @param selectedFiles Files selected for a recheck
+     * @param recheck How the selected files are rechecked
      */
-    void doAnalyzeFiles(const QStringList &files, bool checkLib = false, bool checkConfig = false);
+    void doAnalyzeFiles(const QStringList &files, bool checkLib = false, bool checkConfig = false, const QStringList& selectedFiles = QStringList(), Recheck recheck = Recheck::None);
+
+    /**
+     * @brief Clear the results that a new analysis replaces
+     * @param buildDir Build directory of the analysis
+     * @param selectedFiles Files selected for a recheck
+     * @param recheck How the selected files are rechecked
+     */
+    void clearResultsForAnalysis(const std::string& buildDir, const QStringList& selectedFiles, Recheck recheck);
 
     /**
      * @brief Get our default cppcheck settings and read project file.

@@ -1,74 +1,195 @@
 <html>
 <head>
 <title>Preferences</title>
+<link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
 
 <h1>Preferences</h1>
 
-<p><b>Number of threads</b><br>Number of threads to use in analysis. Each
-thread checks its own source file.</p>
+<p>Open the preferences with <i>Edit &gt; Preferences</i> or the preferences
+button in the toolbar. The preferences are your personal settings; they are
+stored for your user account, not in the project file. Click <i>OK</i> to
+apply the changes.</p>
 
-<p><b>Force checking of all #ifdef configurations</b><br>Cppcheck try to check
-all code and will therefore guess different preprocessor configurations. The
-maximum number of configurations that is checked is 14 by default.</p>
+<p>Some settings exist both here and in the project file, for example
+<i>Enable inline suppressions</i>. When a project is open, the project
+setting is used.</p>
 
-<p><b>Show full path of files</b><br>Show the full paths in the results.</p>
+<h2>General</h2>
 
-<p><b>Show &quot;No errors found&quot; message when no errors found</b><br>
-If you want to get a message box about this.</p>
+<p class="figure"><img src="images/preferences-general.png"></p>
 
-<p><b>Display error id column &quot;Id&quot;</b><br>Show error id in results</p>
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Option</th><th>Description</th></tr>
+<tr><td>Number of threads</td><td>How many files are analyzed at the same time.
+    Each thread analyzes its own file. <i>Max count</i> shows the number of
+    processor cores of your computer, which is the highest value you can
+    enter. More threads make the analysis faster, but use more memory. A value
+    equal to the number of cores is usually a good choice.</td></tr>
+<tr><td>Force checking all #ifdef configurations</td><td>By default Cppcheck
+    analyzes at most 12 preprocessor configurations of each file. With this
+    option all configurations are analyzed. This finds more bugs in code with
+    many <code>#ifdef</code>s, but can be very slow. See
+    <a href="projectfiledialog.html#defines">Defines</a>.</td></tr>
+<tr><td>Show full path of files</td><td>Show the full path of files in the
+    results list, instead of the path relative to the project.</td></tr>
+<tr><td>Show "No errors found" message when no errors found</td><td>Show a
+    message box when an analysis finishes without warnings.</td></tr>
+<tr><td>Display error Id in column "Id"</td><td>Show the <i>Id</i> column in
+    the results list. The id is needed for suppressions.</td></tr>
+<tr><td>Enable inline suppressions</td><td>Allow comments like
+    <code>// cppcheck-suppress nullPointer</code> in the code to suppress
+    warnings. Only used when no project is open; projects have their own
+    setting. See <a href="suppressions.html#inline">Inline
+    suppressions</a>.</td></tr>
+<tr><td>Check for inconclusive errors also</td><td>Also report warnings where
+    Cppcheck is not sure that there is a problem. These give more findings, but
+    also more false warnings. An <i>Inconclusive</i> column is added to the
+    results list.</td></tr>
+<tr><td>Show statistics on check completion</td><td>Open the
+    <a href="reports.html#statistics">statistics</a> dialog when an analysis
+    finishes.</td></tr>
+<tr><td>Check for updates</td><td>When the GUI starts, check on the Cppcheck
+    web site if there is a newer version. If there is, a message is shown at
+    the top of the main window. This needs an internet connection; nothing
+    else is sent.</td></tr>
+<tr><td>Show internal warnings in log</td><td>Show debug warnings from the
+    analysis in the <i>Analysis Log</i>. Only useful if you develop Cppcheck or
+    investigate a problem with the analysis.</td></tr>
+</table>
 
-<p><b>Enable inline suppressions</b><br>You can suppress warnings with comments.
-See the Cppcheck manual (https://cppcheck.sourceforge.io/manual.pdf) for more
-information about inline suppressions.</p>
+<a name="applications"></a>
+<h2>Applications</h2>
 
-<p><b>Check for inconclusive errors also</b><br>When full analysis of the code
-can not determine if there should be a warning or not, it is inconclusive.
-Normally Cppcheck does not warn then.</p>
+<p class="figure"><img src="images/preferences-applications.png"></p>
 
-<p><b>Show statistics on check completion</b><br>Show statistics in a window
-when analysis finish.</p>
+<p>The editors (or other programs) that you can open a warning in. They are
+shown at the top of the context menu of the results list. The <i>default</i>
+application is used when you double-click a warning or press Enter.</p>
 
-<p><b>Show internal warnings in log</b><br>Internal warnings (for debugging) is
-shown in the <i>Analysis log</i>.</p>
+<p>On some systems the GUI finds installed editors automatically and adds them
+to the list.</p>
 
-<p><b>Applications</b><br>Configure external editor to open from context menu
-when you right click on a warning.</p>
+<ul>
+<li><b>Add...</b>: add an application.</li>
+<li><b>Edit...</b>: change the selected application.</li>
+<li><b>Remove</b>: remove the selected application.</li>
+<li><b>Set as default</b>: make the selected application the default one.</li>
+</ul>
 
-<p><b>Save all errors when creating report</b><br>If hidden warnings should be
-saved or not.</p>
+<p class="figure"><img src="images/add-application.png"></p>
 
-<p><b>Save full path to files in report</b><br>If you use <i>Root path</i> the
-warnings on the screen will not have the full path.</p>
+<p>For each application you enter a name for the menu, the executable and the
+command line parameters. These texts in the parameters are replaced when the
+application is started:</p>
 
-<p><b>Language</b><br>Configure language to use for GUI.</p>
+<table class="options" border="1" cellspacing="0" cellpadding="4">
+<tr><th>Text</th><th>Replaced with</th></tr>
+<tr><td><code>(file)</code></td><td>The file name of the warning</td></tr>
+<tr><td><code>(line)</code></td><td>The line number</td></tr>
+<tr><td><code>(message)</code></td><td>The warning message</td></tr>
+<tr><td><code>(severity)</code></td><td>The severity</td></tr>
+</table>
 
-<p><b>Python binary</b><br>To be able to execute addons, Cppcheck needs to know
-where python is. Unless you configure something, Cppcheck will try to execute
-python in your PATH.</p>
+<p>Examples for some common editors:</p>
 
-<p><b>MISRA rule texts</b><br>Only needed if you want to use the MISRA addon.
-Cppcheck is not legally allowed to distribute the MISRA rule texts and these
-must be provided by users. The MISRA rule texts are proprietary. An example
-rule text file:
-<blockquote><pre>Appendix A Summary of guidelines
-Rule 1.1
-Text of rule 1.1
-Rule 1.2
-Text of rule 1.2</pre></blockquote>
-</p>
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Editor</th><th>Executable</th><th>Parameters</th></tr>
+<tr><td>Visual Studio Code</td><td><code>code</code></td>
+    <td><code>--goto (file):(line)</code></td></tr>
+<tr><td>Kate</td><td><code>kate</code></td>
+    <td><code>-l(line) (file)</code></td></tr>
+<tr><td>Qt Creator</td><td><code>qtcreator</code></td>
+    <td><code>-client (file):(line)</code></td></tr>
+<tr><td>Notepad++</td><td><code>notepad++.exe</code></td>
+    <td><code>-n(line) (file)</code></td></tr>
+<tr><td>Vim (in a terminal)</td><td><code>xterm</code></td>
+    <td><code>-e vim +(line) (file)</code></td></tr>
+<tr><td>Emacs</td><td><code>emacs</code></td>
+    <td><code>+(line) (file)</code></td></tr>
+</table>
 
-<p><b>Clang path</b><br>The path to <i>clang</i> binary. If no path is provided
-then system PATH is used.</p>
+<h2>Reports</h2>
 
-<p><b>Visual studio headers</b><br>If you want to use the Visual Studio headers
-in the analysis you can provide the path(s) here. Hint: Open a visual studio
-command prompt and type <i>SET INCLUDE</i>. Then copy/paste the paths.</p>
+<p class="figure"><img src="images/preferences-reports.png"></p>
 
-<p><b>Code editor style</b><br>The visual theme to use for the code editor that
-is used when you investigate results.</p>
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Option</th><th>Description</th></tr>
+<tr><td>Save all errors when creating report</td><td>Also save hidden warnings
+    when you save the results to a file. By default only the visible warnings
+    are saved.</td></tr>
+<tr><td>Save full path to files in reports</td><td>Save the full path of each
+    file. By default the path relative to the project (or the <i>root
+    path</i>) is saved.</td></tr>
+</table>
+
+<p>See <a href="reports.html">Results files, printing and statistics</a>.</p>
+
+<h2>Language</h2>
+
+<p class="figure"><img src="images/preferences-language.png"></p>
+
+<p>The language of the user interface. The GUI is translated to several
+languages; select one and click <i>OK</i>. This help is only available in
+English.</p>
+
+<a name="addons"></a>
+<h2>Addons</h2>
+
+<p class="figure"><img src="images/preferences-addons.png"></p>
+
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Option</th><th>Description</th></tr>
+<tr><td>Python binary</td><td>The Python interpreter used to run addons. Leave
+    it empty to use the Python found in the PATH. If the file you enter does
+    not exist, a red warning is shown.</td></tr>
+<tr><td>MISRA rule texts file</td><td>A text file with the MISRA C rule texts,
+    used by the Misra addon to show the rule texts in the warnings. Cppcheck is
+    not allowed to distribute the rule texts, so you must create the file from
+    your copy of the MISRA C document. See
+    <a href="projectfiledialog.html#addons">Addons</a> for the format. This is
+    the same setting as <i>MISRA rule texts</i> in the project dialog.</td></tr>
+</table>
+
+<a name="clang"></a>
+<h2>Clang</h2>
+
+<p class="figure"><img src="images/preferences-clang.png"></p>
+
+<table class="options" border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Option</th><th>Description</th></tr>
+<tr><td>Clang path</td><td>The folder where <code>clang</code> and
+    <code>clang-tidy</code> are installed. Used by the Clang parser and by
+    Clang-Tidy (see <a href="projectfiledialog.html#analysis">Analysis</a> and
+    <a href="projectfiledialog.html#addons">External tools</a> in the project
+    dialog). Leave it empty to search the system PATH. On Windows, Clang is
+    also found in <code>C:\Program Files\LLVM\bin</code>.</td></tr>
+<tr><td>Visual Studio headers</td><td>Paths to the Visual Studio headers,
+    separated by semicolons. Clang needs them to parse code that uses the
+    Visual Studio libraries. To get the paths, open a Visual Studio command
+    prompt, type <code>SET INCLUDE</code> and copy/paste the paths.</td></tr>
+</table>
+
+<a name="codeeditor"></a>
+<h2>Code Editor</h2>
+
+<p class="figure"><img src="images/preferences-code-editor.png"></p>
+
+<p>The colors of the code view in the lower part of the main window.</p>
+<ul>
+<li><b>System Style</b>: use the colors of your desktop theme.</li>
+<li><b>Default Light Style</b>: dark text on a light background.</li>
+<li><b>Default Dark Style</b>: light text on a dark background.</li>
+<li><b>Custom</b>: your own colors. Click <i>Edit...</i> to choose the
+    foreground and background colors of the editor, the highlighted line and
+    the line numbers, and the color and font weight of keywords, class names,
+    strings, comments and symbols. A preview shows the result.</li>
+</ul>
+
+<p class="nav">Previous: <a href="tools.html">Scratchpad, library editor and
+other tools</a> | Next: <a href="commandline.html">Command line
+options</a></p>
 
 </body>
 </html>

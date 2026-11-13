@@ -35,7 +35,7 @@ jobs:
           persist-credentials: false
 
       - name: ccache
-        uses: hendrikmuhs/ccache-action@v1.2
+        uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.os }}
 
@@ -90,7 +90,7 @@ jobs:
           persist-credentials: false
 
       - name: ccache
-        uses: hendrikmuhs/ccache-action@v1.2
+        uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.os }}
 
@@ -221,7 +221,7 @@ jobs:
           persist-credentials: false
 
       - name: ccache
-        uses: hendrikmuhs/ccache-action@v1.2
+        uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.os }}-${{ matrix.cxxstd }}
 
@@ -270,7 +270,7 @@ jobs:
           persist-credentials: false
 
       - name: ccache
-        uses: hendrikmuhs/ccache-action@v1.2
+        uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.os }}
 
@@ -304,7 +304,7 @@ jobs:
           persist-credentials: false
 
       - name: ccache
-        uses: hendrikmuhs/ccache-action@v1.2
+        uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.os }}
 
@@ -366,7 +366,7 @@ jobs:
           persist-credentials: false
 
       - name: ccache
-        uses: hendrikmuhs/ccache-action@v1.2
+        uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.os }}
 
@@ -466,7 +466,7 @@ jobs:
           persist-credentials: false
 
       - name: ccache
-        uses: hendrikmuhs/ccache-action@v1.2
+        uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.os }}
 
@@ -717,7 +717,7 @@ jobs:
           persist-credentials: false
 
       - name: ccache
-        uses: hendrikmuhs/ccache-action@v1.2
+        uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.os }}
 

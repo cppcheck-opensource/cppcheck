@@ -69,10 +69,11 @@ public:
 
     /**
      * @brief Run whole program analysis
-     * @param files    All files
-     * @param ctuInfo  Ctu info for addons
+     * @param files         All files
+     * @param fileSettings  All files of the project
+     * @param ctuInfo       Ctu info for addons
      */
-    void analyseWholeProgram(const std::list<FileWithDetails> &files, const std::string& ctuInfo);
+    void analyseWholeProgram(const std::list<FileWithDetails> &files, const std::list<FileSettings> &fileSettings, const std::string& ctuInfo);
 
     void setAddonsAndTools(const QStringList &addonsAndTools) {
         mAddonsAndTools = addonsAndTools;
@@ -153,6 +154,7 @@ private:
     bool isSuppressed(const SuppressionList::ErrorMessage &errorMessage) const;
 
     std::list<FileWithDetails> mFiles;
+    std::list<FileSettings> mFileSettings;
     bool mAnalyseWholeProgram{};
     std::string mCtuInfo;
     QStringList mAddonsAndTools;

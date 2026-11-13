@@ -114,6 +114,51 @@ class TestHTMLReport(unittest.TestCase):
             self.assertIn('onclick="toggleSeverity(this)"', report)
             output_directory.cleanup()
 
+    def testEscape(self):
+        with tempfile.TemporaryDirectory() as source_directory:
+            source_filename = os.path.join(source_directory, '<b>escape.c')
+            with open(source_filename, 'w') as source_file:
+                source_file.write('#error <b>escape</b>\n')
+
+            with runCheck(
+                source_filename,
+                xml_version='2'
+            ) as (report, output_directory):
+                self.assertIn('&lt;b&gt;escape.c', report)
+                self.assertNotIn('<b>', report)
+
+                with open(os.path.join(output_directory.name, '0.html')) as input_file:
+                    detail_contents = input_file.read()
+                    self.assertIn('&lt;b&gt;escape.c', detail_contents)
+                    self.assertIn('&lt;--- #error &lt;b&gt;escape&lt;/b&gt;', detail_contents)
+                    self.assertNotIn('<b>', detail_contents)
+
+                with open(os.path.join(output_directory.name, 'stats.html')) as input_file:
+                    stats_contents = input_file.read()
+                    self.assertIn('&lt;b&gt;escape.c', stats_contents)
+                    self.assertNotIn('<b>', stats_contents)
+
+                output_directory.cleanup()
+
+    def testPremiumLicenseMessage(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            xml_filename = os.path.join(tmpdir, 'premium.xml')
+            with open(xml_filename, 'w') as f:
+                f.write('<?xml version="1.0" encoding="UTF-8"?>\n'
+                        '<results version="2"><cppcheck version="2.18"/><errors>\n'
+                        '<error id="premium-licenseExpiresSoon" severity="information" msg="license will expire" verbose="license will expire">\n'
+                        '<location file="Cppcheck Premium" line="0" column="0"/>\n'
+                        '</error>\n'
+                        '</errors></results>\n')
+            output_directory = os.path.join(tmpdir, 'out')
+            p = subprocess.run([*HTML_REPORT_BIN, '--file=' + xml_filename, '--report-dir=' + output_directory],
+                               capture_output=True, text=True, check=True)
+            self.assertNotIn('not found', p.stderr)
+            with open(os.path.join(output_directory, 'index.html')) as index_file:
+                report = index_file.read()
+            self.assertIn('license will expire', report)
+            self.assertNotIn('0.html#line-0', report)
+
 
 @contextlib.contextmanager
 def runCheck(source_filename=None, xml_version='1', xml_filename=None, checkers_filename=None):

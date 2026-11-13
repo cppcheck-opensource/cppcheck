@@ -1102,8 +1102,9 @@ static std::string simplecppErrToId(simplecpp::Output::Type type)
     case simplecpp::Output::ERROR:
         return "preprocessorErrorDirective";
     case simplecpp::Output::SYNTAX_ERROR:
-    case simplecpp::Output::DIRECTIVE_AS_MACRO_PARAMETER:
         return "syntaxError";
+    case simplecpp::Output::DIRECTIVE_AS_MACRO_PARAMETER:
+        return "directiveAsMacroParameter";
     case simplecpp::Output::UNHANDLED_CHAR_ERROR:
         return "unhandledChar";
     case simplecpp::Output::INCLUDE_NESTED_TOO_DEEPLY:
@@ -1187,6 +1188,7 @@ void Preprocessor::getErrorMessages(ErrorLogger &errorLogger, const Settings &se
     preprocessor.missingInclude(loc, "", SystemHeader);
     preprocessor.error(loc, "message", simplecpp::Output::ERROR);
     preprocessor.error(loc, "message", simplecpp::Output::SYNTAX_ERROR);
+    preprocessor.error(loc, "message", simplecpp::Output::DIRECTIVE_AS_MACRO_PARAMETER);
     preprocessor.error(loc, "message", simplecpp::Output::UNHANDLED_CHAR_ERROR);
     preprocessor.error(loc, "message", simplecpp::Output::INCLUDE_NESTED_TOO_DEEPLY);
     preprocessor.error(loc, "message", simplecpp::Output::FILE_NOT_FOUND);
@@ -1233,22 +1235,29 @@ void Preprocessor::dump(std::ostream &out) const
 std::size_t Preprocessor::calculateHash(const std::string &toolinfo) const
 {
     std::string hashData = toolinfo;
-    for (const simplecpp::Token *tok = mTokens.cfront(); tok; tok = tok->next) {
-        if (!tok->comment) {
-            hashData += tok->str();
-            hashData += static_cast<char>(tok->location.line);
-            hashData += static_cast<char>(tok->location.col);
-        }
-    }
-    for (const auto &filedata : mFileCache) {
-        for (const simplecpp::Token *tok = filedata->tokens.cfront(); tok; tok = tok->next) {
+    const auto addTokens = [&hashData](const simplecpp::TokenList &tokens) {
+        for (const simplecpp::Token *tok = tokens.cfront(); tok; tok = tok->next) {
             if (!tok->comment) {
                 hashData += tok->str();
                 hashData += static_cast<char>(tok->location.line);
                 hashData += static_cast<char>(tok->location.col);
             }
         }
-    }
+    };
+    addTokens(mTokens);
+
+    // Hash the included files in a fixed order, the order they are loaded in differs between runs
+    std::vector<const simplecpp::FileData *> fileData;
+    fileData.reserve(mFileCache.size());
+    std::transform(mFileCache.cbegin(), mFileCache.cend(), std::back_inserter(fileData), [](const std::unique_ptr<simplecpp::FileData> &data) {
+        return data.get();
+    });
+    std::sort(fileData.begin(), fileData.end(), [](const simplecpp::FileData *a, const simplecpp::FileData *b) {
+        return a->filename < b->filename;
+    });
+    for (const simplecpp::FileData *data : fileData)
+        addTokens(data->tokens);
+
     return (std::hash<std::string>{})(hashData);
 }
 

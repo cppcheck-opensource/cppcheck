@@ -138,7 +138,6 @@ Does not improve the readability.
 To be evaluated (need to remove exclusion).
 
 `cppcoreguidelines-missing-std-forward`<br/>
-`cppcoreguidelines-avoid-const-or-ref-data-members`<br/>
 `cppcoreguidelines-macro-usage`<br/>
 `cppcoreguidelines-pro-type-member-init`<br/>
 `cppcoreguidelines-prefer-member-initializer`<br/>

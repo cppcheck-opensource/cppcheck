@@ -24,6 +24,7 @@
 #include "config.h"
 #include "library.h"
 #include "mathlib.h"
+#include "refthunk.h"
 #include "programmemory.h"
 #include "smallvector.h"
 #include "settings.h"
@@ -58,11 +59,31 @@ static bool isDereferenceOp(const Token* tok)
     return tok->str() == "." && tok->originalName() == "->";
 }
 
+// Every leaf is a constant or has an int value or constraint in the memory, so an undecided
+// condition can go either way.
+static bool stateCoversCondition(const Token* tok, const ProgramMemory& pm, int depth = 20)
+{
+    if (!tok || depth < 0)
+        return false;
+    if (tok->hasKnownIntValue())
+        return true;
+    if (tok->varId() > 0 || Token::simpleMatch(tok, ".")) {
+        const ProgramMemory::Values* values = pm.getValues(tok->exprId());
+        return values && !values->empty() && std::all_of(values->cbegin(), values->cend(), [](const ValueFlow::Value& v) {
+            return v.isIntValue();
+        });
+    }
+    if (!tok->astOperand2())
+        return Token::Match(tok, "!|-|~") && stateCoversCondition(tok->astOperand1(), pm, depth - 1);
+    return tok->isConstOp() && stateCoversCondition(tok->astOperand1(), pm, depth - 1) &&
+           stateCoversCondition(tok->astOperand2(), pm, depth - 1);
+}
+
 struct ValueFlowAnalyzer : Analyzer {
-    const Settings& settings;
+    RefThunk<const Settings> settings;
     ProgramMemoryState pms;
 
-    explicit ValueFlowAnalyzer(const Settings& s) : settings(s), pms(settings) {}
+    explicit ValueFlowAnalyzer(const Settings& s) : settings(s), pms(s) {}
 
     virtual const ValueFlow::Value* getValue(const Token* tok) const = 0;
     virtual ValueFlow::Value* getValue(const Token* tok) = 0;
@@ -357,7 +378,7 @@ struct ValueFlowAnalyzer : Analyzer {
             if (dst) {
                 const size_t sz = dst->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
                 if (sz > 0 && sz < sizeof(MathLib::biguint)) {
-                    MathLib::bigint newvalue = ValueFlow::truncateIntValue(value->intvalue, sz, dst->sign);
+                    MathLib::bigint newvalue = ValueFlow::truncateIntValue(value->intvalue, sz, dst, settings().platform);
 
                     /* Handle overflow/underflow for value bounds */
                     if (value->bound != ValueFlow::Value::Bound::Point) {
@@ -380,6 +401,15 @@ struct ValueFlowAnalyzer : Analyzer {
     virtual void internalUpdate(Token* /*tok*/, const ValueFlow::Value& /*v*/, Direction /*d*/)
     {
         assert(false && "Internal update unimplemented.");
+    }
+
+    // A conditional value is split only on a condition the state covers; an unknown one may be
+    // correlated with the assumption.
+    bool canSplitConditional(const Token* condTok) const
+    {
+        if (!condTok)
+            return false;
+        return stateCoversCondition(condTok, pms.get(condTok, nullptr, getProgramState()));
     }
 
 private:
@@ -756,14 +786,13 @@ private:
         pms.addState(anchor, getProgramState());
         pms.assume(tok, state, flags & Assume::ContainerEmpty, origin);
 
-        // The false path (the true path uses scopeEnd above): record the assumed state where control
-        // continues - the end of the else block, or the closing brace when there is no else - so it
-        // reaches the enclosing scope.
+        // The false path: record the state where control continues, at the end of the else block or
+        // past the closing brace (which still counts as inside the block).
         if (isCondBlock && !(flags & Assume::Pending) && !state) {
             if (Token::simpleMatch(endBlock, "} else {"))
                 pms.addState(endBlock->linkAt(2)->previous(), getProgramState());
             else
-                pms.addState(endBlock, getProgramState());
+                pms.addState(endBlock->next(), getProgramState());
         }
 
         if (!(flags & Assume::Quiet)) {
@@ -998,7 +1027,12 @@ struct MultiValueFlowAnalyzer : ValueFlowAnalyzer {
 
     void addErrorPath(const Token* tok, const std::string& s) override {
         for (auto&& p:values) {
-            p.second.errorPath.emplace_back(tok, s);
+            auto& ep = p.second.errorPath;
+            if (std::any_of(ep.begin(), ep.end(), [&](const ErrorPathItem& epi) {
+                return epi.first == tok && epi.second == s;
+            }))
+                continue;
+            ep.emplace_back(tok, s);
         }
     }
 
@@ -1045,7 +1079,7 @@ struct MultiValueFlowAnalyzer : ValueFlowAnalyzer {
 
     bool stopOnCondition(const Token* condTok) const override {
         if (isConditional())
-            return true;
+            return !canSplitConditional(condTok);
         if (!condTok->hasKnownIntValue() && values.count(condTok->varId()) == 0) {
             const auto& values_ = condTok->values();
             return std::any_of(values_.cbegin(), values_.cend(), [](const ValueFlow::Value& v) {
@@ -1077,9 +1111,9 @@ struct MultiValueFlowAnalyzer : ValueFlowAnalyzer {
             };
             if (std::all_of(values.cbegin(), values.cend(), std::bind(pred, std::bind(SelectMapValues{}, std::placeholders::_1))))
                 return true;
-            if (isConditional())
-                return false;
             const Token* condTok = getCondTokFromEnd(endBlock);
+            if (isConditional())
+                return canSplitConditional(condTok);
             std::set<nonneg int> varids;
             std::transform(getVars().cbegin(), getVars().cend(), std::inserter(varids, varids.begin()), SelectMapKeys{});
             return bifurcate(condTok, varids, getSettings());
@@ -1099,7 +1133,7 @@ struct MultiValueFlowAnalyzer : ValueFlowAnalyzer {
             if (!var)
                 continue;
             assert(var->nameToken());
-            ps[var->nameToken()] = p.second;
+            ps[var->nameToken()] = {p.second};
         }
         return ps;
     }
@@ -1146,7 +1180,12 @@ struct SingleValueFlowAnalyzer : ValueFlowAnalyzer {
     }
 
     void addErrorPath(const Token* tok, const std::string& s) override {
-        value.errorPath.emplace_back(tok, s);
+        auto& ep = value.errorPath;
+        if (std::any_of(ep.begin(), ep.end(), [&](const ErrorPathItem& epi) {
+            return epi.first == tok && epi.second == s;
+        }))
+            return;
+        ep.emplace_back(tok, s);
     }
 
     template<class T>
@@ -1221,9 +1260,9 @@ struct SingleValueFlowAnalyzer : ValueFlowAnalyzer {
         if (value.isLifetimeValue())
             return false;
         // 'conditional' flag (uninit, or lowered after a modifying branch): may depend on a
-        // condition that doesn't mention the variable -> stop
+        // condition that doesn't mention the variable -> stop unless the state covers this one
         if (value.conditional && !value.isKnown())
-            return true;
+            return !canSplitConditional(condTok);
         if (value.isNonValue())
             return false;
         if (value.isSymbolicValue())
@@ -1261,9 +1300,9 @@ struct SingleValueFlowAnalyzer : ValueFlowAnalyzer {
                 return true;
             if (value.isLifetimeValue())
                 return true;
-            if (isConditional())
-                return false;
             const Token* condTok = getCondTokFromEnd(endBlock);
+            if (isConditional())
+                return canSplitConditional(condTok);
             std::set<nonneg int> varids2;
             std::transform(getVars().cbegin(), getVars().cend(), std::inserter(varids2, varids2.begin()), SelectMapKeys{});
             return bifurcate(condTok, varids2, getSettings());
@@ -1315,7 +1354,7 @@ struct ExpressionAnalyzer : SingleValueFlowAnalyzer {
     }
 
     void setupExprVarIds(const Token* start, int depth = 0) {
-        if (depth > settings.vfOptions.maxExprVarIdDepth) {
+        if (depth > settings().vfOptions.maxExprVarIdDepth) {
             // TODO: add bailout message
             return;
         }
@@ -1369,7 +1408,7 @@ struct ExpressionAnalyzer : SingleValueFlowAnalyzer {
 
     ProgramState getProgramState() const override {
         ProgramState ps;
-        ps[expr] = value;
+        ps[expr] = {value};
         return ps;
     }
 
@@ -1551,7 +1590,7 @@ struct ContainerExpressionAnalyzer : ExpressionAnalyzer {
             if (action == Library::Container::Action::PUSH || action == Library::Container::Action::POP || action == Library::Container::Action::APPEND) { // TODO: handle more actions?
                 std::vector<const Token*> args = getArguments(tok->tokAt(3));
                 bool isVariadic = false;
-                if (const Library::Function* libFunc = settings.library.getFunction(tok->tokAt(2))) {
+                if (const Library::Function* libFunc = settings().library.getFunction(tok->tokAt(2))) {
                     const auto& argChecks = libFunc->argumentChecks;
                     isVariadic = argChecks.find(-1) != argChecks.end() && argChecks.at(-1).variadic;
                 }
@@ -1599,7 +1638,7 @@ struct ContainerExpressionAnalyzer : ExpressionAnalyzer {
             case Library::Container::Action::APPEND: {
                 std::vector<const Token*> args = getArguments(tok->astParent()->tokAt(2));
                 if (args.size() == 1) // TODO: handle overloads
-                    n = ValueFlow::valueFlowGetStrLength(tok->astParent()->tokAt(3), settings.library);
+                    n = ValueFlow::valueFlowGetStrLength(tok->astParent()->tokAt(3), settings().library);
                 if (n == 0) // TODO: handle known empty append
                     val->setPossible();
                 break;

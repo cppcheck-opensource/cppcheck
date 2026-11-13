@@ -21,10 +21,14 @@
 #include "errorlogger.h"
 #include "filesettings.h"
 #include "fixture.h"
+#include "helpers.h"
 #include "standards.h"
 
+#include <fstream>
 #include <list>
+#include <set>
 #include <sstream>
+#include <string>
 
 #include "xml.h"
 
@@ -45,6 +49,7 @@ private:
         TEST_CASE(filesTextDuplicateFile);
         TEST_CASE(parse);
         TEST_CASE(skipAnalysis);
+        TEST_CASE(loadFileOpenForWriting);
     }
 
     void getAnalyzerInfoFileFromFilesTxt() const {
@@ -53,6 +58,41 @@ private:
         ASSERT_EQUALS("file1.a4", AnalyzerInformationTest::getAnalyzerInfoFileFromFilesTxt(f, "file1.c", "", 0));
         f.str(filesTxt);
         ASSERT_EQUALS("file1.a4", AnalyzerInformationTest::getAnalyzerInfoFileFromFilesTxt(f, "./file1.c", "", 0));
+
+        // only an exact match is used - "executor.cpp" is a suffix of "processexecutor.cpp"
+        // so both used to resolve to the same analyzer info file
+        {
+            constexpr char suffixTxt[] = "executor.a1:::executor.cpp\n"
+                                         "processexecutor.a2:::processexecutor.cpp\n";
+            std::istringstream f1(suffixTxt);
+            ASSERT_EQUALS("executor.a1", AnalyzerInformationTest::getAnalyzerInfoFileFromFilesTxt(f1, "executor.cpp", "", 0));
+            std::istringstream f2(suffixTxt);
+            ASSERT_EQUALS("processexecutor.a2", AnalyzerInformationTest::getAnalyzerInfoFileFromFilesTxt(f2, "processexecutor.cpp", "", 0));
+        }
+
+        // the same, with the exact match on the first line
+        {
+            constexpr char suffixTxt[] = "processexecutor.a1:::processexecutor.cpp\n"
+                                         "executor.a2:::executor.cpp\n";
+            std::istringstream f1(suffixTxt);
+            ASSERT_EQUALS("processexecutor.a1", AnalyzerInformationTest::getAnalyzerInfoFileFromFilesTxt(f1, "processexecutor.cpp", "", 0));
+            std::istringstream f2(suffixTxt);
+            ASSERT_EQUALS("executor.a2", AnalyzerInformationTest::getAnalyzerInfoFileFromFilesTxt(f2, "executor.cpp", "", 0));
+        }
+
+        // a path that only ends with the path in files.txt is not a match
+        {
+            constexpr char relTxt[] = "a.a1:::src/a.c\n";
+            std::istringstream f1(relTxt);
+            ASSERT_EQUALS("", AnalyzerInformationTest::getAnalyzerInfoFileFromFilesTxt(f1, "/home/proj/src/a.c", "", 0));
+        }
+
+        // no match at all
+        {
+            constexpr char noneTxt[] = "a.a1:::a.c\n";
+            std::istringstream f1(noneTxt);
+            ASSERT_EQUALS("", AnalyzerInformationTest::getAnalyzerInfoFileFromFilesTxt(f1, "b.c", "", 0));
+        }
     }
 
     void getAnalyzerInfoFile() const {
@@ -271,6 +311,35 @@ private:
             ASSERT_EQUALS(tinyxml2::XML_SUCCESS, xmlError);
 
             ASSERT_EQUALS("no 'hash' node found", AnalyzerInformationTest::skipAnalysis(doc, 99, errorList));
+            ASSERT_EQUALS(0, errorList.size());
+        }
+    }
+
+    void loadFileOpenForWriting() const {
+        const std::string buildDir = "testanalyzerinfo-builddir";
+        const ScopedFile file("file1.c.analyzerinfo",
+                              "<?xml version=\"1.0\"?>\n"
+                              "<analyzerinfo>\n"
+                              "  <includes>\n"
+                              "    <filename>file1.h</filename>\n"
+                              "  </includes>\n"
+                              "  <hash>123</hash>\n"
+                              "</analyzerinfo>\n",
+                              buildDir);
+
+        std::ofstream writer(file.path(), std::ios::app);
+        ASSERT(writer.is_open());
+
+        {
+            const AnalyzerInformation analyzerInfo;
+            const std::set<std::string> includes = analyzerInfo.getIncludes(buildDir, "file1.c", "", 0);
+            ASSERT_EQUALS(1, includes.size());
+            ASSERT_EQUALS("file1.h", *includes.cbegin());
+        }
+        {
+            AnalyzerInformation analyzerInfo;
+            std::list<ErrorMessage> errorList;
+            ASSERT_EQUALS(false, analyzerInfo.analyzeFile(buildDir, "file1.c", "", 0, 123, errorList));
             ASSERT_EQUALS(0, errorList.size());
         }
     }

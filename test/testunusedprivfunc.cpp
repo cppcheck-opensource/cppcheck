@@ -274,7 +274,7 @@ private:
               "Fred::Fred()\n"
               "{}\n");
 
-        ASSERT_EQUALS("[test.cpp:6:12] -> [test.cpp:6:12]: (style) Unused private function: 'Fred::get' [unusedPrivateFunction]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:6:12]: (style) Unused private function: 'Fred::get' [unusedPrivateFunction]\n", errout_str());
     }
 
 
@@ -407,7 +407,7 @@ private:
               "    C() = default;\n"
               "    void f() const { (void)this; }\n"
               "};\n");
-        ASSERT_EQUALS("[test.cpp:3:10] -> [test.cpp:3:10]: (style) Unused private function: 'C::f' [unusedPrivateFunction]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:10]: (style) Unused private function: 'C::f' [unusedPrivateFunction]\n", errout_str());
     }
 
 
@@ -424,7 +424,7 @@ private:
               "    static void f()\n"
               "    { }\n"
               "};\n");
-        ASSERT_EQUALS("[test.cpp:10:17] -> [test.cpp:10:17]: (style) Unused private function: 'A::f' [unusedPrivateFunction]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:10:17]: (style) Unused private function: 'A::f' [unusedPrivateFunction]\n", errout_str());
 
         check("class A\n"
               "{\n"
@@ -460,7 +460,7 @@ private:
               "    class I { I() = default; };\n"
               "    void f() const { (void)this; }\n"
               "};\n");
-        ASSERT_EQUALS("[test.cpp:3:10] -> [test.cpp:3:10]: (style) Unused private function: 'C::f' [unusedPrivateFunction]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:10]: (style) Unused private function: 'C::f' [unusedPrivateFunction]\n", errout_str());
     }
 
 
@@ -501,7 +501,7 @@ private:
               "    void foo() {}\n" // Skip for overrides of virtual functions of base
               "    void bar() {}\n" // Don't skip if no function is overridden
               "};\n");
-        ASSERT_EQUALS("[test.cpp:9:10] -> [test.cpp:9:10]: (style) Unused private function: 'derived::bar' [unusedPrivateFunction]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:9:10]: (style) Unused private function: 'derived::bar' [unusedPrivateFunction]\n", errout_str());
 
         check("class Base {\n"
               "private:\n"
@@ -576,7 +576,7 @@ private:
               "    friend Bar;\n"
               "    void f() { }\n"
               "};\n");
-        ASSERT_EQUALS("[test.cpp:5:10] -> [test.cpp:5:10]: (style) Unused private function: 'Foo::f' [unusedPrivateFunction]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:5:10]: (style) Unused private function: 'Foo::f' [unusedPrivateFunction]\n", errout_str());
 
         check("struct F;\n" // #10265
               "struct S {\n"
@@ -663,7 +663,7 @@ private:
               "    void startListening() {\n"
               "    }\n"
               "};\n");
-        ASSERT_EQUALS("[test.cpp:8:10] -> [test.cpp:8:10]: (style) Unused private function: 'Fred::startListening' [unusedPrivateFunction]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:8:10]: (style) Unused private function: 'Fred::startListening' [unusedPrivateFunction]\n", errout_str());
 
         // #5059
         check("class Fred {\n"
@@ -813,7 +813,7 @@ private:
               "};\n"
               "int Foo::i = sth();\n"
               "int i = F();\n");
-        ASSERT_EQUALS("[test.cpp:3:16] -> [test.cpp:3:16]: (style) Unused private function: 'Foo::F' [unusedPrivateFunction]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:16]: (style) Unused private function: 'Foo::F' [unusedPrivateFunction]\n", errout_str());
     }
 
     void templateSimplification() { //ticket #6183

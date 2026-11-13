@@ -216,6 +216,25 @@ namespace ValueFlow
         return false;
     }
 
+    static bool isFunctionCall(const Token* tok, const Settings& settings)
+    {
+        if (!tok)
+            return false;
+        if (tok->str() == "{")
+            return true;
+        if (tok->str() == "(") {
+            if (tok->astOperand1() && tok->astOperand1()->isControlFlowKeyword())
+                return false;
+            if (Token::Match(tok->next(), "%name%") && !settings.library.isNotLibraryFunction(tok->next()))
+                return true;
+            if (Token::Match(tok->previous(), "%name%|>"))
+                return true;
+            if (Token::Match(tok->astOperand1(), "%name%|(|[|*|."))
+                return true;
+        }
+        return false;
+    }
+
     /** set ValueFlow value and perform calculations if possible */
     void setTokenValue(Token* tok,
                        Value value,
@@ -254,9 +273,7 @@ namespace ValueFlow
                 return !Token::simpleMatch(p, ",");
             });
             // Ensure that the comma isn't a function call
-            if (!callParent || (!Token::Match(callParent->previous(), "%name%|> (") && !Token::simpleMatch(callParent, "{") &&
-                                (!Token::Match(callParent, "( %name%") || settings.library.isNotLibraryFunction(callParent->next())) &&
-                                !(callParent->str() == "(" && (Token::simpleMatch(callParent->astOperand1(), "*") || Token::Match(callParent->astOperand1(), "%name%|("))))) {
+            if (!isFunctionCall(callParent, settings)) {
                 setTokenValue(parent, std::move(value), settings);
                 return;
             }
@@ -407,6 +424,8 @@ namespace ValueFlow
         }
 
         else if (parent->str() == ":" && Token::simpleMatch(parent->astParent(), "?")) {
+            const std::string condStr(tok == parent->astOperand1() ? "true" : "false");
+            value.errorPath.emplace_back(parent->astParent()->astOperand1(), "Assuming condition '" + parent->astParent()->astOperand1()->expressionString() + "' is " + condStr);
             setTokenValue(parent,std::move(value),settings);
         }
 
@@ -615,7 +634,7 @@ namespace ValueFlow
         // ~
         else if (parent->str() == "~") {
             for (const Value &val : tok->values()) {
-                if (!val.isIntValue())
+                if (!val.isIntValue() || (val.isImpossible() && val.intvalue < 0))
                     continue;
                 Value v(val);
                 v.intvalue = ~v.intvalue;
@@ -663,7 +682,7 @@ namespace ValueFlow
                         const ValueType *dst = tok->valueType();
                         if (dst) {
                             const size_t sz = dst->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
-                            MathLib::bigint newvalue = ValueFlow::truncateIntValue(v.intvalue + 1, sz, dst->sign);
+                            MathLib::bigint newvalue = ValueFlow::truncateIntValue(v.intvalue + 1, sz, dst, settings.platform);
                             if (v.bound != ValueFlow::Value::Bound::Point) {
                                 if (newvalue < v.intvalue) {
                                     v.invertBound();
@@ -693,7 +712,7 @@ namespace ValueFlow
                         const ValueType *dst = tok->valueType();
                         if (dst) {
                             const size_t sz = dst->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
-                            MathLib::bigint newvalue = ValueFlow::truncateIntValue(v.intvalue - 1, sz, dst->sign);
+                            MathLib::bigint newvalue = ValueFlow::truncateIntValue(v.intvalue - 1, sz, dst, settings.platform);
                             if (v.bound != ValueFlow::Value::Bound::Point) {
                                 if (newvalue > v.intvalue) {
                                     v.invertBound();

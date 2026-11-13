@@ -1,0 +1,7 @@
+Appendix A Summary of guidelines
+
+Rule 2.7
+TEST RULE TEXT: unused parameters are not allowed
+Category Advisory
+Analysis Decidable, Single Translation Unit
+Applies to C90, C99

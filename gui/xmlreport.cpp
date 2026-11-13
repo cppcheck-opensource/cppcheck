@@ -32,28 +32,6 @@ XmlReport::XmlReport(const QString &filename) :
     Report(filename)
 {}
 
-QString XmlReport::quoteMessage(const QString &message)
-{
-    QString quotedMessage(message);
-    quotedMessage.replace("&", "&amp;");
-    quotedMessage.replace("\"", "&quot;");
-    quotedMessage.replace("'", "&#039;");
-    quotedMessage.replace("<", "&lt;");
-    quotedMessage.replace(">", "&gt;");
-    return quotedMessage;
-}
-
-QString XmlReport::unquoteMessage(const QString &message)
-{
-    QString quotedMessage(message);
-    quotedMessage.replace("&amp;", "&");
-    quotedMessage.replace("&quot;", "\"");
-    quotedMessage.replace("&#039;", "'");
-    quotedMessage.replace("&lt;", "<");
-    quotedMessage.replace("&gt;", ">");
-    return quotedMessage;
-}
-
 int XmlReport::determineVersion(const QString &filename)
 {
     QFile file;

@@ -26,10 +26,10 @@ from urllib.parse import urlparse
 # Version scheme (MAJOR.MINOR.PATCH) should orientate on "Semantic Versioning" https://semver.org/
 # Every change in this script should result in increasing the version number accordingly (exceptions may be cosmetic
 # changes)
-SERVER_VERSION = "1.3.69"
+SERVER_VERSION = "1.3.70"
 
 # TODO: fetch from GitHub tags
-OLD_VERSION = '2.21.0'
+OLD_VERSION = '2.22.0'
 
 HEAD_MARKER = 'head results:'
 INFO_MARKER = 'info messages:'
@@ -1275,8 +1275,9 @@ class HttpClientThread(Thread):
                 text = clientsReport(self.resultPath)
                 httpGetResponse(self.connection, text, 'text/html')
             else:
-                filename = self.resultPath + url
-                if not os.path.isfile(filename):
+                result_path = os.path.normpath(self.resultPath)
+                filename = os.path.normpath(result_path + url)
+                if os.path.commonpath([result_path, filename]) != result_path or not os.path.isfile(filename):
                     print_ts('HTTP/1.1 404 Not Found')
                     self.connection.send(b'HTTP/1.1 404 Not Found\r\n\r\n')
                 else:

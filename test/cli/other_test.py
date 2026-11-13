@@ -190,8 +190,6 @@ def test_progress(tmpdir):
             "progress: ValueFlow::valueFlowCondition(SymbolicConditionHandler{}, tokenlist, symboldatabase, errorLogger, settings, skippedFunctions) 1 100%\n"
             "progress: ValueFlow::valueFlowSymbolicInfer(symboldatabase, settings) 1 0%\n"
             "progress: ValueFlow::valueFlowSymbolicInfer(symboldatabase, settings) 1 100%\n"
-            "progress: ValueFlow::valueFlowArrayBool(tokenlist, settings) 1 0%\n"
-            "progress: ValueFlow::valueFlowArrayBool(tokenlist, settings) 1 100%\n"
             "progress: ValueFlow::valueFlowArrayElement(tokenlist, settings) 1 0%\n"
             "progress: ValueFlow::valueFlowArrayElement(tokenlist, settings) 1 100%\n"
             "progress: ValueFlow::valueFlowRightShift(tokenlist, settings) 1 0%\n"
@@ -432,6 +430,29 @@ typedef int MISRA_5_6_VIOLATION;
     assert stderr == '{}:2:13: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-2.3]\ntypedef int MISRA_5_6_VIOLATION;\n            ^\n'.format(test_file)
 
 
+def test_report_type_misra_c_2025_20_6(tmpdir):  # #15017
+    """ using a preprocessor directive as a macro parameter is a MISRA C 20.6 violation """
+    test_file = os.path.join(tmpdir, 'test.c')
+    with open(test_file, 'wt') as f:
+        f.write("""
+#define A(X) X
+
+A(
+#ifdef __GNUC__
+    1
+#else
+    0
+#endif
+)
+""")
+
+    args = ['--template=simple', '--report-type=misra-c-2025', test_file]
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0, stdout if stdout else stderr
+    assert stderr == "{}:5:1: Required: failed to expand 'A', it is invalid to use a preprocessor directive as macro parameter [20.6]\n".format(test_file)
+
+
 def test_addon_y2038(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
     # TODO: trigger warning
@@ -459,9 +480,9 @@ def test_addon_threadsafety(tmpdir):
     test_file = os.path.join(tmpdir, 'test.cpp')
     with open(test_file, 'wt') as f:
         f.write("""
-extern const char* f()
+extern void f()
 {
-    return strerror(1);
+    elf_fill(1);
 }
         """)
 
@@ -473,7 +494,7 @@ extern const char* f()
     assert lines == [
         'Checking {} ...'.format(test_file)
     ]
-    assert stderr == '{}:4:12: warning: strerror is MT-unsafe [threadsafety-unsafe-call]\n'.format(test_file)
+    assert stderr == '{}:4:5: warning: elf_fill is MT-unsafe [threadsafety-unsafe-call]\n'.format(test_file)
 
 
 def test_addon_naming(tmpdir):
@@ -1046,7 +1067,7 @@ def test_showtime_top5_summary_compdb(tmp_path):
 
 
 def __test_showtime_file(tmp_path, use_compdb=False, use_addons=False, use_clang_tidy=False):
-    exp_res = 79
+    exp_res = 78
     # project analysis does not call Preprocessor::getConfig()
     if use_compdb:
         exp_res -= 1
@@ -1080,7 +1101,7 @@ def test_showtime_file_clang_tidy_compdb(tmp_path):
 
 
 def __test_showtime_summary(tmp_path, use_compdb=False, use_addons=False, use_clang_tidy=False):
-    exp_res = 79
+    exp_res = 78
     # project analysis does not call Preprocessor::getConfig()
     if use_compdb:
         exp_res -= 1
@@ -4430,25 +4451,25 @@ def __test_active_checkers(tmp_path, active_cnt, total_cnt, use_misra=False, use
 
 
 def test_active_unusedfunction_only(tmp_path):
-    __test_active_checkers(tmp_path, 1, 188, use_unusedfunction_only=True)
+    __test_active_checkers(tmp_path, 1, 189, use_unusedfunction_only=True)
 
 
 def test_active_unusedfunction_only_builddir(tmp_path):
     checkers_exp = [
         'CheckUnusedFunctions::check'
     ]
-    __test_active_checkers(tmp_path, 1, 188, use_unusedfunction_only=True, checkers_exp=checkers_exp)
+    __test_active_checkers(tmp_path, 1, 189, use_unusedfunction_only=True, checkers_exp=checkers_exp)
 
 
 def test_active_unusedfunction_only_misra(tmp_path):
-    __test_active_checkers(tmp_path, 1, 388, use_unusedfunction_only=True, use_misra=True)
+    __test_active_checkers(tmp_path, 1, 389, use_unusedfunction_only=True, use_misra=True)
 
 
 def test_active_unusedfunction_only_misra_builddir(tmp_path):
     checkers_exp = [
         'CheckUnusedFunctions::check'
     ]
-    __test_active_checkers(tmp_path, 1, 388, use_unusedfunction_only=True, use_misra=True, checkers_exp=checkers_exp)
+    __test_active_checkers(tmp_path, 1, 389, use_unusedfunction_only=True, use_misra=True, checkers_exp=checkers_exp)
 
 
 def test_analyzerinfo(tmp_path):
@@ -4550,6 +4571,47 @@ def test_analyzerinfo(tmp_path):
     # TODO:
     # - invalid error
     # - internalError
+
+
+def test_analyzerinfo_include_order(tmp_path):  # #15132
+    with open(tmp_path / 'z.h', 'wt') as f:
+        f.write('int z;\n')
+    with open(tmp_path / 'a.h', 'wt') as f:
+        f.write('int a;\n')
+    test_file = tmp_path / 'test.c'
+    with open(test_file, 'wt') as f:
+        f.write(
+"""#include "z.h"
+#include "a.h"
+int f(void) { return a + z; }
+""")
+
+    build_dir = tmp_path / 'b1'
+    os.makedirs(build_dir)
+
+    args = [
+        '-q',
+        '--debug-analyzerinfo',
+        '--cppcheck-build-dir={}'.format(build_dir),
+        str(test_file)
+    ]
+
+    test_file_s = str(test_file).replace('\\', '/')
+    test_a1_file_s = str(build_dir / 'test.a1').replace('\\', '/')
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0, stdout
+    assert stdout.splitlines() == [
+        "no cached result '{}' for '{}' found".format(test_a1_file_s, test_file_s)
+    ]
+    assert stderr.splitlines() == []
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0, stdout
+    assert stdout.splitlines() == [
+        "skipping analysis - loaded 0 cached finding(s) from '{}' for '{}'".format(test_a1_file_s, test_file_s)
+    ]
+    assert stderr.splitlines() == []
 
 
 def test_ctu_function_call_path_slash(tmp_path):  # #14591
@@ -4863,6 +4925,40 @@ def test_ipc_inline_suppressions(tmp_path):
     assert stdout_lines == stdout_exp
     assert stderr.splitlines() == []
 
+
+@pytest.mark.skipif(sys.platform == 'win32', reason="requires ProcessExecutor")
+def test_ipc_hash_suppressions(tmp_path):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, "w") as f:
+        f.write('void f() { int x = 1; }')
+
+    _, _, stderr = cppcheck(['--enable=style', '--xml-version=3', str(test_file)])
+    error_hash = ElementTree.fromstring(stderr).find('.//error').get('hash')
+
+    suppr_file = tmp_path / 'suppr.xml'
+    with open(suppr_file, "w") as f:
+        f.write(f'<suppressions><suppress><id>unreadVariable</id><fileName>{test_file}</fileName><hash>{error_hash}</hash></suppress></suppressions>')
+
+    args = [
+        '-q',
+        '--debug-ipc',
+        '-j2',
+        '--executor=process',
+        '--no-cppcheck-build-dir',
+        '--enable=style',
+        f'--suppress-xml={suppr_file}',
+        str(test_file)
+    ]
+
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0
+    # the hash suppression is not sent to the parent
+    assert stdout.splitlines() == [
+        'writeToPipe - 5 - 0',
+        'handleRead - 5 - 0'
+    ]
+    assert stderr.splitlines() == []
+
 test_redundant_file_reads_params = [
     ([],                       3),
     (['--suppress=zerodiv'],   1),
@@ -4904,3 +5000,61 @@ void f(int x) {
 
     assert proc.returncode == 0
     assert stderr.splitlines()[-1].strip() == f'{expected} total'.encode('utf-8')
+
+
+def __test_builddir_summary(tmp_path, filename, extra_args):
+    with open(tmp_path / filename, 'wt') as f:
+        f.write('void bar(void) {}\n')
+    with open(tmp_path / 'test.c', 'wt') as f:
+        f.write(
+"""#include <stdlib.h>
+void f(void) {
+    char *p = malloc(10);
+    bar();
+}
+""")
+    build_dir = tmp_path / 'b1'
+    os.mkdir(build_dir)
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--cppcheck-build-dir={}'.format(build_dir),
+        filename,
+        'test.c'
+    ] + extra_args
+
+    exitcode, stdout, stderr = cppcheck(args, cwd=tmp_path)
+    assert exitcode == 0, stdout
+    assert stderr == ''
+
+    stem = os.path.splitext(filename)[0]
+    assert sorted(os.listdir(build_dir)) == sorted([
+        'checkers.txt',
+        'files.txt',
+        stem + '.a1',
+        stem + '.s1',
+        'test.a1',
+        'test.s1'
+    ])
+
+    # analyze test.c again
+    os.remove(build_dir / 'test.a1')
+
+    exitcode, stdout, stderr = cppcheck(args, cwd=tmp_path)
+    assert exitcode == 0, stdout
+    assert stderr.splitlines() == [
+        'test.c:5:1: error: Memory leak: p [memleak]'
+    ]
+
+
+def test_builddir_summary(tmp_path):
+    __test_builddir_summary(tmp_path, 'bar.c', [])
+
+
+def test_builddir_summary_define(tmp_path):
+    __test_builddir_summary(tmp_path, 'bar.c', ['-DX'])
+
+
+def test_builddir_summary_filename(tmp_path):
+    __test_builddir_summary(tmp_path, 'my.api.c', [])

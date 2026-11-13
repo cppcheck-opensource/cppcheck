@@ -168,6 +168,10 @@ std::string FileLister::addFiles(std::list<FileWithDetails> &files, const std::s
     if (path.empty())
         return "no path specified";
 
+    const std::string::size_type nulPos = path.find('\0');
+    if (nulPos != std::string::npos)
+        return "path '" + path.substr(0, nulPos) + "' contains a NUL character";
+
     std::list<FileWithDetails> filesSorted;
 
     std::string err = addFiles2(filesSorted, path, extra, recursive, ignored, debug);
@@ -284,6 +288,10 @@ std::string FileLister::addFiles(std::list<FileWithDetails> &files, const std::s
 {
     if (path.empty())
         return "no path specified";
+
+    const std::string::size_type nulPos = path.find('\0');
+    if (nulPos != std::string::npos)
+        return "path '" + path.substr(0, nulPos) + "' contains a NUL character";
 
     std::string corrected_path = path;
     if (endsWith(corrected_path, '/'))

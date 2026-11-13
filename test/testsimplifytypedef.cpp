@@ -65,6 +65,7 @@ private:
         TEST_CASE(cfp5);
         TEST_CASE(cfp6);
         TEST_CASE(cfp7);
+        TEST_CASE(cfp8);
         TEST_CASE(carray1);
         TEST_CASE(carray2);
         TEST_CASE(carray3);
@@ -520,6 +521,16 @@ private:
                             "uint32_t g();\n"
                             "fp f;\n";
         ASSERT_EQUALS("uint32_t g ( ) ; uint32_t ( * f ) ( uint32_t n ) ;", simplifyTypedef(code));
+    }
+
+    void cfp8() { // #5935
+        const char code[] = "typedef TypeDefStruct *(*ThisIsTheProblem)(Type *Var);\n"
+                            "typedef struct Struct1 {\n"
+                            "  ThisIsTheProblem *(AnotherType);\n"
+                            "} Struct1;\n";
+        const char expected[] = "struct Struct1 { TypeDefStruct * ( * * ( AnotherType ) ) ( Type * Var ) ; } ;";
+        ASSERT_EQUALS(expected, simplifyTypedefC(code));
+        ASSERT_EQUALS(expected, simplifyTypedef(code));
     }
 
     void carray1() {

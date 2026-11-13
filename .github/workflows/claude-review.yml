@@ -1,0 +1,53 @@
+# Automated code review of pull requests using Claude
+#
+# A member/owner/collaborator requests a review by writing a PR comment
+# containing "@claude review".
+#
+# pull_request_target is not used because the Claude GitHub App token exchange
+# rejects OIDC tokens from that event (401 "Invalid OIDC token").
+#
+# issue_comment runs the workflow file from the default branch with access to
+# secrets. The PR code is never checked out or executed.
+name: claude-review
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  review:
+    if: |
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '@claude review') &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+
+    steps:
+    # checks out the base branch, not the PR head
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 1
+
+    - name: Claude review
+      uses: anthropics/claude-code-action@v1
+      with:
+        anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+        prompt: |
+          REPO: ${{ github.repository }}
+          PR NUMBER: ${{ github.event.issue.number }}
+
+          Review this pull request. Focus on correctness bugs, potential
+          false positives/false negatives in checkers, performance problems
+          and missing tests. Be concise and only report real issues.
+
+          Use `gh pr diff` to see the changes. Post specific issues as inline
+          comments with `mcp__github_inline_comment__create_inline_comment`
+          and post a short overall summary with `gh pr comment`.
+        claude_args: |
+          --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"

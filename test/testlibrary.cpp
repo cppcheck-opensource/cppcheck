@@ -1,6 +1,6 @@
 /*
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1156,6 +1156,23 @@ private:
 
         // comma followed by dot
         LOADLIB_ERROR_INVALID_RANGE("-10:0,.5:");
+
+        // arg indirect out of range (index into ArgumentChecks::direction)
+        LOADLIBERROR("<?xml version=\"1.0\"?>\n"
+                     "<def>\n"
+                     "  <function name=\"foo\">\n"
+                     "    <arg nr=\"1\" direction=\"in\" indirect=\"1000000\"/>\n"
+                     "  </function>\n"
+                     "</def>",
+                     Library::ErrorCode::BAD_ATTRIBUTE_VALUE);
+
+        LOADLIBERROR("<?xml version=\"1.0\"?>\n"
+                     "<def>\n"
+                     "  <function name=\"foo\">\n"
+                     "    <arg nr=\"1\" direction=\"out\" indirect=\"-5\"/>\n"
+                     "  </function>\n"
+                     "</def>",
+                     Library::ErrorCode::BAD_ATTRIBUTE_VALUE);
     }
 
     void loadLibCombinations() const {

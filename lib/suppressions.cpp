@@ -32,7 +32,6 @@
 #include <cctype>   // std::isdigit, std::isalnum, etc
 #include <cstring>
 #include <exception>
-#include <functional> // std::bind, std::placeholders
 #include <sstream>
 #include <stdexcept>
 #include <utility>
@@ -153,6 +152,36 @@ std::string SuppressionList::parseXmlFile(const char *filename)
     return "";
 }
 
+static std::string getExtraComment(const std::string &comment, std::string::size_type startPos, std::string::size_type *delimPos = nullptr)
+{
+    const std::string::size_type semiPos = comment.find(';', startPos);
+    const std::string::size_type slashPos = comment.find("//", startPos);
+    std::string::size_type pos;
+
+    if (delimPos)
+        *delimPos = std::min(semiPos, slashPos);
+
+    if (semiPos < slashPos) {
+        pos = semiPos + 1;
+    } else if (slashPos < semiPos) {
+        pos = slashPos + 2;
+    } else {
+        return "";
+    }
+
+    std::string extra = comment.substr(pos);
+
+    if (startsWith(comment, "/*") && endsWith(comment, "*/"))
+        extra.erase(extra.size() - 2, 2);
+
+    extra = trim(extra);
+
+    for (auto it = extra.begin(); it != extra.end();)
+        it = (*it & 0x80) ? extra.erase(it) : it + 1;
+
+    return extra;
+}
+
 std::vector<SuppressionList::Suppression> SuppressionList::parseMultiSuppressComment(const std::string &comment, std::string *errorMessage)
 {
     std::vector<Suppression> suppressions;
@@ -207,6 +236,14 @@ std::vector<SuppressionList::Suppression> SuppressionList::parseMultiSuppressCom
         suppressions.push_back(std::move(s));
     }
 
+    const std::string extraComment = getExtraComment(comment, end_position);
+
+    if (extraComment.empty())
+        return suppressions;
+
+    for (auto &suppression : suppressions)
+        suppression.extraComment = extraComment;
+
     return suppressions;
 }
 
@@ -217,6 +254,8 @@ SuppressionList::Suppression SuppressionList::parseLine(std::string line)
     // Strip any end of line comments
     std::string::size_type endpos = std::min(line.find('#'), line.find("//"));
     if (endpos != std::string::npos) {
+        const std::string::size_type offset = line[endpos] == '#' ? 1 : 2;
+        suppression.extraComment = trim(line.substr(endpos + offset));
         while (endpos > 0 && std::isspace(line[endpos-1])) {
             endpos--;
         }
@@ -285,14 +324,27 @@ std::string SuppressionList::addSuppressionLine(const std::string &line)
     }
 }
 
+SuppressionList::Suppression *SuppressionList::findSameParameters(const Suppression &suppression)
+{
+    const std::vector<Suppression*> *candidates = &mNonHashSuppressions;
+    if (suppression.hash > 0) {
+        const auto it = mHashSuppressions.find(suppression.hash);
+        if (it == mHashSuppressions.end())
+            return nullptr;
+        candidates = &it->second;
+    }
+    const auto found = std::find_if(candidates->cbegin(), candidates->cend(), [&](const Suppression *s) {
+        return suppression.isSameParameters(*s);
+    });
+    return found != candidates->cend() ? *found : nullptr;
+}
+
 std::string SuppressionList::addSuppression(SuppressionList::Suppression suppression)
 {
     std::lock_guard<std::mutex> lg(mSuppressionsSync);
 
     // Check if suppression is already in list
-    auto foundSuppression = std::find_if(mSuppressions.begin(), mSuppressions.end(),
-                                         std::bind(&Suppression::isSameParameters, &suppression, std::placeholders::_1));
-    if (foundSuppression != mSuppressions.end()) {
+    if (findSameParameters(suppression)) {
         return "suppression '" + suppression.toString() + "' already exists";
     }
 
@@ -316,6 +368,12 @@ std::string SuppressionList::addSuppression(SuppressionList::Suppression suppres
 
     mSuppressions.push_back(std::move(suppression));
 
+    Suppression *const added = &mSuppressions.back();
+    if (added->hash > 0)
+        mHashSuppressions[added->hash].push_back(added);
+    else
+        mNonHashSuppressions.push_back(added);
+
     return "";
 }
 
@@ -334,9 +392,8 @@ bool SuppressionList::updateSuppressionState(const SuppressionList::Suppression&
     std::lock_guard<std::mutex> lg(mSuppressionsSync);
 
     // Check if suppression is already in list
-    auto foundSuppression = std::find_if(mSuppressions.begin(), mSuppressions.end(),
-                                         std::bind(&Suppression::isSameParameters, &suppression, std::placeholders::_1));
-    if (foundSuppression != mSuppressions.end()) {
+    Suppression *const foundSuppression = findSameParameters(suppression);
+    if (foundSuppression) {
         if (suppression.checked)
             foundSuppression->checked = true;
         if (suppression.matched)
@@ -360,20 +417,11 @@ bool SuppressionList::Suppression::parseComment(std::string comment, std::string
     if (comment.compare(comment.size() - 2, 2, "*/") == 0)
         comment.erase(comment.size() - 2, 2);
 
-    std::string::size_type extraPos = comment.find(';');
-    std::string::size_type extraDelimiterSize = 1;
+    std::string::size_type extraPos;
+    extraComment = getExtraComment(comment, 2, &extraPos);
 
-    if (extraPos == std::string::npos) {
-        extraPos = comment.find("//", 2);
-        extraDelimiterSize = 2;
-    }
-
-    if (extraPos != std::string::npos) {
-        extraComment = trim(comment.substr(extraPos + extraDelimiterSize));
-        for (auto it = extraComment.begin(); it != extraComment.end();)
-            it = *it & 0x80 ? extraComment.erase(it) : it + 1;
+    if (!extraComment.empty())
         comment.erase(extraPos);
-    }
 
     const std::set<std::string> cppchecksuppress{
         "cppcheck-suppress",
@@ -494,13 +542,21 @@ bool SuppressionList::isSuppressed(const SuppressionList::ErrorMessage &errmsg, 
     // TODO: handle unmatchedPolyspaceSuppression?
     const bool unmatchedSuppression(errmsg.errorId == "unmatchedSuppression");
     bool returnValue = false;
-    for (Suppression &s : mSuppressions) {
-        if (!global && !s.isLocal())
-            continue;
-        if (unmatchedSuppression && s.errorId != errmsg.errorId)
-            continue;
-        if (s.isMatch(errmsg))
-            returnValue = true;
+    const auto match = [&](const std::vector<Suppression*> &suppressions) {
+        for (Suppression *s : suppressions) {
+            if (!global && !s->isLocal())
+                continue;
+            if (unmatchedSuppression && s->errorId != errmsg.errorId)
+                continue;
+            if (s->isMatch(errmsg))
+                returnValue = true;
+        }
+    };
+    match(mNonHashSuppressions);
+    if (errmsg.hash != 0) {
+        const auto it = mHashSuppressions.find(errmsg.hash);
+        if (it != mHashSuppressions.end())
+            match(it->second);
     }
     return returnValue;
 }
@@ -509,13 +565,21 @@ bool SuppressionList::isSuppressedExplicitly(const SuppressionList::ErrorMessage
 {
     std::lock_guard<std::mutex> lg(mSuppressionsSync);
 
-    for (Suppression &s : mSuppressions) {
-        if (!global && !s.isLocal())
-            continue;
-        if (s.errorId != errmsg.errorId) // Error id must match exactly
-            continue;
-        if (s.isMatch(errmsg))
-            return true;
+    const auto match = [&](const std::vector<Suppression*> &suppressions) {
+        return std::any_of(suppressions.cbegin(), suppressions.cend(), [&](Suppression *s) {
+            if (!global && !s->isLocal())
+                return false;
+            if (s->errorId != errmsg.errorId) // Error id must match exactly
+                return false;
+            return s->isMatch(errmsg);
+        });
+    };
+    if (match(mNonHashSuppressions))
+        return true;
+    if (errmsg.hash != 0) {
+        const auto it = mHashSuppressions.find(errmsg.hash);
+        if (it != mHashSuppressions.end())
+            return match(it->second);
     }
     return false;
 }
@@ -656,7 +720,9 @@ void SuppressionList::markUnmatchedInlineSuppressionsAsChecked(const TokenList &
         if (currFileIdx != tok->fileIndex() || currLineNr != tok->linenr()) {
             currLineNr = tok->linenr();
             currFileIdx = tok->fileIndex();
-            for (auto &suppression : mSuppressions) {
+            // checked is not used for hash suppressions
+            for (Suppression *s : mNonHashSuppressions) {
+                Suppression &suppression = *s;
                 if (suppression.type == SuppressionList::Type::unique) {
                     if (!suppression.checked && (suppression.lineNumber == currLineNr) && (suppression.fileName == tokenlist.file(tok))) {
                         suppression.checked = true;

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{99999999-9999-9999-9999-999999999999}</ProjectGuid>
+    <RootNamespace>itemmacropathenvtest</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <!-- CppcheckTestEnvLibRoot is NOT set anywhere in this project -- no
+       PropertyGroup, no property sheet, nothing. It exists only as a real OS
+       environment variable, set by the test itself before invoking cppcheck
+       (mirroring how a real developer might point $(wxMathPlot)-style macros
+       at a library checked out somewhere on their machine via a machine- or
+       user-level environment variable rather than a project-level property).
+       MSBuild property evaluation falls back to the environment for any
+       property nothing else defines, and that fallback value can't differ by
+       configuration -- it's one process-wide value -- so real Visual Studio
+       resolves this Include path the same way regardless of which
+       configuration is active. See vcxproj_item_macro_path_env_test.py. -->
+  <ItemGroup>
+    <ClCompile Include="$(CppcheckTestEnvLibRoot)\mathplot.cpp" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

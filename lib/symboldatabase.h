@@ -25,6 +25,7 @@
 #include "errortypes.h"
 #include "library.h"
 #include "mathlib.h"
+#include "refthunk.h"
 #include "sourcelocation.h"
 #include "token.h"
 #include "utils.h"
@@ -1045,7 +1046,7 @@ public:
     Scope(const SymbolDatabase &symdb_, const Token *classDef_, const Scope *nestedIn_);
     Scope(const SymbolDatabase &symdb_, const Token *classDef_, const Scope *nestedIn_, ScopeType type_, const Token *start_);
 
-    const SymbolDatabase& symdb;
+    RefThunk<const SymbolDatabase> symdb;
     std::string className;
     const Token* classDef{};   ///< class/struct/union/namespace token
     const Token* bodyStart{};  ///< '{' token
@@ -1349,6 +1350,8 @@ class CPPCHECKLIB SymbolDatabase {
 public:
     explicit SymbolDatabase(Tokenizer& tokenizer);
     ~SymbolDatabase();
+    SymbolDatabase(const SymbolDatabase &) = delete;
+    SymbolDatabase &operator=(const SymbolDatabase &) = delete;
 
     /** @brief Information about all namespaces/classes/structures */
     std::list<Scope> scopeList;
@@ -1419,6 +1422,12 @@ public:
      * @brief Do a sanity check
      */
     void validate() const;
+
+    /**
+     * Set value type for generic selection (_Generic).
+     * @param par The opening parenthesis of the _Generic expression.
+     */
+    void setGenericValueType(Token *par);
 
     /** Set valuetype in provided tokenlist */
     void setValueTypeInTokenList(bool reportDebugWarnings, Token *tokens=nullptr);
@@ -1512,8 +1521,8 @@ private:
                                       std::list<const Function*> checkedFuncs) const;
 
     Tokenizer& mTokenizer;
-    const Settings &mSettings;
-    ErrorLogger &mErrorLogger;
+    const Settings& mSettings;
+    ErrorLogger& mErrorLogger;
 
     /** variable symbol table */
     std::vector<const Variable *> mVariableList;

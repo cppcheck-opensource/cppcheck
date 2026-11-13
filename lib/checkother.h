@@ -310,7 +310,7 @@ public:
     void unsignedPositiveError(const Token *tok, const ValueFlow::Value *v, const std::string &varname);
     void pointerPositiveError(const Token *tok, const ValueFlow::Value *v);
     void suspiciousSemicolonError(const Token *tok);
-    void negativeBitwiseShiftError(const Token *tok, int op);
+    void negativeBitwiseShiftError(const Token *tok, bool isLHS, const ValueFlow::Value *v = nullptr);
     void redundantCopyError(const Token *tok, const std::string &varname);
     void incompleteArrayFillError(const Token* tok, const std::string& buffer, const std::string& function, bool boolean);
     void varFuncNullUBError(const Token *tok);
@@ -325,7 +325,7 @@ public:
     void shadowError(const Token *shadows, const std::string &shadowsType, const Token *shadowed, const std::string &shadowedType);
     void knownArgumentError(const Token *tok, const Token *ftok, const ValueFlow::Value *value, const std::string &varexpr, bool isVariableExpressionHidden);
     void knownPointerToBoolError(const Token* tok, const ValueFlow::Value* value);
-    void comparePointersError(const Token *tok, const ValueFlow::Value *v1, const ValueFlow::Value *v2);
+    void comparePointersError(const Token *tok, const ValueFlow::Value *v1, const ValueFlow::Value *v2, bool subtract);
     void checkModuloOfOneError(const Token *tok);
     void unionZeroInitError(const Token *tok, const UnionMember& largestMember);
 

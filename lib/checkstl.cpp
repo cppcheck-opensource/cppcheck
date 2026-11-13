@@ -19,10 +19,12 @@
 #include "checkstl.h"
 
 #include "astutils.h"
+#include "calculate.h"
 #include "errortypes.h"
 #include "library.h"
 #include "mathlib.h"
 #include "pathanalysis.h"
+#include "refthunk.h"
 #include "settings.h"
 #include "standards.h"
 #include "symboldatabase.h"
@@ -267,7 +269,8 @@ void CheckStlImpl::outOfBoundsError(const Token *tok, const std::string &contain
     }
 
     reportError(std::move(errorPath),
-                (containerSize && !containerSize->errorSeverity()) || (indexValue && !indexValue->errorSeverity()) ? Severity::warning : Severity::error,
+                (containerSize && (!containerSize->errorSeverity() || containerSize->conditional)) ||
+                (indexValue && (!indexValue->errorSeverity() || indexValue->conditional)) ? Severity::warning : Severity::error,
                 "containerOutOfBounds",
                 "$symbol:" + containerName +"\n" + errmsg,
                 CWE398,
@@ -650,14 +653,16 @@ void CheckStlImpl::mismatchingContainerIteratorError(const Token* containerTok, 
 }
 
 // Error message for bad iterator usage..
-void CheckStlImpl::mismatchingContainersError(const Token* tok1, const Token* tok2)
+void CheckStlImpl::mismatchingContainersError(const Token* tok1, const Token* tok2, ValueFlow::Value::LifetimeKind ltk)
 {
     const std::string expr1(tok1 ? tok1->expressionString() : std::string("v1"));
     const std::string expr2(tok2 ? tok2->expressionString() : std::string("v2"));
+    const std::string dataStr = (ltk == ValueFlow::Value::LifetimeKind::Iterator) ? "Iterators" : (ltk == ValueFlow::Value::LifetimeKind::Address ? "Addresses" : "Pointers");
+    const std::string objectStr = (ltk == ValueFlow::Value::LifetimeKind::Iterator || ltk == ValueFlow::Value::LifetimeKind::Object) ? "containers '" : "objects '";
     reportError(tok1,
                 Severity::error,
                 "mismatchingContainers",
-                "Iterators of different containers '" + expr1 + "' and '" + expr2 + "' are used together.",
+                dataStr + " of different " + objectStr + expr1 + "' and '" + expr2 + "' are used together.",
                 CWE664,
                 Certainty::normal);
 }
@@ -789,7 +794,7 @@ bool CheckStlImpl::checkIteratorPair(const Token* tok1, const Token* tok2)
         if (val1.tokvalue->expressionString() == val2.tokvalue->expressionString())
             iteratorsError(tok1, val1.tokvalue, val1.tokvalue->expressionString());
         else
-            mismatchingContainersError(val1.tokvalue, val2.tokvalue);
+            mismatchingContainersError(val1.tokvalue, val2.tokvalue, val1.lifetimeKind);
         return true;
     }
 
@@ -1732,34 +1737,77 @@ void CheckStlImpl::checkFindInsert()
                 if (!valueTok2)
                     continue;
                 if (isSameExpression(true, valueTok, valueTok2, mSettings, true, true)) {
-                    checkFindInsertError(valueTok);
+                    // Both branches set the same value; the replacement depends on both branches, so no suggestion
+                    checkFindInsertError(valueTok, nullptr);
                 }
             } else {
-                checkFindInsertError(valueTok);
+                checkFindInsertError(valueTok, condTok);
             }
         }
     }
 }
 
-void CheckStlImpl::checkFindInsertError(const Token *tok)
-{
-    std::string replaceExpr;
-    if (tok && Token::simpleMatch(tok->astParent(), "=") && tok == tok->astParent()->astOperand2() && Token::simpleMatch(tok->astParent()->astOperand1(), "[")) {
-        if (mSettings.standards.cpp < Standards::CPP11)
-            // We will recommend using emplace/try_emplace instead
-            return;
-        const std::string f = (mSettings.standards.cpp < Standards::CPP17) ? "emplace" : "try_emplace";
-        replaceExpr = " Instead of '" + tok->astParent()->expressionString() + "' consider using '" +
-                      tok->astParent()->astOperand1()->astOperand1()->expressionString() +
-                      "." + f + "(" +
-                      tok->astParent()->astOperand1()->astOperand2()->expressionString() +
-                      ", " +
-                      tok->expressionString() +
-                      ");'.";
-    }
+/** When is the condition of the 'if' statement checked by checkFindInsert() true? */
+enum class FindInsertCond : std::uint8_t { UNKNOWN, FOUND, NOT_FOUND };
 
-    reportError(
-        tok, Severity::performance, "stlFindInsert", "Searching before insertion is not necessary." + replaceExpr, CWE398, Certainty::normal);
+static FindInsertCond getFindInsertCond(const Token* condTok)
+{
+    const Token* rhs = condTok->astOperand2();
+    if (!rhs)
+        return FindInsertCond::UNKNOWN;
+    if (Token::simpleMatch(condTok->astOperand1()->astOperand1(), ". find (")) {
+        // c.find(k) == c.end() / c.find(k) != c.end()
+        if (!Token::simpleMatch(rhs, "(") || !Token::Match(rhs->astOperand1(), ". end|cend ("))
+            return FindInsertCond::UNKNOWN;
+        if (condTok->str() == "==")
+            return FindInsertCond::NOT_FOUND;
+        if (condTok->str() == "!=")
+            return FindInsertCond::FOUND;
+        return FindInsertCond::UNKNOWN;
+    }
+    // c.count(k) == 0, c.count(k) > 0, ...: count() yields 0 or 1
+    if (!rhs->hasKnownIntValue())
+        return FindInsertCond::UNKNOWN;
+    const MathLib::bigint n = rhs->getKnownIntValue();
+    const bool found = calculate<MathLib::bigint, MathLib::bigint>(condTok->str(), 1, n) != 0;
+    const bool notFound = calculate<MathLib::bigint, MathLib::bigint>(condTok->str(), 0, n) != 0;
+    if (found == notFound)
+        return FindInsertCond::UNKNOWN;
+    return found ? FindInsertCond::FOUND : FindInsertCond::NOT_FOUND;
+}
+
+void CheckStlImpl::checkFindInsertError(const Token* tok, const Token* condTok)
+{
+    std::string suggestion;
+    std::string method = "insertion";
+    if (tok && condTok && Token::simpleMatch(tok->astParent(), "=") && tok == tok->astParent()->astOperand2() &&
+        Token::simpleMatch(tok->astParent()->astOperand1(), "[")) {
+        const std::string containerExpr = tok->astParent()->astOperand1()->astOperand1()->expressionString();
+        const std::string keyExpr = tok->astParent()->astOperand1()->astOperand2()->expressionString();
+        switch (getFindInsertCond(condTok)) {
+        case FindInsertCond::NOT_FOUND: {
+            if (mSettings.standards.cpp < Standards::CPP11)
+                // We will recommend using emplace/try_emplace instead
+                return;
+            const std::string f = (mSettings.standards.cpp < Standards::CPP17) ? "emplace" : "try_emplace";
+            suggestion = " Instead of '" + tok->astParent()->expressionString() + "' consider using '" + containerExpr +
+                         "." + f + "(" + keyExpr + ", " + tok->expressionString() + ");'.";
+            break;
+        }
+        case FindInsertCond::FOUND:
+            // The key is present, so the element is modified rather than inserted; try_emplace() would not do that
+            method = "modification";
+            suggestion = " Instead of '" + tok->astParent()->expressionString() +
+                         "' consider assigning the value through the iterator returned by '" + containerExpr +
+                         ".find(" + keyExpr + ")'.";
+            break;
+        case FindInsertCond::UNKNOWN:
+            break;
+        }
+    }
+    std::string msg = "Searching before " + method + " is not necessary." + suggestion;
+
+    reportError(tok, Severity::performance, "stlFindInsert", msg, CWE398, Certainty::normal);
 }
 
 /**
@@ -1986,9 +2034,11 @@ static bool isc_strCall(const Token* tok, const Library::Container* container)
 
 static bool isc_strConcat(const Token* tok)
 {
-    if (!tok->isBinaryOp() || !Token::simpleMatch(tok, "+"))
+    if (!tok->isBinaryOp() || !Token::Match(tok, "+|+="))
         return false;
     for (const Token* op : { tok->astOperand1(), tok->astOperand2() }) { // NOLINT(readability-use-anyofallof)
+        if (tok->isAssignmentOp() && astIsLHS(op))
+            continue;
         const Token* sibling = op->astSibling();
         if (!sibling->valueType())
             continue;
@@ -2881,7 +2931,7 @@ namespace {
     private:
         const Token* mBodyTok;
         const Token* mLoopVar{};
-        const Settings& mSettings;
+        RefThunk<const Settings> mSettings;
         std::set<nonneg int> mVarsChanged;
 
     public:
@@ -2904,7 +2954,7 @@ namespace {
             int n = 1 + (astIsPointer(tok) ? 1 : 0);
             for (int i = 0; i < n; i++) {
                 bool inconclusive = false;
-                if (isVariableChangedByFunctionCall(tok, i, mSettings.library, &inconclusive))
+                if (isVariableChangedByFunctionCall(tok, i, mSettings().library, &inconclusive))
                     return true;
                 if (inconclusive)
                     return true;
@@ -3338,8 +3388,8 @@ void CheckStlImpl::eraseIteratorOutOfBoundsError(const Token *ftok, const Token*
     }
 
     const Severity severity = isConditional ? Severity::warning : Severity::error;
-    const std::string id = isConditional ? "eraseIteratorOutOfBoundsCond" : "eraseIteratorOutOfBounds";
-    reportError(ftok, severity,
+    const char* id = isConditional ? "eraseIteratorOutOfBoundsCond" : "eraseIteratorOutOfBounds";
+    reportError(getErrorPath(ftok, val, msg), severity,
                 id,
                 msg, CWE628, Certainty::normal);
 }
@@ -3895,7 +3945,7 @@ void CheckStl::getErrorMessages(ErrorLogger& errorLogger, const Settings& settin
     c.stlBoundariesError(nullptr);
     c.if_findError(nullptr, false);
     c.if_findError(nullptr, true);
-    c.checkFindInsertError(nullptr);
+    c.checkFindInsertError(nullptr, nullptr);
     c.string_c_strError(nullptr);
     c.string_c_strReturn(nullptr);
     c.string_c_strParam(nullptr, 0);

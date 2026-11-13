@@ -35,6 +35,7 @@
 #include "preprocessor.h"
 #include "settings.h"
 #include "standards.h"
+#include "summaries.h"
 #include "suppressions.h"
 #include "symboldatabase.h"
 #include "timer.h"
@@ -1144,6 +1145,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         }
 
         std::set<std::pair<std::size_t, std::set<std::string>>> hashes;
+        bool summaryCreated = false;
         int checkCount = 0;
         bool hasValidConfig = false;
         std::list<std::string> configurationError;
@@ -1249,8 +1251,13 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
 #endif
 
                 // Simplify tokens into normal form, skip rest of iteration if failed
-                if (!tokenizer.simplifyTokens1(currentConfig, file.fsFileId()))
+                if (!tokenizer.simplifyTokens1(currentConfig))
                     continue;
+
+                if (!mSettings.buildDir.empty() && !summaryCreated) {
+                    Summaries::create(tokenizer, cfgname, file.fsFileId());
+                    summaryCreated = true;
+                }
 
                 // dump xml if --dump
                 if ((mSettings.dump || !mSettings.addons.empty()) && fdump.is_open()) {

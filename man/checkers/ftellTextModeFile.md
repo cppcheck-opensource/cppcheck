@@ -1,8 +1,8 @@
-# ftellModeTextFile
+# ftellTextModeFile
 
 **Message**: ftell() result is unspecified when file is opened in mode "t".<br/>
 **Category**: Portability<br/>
-**Severity**: Style<br/>
+**Severity**: Portability<br/>
 **Language**: C/C++
 
 ## Description

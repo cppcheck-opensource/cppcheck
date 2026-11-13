@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<results version="2">
+    <cppcheck version="2.18 dev"/>
+    <errors>
+        <error id="nullPointer" severity="error" msg="Null pointer dereference: p" verbose="Null pointer dereference: p" cwe="476">
+            <location file="a.c" line="6" column="12" info="Dereferencing p"/>
+        </error>
+    </errors>
+</results>

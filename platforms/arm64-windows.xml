@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!-- 64-bit ARM Windows (LLP64 ABI). This describes the default MSVC setup. LLP64 only defines the sizes of int, long, long long and pointers; other properties such as the signedness of char, the size of long double and the size of wchar_t are Windows specific, so a generic arm64 LLP64 platform file would not necessarily be identical to this one. -->
+<platform>
+  <char_bit>8</char_bit>
+  <default-sign>signed</default-sign>
+  <sizeof>
+    <bool>1</bool>
+    <short>2</short>
+    <int>4</int>
+    <long>4</long>
+    <long-long>8</long-long>
+    <float>4</float>
+    <double>8</double>
+    <long-double>8</long-double>
+    <pointer>8</pointer>
+    <size_t>8</size_t>
+    <wchar_t>2</wchar_t>
+  </sizeof>
+</platform>

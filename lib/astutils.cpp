@@ -26,6 +26,7 @@
 #include "infer.h"
 #include "library.h"
 #include "mathlib.h"
+#include "refthunk.h"
 #include "settings.h"
 #include "symboldatabase.h"
 #include "token.h"
@@ -1159,6 +1160,8 @@ bool exprDependsOnThis(const Token* expr, bool onVar, nonneg int depth)
         }
         if (expr->isOperatorKeyword() && !Token::simpleMatch(expr->next()->astParent(), "."))
             return true;
+        if (expr->variable() && expr->variable()->isArgument() && !expr->variable()->type() && expr->variable()->scope()->function && expr->variable()->scope()->function->templateDef)
+            return true;
     }
     if (onVar && expr->variable()) {
         const Variable* var = expr->variable();
@@ -1552,7 +1555,7 @@ bool isUsedAsBool(const Token* const tok, const Settings& settings)
         return true;
     if (parent->isCast())
         return !Token::simpleMatch(parent->astOperand1(), "dynamic_cast") && isUsedAsBool(parent, settings);
-    if (Token::Match(parent, "==|!=") && tok->valueType() && tok->valueType()->pointer &&
+    if (Token::Match(parent, "==|!=") && ((tok->valueType() && tok->valueType()->pointer) || tok->function()) &&
         tok->astSibling()->hasKnownIntValue() && tok->astSibling()->getKnownIntValue() == 0)
         return true;
     if (parent->str() == "(" && astIsRHS(tok) && Token::Match(parent->astOperand1(), "if|while"))
@@ -3139,7 +3142,7 @@ namespace {
     };
 
     struct ExpressionChangedSkipDeadCode {
-        const Library& library;
+        RefThunk<const Library> library;
         const std::function<std::vector<MathLib::bigint>(const Token* tok)>* evaluate;
         ExpressionChangedSkipDeadCode(const Library& library,
                                       const std::function<std::vector<MathLib::bigint>(const Token* tok)>& evaluate)

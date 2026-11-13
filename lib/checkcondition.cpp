@@ -1301,6 +1301,10 @@ void CheckConditionImpl::checkIncorrectLogicOperator()
             if (isfloat && (op1 == "==" || op1 == "!=" || op2 == "==" || op2 == "!="))
                 continue;
 
+            // no double value to compare (1e400L would become infinity)
+            if (isfloat && (MathLib::isLongDoubleOutOfDoubleRange(value1) || MathLib::isLongDoubleOutOfDoubleRange(value2)))
+                continue;
+
             // the expr are not the token of the value but they provide better context
             const double d1 = isfloat ? MathLib::toDoubleNumber(value1) : 0;
             const double d2 = isfloat ? MathLib::toDoubleNumber(value2) : 0;
@@ -1516,9 +1520,7 @@ void CheckConditionImpl::clarifyConditionError(const Token *tok, bool assign, bo
 
 void CheckConditionImpl::alwaysTrueFalse()
 {
-    const bool pedantic = mSettings.isPremiumEnabled("alwaysTrue") ||
-                          mSettings.isPremiumEnabled("alwaysFalse") ||
-                          mSettings.isPremiumEnabled("knownConditionTrueFalse");
+    const bool pedantic = mSettings.isPremiumEnabled("knownConditionTrueFalse");
 
     if (!pedantic && !mSettings.severity.isEnabled(Severity::style))
         return;
@@ -1534,7 +1536,7 @@ void CheckConditionImpl::alwaysTrueFalse()
                 tok = tok->link();
                 continue;
             }
-            if (!tok->hasKnownIntValue())
+            if (!tok->hasKnownIntValue() || !isConstExpression(tok, mSettings.library))
                 continue;
             const Token* condition = nullptr;
             {
@@ -1551,14 +1553,12 @@ void CheckConditionImpl::alwaysTrueFalse()
                     condition = parent;
                 else if (Token::Match(parent->previous(), "if|while ("))
                     condition = parent->previous();
-                else if (Token::simpleMatch(parent, "return"))
-                    condition = parent;
                 else if (parent->str() == ";" && parent->astParent() && parent->astParent()->astParent() &&
                          Token::simpleMatch(parent->astParent()->astParent()->previous(), "for ("))
                     condition = parent->astParent()->astParent()->previous();
-                else if (Token::Match(tok, "%comp%"))
+                else if ((Token::Match(tok, "%comp%|!") || isConstFunctionCall(tok->previous(), mSettings.library)) && Token::Match(tok->astParent(), "%oror%|&&"))
                     condition = tok;
-                else if ((tok->str() == "(" || (hasComp && Token::Match(tok, "!|%var%"))) && astIsBool(parent) && Token::Match(parent, "%assign%"))
+                else if (hasComp && Token::Match(tok, "!|%var%") && astIsBool(parent) && Token::Match(parent, "%assign%"))
                     condition = tok;
                 else
                     continue;
@@ -2013,14 +2013,15 @@ void CheckConditionImpl::checkCompareValueOutOfTypeRange()
             for (int i = 0; i < 2; ++i) {
                 const Token * const valueTok = (i == 0) ? tok->astOperand1() : tok->astOperand2();
                 const Token * const typeTok = valueTok->astSibling();
-                if (!valueTok->hasKnownIntValue() || !typeTok->valueType() || typeTok->valueType()->pointer)
+                const ValueType* const typeVt = typeTok->valueType();
+                if (!valueTok->hasKnownIntValue() || !typeVt || typeVt->pointer)
                     continue;
                 if (valueTok->getKnownIntValue() < 0 && valueTok->valueType() && valueTok->valueType()->sign != ValueType::Sign::SIGNED)
                     continue;
                 if (typeTok->isLiteral())
                     continue;
                 std::uint8_t bits = 0;
-                switch (typeTok->valueType()->type) {
+                switch (typeVt->type) {
                 case ValueType::Type::BOOL:
                     bits = 1;
                     break;
@@ -2045,10 +2046,10 @@ void CheckConditionImpl::checkCompareValueOutOfTypeRange()
                 if (bits == 0 || bits >= 63)
                     continue;
 
-                const auto typeMinValue = (typeTok->valueType()->sign == ValueType::Sign::UNSIGNED) ? 0 : (-(1LL << (bits-1)));
+                const auto typeMinValue = (typeVt->sign == ValueType::Sign::UNSIGNED) ? 0 : (-(1LL << (bits-1)));
                 const auto unsignedTypeMaxValue = (1LL << bits) - 1LL;
                 long long typeMaxValue;
-                if (typeTok->valueType()->sign != ValueType::Sign::SIGNED)
+                if (typeVt->sign != ValueType::Sign::SIGNED && !(typeVt->sign == ValueType::Sign::UNKNOWN_SIGN && typeVt->type == ValueType::Type::CHAR && mSettings.platform.defaultSign == 's'))
                     typeMaxValue = unsignedTypeMaxValue;
                 else if (bits >= mSettings.platform.int_bit && (!valueTok->valueType() || valueTok->valueType()->sign != ValueType::Sign::SIGNED))
                     typeMaxValue = unsignedTypeMaxValue;
@@ -2109,7 +2110,7 @@ void CheckConditionImpl::checkCompareValueOutOfTypeRange()
                 }
                 if (!error || diag(tok))
                     continue;
-                compareValueOutOfTypeRangeError(valueTok, typeTok->valueType()->str(), kiv, result);
+                compareValueOutOfTypeRangeError(valueTok, typeVt->str(), kiv, result);
             }
         }
     }

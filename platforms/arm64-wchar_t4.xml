@@ -12,7 +12,7 @@
     <double>8</double>
     <long-double>8</long-double>
     <pointer>8</pointer>
-    <size_t>4</size_t>
+    <size_t>8</size_t>
     <wchar_t>4</wchar_t>
   </sizeof>
 </platform>

@@ -21,7 +21,6 @@
 #include "errorlogger.h"
 #include "filesettings.h"
 #include "path.h"
-#include "utils.h"
 
 #include <array>
 #include <cstring>
@@ -33,6 +32,18 @@
 #include <utility>
 
 #include "xml.h"
+
+// Not XMLDocument::LoadFile(): with MSVC it denies writing, and addons inherit the handle (#15207)
+static tinyxml2::XMLError loadFile(tinyxml2::XMLDocument &doc, const std::string &filename)
+{
+    std::ifstream fin(filename, std::ios::binary);
+    if (!fin.is_open())
+        return tinyxml2::XML_ERROR_FILE_NOT_FOUND;
+    std::ostringstream ostr;
+    ostr << fin.rdbuf();
+    const std::string data = ostr.str();
+    return doc.Parse(data.data(), data.size());
+}
 
 AnalyzerInformation::~AnalyzerInformation()
 {
@@ -82,7 +93,7 @@ std::set<std::string> AnalyzerInformation::getIncludes(const std::string &buildD
     const std::string analyzerInfoFile = AnalyzerInformation::getAnalyzerInfoFile(buildDir, sourcefile, cfg, fsFileId);
 
     tinyxml2::XMLDocument analyzerInfoDoc;
-    if (analyzerInfoDoc.LoadFile(analyzerInfoFile.c_str()) != tinyxml2::XML_SUCCESS)
+    if (loadFile(analyzerInfoDoc, analyzerInfoFile) != tinyxml2::XML_SUCCESS)
         return files;
 
     const tinyxml2::XMLElement *const rootNode = analyzerInfoDoc.FirstChildElement();
@@ -197,12 +208,13 @@ std::string AnalyzerInformation::skipAnalysis(const tinyxml2::XMLDocument &analy
 
 std::string AnalyzerInformation::getAnalyzerInfoFileFromFilesTxt(std::istream& filesTxt, const std::string &sourcefile, const std::string &cfg, size_t fsFileId)
 {
+    const std::string simplifiedSourcefile = Path::simplifyPath(sourcefile);
     std::string line;
     while (std::getline(filesTxt,line)) {
         AnalyzerInformation::Info filesTxtInfo;
         if (!filesTxtInfo.parse(line))
             continue; // TODO: report error?
-        if (endsWith(sourcefile, filesTxtInfo.sourceFile) && filesTxtInfo.cfg == cfg && filesTxtInfo.fsFileId == fsFileId)
+        if (filesTxtInfo.sourceFile == simplifiedSourcefile && filesTxtInfo.cfg == cfg && filesTxtInfo.fsFileId == fsFileId)
             return filesTxtInfo.afile;
     }
     return "";
@@ -239,7 +251,7 @@ bool AnalyzerInformation::analyzeFile(const std::string &buildDir, const std::st
 
     {
         tinyxml2::XMLDocument analyzerInfoDoc;
-        const tinyxml2::XMLError xmlError = analyzerInfoDoc.LoadFile(analyzerInfoFile.c_str());
+        const tinyxml2::XMLError xmlError = loadFile(analyzerInfoDoc, analyzerInfoFile);
         if (xmlError == tinyxml2::XML_SUCCESS) {
             const std::string err = skipAnalysis(analyzerInfoDoc, hash, errors);
             if (err.empty()) {
@@ -324,7 +336,7 @@ std::string AnalyzerInformation::processFilesTxt(const std::string& buildDir, co
         const std::string xmlfile = buildDir + '/' + filesTxtInfo.afile;
 
         tinyxml2::XMLDocument doc;
-        const tinyxml2::XMLError error = doc.LoadFile(xmlfile.c_str());
+        const tinyxml2::XMLError error = loadFile(doc, xmlfile);
         if (error == tinyxml2::XML_ERROR_FILE_NOT_FOUND) {
             /* FIXME: this can currently not be reported as an error because:
              * - --clang does not generate any analyzer information - see #14456

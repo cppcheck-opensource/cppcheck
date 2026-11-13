@@ -532,8 +532,15 @@ double MathLib::toDoubleNumber(const std::string &str, const Token * const tok)
     std::istringstream istr(str);
     istr.imbue(std::locale::classic());
     double ret;
-    if (!(istr >> ret))
-        throw InternalError(tok, "Internal Error. MathLib::toDoubleNumber: conversion failed: " + str);
+    if (!(istr >> ret)) {
+        // Out of the range of double, such as 1e10000 (glibc's HUGE_VAL for
+        // compilers other than GCC): the stream stores the largest finite
+        // value and fails, a compiler makes it infinity.
+        if (!isFloat(str) || std::fabs(ret) < std::numeric_limits<double>::max())
+            throw InternalError(tok, "Internal Error. MathLib::toDoubleNumber: conversion failed: " + str);
+        ret = std::copysign(std::numeric_limits<double>::infinity(), ret);
+        istr.clear();
+    }
     std::string s;
     if (istr >> s) {
         if (isDecimalFloat(str))
@@ -582,6 +589,13 @@ template<> std::string MathLib::toString<double>(double value)
 bool MathLib::isFloat(const std::string &str)
 {
     return isDecimalFloat(str) || isFloatHex(str);
+}
+
+bool MathLib::isLongDoubleOutOfDoubleRange(const std::string &str)
+{
+    if (str.empty() || (str.back() != 'l' && str.back() != 'L') || !isFloat(str))
+        return false;
+    return std::isinf(toDoubleNumber(str));
 }
 
 bool MathLib::isDecimalFloat(const std::string &str)

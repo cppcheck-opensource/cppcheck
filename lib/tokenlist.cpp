@@ -102,7 +102,7 @@ int TokenList::appendFileIfNew(std::string fileName)
     if (it != mFiles.cend())
         return static_cast<int>(std::distance(mFiles.cbegin(), it));
 
-    assert(mTokensFrontBack->front == nullptr); // has no effect if tokens have already been created
+    assert(mSettings.clang || mTokensFrontBack->front == nullptr); // has no effect if tokens have already been created
 
     // The "mFiles" vector remembers what files have been tokenized..
     mFiles.push_back(std::move(fileName));

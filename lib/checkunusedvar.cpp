@@ -1009,7 +1009,7 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage_iterateScopes(const Scope* c
             const Token * const equal = skipBracketsAndMembers(tok->next());
 
             // checked for chained assignments
-            if (tok != start && equal && equal->str() == "=") {
+            if (tok != start && (Token::simpleMatch(equal, "=") || (start->astParent() && Token::simpleMatch(start->astParent()->astParent(), "=")))) {
                 const nonneg int varId = tok->varId();
                 const Variables::VariableUsage * const var = variables.find(varId);
 
@@ -1171,7 +1171,7 @@ static bool isReturnedByRef(const Variable* var, const Function* func)
 
 void CheckUnusedVarImpl::checkFunctionVariableUsage()
 {
-    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.checkLibrary && !mSettings.isPremiumEnabled("unusedVariable"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.checkLibrary && !mSettings.isPremiumEnabled("unusedVariable") && !mSettings.isPremiumEnabled("unreadVariable"))
         return;
 
     logChecker("CheckUnusedVar::checkFunctionVariableUsage"); // style
@@ -1287,6 +1287,11 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage()
             const Token *op1tok = tok->astOperand1();
             while (Token::Match(op1tok, ".|[|*"))
                 op1tok = op1tok->astOperand1();
+
+            // Bail out for overloaded indexing
+            if (op1tok && op1tok->valueType() && op1tok->valueType()->pointer == 0 &&
+                op1tok->valueType()->type == ValueType::Type::RECORD && Token::simpleMatch(op1tok->astParent(), "["))
+                continue;
 
             // Assignment in macro => do not warn
             if (isAssignment && tok->isExpandedMacro() && op1tok && op1tok->isExpandedMacro())
@@ -1493,7 +1498,7 @@ void CheckUnusedVarImpl::allocatedButUnusedVariableError(const Token *tok, const
 
 void CheckUnusedVarImpl::unreadVariableError(const Token *tok, const std::string &varname, bool modified)
 {
-    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("unusedVariable"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("unusedVariable") && !mSettings.isPremiumEnabled("unreadVariable"))
         return;
 
     if (modified)

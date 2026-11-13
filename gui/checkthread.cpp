@@ -113,13 +113,15 @@ CheckThread::CheckThread(ThreadResult &result, int threadIndex)
 void CheckThread::setSettings(const Settings &settings, std::shared_ptr<Suppressions> supprs)
 {
     mFiles.clear();
+    mFileSettings.clear();
     mSettings = settings; // this is a copy
     mSuppressions = std::move(supprs);
 }
 
-void CheckThread::analyseWholeProgram(const std::list<FileWithDetails> &files, const std::string& ctuInfo)
+void CheckThread::analyseWholeProgram(const std::list<FileWithDetails> &files, const std::list<FileSettings> &fileSettings, const std::string& ctuInfo)
 {
     mFiles = files;
+    mFileSettings = fileSettings;
     mAnalyseWholeProgram = true;
     mCtuInfo = ctuInfo;
     start();
@@ -136,8 +138,9 @@ void CheckThread::run()
         std::string ctuInfo;
         ctuInfo.swap(mCtuInfo);
         qDebug() << "Whole program analysis";
-        cppcheck.analyseWholeProgram(mSettings.buildDir, mFiles, {}, ctuInfo);
+        cppcheck.analyseWholeProgram(mSettings.buildDir, mFiles, mFileSettings, ctuInfo);
         mFiles.clear();
+        mFileSettings.clear();
         emit done();
         return;
     }

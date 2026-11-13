@@ -154,6 +154,8 @@ private:
 
         TEST_CASE(simplifyExternC);
         TEST_CASE(simplifyKeyword); // #5842 - remove C99 static keyword between []
+        TEST_CASE(simplifyKeywordNoreturn1);
+        TEST_CASE(simplifyKeywordNoreturn2);
 
         TEST_CASE(isOneNumber);
 
@@ -238,6 +240,7 @@ private:
         TEST_CASE(vardecl33);
         TEST_CASE(vardecl34);
         TEST_CASE(vardecl35);
+        TEST_CASE(vardecl36);
         TEST_CASE(vardecl_stl_1);
         TEST_CASE(vardecl_stl_2);
         TEST_CASE(vardecl_stl_3);
@@ -340,6 +343,7 @@ private:
         TEST_CASE(bitfields19); // ticket #13733
         TEST_CASE(bitfields20);
         TEST_CASE(bitfields21);
+        TEST_CASE(bitfields22);
 
         TEST_CASE(simplifyNamespaceStd);
 
@@ -533,6 +537,7 @@ private:
         TEST_CASE(simplifyPlatformTypes);
 
         TEST_CASE(dumpFallthrough);
+        TEST_CASE(dumpAttributeUsed);
 
         TEST_CASE(simplifyRedundantParentheses);
 
@@ -1102,7 +1107,7 @@ private:
         ASSERT_EQUALS("int f ( ) { return -2 ; }", tokenizeAndStringify("int f(){return -2;}\n"));
         ASSERT_EQUALS("int x [ 2 ] = { -2 , 1 }", tokenizeAndStringify("int x[2] = {-2,1}\n"));
 
-        ASSERT_EQUALS("f ( 123 )", tokenizeAndStringify("f(+123)\n"));
+        ASSERT_EQUALS("f ( +123 )", tokenizeAndStringify("f(+123)\n"));
 
         ASSERT_EQUALS("std :: extent_v < A > - 1 ;", tokenizeAndStringify("std::extent_v<A> - 1;\n")); // #11341
     }
@@ -3032,6 +3037,38 @@ private:
         }
     }
 
+    void vardecl36() {
+        const char code[] = "struct S {\n" // #15086
+                            "    bool f1() const;\n"
+                            "    bool f2() const;\n"
+                            "    int g() const;\n"
+                            "    int x, y;\n"
+                            "};\n"
+                            "bool S::f1() const {\n"
+                            "    const bool b = x ? g() < 0 : 0 > y;\n"
+                            "    return b;\n"
+                            "}\n"
+                            "bool S::f2() const {\n"
+                            "    const bool b = g() < x ? x != y : 0 > y;\n"
+                            "    return b;\n"
+                            "}\n";
+        const char expected[] = "struct S {\n"
+                                "bool f1 ( ) const ;\n"
+                                "bool f2 ( ) const ;\n"
+                                "int g ( ) const ;\n"
+                                "int x ; int y ;\n"
+                                "} ;\n"
+                                "bool S :: f1 ( ) const {\n"
+                                "const bool b = x ? ( g ( ) < 0 ) : 0 > y ;\n"
+                                "return b ;\n"
+                                "}\n"
+                                "bool S :: f2 ( ) const {\n"
+                                "const bool b = g ( ) < x ? x != y : 0 > y ;\n"
+                                "return b ;\n"
+                                "}";
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
+    }
+
     void volatile_variables() {
         {
             const char code[] = "volatile int a=0;\n"
@@ -3092,6 +3129,32 @@ private:
         }
 
         ASSERT_EQUALS("class Fred { } ;", tokenizeAndStringify("class DLLEXPORT Fred final { };\n"));
+    }
+
+    void simplifyKeywordNoreturn1() {
+        const char code[] = "_Noreturn void f(void) {}\n";
+        const char expected[] = "_Noreturn void f ( ) { }";
+        SimpleTokenizer tokenizer(*this, false);
+        ASSERT(tokenizer.tokenize(code));
+
+        ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
+
+        const Token *f = Token::findsimplematch(tokenizer.tokens(), "f");
+        ASSERT(f);
+        ASSERT(f->isAttributeNoreturn());
+    }
+
+    void simplifyKeywordNoreturn2() {
+        const char code[] = "noreturn void f(void) {}\n";
+        const char expected[] = "noreturn void f ( ) { }";
+        SimpleTokenizer tokenizer(*this, false);
+        ASSERT(tokenizer.tokenize(code));
+
+        ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
+
+        const Token *f = Token::findsimplematch(tokenizer.tokens(), "f");
+        ASSERT(f);
+        ASSERT(f->isAttributeNoreturn());
     }
 
     void implicitIntConst() {
@@ -5343,6 +5406,14 @@ private:
         ASSERT_EQUALS(1, b->bits());
     }
 
+    void bitfields22() {
+        const char code[] = "constexpr int BITS{4};\n"
+                            "struct Struct { unsigned int m_data : BITS; };\n";
+        const char expected[] = "constexpr int BITS { 4 } ;\n"
+                                "struct Struct { unsigned int m_data ; } ;";
+        ASSERT_EQUALS(expected, tokenizeAndStringify(code));
+    }
+
     void simplifyNamespaceStd() {
         const char *expected;
 
@@ -5380,6 +5451,19 @@ private:
                                 "void search();\n"
                                 "void dostuff() { search(); }\n";
             ASSERT_EQUALS("void search ( ) ;\nvoid dostuff ( ) { search ( ) ; }", tokenizeAndStringify(code));
+        }
+
+        {
+            const char code[] = "using namespace std;\n" // #8789
+                                "void f(int* p, int* q) {\n"
+                                "    search(p, q, p);\n"
+                                "    search(p, q, p, q);\n"
+                                "}\n";
+            ASSERT_EQUALS("void f ( int * p , int * q ) {\n"
+                          "search ( p , q , p ) ;\n"
+                          "std :: search ( p , q , p , q ) ;\n"
+                          "}",
+                          tokenizeAndStringify(code));
         }
 
         {
@@ -7882,6 +7966,16 @@ private:
                                                    "    return std::string{ g() + \"abc\" MACRO \"def\" };\n"
                                                    "}\n"), UNKNOWN_MACRO);
 
+        ASSERT_THROW_INTERNAL(tokenizeAndStringify("namespace N {\n"
+                                                   "    struct C {\n"
+                                                   "        void f();\n"
+                                                   "    };\n"
+                                                   "    void C(abc)::f() {\n"
+                                                   "        X x;\n"
+                                                   "        N::Y([&] { x(); })->g();\n"
+                                                   "    }\n"
+                                                   "}\n"), UNKNOWN_MACRO);
+
         ASSERT_THROW_INTERNAL_EQUALS(tokenizeAndStringify("static void handle_toggle(void (*proc) PROTO_XT_CALLBACK_ARGS, int var) {}\n"), // #13198
                                      UNKNOWN_MACRO,
                                      "There is an unknown macro here somewhere. Configuration is required. If PROTO_XT_CALLBACK_ARGS is a macro then please configure it.");
@@ -8084,9 +8178,36 @@ private:
                                              "    for (int i : [](int a, int b) { ++a; ++b; return std::vector<int>{a, b}; }(1, 2)) {}\n"
                                              "}\n"));
 
+        ASSERT_NO_THROW(tokenizeAndStringify("void f(int* p) {\n" // #15014
+                                             "    *p = -*p;\n"
+                                             "}\n"));
+
+        ASSERT_NO_THROW(tokenizeAndStringify("void f(void* h) {\n" // #15079
+                                             "    (void)::CloseHandle(h);\n"
+                                             "    int i = (int)::GetTickCount();\n"
+                                             "    g((unsigned char)::toupper(i));\n"
+                                             "}\n"));
+        ASSERT_NO_THROW(tokenizeAndStringify("int f(int i) {\n"
+                                             "    return (int)::abs(i);\n"
+                                             "}\n"));
+        ASSERT_NO_THROW(tokenizeAndStringify("namespace N { struct T {}; }\n"
+                                             "void f(void* p) {\n"
+                                             "    new (p) ::N::T;\n"
+                                             "}\n"));
+        ASSERT_NO_THROW(tokenizeAndStringify("struct S { using type = int; };\n"
+                                             "S s;\n"
+                                             "decltype(s)::type i;\n"));
+        {
+            const Settings s = settingsBuilder().cpp(Standards::CPP03).build();
+            ASSERT_NO_THROW(tokenizeAndStringify("struct S { typedef int type; };\n"
+                                                 "S s;\n"
+                                                 "decltype(s)::type i;\n", s));
+        }
+
         ignore_errout();
 
         ASSERT_EQUALS(";", tokenizeAndStringify("typedef std::size_t size_t;\n")); // #14809
+        ASSERT_EQUALS("struct S { int i { 0 } ; } ;", tokenizeAndStringify("struct S { int i : 1{0}; };\n")); // #15070
     }
 
 
@@ -9280,6 +9401,16 @@ private:
         tokenizer.dump(ostr);
         const std::string dump = ostr.str();
         ASSERT(dump.find(" isAttributeFallthrough=\"true\"") != std::string::npos);
+    }
+
+    void dumpAttributeUsed() {
+        const char code[] = "static int x __attribute__((used));\n";
+        SimpleTokenizer tokenizer(settingsDefault, *this, false);
+        ASSERT(tokenizer.tokenize(code));
+        std::ostringstream ostr;
+        tokenizer.dump(ostr);
+        const std::string dump = ostr.str();
+        ASSERT(dump.find(" isAttributeUsed=\"true\"") != std::string::npos);
     }
 
     void simplifyRedundantParentheses() {

@@ -75,6 +75,7 @@ private:
         TEST_CASE(iterator29);
         TEST_CASE(iterator30);
         TEST_CASE(iterator31);
+        TEST_CASE(iterator32);
         TEST_CASE(iteratorExpression);
         TEST_CASE(iteratorSameExpression);
         TEST_CASE(mismatchingContainerIterator);
@@ -371,7 +372,7 @@ private:
                     "    return s[x];\n"
                     "}\n");
         ASSERT_EQUALS(
-            "[test.cpp:5:13]: error: Out of bounds access in 's[x]', if 's' size is 6 and 'x' is 7 [containerOutOfBounds]\n",
+            "[test.cpp:5:13]: warning: Out of bounds access in 's[x]', if 's' size is 6 and 'x' is 7 [containerOutOfBounds]\n",
             errout_str());
 
         checkNormal("void f() {\n"
@@ -534,7 +535,7 @@ private:
                     "        v.resize(entries);\n"
                     "    v[0] = 1;\n"
                     "}\n");
-        ASSERT_EQUALS("[test.cpp:5:6]: error: Out of bounds access in expression 'v[0]' because 'v' is empty. [containerOutOfBounds]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:5:6]: warning: Out of bounds access in expression 'v[0]' because 'v' is empty. [containerOutOfBounds]\n", errout_str());
 
         checkNormal("void f(size_t entries) {\n"
                     "    if (entries < 2) return;\n"
@@ -760,8 +761,10 @@ private:
               "        v[i] = 42;\n"
               "    return v;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:4:10]: error: Out of bounds access in 'v[i]', if 'v' size is 10 and 'i' is 10 [containerOutOfBounds]\n",
-                      errout_str());
+        TODO_ASSERT_EQUALS(
+            "[test.cpp:4:10]: error: Out of bounds access in 'v[i]', if 'v' size is 10 and 'i' is 10 [containerOutOfBounds]\n",
+            "[test.cpp:4:10]: warning: Out of bounds access in 'v[i]', if 'v' size is 10 and 'i' is 10 [containerOutOfBounds]\n",
+            errout_str());
 
         check("void f() {\n"
               "    int s = 2;\n"
@@ -1139,6 +1142,41 @@ private:
         ASSERT_EQUALS("[test.cpp:5:13]: warning: Either the condition 'i>5' is redundant or 'i' can have the value 5. Expression 's[i]' causes access out of bounds. [containerOutOfBounds]\n"
                       "[test.cpp:3:11]: note: Assuming that condition 'i>5' is not redundant\n"
                       "[test.cpp:5:13]: note: Access out of bounds\n",
+                      errout_str());
+
+        check("void f(std::vector<int>& v) {\n"
+              "    std::vector<int>::iterator it;\n"
+              "    for (it = v.begin(); it != v.end(); ++it) {\n"
+              "        if (*it == 0)\n"
+              "            break;\n"
+              "    }\n"
+              "    v.erase(it);\n"
+              "}\n", s);
+        ASSERT_EQUALS("[test.cpp:4:13]: style: Consider using std::find_if algorithm instead of a raw loop. [useStlAlgorithm]\n"
+                      "[test.cpp:7:7]: warning: Either the condition is redundant or function 'erase()' is called on the iterator 'it' which is out of bounds. [eraseIteratorOutOfBoundsCond]\n"
+                      "[test.cpp:3:29]: note: Assuming that condition 'it!=v.end()' is not redundant\n"
+                      "[test.cpp:7:7]: note: Either the condition is redundant or function 'erase()' is called on the iterator 'it' which is out of bounds.\n",
+                      errout_str());
+
+        check("char f(std::string& s, bool b) {\n"
+              "    if (b)\n"
+              "        s.clear();\n"
+              "    return s[0];\n"
+              "}\n"
+              "char g(bool b) {\n"
+              "    std::string s = \"abc\";\n"
+              "    int i = 0;\n"
+              "    if (b)\n"
+              "        i = 5;\n"
+              "    return s[i];\n"
+              "}\n", s);
+        ASSERT_EQUALS("[test.cpp:4:13]: warning: Out of bounds access in expression 's[0]' because 's' is empty. [containerOutOfBounds]\n"
+                      "[test.cpp:2:9]: note: Assuming condition is true\n"
+                      "[test.cpp:4:13]: note: Access out of bounds\n"
+                      "[test.cpp:11:13]: warning: Out of bounds access in 's[i]', if 's' size is 3 and 'i' is 5 [containerOutOfBounds]\n"
+                      "[test.cpp:10:13]: note: Assignment 'i=5', assigned value is 5\n"
+                      "[test.cpp:9:9]: note: Assuming condition is true\n"
+                      "[test.cpp:11:13]: note: Access out of bounds\n",
                       errout_str());
     }
 
@@ -1877,13 +1915,13 @@ private:
         check("void f(int a, int b) {\n"
               "  if (std::for_each(&a, &b + 1, [](auto) {})) {}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:22]: (error) Iterators of different containers 'a' and 'b' are used together. [mismatchingContainers]\n",
+        ASSERT_EQUALS("[test.cpp:2:22]: (error) Addresses of different objects 'a' and 'b' are used together. [mismatchingContainers]\n",
                       errout_str());
 
         check("void f(int a, int b) {\n"
               "  if (std::for_each(&a, &b, [](auto) {})) {}\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:22]: (error) Iterators of different containers 'a' and 'b' are used together. [mismatchingContainers]\n",
+        ASSERT_EQUALS("[test.cpp:2:22]: (error) Addresses of different objects 'a' and 'b' are used together. [mismatchingContainers]\n",
                       errout_str());
 
         check("void f(int a) {\n"
@@ -2024,8 +2062,21 @@ private:
               "    std::string b;\n"
               "    return t.s.a.c_str() == b.c_str();\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:9:13]: (error) Iterators of different containers 's.a' and 'b' are used together. [mismatchingContainers]\n"
-                      "[test.cpp:13:15]: (error) Iterators of different containers 't.s.a' and 'b' are used together. [mismatchingContainers]\n",
+        ASSERT_EQUALS("[test.cpp:9:13]: (error) Pointers of different containers 's.a' and 'b' are used together. [mismatchingContainers]\n"
+                      "[test.cpp:13:15]: (error) Pointers of different containers 't.s.a' and 'b' are used together. [mismatchingContainers]\n",
+                      errout_str());
+    }
+
+    void iterator32()
+    {
+        check("bool f(const std::string& a, const std::string& b) {\n" // #15158
+              "    return a.data() != b.data();\n"
+              "}\n"
+              "bool g(const std::unique_ptr<int>& a, const std::unique_ptr<int>& b) {\n"
+              "    return a.get() != b.get();\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:12]: (error) Pointers of different containers 'a' and 'b' are used together. [mismatchingContainers]\n"
+                      "[test.cpp:5:12]: (error) Pointers of different objects 'a' and 'b' are used together. [mismatchingContainers]\n",
                       errout_str());
     }
 
@@ -2441,7 +2492,7 @@ private:
               "    if (it == v.end()) {}\n"
               "    v.erase(it);\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:3:7]: (warning) Either the condition 'it==v.end()' is redundant or function 'erase()' is called on the iterator 'it' which is out of bounds. [eraseIteratorOutOfBoundsCond]\n",
+        ASSERT_EQUALS("[test.cpp:2:12] -> [test.cpp:3:7]: (warning) Either the condition 'it==v.end()' is redundant or function 'erase()' is called on the iterator 'it' which is out of bounds. [eraseIteratorOutOfBoundsCond]\n",
                       errout_str());
 
         check("void f() {\n"
@@ -5161,6 +5212,12 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:2:17]: (performance) Constructing a std::string from the result of c_str() is slow and redundant. [stlcstrConstructor]\n",
                       errout_str());
+
+        check("void f(std::string& a, const std::string& b) {\n"
+              "    a += b.c_str();\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:7]: (performance) Concatenating the result of c_str() and a std::string is slow and redundant. [stlcstrConcat]\n",
+                      errout_str());
     }
 
     void uselessCalls() {
@@ -7058,6 +7115,18 @@ private:
               dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
 
+        check("template<typename T>\n" // #11583
+              "int g() { return 0; }\n"
+              "void f() {\n"
+              "    std::vector<int> v(1);\n"
+              "    auto itr = v.begin() + g<int>();\n"
+              "    std::vector<int> v2(itr, v.end());\n"
+              "    v.erase(itr, v.end());\n"
+              "    v.push_back(v2.size());\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
+
         // #13410
         check("int f(std::vector<int>& v) {\n"
               "    const int* i = &*v.cbegin();\n"
@@ -7424,6 +7493,103 @@ private:
                   "   }\n"
                   "}\n"); // TODO: use s?
             ASSERT_EQUALS("[test.cpp:7:17]: (performance) Searching before insertion is not necessary. Instead of 'x[5]=data' consider using 'x.try_emplace(5, data);'. [stlFindInsert]\n", errout_str());
+        }
+
+        // The key is found => the value is assigned, try_emplace() would not do that
+        check("void f() {\n"
+              "    std::map<int, bool> m{{1, false}};\n"
+              "    if (m.count(1) != 0)\n"
+              "        m[1] = true;\n"
+              "}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:4:16]: (performance) Searching before modification is not necessary. Instead of 'm[1]=true' consider assigning the value through the iterator returned by 'm.find(1)'. [stlFindInsert]\n",
+            errout_str());
+
+        check("void f(std::map<unsigned, unsigned>& m, unsigned x) {\n"
+              "    if (m.find(x) != m.end())\n"
+              "        m[x] = 1;\n"
+              "}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:3:16]: (performance) Searching before modification is not necessary. Instead of 'm[x]=1' consider assigning the value through the iterator returned by 'm.find(x)'. [stlFindInsert]\n",
+            errout_str());
+
+        check("void f(std::map<unsigned, unsigned>& m, unsigned x) {\n"
+              "    if (m.count(x) > 0)\n"
+              "        m[x] = 1;\n"
+              "}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:3:16]: (performance) Searching before modification is not necessary. Instead of 'm[x]=1' consider assigning the value through the iterator returned by 'm.find(x)'. [stlFindInsert]\n",
+            errout_str());
+
+        check("void f(std::map<unsigned, unsigned>& m, unsigned x) {\n"
+              "    if (m.count(x) == 1)\n"
+              "        m[x] = 1;\n"
+              "}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:3:16]: (performance) Searching before modification is not necessary. Instead of 'm[x]=1' consider assigning the value through the iterator returned by 'm.find(x)'. [stlFindInsert]\n",
+            errout_str());
+
+        // The key is not found => try_emplace()
+        check("void f(std::map<unsigned, unsigned>& m, unsigned x) {\n"
+              "    if (m.count(x) == 0)\n"
+              "        m[x] = 1;\n"
+              "}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:3:16]: (performance) Searching before insertion is not necessary. Instead of 'm[x]=1' consider using 'm.try_emplace(x, 1);'. [stlFindInsert]\n",
+            errout_str());
+
+        check("void f(std::map<unsigned, unsigned>& m, unsigned x) {\n"
+              "    if (m.count(x) < 1)\n"
+              "        m[x] = 1;\n"
+              "}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:3:16]: (performance) Searching before insertion is not necessary. Instead of 'm[x]=1' consider using 'm.try_emplace(x, 1);'. [stlFindInsert]\n",
+            errout_str());
+
+        // Unknown condition => no suggestion
+        check("void f(std::map<unsigned, unsigned>& m, unsigned x, unsigned y) {\n"
+              "    if (m.count(x) == y)\n"
+              "        m[x] = 1;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:16]: (performance) Searching before insertion is not necessary. [stlFindInsert]\n",
+                      errout_str());
+
+        // Both branches set the value => no suggestion
+        check("void f(std::map<unsigned, unsigned>& m, unsigned x) {\n"
+              "    if (m.find(x) == m.end())\n"
+              "        m[x] = 1;\n"
+              "    else\n"
+              "        m[x] = 1;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:16]: (performance) Searching before insertion is not necessary. [stlFindInsert]\n",
+                      errout_str());
+
+        check("void f(std::map<unsigned, unsigned>& m, unsigned x) {\n"
+              "    if (m.find(x) != m.end())\n"
+              "        m[x] = 1;\n"
+              "    else\n"
+              "        m.emplace(x, 1);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:16]: (performance) Searching before insertion is not necessary. [stlFindInsert]\n",
+                      errout_str());
+
+        // The suggestion for a found key does not depend on the C++ standard
+        {
+            Settings s = settings;
+            const char code[] = "void f(std::map<unsigned, unsigned>& m, unsigned x) {\n"
+                                "    if (m.count(x) != 0)\n"
+                                "        m[x] = 1;\n"
+                                "}\n";
+            s.standards.cpp = Standards::CPP03;
+            check(code, s);
+            ASSERT_EQUALS(
+                "[test.cpp:3:16]: (performance) Searching before modification is not necessary. Instead of 'm[x]=1' consider assigning the value through the iterator returned by 'm.find(x)'. [stlFindInsert]\n",
+                errout_str());
+            s.standards.cpp = Standards::CPP11;
+            check(code, s);
+            ASSERT_EQUALS(
+                "[test.cpp:3:16]: (performance) Searching before modification is not necessary. Instead of 'm[x]=1' consider assigning the value through the iterator returned by 'm.find(x)'. [stlFindInsert]\n",
+                errout_str());
         }
     }
 

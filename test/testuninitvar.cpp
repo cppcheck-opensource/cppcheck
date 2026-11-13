@@ -95,6 +95,7 @@ private:
         TEST_CASE(valueFlowUninitBreak);
         TEST_CASE(valueFlowUninitStructMembers);
         TEST_CASE(valueFlowUninitForLoop);
+        TEST_CASE(valueFlowUninitErrorPath);
         TEST_CASE(uninitvar_ipa);
         TEST_CASE(uninitvar_memberfunction);
         TEST_CASE(uninitvar_nonmember); // crash in ycmd test
@@ -2200,6 +2201,58 @@ private:
                        "    int i = p[0] + p[1];\n"
                        "    delete[] p;\n"
                        "    return i;\n"
+                       "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // #15005
+        checkUninitVar("void f() {\n"
+                       "    char *p = new char;\n"
+                       "    p += 1;\n"
+                       "    delete (p - 1);\n"
+                       "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        checkUninitVar("void f() {\n"
+                       "    char *p = new char;\n"
+                       "    *p += 1;\n"
+                       "    delete p;\n"
+                       "}\n");
+        ASSERT_EQUALS("[test.cpp:3:6]: (error) Memory is allocated but not initialized: p [uninitdata]\n", errout_str());
+
+        checkUninitVar("void f() {\n"
+                       "    char *p = new char;\n"
+                       "    (*p)++;\n"
+                       "    delete p;\n"
+                       "}\n");
+        ASSERT_EQUALS("[test.cpp:3:7]: (error) Memory is allocated but not initialized: p [uninitdata]\n", errout_str());
+
+        checkUninitVar("void f() {\n"
+                       "    char *p = new char;\n"
+                       "    p[0]++;\n"
+                       "    delete p;\n"
+                       "}\n");
+        ASSERT_EQUALS("[test.cpp:3:5]: (error) Memory is allocated but not initialized: p [uninitdata]\n", errout_str());
+
+        checkUninitVar("void f() {\n"
+                       "    char *buf = (char *)malloc(1);\n"
+                       "    if (!buf)\n"
+                       "        return NULL;\n"
+                       "    buf += buf[0];\n"
+                       "    free(buf);\n"
+                       "}\n");
+        ASSERT_EQUALS("[test.cpp:5:15]: (error) Memory is allocated but not initialized: buf[0] [uninitdata]\n", errout_str());
+
+        checkUninitVar("void g() {\n"
+                       "    int* p = new int;\n"
+                       "    p++;\n"
+                       "    delete (p - 1);\n"
+                       "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        checkUninitVar("void g() {\n"
+                       "    int* p = new int;\n"
+                       "    ++p;\n"
+                       "    delete (p - 1);\n"
                        "}\n");
         ASSERT_EQUALS("", errout_str());
     }
@@ -4315,7 +4368,21 @@ private:
                         "  if (x == 1)\n"
                         "    v = value;\n"
                         "}\n");
-        TODO_ASSERT_EQUALS("[test.cpp:6:9]: (error) Uninitialized variable: value [legacyUninitvar]\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:9] -> [test.cpp:5:9] -> [test.cpp:6:9]: (warning) Uninitialized variable: value [uninitvar]\n", errout_str());
+
+        // false path: 'flag' is false past the block
+        valueFlowUninit("void getX(int *p);\n"
+                        "bool g();\n"
+                        "void f() {\n"
+                        "    int x;\n"
+                        "    bool flag, ok;\n"
+                        "    ok = g();\n"
+                        "    flag = ok;\n"
+                        "    if (ok == true) { getX(&x); }\n"
+                        "    if (flag == true) { int a = x; }\n"
+                        "    if (flag == false) { int b = x; }\n"
+                        "}\n");
+        ASSERT_EQUALS("[test.cpp:8:12] -> [test.cpp:10:14] -> [test.cpp:10:34]: (warning) Uninitialized variable: x [uninitvar]\n", errout_str());
 
         valueFlowUninit("void f(int x) {\n"
                         "  int value;\n"
@@ -6082,7 +6149,7 @@ private:
                         "    if (b == 'x') {}\n"
                         "    if (a) {}\n"
                         "}\n");
-        TODO_ASSERT_EQUALS("[test.cpp:8]: (error) Uninitialized variable: a\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:11] -> [test.cpp:5:11] -> [test.cpp:7:11] -> [test.cpp:8:9]: (warning) Uninitialized variable: a [uninitvar]\n", errout_str());
 
         valueFlowUninit("void h() {\n"
                         "  int i;\n"
@@ -6785,6 +6852,12 @@ private:
                         "int g() {\n"
                         "    int a[1];\n"
                         "    ((int*)a)[0] = 0;\n"
+                        "    return a[0];\n"
+                        "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        valueFlowUninit("std::vector<int> f() {\n" // #15077
+                        "    const std::vector<int> a[1];\n"
                         "    return a[0];\n"
                         "}\n");
         ASSERT_EQUALS("", errout_str());
@@ -7893,6 +7966,23 @@ private:
         ASSERT_EQUALS("", errout_str());
     }
 
+    void valueFlowUninitErrorPath()
+    {
+        setMultiline();
+
+        valueFlowUninit("void f(bool b) {\n"
+                        "    int i;\n"
+                        "    if (b)\n"
+                        "        return i;\n"
+                        "    i = 1;\n"
+                        "    return i;\n"
+                        "}\n");
+        ASSERT_EQUALS("[test.cpp:4:16]: warning: Uninitialized variable: i [uninitvar]\n"
+                      "[test.cpp:3:9]: note: Assuming condition is true\n"
+                      "[test.cpp:4:16]: note: Uninitialized variable: i\n",
+                      errout_str());
+    }
+
     void uninitvar_memberfunction() {
         // # 8715
         valueFlowUninit("struct C {\n"
@@ -8176,6 +8266,16 @@ private:
             "  f(&x);\n"
             "}\n");
         ASSERT_EQUALS("[test.cpp:6:4] -> [test.cpp:2:10]: (error) Using argument p that points at uninitialized variable x [ctuuninitvar]\n", errout_str());
+
+        ctu("void f(int *p) {\n"
+            "    a += *p;\n"
+            "}\n"
+            "int main() {\n"
+            "  int x;\n"
+            "  f(&x);\n"
+            "}\n");
+        ASSERT_EQUALS("[test.cpp:6:4] -> [test.cpp:2:11]: (error) Using argument p that points at uninitialized variable x [ctuuninitvar]\n", errout_str());
+
 
         ctu("void use(int *p) { a = *p + 3; }\n"
             "void call(int x, int *p) { x++; use(p); }\n"

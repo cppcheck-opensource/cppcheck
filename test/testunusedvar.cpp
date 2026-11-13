@@ -225,6 +225,7 @@ private:
         TEST_CASE(localvarStruct13); // #10398
         TEST_CASE(localvarStruct14);
         TEST_CASE(localvarStructArray);
+        TEST_CASE(localvarOverloadedSubscript);
         TEST_CASE(localvarUnion1);
 
         TEST_CASE(localvarOp);          // Usage with arithmetic operators
@@ -2067,6 +2068,11 @@ private:
                                "    int i3 __attribute__((unused)) {};\n"
                                "};\n");
         ASSERT_EQUALS("", errout_str());
+
+        checkStructMemberUsage("struct S {\n"
+                               "    int a __attribute__((unused)), b;\n"
+                               "};\n");
+        ASSERT_EQUALS("[test.cpp:2:36]: (style) struct member 'S::b' is never used. [unusedStructMember]\n", errout_str());
     }
 
     void structmember31() { // #14130
@@ -3369,6 +3375,14 @@ private:
                               "    return a;\n"
                               "}\n");
         ASSERT_EQUALS("[test.cpp:5:14]: (style) Variable 'b[c]' is assigned a value that is never used. [unreadVariable]\n", errout_str());
+
+        functionVariableUsage("int f() {\n" // #14769
+                              "    int i = 2;\n"
+                              "    const int *a, *c;\n"
+                              "    a = c = &i;\n"
+                              "    return *a;\n"
+                              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:11]: (style) Variable 'c' is assigned a value that is never used. [unreadVariable]\n", errout_str());
     }
 
     void localvar24() { // ticket #1803
@@ -5666,6 +5680,30 @@ private:
         ASSERT_EQUALS("[test.cpp:3:12]: (style) Variable 'x[0].a' is assigned a value that is never used. [unreadVariable]\n", errout_str());
     }
 
+    void localvarOverloadedSubscript() {
+        functionVariableUsage("struct A { B &operator [](size_t i); }\n"
+                              "struct B { int x; };\n"
+                              "void f(B *b) {\n"
+                              "    A a(b);\n"
+                              "    a[0].b = 0;\n"
+                              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        functionVariableUsage("struct S {\n" // #9995
+                              "    int& operator[](int i) { return r[i]; }\n"
+                              "    std::map<int, int>& r;\n"
+                              "};\n"
+                              "struct T {\n"
+                              "    std::map<int, int>& m;\n"
+                              "    S get() { return { m }; }\n"
+                              "};\n"
+                              "void f(T& t) {\n"
+                              "    S s = t.get();\n"
+                              "    s[1] = 0;\n"
+                              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
     void localvarUnion1() {
         // #9707
         functionVariableUsage("static short read(FILE *fp) {\n"
@@ -5996,6 +6034,12 @@ private:
                               "    char b[1][2] __attribute__((unused));\n"
                               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        functionVariableUsage("int foo()\n"
+                              "{\n"
+                              "    int x __attribute__((unused)), y;\n"
+                              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:36]: (style) Unused variable: y [unusedVariable]\n", errout_str());
     }
 
     void localvarFunction() {

@@ -884,7 +884,7 @@ void uninitvar()
     // cppcheck-suppress uninitvar
     lstrcat(buf, _T("test"));
     buf[0] = _T('\0');
-    // TODO cppcheck-suppress constVariable
+    // cppcheck-suppress constVariable
     TCHAR buf2[2];
     // cppcheck-suppress lstrcatCalled
     // cppcheck-suppress uninitvar

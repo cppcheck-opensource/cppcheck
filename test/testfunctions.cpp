@@ -59,6 +59,7 @@ private:
 
         // Invalid function argument
         TEST_CASE(invalidFunctionArg1);
+        TEST_CASE(invalidFunctionArgErrorPath);
 
         // Math function usage
         TEST_CASE(mathfunctionCall_fmod);
@@ -791,6 +792,22 @@ private:
               "    }\n"
               "}\n", settingsUnix32, false);
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void invalidFunctionArgErrorPath() {
+        setMultiline();
+        Settings s = settings;
+        s.templateLocation = "{file}:{line}:note:{info}\n";
+        check("double f(bool b) {\n"
+              "    double d = -1.0;\n"
+              "    if (b)\n"
+              "        return d;\n"
+              "    return std::log(d);\n"
+              "}\n", s);
+        ASSERT_EQUALS("[test.cpp:5:21]: warning: Invalid std::log() argument nr 1. The value is -1 but the valid values are '4.94066e-324:'. [invalidFunctionArg]\n"
+                      "[test.cpp:2:18]: note: Assignment 'd=-1.0', assigned value is -1.0\n"
+                      "[test.cpp:3:9]: note: Assuming condition is false\n"
+                      "[test.cpp:5:21]: note: Invalid argument\n", errout_str());
     }
 
     void mathfunctionCall_sqrt() {

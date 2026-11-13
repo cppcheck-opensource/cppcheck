@@ -194,6 +194,12 @@ void invalidFunctionArgStr_mbsnrtowcs(void)
     if (mbsnrtowcs (wenough, &cp, 1, 10, &s) != 1 || wcscmp (wenough, L"AEF") != 0) {}
 }
 
+int invalidFunctionArgStr_strncasecmp(const char* s)
+{
+    const char buf[3] = {'a', 'b', 'c'};
+    return strncasecmp(buf, s, 3);
+}
+
 struct tm * ignoredReturnValue_localtime(const time_t *tp)
 {
     // cppcheck-suppress [ignoredReturnValue,localtimeCalled]
@@ -719,6 +725,13 @@ size_t bufferAccessOutOfBounds_strnlen(const char *s, size_t maxlen)
     size_t len = strnlen(buf,2);
     // cppcheck-suppress bufferAccessOutOfBounds
     len+=strnlen(buf,3);
+    len+=strnlen("ab",5);
+    return len;
+}
+
+size_t bufferAccessOutOfBounds_strncasecmp(const char *s)
+{
+    size_t len = strncasecmp(s, "abc", 5);
     return len;
 }
 
@@ -1524,9 +1537,11 @@ void pthread_cond_timedwait_test(pthread_cond_t *cond, pthread_mutex_t *mutex, c
 
 void pthread_cond_init_test(pthread_cond_t *cond, const pthread_condattr_t *attr)
 {
-    // cppcheck-suppress nullPointer
     (void)pthread_cond_init(cond, NULL);
     (void)pthread_cond_init(cond, attr);
+    const pthread_condattr_t *uattr;
+    // cppcheck-suppress uninitvar
+    (void)pthread_cond_init(cond, uattr);
 }
 
 void pthread_cond_destroy_test(const pthread_cond_t *cond)
@@ -1537,6 +1552,12 @@ void pthread_cond_destroy_test(const pthread_cond_t *cond)
 void pthread_cleanup_push_test(void (*routine)(void *), void *arg)
 {
     pthread_cleanup_push(routine, arg);
+    pthread_cleanup_pop(0);
+}
+
+void pthread_cleanup_push_test_NULL(void (*routine)(void *))
+{
+    pthread_cleanup_push(routine, NULL);
     pthread_cleanup_pop(0);
 }
 
@@ -1606,4 +1627,11 @@ void pthread_define_test()
     (void)rwlock;
     PTHREAD_SCOPE_PROCESS;
     PTHREAD_SCOPE_SYSTEM;
+}
+
+void mmap_fixed(void *addr) // No constParameterPointer: mmap() may replace the mapping at addr
+{
+    // cppcheck-suppress valueFlowBailoutIncompleteVar
+    // cppcheck-suppress leakReturnValNotUsed
+    (void)mmap(addr, 0x1000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED, 0, 0);
 }
