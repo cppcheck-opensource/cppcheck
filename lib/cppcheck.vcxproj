@@ -318,7 +318,7 @@ if exist "$(OutDir)platforms\unix64-unsigned.xml" del /q "$(OutDir)platforms\uni
       <AdditionalOptions>/Zc:throwingNew /Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>pcre64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>pcre2-8.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../externals;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -403,7 +403,7 @@ if exist "$(OutDir)platforms\unix64-unsigned.xml" del /q "$(OutDir)platforms\uni
       <LanguageStandard>stdcpp14</LanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>pcre64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>pcre2-8.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../externals;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>

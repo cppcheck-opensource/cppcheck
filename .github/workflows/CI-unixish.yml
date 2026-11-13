@@ -52,8 +52,7 @@ jobs:
       - name: Install missing software on macos
         if: contains(matrix.os, 'macos')
         run: |
-          # pcre was removed from runner images in November 2022
-          brew install coreutils qt@6 tinyxml2 pcre
+          brew install coreutils qt@6 tinyxml2 pcre2
 
       - name: CMake build on ubuntu (with GUI / system tinyxml2)
         if: contains(matrix.os, 'ubuntu')
@@ -121,8 +120,7 @@ jobs:
       - name: Install missing software on macos
         if: contains(matrix.os, 'macos')
         run: |
-          # pcre was removed from runner images in November 2022
-          brew install coreutils qt@6 pcre
+          brew install coreutils qt@6 pcre2
 
       - name: Run CMake on ubuntu (with GUI)
         if: contains(matrix.os, 'ubuntu')
@@ -238,8 +236,7 @@ jobs:
       - name: Install missing software on macos
         if: contains(matrix.os, 'macos')
         run: |
-          # pcre was removed from runner images in November 2022
-          brew install coreutils qt@6 pcre
+          brew install coreutils qt@6 pcre2
 
       - name: Run CMake on ubuntu (with GUI)
         if: contains(matrix.os, 'ubuntu')
@@ -486,8 +483,7 @@ jobs:
       - name: Install missing software on macos
         if: contains(matrix.os, 'macos')
         run: |
-          # pcre was removed from runner images in November 2022
-          brew install coreutils pcre gnu-sed
+          brew install coreutils pcre2 gnu-sed
 
       - name: Install missing Python packages on ubuntu
         if: contains(matrix.os, 'ubuntu')

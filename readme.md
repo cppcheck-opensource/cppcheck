@@ -42,7 +42,7 @@ Cppcheck requires a C++ compiler with (partial) C++11 support. Minimum required 
 
 To build the GUI application, you need to use the CMake build system.
 
-When building the command line tool, [PCRE](http://www.pcre.org/) is optional. It is used if you build with rules.
+When building the command line tool, [PCRE2](https://www.pcre.org/) is optional. It is used if you build with rules.
 
 There are multiple compilation choices:
 
@@ -67,7 +67,7 @@ cmake --build build
 If you want to compile the GUI you can use the flag.
 `-DBUILD_GUI=ON`
 
-For rules support (requires pcre) use the flag.
+For rules support (requires PCRE2) use the flag.
 `-DHAVE_RULES=ON`
 
 For release builds it is recommended that you use:
@@ -98,7 +98,7 @@ cmake --build build --config RelWithDebInfo
 
 Use the `cppcheck.sln` file. The file is configured for Visual Studio 2019, but the platform toolset can be changed easily to older or newer versions. The solution contains platform targets for both x86 and x64.
 
-To compile with rules, select "`Release-PCRE`" or "`Debug-PCRE`" configuration. `pcre.lib` (`pcre64.lib` for x64 builds) and `pcre.h` are expected to be in `/externals` then. A current version of PCRE for Visual Studio can be obtained using [vcpkg](https://github.com/microsoft/vcpkg).
+To compile with rules, select "`Release-PCRE`" or "`Debug-PCRE`" configuration. The static PCRE2 library `pcre2-8.lib` and `pcre2.h` are expected to be in `/externals` then. See `build-pcre.txt` for how to build them.
 
 ### Visual Studio (from command line)
 
@@ -114,8 +114,7 @@ Cppcheck Official is an extension officially supported by the cppcheck team allo
 
 ### Qt Creator + MinGW
 
-The PCRE dll is needed to build the CLI. It can be downloaded here:
-<http://software-download.name/pcre-library-windows/>
+PCRE2 is needed to build the CLI with rules. See `build-pcre.txt`.
 
 ### GNU compilers
 
@@ -152,7 +151,7 @@ g++ -o cppcheck -std=c++11 -Iexternals -Iexternals/simplecpp -Iexternals/tinyxml
    Specifies the folder where Cppcheck files (addons, cfg, platform) are installed to.
 
 * `HAVE_RULES=yes`
-   Enables rules (requires PCRE to be installed).
+   Enables rules (requires PCRE2 to be installed).
 
 * `CXXOPTS="-O2"`
    Enables most compiler optimizations.

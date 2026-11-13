@@ -22,6 +22,8 @@ Import project:
 Infrastructure & dependencies:
 - Added arm64 platform files arm64-windows.xml, arm64-linux.xml and arm64-macos.xml (Apple Silicon).
   These describe the default setup for that OS. The arm64-wchar_t2.xml and arm64-wchar_t4.xml files are kept.
+- The rules feature (HAVE_RULES) now uses PCRE2 instead of the discontinued PCRE library. Existing rule patterns
+  and rule files work unchanged. On Windows the Visual Studio project now expects pcre2-8.lib and pcre2.h in externals.
 
 Other:
 -

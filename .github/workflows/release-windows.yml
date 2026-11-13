@@ -26,8 +26,8 @@ jobs:
 
     env:
       PYTHON_VERSION: 3.14
-      # see https://www.pcre.org/original/changelog.txt
-      PCRE_VERSION: 8.45
+      # see https://github.com/PCRE2Project/pcre2/blob/master/ChangeLog
+      PCRE2_VERSION: 10.49
       QT_VERSION: 6.10.0
       BOOST_MINOR_VERSION: 89
 
@@ -45,20 +45,20 @@ jobs:
       - name: Set up Visual Studio environment
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Download PCRE
+      - name: Download PCRE2
         run: |
-          curl -fsSL https://github.com/pfultz2/pcre/archive/refs/tags/%PCRE_VERSION%.zip -o pcre-%PCRE_VERSION%.zip || exit /b !errorlevel!
+          curl -fsSL https://github.com/PCRE2Project/pcre2/releases/download/pcre2-%PCRE2_VERSION%/pcre2-%PCRE2_VERSION%.zip -o pcre2-%PCRE2_VERSION%.zip || exit /b !errorlevel!
 
-      - name: Install PCRE
+      - name: Install PCRE2
         run: |
           @echo on
-          7z x pcre-%PCRE_VERSION%.zip || exit /b !errorlevel!
-          cd pcre-%PCRE_VERSION% || exit /b !errorlevel!
-          git apply --ignore-space-change ..\externals\pcre.patch || exit /b !errorlevel!
-          cmake . -A x64 -DPCRE_BUILD_PCRECPP=OFF -DPCRE_BUILD_PCREGREP=OFF -DPCRE_BUILD_TESTS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_COMPILE_WARNING_AS_ERROR=On || exit /b !errorlevel!
-          msbuild -m PCRE.slnx -p:Configuration=Release -p:Platform=x64 || exit /b !errorlevel!
-          copy pcre.h ..\externals || exit /b !errorlevel!
-          copy Release\pcre.lib ..\externals\pcre64.lib || exit /b !errorlevel!
+          7z x pcre2-%PCRE2_VERSION%.zip || exit /b !errorlevel!
+          cd pcre2-%PCRE2_VERSION% || exit /b !errorlevel!
+          cmake -S . -B build -A x64 -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DPCRE2_SUPPORT_JIT=ON -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_BUILD_TESTS=OFF || exit /b !errorlevel!
+          cmake --build build --config Release || exit /b !errorlevel!
+          cmake --install build --config Release --prefix pcre2-dist || exit /b !errorlevel!
+          copy pcre2-dist\include\pcre2.h ..\externals || exit /b !errorlevel!
+          copy pcre2-dist\lib\pcre2-8-static.lib ..\externals\pcre2-8.lib || exit /b !errorlevel!
 
       - name: Download Boost
         run: |
