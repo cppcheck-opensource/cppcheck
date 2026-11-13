@@ -3436,7 +3436,7 @@ static ExprUsage getFunctionUsage(const Token* tok, int indirect, const Library&
     // variable init/constructor call?
     if (!func && var && ftok == var->nameToken()) {
         // STL types/containers/primitive types don't initialize external variables
-        if (indirect == 0 && (var->isStlType() || (var->valueType() && (var->valueType()->container || var->valueType()->isPrimitive()))))
+        if (indirect == 0 && (var->isStlType() || (var->valueType() && (var->valueType()->container || (var->valueType()->isPrimitive() && !var->isReference())))))
             return ExprUsage::Used;
         // TODO: resolve multiple constructors
         if (var->type() && var->type()->classScope) {
