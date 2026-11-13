@@ -5000,3 +5000,61 @@ void f(int x) {
 
     assert proc.returncode == 0
     assert stderr.splitlines()[-1].strip() == f'{expected} total'.encode('utf-8')
+
+
+def __test_builddir_summary(tmp_path, filename, extra_args):
+    with open(tmp_path / filename, 'wt') as f:
+        f.write('void bar(void) {}\n')
+    with open(tmp_path / 'test.c', 'wt') as f:
+        f.write(
+"""#include <stdlib.h>
+void f(void) {
+    char *p = malloc(10);
+    bar();
+}
+""")
+    build_dir = tmp_path / 'b1'
+    os.mkdir(build_dir)
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--cppcheck-build-dir={}'.format(build_dir),
+        filename,
+        'test.c'
+    ] + extra_args
+
+    exitcode, stdout, stderr = cppcheck(args, cwd=tmp_path)
+    assert exitcode == 0, stdout
+    assert stderr == ''
+
+    stem = os.path.splitext(filename)[0]
+    assert sorted(os.listdir(build_dir)) == sorted([
+        'checkers.txt',
+        'files.txt',
+        stem + '.a1',
+        stem + '.s1',
+        'test.a1',
+        'test.s1'
+    ])
+
+    # analyze test.c again
+    os.remove(build_dir / 'test.a1')
+
+    exitcode, stdout, stderr = cppcheck(args, cwd=tmp_path)
+    assert exitcode == 0, stdout
+    assert stderr.splitlines() == [
+        'test.c:5:1: error: Memory leak: p [memleak]'
+    ]
+
+
+def test_builddir_summary(tmp_path):
+    __test_builddir_summary(tmp_path, 'bar.c', [])
+
+
+def test_builddir_summary_define(tmp_path):
+    __test_builddir_summary(tmp_path, 'bar.c', ['-DX'])
+
+
+def test_builddir_summary_filename(tmp_path):
+    __test_builddir_summary(tmp_path, 'my.api.c', [])
