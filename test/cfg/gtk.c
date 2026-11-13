@@ -806,6 +806,17 @@ void g_thread_join_parameter_test(GThread *thread)
     g_thread_join(thread);
 }
 
+// The thread function gets the data as a non-const gpointer.
+void g_thread_data_test(int *data)
+{
+    GThread *thread = g_thread_new("test", thread_func, data);
+    g_thread_join(thread);
+
+    GThread *thread_try = g_thread_try_new("test", thread_func, data, NULL);
+    if (thread_try)
+        g_thread_join(thread_try);
+}
+
 void g_thread_not_joined_test(void)
 {
     GThread *thread = g_thread_new("test", thread_func, NULL);
