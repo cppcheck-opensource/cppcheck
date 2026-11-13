@@ -5087,6 +5087,11 @@ private:
               "void g(__attribute__((unused)) int *p) {}\n"
               "void h(int *p) {}\n");
         ASSERT_EQUALS("[test.cpp:3:13]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n", errout_str());
+
+        check("void f(std::vector<int>& v, int* p) {\n" // #15203
+              "    v.push_back(*p);\n"
+              "};\n");
+        ASSERT_EQUALS("[test.cpp:1:34]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n", errout_str());
     }
 
     void constArray() {
