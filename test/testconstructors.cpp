@@ -940,6 +940,60 @@ private:
         ASSERT_EQUALS("[test.cpp:3:9]: (warning) Member variable 'S::x' has no initializer. [uninitMemberVarNoCtor]\n"
                       "[test.cpp:7:9]: (warning) Member variable 'T::x' has no initializer. [uninitMemberVarNoCtor]\n",
                       errout_str());
+
+        check("struct N {\n" // #15197
+              "    explicit N(int);\n"
+              "};\n"
+              "struct D {\n"
+              "    D() = delete;\n"
+              "};\n"
+              "struct S {\n"
+              "    N n;\n"
+              "    int i;\n"
+              "    bool b = true;\n"
+              "};\n"
+              "struct W {\n"
+              "    W(int, ...);\n"
+              "};\n"
+              "struct T {\n"
+              "    D d;\n"
+              "    int i;\n"
+              "    bool b = true;\n"
+              "};\n"
+              "struct U {\n"
+              "    W w;\n"
+              "    int i;\n"
+              "    bool b = true;\n"
+              "};\n"
+              "struct A {\n"
+              "    N a[2];\n"
+              "    int i;\n"
+              "    bool b = true;\n"
+              "};\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct N {\n"
+              "    explicit N(int = 0);\n"
+              "};\n"
+              "struct V {\n"
+              "    template<class... A> explicit V(A&&... a);\n"
+              "};\n"
+              "struct C {\n"
+              "    C(...);\n"
+              "};\n"
+              "struct M {\n"
+              "    explicit M(int);\n"
+              "};\n"
+              "struct S {\n"
+              "    N n;\n"
+              "    V v;\n"
+              "    C c;\n"
+              "    M* p;\n"
+              "    M* q[2];\n"
+              "    int i;\n"
+              "    bool b = true;\n"
+              "};\n");
+        ASSERT_EQUALS("[test.cpp:19:9]: (warning) Member variable 'S::i' has no initializer. [uninitMemberVarNoCtor]\n", errout_str());
     }
 
     // ticket #4290 "False Positive: style (noConstructor): The class 'foo' does not have a constructor."
