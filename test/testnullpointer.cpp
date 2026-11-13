@@ -4933,7 +4933,7 @@ private:
               "    p += a;\n"
               "    *p = 0;\n"
               "}\n");
-        ASSERT_EQUALS("", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:7]: (error) Pointer addition with NULL pointer. [nullPointerArithmetic]\n", errout_str());
 
         check("int f(int *p = 0) {\n"
               "    if (p == 0) {\n"

@@ -6861,6 +6861,15 @@ private:
                         "    return a[0];\n"
                         "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        valueFlowUninit("void f(int i) {\n"
+                        "    int x, y;\n"
+                        "    x += i;\n"
+                        "    y <<= i;\n"
+                        "}\n");
+        ASSERT_EQUALS("[test.cpp:3:5]: (error) Uninitialized variable: x [uninitvar]\n"
+                      "[test.cpp:4:5]: (error) Uninitialized variable: y [uninitvar]\n",
+                      errout_str());
     }
 
     void valueFlowUninitBreak() { // Do not show duplicate warnings about the same uninitialized value
