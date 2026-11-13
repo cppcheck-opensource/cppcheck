@@ -2407,6 +2407,12 @@ private:
             { "/* polyspace +2147483647 MISRA2012 : 2.7 */", 2 },
             { { "premium-misra-c-2012-2.7", 2, "", SuppressionList::Type::block, 2, std::numeric_limits<int>::max() } }
             );
+
+        testPolyspaceSuppression(
+            "", "--misra-c-2012",
+            { "/* polyspace +5 MISRA2012 : 2.7 */", -1 },
+            { { "premium-misra-c-2012-2.7", -1, "", SuppressionList::Type::block, -1, 4 } }
+            );
     }
 
     void polyspaceBlock() const {
