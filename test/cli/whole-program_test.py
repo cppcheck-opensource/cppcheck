@@ -430,3 +430,51 @@ def test_nullpointer_out_of_memory(tmpdir, single_file):
     else:
         # the bug is found using ctu analysis
         assert results == ['[ctunullpointerOutOfMemory]']
+
+
+def __test_nullpointer_nested_call(tmpdir, extra_args):
+    with open(tmpdir / 'header.h', 'wt') as f:
+        f.write('void wrapper(int *p);\n')
+    with open(tmpdir / 'test1.c', 'wt') as f:
+        f.write('#include "header.h"\n'
+                'int g;\n'
+                'void deref(int *p) { g = *p; }\n'
+                'void wrapper(int *p) { deref(p); }\n')
+    with open(tmpdir / 'test2.c', 'wt') as f:
+        f.write('#include "header.h"\n'
+                'void f(void) { wrapper(0); }\n')
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--error-exitcode=1',
+        'test1.c',
+        'test2.c'
+    ]
+
+    args += extra_args
+
+    ret, stdout, stderr = cppcheck(args, cwd=tmpdir)
+    lines = stderr.splitlines()
+    assert lines == [
+        'test1.c:3:27: error: Null pointer dereference: p [ctunullpointer]'
+    ]
+    assert stdout == ''
+    assert ret == 1, stdout
+
+
+def test_nullpointer_nested_call(tmpdir):
+    __test_nullpointer_nested_call(tmpdir, ['-j1'])
+
+
+def test_nullpointer_nested_call_builddir_cached(tmpdir):
+    build_dir = os.path.join(tmpdir, 'b1')
+    os.mkdir(build_dir)
+    __test_nullpointer_nested_call(tmpdir, ['-j1', '--cppcheck-build-dir={}'.format(build_dir)])
+    __test_nullpointer_nested_call(tmpdir, ['-j1', '--cppcheck-build-dir={}'.format(build_dir)])
+
+
+def test_nullpointer_nested_call_builddir_j(tmpdir):
+    build_dir = os.path.join(tmpdir, 'b1')
+    os.mkdir(build_dir)
+    __test_nullpointer_nested_call(tmpdir, ['-j2', '--cppcheck-build-dir={}'.format(build_dir)])
