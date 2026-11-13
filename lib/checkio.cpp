@@ -802,7 +802,7 @@ static int formatStringNumber(const std::string& digits)
 {
     MathLib::bigint value = 0;
     for (const char c : digits) {
-        value = value * 10 + (c - '0');
+        value = (value * 10) + (c - '0');
         if (value > std::numeric_limits<int>::max())
             return std::numeric_limits<int>::max();
     }
