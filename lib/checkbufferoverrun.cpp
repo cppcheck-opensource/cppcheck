@@ -631,9 +631,9 @@ ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok, cons
     if (!var || var->isPointer() || (astIsContainer(bufTok) && var->getTypeName() != "std::array"))
         return ValueFlow::Value(-1);
 
-    const MathLib::bigint dim = std::accumulate(var->dimensions().cbegin(), var->dimensions().cend(), MathLib::bigint(1), [](MathLib::bigint i1, const Dimension &dim) {
-        return i1 * dim.num;
-    });
+    MathLib::bigint dim = 0;
+    if (!var->dimensionsProduct(dim))
+        return ValueFlow::Value(-1);
 
     ValueFlow::Value v;
     v.setKnown();

@@ -548,6 +548,13 @@ public:
     }
 
     /**
+     * Get the number of array elements, the product of all dimension lengths.
+     * @param[out] product the number of elements
+     * @return false if the product does not fit in a MathLib::bigint
+     */
+    bool dimensionsProduct(MathLib::bigint &product) const;
+
+    /**
      * Get array dimension length.
      * @return length of dimension
      */
