@@ -110,8 +110,9 @@ public:
     {
         mLocationMacros.clear();
         std::set<std::string> usedNames;
-        for (const simplecpp::MacroUsage& usage : macroUsage)
-            usedNames.emplace(usage.macroName);
+        std::transform(macroUsage.cbegin(), macroUsage.cend(), std::inserter(usedNames, usedNames.end()), [](const simplecpp::MacroUsage& usage) {
+            return usage.macroName;
+        });
         std::set<std::pair<Location, std::string>> unexpanded;
         for (const Token* tok = startTok; tok; tok = tok->next()) {
             const Location loc(files[tok->fileIndex()], tok->linenr());
