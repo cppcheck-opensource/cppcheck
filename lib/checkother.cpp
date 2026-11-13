@@ -3361,6 +3361,9 @@ bool CheckOtherImpl::comparisonNonZeroExpressionLessThanZero(const Token *tok, c
             return suppress;
 
     const ValueType* vt = nonZeroExpr->valueType();
+    const ValueType* vtZero = nonZeroExpr->astSibling()->valueType();
+    if (vt && vt->typeScope && vt->typeScope->type == ScopeType::eEnum && (!vtZero || vt->typeScope == vtZero->typeScope))
+        return suppress;
     return vt && (vt->pointer || vt->sign == ValueType::UNSIGNED);
 }
 
