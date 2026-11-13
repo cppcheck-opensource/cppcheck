@@ -65,11 +65,11 @@ static bool isRecursiveCall(const Token* ftok)
     return ftok->function() && ftok->function() == Scope::nestedInFunction(ftok->scope());
 }
 
-void CheckUnusedFunctions::parseTokens(const Tokenizer &tokenizer, const Settings &settings)
+void CheckUnusedFunctions::parseTokens(const Tokenizer &tokenizer, const Library &library)
 {
     const char * const FileName = tokenizer.list.getFiles().front().c_str();
 
-    const bool doMarkup = settings.library.markupFile(FileName);
+    const bool doMarkup = library.markupFile(FileName);
 
     // Function declarations..
     if (!doMarkup) {
@@ -139,8 +139,8 @@ void CheckUnusedFunctions::parseTokens(const Tokenizer &tokenizer, const Setting
             lambdaEndToken = findLambdaEndToken(tok);
 
         // parsing of library code to find called functions
-        if (settings.library.isexecutableblock(FileName, tok->str())) {
-            const Token * markupVarToken = tok->tokAt(settings.library.blockstartoffset(FileName));
+        if (library.isexecutableblock(FileName, tok->str())) {
+            const Token * markupVarToken = tok->tokAt(library.blockstartoffset(FileName));
             // not found
             if (!markupVarToken)
                 continue;
@@ -148,12 +148,12 @@ void CheckUnusedFunctions::parseTokens(const Tokenizer &tokenizer, const Setting
             bool start = true;
             // find all function calls in library code (starts with '(', not if or while etc)
             while ((scope || start) && markupVarToken) {
-                if (markupVarToken->str() == settings.library.blockstart(FileName)) {
+                if (markupVarToken->str() == library.blockstart(FileName)) {
                     scope++;
                     start = false;
-                } else if (markupVarToken->str() == settings.library.blockend(FileName))
+                } else if (markupVarToken->str() == library.blockend(FileName))
                     scope--;
-                else if (!settings.library.iskeyword(FileName, markupVarToken->str())) {
+                else if (!library.iskeyword(FileName, markupVarToken->str())) {
                     mFunctionCalls.insert(markupVarToken->str());
                     if (mFunctions.find(markupVarToken->str()) != mFunctions.end())
                         mFunctions[markupVarToken->str()].usedOtherFile = true;
@@ -171,10 +171,10 @@ void CheckUnusedFunctions::parseTokens(const Tokenizer &tokenizer, const Setting
         }
 
         if (!doMarkup // only check source files
-            && settings.library.isexporter(tok->str()) && tok->next() != nullptr) {
+            && library.isexporter(tok->str()) && tok->next() != nullptr) {
             const Token * propToken = tok->next();
             while (propToken && propToken->str() != ")") {
-                if (settings.library.isexportedprefix(tok->str(), propToken->str())) {
+                if (library.isexportedprefix(tok->str(), propToken->str())) {
                     const Token* nextPropToken = propToken->next();
                     const std::string& value = nextPropToken->str();
                     if (mFunctions.find(value) != mFunctions.end()) {
@@ -182,7 +182,7 @@ void CheckUnusedFunctions::parseTokens(const Tokenizer &tokenizer, const Setting
                     }
                     mFunctionCalls.insert(value);
                 }
-                if (settings.library.isexportedsuffix(tok->str(), propToken->str())) {
+                if (library.isexportedsuffix(tok->str(), propToken->str())) {
                     const Token* prevPropToken = propToken->previous();
                     const std::string& value = prevPropToken->str();
                     if (value != ")" && mFunctions.find(value) != mFunctions.end()) {
@@ -194,7 +194,7 @@ void CheckUnusedFunctions::parseTokens(const Tokenizer &tokenizer, const Setting
             }
         }
 
-        if (doMarkup && settings.library.isimporter(FileName, tok->str()) && tok->next()) {
+        if (doMarkup && library.isimporter(FileName, tok->str()) && tok->next()) {
             const Token * propToken = tok->next();
             if (propToken->next()) {
                 propToken = propToken->next();
@@ -210,8 +210,8 @@ void CheckUnusedFunctions::parseTokens(const Tokenizer &tokenizer, const Setting
             }
         }
 
-        if (settings.library.isreflection(tok->str())) {
-            const int argIndex = settings.library.reflectionArgument(tok->str());
+        if (library.isreflection(tok->str())) {
+            const int argIndex = library.reflectionArgument(tok->str());
             if (argIndex >= 0) {
                 const Token * funcToken = tok->next();
                 int index = 0;
@@ -366,7 +366,7 @@ void CheckUnusedFunctions::staticFunctionError(ErrorLogger& errorLogger,
         errorLogger.reportErr(errmsg); \
     } while (false)
 
-bool CheckUnusedFunctions::check(const Settings& settings, ErrorLogger& errorLogger) const
+bool CheckUnusedFunctions::check(const Library& library, ErrorLogger& errorLogger) const
 {
     logChecker("CheckUnusedFunctions::check"); // unusedFunction
 
@@ -379,7 +379,7 @@ bool CheckUnusedFunctions::check(const Settings& settings, ErrorLogger& errorLog
         const FunctionUsage &func = it->second;
         if (func.usedOtherFile || func.filename.empty())
             continue;
-        if (settings.library.isentrypoint(it->first))
+        if (library.isentrypoint(it->first))
             continue;
         if (!func.usedSameFile) {
             if (isOperatorFunction(it->first))

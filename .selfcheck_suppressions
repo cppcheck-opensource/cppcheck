@@ -62,6 +62,8 @@ templateInstantiation:test/testutils.cpp
 
 naming-varname:externals/simplecpp/simplecpp.h
 naming-privateMemberVariable:externals/simplecpp/simplecpp.h
+# false positive; lambda captures its owner
+danglingLifetime:externals/simplecpp/simplecpp.h:505
 
 # TODO: these warnings need to be addressed upstream
 uninitMemberVar:externals/tinyxml2/tinyxml2.h
@@ -73,8 +75,8 @@ functionStatic:externals/tinyxml2/tinyxml2.cpp
 funcArgNamesDifferent:externals/tinyxml2/tinyxml2.cpp
 funcArgNamesDifferentUnnamed:externals/tinyxml2/tinyxml2.cpp
 funcArgNamesDifferentUnnamed:externals/tinyxml2/tinyxml2.h
-nullPointerRedundantCheck:externals/tinyxml2/tinyxml2.cpp
 knownConditionTrueFalse:externals/tinyxml2/tinyxml2.cpp
+nullPointerRedundantCheck:externals/tinyxml2/tinyxml2.cpp
 useStlAlgorithm:externals/simplecpp/simplecpp.cpp
 funcArgNamesDifferentUnnamed:externals/simplecpp/simplecpp.h
 missingMemberCopy:externals/simplecpp/simplecpp.h

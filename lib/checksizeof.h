@@ -46,9 +46,9 @@ public:
 
 private:
     /** @brief Run checks against the normal token list */
-    void runChecks(const Tokenizer& tokenizer, ErrorLogger* errorLogger) override;
+    void runChecks(const Tokenizer& tokenizer, ErrorLogger& errorLogger) override;
 
-    void getErrorMessages(ErrorLogger* errorLogger, const Settings& settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings& settings) const override;
 
     std::string classInfo() const override {
         return "sizeof() usage checks\n"
@@ -66,7 +66,7 @@ private:
 class CPPCHECKLIB CheckSizeofImpl : public CheckImpl {
 public:
     /** @brief This constructor is used when running checks. */
-    CheckSizeofImpl(const Tokenizer* tokenizer, const Settings& settings, ErrorLogger* errorLogger)
+    CheckSizeofImpl(const Tokenizer* tokenizer, const Settings& settings, ErrorLogger& errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** @brief %Check for 'sizeof sizeof ..' */

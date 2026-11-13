@@ -1,6 +1,7 @@
 The cppcheck team, in alphabetical order:
 
 0x41head
+Aaron Danen
 Abhijit Sawant
 Abhishek Bharadwaj
 Abigail Buccaneer
@@ -10,6 +11,7 @@ Ahti Legonkov
 Akhilesh Nema
 Akio Idehara
 Albert Aribaud
+Alvin Che-Chia Chang
 Aleksandr Pikalev
 Aleksey Palazhchenko
 Alexander Alekseev
@@ -22,6 +24,7 @@ Alexey Eryomenko
 Alexey Zhikhartsev
 Alfi Maulana
 Ali Can Demiralp
+Alvin Che-Chia Chang
 Allen Winter
 Alon Alexander
 Alon Liberman
@@ -33,6 +36,7 @@ Andreas Lutsch
 Andreas Pokorny
 Andreas Rönnquist
 Andreas Vollenweider
+Andreas Wilhelm
 Andrei Karas
 Andrew C Aitchison
 Andrew C. Martin
@@ -82,6 +86,7 @@ Cary Converse
 Cary R
 Caspar Kielwein
 Changkyoon Kim
+Chencheng Mao
 Chris Lalancette
 Christian Ehrlicher
 Christian Franke
@@ -94,12 +99,15 @@ Cilyan Olowen
 Claus Jensby Madsen
 Colomban Wendling
 Conrado Gouvea
+correctmost
 daisuke-chiba
 Daniel Friedrich
 David Korczynski
 Daniel Marjamäki
+Daschle Newberry
 David Hallas
 David Korth
+David Ramnerö
 Dávid Slivka
 Debrard Sebastien
 Deepak Gupta
@@ -131,6 +139,7 @@ Felipe Pena
 Felix Faber
 Felix Geyer
 Felix Passenberg
+Felix Patschkowski
 Felix Wolff
 Florian Mueller
 Florin Iucha
@@ -154,6 +163,7 @@ Gerhard Zlabinger
 Gerik Rhoden
 Gianfranco Costamagna
 Gianluca Scacco
+Gilmar Santos Jr
 Gleydson Soares
 Goncalo Mao-Cheia
 Goran Džaferi
@@ -184,10 +194,13 @@ Jan Egil Ruud
 Jan Hellwig
 János Maros
 Jay Sigbrandt
+Jean-François Deverge
 Jedrzej Klocek
+Jeewoong Kim
 Jens Bäckman
 Jens Yllman
 Jérémy Lefaure
+Jérôme Duval
 Jes Ramsing
 Jesse Boswell
 Jim Kuhn
@@ -204,6 +217,7 @@ Jonathan Clohessy
 Jonathan Haehne
 Jonathan Neuschäfer
 Jonathan Thackray
+Jonny Paton
 José Martins
 Jose Roquette
 Joshua Beck
@@ -263,6 +277,7 @@ Marian Klymov
 Mark de Wever
 Mark Hermeling
 Markus Elfring
+Martin Boye Petersen
 Martin Delille
 Martin Ettl
 Martin Exner
@@ -283,6 +298,7 @@ Matt Johnson
 Maurice Gilden
 Mavik
 Melroy van den Berg
+Michael de Lang
 Michael Drake
 Michael Løiten
 Miika-Petteri Matikainen
@@ -300,6 +316,7 @@ ms
 Neszt Tibor
 Nguyen Duong Tuan
 Ni2c2k
+Nick James Kirkby
 Nick Ridgway
 Nicolás Alvarez
 Nicolas Le Cam
@@ -328,6 +345,7 @@ Philip Chimento
 Philipp Kloke
 Pierre Schweitzer
 Pieter Duchi
+Piotr Idzik
 Pino Toscano
 Pranav Khanna
 Radek Jarecki
@@ -364,6 +382,7 @@ Samuel Degrande
 Samuel Poláček
 Sandeep Dutta
 Savvas Etairidis
+Sayed Kaif
 Scott Ehlert
 Scott Furry
 Seafarix Ltd.
@@ -435,6 +454,7 @@ Vladimir Petrigo
 Wang Haoyu
 Wang Yang
 WenChung Chiu
+William Jakobsson
 Wolfgang Stöggl
 x29a
 XhmikosR
@@ -448,4 +468,5 @@ Zhu Lei
 Дмитрий Старцев
 
 GUI graphics courtesy of Tango Desktop Project:
-http://tango.freedesktop.org
+https://gitlab.freedesktop.org/tango/tango-icon-theme
+https://commons.wikimedia.org/wiki/File:Refresh_file.svg

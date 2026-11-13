@@ -1,22 +1,68 @@
 <html>
 <head>
 <title>Tagging warnings</title>
+<link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
 
 <h1>Tagging warnings</h1>
 
-<p>You can manually categorize warnings.</p>
+<p>Tags let you categorize warnings by hand. You choose the names of the tags
+yourself. Some ideas:</p>
+<ul>
+<li>a review status: <code>todo</code>, <code>checked</code>,
+    <code>fixed later</code>,</li>
+<li>your opinion of the warning: <code>bug</code>, <code>false
+    positive</code>, <code>not important</code>,</li>
+<li>who should look at it: <code>frontend</code>, <code>network</code>,
+    <code>team b</code>.</li>
+</ul>
 
-<p>You choose the names of the categories yourself in the project file
-dialog.</p>
+<p>Unlike suppressions, tags do not remove warnings. They are a way to keep
+track of what you have looked at and what you have decided about each
+warning.</p>
 
-<p>If tag names are configured, then you can tag the warnings by
-right-clicking on them and selecting the proper tag in the
-context menu.</p>
+<h2>Defining tags</h2>
 
-<p>Tags are saved in the project file and will be permanent.</p>
+<p>Open <i>File &gt; Edit Project File...</i>, go to the <i>Warning options</i>
+tab and enter the tag names in <i>Warning tags</i>, separated by semicolons:</p>
+
+<pre>todo;false positive;fixed later</pre>
+
+<p class="figure"><img src="images/projectfile-warning-options.png"></p>
+
+<p>Tag names can contain letters, digits and spaces. Tags need a project; there
+are no tags when you analyze without a project.</p>
+
+<h2>Tagging warnings</h2>
+
+<p>Select one or more warnings, right-click, open the <i>Tag</i> submenu and
+choose a tag. Choose <i>No tag</i> to remove the tag. The <i>Tag</i> submenu is
+only shown if the project has tags.</p>
+
+<p class="figure"><img src="images/context-menu-tag.png"></p>
+
+<p>The tag is shown in the <i>Tags</i> column. Click the column header to sort
+the warnings by tag, so that warnings with the same tag are listed
+together.</p>
+
+<h2>Where tags are stored</h2>
+
+<p>The tags you give to warnings are saved in the project file at once. Each
+tagged warning is identified by a hash of the warning and the code of the
+function it is in, so the tag stays with the warning when code elsewhere in
+the file changes or lines are added above the function. If the function itself
+is changed, the warning gets a new hash and the tag is lost. That is
+intended: when the code has changed, the warning should be looked at
+again.</p>
+
+<p>Because the tags are in the project file, everyone who uses the project file
+sees the same tags. Tags are also included when you save the results as
+XML.</p>
+
+<p class="nav">Previous: <a href="suppressions.html">Hiding and suppressing
+warnings</a> | Next: <a href="reports.html">Results files, printing and
+statistics</a></p>
 
 </body>
 </html>
-

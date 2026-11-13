@@ -46,9 +46,9 @@ public:
     CheckInternal() : Check("cppcheck internal API usage") {}
 
 private:
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
     std::string classInfo() const override {
         // Don't include these checks on the WIKI where people can read what
@@ -60,7 +60,7 @@ private:
 class CPPCHECKLIB CheckInternalImpl : public CheckImpl {
 public:
     /** This constructor is used when running checks. */
-    CheckInternalImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckInternalImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** @brief %Check if a simple pattern is used inside Token::Match or Token::findmatch */

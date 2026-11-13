@@ -57,6 +57,7 @@
 
 #ifdef HAVE_RULES
 #include "regex.h"
+#include "rule.h"
 
 // xml is used for rules
 #include "xml.h"
@@ -458,6 +459,11 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         else if (std::strcmp(argv[i], "-E") == 0) {
             mSettings.preprocessOnly = true;
             mSettings.quiet = true;
+        }
+
+        // -CC
+        else if (std::strcmp(argv[i], "-CC") == 0) {
+            mSettings.keepComments = true;
         }
 
         // Include paths
@@ -1158,7 +1164,10 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                 if (!parseNumberArg(argv[i], 31, tmp, true))
                     return Result::Fail;
             }
-            mSettings.premiumArgs += "--" + p;
+            if (p.find(' ') != std::string::npos)
+                mSettings.premiumArgs += "\"--" + p + "\"";
+            else
+                mSettings.premiumArgs += "--" + p;
             if (isCodingStandard) {
                 // All checkers related to the coding standard should be enabled. The coding standards
                 // do not all undefined behavior or portability issues.
@@ -1304,7 +1313,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         // Rule given at command line
         else if (std::strncmp(argv[i], "--rule=", 7) == 0) {
 #ifdef HAVE_RULES
-            Settings::Rule rule;
+            Rule rule;
             rule.pattern = 7 + argv[i];
 
             if (rule.pattern.empty()) {
@@ -1340,7 +1349,8 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                 if (node && strcmp(node->Value(), "rules") == 0)
                     node = node->FirstChildElement("rule");
                 for (; node && strcmp(node->Value(), "rule") == 0; node = node->NextSiblingElement()) {
-                    Settings::Rule rule;
+                    Rule rule;
+                    Regex::Engine regexEngine = Regex::Engine::Pcre;
 
                     for (const tinyxml2::XMLElement *subnode = node->FirstChildElement(); subnode; subnode = subnode->NextSiblingElement()) {
                         const char * const subname = subnode->Name();
@@ -1373,7 +1383,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                         else if (std::strcmp(subname, "engine") == 0) {
                             const char * const engine = empty_if_null(subtext);
                             if (std::strcmp(engine, "pcre") == 0) {
-                                rule.engine = Regex::Engine::Pcre;
+                                regexEngine = Regex::Engine::Pcre;
                             }
                             else {
                                 mLogger.printError(std::string("unknown regex engine '") + engine + "'.");
@@ -1407,7 +1417,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                     }
 
                     std::string regex_err;
-                    auto regex = Regex::create(rule.pattern, rule.engine, regex_err);
+                    auto regex = Regex::create(rule.pattern, regexEngine, regex_err);
                     if (!regex) {
                         mLogger.printError("unable to load rule-file '" + ruleFile + "' - pattern '" + rule.pattern + "' failed to compile (" + regex_err + ").");
                         return Result::Fail;
@@ -1732,6 +1742,12 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
     if (mSettings.basePaths.empty() && mSettings.relativePaths)
         mSettings.basePaths = mPathNames;
 
+    if (mSettings.keepComments && !mSettings.preprocessOnly) {
+        mLogger.printError("-CC may only be used on conjunciton with -E");
+        return Result::Fail;
+    }
+
+
     return Result::Success;
 }
 
@@ -1755,6 +1771,7 @@ void CmdLineParser::printHelp() const
         "                         addon json files or through this command line option.\n"
         "                         If not present, Cppcheck will try \"python3\" first and\n"
         "                         then \"python\".\n"
+        "    -CC                  Do not remove comments during preprocessing (requires -E).\n"
         "    --cppcheck-build-dir=<dir>\n"
         "                         Cppcheck work folder. Advantages:\n"
         "                          * whole program analysis\n"

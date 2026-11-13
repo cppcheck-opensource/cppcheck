@@ -512,7 +512,7 @@ void CheckBoolImpl::returnValueBoolError(const Token *tok)
     reportError(tok, Severity::style, "returnNonBoolInBooleanFunction", "Non-boolean value returned from function returning bool");
 }
 
-void CheckBool::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckBool::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     CheckBoolImpl checkBool(&tokenizer, tokenizer.getSettings(), errorLogger);
 
@@ -529,7 +529,7 @@ void CheckBool::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
     checkBool.checkBitwiseOnBoolean();
 }
 
-void CheckBool::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void CheckBool::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
     CheckBoolImpl c(nullptr, settings, errorLogger);
     c.assignBoolToPointerError(nullptr);

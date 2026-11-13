@@ -65,17 +65,15 @@ enum class Severity : std::uint8_t;
  */
 
 class CPPCHECKLIB CheckMemoryLeakInFunction : public Check {
-    friend class TestMemleakInFunction;
-
 public:
     /** @brief This constructor is used when registering this class */
     CheckMemoryLeakInFunction() : Check("Memory leaks (function variables)") {}
 
 private:
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
     /** Report all possible errors (for the --errorlist) */
-    void getErrorMessages(ErrorLogger *e, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& e, const Settings &settings) const override;
 
     /**
      * Get class information (--doc)
@@ -92,15 +90,13 @@ private:
  */
 
 class CPPCHECKLIB CheckMemoryLeakInClass : public Check {
-    friend class TestMemleakInClass;
-
 public:
     CheckMemoryLeakInClass() : Check("Memory leaks (class variables)") {}
 
 private:
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
-    void getErrorMessages(ErrorLogger *e, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& e, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "If the constructor allocate memory then the destructor must deallocate it.\n";
@@ -112,15 +108,13 @@ private:
 /** @brief detect simple memory leaks for struct members */
 
 class CPPCHECKLIB CheckMemoryLeakStructMember : public Check {
-    friend class TestMemleakStructMember;
-
 public:
     CheckMemoryLeakStructMember() : Check("Memory leaks (struct members)") {}
 
 private:
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
-    void getErrorMessages(ErrorLogger * errorLogger, const Settings & settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings & settings) const override;
 
     std::string classInfo() const override {
         return "Don't forget to deallocate struct members\n";
@@ -132,15 +126,13 @@ private:
 /** @brief detect simple memory leaks (address not taken) */
 
 class CPPCHECKLIB CheckMemoryLeakNoVar : public Check {
-    friend class TestMemleakNoVar;
-
 public:
     CheckMemoryLeakNoVar() : Check("Memory leaks (address not taken)") {}
 
 private:
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
-    void getErrorMessages(ErrorLogger *e, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& e, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "Not taking the address to allocated memory\n";
@@ -175,7 +167,7 @@ public:
     CheckMemoryLeakImpl(const CheckMemoryLeakImpl &) = delete;
     CheckMemoryLeakImpl& operator=(const CheckMemoryLeakImpl &) = delete;
 
-    CheckMemoryLeakImpl(const Tokenizer *t, const Settings &s, ErrorLogger *e)
+    CheckMemoryLeakImpl(const Tokenizer *t, const Settings &s, ErrorLogger &e)
         : CheckImpl(t, s, e) {}
 
     /** @brief What type of allocation are used.. the "Many" means that several types of allocation and deallocation are used */
@@ -254,7 +246,7 @@ public:
 class CPPCHECKLIB CheckMemoryLeakInFunctionImpl : public CheckMemoryLeakImpl {
 public:
     /** @brief This constructor is used when running checks */
-    CheckMemoryLeakInFunctionImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckMemoryLeakInFunctionImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckMemoryLeakImpl(tokenizer, settings, errorLogger) {}
 
     /**
@@ -271,7 +263,7 @@ public:
 
 class CPPCHECKLIB CheckMemoryLeakInClassImpl : private CheckMemoryLeakImpl {
 public:
-    CheckMemoryLeakInClassImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckMemoryLeakInClassImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckMemoryLeakImpl(tokenizer, settings, errorLogger) {}
 
     void check();
@@ -292,7 +284,7 @@ public:
 class CPPCHECKLIB CheckMemoryLeakStructMemberImpl : private CheckMemoryLeakImpl {
 public:
 
-    CheckMemoryLeakStructMemberImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckMemoryLeakStructMemberImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckMemoryLeakImpl(tokenizer, settings, errorLogger) {}
 
     void check();
@@ -309,7 +301,7 @@ public:
 
 class CPPCHECKLIB CheckMemoryLeakNoVarImpl : private CheckMemoryLeakImpl {
 public:
-    CheckMemoryLeakNoVarImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckMemoryLeakNoVarImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckMemoryLeakImpl(tokenizer, settings, errorLogger) {}
 
     void check();

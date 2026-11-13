@@ -33,6 +33,7 @@
 #include <QRegion>
 #include <QTransform>
 #include <QDir>
+#include <QTimer>
 
 // TODO: this is actually available via Core5Compat but I could not get it to work with pkg-config
 #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
@@ -80,6 +81,12 @@ void assertWithSideEffect_QDir_exists(const char *path) { // #14720
     QDir dir(path);
     assert(dir.exists());
     (void)dir;
+}
+
+void assertWithSideEffect_QDir_mkdir(const char *path) { // #12468
+    QDir dir;
+    // cppcheck-suppress [assertWithSideEffect, checkLibraryNoReturn] // TODO: #8329
+    Q_ASSERT(dir.mkdir(path));
 }
 
 void unusedVariable_QTransform()
@@ -205,7 +212,6 @@ void QString1(QString s)
 bool QString2()
 {
     QString s;
-    // cppcheck-suppress knownConditionTrueFalse
     return s.size();
 }
 
@@ -892,3 +898,20 @@ int qdateIsValid()
     Q_ASSERT(qd.isValid()); // Should not warn here with assertWithSideEffect
     return qd.month(); 
 }
+
+void qAssertX()
+{
+    const char *where = "test";
+    const char *what = "assertion failed";
+    Q_ASSERT_X(false, where, what);
+}
+
+struct S_QTimer_connect : QObject { // #13846
+    S_QTimer_connect() {
+        // cppcheck-suppress checkLibraryFunction - timeout() is a signal from QTimer
+        QObject::connect(&timer, SIGNAL(timeout()), this, SLOT(update()));
+    }
+    QTimer timer;
+private slots:
+    bool update();
+};

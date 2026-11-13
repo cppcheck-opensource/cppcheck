@@ -834,7 +834,7 @@ bool CheckUninitVarImpl::checkScopeForVariable(const Token *tok, const Variable&
                         }
                     }
                 }
-                if (Token::simpleMatch(parent->astParent(), "=") && astIsLHS(parent)) {
+                if (Token::Match(parent->astParent(), "%assign%") && astIsLHS(parent)) {
                     const Token *eq = parent->astParent();
                     if (const Token *errorToken = checkExpr(eq->astOperand2(), var, *alloc, number_of_if==0)) {
                         if (!suppressErrors)
@@ -1295,6 +1295,19 @@ const Token* CheckUninitVarImpl::isVariableUsage(const Token *vartok, const Libr
             }
             if (alloc != NO_ALLOC && astIsRhs(valueExpr))
                 return nullptr;
+        } else if (tok->astParent() && (tok->astParent()->isAssignmentOp() || tok->astParent()->isIncDecOp())) {
+            // NO_ALLOC -> no matter what we read the uninitialized memory.
+            // pointer/array -> safe, as long as we don't dereference
+            bool isPtr = pointer;
+            bool isArr = alloc == ARRAY;
+            // "pointer" and "alloc" get set for non-ptr non-array var
+            if (vartok && vartok->variable()) {
+                isPtr = vartok->variable()->isPointer();
+                isArr = vartok->variable()->isArray();
+            }
+            if ((alloc != NO_ALLOC) && ((isPtr || isArr) && !derefValue)) {
+                return nullptr;
+            }
         }
     }
 
@@ -1557,7 +1570,7 @@ void CheckUninitVarImpl::uninitdataError(const Token *tok, const std::string &va
 
 void CheckUninitVarImpl::uninitvarError(const Token *tok, const std::string &varname, ErrorPath errorPath)
 {
-    if (diag(tok))
+    if (tok && diag(tok))
         return;
     errorPath.emplace_back(tok, "");
     reportError(std::move(errorPath),
@@ -1572,7 +1585,7 @@ void CheckUninitVarImpl::uninitvarError(const Token* tok, const ValueFlow::Value
 {
     if (!mSettings.isEnabled(&v))
         return;
-    if (diag(tok))
+    if (tok && diag(tok))
         return;
     const Token* ltok = tok;
     if (tok && Token::simpleMatch(tok->astParent(), ".") && astIsRHS(tok))
@@ -1580,7 +1593,7 @@ void CheckUninitVarImpl::uninitvarError(const Token* tok, const ValueFlow::Value
     const std::string& varname = ltok ? ltok->expressionString() : "x";
     ErrorPath errorPath = v.errorPath;
     errorPath.emplace_back(tok, "");
-    auto severity = v.isKnown() ? Severity::error : Severity::warning;
+    auto severity = v.isKnown() && !v.conditional ? Severity::error : Severity::warning;
     auto certainty = v.isInconclusive() ? Certainty::inconclusive : Certainty::normal;
     if (v.subexpressions.empty()) {
         reportError(std::move(errorPath),
@@ -1664,7 +1677,7 @@ void CheckUninitVarImpl::valueFlowUninit()
                         if (yield != Library::Container::Yield::AT_INDEX && yield != Library::Container::Yield::ITEM)
                             continue;
                     }
-                    const bool deref = CheckNullPointerImpl::isPointerDeRef(tok, unknown, mSettings);
+                    const bool deref = CheckNullPointerImpl::isPointerDeRef(tok, unknown, mSettings.library);
                     uninitderef = deref && v->indirect == 0;
                     const bool isleaf = isLeafDot(tok) || uninitderef;
                     if (!isleaf && Token::Match(tok->astParent(), ". %name%") &&
@@ -1681,7 +1694,7 @@ void CheckUninitVarImpl::valueFlowUninit()
                         isVariableChanged(tok, v->indirect, mSettings))
                         continue;
                     bool inconclusive = false;
-                    if (isVariableChangedByFunctionCall(tok, v->indirect, mSettings, &inconclusive) || inconclusive)
+                    if (isVariableChangedByFunctionCall(tok, v->indirect, mSettings.library, &inconclusive) || inconclusive)
                         continue;
                 }
                 uninitvarError(tok, *v);
@@ -1727,7 +1740,7 @@ static bool isVariableUsage(const Settings &settings, const Token *argtok, CTU::
     return isVariableUsage(settings, argtok, &value->value);
 }
 
-Check::FileInfo *CheckUninitVar::getFileInfo(const Tokenizer &tokenizer, const Settings &settings, const std::string& /*currentConfig*/) const
+const Check::FileInfo *CheckUninitVar::getFileInfo(const Tokenizer &tokenizer, const Settings &settings, const std::string& /*currentConfig*/) const
 {
     const std::list<CTU::FileInfo::UnsafeUsage> &unsafeUsage = CTU::getUnsafeUsage(tokenizer, settings, ::isVariableUsage);
     if (unsafeUsage.empty())
@@ -1738,22 +1751,22 @@ Check::FileInfo *CheckUninitVar::getFileInfo(const Tokenizer &tokenizer, const S
     return fileInfo;
 }
 
-Check::FileInfo * CheckUninitVar::loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement) const
+const Check::FileInfo * CheckUninitVar::loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement, const std::string& file0) const
 {
     const std::list<CTU::FileInfo::UnsafeUsage> &unsafeUsage = CTU::loadUnsafeUsageListFromXml(xmlElement);
     if (unsafeUsage.empty())
         return nullptr;
 
-    auto *fileInfo = new MyFileInfo;
+    auto *fileInfo = new MyFileInfo(file0);
     fileInfo->unsafeUsage = unsafeUsage;
     return fileInfo;
 }
 
-bool CheckUninitVar::analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger)
+bool CheckUninitVar::analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<const Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger)
 {
     (void)settings;
 
-    CheckUninitVarImpl dummy(nullptr, settings, &errorLogger);
+    CheckUninitVarImpl dummy(nullptr, settings, errorLogger);
     dummy.
     logChecker("CheckUninitVar::analyseWholeProgram");
 
@@ -1797,20 +1810,21 @@ bool CheckUninitVar::analyseWholeProgram(const CTU::FileInfo &ctu, const std::li
     return foundErrors;
 }
 
-void CheckUninitVar::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckUninitVar::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     CheckUninitVarImpl checkUninitVar(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkUninitVar.valueFlowUninit();
     checkUninitVar.check();
 }
 
-void CheckUninitVar::getErrorMessages(ErrorLogger* errorLogger, const Settings& settings) const
+void CheckUninitVar::getErrorMessages(ErrorLogger& errorLogger, const Settings& settings) const
 {
     CheckUninitVarImpl c(nullptr, settings, errorLogger);
 
     ValueFlow::Value v{};
 
-    c.uninitvarError(nullptr, v); // TODO: does not produce any output
+    c.uninitvarError(nullptr, v);
+    c.uninitvarError(nullptr, "varname", ErrorPath{});
     c.uninitdataError(nullptr, "varname");
     c.uninitStructMemberError(nullptr, "a.b");
 }

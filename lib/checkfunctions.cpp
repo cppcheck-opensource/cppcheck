@@ -102,6 +102,18 @@ void CheckFunctionsImpl::functionCalledError(const Token* tok, Severity severity
     reportError(tok, severity, prefix + "Called", msg, CWE477, Certainty::normal);
 }
 
+static bool hasArgMinReadSize(const Token *ftok, int argnr, const Library &library)
+{
+    if (library.getArgDirection(ftok, argnr) == Library::ArgumentChecks::Direction::DIR_IN) {
+        if (const std::vector<Library::ArgumentChecks::MinSize> *minsizes = library.argminsizes(ftok, argnr)) {
+            return std::any_of(minsizes->begin(), minsizes->end(), [](const Library::ArgumentChecks::MinSize &ms) {
+                return ms.type == Library::ArgumentChecks::MinSize::Type::ARGVALUE;
+            });
+        }
+    }
+    return false;
+}
+
 //---------------------------------------------------------------------------
 // Check <valid>, <strz> and <not-bool>
 //---------------------------------------------------------------------------
@@ -116,7 +128,7 @@ void CheckFunctionsImpl::invalidFunctionUsage()
                 continue;
             const Token * const functionToken = tok;
             const std::vector<const Token *> arguments = getArguments(tok);
-            for (int argnr = 1; argnr <= arguments.size(); ++argnr) {
+            for (size_t argnr = 1; argnr <= arguments.size(); ++argnr) {
                 const Token * const argtok = arguments[argnr-1];
 
                 // check <valid>...</valid>
@@ -137,7 +149,7 @@ void CheckFunctionsImpl::invalidFunctionUsage()
                         invalidFunctionArgError(argtok, functionToken->str(), argnr, nullptr, mSettings.library.validarg(functionToken, argnr));
                 }
                 // check <strz>
-                if (mSettings.library.isargstrz(functionToken, argnr)) {
+                if (mSettings.library.isargstrz(functionToken, argnr) && !hasArgMinReadSize(functionToken, argnr, mSettings.library)) {
                     if (Token::Match(argtok, "& %var% !![") && argtok->next() && argtok->next()->valueType()) {
                         const ValueType * valueType = argtok->next()->valueType();
                         const Variable * variable = argtok->next()->variable();
@@ -210,14 +222,15 @@ void CheckFunctionsImpl::invalidFunctionArgError(const Token *tok, const std::st
         errmsg << " The value is " << std::setprecision(10) << (invalidValue->isIntValue() ? invalidValue->intvalue : invalidValue->floatValue) << " but the valid values are '" << validstr << "'.";
     else
         errmsg << " The value is 0 or 1 (boolean) but the valid values are '" << validstr << "'.";
-    if (invalidValue)
+    if (invalidValue) {
+        const auto severity = invalidValue->errorSeverity() && invalidValue->isKnown() && !invalidValue->conditional ? Severity::error : Severity::warning;
         reportError(getErrorPath(tok, invalidValue, "Invalid argument"),
-                    invalidValue->errorSeverity() && invalidValue->isKnown() ? Severity::error : Severity::warning,
+                    severity,
                     "invalidFunctionArg",
                     errmsg.str(),
                     CWE628,
                     invalidValue->isInconclusive() ? Certainty::inconclusive : Certainty::normal);
-    else
+    } else
         reportError(tok,
                     Severity::error,
                     "invalidFunctionArg",
@@ -329,6 +342,8 @@ void CheckFunctionsImpl::checkMissingReturn()
             continue;
         if (Function::returnsVoid(function, true))
             continue;
+        if (Function::isCoroutine(function, mSettings.standards, *mTokenizer))
+            continue;
         const Token *errorToken = checkMissingReturnScope(scope->bodyEnd, mSettings.library);
         if (errorToken)
             missingReturnError(errorToken);
@@ -384,7 +399,12 @@ static const Token *checkMissingReturnScope(const Token *tok, const Library &lib
                 if (!isExhaustiveSwitch(tok->link()))
                     return tok->link();
             } else if (tok->scope()->type == ScopeType::eIf) {
-                const Token *condition = tok->scope()->classDef->next()->astOperand2();
+                const Token *paren = tok->link()->linkAt(-1);
+                if (!paren || !Token::simpleMatch(paren->astOperand1(), "if")) {
+                    tok = tok->link();
+                    continue;
+                }
+                const Token *condition = paren->astOperand2();
                 if (condition && condition->hasKnownIntValue() && condition->getKnownIntValue() == 1)
                     return checkMissingReturnScope(tok, library);
                 return tok;
@@ -536,9 +556,9 @@ void CheckFunctionsImpl::memsetZeroBytes()
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope *scope : symbolDatabase->functionScopes) {
         for (const Token* tok = scope->bodyStart->next(); tok != scope->bodyEnd; tok = tok->next()) {
-            if (Token::Match(tok, "memset|wmemset (") && (numberOfArguments(tok)==3)) {
+            if (Token::Match(tok, "memset|wmemset (")) {
                 const std::vector<const Token *> &arguments = getArguments(tok);
-                if (WRONG_DATA(arguments.size() != 3U, tok))
+                if (arguments.size() != 3U)
                     continue;
                 const Token* lastParamTok = arguments[2];
                 if (MathLib::isNullValue(lastParamTok->str()))
@@ -853,7 +873,7 @@ void CheckFunctionsImpl::useStandardLibraryError(const Token *tok, const std::st
                 "Consider using " + expected + " instead of loop.");
 }
 
-void CheckFunctions::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckFunctions::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     CheckFunctionsImpl checkFunctions(&tokenizer, tokenizer.getSettings(), errorLogger);
 
@@ -872,7 +892,7 @@ void CheckFunctions::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLog
     checkFunctions.useStandardLibrary();
 }
 
-void CheckFunctions::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void CheckFunctions::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
     CheckFunctionsImpl c(nullptr, settings, errorLogger);
 

@@ -39,9 +39,6 @@ class Settings;
 class ErrorLogger;
 class Tokenizer;
 
-/** Use WRONG_DATA in checkers to mark conditions that check that data is correct */
-#define WRONG_DATA(COND, TOK)  ((COND) && wrongData((TOK), #COND))
-
 /// @addtogroup Core
 /// @{
 
@@ -62,10 +59,10 @@ public:
     Check& operator=(const Check &) = delete;
 
     /** run checks, the token list is not simplified */
-    virtual void runChecks(const Tokenizer &, ErrorLogger *) = 0;
+    virtual void runChecks(const Tokenizer &, ErrorLogger&) = 0;
 
     /** get error messages */
-    virtual void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const = 0;
+    virtual void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const = 0;
 
     /** class name, used to generate documentation */
     const std::string& name() const {
@@ -78,25 +75,24 @@ public:
     /** Base class used for whole-program analysis */
     class CPPCHECKLIB FileInfo {
     public:
-        explicit FileInfo(std::string f0 = {}) : file0(std::move(f0)) {}
+        explicit FileInfo(std::string f0) : file0(std::move(f0)) {}
         virtual ~FileInfo() = default;
-        virtual std::string toString() const {
-            return std::string();
-        }
+        virtual std::string toString() const = 0;
         std::string file0;
     };
 
-    virtual FileInfo * getFileInfo(const Tokenizer& /*tokenizer*/, const Settings& /*settings*/, const std::string& /*currentConfig*/) const {
+    virtual const FileInfo * getFileInfo(const Tokenizer& /*tokenizer*/, const Settings& /*settings*/, const std::string& /*currentConfig*/) const {
         return nullptr;
     }
 
-    virtual FileInfo * loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement) const {
+    virtual const FileInfo * loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement, const std::string& file0) const {
         (void)xmlElement;
+        (void)file0;
         return nullptr;
     }
 
     // Return true if an error is reported.
-    virtual bool analyseWholeProgram(const CTU::FileInfo& /*ctu*/, const std::list<FileInfo*>& /*fileInfo*/, const Settings& /*settings*/, ErrorLogger & /*errorLogger*/) {
+    virtual bool analyseWholeProgram(const CTU::FileInfo& /*ctu*/, const std::list<const FileInfo*>& /*fileInfo*/, const Settings& /*settings*/, ErrorLogger & /*errorLogger*/) {
         return false;
     }
 

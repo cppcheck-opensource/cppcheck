@@ -447,6 +447,14 @@ public:
 
     static QStringList getSearchPaths(const QString& projectPath, const QString& appPath, const QString& datadir, const QString& dir);
 
+    /**
+     * @brief Convert an absolute path to a path relative to this project's directory.
+     * If the relative path would need to walk up more than 2 parent folders
+     * (i.e. "../../...") the absolute path is returned unchanged instead.
+     * @param absolutePath Absolute path to convert.
+     */
+    QString getRelativePath(const QString &absolutePath) const;
+
     /** Set user includes in settings if non-empty */
     void setSettingsUserIncludes(Settings &settings) const;
 

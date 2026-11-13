@@ -33,6 +33,11 @@
 #include "suppressions.h"
 #include "utils.h"
 
+#ifdef HAVE_RULES
+#include "regex.h"
+#include "rule.h"
+#endif
+
 #include <cstdio>
 #include <list>
 #include <memory>
@@ -257,6 +262,7 @@ private:
         TEST_CASE(premiumOptionsMetrics);
         TEST_CASE(premiumOptionsCertCIntPrecision);
         TEST_CASE(premiumOptionsLicenseFile);
+        TEST_CASE(premiumOptionsLicenseFilePathWithSpace);
         TEST_CASE(premiumOptionsInvalid1);
         TEST_CASE(premiumOptionsInvalid2);
         TEST_CASE(premiumSafety);
@@ -544,6 +550,8 @@ private:
         TEST_CASE(reportTypeMisraCpp2023);
         TEST_CASE(invalidReportType);
         TEST_CASE(defaultReportType);
+        TEST_CASE(keepComments);
+        TEST_CASE(keepCommentsNoDashE);
     }
 
     void nooptions() {
@@ -1637,6 +1645,14 @@ private:
         ASSERT_EQUALS("--license-file=file.lic", settings->premiumArgs);
     }
 
+    void premiumOptionsLicenseFilePathWithSpace() {
+        REDIRECT;
+        asPremium();
+        const char * const argv[] = {"cppcheck", "--premium-license-file=license folder/file.lic", "file.c"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
+        ASSERT_EQUALS("\"--license-file=license folder/file.lic\"", settings->premiumArgs);
+    }
+
     void premiumOptionsInvalid1() {
         REDIRECT;
         asPremium();
@@ -2728,14 +2744,14 @@ private:
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(2, settings->rules.size());
         auto it = settings->rules.cbegin();
-        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->engine);
+        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->regex->engine());
         ASSERT_EQUALS("raw", it->tokenlist);
         ASSERT_EQUALS(".+", it->pattern);
         ASSERT_EQUALS_ENUM(Severity::error, it->severity);
         ASSERT_EQUALS("ruleId1", it->id);
         ASSERT_EQUALS("ruleSummary1", it->summary);
         ++it;
-        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->engine);
+        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->regex->engine());
         ASSERT_EQUALS("define", it->tokenlist);
         ASSERT_EQUALS(".*", it->pattern);
         ASSERT_EQUALS_ENUM(Severity::warning, it->severity);
@@ -2759,7 +2775,7 @@ private:
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS(1, settings->rules.size());
         auto it = settings->rules.cbegin();
-        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->engine);
+        ASSERT_EQUALS_ENUM(Regex::Engine::Pcre, it->regex->engine());
         ASSERT_EQUALS("define", it->tokenlist);
         ASSERT_EQUALS(".+", it->pattern);
         ASSERT_EQUALS_ENUM(Severity::error, it->severity);
@@ -3816,6 +3832,20 @@ private:
         const char *const argv[] = { "cppcheck", "file.cpp" };
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
         ASSERT_EQUALS_ENUM(ReportType::normal, settings->reportType);
+    }
+
+    void keepComments() {
+        REDIRECT;
+        const char *const argv[] = { "cppcheck", "-E", "-CC", "file.cpp" };
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
+        ASSERT(settings->keepComments);
+    }
+
+    void keepCommentsNoDashE() {
+        REDIRECT;
+        const char *const argv[] = { "cppcheck", "-CC", "file.cpp" };
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, parseFromArgs(argv));
+        ASSERT_EQUALS("cppcheck: error: -CC may only be used on conjunciton with -E\n", logger->str());
     }
 };
 

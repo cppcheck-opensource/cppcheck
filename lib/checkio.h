@@ -35,6 +35,7 @@ class Token;
 class Variable;
 class ErrorLogger;
 class Tokenizer;
+class Library;
 enum class Severity : std::uint8_t;
 
 /// @addtogroup Checks
@@ -42,17 +43,15 @@ enum class Severity : std::uint8_t;
 
 /** @brief %Check input output operations. */
 class CPPCHECKLIB CheckIO : public Check {
-    friend class TestIO;
-
 public:
     /** @brief This constructor is used when registering CheckIO */
     CheckIO() : Check("IO using format string") {}
 
 private:
     /** @brief Run checks on the normal token list */
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "Check format string input/output operations.\n"
@@ -72,7 +71,7 @@ private:
 class CPPCHECKLIB CheckIOImpl : public CheckImpl {
 public:
     /** @brief This constructor is used when running checks. */
-    CheckIOImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckIOImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** @brief %Check for missusage of std::cout */
@@ -83,6 +82,9 @@ public:
 
     /** @brief scanf can crash if width specifiers are not used */
     void invalidScanf();
+
+    /** @brief %Check wrong usage of feof */
+    void checkWrongfeofUsage();
 
     /** @brief %Checks type and number of arguments given to functions like printf or scanf*/
     void checkWrongPrintfScanfArguments();
@@ -100,7 +102,7 @@ public:
         bool isKnownType() const;
         bool isStdVectorOrString();
         bool isStdContainer(const Token *tok);
-        bool isLibraryType(const Settings &settings) const;
+        bool isLibraryType(const Library &library) const;
 
         const Variable* variableInfo{};
         const Token* typeToken{};
@@ -127,8 +129,10 @@ public:
     void useClosedFileError(const Token *tok);
     void fcloseInLoopConditionError(const Token *tok, const std::string &varname);
     void seekOnAppendedFileError(const Token *tok);
+    void ftellFileError(const Token *tok);
     void incompatibleFileOpenError(const Token *tok, const std::string &filename);
     void invalidScanfError(const Token *tok);
+    void wrongfeofUsage(const Token *tok);
     void wrongPrintfScanfArgumentsError(const Token* tok,
                                         const std::string &functionName,
                                         nonneg int numFormat,

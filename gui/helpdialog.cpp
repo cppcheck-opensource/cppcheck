@@ -84,7 +84,7 @@ HelpDialog::HelpDialog(QWidget *parent) :
     if (helpFile.isEmpty()) {
         const QString msg = tr("Helpfile '%1' was not found").arg("online-help.qhc");
         QMessageBox msgBox(QMessageBox::Warning,
-                           tr("Cppcheck"),
+                           "Cppcheck",
                            msg,
                            QMessageBox::Ok,
                            this);

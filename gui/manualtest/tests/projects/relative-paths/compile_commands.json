@@ -1,0 +1,4 @@
+[
+  {"directory": ".", "command": "gcc -c src/a.c", "file": "src/a.c"},
+  {"directory": ".", "command": "gcc -c skip/b.c", "file": "skip/b.c"}
+]

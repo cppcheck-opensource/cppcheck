@@ -108,71 +108,9 @@ If you do not wish to use the Visual Studio IDE, you can compile Cppcheck from t
 msbuild cppcheck.sln
 ```
 
-### VS Code (on Windows)
+### VS Code
 
-Install MSYS2 to get GNU toolchain with g++ and gdb (<https://www.msys2.org/>).
-Create a `settings.json` file in the `.vscode` folder with the following content (adjust path as necessary):
-
-```json
-{
-    "terminal.integrated.shell.windows": "C:\\msys64\\usr\\bin\\bash.exe",
-    "terminal.integrated.shellArgs.windows": [
-        "--login",
-    ],
-    "terminal.integrated.env.windows": {
-        "CHERE_INVOKING": "1",
-        "MSYSTEM": "MINGW64",
-    }
-}
-```
-
-Run `make` in the terminal to build Cppcheck.
-
-For debugging create a `launch.json` file in the `.vscode` folder with the following content, which covers configuration for debugging Cppcheck and `misra.py`:
-
-```json
-{
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "cppcheck",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/cppcheck.exe",
-            "args": [
-                "--dump",
-                "${workspaceFolder}/addons/test/misra/misra-test.c"
-            ],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": true,
-            "MIMode": "gdb",
-            "miDebuggerPath": "C:/msys64/mingw64/bin/gdb.exe",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "misra.py",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/addons/misra.py",
-            "console": "integratedTerminal",
-            "args": [
-                "${workspaceFolder}/addons/test/misra/misra-test.c.dump"
-            ]
-        }
-    ]
-}
-```
+Cppcheck Official is an extension officially supported by the cppcheck team allowing you to easily use cppcheck in VS Code. You can find it in VS Code Marketplace through the extension tab in your IDE. For instructions on how to set it up and use it, see the readme on the github page: <https://github.com/cppchecksolutions/vscode-cppcheck-official>
 
 ### Qt Creator + MinGW
 

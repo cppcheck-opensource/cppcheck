@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -52,6 +52,8 @@ namespace tinyxml2 {
 namespace CTU {
     class CPPCHECKLIB FileInfo : public Check::FileInfo {
     public:
+        FileInfo() : Check::FileInfo("") {}
+
         enum class InvalidValueType : std::uint8_t { null, uninit, bufferOverflow };
 
         std::string toString() const override;
@@ -77,14 +79,14 @@ namespace CTU {
 
         struct UnsafeUsage {
             UnsafeUsage() = default;
-            UnsafeUsage(std::string myId, nonneg int myArgNr, std::string myArgumentName, Location location, MathLib::bigint value)
+            UnsafeUsage(std::string myId, size_t myArgNr, std::string myArgumentName, Location location, MathLib::bigint value)
                 : myId(std::move(myId))
                 , myArgNr(myArgNr)
                 , myArgumentName(std::move(myArgumentName))
                 , location(std::move(location))
                 , value(value) {}
             std::string myId;
-            nonneg int myArgNr{};
+            size_t myArgNr{};
             std::string myArgumentName;
             Location location;
             MathLib::bigint value{};
@@ -94,14 +96,14 @@ namespace CTU {
         class CallBase {
         public:
             CallBase() = default;
-            CallBase(std::string callId, int callArgNr, std::string callFunctionName, Location loc)
+            CallBase(std::string callId, size_t callArgNr, std::string callFunctionName, Location loc)
                 : callId(std::move(callId)), callArgNr(callArgNr), callFunctionName(std::move(callFunctionName)), location(std::move(loc))
             {}
             CallBase(const Tokenizer &tokenizer, const Token *callToken);
             virtual ~CallBase() = default;
             CallBase(const CallBase&) = default;
             std::string callId;
-            int callArgNr{};
+            size_t callArgNr{};
             std::string callFunctionName;
             Location location;
         protected:
@@ -136,7 +138,7 @@ namespace CTU {
             bool loadFromXml(const tinyxml2::XMLElement *xmlElement);
 
             std::string myId;
-            nonneg int myArgNr{};
+            size_t myArgNr{};
         };
 
         std::list<FunctionCall> functionCalls;
@@ -160,7 +162,7 @@ namespace CTU {
     CPPCHECKLIB std::string getFunctionId(const Tokenizer &tokenizer, const Function *function);
 
     /** @brief Parse current TU and extract file info */
-    CPPCHECKLIB RET_NONNULL FileInfo *getFileInfo(const Tokenizer &tokenizer);
+    CPPCHECKLIB RET_NONNULL const FileInfo *getFileInfo(const Tokenizer &tokenizer);
 
     CPPCHECKLIB std::list<FileInfo::UnsafeUsage> getUnsafeUsage(const Tokenizer &tokenizer, const Settings &settings, bool (*isUnsafeUsage)(const Settings &settings, const Token *argtok, FileInfo::Value *value));
 

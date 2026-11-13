@@ -41,16 +41,14 @@ class Tokenizer;
  */
 
 class CPPCHECKLIB CheckPostfixOperator : public Check {
-    friend class TestPostfixOperator;
-
 public:
     /** This constructor is used when registering the CheckPostfixOperator */
     CheckPostfixOperator() : Check("Using postfix operators") {}
 
 private:
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
     std::string classInfo() const override {
         return "Warn if using postfix operators ++ or -- rather than prefix operator\n";
     }
@@ -59,7 +57,7 @@ private:
 class CPPCHECKLIB CheckPostfixOperatorImpl : public CheckImpl {
 public:
     /** This constructor is used when running checks. */
-    CheckPostfixOperatorImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckPostfixOperatorImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** Check postfix operators */

@@ -25,6 +25,7 @@
 #include "config.h"
 #include "errorlogger.h"
 #include "errortypes.h"
+#include "refthunk.h"
 #include "platform.h"
 #include "settings.h"
 #include "standards.h"
@@ -139,7 +140,7 @@ protected:
         return check;
     }
 
-    static void runChecks(Check& check, const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+    static void runChecks(Check& check, const Tokenizer &tokenizer, ErrorLogger& errorLogger)
     {
         check.runChecks(tokenizer, errorLogger);
     }
@@ -239,7 +240,7 @@ protected:
     private:
         SettingsBuilder& libraryxml(const char xmldata[], std::size_t len);
 
-        const TestFixture &fixture;
+        RefThunk<const TestFixture> fixture;
         Settings settings;
 
         static constexpr bool REDUNDANT_CHECK = false;

@@ -297,6 +297,7 @@ static std::vector<std::string> prioritizelib(const std::vector<std::string>& li
     std::map<std::string, std::size_t> priorities;
     std::size_t prio = libfiles.size();
     for (const auto &l : libfiles) {
+        // cppcheck-suppress useStlAlgorithm - std::transform is cumbersome
         priorities.emplace(l, prio--);
     }
     priorities["lib/valueflow.cpp"] = 1000;
@@ -501,7 +502,9 @@ int main(int argc, char **argv)
     libfiles_h.emplace("findtoken.h");
     libfiles_h.emplace("json.h");
     libfiles_h.emplace("matchcompiler.h");
+    libfiles_h.emplace("refthunk.h");
     libfiles_h.emplace("precompiled.h");
+    libfiles_h.emplace("rule.h");
     libfiles_h.emplace("smallvector.h");
     libfiles_h.emplace("sourcelocation.h");
     libfiles_h.emplace("tokenrange.h");

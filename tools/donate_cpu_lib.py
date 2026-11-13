@@ -723,6 +723,7 @@ class LibraryIncludes:
                             'wxwidgets': ['<wx/', '"wx/'],
                             'zephyr': ['<zephyr/'],
                             'zlib': ['<zlib.h>'],
+                            'microsoft_gsl': ['<gsl/gsl>'],
                             }
 
         self.__library_includes_re = {}

@@ -78,6 +78,9 @@ void invalidFunctionArgStr_strncat(void)
     // No warning is expected for
     strncat (str1, &src, 1);
     puts (str1);
+    char d[] = {'a','b','c'};
+    // cppcheck-suppress invalidFunctionArgStr
+    strncat(d, "def", 1);
 }
 
 char * invalidFunctionArgStr_strpbrk( const char *p )
@@ -614,6 +617,20 @@ void bufferAccessOutOfBounds_wcsncpy()
     wcsncpy(s, L"abc", 16);
     // cppcheck-suppress bufferAccessOutOfBounds
     wcsncpy(s, L"abc", 17);
+}
+
+void bufferAccessOutOfBounds_wmemcpy()
+{
+    wchar_t a[4];
+    // cppcheck-suppress bufferAccessOutOfBounds
+    wmemcpy(a, L"abcd", 5);
+}
+
+int bufferAccessOutOfBounds_wmemcmp(const wchar_t* b)
+{
+    const wchar_t a[4] = { L'a', L'b', L'c', L'd' };
+    // cppcheck-suppress bufferAccessOutOfBounds
+    return wmemcmp(a, b, 5);
 }
 
 int nullPointer_wcsncmp(const wchar_t* s1, const wchar_t* s2, size_t n)
@@ -2937,6 +2954,27 @@ void *bufferAccessOutOfBounds_memchr(const void *s, int c, size_t n)
     return memchr(s,c,n);
 }
 
+bool bufferAccessOutOfBounds_wmemchr(wchar_t c)
+{
+    const wchar_t buf[] = {'a', 'b', 'c'};
+    // cppcheck-suppress bufferAccessOutOfBounds
+    return wmemchr(buf, c, 5) != NULL;
+}
+
+void bufferAccessOutOfBounds_wmemset(wchar_t c)
+{
+    wchar_t buf[3];
+    // cppcheck-suppress bufferAccessOutOfBounds
+    wmemset(buf, c, 5);
+}
+
+void bufferAccessOutOfBounds_wmemmove(const wchar_t* s)
+{
+    wchar_t d[3];
+    // cppcheck-suppress bufferAccessOutOfBounds
+    wmemmove(d, s, 5);
+}
+
 void uninitvar_wmemchr(void)
 {
     const wchar_t *cs;
@@ -4913,6 +4951,10 @@ void invalidFunctionArgString(char c)
     char d='d';
     /* cppcheck-suppress invalidFunctionArgStr */
     (void)strcat(str,&d);
+
+    char a[] = { 'a', 'b', 'c' };
+    /* cppcheck-suppress [bufferAccessOutOfBounds,invalidFunctionArgStr] */
+    (void)strcat(a, "def");
 }
 
 void ignoredReturnValue_abs(int i)

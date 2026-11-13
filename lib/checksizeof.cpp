@@ -87,7 +87,7 @@ void CheckSizeofImpl::checkSizeofForArrayParameter()
                 }
 
                 const Variable *var = varTok->variable();
-                if (var && var->isArray() && var->isArgument() && !var->isReference())
+                if (var && var->isArray() && var->isArgument() && !var->isReference() && !(var->isStlType() && var->getTypeName() == "std::array"))
                     sizeofForArrayParameterError(tok);
             }
         }
@@ -498,7 +498,7 @@ void CheckSizeofImpl::arithOperationsOnVoidPointerError(const Token* tok, const 
     reportError(tok, Severity::portability, "arithOperationsOnVoidPointer", "$symbol:" + varname + '\n' + message + '\n' + verbose, CWE467, Certainty::normal);
 }
 
-void CheckSizeof::runChecks(const Tokenizer& tokenizer, ErrorLogger* errorLogger)
+void CheckSizeof::runChecks(const Tokenizer& tokenizer, ErrorLogger& errorLogger)
 {
     CheckSizeofImpl checkSizeof(&tokenizer, tokenizer.getSettings(), errorLogger);
 
@@ -513,7 +513,7 @@ void CheckSizeof::runChecks(const Tokenizer& tokenizer, ErrorLogger* errorLogger
     checkSizeof.sizeofVoid();
 }
 
-void CheckSizeof::getErrorMessages(ErrorLogger* errorLogger, const Settings& settings) const
+void CheckSizeof::getErrorMessages(ErrorLogger& errorLogger, const Settings& settings) const
 {
     CheckSizeofImpl c(nullptr, settings, errorLogger);
     c.sizeofForArrayParameterError(nullptr);

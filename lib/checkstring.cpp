@@ -471,7 +471,7 @@ void CheckStringImpl::sprintfOverlappingDataError(const Token *funcTok, const To
                 "to sprintf() or snprintf(), the results are undefined.\"", CWE628, Certainty::normal);
 }
 
-void CheckString::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckString::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     CheckStringImpl checkString(&tokenizer, tokenizer.getSettings(), errorLogger);
 
@@ -485,7 +485,7 @@ void CheckString::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger
     checkString.checkAlwaysTrueOrFalseStringCompare();
 }
 
-void CheckString::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void CheckString::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
     CheckStringImpl c(nullptr, settings, errorLogger);
     c.stringLiteralWriteError(nullptr, nullptr);

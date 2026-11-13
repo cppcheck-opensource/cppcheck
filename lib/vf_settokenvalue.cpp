@@ -216,6 +216,25 @@ namespace ValueFlow
         return false;
     }
 
+    static bool isFunctionCall(const Token* tok, const Settings& settings)
+    {
+        if (!tok)
+            return false;
+        if (tok->str() == "{")
+            return true;
+        if (tok->str() == "(") {
+            if (tok->astOperand1() && tok->astOperand1()->isControlFlowKeyword())
+                return false;
+            if (Token::Match(tok->next(), "%name%") && !settings.library.isNotLibraryFunction(tok->next()))
+                return true;
+            if (Token::Match(tok->previous(), "%name%|>"))
+                return true;
+            if (Token::Match(tok->astOperand1(), "%name%|(|[|*|."))
+                return true;
+        }
+        return false;
+    }
+
     /** set ValueFlow value and perform calculations if possible */
     void setTokenValue(Token* tok,
                        Value value,
@@ -230,6 +249,11 @@ namespace ValueFlow
 
         if (!value.isImpossible() && value.isIntValue())
             value = truncateImplicitConversion(tok->astParent(), value, settings);
+
+        // a container size value on a container expression belongs to that expression, while a
+        // pointer or an iterator only transports the size of the container it was obtained from
+        if (value.isContainerSizeValue() && !astIsPointer(tok) && astIsContainer(tok))
+            value.container = tok;
 
         if (settings.debugnormal)
             setSourceLocation(value, loc, tok);
@@ -249,9 +273,7 @@ namespace ValueFlow
                 return !Token::simpleMatch(p, ",");
             });
             // Ensure that the comma isn't a function call
-            if (!callParent || (!Token::Match(callParent->previous(), "%name%|> (") && !Token::simpleMatch(callParent, "{") &&
-                                (!Token::Match(callParent, "( %name%") || settings.library.isNotLibraryFunction(callParent->next())) &&
-                                !(callParent->str() == "(" && (Token::simpleMatch(callParent->astOperand1(), "*") || Token::Match(callParent->astOperand1(), "%name%|("))))) {
+            if (!isFunctionCall(callParent, settings)) {
                 setTokenValue(parent, std::move(value), settings);
                 return;
             }
@@ -300,15 +322,32 @@ namespace ValueFlow
                     }
                 }
             }
+            // an empty associative container implies that its default-inserted elements are empty as well
+            if (Token::simpleMatch(parent, "[") && astIsLHS(tok) && astIsContainer(parent) &&
+                tok->valueType()->container && tok->valueType()->container->stdAssociativeLike &&
+                !value.isImpossible() && value.intvalue == 0)
+                setTokenValue(parent, value, settings);
             Token* next = nullptr;
             const Library::Container::Yield yields = getContainerYield(parent, settings.library, next);
             if (yields == Library::Container::Yield::SIZE) {
                 value.valueType = Value::ValueType::INT;
+                value.container = nullptr;
+                setTokenValue(next, std::move(value), settings);
+            } else if (contains({Library::Container::Yield::BUFFER,
+                                 Library::Container::Yield::BUFFER_NT,
+                                 Library::Container::Yield::START_ITERATOR,
+                                 Library::Container::Yield::END_ITERATOR,
+                                 Library::Container::Yield::ITERATOR},
+                                yields)) {
+                // The returned pointer or iterator has as many elements available as the container
+                if (yields == Library::Container::Yield::BUFFER_NT)
+                    value.intvalue += 1; // ..plus the null terminator
                 setTokenValue(next, std::move(value), settings);
             } else if (yields == Library::Container::Yield::EMPTY) {
                 const Value::Bound bound = value.bound;
                 const long long intvalue = value.intvalue;
                 value.valueType = Value::ValueType::INT;
+                value.container = nullptr;
                 value.bound = Value::Bound::Point;
                 if (value.isImpossible()) {
                     if (intvalue == 0)
@@ -384,7 +423,9 @@ namespace ValueFlow
             setTokenValueCast(parent, valueType, std::move(value), settings);
         }
 
-        else if (parent->str() == ":") {
+        else if (parent->str() == ":" && Token::simpleMatch(parent->astParent(), "?")) {
+            const std::string condStr(tok == parent->astOperand1() ? "true" : "false");
+            value.errorPath.emplace_back(parent->astParent()->astOperand1(), "Assuming condition '" + parent->astParent()->astOperand1()->expressionString() + "' is " + condStr);
             setTokenValue(parent,std::move(value),settings);
         }
 
@@ -593,7 +634,7 @@ namespace ValueFlow
         // ~
         else if (parent->str() == "~") {
             for (const Value &val : tok->values()) {
-                if (!val.isIntValue())
+                if (!val.isIntValue() || (val.isImpossible() && val.intvalue < 0))
                     continue;
                 Value v(val);
                 v.intvalue = ~v.intvalue;
@@ -613,7 +654,7 @@ namespace ValueFlow
         }
 
         // unary minus
-        else if (parent->isUnaryOp("-")) {
+        else if (parent->isUnaryOp("-") && !astIsUnsigned(parent)) {
             for (const Value &val : tok->values()) {
                 if (!val.isIntValue() && !val.isFloatValue())
                     continue;
@@ -641,7 +682,7 @@ namespace ValueFlow
                         const ValueType *dst = tok->valueType();
                         if (dst) {
                             const size_t sz = dst->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
-                            MathLib::bigint newvalue = ValueFlow::truncateIntValue(v.intvalue + 1, sz, dst->sign);
+                            MathLib::bigint newvalue = ValueFlow::truncateIntValue(v.intvalue + 1, sz, dst, settings.platform);
                             if (v.bound != ValueFlow::Value::Bound::Point) {
                                 if (newvalue < v.intvalue) {
                                     v.invertBound();
@@ -671,7 +712,7 @@ namespace ValueFlow
                         const ValueType *dst = tok->valueType();
                         if (dst) {
                             const size_t sz = dst->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
-                            MathLib::bigint newvalue = ValueFlow::truncateIntValue(v.intvalue - 1, sz, dst->sign);
+                            MathLib::bigint newvalue = ValueFlow::truncateIntValue(v.intvalue - 1, sz, dst, settings.platform);
                             if (v.bound != ValueFlow::Value::Bound::Point) {
                                 if (newvalue > v.intvalue) {
                                     v.invertBound();

@@ -21,7 +21,6 @@
 #include "errorlogger.h"
 #include "filesettings.h"
 #include "path.h"
-#include "utils.h"
 
 #include <array>
 #include <cstring>
@@ -33,6 +32,18 @@
 #include <utility>
 
 #include "xml.h"
+
+// Not XMLDocument::LoadFile(): with MSVC it denies writing, and addons inherit the handle (#15207)
+static tinyxml2::XMLError loadFile(tinyxml2::XMLDocument &doc, const std::string &filename)
+{
+    std::ifstream fin(filename, std::ios::binary);
+    if (!fin.is_open())
+        return tinyxml2::XML_ERROR_FILE_NOT_FOUND;
+    std::ostringstream ostr;
+    ostr << fin.rdbuf();
+    const std::string data = ostr.str();
+    return doc.Parse(data.data(), data.size());
+}
 
 AnalyzerInformation::~AnalyzerInformation()
 {
@@ -56,6 +67,68 @@ void AnalyzerInformation::writeFilesTxt(const std::string &buildDir, const std::
     const std::string filesTxt(buildDir + "/files.txt");
     std::ofstream fout(filesTxt);
     fout << getFilesTxt(sourcefiles, fileSettings);
+}
+
+void AnalyzerInformation::writeIncludes(const std::set<std::string> &files)
+{
+    if (!files.empty() && mOutputStream.is_open()) {
+        mOutputStream << "  <includes>\n";
+        for (const std::string &file : files) {
+            mOutputStream << "    <filename>" << file << "</filename>\n";
+        }
+        mOutputStream << "  </includes>\n";
+    }
+}
+
+std::set<std::string> AnalyzerInformation::getIncludes(const std::string &buildDir, const std::string &sourcefile, const std::string &cfg, std::size_t fsFileId) const
+{
+    if (mOutputStream.is_open())
+        throw std::runtime_error("analyzer information file is already open");
+
+    std::set<std::string> files;
+
+    if (buildDir.empty() || sourcefile.empty())
+        return files;
+
+    const std::string analyzerInfoFile = AnalyzerInformation::getAnalyzerInfoFile(buildDir, sourcefile, cfg, fsFileId);
+
+    tinyxml2::XMLDocument analyzerInfoDoc;
+    if (loadFile(analyzerInfoDoc, analyzerInfoFile) != tinyxml2::XML_SUCCESS)
+        return files;
+
+    const tinyxml2::XMLElement *const rootNode = analyzerInfoDoc.FirstChildElement();
+    if (rootNode == nullptr)
+        return files;
+
+    if (strcmp(rootNode->Name(), "analyzerinfo") != 0)
+        return files;
+
+    const tinyxml2::XMLElement *includesNode = nullptr;
+    for (const tinyxml2::XMLElement *e = rootNode->FirstChildElement(); e; e = e->NextSiblingElement()) {
+        if (strcmp(e->Name(), "includes") == 0) {
+            includesNode = e;
+            break;
+        }
+    }
+
+    if (includesNode == nullptr)
+        return files;
+
+    for (const tinyxml2::XMLElement *e = includesNode->FirstChildElement(); e; e = e->NextSiblingElement()) {
+        if (strcmp(e->Name(), "filename") != 0)
+            continue;
+
+        files.insert(e->GetText());
+    }
+
+    return files;
+}
+
+void AnalyzerInformation::writeHash(std::size_t hash)
+{
+    if (mOutputStream.is_open()) {
+        mOutputStream << "  <hash>" << hash << "</hash>\n";
+    }
 }
 
 std::string AnalyzerInformation::getFilesTxt(const std::list<std::string> &sourcefiles, const std::list<FileSettings> &fileSettings) {
@@ -94,10 +167,17 @@ std::string AnalyzerInformation::skipAnalysis(const tinyxml2::XMLDocument &analy
     if (strcmp(rootNode->Name(), "analyzerinfo") != 0)
         return "unexpected root node";
 
-    const char * const attr = rootNode->Attribute("hash");
-    if (!attr)
-        return "no 'hash' attribute found";
-    if (attr != std::to_string(hash))
+    const tinyxml2::XMLElement *hashNode = nullptr;
+    for (const tinyxml2::XMLElement *e = rootNode->FirstChildElement(); e; e = e->NextSiblingElement()) {
+        if (strcmp(e->Name(), "hash") == 0) {
+            hashNode = e;
+            break;
+        }
+    }
+
+    if (!hashNode)
+        return "no 'hash' node found";
+    if (hashNode->GetText() != std::to_string(hash))
         return "hash mismatch";
 
     for (const tinyxml2::XMLElement *e = rootNode->FirstChildElement(); e; e = e->NextSiblingElement()) {
@@ -126,14 +206,15 @@ std::string AnalyzerInformation::skipAnalysis(const tinyxml2::XMLDocument &analy
     return "";
 }
 
-std::string AnalyzerInformation::getAnalyzerInfoFileFromFilesTxt(std::istream& filesTxt, const std::string &sourcefile, const std::string &cfg, int fsFileId)
+std::string AnalyzerInformation::getAnalyzerInfoFileFromFilesTxt(std::istream& filesTxt, const std::string &sourcefile, const std::string &cfg, size_t fsFileId)
 {
+    const std::string simplifiedSourcefile = Path::simplifyPath(sourcefile);
     std::string line;
     while (std::getline(filesTxt,line)) {
         AnalyzerInformation::Info filesTxtInfo;
         if (!filesTxtInfo.parse(line))
             continue; // TODO: report error?
-        if (endsWith(sourcefile, filesTxtInfo.sourceFile) && filesTxtInfo.cfg == cfg && filesTxtInfo.fsFileId == fsFileId)
+        if (filesTxtInfo.sourceFile == simplifiedSourcefile && filesTxtInfo.cfg == cfg && filesTxtInfo.fsFileId == fsFileId)
             return filesTxtInfo.afile;
     }
     return "";
@@ -170,7 +251,7 @@ bool AnalyzerInformation::analyzeFile(const std::string &buildDir, const std::st
 
     {
         tinyxml2::XMLDocument analyzerInfoDoc;
-        const tinyxml2::XMLError xmlError = analyzerInfoDoc.LoadFile(analyzerInfoFile.c_str());
+        const tinyxml2::XMLError xmlError = loadFile(analyzerInfoDoc, analyzerInfoFile);
         if (xmlError == tinyxml2::XML_SUCCESS) {
             const std::string err = skipAnalysis(analyzerInfoDoc, hash, errors);
             if (err.empty()) {
@@ -194,7 +275,7 @@ bool AnalyzerInformation::analyzeFile(const std::string &buildDir, const std::st
     if (!mOutputStream.is_open())
         throw std::runtime_error("failed to open '" + analyzerInfoFile + "'");
     mOutputStream << "<?xml version=\"1.0\"?>\n";
-    mOutputStream << "<analyzerinfo hash=\"" << hash << "\">\n";
+    mOutputStream << "<analyzerinfo>\n";
 
     return true;
 }
@@ -255,7 +336,7 @@ std::string AnalyzerInformation::processFilesTxt(const std::string& buildDir, co
         const std::string xmlfile = buildDir + '/' + filesTxtInfo.afile;
 
         tinyxml2::XMLDocument doc;
-        const tinyxml2::XMLError error = doc.LoadFile(xmlfile.c_str());
+        const tinyxml2::XMLError error = loadFile(doc, xmlfile);
         if (error == tinyxml2::XML_ERROR_FILE_NOT_FOUND) {
             /* FIXME: this can currently not be reported as an error because:
              * - --clang does not generate any analyzer information - see #14456

@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2025 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -58,6 +58,7 @@ struct CPPCHECKLIB Standards {
     static std::string getCPP(cppstd_t std);
     static cppstd_t getCPP(const std::string &std);
     bool setStd(const std::string& str);
+    std::string getStdForLanguage(Language language) const;
 };
 
 /// @}

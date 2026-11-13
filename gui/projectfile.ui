@@ -1010,14 +1010,14 @@
           <item>
            <widget class="QCheckBox" name="mToolClangTidy">
             <property name="text">
-             <string>Clang-tidy</string>
+             <string notr="true">Clang-Tidy</string>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QCheckBox" name="mToolClangAnalyzer">
             <property name="text">
-             <string>Clang analyzer</string>
+             <string notr="true">Clang Static Analyzer</string>
             </property>
            </widget>
           </item>

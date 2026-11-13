@@ -177,7 +177,7 @@ static std::vector<std::string> getnames(const char *names)
 
 static void gettokenlistfromvalid(const std::string& valid, TokenList& tokenList)
 {
-    const std::string str(valid + ',');
+    const std::string str(valid + ",\n");
     tokenList.createTokensFromBuffer(str.data(), str.size()); // TODO: check result?
     for (Token *tok = tokenList.front(); tok; tok = tok->next()) {
         if (Token::Match(tok,"- %num%")) {
@@ -932,6 +932,8 @@ Library::Error Library::loadFunction(const tinyxml2::XMLElement * const node, co
                 }
                 if (const char* const argIndirect = functionnode->Attribute("indirect")) {
                     const int indirect = strToInt<int>(argIndirect);
+                    if (indirect < 0 || indirect >= static_cast<int>(ac.direction.size()))
+                        return Error(ErrorCode::BAD_ATTRIBUTE_VALUE, argIndirect);
                     ac.direction[indirect] = dir; // TODO: handle multiple directions/indirect levels
                 }
                 else
@@ -1780,6 +1782,8 @@ bool Library::isFunctionConst(const Token *ftok) const
             using Yield = Library::Container::Yield;
             const Yield yield = astContainerYield(ftok->astParent()->astOperand1(), *this);
             if (yield == Yield::EMPTY || yield == Yield::SIZE || yield == Yield::BUFFER_NT)
+                return true;
+            if ((yield == Yield::START_ITERATOR || yield == Yield::END_ITERATOR) && ftok->str()[0] == 'c')
                 return true;
         }
         return false;

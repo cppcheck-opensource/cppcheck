@@ -111,9 +111,9 @@ public:
     CheckLeakAutoVar() : Check("Leaks (auto variables)") {}
 
 private:
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "Detect when a auto variable is allocated but not deallocated or deallocated twice.\n";
@@ -123,7 +123,7 @@ private:
 class CPPCHECKLIB CheckLeakAutoVarImpl : public CheckImpl {
 public:
     /** This constructor is used when running checks. */
-    CheckLeakAutoVarImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckLeakAutoVarImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** check for leaks in all scopes */

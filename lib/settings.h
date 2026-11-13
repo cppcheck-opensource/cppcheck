@@ -21,7 +21,6 @@
 #define settingsH
 //---------------------------------------------------------------------------
 
-#include "addoninfo.h"
 #include "config.h"
 #include "library.h"
 #include "platform.h"
@@ -44,20 +43,14 @@
 #endif
 
 #ifdef HAVE_RULES
-#include "errortypes.h"
-#include "regex.h"
-
-#include <memory>
-
-class Regex;
-#else
-enum class Severity : std::uint8_t;
+struct Rule;
 #endif
-
 struct Suppressions;
+struct AddonInfo;
 namespace ValueFlow {
     class Value;
 }
+enum class Severity : std::uint8_t;
 enum class Certainty : std::uint8_t;
 enum class Checks : std::uint8_t;
 
@@ -101,6 +94,16 @@ public:
 };
 
 
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ <= 9
+// Hack to workaround GCC bug.
+// Details: https://trac.cppcheck.net/ticket/14850
+// seen on g++ before 10.x
+#define  CPPCHECK_NOEXCEPT
+#else
+#define  CPPCHECK_NOEXCEPT  noexcept
+#endif
+
+
 /**
  * @brief This is just a container for general settings so that we don't need
  * to pass individual values to functions or constructors now or in the
@@ -115,6 +118,13 @@ private:
 
 public:
     Settings();
+    ~Settings();
+
+    Settings(const Settings&);
+    Settings& operator=(const Settings&);
+
+    Settings(Settings&&) CPPCHECK_NOEXCEPT;
+    Settings& operator=(Settings&&) CPPCHECK_NOEXCEPT;
 
     static std::string loadCppcheckCfg(Settings& settings, Suppressions& suppressions, bool debug = false);
 
@@ -362,6 +372,9 @@ public:
     /** @brief Using -E for debugging purposes */
     bool preprocessOnly{};
 
+    /** @brief Keep comments in preprocessed output */
+    bool keepComments{};
+
     /** @brief Is --quiet given? */
     bool quiet{};
 
@@ -372,17 +385,6 @@ public:
     int reportProgress{-1};
 
 #ifdef HAVE_RULES
-    /** Rule */
-    struct CPPCHECKLIB Rule {
-        std::string tokenlist = "normal"; // use normal tokenlist
-        std::string pattern;
-        std::string id = "rule"; // default id
-        std::string summary;
-        Severity severity = Severity::style; // default severity
-        Regex::Engine engine = Regex::Engine::Pcre;
-        std::shared_ptr<Regex> regex;
-    };
-
     /**
      * @brief Extra rules
      */
@@ -512,6 +514,15 @@ public:
 
         /** @brief Maximum performed forward branches */
         int maxForwardBranches = -1;
+
+        /** @brief Maximum depth of nested condition-fork continuations in the forward analyzer.
+            Bounds the exponential fan-out of carrying condition state forward at exhaustive level (where
+            maxForwardBranches is unlimited); past it the forward analysis continues on a single linear path
+            without skipping any branch. 0 disables forking (linear); a negative value means unlimited. */
+        int maxForwardConditionForkDepth = 4;
+
+        /** @brief Maximum total condition-fork continuations in one forward traversal. */
+        int maxForwardConditionForks = 256;
 
         /** @brief Maximum performed alignof recursion */
         int maxAlignOfRecursion = 100;

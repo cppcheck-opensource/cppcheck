@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GUI tester</title>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #fff; --text: #1d2330; --muted: #667085; --line: #d5d9e0;
+  --accent: #2859c5; --accent-text: #fff; --bad: #b42318; --ok: #1a7f37; --chip: #e8edf8;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14171d; --panel: #1d2129; --text: #e6e9ef; --muted: #98a2b3; --line: #343a46;
+    --accent: #6c93f0; --accent-text: #0d1117; --bad: #ff8a80; --ok: #56d364; --chip: #2a3550;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.45 system-ui, sans-serif; background: var(--bg); color: var(--text); }
+header { display: flex; gap: .75rem; align-items: center; padding: .6rem 1rem; background: var(--panel);
+         border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; flex-wrap: wrap; }
+header h1 { font-size: 1.05rem; margin: 0 .5rem 0 0; }
+main { display: grid; grid-template-columns: 14rem 1fr; gap: 1rem; padding: 1rem; max-width: 80rem; margin: 0 auto; }
+@media (max-width: 700px) { main { grid-template-columns: 1fr; } }
+button, select, input, textarea { font: inherit; color: inherit; }
+button { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: .3rem .7rem; cursor: pointer; }
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+button:disabled { opacity: .5; cursor: default; }
+button.link { border: 0; background: none; color: var(--accent); padding: .1rem .3rem; }
+input[type=text], textarea { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: .35rem .5rem; }
+textarea { resize: vertical; min-height: 4.5rem; font-family: ui-monospace, monospace; font-size: .9rem; }
+label { display: block; font-size: .8rem; color: var(--muted); margin: .6rem 0 .15rem; }
+ul.files { list-style: none; margin: 0; padding: 0; }
+fieldset.group { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; margin: 0 0 .9rem; padding: .3rem .4rem .5rem; min-width: 0; }
+fieldset.group legend { padding: 0 .35rem; font-size: .8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+fieldset.group p { margin: .4rem .2rem 0; }
+ul.files li { padding: .35rem .6rem; border-radius: 6px; cursor: pointer; overflow-wrap: anywhere; }
+ul.files li.sel { background: var(--chip); font-weight: 600; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: .75rem 1rem; margin-bottom: .9rem; }
+.card.off { opacity: .6; }
+ul.tlist { list-style: none; margin: .4rem 0; padding: 0; max-height: 14rem; overflow-y: auto; border: 1px solid var(--line);
+           border-radius: 6px; background: var(--bg); }
+ul.tlist li { padding: .3rem .6rem; cursor: pointer; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+ul.tlist li:last-child { border-bottom: 0; }
+ul.tlist li:hover { background: var(--chip); }
+ul.tlist li.sel { background: var(--accent); color: var(--accent-text); }
+ul.tlist li.off { opacity: .55; font-style: italic; }
+.row { display: flex; gap: .6rem; align-items: end; flex-wrap: wrap; }
+.row > .grow { flex: 1 1 14rem; }
+.chips { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; }
+.flag { font-size: .75rem; border-radius: 999px; padding: 0 .45rem; margin-left: .3rem; white-space: nowrap; }
+.flag.invalid { background: var(--bad); color: #fff; }
+.flag.stale { background: #f5eab0; color: #5c4a00; }
+.chip { background: var(--chip); border-radius: 999px; padding: .05rem .6rem; font-size: .8rem; }
+.muted { color: var(--muted); font-size: .85rem; }
+.err { color: var(--bad); font-size: .85rem; }
+#status { font-size: .85rem; }
+#status.ok { color: var(--ok); } #status.bad { color: var(--bad); }
+body.busy #editor, body.busy aside, body.busy #save, body.busy #runall { pointer-events: none; opacity: .55; }
+#jobbox pre { max-height: 18rem; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
+              padding: .5rem; margin: .5rem 0 0; font-size: .82rem; white-space: pre-wrap; }
+.st { display: inline-block; min-width: 3.2rem; text-align: center; border-radius: 4px; padding: 0 .4rem; font-weight: 600; font-size: .8rem; }
+.st-PASS { background: #c8f0c8; color: #14532d; } .st-FAIL { background: #f5b5b5; color: #7a1010; } .st-SKIP { background: #f5eab0; color: #5c4a00; }
+.st-CRASH { background: #c00; color: #fff; }
+#reportlist td { border-top: 1px solid var(--line); padding: .3rem .5rem; vertical-align: top; }
+#jobresults table { border-collapse: collapse; width: 100%; margin-top: .4rem; }
+#jobresults td { border-top: 1px solid var(--line); padding: .3rem .5rem; vertical-align: top; }
+#jobresults .shots { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .3rem; }
+#jobresults .shots a { font-size: .75rem; text-align: center; color: inherit; text-decoration: none; }
+#jobresults .shots img { display: block; width: 7.5rem; border: 1px solid var(--line); border-radius: 3px; }
+#jobresults td.reason { white-space: pre-wrap; font-size: .85rem; overflow-wrap: anywhere; }
+.card.closable { position: relative; padding-right: 2.6rem; }
+button.close { position: absolute; top: .4rem; right: .4rem; border: 0; background: none; color: var(--muted);
+               font-size: 1.2rem; line-height: 1; padding: .2rem .45rem; }
+button.close:hover { color: var(--text); background: var(--chip); }
+.dirty::after { content: " \25CF"; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>GUI tester</h1>
+  <span id="fname" class="muted">no file selected</span>
+  <button id="save" class="primary" disabled>Save</button>
+  <button id="runall" disabled title="Run all tests in all files">Run all</button>
+  <label id="edbox" style="margin:0 0 0 auto;font-size:.9rem;color:inherit" hidden>Edition
+    <select id="edition"></select></label>
+  <span id="appinfo" class="muted"></span>
+  <span id="status"></span>
+  <a href="/docs/handbook.html" target="_blank" title="How to write, generate and run the tests">Handbook</a>
+</header>
+<main>
+  <aside>
+    <fieldset class="group"><legend>Test files</legend>
+      <ul class="files" id="files"></ul>
+      <p><button id="newfile">New file</button></p>
+    </fieldset>
+    <fieldset class="group"><legend>Test projects</legend>
+      <ul class="files" id="projects"></ul>
+      <p><button id="newproject">New test project</button></p>
+    </fieldset>
+    <fieldset class="group"><legend>Results</legend>
+      <ul class="files"><li id="reportsbtn">Reports</li></ul>
+    </fieldset>
+  </aside>
+  <section><div id="editor"><p class="muted">Select a file on the left or create a new one.</p></div>
+    <div id="jobbox" class="card closable" hidden>
+      <button id="jobclose" class="close" title="Close">&#10005;</button>
+      <div class="row"><strong id="jobtitle"></strong><span id="jobstate" class="muted"></span>
+        <button id="jobstop" hidden>Stop</button> <span id="jobreports"></span></div>
+      <div id="jobprogress" hidden>
+        <progress id="jobbar" max="100" style="width:100%"></progress>
+        <div id="jobtext" class="muted"></div>
+        <div id="jobstep" class="muted"></div>
+      </div>
+      <div id="jobsummary" style="margin-top:.5rem"></div>
+      <div id="jobresults"></div>
+      <details style="margin-top:.5rem"><summary class="muted">Output</summary><pre id="joboutput"></pre></details></div></section>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let doc = null, current = null, dirty = false, sel = -1;
+let config = {can_run: false, apps: {}, editions: ['opensource', 'premium']}, timer = null, wasRunning = false;
+let view = 'file', projects = [], proj = null, pdirty = false;
+
+function setStatus(text, cls) { const s = $('#status'); s.textContent = text; s.className = cls || ''; }
+function setDirty(d) {
+  dirty = d;
+  $('#fname').className = d ? 'dirty' : 'muted';
+  $('#save').disabled = !d || !current;
+  updateRunAll();
+}
+async function api(path, opts) {
+  const r = await fetch(path, opts && opts.body ? {...opts, headers: {'Content-Type': 'application/json'}} : opts);
+  const data = await r.json();
+  if (!r.ok) throw new Error((data.errors || [data.error]).join('; '));
+  return data;
+}
+function confirmDiscard() { return !(dirty || pdirty) || confirm('Unsaved changes will be lost. Continue?'); }
+
+// ---- files
+async function listFiles() {
+  const names = await api('/api/files');
+  let status = {};
+  try { status = await api('/api/file-status'); } catch (err) { /* the list works without the flags */ }
+  const flags = n => {
+    const f = status[n] || {};
+    return (f.invalid ? ` <span class="flag invalid" title="${f.invalid} test(s) with errors, or the file is not valid">invalid${f.invalid > 1 ? ' ' + f.invalid : ''}</span>` : '') +
+      (f.stale ? ` <span class="flag stale" title="${f.stale} test(s) with an outdated script, generate again">regenerate ${f.stale}</span>` : '');
+  };
+  $('#files').innerHTML = names.map(n =>
+    `<li data-n="${esc(n)}" class="${n === current ? 'sel' : ''}">${esc(n)}${flags(n)}</li>`).join('') ||
+    '<li class="muted">no files</li>';
+}
+$('#files').onclick = async e => {
+  const li = e.target.closest('li[data-n]');
+  if (!li || !confirmDiscard()) return;
+  try { open(li.dataset.n, await api('/api/file?name=' + encodeURIComponent(li.dataset.n))); }
+  catch (err) { setStatus(err.message, 'bad'); }
+};
+function open(name, d) {
+  current = name; doc = d; sel = -1; view = 'file'; proj = null; pdirty = false; if (!doc.tests) doc.tests = [];
+  $('#fname').textContent = name; setDirty(false); setStatus('');
+  listFiles(); listProjects(); render();
+}
+$('#newfile').onclick = () => {
+  if (!confirmDiscard()) return;
+  let n = prompt('File name (e.g. projects.feature):', 'new.feature');
+  if (!n) return;
+  if (!n.endsWith('.feature')) n += '.feature';
+  open(n, {title: '', background: ['Given the application is started with no project loaded'], tests: []}); setDirty(true);
+};
+async function save() {
+  const errs = problems();
+  if (errs.length) { setStatus(errs[0], 'bad'); return false; }
+  try {
+    await api('/api/file?name=' + encodeURIComponent(current), {method: 'PUT', body: JSON.stringify(clean())});
+    setDirty(false); setStatus('Saved', 'ok'); listFiles();
+    await reloadCurrent();    // the server decides which scripts are outdated
+    return true;
+  } catch (err) { setStatus(err.message, 'bad'); return false; }
+}
+async function reloadCurrent() {
+  doc = await api('/api/file?name=' + encodeURIComponent(current));
+  setDirty(false); if (view === 'file') render();
+}
+$('#save').onclick = save;
+$('#runall').onclick = () => startJob('run', undefined, 'all tests in all files', '*');
+function updateRunAll() {
+  $('#runall').disabled = !config.can_run; listFiles();
+  const rf = $('#runfile'); if (rf) rf.disabled = !config.can_run;
+}
+
+// ---- reports: the earlier runs
+$('#reportsbtn').onclick = async () => {
+  if (!confirmDiscard()) return;
+  try { openReports(await api('/api/reports')); } catch (err) { setStatus(err.message, 'bad'); }
+};
+function openReports(list) {
+  view = 'reports'; current = null; doc = null; proj = null; pdirty = false; setDirty(false);
+  $('#fname').textContent = 'reports'; $('#fname').className = 'muted'; setStatus('');
+  listFiles(); listProjects();
+  const n = (r, k) => r.counts[k] ? `<span class="st st-${k}">${r.counts[k]} ${k}</span> ` : '';
+  $('#editor').innerHTML = `<div class="card"><table id="reportlist" style="border-collapse:collapse;width:100%">
+    <tr class="muted"><td>Started</td><td>Edition</td><td>Version</td><td>Tests</td><td>Result</td></tr>` +
+    (list.map(r => `<tr><td><a href="${esc(r.url)}" target="_blank">${esc(r.started.replace('T', ' ') || r.id)}</a></td>
+      <td>${esc(r.edition || '')}</td>
+      <td>${esc(r.branch || '')} ${esc(r.sha)}${r.dirty ? ' (modified)' : ''}</td>
+      <td class="muted">${esc(r.files.join(', '))}</td>
+      <td>${['PASS', 'FAIL', 'CRASH', 'SKIP'].map(k => n(r, k)).join('')}${r.aborted ? '<span class="muted">aborted</span>' : ''}</td></tr>`).join('')
+      || '<tr><td colspan="5" class="muted">No reports yet.</td></tr>') + '</table></div>';
+}
+
+// ---- test projects: directories of files that tests use
+async function listProjects() {
+  projects = await api('/api/projects');
+  $('#projects').innerHTML = projects.map(p =>
+    `<li data-n="${esc(p.name)}" class="${proj && proj.name === p.name ? 'sel' : ''}">${esc(p.name)}</li>`).join('') ||
+    '<li class="muted">no projects</li>';
+}
+$('#projects').onclick = async e => {
+  const li = e.target.closest('li[data-n]');
+  if (!li || !confirmDiscard()) return;
+  try {
+    const p = await api('/api/project?name=' + encodeURIComponent(li.dataset.n));
+    openProject(li.dataset.n, p);
+  } catch (err) { setStatus(err.message, 'bad'); }
+};
+$('#newproject').onclick = () => {
+  if (!confirmDiscard()) return;
+  const n = prompt('Name of the test project (letters, digits, _ and -):', 'my-project');
+  if (!n) return;
+  if (!/^[\w-]+$/.test(n)) { setStatus('Invalid project name', 'bad'); return; }
+  openProject(n, {files: {}, binary: [], used_by: []}); setPDirty(true);
+};
+function setPDirty(d) { pdirty = d; const b = $('#psave'); if (b) b.disabled = !d; }
+function openProject(name, p) {
+  proj = {name, files: p.files, binary: p.binary || [], used_by: p.used_by || [], sel: Object.keys(p.files)[0] || null};
+  view = 'project'; current = null; doc = null; setDirty(false); pdirty = false;
+  $('#fname').textContent = 'test project ' + name; $('#fname').className = 'muted';
+  setStatus(''); listFiles(); listProjects(); renderProject();
+}
+function renderProject() {
+  const paths = Object.keys(proj.files).sort();
+  $('#editor').innerHTML = `
+    <div class="card closable"><button class="close" id="pclose" title="Close the project">&#10005;</button>
+      <div class="row"><strong>Test project: ${esc(proj.name)}</strong>
+        <span class="muted grow">${proj.used_by.length ? 'Used by: ' + esc(proj.used_by.join('; ')) : 'Not used by any test'}</span>
+        <button id="psave" class="primary" ${pdirty ? '' : 'disabled'}>Save project</button>
+        <button id="pdel">Delete project</button></div>
+      <p class="muted">The files are copied to an empty directory before every run, so the test always starts with the same files.
+        When a file is changed, the scripts of the tests that use the project become outdated.</p>
+      <div class="row" style="align-items:stretch">
+        <div style="flex:0 0 15rem">
+          <ul class="tlist" id="pfiles" style="max-height:24rem">${paths.map(p =>
+            `<li data-p="${esc(p)}" class="${p === proj.sel ? 'sel' : ''}">${esc(p)}</li>`).join('') || '<li class="muted">no files</li>'}</ul>
+          <button id="padd">+ File</button> <button id="prm" ${proj.sel ? '' : 'disabled'}>Delete file</button>
+          ${proj.binary.length ? '<p class="muted">Binary files (not edited here): ' + esc(proj.binary.join(', ')) + '</p>' : ''}
+        </div>
+        <div class="grow" style="min-width:16rem">
+          <label style="margin-top:0">${proj.sel ? esc(proj.sel) : 'No file selected'}</label>
+          <textarea id="pedit" spellcheck="false" style="min-height:24rem" ${proj.sel ? '' : 'disabled'}></textarea>
+        </div>
+      </div>
+    </div>`;
+  const ed = $('#pedit');
+  ed.value = proj.sel ? proj.files[proj.sel] : '';
+  ed.oninput = () => { proj.files[proj.sel] = ed.value; setPDirty(true); };
+  $('#pfiles').onclick = e => {
+    const li = e.target.closest('li[data-p]');
+    if (li) { proj.sel = li.dataset.p; renderProject(); }
+  };
+  $('#padd').onclick = () => {
+    const p = prompt('Path of the file in the project (e.g. src/a.c):', 'src/a.c');
+    if (!p) return;
+    if (p in proj.files) { proj.sel = p; return renderProject(); }
+    proj.files[p] = ''; proj.sel = p; setPDirty(true); renderProject();
+  };
+  $('#prm').onclick = () => {
+    if (!proj.sel || !confirm('Delete ' + proj.sel + '?')) return;
+    delete proj.files[proj.sel]; proj.sel = Object.keys(proj.files).sort()[0] || null; setPDirty(true); renderProject();
+  };
+  $('#psave').onclick = saveProject;
+  $('#pclose').onclick = () => {
+    if (!confirmDiscard()) return;
+    proj = null; pdirty = false; view = 'file'; $('#fname').textContent = 'no file selected'; setStatus('');
+    $('#editor').innerHTML = '<p class="muted">Select a file on the left or create a new one.</p>'; listProjects();
+  };
+  $('#pdel').onclick = async () => {
+    if (!confirm('Delete the whole test project ' + proj.name + '?')) return;
+    try {
+      await api('/api/project?name=' + encodeURIComponent(proj.name), {method: 'DELETE'});
+      proj = null; pdirty = false; view = 'file'; $('#fname').textContent = 'no file selected';
+      $('#editor').innerHTML = '<p class="muted">The project is deleted.</p>'; listProjects();
+    } catch (err) { setStatus(err.message, 'bad'); }
+  };
+}
+async function saveProject() {
+  try {
+    await api('/api/project?name=' + encodeURIComponent(proj.name), {method: 'PUT', body: JSON.stringify({files: proj.files})});
+    setPDirty(false); setStatus('Project saved', 'ok'); await listProjects();
+    if (current && !dirty) await reloadCurrent();    // scripts that use the project may be outdated now
+  } catch (err) { setStatus(err.message, 'bad'); }
+}
+
+// ---- jobs (gen.py and run.py on the server)
+async function startJob(action, id, label, file = current) {
+  if (dirty && !(await save())) return;
+  try {
+    const j = await api('/api/job', {method: 'POST', body: JSON.stringify({action, file, id, edition: $('#edition').value})});
+    wasRunning = true; showJob(j, label); clearInterval(timer); timer = setInterval(tick, 1000);
+  } catch (e) { setStatus(e.message, 'bad'); }
+}
+let jobLabel = '', jobTable = '';
+let jobClosed = null;   // started time of the job whose report was closed
+try { jobClosed = +localStorage.getItem('jobClosed') || null; } catch (e) {}
+function showJob(j, label) {
+  if (label) jobLabel = label;
+  $('#jobbox').hidden = !j || j.started === jobClosed;
+  if (!j) return;
+  $('#jobclose').onclick = () => {
+    jobClosed = j.started; $('#jobbox').hidden = true;
+    try { localStorage.setItem('jobClosed', jobClosed); } catch (e) {}
+  };
+  const p = j.progress, run = j.kind === 'run', elapsed = Math.round((j.now - j.started));
+  const multi = j.editions.length > 1;
+  $('#jobtitle').textContent = (run ? 'Run: ' : 'Generating script: ') + (jobLabel || j.file) + ' (' + j.editions.join(' and ') + ')';
+  $('#jobstate').textContent = j.running ? 'running, ' + elapsed + ' s' : 'finished after ' + elapsed + ' s';
+  $('#jobstop').hidden = !j.running;
+  $('#jobreports').innerHTML = j.reports.map(r =>
+    `<a href="${esc(r.url)}" target="_blank">Open report${multi ? ' ' + esc(r.edition) : ''}</a>`).join(' · ');
+
+  // progress: which test and step for a run, a moving bar while Claude explores
+  $('#jobprogress').hidden = !j.running;
+  const bar = $('#jobbar');
+  if (run && p.total) {
+    bar.max = 100; bar.value = 100 * ((Math.max(p.index, 1) - 1 + (p.steps ? p.step / p.steps : 0)) / p.total);
+    $('#jobtext').textContent = (multi && p.edition ? p.edition + ': ' : '') +
+      (p.index ? 'Test ' + p.index + ' of ' + p.total + ': ' + p.test + (p.testfile ? ' (' + p.testfile + ')' : '') : 'Starting...');
+    $('#jobstep').textContent = p.steps ? 'Step ' + p.step + ' of ' + p.steps + (p.label ? ': ' + p.label : '') : '';
+  } else {
+    bar.removeAttribute('value');
+    const last = j.output.split('\n').filter(Boolean).pop() || '';
+    $('#jobtext').textContent = run ? 'Starting...' : 'Claude explores the GUI and then replays the script. ' + last;
+    $('#jobstep').textContent = '';
+  }
+
+  // results as they come
+  const rs = p.results || [], cnt = k => rs.filter(x => x.status === k).length;
+  $('#jobsummary').innerHTML = rs.length
+    ? `<span class="st st-PASS">${cnt('PASS')} PASS</span> <span class="st st-FAIL">${cnt('FAIL')} FAIL</span> <span class="st st-SKIP">${cnt('SKIP')} SKIP</span>` +
+      (j.running && p.total && !multi ? ` <span class="muted">${rs.length} of ${p.total} tests done</span>` : '')
+    : '';
+  const table = rs.length ? '<table>' + rs.map(x => {
+    const f = ext => x.base + '/' + encodeURIComponent(x.slug) + ext;
+    return `<tr><td><span class="st st-${x.status}">${x.status}</span>${x.crash ? ' <span class="st st-CRASH">CRASH</span>' : ''}</td>
+      <td><strong>${esc(x.name)}</strong>${x.file ? ` <span class="muted">${esc(x.file)}</span>` : ''}${multi ? ` <span class="chip">${esc(x.edition)}</span>` : ''}<div class="muted">${Math.round(x.seconds)} s ·
+        <a href="${f('.txt')}" target="_blank">steps</a> · <a href="${f('.png')}" target="_blank">screenshot</a> ·
+        <a href="${f('.app.log')}" target="_blank">app log</a></div>${(x.shots || []).length ? `
+        <details><summary class="muted">screenshots after the steps (${x.shots.length})</summary><div class="shots">${x.shots.map(s =>
+          `<a href="${x.base}/${encodeURIComponent(s.file)}" target="_blank" title="${esc('step ' + s.step + ': ' + s.label)}"><img src="${x.base}/${encodeURIComponent(s.file)}" alt="" loading="lazy">step ${s.step}</a>`).join('')}</div></details>` : ''}</td>
+      <td class="reason">${esc(x.reason)}</td></tr>`;
+  }).join('') + '</table>' : '';
+  if (table !== jobTable) $('#jobresults').innerHTML = jobTable = table;   // keeps opened screenshot lists open
+
+  const pre = $('#joboutput');
+  if (pre.textContent !== j.output) { pre.textContent = j.output; pre.scrollTop = pre.scrollHeight; }
+}
+async function tick() {
+  const j = await api('/api/job').catch(() => null);
+  showJob(j);
+  const running = !!j && j.running;
+  document.body.classList.toggle('busy', running && j.kind === 'generate');
+  if (!running) {
+    clearInterval(timer); timer = null;
+    if (wasRunning && j && j.kind === 'generate' && j.file === current) { await reloadCurrent(); setDirty(true); }
+  }
+  wasRunning = running;
+}
+$('#jobstop').onclick = () => api('/api/job/stop', {method: 'POST', body: '{}'}).catch(e => setStatus(e.message, 'bad'));
+window.onbeforeunload = e => { if (dirty || pdirty) e.preventDefault(); };
+
+// ---- model helpers. Steps are Gherkin lines, the Examples are edited as a Gherkin table
+const STEP_RE = /^(Given|When|Then|And|But|\*)\s+\S/;
+function toLines(text) {   // lines of the steps; blank lines are dropped, except in doc strings
+  const out = []; let fence = null, indent = 0;   // doc string lines lose the indentation of the opening """
+  for (const raw of text.split('\n')) {
+    const s = raw.trim();
+    if (fence) {
+      const lead = raw.length - raw.trimStart().length;
+      out.push(s === fence ? s : raw.trimEnd().slice(Math.min(lead, indent)));
+      if (s === fence) fence = null;
+      continue;
+    }
+    if (!s) continue;
+    out.push(s);
+    if (s.startsWith('"""') || s.startsWith('```')) { fence = s.slice(0, 3); indent = raw.length - raw.trimStart().length; }
+  }
+  return out;
+}
+function stepErrors(lines, need_then) {
+  const errs = []; let fence = null, first = true;
+  lines.forEach((l, k) => {
+    const s = l.trim();
+    if (fence) { if (s === fence) fence = null; return; }
+    if (s.startsWith('"""') || s.startsWith('```')) { fence = s.slice(0, 3); return; }
+    if (s.startsWith('|')) return;
+    const m = STEP_RE.exec(s);
+    if (!m) errs.push('line ' + (k + 1) + ' must start with Given, When, Then, And, But or *');
+    else if (first && (m[1] === 'And' || m[1] === 'But')) errs.push('the first step can not start with ' + m[1]);
+    first = false;
+  });
+  if (fence) errs.push('a doc string is not closed with ' + fence);
+  if (need_then && !lines.some(l => /^Then\s/.test(l.trim()))) errs.push('needs a Then step, the expected result');
+  return errs;
+}
+function fmtTable(rows) {
+  if (!rows || !rows.length) return '';
+  const cols = Object.keys(rows[0]), w = cols.map(c => Math.max(c.length, ...rows.map(r => (r[c] || '').length)));
+  const line = cells => '| ' + cells.map((v, k) => v.padEnd(w[k])).join(' | ') + ' |';
+  return [line(cols), ...rows.map(r => line(cols.map(c => r[c] || '')))].join('\n');
+}
+function parseTable(text) {   // {rows, err}
+  const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
+  if (!lines.length) return {rows: []};
+  const cells = l => l.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+  if (lines.some(l => !l.startsWith('|') || !l.endsWith('|') || l.length < 2)) return {rows: [], err: 'every line of the Examples must start and end with |'};
+  const head = cells(lines[0]);
+  if (lines.length < 2) return {rows: [], err: 'the Examples need a header line and at least one row'};
+  const rows = [];
+  for (const l of lines.slice(1)) {
+    const c = cells(l);
+    if (c.length !== head.length) return {rows: [], err: 'a row of the Examples has ' + c.length + ' cells, the header has ' + head.length};
+    rows.push(Object.fromEntries(head.map((h, k) => [h, c[k]])));
+  }
+  return {rows};
+}
+function examplesText(t) { return t._exText !== undefined ? t._exText : (t._exText = fmtTable(t.examples)); }
+function examplesOf(t) { return parseTable(examplesText(t)); }
+function fmtScript(script) {
+  return script && script.length ? '[\n' + script.map(x => '  ' + JSON.stringify(x)).join(',\n') + '\n]' : '';
+}
+let scriptDoc = '';
+function combos(t) { const r = examplesOf(t).rows; return r.length ? r : [{}]; }
+function editionsOf(t) { return t.editions || config.editions; }
+function canRun(t, generate) {   // a binary for an edition of the test; to run also the chosen edition
+  const ed = $('#edition').value;
+  return editionsOf(t).some(e => config.apps[e] && (generate || ed === 'both' || ed === e));
+}
+function problems() {
+  const errs = [], names = new Set();
+  doc.tests.forEach((t, i) => {
+    const w = 'Test ' + (i + 1) + ': ';
+    if (t.editions && !t.editions.length) errs.push(w + 'select at least one edition');
+    if (!t.name || !t.name.trim()) errs.push(w + 'name is missing');
+    else if (names.has(t.name)) errs.push(w + 'the name "' + t.name + '" is used twice');
+    names.add(t.name);
+    if (t._scriptErr) errs.push(w + 'the script is not valid JSON: ' + t._scriptErr);
+    for (const e of stepErrors(t.steps || [], true)) errs.push(w + 'steps: ' + e);
+    const ex = examplesOf(t);
+    if (ex.err) errs.push(w + ex.err);
+    const cols = ex.rows.length ? Object.keys(ex.rows[0]) : [];
+    for (const c of cols) if (!/^\w+$/.test(c)) errs.push(w + 'the Examples column "' + c + '" must be letters, digits and _');
+    if (new Set(cols).size !== cols.length) errs.push(w + 'an Examples column exists twice');
+    if (ex.rows.some(r => Object.values(r).some(v => !v))) errs.push(w + 'every cell of the Examples needs a value');
+    if (new Set(ex.rows.map(r => JSON.stringify(r))).size !== ex.rows.length) errs.push(w + 'a row of the Examples is there twice');
+  });
+  return errs;
+}
+function clean() {   // what is saved: no editor-only fields, no empty optional fields
+  const head = {title: doc.title || ''};
+  for (const k of ['background', 'description', 'tags']) if (doc[k] && doc[k].length) head[k] = doc[k];
+  return {...head, tests: doc.tests.map(t => {
+    const o = {id: t.id, name: t.name.trim()};
+    if (t.ticket) o.ticket = t.ticket;
+    if (t.enabled === false) o.enabled = false;
+    o.steps = t.steps || [];
+    for (const k of ['description', 'tags']) if (t[k] && t[k].length) o[k] = t[k];
+    if (t.todo) o.todo = t.todo;
+    if (t.script && t.script.length) o.script = t.script;
+    if (t._approve) o._approve = true;
+    if (t.projects && t.projects.length) o.projects = t.projects;
+    if (t.editions && t.editions.length < config.editions.length) o.editions = t.editions;   // default: all
+    const ex = examplesOf(t).rows;
+    if (ex.length) o.examples = ex;
+    return o;
+  })};
+}
+
+// ---- rendering
+function render() {
+  const ed = $('#editor');
+  ed.innerHTML = `
+    <div class="card closable"><button class="close" id="closefile" title="Close the file">&#10005;</button>
+      <label style="margin-top:0">Title</label>
+      <input type="text" id="title" value="${esc(doc.title || '')}">
+      <label>Background (Gherkin steps that are done before every scenario of the file)</label>
+      <textarea id="background" style="min-height:2.5rem" spellcheck="false">${esc((doc.background || []).join('\n'))}</textarea>
+      <div class="err" id="bgerr"></div>
+      <label>Tests</label>
+      <ul class="tlist" id="tlist"></ul>
+      <button id="addtest">+ New test</button>
+      <div style="margin-top:.6rem"><button id="runfile" title="Run all tests in ${esc(current)}"${config.can_run ? '' : ' disabled'}>Run tests</button></div></div>
+    <div id="detail"></div>`;
+  $('#closefile').onclick = () => {
+    if (!confirmDiscard()) return;
+    current = null; doc = null; sel = -1; $('#fname').textContent = 'no file selected'; setDirty(false); setStatus('');
+    $('#editor').innerHTML = '<p class="muted">Select a file on the left or create a new one.</p>';
+  };
+  $('#runfile').onclick = () => startJob('run', undefined, 'all tests in ' + current, current);
+  $('#title').oninput = e => { doc.title = e.target.value; setDirty(true); };
+  const bgerr = () => $('#bgerr').textContent = stepErrors(doc.background || [], false).join('; ');
+  $('#background').oninput = e => { doc.background = toLines(e.target.value); setDirty(true); bgerr(); };
+  bgerr();
+  $('#addtest').onclick = () => {
+    doc.tests.push({id: 'n' + Math.random().toString(36).slice(2, 10), name: 'New test', steps: []});
+    sel = doc.tests.length - 1; setDirty(true); render();
+    $('#detail .name').select();
+  };
+  $('#tlist').onclick = e => {
+    const li = e.target.closest('li[data-i]');
+    if (li) { sel = +li.dataset.i; render(); }
+  };
+  renderList();
+  const box = $('#detail');
+  if (sel >= 0 && sel < doc.tests.length) box.appendChild(card(doc.tests[sel], sel));
+  else box.innerHTML = '<p class="muted">' + (doc.tests.length ? 'Select a test in the list.' : 'The file has no tests yet.') + '</p>';
+}
+
+function renderList() {
+  $('#tlist').innerHTML = doc.tests.map((t, i) =>
+    `<li data-i="${i}" class="${i === sel ? 'sel' : ''}${t.enabled === false ? ' off' : ''}">${esc(t.name || '(unnamed)')}${
+      t.editions && t.editions.length < config.editions.length ? ` <span class="chip">${esc(t.editions.join(', ') || 'no edition')}</span>` : ''}${
+      t._errors && t._errors.length ? ` <span class="flag invalid" title="${esc(t._errors.join('\n'))}">invalid</span>` : ''}${
+      t._stale ? ' <span class="flag stale" title="The test was changed after the script was created. Generate the script again or approve it.">regenerate</span>' : ''}</li>`).join('') ||
+    '<li class="muted">no tests</li>';
+}
+
+function card(t, i) {
+  const d = document.createElement('div');
+  d.className = 'card closable' + (t.enabled === false ? ' off' : '');
+  d.innerHTML = `
+    <button class="close" title="Close the test">&#10005;</button>
+    <div class="row">
+      <div class="grow"><label style="margin-top:0">Name</label><input type="text" class="name" value="${esc(t.name)}"></div>
+      <div><label style="margin-top:0">Ticket</label><input type="text" class="ticket" value="${esc(t.ticket || '')}" size="10"></div>
+      <label style="margin:0 0 .35rem"><input type="checkbox" class="enabled" ${t.enabled === false ? '' : 'checked'}> enabled</label>
+      <span class="edpick" title="The editions the test runs in, the script is the same for all ({edition} is the name of the edition)">${
+        config.editions.map(e => `<label style="display:inline-block;margin:0 .6rem .35rem 0;color:inherit;font-size:.9rem">
+          <input type="checkbox" value="${esc(e)}" ${editionsOf(t).includes(e) ? 'checked' : ''}> ${esc(e)}</label>`).join('')}</span>
+      <div>
+        <button class="up" ${i == 0 ? 'disabled' : ''} title="Move up">↑</button>
+        <button class="down" ${i == doc.tests.length - 1 ? 'disabled' : ''} title="Move down">↓</button>
+        <button class="del" title="Delete the test">Delete</button>
+      </div>
+    </div>
+    <label>Scenario steps in Gherkin, one per line: Given (the starting point), When (what is done), Then (the expected result), And, But. Use &lt;column&gt; for the values of the Examples</label>
+    <textarea class="steps" spellcheck="false" style="min-height:9rem" placeholder="Given the project file {project:basic-project}/basic.cppcheck is opened&#10;When I click Clear results&#10;Then the result tree is empty">${esc((t.steps || []).join('\n'))}</textarea>
+    <div class="err steps-err"></div>
+    <label>TODO (e.g. "cannot be automated", leave empty otherwise)</label>
+    <input type="text" class="todo" value="${esc(t.todo || '')}">
+    <label>Test projects (copied to an empty directory before every run; in the script: {project:NAME})</label>
+    <div class="projpick"></div>
+    <div class="row scriptbar" style="margin-top:.8rem">
+      <span class="script-status grow"></span>
+      <button class="gen">Generate script</button>
+      <button class="runone">Run test</button>
+      <button class="approve">Approve the script</button>
+    </div>
+    <details class="scriptbox" ${(t.script || []).length ? 'open' : ''}>
+      <summary class="muted script-summary"></summary>
+      <textarea class="script" spellcheck="false" style="min-height:8rem" placeholder="No script. Create one with gen.py or write it here."></textarea>
+      <div class="err script-err"></div>
+      <details><summary class="muted">How to write a script</summary><pre class="muted" style="white-space:pre-wrap;font-size:.8rem">${esc(scriptDoc)}</pre></details>
+    </details>
+    <label>Examples (makes it a Scenario Outline: a Gherkin table, every row is a separate run)</label>
+    <textarea class="examples" spellcheck="false" style="min-height:3rem" placeholder="| platform |&#10;| native   |&#10;| unix32   |">${esc(examplesText(t))}</textarea>
+    <div class="preview"></div>`;
+  const on = (sel, ev, f) => d.querySelector(sel).addEventListener(ev, f);
+  const edit = (sel, f) => on(sel, 'input', e => { f(e.target); setDirty(true); preview(); });
+  edit('.name', el => { t.name = el.value; renderList(); });
+  edit('.ticket', el => t.ticket = el.value);
+  const serr = () => d.querySelector('.steps-err').textContent = stepErrors(t.steps || [], true).join('; ');
+  edit('.steps', el => { t.steps = toLines(el.value); serr(); });
+  edit('.examples', el => t._exText = el.value);
+  serr();
+  edit('.todo', el => t.todo = el.value);
+  const pick = d.querySelector('.projpick');
+  const names = [...new Set([...projects.map(p => p.name), ...(t.projects || [])])];
+  pick.innerHTML = names.map(n => `<label style="display:inline-block;margin:0 1rem .2rem 0;color:inherit;font-size:.9rem">
+      <input type="checkbox" value="${esc(n)}" ${(t.projects || []).includes(n) ? 'checked' : ''}> ${esc(n)}${projects.some(p => p.name === n) ? '' : ' (missing)'}</label>`).join('') ||
+    '<span class="muted">No test projects yet. Create one on the left.</span>';
+  pick.onchange = () => { t.projects = [...pick.querySelectorAll('input:checked')].map(i => i.value); setDirty(true); };
+  const edpick = d.querySelector('.edpick');
+  edpick.onchange = () => {
+    t.editions = [...edpick.querySelectorAll('input:checked')].map(i => i.value);
+    setDirty(true); renderList(); bar(); preview();
+  };
+  const ta = d.querySelector('.script');
+  ta.value = fmtScript(t.script);
+  const sum = () => {
+    d.querySelector('.script-summary').textContent =
+      'Script: ' + ((t.script || []).length ? t.script.length + ' steps' : 'none (the test is skipped when run)');
+    d.querySelector('.script-err').textContent = t._scriptErr ? 'Invalid JSON: ' + t._scriptErr : '';
+    bar();
+  };
+  const gen = d.querySelector('.gen'), run = d.querySelector('.runone'), approve = d.querySelector('.approve');
+  function bar() {
+    const n = (t.script || []).length, st = d.querySelector('.script-status'), stale = !!t._stale;
+    st.textContent = !n ? 'Script: none' : stale
+      ? 'Script: OUTDATED, the test was changed after the script was created. It is not run until it is generated again or approved.'
+      : 'Script: up to date, ' + n + ' steps';
+    st.className = 'script-status grow ' + (stale ? 'err' : 'muted');
+    if (t._errors && t._errors.length) st.textContent += ' Invalid: ' + t._errors.join('; ');
+    gen.disabled = !canRun(t, true);
+    run.disabled = !canRun(t) || !n || stale;
+    run.title = canRun(t) ? '' : 'The test does not run in the selected edition, or web.py has no app for it';
+    approve.hidden = !stale;
+  }
+  gen.onclick = () => {
+    if ((t.script || []).length && !confirm('The existing script will be replaced. Continue?')) return;
+    startJob('generate', t.id, t.name);
+  };
+  run.onclick = () => startJob('run', t.id, t.name);
+  approve.onclick = () => { t._approve = true; setDirty(true); save(); };
+  ta.addEventListener('input', () => {
+    try { t.script = ta.value.trim() ? JSON.parse(ta.value) : []; t._scriptErr = ''; }
+    catch (e) { t._scriptErr = e.message; }
+    setDirty(true); sum();
+  });
+  sum();
+  on('.enabled', 'change', e => { t.enabled = e.target.checked; d.classList.toggle('off', !t.enabled); renderList(); setDirty(true); });
+  on('.close', 'click', () => { sel = -1; render(); });
+  on('.up', 'click', () => move(i, -1));
+  on('.down', 'click', () => move(i, 1));
+  on('.del', 'click', () => {
+    if (!confirm('Delete "' + t.name + '"?')) return;
+    doc.tests.splice(i, 1); sel = Math.min(i, doc.tests.length - 1); setDirty(true); render();
+  });
+
+  function preview() {
+    const p = d.querySelector('.preview'), rows = examplesOf(t).rows, cs = combos(t);
+    const label = c => Object.entries(c).map(([k, v]) => k + '=' + v).join(', ');
+    p.innerHTML = !rows.length ? '' : `<div class="muted">${cs.length} run${cs.length == 1 ? '' : 's'}</div>` +
+      `<div class="chips">${cs.slice(0, 40).map(c => `<span class="chip">${esc(label(c))}</span>`).join('')}` +
+      (cs.length > 40 ? `<span class="muted">… +${cs.length - 40}</span>` : '') + '</div>';
+    const bad = problems().filter(e => e.startsWith('Test ' + (i + 1) + ':') && !e.includes(': steps: '));
+    if (bad.length) p.innerHTML += bad.map(e => `<div class="err">${esc(e)}</div>`).join('');
+  }
+  preview();
+  return d;
+}
+function move(i, dir) {
+  const j = i + dir;
+  [doc.tests[i], doc.tests[j]] = [doc.tests[j], doc.tests[i]];
+  sel = j; setDirty(true); render();
+}
+
+api('/api/config').then(c => {
+  config = c; updateRunAll();
+  const have = c.editions.filter(e => c.apps[e]), pick = $('#edition');
+  pick.innerHTML = have.map(e => `<option value="${esc(e)}">${esc(e)}</option>`).join('') +
+    (have.length > 1 ? '<option value="both">both</option>' : '');
+  try { const v = localStorage.getItem('edition'); if (v && [...pick.options].some(o => o.value === v)) pick.value = v; } catch (e) {}
+  pick.onchange = () => { try { localStorage.setItem('edition', pick.value); } catch (e) {} if (doc && view === 'file') render(); };
+  $('#edbox').hidden = !have.length;
+  $('#appinfo').textContent = have.length ? '' : 'No app: start web.py with --opensource and/or --premium to generate and run';
+  $('#edbox').title = have.map(e => e + ': ' + c.apps[e]).join('\n');
+  if (doc) render();
+}).catch(() => {});
+tick().then(() => { if (wasRunning) timer = setInterval(tick, 1000); });
+fetch('/api/script-doc').then(r => r.text()).then(t => scriptDoc = t).catch(() => {});
+listProjects().catch(() => {});
+listFiles().catch(e => setStatus(e.message, 'bad'));
+</script>
+</body>
+</html>

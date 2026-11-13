@@ -409,7 +409,7 @@ void CheckExceptionSafetyImpl::rethrowNoCurrentExceptionError(const Token *tok)
                 CWE480, Certainty::normal);
 }
 
-void CheckExceptionSafety::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckExceptionSafety::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     if (tokenizer.isC())
         return;
@@ -424,7 +424,7 @@ void CheckExceptionSafety::runChecks(const Tokenizer &tokenizer, ErrorLogger *er
     checkExceptionSafety.rethrowNoCurrentException();
 }
 
-void CheckExceptionSafety::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void CheckExceptionSafety::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
     CheckExceptionSafetyImpl c(nullptr, settings, errorLogger);
     c.destructorsError(nullptr, "Class");

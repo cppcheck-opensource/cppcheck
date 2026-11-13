@@ -44,10 +44,10 @@ class CPPCHECKLIB CheckVaarg : public Check {
 public:
     CheckVaarg() : Check("Vaarg") {}
 
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
 private:
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "Check for misusage of variable argument lists:\n"
@@ -62,7 +62,7 @@ private:
 class CPPCHECKLIB CheckVaargImpl : public CheckImpl
 {
 public:
-    CheckVaargImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckVaargImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     void va_start_argument();

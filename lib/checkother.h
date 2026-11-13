@@ -50,19 +50,15 @@ struct UnionMember;
 /** @brief Various small checks */
 
 class CPPCHECKLIB CheckOther : public Check {
-    friend class TestCharVar;
-    friend class TestIncompleteStatement;
-    friend class TestOther;
-
 public:
     /** @brief This constructor is used when registering the CheckClass */
     CheckOther() : Check("Other") {}
 
 private:
     /** @brief Run checks against the normal token list */
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "Other checks\n"
@@ -127,7 +123,7 @@ private:
 class CPPCHECKLIB CheckOtherImpl : public CheckImpl {
 public:
     /** @brief This constructor is used when running checks. */
-    CheckOtherImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckOtherImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** Is expression a comparison that checks if a nonzero (unsigned/pointer) expression is less than zero? */
@@ -189,6 +185,9 @@ public:
 
     /** @brief %Check for code like 'case A||B:'*/
     void checkSuspiciousCaseInSwitch();
+
+    /** @brief %Check for case labels that cannot be selected */
+    void checkUnreachableSwitchCase();
 
     /** @brief %Check for objects that are destroyed immediately */
     void checkMisusedScopedObject();
@@ -279,7 +278,7 @@ public:
     void suspiciousFloatingPointCastError(const Token *tok);
     void invalidPointerCastError(const Token* tok, const std::string& from, const std::string& to, bool inconclusive, bool toIsInt);
     void passedByValueError(const Variable* var, bool inconclusive, bool isRangeBasedFor = false);
-    void constVariableError(const Variable *var, const Function *function);
+    void constVariableError(const Variable *var, const Function *function, bool foundAllBaseClasses = true);
     void constStatementError(const Token *tok, const std::string &type, bool inconclusive);
     void signedCharArrayIndexError(const Token *tok);
     void unknownSignCharArrayIndexError(const Token *tok);
@@ -294,6 +293,7 @@ public:
     void redundantCopyError(const Token *tok1, const Token* tok2, const std::string& var);
     void redundantBitwiseOperationInSwitchError(const Token *tok, const std::string &varname);
     void suspiciousCaseInSwitchError(const Token* tok, const std::string& operatorString);
+    void unreachableSwitchCaseError(const Token* tok, const std::string& caseExpression, const std::string& switchValue);
     void selfAssignmentError(const Token *tok, const std::string &varname);
     void misusedScopeObjectError(const Token *tok, const std::string &varname, bool isAssignment = false);
     void duplicateBranchError(const Token *tok1, const Token *tok2, ErrorPath errors);
@@ -310,7 +310,7 @@ public:
     void unsignedPositiveError(const Token *tok, const ValueFlow::Value *v, const std::string &varname);
     void pointerPositiveError(const Token *tok, const ValueFlow::Value *v);
     void suspiciousSemicolonError(const Token *tok);
-    void negativeBitwiseShiftError(const Token *tok, int op);
+    void negativeBitwiseShiftError(const Token *tok, bool isLHS, const ValueFlow::Value *v = nullptr);
     void redundantCopyError(const Token *tok, const std::string &varname);
     void incompleteArrayFillError(const Token* tok, const std::string& buffer, const std::string& function, bool boolean);
     void varFuncNullUBError(const Token *tok);
@@ -320,12 +320,12 @@ public:
     void unusedLabelError(const Token* tok, bool inSwitch, bool hasIfdef);
     void unknownEvaluationOrder(const Token* tok, bool isUnspecifiedBehavior = false);
     void accessMovedError(const Token *tok, const std::string &varname, const ValueFlow::Value *value, bool inconclusive);
-    void funcArgNamesDifferent(const std::string & functionName, nonneg int index, const Token* declaration, const Token* definition);
+    void funcArgNamesDifferent(const std::string & functionName, size_t index, const Token* declaration, const Token* definition);
     void funcArgOrderDifferent(const std::string & functionName, const Token * declaration, const Token * definition, const std::vector<const Token*> & declarations, const std::vector<const Token*> & definitions);
     void shadowError(const Token *shadows, const std::string &shadowsType, const Token *shadowed, const std::string &shadowedType);
     void knownArgumentError(const Token *tok, const Token *ftok, const ValueFlow::Value *value, const std::string &varexpr, bool isVariableExpressionHidden);
     void knownPointerToBoolError(const Token* tok, const ValueFlow::Value* value);
-    void comparePointersError(const Token *tok, const ValueFlow::Value *v1, const ValueFlow::Value *v2);
+    void comparePointersError(const Token *tok, const ValueFlow::Value *v1, const ValueFlow::Value *v2, bool subtract);
     void checkModuloOfOneError(const Token *tok);
     void unionZeroInitError(const Token *tok, const UnionMember& largestMember);
 

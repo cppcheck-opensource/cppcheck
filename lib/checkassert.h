@@ -47,8 +47,8 @@ public:
 
 private:
     /** run checks, the token list is not simplified */
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "Warn if there are side effects in assert statements (since this cause different behaviour in debug/release builds).\n";
@@ -57,7 +57,7 @@ private:
 
 class CPPCHECKLIB CheckAssertImpl : public CheckImpl {
 public:
-    CheckAssertImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckAssertImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     void assertWithSideEffects();
@@ -65,7 +65,7 @@ public:
     void checkVariableAssignment(const Token* assignTok, const Scope *assertionScope);
     static bool inSameScope(const Token* returnTok, const Token* assignTok);
 
-    void sideEffectInAssertError(const Token *tok, const std::string& functionName);
+    void sideEffectInAssertError(const Token *tok, const std::string& functionName, const std::string &extra = "");
     void assignmentInAssertError(const Token *tok, const std::string &varname);
 };
 /// @}

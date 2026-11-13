@@ -94,7 +94,7 @@ void CheckPostfixOperatorImpl::postfixOperatorError(const Token *tok)
                 "adds a little extra code.", CWE398, Certainty::normal);
 }
 
-void CheckPostfixOperator::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckPostfixOperator::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     if (tokenizer.isC())
         return;
@@ -103,7 +103,7 @@ void CheckPostfixOperator::runChecks(const Tokenizer &tokenizer, ErrorLogger *er
     checkPostfixOperator.postfixOperator();
 }
 
-void CheckPostfixOperator::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void CheckPostfixOperator::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
     CheckPostfixOperatorImpl c(nullptr, settings, errorLogger);
     c.postfixOperatorError(nullptr);

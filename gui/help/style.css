@@ -1,0 +1,68 @@
+/* Stylesheet for the Cppcheck GUI help. Qt's help browser only supports a
+   subset of CSS, so keep this simple. */
+
+body {
+    font-family: sans-serif;
+    margin: 8px;
+}
+
+h1 {
+    color: #1f4e79;
+    font-size: x-large;
+}
+
+h2 {
+    color: #1f4e79;
+    font-size: large;
+    margin-top: 20px;
+}
+
+h3 {
+    color: #2e75b6;
+    font-size: medium;
+    margin-top: 14px;
+}
+
+pre {
+    background-color: #f3f3f3;
+    font-family: monospace;
+    margin-left: 16px;
+}
+
+code {
+    font-family: monospace;
+}
+
+table.options {
+    border-collapse: collapse;
+    border-color: #c8c8c8;
+    border-style: solid;
+}
+
+table.options th {
+    background-color: #e4ecf5;
+    padding: 4px;
+    text-align: left;
+}
+
+table.options td {
+    padding: 4px;
+    vertical-align: top;
+}
+
+p.note {
+    background-color: #fff8dc;
+}
+
+p.tip {
+    background-color: #eaf5ea;
+}
+
+p.nav {
+    color: #707070;
+    font-size: small;
+}
+
+p.figure {
+    margin-left: 16px;
+}

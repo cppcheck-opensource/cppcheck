@@ -18,6 +18,11 @@ __ERR_B = ('%s:1:7: error: Division by zero. [zerodiv]\n' +
            'x = 3 / 0;\n' +
            '      ^\n') % os.path.join('b', 'b.c')
 
+def __get_lines(s):
+    # file order is not guaranteed when multiple jobs are used (TEST_CPPCHECK_INJECT_J) so
+    # compare output order-independently
+    return sorted(s.split('\n'))
+
 def __create_compile_commands(proj_dir):
     proj_dir = str(proj_dir)
     j = [{'directory': os.path.join(proj_dir, 'a'), 'command': 'gcc -c a.c', 'file': 'a.c'},
@@ -152,7 +157,7 @@ def test_gui_project_loads_relative_vs_solution_2(tmp_path):
     create_gui_project_file(os.path.join(tmp_path, 'test.cppcheck'), root_path='proj2', import_project='proj2/proj2.sln')
     ret, stdout, stderr = cppcheck(['--project=test.cppcheck'], cwd=tmp_path)
     assert ret == 0, stdout
-    assert stderr == __ERR_A + __ERR_B
+    assert __get_lines(stderr) == __get_lines(__ERR_A + __ERR_B)
 
 def test_gui_project_loads_relative_vs_solution_with_exclude(tmp_path):
     proj_dir = tmp_path / 'proj2'
@@ -170,4 +175,4 @@ def test_gui_project_loads_absolute_vs_solution_2(tmp_path):
                             import_project=os.path.join(proj_dir, 'proj2.sln'))
     ret, stdout, stderr = cppcheck(['--project=test.cppcheck'], cwd=tmp_path)
     assert ret == 0, stdout
-    assert stderr == __ERR_A + __ERR_B
+    assert __get_lines(stderr) == __get_lines(__ERR_A + __ERR_B)

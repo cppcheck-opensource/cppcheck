@@ -1,6 +1,6 @@
 /* -*- C++ -*-
  * Cppcheck - A tool for static C/C++ code analysis
- * Copyright (C) 2007-2024 Cppcheck team.
+ * Copyright (C) 2007-2026 Cppcheck team.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,10 +22,10 @@
 //---------------------------------------------------------------------------
 
 #include "config.h"
+#include "refthunk.h"
 
 #include <cstdint>
 #include <set>
-#include <vector>
 
 class Token;
 class Settings;
@@ -60,11 +60,6 @@ public:
      */
     bool unusedValue(const Token *expr, const Token *startToken, const Token *endToken);
 
-    struct KnownAndToken {
-        bool known{};
-        const Token* token{};
-    };
-
     /** Is there some possible alias for given expression */
     bool possiblyAliased(const Token *expr, const Token *startToken) const;
 
@@ -80,13 +75,11 @@ private:
         const Token* token{};
     };
 
-    Result check(const Token *expr, const Token *startToken, const Token *endToken);
-    Result checkRecursive(const Token *expr, const Token *startToken, const Token *endToken, const std::set<nonneg int> &exprVarIds, bool local, bool inInnerClass, int depth=0);
+    Result check(const Token *expr, const Token *startToken, const Token *endToken) const;
+    Result checkRecursive(const Token *expr, const Token *startToken, const Token *endToken, const std::set<nonneg int> &exprVarIds, bool local, bool inInnerClass, int depth=0) const;
 
-    const Settings &mSettings;
-    enum class What : std::uint8_t { Reassign, UnusedValue, ValueFlow } mWhat = What::Reassign;
-    std::vector<KnownAndToken> mValueFlow;
-    bool mValueFlowKnown = true;
+    RefThunk<const Settings> mSettings;
+    enum class What : std::uint8_t { Reassign, UnusedValue } mWhat = What::Reassign;
 };
 
 #endif // fwdanalysisH

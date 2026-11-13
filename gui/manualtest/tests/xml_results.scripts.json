@@ -1,0 +1,466 @@
+{
+  "tc1fc409e": {
+    "script": [
+      {
+        "label": "Start the application with no project loaded",
+        "expect": "visible",
+        "name": "Cppcheck",
+        "role": "frame"
+      },
+      {
+        "label": "Open the File menu",
+        "do": "click",
+        "name": "File",
+        "role": "menu item"
+      },
+      {
+        "label": "Choose File > Open Project File",
+        "do": "click",
+        "name": "Open Project File...",
+        "role": "menu item"
+      },
+      {
+        "label": "Wait for the project file dialog",
+        "do": "wait",
+        "name": "Select Project File",
+        "role": "dialog"
+      },
+      {
+        "label": "Enter the project file basic.cppcheck",
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:basic-project}/basic.cppcheck"
+      },
+      {
+        "label": "Open the project file",
+        "do": "key",
+        "keys": [
+          "Return"
+        ]
+      },
+      {
+        "label": "The project is loaded",
+        "expect": "visible",
+        "name": "Project: basic.cppcheck",
+        "role": "frame",
+        "timeout": 10
+      },
+      {
+        "label": "Analysis has produced results for b.c",
+        "expect": "visible",
+        "name": "src/b.c",
+        "role": "table cell",
+        "timeout": 30
+      },
+      {
+        "label": "Wait until the analysis is done",
+        "expect": "state",
+        "name": "Stop analysis",
+        "role": "button",
+        "not_state": "enabled",
+        "timeout": 30
+      },
+      {
+        "label": "Open the File menu",
+        "do": "click",
+        "name": "File",
+        "role": "menu item"
+      },
+      {
+        "label": "Open File > Save results to file",
+        "do": "click",
+        "name": "Save results to file...",
+        "role": "menu item"
+      },
+      {
+        "label": "Wait for the save dialog",
+        "do": "wait",
+        "name": "Save the report file",
+        "role": "dialog"
+      },
+      {
+        "label": "Open the Files of type list",
+        "do": "click",
+        "name": "XML files",
+        "role": "combo box",
+        "mouse": true
+      },
+      {
+        "label": "Choose the file type for {format} files",
+        "do": "click",
+        "name": "(*.{format})",
+        "role": "list item",
+        "mouse": true
+      },
+      {
+        "label": "Enter results.{format} in the work directory as file name",
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{work}/results.{format}"
+      },
+      {
+        "label": "Save the results",
+        "do": "click",
+        "name": "Save",
+        "role": "button",
+        "exact": true
+      },
+      {
+        "label": "The save dialog is closed",
+        "expect": "gone",
+        "name": "Save the report file",
+        "role": "dialog"
+      },
+      {
+        "label": "results.{format} is saved and names a.c",
+        "expect": "file",
+        "path": "{work}/results.{format}",
+        "contains": "src/a.c"
+      },
+      {
+        "label": "results.{format} has the nullPointer error in a.c (Null pointer dereference)",
+        "expect": "file",
+        "path": "{work}/results.{format}",
+        "contains": "Null pointer dereference"
+      },
+      {
+        "label": "results.{format} has the arrayIndexOutOfBounds error in b.c (out of bounds)",
+        "expect": "file",
+        "path": "{work}/results.{format}",
+        "regex": "src/b.c[\\s\\S]*out of bounds|out of bounds[\\s\\S]*src/b.c"
+      }
+    ],
+    "script_for": "dad1485bb95a"
+  },
+  "tcdb051d4": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open XML",
+        "role": "menu item",
+        "label": "Choose File > Open XML"
+      },
+      {
+        "expect": "visible",
+        "name": "Open the report file",
+        "role": "dialog",
+        "label": "The file dialog is shown"
+      },
+      {
+        "do": "settext",
+        "name": "File name",
+        "role": "text",
+        "value": "{project:xml-results}/results.xml",
+        "label": "Select results.xml of the xml-results project"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Confirm the file dialog"
+      },
+      {
+        "do": "wait",
+        "name": "Open the report file",
+        "gone": true,
+        "label": "The file dialog closes"
+      },
+      {
+        "expect": "visible",
+        "name": "a.c",
+        "role": "table cell",
+        "label": "The file a.c is listed in the results"
+      },
+      {
+        "do": "focus",
+        "name": "a.c",
+        "role": "table cell",
+        "label": "Give keyboard focus to the a.c entry"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Right"
+        ],
+        "label": "Expand the a.c entry to see its error"
+      },
+      {
+        "expect": "visible",
+        "name": "nullPointer",
+        "role": "table cell",
+        "label": "The nullPointer error is shown"
+      },
+      {
+        "expect": "visible",
+        "name": "Null pointer dereference: p",
+        "role": "table cell",
+        "label": "The nullPointer summary is shown"
+      },
+      {
+        "expect": "visible",
+        "name": "error",
+        "role": "table cell",
+        "label": "The severity of the error is shown"
+      }
+    ],
+    "script_for": "35589d1420ec"
+  },
+  "t8d9a2076": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open XML",
+        "role": "menu item",
+        "label": "Choose File > Open XML"
+      },
+      {
+        "do": "wait",
+        "name": "Open the report file",
+        "timeout": 10,
+        "label": "Wait for the open dialog"
+      },
+      {
+        "do": "settext",
+        "name": "File name",
+        "role": "text",
+        "value": "{project:xml-results}/results.xml",
+        "label": "Enter the path of results.xml"
+      },
+      {
+        "do": "click",
+        "name": "Open",
+        "role": "button",
+        "nth": 1,
+        "label": "Confirm the file dialog"
+      },
+      {
+        "expect": "visible",
+        "name": "a.c",
+        "role": "table cell",
+        "timeout": 10,
+        "label": "The results show the file a.c"
+      },
+      {
+        "do": "rightclick",
+        "name": "a.c",
+        "role": "table cell",
+        "label": "Right click on the file a.c in the results"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Menu"
+        ],
+        "label": "Make sure the context menu is open"
+      },
+      {
+        "expect": "gone",
+        "name": "Recheck",
+        "label": "The context menu has no Recheck entry"
+      },
+      {
+        "expect": "gone",
+        "name": "Open containing folder",
+        "label": "The context menu has no Open containing folder entry"
+      },
+      {
+        "expect": "alive",
+        "label": "The application does not crash"
+      }
+    ],
+    "script_for": "a23ab5dd15e4"
+  },
+  "t053b7c9c": {
+    "script": [
+      {
+        "expect": "visible",
+        "name": "Cppcheck",
+        "role": "frame",
+        "label": "Given the application is started with no project loaded"
+      },
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Given the XML results are opened with File > Open XML: open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open XML...",
+        "role": "menu item",
+        "label": "Given the XML results are opened with File > Open XML: choose Open XML"
+      },
+      {
+        "expect": "visible",
+        "name": "Open the report file",
+        "role": "dialog",
+        "label": "The Open XML file dialog is shown"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:xml-results}/results.xml",
+        "label": "Enter the XML results file name"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Open the XML results"
+      },
+      {
+        "do": "wait",
+        "name": "Open the report file",
+        "gone": true,
+        "timeout": 10,
+        "label": "Wait until the file dialog is closed"
+      },
+      {
+        "expect": "visible",
+        "name": "results.xml",
+        "role": "frame",
+        "timeout": 10,
+        "label": "The XML results are loaded"
+      },
+      {
+        "expect": "visible",
+        "name": "a.c",
+        "role": "table cell",
+        "timeout": 10,
+        "label": "a.c is shown in the results"
+      },
+      {
+        "expect": "state",
+        "name": "Reanalyze all files",
+        "role": "button",
+        "not_state": "enabled",
+        "label": "Then the button Reanalyze all files is disabled"
+      },
+      {
+        "do": "rightclick",
+        "name": "a.c",
+        "role": "table cell",
+        "label": "And if I rightclick on a.c in the results"
+      },
+      {
+        "do": "sleep",
+        "seconds": 1
+      },
+      {
+        "expect": "ocr",
+        "contains": "Copy",
+        "label": "I get a popup"
+      },
+      {
+        "expect": "ocr",
+        "not_contains": "Recheck",
+        "label": "There is an option Recheck 1 file(s) in the popup that is disabled (greyed out, not read by OCR)"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Escape"
+        ],
+        "label": "Close the popup"
+      },
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "When I open the project file: open the File menu"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File...",
+        "role": "menu item",
+        "label": "When I open the project file: choose Open Project File"
+      },
+      {
+        "expect": "visible",
+        "name": "Select Project File",
+        "role": "dialog",
+        "label": "The project file dialog is shown"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:basic-project}/basic.cppcheck",
+        "label": "Enter the project file name"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Open the project file"
+      },
+      {
+        "do": "wait",
+        "name": "Select Project File",
+        "gone": true,
+        "timeout": 10,
+        "label": "Wait until the file dialog is closed"
+      },
+      {
+        "expect": "visible",
+        "name": "Project: basic.cppcheck",
+        "role": "frame",
+        "timeout": 10,
+        "label": "The project is loaded"
+      },
+      {
+        "expect": "state",
+        "name": "Stop analysis",
+        "role": "button",
+        "not_state": "enabled",
+        "timeout": 30,
+        "label": "And I wait until the analysis is done"
+      },
+      {
+        "expect": "state",
+        "name": "Reanalyze all files",
+        "role": "button",
+        "state": "enabled",
+        "timeout": 30,
+        "label": "Then the button Reanalyze all files is enabled"
+      },
+      {
+        "do": "click",
+        "name": "Reanalyze all files",
+        "role": "button",
+        "label": "And can be clicked"
+      },
+      {
+        "expect": "alive",
+        "label": "The application still runs after clicking Reanalyze all files"
+      },
+      {
+        "expect": "state",
+        "name": "Reanalyze all files",
+        "role": "button",
+        "state": "enabled",
+        "timeout": 30,
+        "label": "Reanalyze all files is enabled again after the reanalysis"
+      }
+    ],
+    "script_for": "299ae476b3db"
+  }
+}

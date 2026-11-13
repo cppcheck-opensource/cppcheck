@@ -41,17 +41,15 @@ class Tokenizer;
  */
 
 class CPPCHECKLIB Check64BitPortability : public Check {
-    friend class Test64BitPortability;
-
 public:
     /** This constructor is used when registering the Check64BitPortability */
     Check64BitPortability() : Check("64-bit portability") {}
 
 private:
     /** @brief Run checks against the normal token list */
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "Check if there is 64-bit portability issues:\n"
@@ -63,7 +61,7 @@ private:
 class CPPCHECKLIB Check64BitPortabilityImpl : public CheckImpl {
 public:
     /** This constructor is used when running checks. */
-    Check64BitPortabilityImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    Check64BitPortabilityImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** Check for pointer assignment */

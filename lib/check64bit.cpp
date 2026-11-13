@@ -90,11 +90,11 @@ void Check64BitPortabilityImpl::pointerassignment()
             if (!returnType)
                 continue;
 
-            if (retPointer && !returnType->typeScope && returnType->pointer == 0U)
+            if (retPointer && !returnType->typeScope && returnType->pointer == 0)
                 returnIntegerError(tok);
 
             if (!retPointer) {
-                bool warn = returnType->pointer >= 1U;
+                bool warn = returnType->pointer >= 1;
                 if (!warn) {
                     const Token* tok2 = tok->astOperand1();
                     while (tok2 && tok2->isCast())
@@ -119,17 +119,17 @@ void Check64BitPortabilityImpl::pointerassignment()
                 continue;
 
             // Assign integer to pointer..
-            if (lhstype->pointer >= 1U &&
+            if (lhstype->pointer >= 1 &&
                 !tok->astOperand2()->isNumber() &&
-                rhstype->pointer == 0U &&
+                rhstype->pointer == 0 &&
                 rhstype->originalTypeName.empty() &&
                 rhstype->type == ValueType::Type::INT &&
                 !isFunctionPointer(tok->astOperand1()))
                 assignmentIntegerToAddressError(tok);
 
             // Assign pointer to integer..
-            if (rhstype->pointer >= 1U &&
-                lhstype->pointer == 0U &&
+            if (rhstype->pointer >= 1 &&
+                lhstype->pointer == 0 &&
                 lhstype->originalTypeName.empty() &&
                 lhstype->isIntegral() &&
                 lhstype->type >= ValueType::Type::CHAR &&
@@ -183,13 +183,13 @@ void Check64BitPortabilityImpl::returnIntegerError(const Token *tok)
                 "The safe way is to always return a pointer.", CWE758, Certainty::normal);
 }
 
-void Check64BitPortability::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void Check64BitPortability::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     Check64BitPortabilityImpl check64BitPortability(&tokenizer, tokenizer.getSettings(), errorLogger);
     check64BitPortability.pointerassignment();
 }
 
-void Check64BitPortability::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void Check64BitPortability::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
     Check64BitPortabilityImpl c(nullptr, settings, errorLogger);
     c.assignmentAddressToIntegerError(nullptr);

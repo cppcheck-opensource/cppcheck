@@ -58,25 +58,23 @@ struct VariableValue {
 /** @brief Checking for uninitialized variables */
 
 class CPPCHECKLIB CheckUninitVar : public Check {
-    friend class TestUninitVar;
-
 public:
     /** @brief This constructor is used when registering the CheckUninitVar */
     CheckUninitVar() : Check("Uninitialized variables") {}
 
 private:
     /** @brief Run checks against the normal token list */
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
     /** @brief Parse current TU and extract file info */
-    Check::FileInfo *getFileInfo(const Tokenizer &tokenizer, const Settings &settings, const std::string& /*currentConfig*/) const override;
+    const Check::FileInfo *getFileInfo(const Tokenizer &tokenizer, const Settings &settings, const std::string& /*currentConfig*/) const override;
 
-    Check::FileInfo * loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement) const override;
+    const Check::FileInfo * loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement, const std::string& file0) const override;
 
     /** @brief Analyse all file infos for all TU */
-    bool analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger) override;
+    bool analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<const Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger) override;
 
-    void getErrorMessages(ErrorLogger* errorLogger, const Settings& settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings& settings) const override;
 
     std::string classInfo() const override {
         return "Uninitialized variables\n"
@@ -88,7 +86,7 @@ private:
 class CPPCHECKLIB CheckUninitVarImpl : public CheckImpl {
 public:
     /** @brief This constructor is used when running checks. */
-    CheckUninitVarImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckUninitVarImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     enum Alloc : std::uint8_t { NO_ALLOC, NO_CTOR_CALL, CTOR_CALL, ARRAY };

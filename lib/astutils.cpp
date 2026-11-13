@@ -26,6 +26,7 @@
 #include "infer.h"
 #include "library.h"
 #include "mathlib.h"
+#include "refthunk.h"
 #include "settings.h"
 #include "symboldatabase.h"
 #include "token.h"
@@ -495,8 +496,6 @@ bool isTemporary(const Token* tok, const Library* library, bool unknown)
         }
         return unknown;
     }
-    if (tok->isCast())
-        return false;
     // Currying a function is unknown in cppcheck
     if (Token::simpleMatch(tok, "(") && Token::simpleMatch(tok->astOperand1(), "("))
         return unknown;
@@ -1071,6 +1070,17 @@ bool isAliasOf(const Token *tok, nonneg int varid, bool* inconclusive)
     return false;
 }
 
+bool isIteratorOf(const Token* tok, nonneg int exprId)
+{
+    if (!astIsIterator(tok))
+        return false;
+    // An iterator into a subcontainer (e.g. c[0].begin()) aliases the container but iterates
+    // an unrelated range, so require an iterator value recording the container itself
+    return std::any_of(tok->values().cbegin(), tok->values().cend(), [&](const ValueFlow::Value& v) {
+        return v.isIteratorValue() && v.container && v.container->exprId() == exprId;
+    });
+}
+
 bool isAliasOf(const Token* tok, const Token* expr, nonneg int* indirect)
 {
     if (indirect)
@@ -1149,6 +1159,8 @@ bool exprDependsOnThis(const Token* expr, bool onVar, nonneg int depth)
             return false;
         }
         if (expr->isOperatorKeyword() && !Token::simpleMatch(expr->next()->astParent(), "."))
+            return true;
+        if (expr->variable() && expr->variable()->isArgument() && !expr->variable()->type() && expr->variable()->scope()->function && expr->variable()->scope()->function->templateDef)
             return true;
     }
     if (onVar && expr->variable()) {
@@ -1543,9 +1555,7 @@ bool isUsedAsBool(const Token* const tok, const Settings& settings)
         return true;
     if (parent->isCast())
         return !Token::simpleMatch(parent->astOperand1(), "dynamic_cast") && isUsedAsBool(parent, settings);
-    if (parent->isUnaryOp("*"))
-        return isUsedAsBool(parent, settings);
-    if (Token::Match(parent, "==|!=") && tok->valueType() && tok->valueType()->pointer &&
+    if (Token::Match(parent, "==|!=") && ((tok->valueType() && tok->valueType()->pointer) || tok->function()) &&
         tok->astSibling()->hasKnownIntValue() && tok->astSibling()->getKnownIntValue() == 0)
         return true;
     if (parent->str() == "(" && astIsRHS(tok) && Token::Match(parent->astOperand1(), "if|while"))
@@ -1704,7 +1714,7 @@ bool isSameExpression(bool macro, const Token *tok1, const Token *tok2, const Se
                     compare = true;
                 }
             }
-            if (compare && astIsBoolLike(varTok1, settings) && astIsBoolLike(varTok2, settings))
+            if (compare && varTok1 != varTok2 && astIsBoolLike(varTok1, settings) && astIsBoolLike(varTok2, settings))
                 return isSameExpression(macro, varTok1, varTok2, settings, pure, followVar, errors);
 
         }
@@ -2230,21 +2240,18 @@ static bool isEscapedOrJump(const Token* tok, bool functionsScope, const Library
     return Token::Match(tok, "return|goto|throw|continue|break");
 }
 
+static bool isNoreturnFunction(const Token* ftok, const Library& library)
+{
+    if (const Function* function = ftok->function())
+        return function->isEscapeFunction() || function->isAttributeNoreturn();
+    return library.isnoreturn(ftok);
+}
+
 bool isEscapeFunction(const Token* ftok, const Library& library)
 {
     if (!Token::Match(ftok, "%name% ("))
         return false;
-    const Function* function = ftok->function();
-    if (function) {
-        if (function->isEscapeFunction())
-            return true;
-        if (function->isAttributeNoreturn())
-            return true;
-    } else {
-        if (library.isnoreturn(ftok))
-            return true;
-    }
-    return false;
+    return isNoreturnFunction(ftok, library);
 }
 
 static bool hasNoreturnFunction(const Token* tok, const Library& library, const Token** unknownFunc)
@@ -2255,18 +2262,9 @@ static bool hasNoreturnFunction(const Token* tok, const Library& library, const 
     while (Token::simpleMatch(ftok, "("))
         ftok = ftok->astOperand1();
     if (ftok) {
-        const Function * function = ftok->function();
-        if (function) {
-            if (function->isEscapeFunction())
-                return true;
-            if (function->isAttributeNoreturn())
-                return true;
-        } else if (library.isnoreturn(ftok)) {
+        if (isNoreturnFunction(ftok, library))
             return true;
-        } else if (Token::Match(ftok, "exit|abort")) {
-            return true;
-        }
-        if (unknownFunc && !function && library.functions().count(library.getFunctionName(ftok)) == 0)
+        if (unknownFunc && !ftok->function() && library.functions().count(library.getFunctionName(ftok)) == 0)
             *unknownFunc = ftok;
         return false;
     }
@@ -2338,14 +2336,14 @@ bool isWithinScope(const Token* tok, const Variable* var, ScopeType type)
     return false;
 }
 
-bool isVariableChangedByFunctionCall(const Token *tok, int indirect, nonneg int varid, const Settings &settings, bool *inconclusive)
+bool isVariableChangedByFunctionCall(const Token *tok, int indirect, nonneg int varid, const Library &library, bool *inconclusive)
 {
     if (!tok)
         return false;
     if (tok->varId() == varid)
-        return isVariableChangedByFunctionCall(tok, indirect, settings, inconclusive);
-    return isVariableChangedByFunctionCall(tok->astOperand1(), indirect, varid, settings, inconclusive) ||
-           isVariableChangedByFunctionCall(tok->astOperand2(), indirect, varid, settings, inconclusive);
+        return isVariableChangedByFunctionCall(tok, indirect, library, inconclusive);
+    return isVariableChangedByFunctionCall(tok->astOperand1(), indirect, varid, library, inconclusive) ||
+           isVariableChangedByFunctionCall(tok->astOperand2(), indirect, varid, library, inconclusive);
 }
 
 bool isScopeBracket(const Token* tok)
@@ -2526,7 +2524,7 @@ bool isMutableExpression(const Token* tok)
     return true;
 }
 
-bool isVariableChangedByFunctionCall(const Token *tok, int indirect, const Settings &settings, bool *inconclusive)
+bool isVariableChangedByFunctionCall(const Token *tok, int indirect, const Library &library, bool *inconclusive)
 {
     if (!tok)
         return false;
@@ -2566,13 +2564,13 @@ bool isVariableChangedByFunctionCall(const Token *tok, int indirect, const Setti
 
     if (!tok->function() && !tok->variable() && tok->isName()) {
         // Check if direction (in, out, inout) is specified in the library configuration and use that
-        const Library::ArgumentChecks::Direction argDirection = settings.library.getArgDirection(tok, 1 + argnr, indirect);
+        const Library::ArgumentChecks::Direction argDirection = library.getArgDirection(tok, 1 + argnr, indirect);
         if (argDirection == Library::ArgumentChecks::Direction::DIR_IN)
             return false;
         if (argDirection == Library::ArgumentChecks::Direction::DIR_OUT || argDirection == Library::ArgumentChecks::Direction::DIR_INOUT)
             return true;
 
-        const bool requireNonNull = settings.library.isnullargbad(tok, 1 + argnr);
+        const bool requireNonNull = library.isnullargbad(tok, 1 + argnr);
         if (Token::simpleMatch(tok->tokAt(-2), "std :: tie"))
             return true;
         // if the library says 0 is invalid
@@ -2591,6 +2589,8 @@ bool isVariableChangedByFunctionCall(const Token *tok, int indirect, const Setti
 
     if (const Variable* var = tok->variable()) {
         if (tok == var->nameToken() && (!var->isReference() || (var->isConst() && var->type() == tok1->type())) && (!var->isClass() || (var->valueType() && var->valueType()->container))) // const ref or passed to (copy) ctor
+            return false;
+        if (var->isArray() && var->valueType() && var->valueType()->pointer == 0 && var->valueType()->isPrimitive())
             return false;
     }
 
@@ -2792,13 +2792,13 @@ bool isVariableChanged(const Token *tok, int indirect, const Settings &settings,
         if (ftok->str() == "(" && Token::simpleMatch(ftok->astOperand1(), "[")) // operator() on array element, bail out
             return true;
         const Token * ptok = tok2;
-        while (Token::Match(ptok->astParent(), ".|::|["))
+        while (Token::Match(ptok->astParent(), ".|::"))
             ptok = ptok->astParent();
         int pindirect = indirect;
         if (indirect == 0 && astIsLHS(tok2) && Token::Match(ptok, ". %var%") && astIsPointer(ptok->next()))
             pindirect = 1;
         bool inconclusive = false;
-        bool isChanged = isVariableChangedByFunctionCall(ptok, pindirect, settings, &inconclusive);
+        bool isChanged = isVariableChangedByFunctionCall(ptok, pindirect, settings.library, &inconclusive);
         isChanged |= inconclusive;
         if (isChanged)
             return true;
@@ -3015,7 +3015,7 @@ bool isVariableChanged(const Variable * var, const Settings &settings, int depth
     const Token * start = var->declEndToken();
     if (!start)
         return false;
-    if (Token::Match(start, "; %varid% =", var->declarationId()))
+    if (start->isSplittedVarDeclEq() && Token::Match(start, "; %varid% =", var->declarationId()))
         start = start->tokAt(2);
     if (Token::simpleMatch(start, "=")) {
         const Token* next = nextAfterAstRightmostLeafGeneric(start);
@@ -3142,7 +3142,7 @@ namespace {
     };
 
     struct ExpressionChangedSkipDeadCode {
-        const Library& library;
+        RefThunk<const Library> library;
         const std::function<std::vector<MathLib::bigint>(const Token* tok)>* evaluate;
         ExpressionChangedSkipDeadCode(const Library& library,
                                       const std::function<std::vector<MathLib::bigint>(const Token* tok)>& evaluate)
@@ -3307,12 +3307,12 @@ static T* findLambdaEndTokenGeneric(T* first)
         return nullptr;
     if (!maybeLambda(first->previous()))
         return nullptr;
-    if (!Token::Match(first->link(), "] (|{|<"))
+    if (!Token::Match(first->link(), "] [({<.]"))
         return nullptr;
     const Token* roundOrCurly = first->link()->next();
     if (roundOrCurly->link() && roundOrCurly->str() == "<")
         roundOrCurly = roundOrCurly->link()->next();
-    if (first->astOperand1() != roundOrCurly)
+    if (first->astOperand1() != roundOrCurly && roundOrCurly->str() != ".")
         return nullptr;
     T * tok = first;
 
@@ -3423,7 +3423,7 @@ bool isConstVarExpression(const Token *tok, const std::function<bool(const Token
     return false;
 }
 
-static ExprUsage getFunctionUsage(const Token* tok, int indirect, const Settings& settings)
+static ExprUsage getFunctionUsage(const Token* tok, int indirect, const Library& library)
 {
     const bool addressOf = tok->astParent() && tok->astParent()->isUnaryOp("&");
 
@@ -3485,14 +3485,14 @@ static ExprUsage getFunctionUsage(const Token* tok, int indirect, const Settings
     } else if (ftok->str() == "{") {
         return indirect == 0 ? ExprUsage::Used : ExprUsage::Inconclusive;
     } else {
-        const bool isnullbad = settings.library.isnullargbad(ftok, argnr + 1);
+        const bool isnullbad = library.isnullargbad(ftok, argnr + 1);
         if (indirect == 0 && astIsPointer(tok) && !addressOf && isnullbad)
             return ExprUsage::Used;
         bool hasIndirect = false;
-        const bool isuninitbad = settings.library.isuninitargbad(ftok, argnr + 1, indirect, &hasIndirect);
+        const bool isuninitbad = library.isuninitargbad(ftok, argnr + 1, indirect, &hasIndirect);
         if (isuninitbad && (!addressOf || isnullbad))
             return ExprUsage::Used;
-        const Library::ArgumentChecks::Direction argDirection = settings.library.getArgDirection(ftok, argnr + 1, indirect);
+        const Library::ArgumentChecks::Direction argDirection = library.getArgDirection(ftok, argnr + 1, indirect);
         if (argDirection == Library::ArgumentChecks::Direction::DIR_IN) // TODO: DIR_INOUT?
             return ExprUsage::Used;
         if (argDirection == Library::ArgumentChecks::Direction::DIR_OUT)
@@ -3562,7 +3562,7 @@ ExprUsage getExprUsage(const Token* tok, int indirect, const Settings& settings)
             (astIsLHS(tok) || Token::simpleMatch(parent, "( )")))
             return ExprUsage::Used;
     }
-    return getFunctionUsage(tok, indirect, settings);
+    return getFunctionUsage(tok, indirect, settings.library);
 }
 
 static void getLHSVariablesRecursive(std::vector<const Variable*>& vars, const Token* tok)
@@ -3931,4 +3931,24 @@ const Token *skipUnreachableBranch(const Token *tok)
     }
 
     return tok;
+}
+
+bool isEscapeKeyword(const Token *tok, const Settings &settings)
+{
+    if (!tok)
+        return false;
+
+    if (tok->str() == "return")
+        return true;
+
+    if (!tok->isCpp())
+        return false;
+
+    if (tok->str() == "throw")
+        return true;
+
+    if (settings.standards.cpp < Standards::CPP20)
+        return false;
+
+    return tok->str() == "co_return";
 }

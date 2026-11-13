@@ -49,7 +49,7 @@ static const CWE CWE_INCORRECT_CALCULATION(682U);
 
 //---------------------------------------------------------------------------
 
-static bool checkNullpointerFunctionCallPlausibility(const Function* func, unsigned int arg)
+static bool checkNullpointerFunctionCallPlausibility(const Function* func, size_t arg)
 {
     return !func || (func->argCount() >= arg && func->getArgumentVar(arg - 1) && func->getArgumentVar(arg - 1)->isPointer());
 }
@@ -61,7 +61,7 @@ std::list<const Token*> CheckNullPointerImpl::parseFunctionCall(const Token &tok
 
     const std::vector<const Token *> args = getArguments(&tok);
     std::list<const Token*> var;
-    for (int argnr = 1; argnr <= args.size(); ++argnr) {
+    for (size_t argnr = 1; argnr <= args.size(); ++argnr) {
         const Token *param = args[argnr - 1];
         if ((!checkNullArg || library.isnullargbad(&tok, argnr)) && checkNullpointerFunctionCallPlausibility(tok.function(), argnr))
             var.push_back(param);
@@ -130,10 +130,10 @@ namespace {
 
 bool CheckNullPointerImpl::isPointerDeRef(const Token *tok, bool &unknown) const
 {
-    return isPointerDeRef(tok, unknown, mSettings);
+    return isPointerDeRef(tok, unknown, mSettings.library);
 }
 
-bool CheckNullPointerImpl::isPointerDeRef(const Token *tok, bool &unknown, const Settings &settings, bool checkNullArg)
+bool CheckNullPointerImpl::isPointerDeRef(const Token *tok, bool &unknown, const Library &library, bool checkNullArg)
 {
     unknown = false;
 
@@ -146,7 +146,7 @@ bool CheckNullPointerImpl::isPointerDeRef(const Token *tok, bool &unknown, const
             ftok = ftok->previous();
         }
         if (ftok && ftok->previous()) {
-            const std::list<const Token *> varlist = CheckNullPointerImpl::parseFunctionCall(*ftok->previous(), settings.library, checkNullArg);
+            const std::list<const Token *> varlist = CheckNullPointerImpl::parseFunctionCall(*ftok->previous(), library, checkNullArg);
             if (std::find(varlist.cbegin(), varlist.cend(), tok) != varlist.cend()) {
                 return true;
             }
@@ -161,7 +161,7 @@ bool CheckNullPointerImpl::isPointerDeRef(const Token *tok, bool &unknown, const
         return false;
     const bool addressOf = parent->astParent() && parent->astParent()->str() == "&";
     if (parent->str() == "." && astIsRHS(tok))
-        return isPointerDeRef(parent, unknown, settings);
+        return isPointerDeRef(parent, unknown, library);
     const bool firstOperand = parent->astOperand1() == tok;
     parent = astParentSkipParens(tok);
     if (!parent)
@@ -298,7 +298,7 @@ void CheckNullPointerImpl::nullPointerByDeRefAndCheck()
 
             // Pointer dereference.
             bool unknown = false;
-            if (!CheckNullPointerImpl::isPointerDeRef(tok, unknown, mSettings)) {
+            if (!CheckNullPointerImpl::isPointerDeRef(tok, unknown, mSettings.library)) {
                 if (unknown)
                     nullPointerError(tok, tok->expressionString(), value, true);
                 continue;
@@ -370,7 +370,7 @@ void CheckNullPointerImpl::nullConstantDereference()
 
             else if (Token::Match(tok->previous(), "::|. %name% (")) {
                 const std::vector<const Token *> &args = getArguments(tok);
-                for (int argnr = 0; argnr < args.size(); ++argnr) {
+                for (size_t argnr = 0; argnr < args.size(); ++argnr) {
                     const Token *argtok = args[argnr];
                     if (!argtok->hasKnownIntValue())
                         continue;
@@ -578,7 +578,7 @@ static bool isUnsafeUsage(const Settings &settings, const Token *vartok, CTU::Fi
 {
     (void)value;
     bool unknown = false;
-    return CheckNullPointerImpl::isPointerDeRef(vartok, unknown, settings);
+    return CheckNullPointerImpl::isPointerDeRef(vartok, unknown, settings.library);
 }
 
 // a Clang-built executable will crash when using the anonymous MyFileInfo later on - so put it in a unique namespace for now
@@ -604,7 +604,7 @@ namespace
     };
 }
 
-Check::FileInfo *CheckNullPointer::getFileInfo(const Tokenizer &tokenizer, const Settings &settings, const std::string& currentConfig) const
+const Check::FileInfo *CheckNullPointer::getFileInfo(const Tokenizer &tokenizer, const Settings &settings, const std::string& currentConfig) const
 {
     (void)currentConfig;
 
@@ -617,22 +617,22 @@ Check::FileInfo *CheckNullPointer::getFileInfo(const Tokenizer &tokenizer, const
     return fileInfo;
 }
 
-Check::FileInfo * CheckNullPointer::loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement) const
+const Check::FileInfo * CheckNullPointer::loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement, const std::string& file0) const
 {
     const std::list<CTU::FileInfo::UnsafeUsage> &unsafeUsage = CTU::loadUnsafeUsageListFromXml(xmlElement);
     if (unsafeUsage.empty())
         return nullptr;
 
-    auto *fileInfo = new MyFileInfo;
+    auto *fileInfo = new MyFileInfo(file0);
     fileInfo->unsafeUsage = unsafeUsage;
     return fileInfo;
 }
 
-bool CheckNullPointer::analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger)
+bool CheckNullPointer::analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<const Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger)
 {
     (void)settings;
 
-    CheckNullPointerImpl dummy(nullptr, settings, &errorLogger);
+    CheckNullPointerImpl dummy(nullptr, settings, errorLogger);
     dummy.
     logChecker("CheckNullPointer::analyseWholeProgram");
 
@@ -692,7 +692,7 @@ bool CheckNullPointer::analyseWholeProgram(const CTU::FileInfo &ctu, const std::
     return foundErrors;
 }
 
-void CheckNullPointer::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckNullPointer::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     CheckNullPointerImpl checkNullPointer(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkNullPointer.nullPointer();
@@ -700,7 +700,7 @@ void CheckNullPointer::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorL
     checkNullPointer.nullConstantDereference();
 }
 
-void CheckNullPointer::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void CheckNullPointer::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
     CheckNullPointerImpl c(nullptr, settings, errorLogger);
     c.nullPointerError(nullptr, "pointer", nullptr, false);

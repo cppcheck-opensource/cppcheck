@@ -24,6 +24,7 @@
 #include "config.h"
 #include "library.h"
 #include "mathlib.h"
+#include "refthunk.h"
 #include "programmemory.h"
 #include "smallvector.h"
 #include "settings.h"
@@ -58,11 +59,31 @@ static bool isDereferenceOp(const Token* tok)
     return tok->str() == "." && tok->originalName() == "->";
 }
 
+// Every leaf is a constant or has an int value or constraint in the memory, so an undecided
+// condition can go either way.
+static bool stateCoversCondition(const Token* tok, const ProgramMemory& pm, int depth = 20)
+{
+    if (!tok || depth < 0)
+        return false;
+    if (tok->hasKnownIntValue())
+        return true;
+    if (tok->varId() > 0 || Token::simpleMatch(tok, ".")) {
+        const ProgramMemory::Values* values = pm.getValues(tok->exprId());
+        return values && !values->empty() && std::all_of(values->cbegin(), values->cend(), [](const ValueFlow::Value& v) {
+            return v.isIntValue();
+        });
+    }
+    if (!tok->astOperand2())
+        return Token::Match(tok, "!|-|~") && stateCoversCondition(tok->astOperand1(), pm, depth - 1);
+    return tok->isConstOp() && stateCoversCondition(tok->astOperand1(), pm, depth - 1) &&
+           stateCoversCondition(tok->astOperand2(), pm, depth - 1);
+}
+
 struct ValueFlowAnalyzer : Analyzer {
-    const Settings& settings;
+    RefThunk<const Settings> settings;
     ProgramMemoryState pms;
 
-    explicit ValueFlowAnalyzer(const Settings& s) : settings(s), pms(settings) {}
+    explicit ValueFlowAnalyzer(const Settings& s) : settings(s), pms(s) {}
 
     virtual const ValueFlow::Value* getValue(const Token* tok) const = 0;
     virtual ValueFlow::Value* getValue(const Token* tok) = 0;
@@ -222,7 +243,7 @@ struct ValueFlowAnalyzer : Analyzer {
                 return Action::Read;
         }
         bool inconclusive = false;
-        if (isVariableChangedByFunctionCall(tok, getIndirect(tok), getSettings(), &inconclusive))
+        if (isVariableChangedByFunctionCall(tok, getIndirect(tok), getSettings().library, &inconclusive))
             return Action::Read | Action::Invalid;
         if (inconclusive)
             return Action::Read | Action::Inconclusive;
@@ -357,7 +378,7 @@ struct ValueFlowAnalyzer : Analyzer {
             if (dst) {
                 const size_t sz = dst->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
                 if (sz > 0 && sz < sizeof(MathLib::biguint)) {
-                    MathLib::bigint newvalue = ValueFlow::truncateIntValue(value->intvalue, sz, dst->sign);
+                    MathLib::bigint newvalue = ValueFlow::truncateIntValue(value->intvalue, sz, dst, settings().platform);
 
                     /* Handle overflow/underflow for value bounds */
                     if (value->bound != ValueFlow::Value::Bound::Point) {
@@ -380,6 +401,15 @@ struct ValueFlowAnalyzer : Analyzer {
     virtual void internalUpdate(Token* /*tok*/, const ValueFlow::Value& /*v*/, Direction /*d*/)
     {
         assert(false && "Internal update unimplemented.");
+    }
+
+    // A conditional value is split only on a condition the state covers; an unknown one may be
+    // correlated with the assumption.
+    bool canSplitConditional(const Token* condTok) const
+    {
+        if (!condTok)
+            return false;
+        return stateCoversCondition(condTok, pms.get(condTok, nullptr, getProgramState()));
     }
 
 private:
@@ -678,16 +708,20 @@ private:
         if (const ValueFlow::Value* v = tok->getKnownValue(ValueFlow::Value::ValueType::INT))
             return {v->intvalue};
         std::vector<MathLib::bigint> result;
-        ProgramMemory pm = getProgramMemoryFunc();
+        // Pass the tracked values so a cached program-memory value that depends on one (e.g. 'h(p)'
+        // after 'p' was reassigned) is re-evaluated rather than served stale. The memory is built
+        // from the same state, so compute it once and hand it to the builder.
+        const ProgramState vars = getProgramState();
+        ProgramMemory pm = getProgramMemoryFunc(vars);
         if (Token::Match(tok, "&&|%oror%")) {
-            if (conditionIsTrue(tok, pm, getSettings()))
+            if (conditionIsTrue(tok, pm, getSettings(), vars))
                 result.push_back(1);
-            if (conditionIsFalse(tok, std::move(pm), getSettings()))
+            if (conditionIsFalse(tok, std::move(pm), getSettings(), vars))
                 result.push_back(0);
         } else {
             MathLib::bigint out = 0;
             bool error = false;
-            execute(tok, pm, &out, &error, getSettings());
+            execute(tok, pm, &out, &error, getSettings(), vars);
             if (!error)
                 result.push_back(out);
         }
@@ -696,16 +730,16 @@ private:
 
     std::vector<MathLib::bigint> evaluateInt(const Token* tok) const
     {
-        return evaluateInt(tok, [&] {
-            return ProgramMemory{getProgramState()};
+        return evaluateInt(tok, [](const ProgramState& vars) {
+            return ProgramMemory{vars};
         });
     }
 
     std::vector<MathLib::bigint> evaluate(Evaluate e, const Token* tok, const Token* ctx = nullptr) const override
     {
         if (e == Evaluate::Integral) {
-            return evaluateInt(tok, [&] {
-                return pms.get(tok, ctx, getProgramState());
+            return evaluateInt(tok, [&](const ProgramState& vars) {
+                return pms.get(tok, ctx, vars);
             });
         }
         if (e == Evaluate::ContainerEmpty) {
@@ -723,30 +757,42 @@ private:
         return {};
     }
 
-    void assume(const Token* tok, bool state, unsigned int flags) override {
-        // Update program state
-        pms.removeModifiedVars(tok);
-        pms.addState(tok, getProgramState());
-        pms.assume(tok, state, flags & Assume::ContainerEmpty);
-
+    void assume(const Token* tok, bool state, unsigned int flags) override
+    {
         bool isCondBlock = false;
         const Token* parent = tok->astParent();
         if (parent) {
             isCondBlock = Token::Match(parent->previous(), "if|while (");
         }
 
+        const Token* endBlock = nullptr;
         if (isCondBlock) {
             const Token* startBlock = parent->link()->next();
             if (Token::simpleMatch(startBlock, ";") && Token::simpleMatch(parent->tokAt(-2), "} while ("))
                 startBlock = parent->linkAt(-2);
-            const Token* endBlock = startBlock->link();
-            if (state) {
-                pms.removeModifiedVars(endBlock);
-                pms.addState(endBlock->previous(), getProgramState());
-            } else {
-                if (Token::simpleMatch(endBlock, "} else {"))
-                    pms.addState(endBlock->linkAt(2)->previous(), getProgramState());
-            }
+            endBlock = startBlock->link();
+        }
+
+        // Without Pending the 'then' block has been traversed and control is leaving it, so anchor
+        // the assumed state at the block end instead of the condition. That keeps assumptions on
+        // variables modified inside the block (e.g. an 'if' narrowing a value computed there) from
+        // being discarded as "modified" once control leaves the block.
+        const bool scopeEnd = !(flags & Assume::Pending) && state && endBlock;
+        const Token* anchor = scopeEnd ? endBlock : tok;
+        const Token* origin = scopeEnd ? endBlock : nullptr;
+
+        // Update program state
+        pms.removeModifiedVars(anchor);
+        pms.addState(anchor, getProgramState());
+        pms.assume(tok, state, flags & Assume::ContainerEmpty, origin);
+
+        // The false path: record the state where control continues, at the end of the else block or
+        // past the closing brace (which still counts as inside the block).
+        if (isCondBlock && !(flags & Assume::Pending) && !state) {
+            if (Token::simpleMatch(endBlock, "} else {"))
+                pms.addState(endBlock->linkAt(2)->previous(), getProgramState());
+            else
+                pms.addState(endBlock->next(), getProgramState());
         }
 
         if (!(flags & Assume::Quiet)) {
@@ -875,7 +921,7 @@ static bool isAliasOf(const Variable * var, const Token *tok, nonneg int varid, 
             return false;
         if (val.isLifetimeValue() && !val.isLocalLifetimeValue())
             return false;
-        if (val.isLifetimeValue() && val.lifetimeKind != ValueFlow::Value::LifetimeKind::Address)
+        if (val.isLifetimeValue() && val.lifetimeKind != ValueFlow::Value::LifetimeKind::Address && val.lifetimeKind != ValueFlow::Value::LifetimeKind::SubObject)
             return false;
         if (!Token::Match(val.tokvalue, ".|&|*|%var%"))
             return false;
@@ -981,7 +1027,12 @@ struct MultiValueFlowAnalyzer : ValueFlowAnalyzer {
 
     void addErrorPath(const Token* tok, const std::string& s) override {
         for (auto&& p:values) {
-            p.second.errorPath.emplace_back(tok, s);
+            auto& ep = p.second.errorPath;
+            if (std::any_of(ep.begin(), ep.end(), [&](const ErrorPathItem& epi) {
+                return epi.first == tok && epi.second == s;
+            }))
+                continue;
+            ep.emplace_back(tok, s);
         }
     }
 
@@ -1028,7 +1079,7 @@ struct MultiValueFlowAnalyzer : ValueFlowAnalyzer {
 
     bool stopOnCondition(const Token* condTok) const override {
         if (isConditional())
-            return true;
+            return !canSplitConditional(condTok);
         if (!condTok->hasKnownIntValue() && values.count(condTok->varId()) == 0) {
             const auto& values_ = condTok->values();
             return std::any_of(values_.cbegin(), values_.cend(), [](const ValueFlow::Value& v) {
@@ -1060,9 +1111,9 @@ struct MultiValueFlowAnalyzer : ValueFlowAnalyzer {
             };
             if (std::all_of(values.cbegin(), values.cend(), std::bind(pred, std::bind(SelectMapValues{}, std::placeholders::_1))))
                 return true;
-            if (isConditional())
-                return false;
             const Token* condTok = getCondTokFromEnd(endBlock);
+            if (isConditional())
+                return canSplitConditional(condTok);
             std::set<nonneg int> varids;
             std::transform(getVars().cbegin(), getVars().cend(), std::inserter(varids, varids.begin()), SelectMapKeys{});
             return bifurcate(condTok, varids, getSettings());
@@ -1082,7 +1133,7 @@ struct MultiValueFlowAnalyzer : ValueFlowAnalyzer {
             if (!var)
                 continue;
             assert(var->nameToken());
-            ps[var->nameToken()] = p.second;
+            ps[var->nameToken()] = {p.second};
         }
         return ps;
     }
@@ -1129,7 +1180,12 @@ struct SingleValueFlowAnalyzer : ValueFlowAnalyzer {
     }
 
     void addErrorPath(const Token* tok, const std::string& s) override {
-        value.errorPath.emplace_back(tok, s);
+        auto& ep = value.errorPath;
+        if (std::any_of(ep.begin(), ep.end(), [&](const ErrorPathItem& epi) {
+            return epi.first == tok && epi.second == s;
+        }))
+            return;
+        ep.emplace_back(tok, s);
     }
 
     template<class T>
@@ -1150,7 +1206,7 @@ struct SingleValueFlowAnalyzer : ValueFlowAnalyzer {
     }
 
     bool isAlias(const Token* tok, bool& inconclusive) const override {
-        if (value.isLifetimeValue())
+        if (value.isLifetimeValue() && value.lifetimeKind != ValueFlow::Value::LifetimeKind::SubObject)
             return false;
         for (const auto& m: {
             std::ref(getVars()), std::ref(getAliasedVars())
@@ -1198,16 +1254,38 @@ struct SingleValueFlowAnalyzer : ValueFlowAnalyzer {
 
     bool stopOnCondition(const Token* condTok) const override
     {
-        if (value.isNonValue())
-            return false;
         if (value.isImpossible())
             return false;
-        if (isConditional() && !value.isKnown())
-            return true;
-        if (value.isSymbolicValue())
+        // lifetime values must keep flowing to properly track aliases
+        if (value.isLifetimeValue())
             return false;
+        // 'conditional' flag (uninit, or lowered after a modifying branch): may depend on a
+        // condition that doesn't mention the variable -> stop unless the state covers this one
+        if (value.conditional && !value.isKnown())
+            return !canSplitConditional(condTok);
+        if (value.isNonValue())
+            return false;
+        if (value.isSymbolicValue())
+            return isConditional() && !value.isKnown();
+        // conditional via the originating 'condition' (e.g. possible null after 'if (p && ...)'): only flow
+        // if the condition references the value, else a correlation we can't follow (e.g.
+        // 'bool ok = (p != nullptr); if (!ok)') could make a later deref safe -> stop
+        if (value.condition && !value.isKnown() && !conditionReferencesValue(condTok))
+            return true;
         ConditionState cs = analyzeCondition(condTok);
         return cs.isUnknownDependent();
+    }
+
+    // Does the condition mention the tracked value, either directly or through a symbolic alias?
+    bool conditionReferencesValue(const Token* condTok) const
+    {
+        return findAstNode(condTok, [&](const Token* tok) {
+            if (match(tok))
+                return true;
+            return std::any_of(tok->values().cbegin(), tok->values().cend(), [&](const ValueFlow::Value& v) {
+                return v.isSymbolicValue() && !v.isImpossible() && v.tokvalue && match(v.tokvalue);
+            });
+        }) != nullptr;
     }
 
     bool updateScope(const Token* endBlock, bool /*modified*/) const override {
@@ -1222,9 +1300,9 @@ struct SingleValueFlowAnalyzer : ValueFlowAnalyzer {
                 return true;
             if (value.isLifetimeValue())
                 return true;
-            if (isConditional())
-                return false;
             const Token* condTok = getCondTokFromEnd(endBlock);
+            if (isConditional())
+                return canSplitConditional(condTok);
             std::set<nonneg int> varids2;
             std::transform(getVars().cbegin(), getVars().cend(), std::inserter(varids2, varids2.begin()), SelectMapKeys{});
             return bifurcate(condTok, varids2, getSettings());
@@ -1260,6 +1338,12 @@ struct ExpressionAnalyzer : SingleValueFlowAnalyzer {
             dependOnThis |= exprDependsOnThis(value.tokvalue);
             setupExprVarIds(value.tokvalue);
         }
+        if (value.isContainerSizeValue() && value.container) {
+            // a container size tracked through another expression (e.g. a pointer obtained from
+            // data()) is invalidated by writes to the container it belongs to
+            dependOnThis |= exprDependsOnThis(value.container);
+            setupExprVarIds(value.container);
+        }
         uniqueExprId =
             expr->isUniqueExprId() && (Token::Match(expr, "%cop%") || !isVariableChanged(expr, 0, s));
     }
@@ -1270,7 +1354,7 @@ struct ExpressionAnalyzer : SingleValueFlowAnalyzer {
     }
 
     void setupExprVarIds(const Token* start, int depth = 0) {
-        if (depth > settings.vfOptions.maxExprVarIdDepth) {
+        if (depth > settings().vfOptions.maxExprVarIdDepth) {
             // TODO: add bailout message
             return;
         }
@@ -1324,7 +1408,7 @@ struct ExpressionAnalyzer : SingleValueFlowAnalyzer {
 
     ProgramState getProgramState() const override {
         ProgramState ps;
-        ps[expr] = value;
+        ps[expr] = {value};
         return ps;
     }
 
@@ -1464,15 +1548,22 @@ ValuePtr<Analyzer> makeMemberExpressionAnalyzer(std::string varname, const Token
 struct ContainerExpressionAnalyzer : ExpressionAnalyzer {
     ContainerExpressionAnalyzer(const Token* expr, ValueFlow::Value val, const Settings& s)
         : ExpressionAnalyzer(expr, std::move(val), s)
-    {}
+    {
+        // The size of a container expression belongs to that expression. Through a pointer the
+        // size keeps belonging to the container the pointer was obtained from.
+        if (astIsContainer(expr) && !astIsPointer(expr))
+            value.container = expr;
+    }
 
     bool match(const Token* tok) const override {
-        return tok->exprId() == expr->exprId() || (astIsIterator(tok) && isAliasOf(tok, expr->exprId()));
+        return tok->exprId() == expr->exprId() || isIteratorOf(tok, expr->exprId());
     }
 
     Action isWritable(const Token* tok, Direction /*d*/) const override
     {
-        if (astIsIterator(tok))
+        // only writes to the container itself change its size - not writes through an iterator
+        // or to a default-inserted element
+        if (tok->exprId() != expr->exprId())
             return Action::None;
         if (!getValue(tok))
             return Action::None;
@@ -1499,7 +1590,7 @@ struct ContainerExpressionAnalyzer : ExpressionAnalyzer {
             if (action == Library::Container::Action::PUSH || action == Library::Container::Action::POP || action == Library::Container::Action::APPEND) { // TODO: handle more actions?
                 std::vector<const Token*> args = getArguments(tok->tokAt(3));
                 bool isVariadic = false;
-                if (const Library::Function* libFunc = settings.library.getFunction(tok->tokAt(2))) {
+                if (const Library::Function* libFunc = settings().library.getFunction(tok->tokAt(2))) {
                     const auto& argChecks = libFunc->argumentChecks;
                     isVariadic = argChecks.find(-1) != argChecks.end() && argChecks.at(-1).variadic;
                 }
@@ -1547,7 +1638,7 @@ struct ContainerExpressionAnalyzer : ExpressionAnalyzer {
             case Library::Container::Action::APPEND: {
                 std::vector<const Token*> args = getArguments(tok->astParent()->tokAt(2));
                 if (args.size() == 1) // TODO: handle overloads
-                    n = ValueFlow::valueFlowGetStrLength(tok->astParent()->tokAt(3), settings);
+                    n = ValueFlow::valueFlowGetStrLength(tok->astParent()->tokAt(3), settings().library);
                 if (n == 0) // TODO: handle known empty append
                     val->setPossible();
                 break;

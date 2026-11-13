@@ -455,7 +455,7 @@ bool CheckConditionImpl::isOverlappingCond(const Token * const cond1, const Toke
         if (!num1->isNumber() || MathLib::isNegative(num1->str()))
             return false;
 
-        if (!Token::Match(cond2, "&|==") || !cond2->astOperand1() || !cond2->astOperand2())
+        if (!Token::Match(cond2, "&|==") || !cond2->astOperand1())
             return false;
         const Token *expr2 = cond2->astOperand1();
         const Token *num2  = cond2->astOperand2();
@@ -1301,6 +1301,10 @@ void CheckConditionImpl::checkIncorrectLogicOperator()
             if (isfloat && (op1 == "==" || op1 == "!=" || op2 == "==" || op2 == "!="))
                 continue;
 
+            // no double value to compare (1e400L would become infinity)
+            if (isfloat && (MathLib::isLongDoubleOutOfDoubleRange(value1) || MathLib::isLongDoubleOutOfDoubleRange(value2)))
+                continue;
+
             // the expr are not the token of the value but they provide better context
             const double d1 = isfloat ? MathLib::toDoubleNumber(value1) : 0;
             const double d2 = isfloat ? MathLib::toDoubleNumber(value2) : 0;
@@ -1516,9 +1520,7 @@ void CheckConditionImpl::clarifyConditionError(const Token *tok, bool assign, bo
 
 void CheckConditionImpl::alwaysTrueFalse()
 {
-    const bool pedantic = mSettings.isPremiumEnabled("alwaysTrue") ||
-                          mSettings.isPremiumEnabled("alwaysFalse") ||
-                          mSettings.isPremiumEnabled("knownConditionTrueFalse");
+    const bool pedantic = mSettings.isPremiumEnabled("knownConditionTrueFalse");
 
     if (!pedantic && !mSettings.severity.isEnabled(Severity::style))
         return;
@@ -1534,7 +1536,7 @@ void CheckConditionImpl::alwaysTrueFalse()
                 tok = tok->link();
                 continue;
             }
-            if (!tok->hasKnownIntValue())
+            if (!tok->hasKnownIntValue() || !isConstExpression(tok, mSettings.library))
                 continue;
             const Token* condition = nullptr;
             {
@@ -1551,14 +1553,12 @@ void CheckConditionImpl::alwaysTrueFalse()
                     condition = parent;
                 else if (Token::Match(parent->previous(), "if|while ("))
                     condition = parent->previous();
-                else if (Token::simpleMatch(parent, "return"))
-                    condition = parent;
                 else if (parent->str() == ";" && parent->astParent() && parent->astParent()->astParent() &&
                          Token::simpleMatch(parent->astParent()->astParent()->previous(), "for ("))
                     condition = parent->astParent()->astParent()->previous();
-                else if (Token::Match(tok, "%comp%"))
+                else if ((Token::Match(tok, "%comp%|!") || isConstFunctionCall(tok->previous(), mSettings.library)) && Token::Match(tok->astParent(), "%oror%|&&"))
                     condition = tok;
-                else if ((tok->str() == "(" || (hasComp && Token::Match(tok, "!|%var%"))) && astIsBool(parent) && Token::Match(parent, "%assign%"))
+                else if (hasComp && Token::Match(tok, "!|%var%") && astIsBool(parent) && Token::Match(parent, "%assign%"))
                     condition = tok;
                 else
                     continue;
@@ -1575,10 +1575,19 @@ void CheckConditionImpl::alwaysTrueFalse()
                 continue;
             if (Token::simpleMatch(tok->astParent(), "return") && Token::Match(tok, ".|%var%"))
                 continue;
-            if (Token::Match(tok, "%num%|%bool%|%char%"))
-                continue;
-            if (Token::Match(tok, "! %num%|%bool%|%char%"))
-                continue;
+            bool warnForNumber = false;
+            if (Token::Match(tok, "%num%|%bool%|%char%")) {
+                const bool isZeroOrOne = (tok->getKnownIntValue() >> 1) == 0;
+                warnForNumber = !isZeroOrOne && tok->tokType() == Token::eNumber && tok->astParent() == condition->astParent();
+                if (!warnForNumber)
+                    continue;
+            }
+            if (Token::Match(tok, "! %num%|%bool%|%char%")) {
+                const bool isZeroOrOne = tok->next()->hasKnownIntValue() && (tok->next()->getKnownIntValue() >> 1) == 0;
+                warnForNumber = !isZeroOrOne && tok->next()->tokType() == Token::eNumber && tok->astParent() == condition->astParent();
+                if (!warnForNumber)
+                    continue;
+            }
             if (Token::Match(tok, "%oror%|&&")) {
                 bool bail = false;
                 for (const Token* op : { tok->astOperand1(), tok->astOperand2() }) {
@@ -1603,7 +1612,7 @@ void CheckConditionImpl::alwaysTrueFalse()
                                  true))
                 continue;
 
-            if (!pedantic && isConstVarExpression(tok, [](const Token* tok) {
+            if (!pedantic && !warnForNumber && isConstVarExpression(tok, [](const Token* tok) {
                 return Token::Match(tok, "[|(|&|+|-|*|/|%|^|>>|<<") && !Token::simpleMatch(tok, "( )");
             }))
                 continue;
@@ -1837,6 +1846,42 @@ void CheckConditionImpl::pointerAdditionResultNotNullError(const Token *tok, con
     reportError(tok, Severity::warning, "pointerAdditionResultNotNull", "Comparison is wrong. Result of '" + s + "' can't be 0 unless there is pointer overflow, and pointer overflow is undefined behaviour.");
 }
 
+static bool checkBoolConditionalAssign(const Token* condTok, const Token* assignTok, bool& isRedundant)
+{
+    bool isNegation = false;
+    const Token* varTok = condTok;
+    if (condTok->isUnaryOp("!")) {
+        isNegation = true;
+        varTok = varTok->astOperand1();
+    } else if (condTok->isBinaryOp()) {
+        varTok = condTok->astOperand1();
+        if (varTok->hasKnownIntValue())
+            varTok = condTok->astOperand2();
+    }
+
+    const ValueType* vt = varTok->variable() ? varTok->variable()->valueType() : nullptr;
+    if (!(vt && vt->type == ValueType::Type::BOOL && !vt->pointer))
+        return false;
+
+    if (!(assignTok->astOperand1() && assignTok->astOperand1()->varId() == varTok->varId()))
+        return false;
+    if (!(assignTok->astOperand2() && assignTok->astOperand2()->hasKnownIntValue()))
+        return false;
+    const MathLib::bigint val = assignTok->astOperand2()->getKnownIntValue();
+    if (val < 0 || val > 1)
+        return false;
+    if (condTok->isBinaryOp()) {
+        if (!varTok->astSibling()->hasKnownIntValue())
+            return false;
+        const MathLib::bigint compVal = varTok->astSibling()->getKnownIntValue();
+        if (compVal < 0 || compVal > 1)
+            return false;
+        isNegation = (condTok->str() == "!=") == (compVal == 1);
+    }
+    isRedundant = (isNegation && val == 0) || (!isNegation && val == 1);
+    return true;
+}
+
 void CheckConditionImpl::checkDuplicateConditionalAssign()
 {
     if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("duplicateConditionalAssign"))
@@ -1853,7 +1898,7 @@ void CheckConditionImpl::checkDuplicateConditionalAssign()
                 continue;
             const Token *blockTok = tok->linkAt(1)->next();
             const Token *condTok = tok->next()->astOperand2();
-            const bool isBoolVar = Token::Match(condTok, "!| %var%");
+            bool isBoolVar = Token::Match(condTok, "!| %var%");
             if (!isBoolVar && !Token::Match(condTok, "==|!="))
                 continue;
             if ((isBoolVar || condTok->str() == "!=") && Token::simpleMatch(blockTok->link(), "} else {"))
@@ -1866,21 +1911,8 @@ void CheckConditionImpl::checkDuplicateConditionalAssign()
             if (nextAfterAstRightmostLeaf(assignTok) != blockTok->link()->previous())
                 continue;
             bool isRedundant = false;
-            if (isBoolVar) {
-                const bool isNegation = condTok->str() == "!";
-                const Token* const varTok = isNegation ? condTok->next() : condTok;
-                const ValueType* vt = varTok->variable() ? varTok->variable()->valueType() : nullptr;
-                if (!(vt && vt->type == ValueType::Type::BOOL && !vt->pointer))
-                    continue;
-
-                if (!(assignTok->astOperand1() && assignTok->astOperand1()->varId() == varTok->varId()))
-                    continue;
-                if (!(assignTok->astOperand2() && assignTok->astOperand2()->hasKnownIntValue()))
-                    continue;
-                const MathLib::bigint val = assignTok->astOperand2()->getKnownIntValue();
-                if (val < 0 || val > 1)
-                    continue;
-                isRedundant = (isNegation && val == 0) || (!isNegation && val == 1);
+            if (checkBoolConditionalAssign(condTok, assignTok, isRedundant)) {
+                isBoolVar = true;
             } else { // comparison
                 if (!isSameExpression(
                         true, condTok->astOperand1(), assignTok->astOperand1(), mSettings, true, true))
@@ -1889,17 +1921,17 @@ void CheckConditionImpl::checkDuplicateConditionalAssign()
                         true, condTok->astOperand2(), assignTok->astOperand2(), mSettings, true, true))
                     continue;
             }
-            duplicateConditionalAssignError(condTok, assignTok, isRedundant);
+            duplicateConditionalAssignError(condTok, assignTok, isRedundant, isBoolVar);
         }
     }
 }
 
-void CheckConditionImpl::duplicateConditionalAssignError(const Token *condTok, const Token* assignTok, bool isRedundant)
+void CheckConditionImpl::duplicateConditionalAssignError(const Token *condTok, const Token* assignTok, bool isRedundant, bool isBoolVar)
 {
     ErrorPath errors;
     std::string msg = "Duplicate expression for the condition and assignment.";
     if (condTok && assignTok) {
-        if (condTok->str() == "==") {
+        if (condTok->str() == "==" && !isBoolVar) {
             msg = "Assignment '" + assignTok->expressionString() + "' is redundant with condition '" + condTok->expressionString() + "'.";
             errors.emplace_back(condTok, "Condition '" + condTok->expressionString() + "'");
             errors.emplace_back(assignTok, "Assignment '" + assignTok->expressionString() + "' is redundant");
@@ -1914,7 +1946,6 @@ void CheckConditionImpl::duplicateConditionalAssignError(const Token *condTok, c
     reportError(
         std::move(errors), Severity::style, "duplicateConditionalAssign", msg, CWE398, Certainty::normal);
 }
-
 
 void CheckConditionImpl::checkAssignmentInCondition()
 {
@@ -1982,14 +2013,15 @@ void CheckConditionImpl::checkCompareValueOutOfTypeRange()
             for (int i = 0; i < 2; ++i) {
                 const Token * const valueTok = (i == 0) ? tok->astOperand1() : tok->astOperand2();
                 const Token * const typeTok = valueTok->astSibling();
-                if (!valueTok->hasKnownIntValue() || !typeTok->valueType() || typeTok->valueType()->pointer)
+                const ValueType* const typeVt = typeTok->valueType();
+                if (!valueTok->hasKnownIntValue() || !typeVt || typeVt->pointer)
                     continue;
                 if (valueTok->getKnownIntValue() < 0 && valueTok->valueType() && valueTok->valueType()->sign != ValueType::Sign::SIGNED)
                     continue;
                 if (typeTok->isLiteral())
                     continue;
                 std::uint8_t bits = 0;
-                switch (typeTok->valueType()->type) {
+                switch (typeVt->type) {
                 case ValueType::Type::BOOL:
                     bits = 1;
                     break;
@@ -2014,10 +2046,10 @@ void CheckConditionImpl::checkCompareValueOutOfTypeRange()
                 if (bits == 0 || bits >= 63)
                     continue;
 
-                const auto typeMinValue = (typeTok->valueType()->sign == ValueType::Sign::UNSIGNED) ? 0 : (-(1LL << (bits-1)));
+                const auto typeMinValue = (typeVt->sign == ValueType::Sign::UNSIGNED) ? 0 : (-(1LL << (bits-1)));
                 const auto unsignedTypeMaxValue = (1LL << bits) - 1LL;
                 long long typeMaxValue;
-                if (typeTok->valueType()->sign != ValueType::Sign::SIGNED)
+                if (typeVt->sign != ValueType::Sign::SIGNED && !(typeVt->sign == ValueType::Sign::UNKNOWN_SIGN && typeVt->type == ValueType::Type::CHAR && mSettings.platform.defaultSign == 's'))
                     typeMaxValue = unsignedTypeMaxValue;
                 else if (bits >= mSettings.platform.int_bit && (!valueTok->valueType() || valueTok->valueType()->sign != ValueType::Sign::SIGNED))
                     typeMaxValue = unsignedTypeMaxValue;
@@ -2078,7 +2110,7 @@ void CheckConditionImpl::checkCompareValueOutOfTypeRange()
                 }
                 if (!error || diag(tok))
                     continue;
-                compareValueOutOfTypeRangeError(valueTok, typeTok->valueType()->str(), kiv, result);
+                compareValueOutOfTypeRangeError(valueTok, typeVt->str(), kiv, result);
             }
         }
     }
@@ -2095,7 +2127,7 @@ void CheckConditionImpl::compareValueOutOfTypeRangeError(const Token *comparison
         Certainty::normal);
 }
 
-void CheckCondition::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckCondition::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     CheckConditionImpl checkCondition(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkCondition.multiCondition();
@@ -2115,7 +2147,7 @@ void CheckCondition::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLog
     checkCondition.alwaysTrueFalse();
 }
 
-void CheckCondition::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void CheckCondition::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
     CheckConditionImpl c(nullptr, settings, errorLogger);
 

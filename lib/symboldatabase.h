@@ -25,6 +25,7 @@
 #include "errortypes.h"
 #include "library.h"
 #include "mathlib.h"
+#include "refthunk.h"
 #include "sourcelocation.h"
 #include "token.h"
 #include "utils.h"
@@ -767,14 +768,14 @@ public:
 
     std::string fullName() const;
 
-    nonneg int argCount() const {
+    size_t argCount() const {
         return argumentList.size();
     }
-    nonneg int minArgCount() const {
+    size_t minArgCount() const {
         return argumentList.size() - initArgCount;
     }
-    const Variable* getArgumentVar(nonneg int num) const;
-    nonneg int initializedArgCount() const {
+    const Variable* getArgumentVar(size_t num) const;
+    size_t initializedArgCount() const {
         return initArgCount;
     }
     /**
@@ -928,7 +929,7 @@ public:
     const Scope* functionScope{};     ///< scope of function body
     const Scope* nestedIn{};          ///< Scope the function is declared in
     std::list<Variable> argumentList; ///< argument list, must remain list due to clangimport usage!
-    nonneg int initArgCount{};        ///< number of args with default values
+    size_t initArgCount{};            ///< number of args with default values
     FunctionType type = FunctionType::eFunction; ///< constructor, destructor, ...
     const Token* noexceptArg{};       ///< noexcept token
     const Token* throwArg{};          ///< throw token
@@ -945,6 +946,7 @@ public:
     static bool returnsStandardType(const Function* function, bool unknown = false);
 
     static bool returnsVoid(const Function* function, bool unknown = false);
+    static bool isCoroutine(const Function* function, const Standards &standards, const Tokenizer &tokens);
 
     static std::vector<const Token*> findReturns(const Function* f);
 
@@ -1044,7 +1046,7 @@ public:
     Scope(const SymbolDatabase &symdb_, const Token *classDef_, const Scope *nestedIn_);
     Scope(const SymbolDatabase &symdb_, const Token *classDef_, const Scope *nestedIn_, ScopeType type_, const Token *start_);
 
-    const SymbolDatabase& symdb;
+    RefThunk<const SymbolDatabase> symdb;
     std::string className;
     const Token* classDef{};   ///< class/struct/union/namespace token
     const Token* bodyStart{};  ///< '{' token
@@ -1143,9 +1145,14 @@ public:
      * @brief find a function
      * @param tok token of function call
      * @param requireConst if const refers to a const variable only const methods should be matched
+     * @param ref reference qualification of the object the function is called on
+     * @param funcName name to look up instead of tok->str(), e.g. "operator()" when tok is a variable that is called
      * @return pointer to function if found or NULL if not found
      */
-    const Function *findFunction(const Token *tok, bool requireConst=false, Reference ref=Reference::None) const;
+    const Function* findFunction(const Token* tok,
+                                 bool requireConst = false,
+                                 Reference ref = Reference::None,
+                                 const std::string& funcName = "") const;
 
     const Scope *findRecordInNestedList(const std::string & name, bool isC = false) const;
     Scope *findRecordInNestedList(const std::string & name, bool isC = false);
@@ -1209,7 +1216,10 @@ private:
      */
     bool isVariableDeclaration(const Token* tok, const Token*& vartok, const Token*& typetok) const;
 
-    void findFunctionInBase(const Token* tok, nonneg int args, std::vector<const Function *> & matches) const;
+    void findFunctionInBase(const std::string& name,
+                            const Token* tok,
+                            size_t args,
+                            std::vector<const Function*>& matches) const;
 
     /** @brief initialize varlist */
     void getVariableList(const Token *start, const Token *end);
@@ -1340,6 +1350,8 @@ class CPPCHECKLIB SymbolDatabase {
 public:
     explicit SymbolDatabase(Tokenizer& tokenizer);
     ~SymbolDatabase();
+    SymbolDatabase(const SymbolDatabase &) = delete;
+    SymbolDatabase &operator=(const SymbolDatabase &) = delete;
 
     /** @brief Information about all namespaces/classes/structures */
     std::list<Scope> scopeList;
@@ -1410,6 +1422,12 @@ public:
      * @brief Do a sanity check
      */
     void validate() const;
+
+    /**
+     * Set value type for generic selection (_Generic).
+     * @param par The opening parenthesis of the _Generic expression.
+     */
+    void setGenericValueType(Token *par);
 
     /** Set valuetype in provided tokenlist */
     void setValueTypeInTokenList(bool reportDebugWarnings, Token *tokens=nullptr);
@@ -1503,8 +1521,8 @@ private:
                                       std::list<const Function*> checkedFuncs) const;
 
     Tokenizer& mTokenizer;
-    const Settings &mSettings;
-    ErrorLogger &mErrorLogger;
+    const Settings& mSettings;
+    ErrorLogger& mErrorLogger;
 
     /** variable symbol table */
     std::vector<const Variable *> mVariableList;

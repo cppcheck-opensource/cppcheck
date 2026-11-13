@@ -249,7 +249,7 @@ void Variables::clearAliases(nonneg int varid)
 
 void Variables::eraseAliases(nonneg int varid)
 {
-    VariableUsage *usage = find(varid);
+    const VariableUsage *usage = find(varid);
 
     if (usage) {
         for (auto aliases = usage->_aliases.cbegin(); aliases != usage->_aliases.cend(); ++aliases)
@@ -329,7 +329,7 @@ void Variables::write(nonneg int varid, const Token* tok)
 
 void Variables::writeAliases(nonneg int varid, const Token* tok)
 {
-    VariableUsage *usage = find(varid);
+    const VariableUsage *usage = find(varid);
 
     if (usage) {
         for (auto aliases = usage->_aliases.cbegin(); aliases != usage->_aliases.cend(); ++aliases) {
@@ -1009,7 +1009,7 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage_iterateScopes(const Scope* c
             const Token * const equal = skipBracketsAndMembers(tok->next());
 
             // checked for chained assignments
-            if (tok != start && equal && equal->str() == "=") {
+            if (tok != start && (Token::simpleMatch(equal, "=") || (start->astParent() && Token::simpleMatch(start->astParent()->astParent(), "=")))) {
                 const nonneg int varId = tok->varId();
                 const Variables::VariableUsage * const var = variables.find(varId);
 
@@ -1155,10 +1155,6 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage_iterateScopes(const Scope* c
                         variables.read(tok2->varId(), tok);
                 }
             }
-        } else if (tok->variable() && tok->variable()->isClass() && tok->variable()->type() &&
-                   (tok->variable()->type()->needInitialization == Type::NeedInitialization::False) &&
-                   tok->strAt(1) == ";") {
-            variables.write(tok->varId(), tok);
         }
     }
 }
@@ -1175,7 +1171,7 @@ static bool isReturnedByRef(const Variable* var, const Function* func)
 
 void CheckUnusedVarImpl::checkFunctionVariableUsage()
 {
-    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.checkLibrary && !mSettings.isPremiumEnabled("unusedVariable"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.checkLibrary && !mSettings.isPremiumEnabled("unusedVariable") && !mSettings.isPremiumEnabled("unreadVariable"))
         return;
 
     logChecker("CheckUnusedVar::checkFunctionVariableUsage"); // style
@@ -1291,6 +1287,11 @@ void CheckUnusedVarImpl::checkFunctionVariableUsage()
             const Token *op1tok = tok->astOperand1();
             while (Token::Match(op1tok, ".|[|*"))
                 op1tok = op1tok->astOperand1();
+
+            // Bail out for overloaded indexing
+            if (op1tok && op1tok->valueType() && op1tok->valueType()->pointer == 0 &&
+                op1tok->valueType()->type == ValueType::Type::RECORD && Token::simpleMatch(op1tok->astParent(), "["))
+                continue;
 
             // Assignment in macro => do not warn
             if (isAssignment && tok->isExpandedMacro() && op1tok && op1tok->isExpandedMacro())
@@ -1497,7 +1498,7 @@ void CheckUnusedVarImpl::allocatedButUnusedVariableError(const Token *tok, const
 
 void CheckUnusedVarImpl::unreadVariableError(const Token *tok, const std::string &varname, bool modified)
 {
-    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("unusedVariable"))
+    if (!mSettings.severity.isEnabled(Severity::style) && !mSettings.isPremiumEnabled("unusedVariable") && !mSettings.isPremiumEnabled("unreadVariable"))
         return;
 
     if (modified)
@@ -1680,6 +1681,27 @@ void CheckUnusedVarImpl::checkStructMemberUsage()
                     if (use)
                         break;
                 }
+                // Class used in template with unknown definition
+                if (Token::Match(tok, "%name% <") && tok->linkAt(1)) {
+                    if (tok->function())
+                        continue;
+                    if (tok->type() && tok->type()->classScope)
+                        continue;
+                    const Token *start = tok;
+                    while (Token::Match(start->tokAt(-2), "%name% ::"))
+                        start = start->tokAt(-2);
+                    if (mSettings.library.detectContainer(start))
+                        continue;
+                    const Token *end = tok->linkAt(1);
+                    for (; tok != end; tok = tok->next()) {
+                        if (tok->type() && tok->type()->classScope == &scope) {
+                            use = true;
+                            break;
+                        }
+                    }
+                    if (use)
+                        break;
+                }
                 if (tok->variable() != &var)
                     continue;
                 if (tok != var.nameToken()) {
@@ -1725,7 +1747,7 @@ bool CheckUnusedVarImpl::isEmptyType(const Type* type)
     return (emptyType = false);
 }
 
-void CheckUnusedVar::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckUnusedVar::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     CheckUnusedVarImpl checkUnusedVar(&tokenizer, tokenizer.getSettings(), errorLogger);
 
@@ -1734,7 +1756,7 @@ void CheckUnusedVar::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLog
     checkUnusedVar.checkFunctionVariableUsage();
 }
 
-void CheckUnusedVar::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void CheckUnusedVar::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
     CheckUnusedVarImpl c(nullptr, settings, errorLogger);
     c.unusedVariableError(nullptr, "varname");

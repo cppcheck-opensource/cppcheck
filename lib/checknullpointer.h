@@ -48,26 +48,24 @@ namespace ValueFlow
 /** @brief check for null pointer dereferencing */
 
 class CPPCHECKLIB CheckNullPointer : public Check {
-    friend class TestNullPointer;
-
 public:
     /** @brief This constructor is used when registering the CheckNullPointer */
     CheckNullPointer() : Check("Null pointer") {}
 
 private:
     /** @brief Run checks against the normal token list */
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
     /** @brief Parse current TU and extract file info */
-    Check::FileInfo *getFileInfo(const Tokenizer &tokenizer, const Settings &settings, const std::string& currentConfig) const override;
+    const Check::FileInfo *getFileInfo(const Tokenizer &tokenizer, const Settings &settings, const std::string& currentConfig) const override;
 
-    Check::FileInfo * loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement) const override;
+    const Check::FileInfo * loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement, const std::string& file0) const override;
 
     /** @brief Analyse all file infos for all TU */
-    bool analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger) override;
+    bool analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<const Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger) override;
 
     /** Get error messages. Used by --errorlist */
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
     /** class info in WIKI format. Used by --doc */
     std::string classInfo() const override {
@@ -80,7 +78,7 @@ private:
 class CPPCHECKLIB CheckNullPointerImpl : public CheckImpl {
 public:
     /** @brief This constructor is used when running checks. */
-    CheckNullPointerImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckNullPointerImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /**
@@ -94,7 +92,7 @@ public:
      */
     bool isPointerDeRef(const Token *tok, bool &unknown) const;
 
-    static bool isPointerDeRef(const Token *tok, bool &unknown, const Settings &settings, bool checkNullArg = true);
+    static bool isPointerDeRef(const Token *tok, bool &unknown, const Library &library, bool checkNullArg = true);
 
     /**
      * @brief parse a function call and extract information about variable usage

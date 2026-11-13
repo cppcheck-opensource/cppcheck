@@ -26,6 +26,8 @@
 #include "checkimpl.h"
 #include "config.h"
 #include "errortypes.h"
+#include "mathlib.h"
+#include "vfvalue.h"
 
 #include <cstdint>
 #include <string>
@@ -36,10 +38,6 @@ class Token;
 class Variable;
 class ErrorLogger;
 class Tokenizer;
-namespace ValueFlow
-{
-    class Value;
-}
 
 /// @addtogroup Checks
 /// @{
@@ -53,9 +51,9 @@ public:
 
 private:
     /** run checks, the token list is not simplified */
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
-    void getErrorMessages(ErrorLogger* errorLogger, const Settings& settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings& settings) const override;
 
     std::string classInfo() const override {
         return "Check for invalid usage of STL:\n"
@@ -73,6 +71,7 @@ private:
                "- useless calls of string and STL functions\n"
                "- dereferencing an invalid iterator\n"
                "- erasing an iterator that is out of bounds\n"
+               "- out of bounds access of an iterator passed to an STL algorithm\n"
                "- reading from empty STL container\n"
                "- iterating over an empty STL container\n"
                "- consider using an STL algorithm instead of raw loop\n"
@@ -83,7 +82,7 @@ private:
 class CPPCHECKLIB CheckStlImpl : public CheckImpl {
 public:
     /** This constructor is used when running checks. */
-    CheckStlImpl(const Tokenizer* tokenizer, const Settings& settings, ErrorLogger* errorLogger)
+    CheckStlImpl(const Tokenizer* tokenizer, const Settings& settings, ErrorLogger& errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** Accessing container out of bounds using ValueFlow */
@@ -183,6 +182,12 @@ public:
 
     void eraseIteratorOutOfBounds();
 
+    /**
+     * Check that the iterator given to an STL algorithm is not accessed
+     * out of bounds: std::equal(in.begin(), in.end(), out.begin())
+     */
+    void algorithmOutOfBounds();
+
     void checkMutexes();
 
     bool isContainerSize(const Token *containerToken, const Token *expr) const;
@@ -206,12 +211,13 @@ public:
     void iteratorsError(const Token* tok, const std::string& containerName1, const std::string& containerName2);
     void iteratorsError(const Token* tok, const Token* containerTok, const std::string& containerName);
     void mismatchingContainerIteratorError(const Token* containerTok, const Token* iterTok, const Token* containerTok2);
-    void mismatchingContainersError(const Token* tok1, const Token* tok2);
+    void mismatchingContainersError(const Token* tok1, const Token* tok2, ValueFlow::Value::LifetimeKind ltk = ValueFlow::Value::LifetimeKind::Iterator);
     void mismatchingContainerExpressionError(const Token *tok1, const Token *tok2);
     void sameIteratorExpressionError(const Token *tok);
     void stlBoundariesError(const Token* tok);
     void if_findError(const Token* tok, bool str);
-    void checkFindInsertError(const Token *tok);
+    /** @param condTok the comparison in the if condition, nullptr => no specific suggestion */
+    void checkFindInsertError(const Token* tok, const Token* condTok);
     void sizeError(const Token* tok);
     void redundantIfRemoveError(const Token* tok);
     void invalidContainerLoopError(const Token* tok, const Token* loopTok, ErrorPath errorPath);
@@ -234,6 +240,14 @@ public:
     void knownEmptyContainerError(const Token *tok, const std::string& algo);
 
     void eraseIteratorOutOfBoundsError(const Token* ftok, const Token* itertok, const ValueFlow::Value* val = nullptr);
+
+    void algorithmOutOfBoundsError(const Token* tok,
+                                   const std::string& algoName,
+                                   MathLib::bigint accessed,
+                                   MathLib::bigint available,
+                                   const ValueFlow::Value* value,
+                                   bool mayAccessFewer,
+                                   bool inconclusive);
 
     void globalLockGuardError(const Token *tok);
     void localMutexError(const Token *tok);

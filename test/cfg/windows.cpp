@@ -23,6 +23,7 @@
 #include <wchar.h>
 #include <atlstr.h>
 #include <string>
+#include <locale.h>
 
 bool UpdateTraceACalled(TRACEHANDLE traceHandle, LPCSTR loggerName, EVENT_TRACE_PROPERTIES* pProperties)
 {
@@ -615,6 +616,27 @@ void memleak_malloca()
     // cppcheck-suppress memleak
 }
 
+void memleak_create_locale()
+{
+    // cppcheck-suppress-begin valueFlowBailoutIncompleteVar
+    _locale_t locale = _create_locale(LC_ALL, "C");
+    _locale_t wlocale = _wcreate_locale(LC_ALL, L"C");
+    (void) locale;
+    (void) wlocale;
+    // cppcheck-suppress-end valueFlowBailoutIncompleteVar
+    // cppcheck-suppress memleak
+}
+
+void no_memleak_create_locale()
+{
+    // cppcheck-suppress-begin valueFlowBailoutIncompleteVar
+    _locale_t locale = _create_locale(LC_ALL, "C");
+    _locale_t wlocale = _wcreate_locale(LC_ALL, L"C");
+    _free_locale(locale);
+    _free_locale(wlocale);
+    // cppcheck-suppress-end valueFlowBailoutIncompleteVar
+}
+
 void memleak_AllocateAndInitializeSid()
 {
     PSID pEveryoneSID = NULL;
@@ -862,7 +884,7 @@ void uninitvar()
     // cppcheck-suppress uninitvar
     lstrcat(buf, _T("test"));
     buf[0] = _T('\0');
-    // TODO cppcheck-suppress constVariable
+    // cppcheck-suppress constVariable
     TCHAR buf2[2];
     // cppcheck-suppress lstrcatCalled
     // cppcheck-suppress uninitvar

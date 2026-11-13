@@ -52,9 +52,9 @@ public:
 
 private:
     /** @brief Run checks against the normal token list */
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "A pointer to a variable is only valid as long as the variable is in scope.\n"
@@ -72,7 +72,7 @@ class CPPCHECKLIB CheckAutoVariablesImpl : public CheckImpl
 {
 public:
     /** This constructor is used when running checks. */
-    CheckAutoVariablesImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckAutoVariablesImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** assign function argument */

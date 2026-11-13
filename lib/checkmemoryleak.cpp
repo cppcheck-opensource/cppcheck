@@ -31,7 +31,6 @@
 #include "utils.h"
 
 #include <algorithm>
-#include <cassert>
 #include <cstddef>
 #include <utility>
 #include <vector>
@@ -286,10 +285,8 @@ void CheckMemoryLeakImpl::reportErr(const Token *tok, Severity severity, const s
 
 void CheckMemoryLeakImpl::reportErr(const std::list<const Token *> &callstack, Severity severity, const std::string &id, const std::string &msg, const CWE &cwe) const
 {
-    assert(mErrorLogger);
-
     const ErrorMessage errmsg(callstack, mTokenizer ? &mTokenizer->list : nullptr, severity, id, msg, cwe, Certainty::normal);
-    mErrorLogger->reportErr(errmsg);
+    mErrorLogger.reportErr(errmsg);
 }
 
 void CheckMemoryLeakImpl::memleakError(const Token *tok, const std::string &varname) const
@@ -490,13 +487,13 @@ void CheckMemoryLeakInFunctionImpl::checkReallocUsage()
     }
 }
 
-void CheckMemoryLeakInFunction::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckMemoryLeakInFunction::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     CheckMemoryLeakInFunctionImpl checkMemoryLeak(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkMemoryLeak.checkReallocUsage();
 }
 
-void CheckMemoryLeakInFunction::getErrorMessages(ErrorLogger *e, const Settings &settings) const
+void CheckMemoryLeakInFunction::getErrorMessages(ErrorLogger& e, const Settings &settings) const
 {
     CheckMemoryLeakInFunctionImpl c(nullptr, settings, e);
     c.memleakError(nullptr, "varname");
@@ -520,7 +517,7 @@ void CheckMemoryLeakInClassImpl::check()
     // only check classes and structures
     for (const Scope * scope : symbolDatabase->classAndStructScopes) {
         for (const Variable &var : scope->varlist) {
-            if (!var.isStatic() && (var.isPointer() || var.isPointerArray())) {
+            if (!var.isStatic()) {
                 // allocation but no deallocation of private variables in public function..
                 const Token *tok = var.typeStartToken();
                 // Either it is of standard type or a non-derived type
@@ -691,7 +688,7 @@ void CheckMemoryLeakInClassImpl::publicAllocationError(const Token *tok, const s
     reportError(tok, Severity::warning, "publicAllocationError", "$symbol:" + varname + "\nPossible leak in public function. The pointer '$symbol' is not deallocated before it is allocated.", CWE398, Certainty::normal);
 }
 
-void CheckMemoryLeakInClass::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckMemoryLeakInClass::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     if (!tokenizer.isCPP())
         return;
@@ -700,7 +697,7 @@ void CheckMemoryLeakInClass::runChecks(const Tokenizer &tokenizer, ErrorLogger *
     checkMemoryLeak.check();
 }
 
-void CheckMemoryLeakInClass::getErrorMessages(ErrorLogger *e, const Settings &settings) const
+void CheckMemoryLeakInClass::getErrorMessages(ErrorLogger& e, const Settings &settings) const
 {
     CheckMemoryLeakInClassImpl c(nullptr, settings, e);
     c.publicAllocationError(nullptr, "varname");
@@ -966,15 +963,15 @@ void CheckMemoryLeakStructMemberImpl::checkStructVariable(const Variable* const 
     }
 }
 
-void CheckMemoryLeakStructMember::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckMemoryLeakStructMember::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     CheckMemoryLeakStructMemberImpl checkMemoryLeak(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkMemoryLeak.check();
 }
 
-void CheckMemoryLeakStructMember::getErrorMessages(ErrorLogger * errorLogger, const Settings & settings) const
+void CheckMemoryLeakStructMember::getErrorMessages(ErrorLogger& errorLogger, const Settings & settings) const
 {
-    (void)errorLogger;
+    (void)&errorLogger;
     (void)settings;
 }
 
@@ -1052,6 +1049,9 @@ void CheckMemoryLeakNoVarImpl::checkForUnreleasedInputArgument(const Scope *scop
             if (alloc == New || alloc == NewArray) {
                 const Token* typeTok = arg->next();
                 bool bail = !typeTok->isStandardType() &&
+                            (!typeTok->valueType() ||
+                             (typeTok->valueType()->type < ValueType::Type::SMART_POINTER &&
+                              typeTok->valueType()->type != ValueType::Type::POD)) &&
                             !mSettings.library.detectContainerOrIterator(typeTok) &&
                             !mSettings.library.podtype(typeTok->expressionString());
                 if (bail && typeTok->type() && typeTok->type()->classScope &&
@@ -1218,13 +1218,13 @@ void CheckMemoryLeakNoVarImpl::unsafeArgAllocError(const Token *tok, const std::
                 Certainty::inconclusive); // Inconclusive because funcName may never throw
 }
 
-void CheckMemoryLeakNoVar::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckMemoryLeakNoVar::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     CheckMemoryLeakNoVarImpl checkMemoryLeak(&tokenizer, tokenizer.getSettings(), errorLogger);
     checkMemoryLeak.check();
 }
 
-void CheckMemoryLeakNoVar::getErrorMessages(ErrorLogger *e, const Settings &settings) const
+void CheckMemoryLeakNoVar::getErrorMessages(ErrorLogger& e, const Settings &settings) const
 {
     CheckMemoryLeakNoVarImpl c(nullptr, settings, e);
     c.functionCallLeak(nullptr, "funcName", "funcName");

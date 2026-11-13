@@ -49,26 +49,22 @@ enum class FunctionType : std::uint8_t;
 
 /** @brief %Check classes. Uninitialized member variables, non-conforming operators, missing virtual destructor, etc */
 class CPPCHECKLIB CheckClass : public Check {
-    friend class TestClass;
-    friend class TestConstructors;
-    friend class TestUnusedPrivateFunction;
-
 public:
     /** @brief This constructor is used when registering the CheckClass */
     CheckClass() : Check("Class") {}
 
     /** @brief Run checks on the normal token list */
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
     /** @brief Parse current TU and extract file info */
-    Check::FileInfo *getFileInfo(const Tokenizer &tokenizer, const Settings& /*settings*/, const std::string& currentConfig) const override;
+    const Check::FileInfo *getFileInfo(const Tokenizer &tokenizer, const Settings& /*settings*/, const std::string& currentConfig) const override;
 
-    Check::FileInfo * loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement) const override;
+    const Check::FileInfo * loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement, const std::string& file0) const override;
 
     /** @brief Analyse all file infos for all TU */
-    bool analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger) override;
+    bool analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<const Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger) override;
 
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "Check the code for each class.\n"
@@ -100,7 +96,7 @@ public:
 class CPPCHECKLIB CheckClassImpl : public CheckImpl {
 public:
     /** This constructor is used when running checks. */
-    CheckClassImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger);
+    CheckClassImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger);
 
     /** @brief Set of the STL types whose operator[] is not const */
     static const std::set<std::string> stl_containers_not_const;
@@ -186,11 +182,11 @@ public:
     void noCopyConstructorError(const Scope *scope, bool isdefault, const Token *alloc, bool inconclusive);
     void noOperatorEqError(const Scope *scope, bool isdefault, const Token *alloc, bool inconclusive);
     void noDestructorError(const Scope *scope, bool isdefault, const Token *alloc);
-    void uninitVarError(const Token *tok, bool isprivate, FunctionType functionType, const std::string &classname, const std::string &varname, bool derived, bool inconclusive, bool noCtor = false);
+    void uninitVarError(const Token *tok, bool isprivate, FunctionType functionType, const std::string &classname, const std::string &varname, bool derived, bool inconclusive, bool noCtor = false, bool inheritedCtor = false);
     void uninitVarError(const Token *tok, const std::string &classname, const std::string &varname);
     void missingMemberCopyError(const Token *tok, FunctionType functionType, const std::string& classname, const std::string& varname);
     void operatorEqVarError(const Token *tok, const std::string &classname, const std::string &varname, bool inconclusive);
-    void unusedPrivateFunctionError(const Token *tok1, const Token *tok2, const std::string &classname, const std::string &funcname);
+    void unusedPrivateFunctionError(const Token *tokImpl, const Token *tokDef, const std::string &classname, const std::string &funcname);
     void memsetError(const Token *tok, const std::string &memfunc, const std::string &classname, const std::string &type, bool isContainer = false);
     void memsetErrorReference(const Token *tok, const std::string &memfunc, const std::string &type);
     void memsetErrorFloat(const Token *tok, const std::string &type);
@@ -255,7 +251,12 @@ public:
 
     static void handleUnionMembers(std::vector<Usage>& usageList);
 
-    bool isInitialized(const Usage& usage, FunctionType funcType) const;
+    enum class Initialization : std::uint8_t {
+        Missing, // a member that is missing initialization
+        Initialized, // a member that has a constructor or an explicit initializer
+        None // a member that cannot be initialized (does not trigger a warning for other uninitialized members)
+    };
+    Initialization checkInitialization(const Usage& usage, FunctionType funcType, bool noConstructor = false) const;
 
     static bool isBaseClassMutableMemberFunc(const Token *tok, const Scope *scope);
 

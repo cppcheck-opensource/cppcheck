@@ -43,17 +43,15 @@ class Tokenizer;
 /** @brief Various small checks */
 
 class CPPCHECKLIB CheckUnusedVar : public Check {
-    friend class TestUnusedVar;
-
 public:
     /** @brief This constructor is used when registering the CheckClass */
     CheckUnusedVar() : Check("UnusedVar") {}
 
 private:
     /** @brief Run checks against the normal token list */
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
     std::string classInfo() const override {
         return "UnusedVar checks\n"
@@ -70,7 +68,7 @@ private:
 class CPPCHECKLIB CheckUnusedVarImpl : public CheckImpl {
 public:
     /** @brief This constructor is used when running checks. */
-    CheckUnusedVarImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckUnusedVarImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** @brief %Check for unused function variables */

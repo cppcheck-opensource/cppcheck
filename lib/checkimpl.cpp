@@ -24,32 +24,20 @@
 #include "tokenize.h"
 #include "vfvalue.h"
 
-#include <cassert>
 #include <utility>
 
 void CheckImpl::reportError(const std::list<const Token *> &callstack, Severity severity, const std::string &id, const std::string &msg, const CWE &cwe, Certainty certainty)
 {
-    assert(mErrorLogger);
-
     // TODO: report debug warning when error is for a disabled severity
     const ErrorMessage errmsg(callstack, mTokenizer ? &mTokenizer->list : nullptr, severity, id, msg, cwe, certainty);
-    mErrorLogger->reportErr(errmsg);
+    mErrorLogger.reportErr(errmsg);
 }
 
 void CheckImpl::reportError(ErrorPath errorPath, Severity severity, const char id[], const std::string &msg, const CWE &cwe, Certainty certainty)
 {
-    assert(mErrorLogger);
-
     // TODO: report debug warning when error is for a disabled severity
     const ErrorMessage errmsg(std::move(errorPath), mTokenizer ? &mTokenizer->list : nullptr, severity, id, msg, cwe, certainty);
-    mErrorLogger->reportErr(errmsg);
-}
-
-bool CheckImpl::wrongData(const Token *tok, const char *str)
-{
-    if (mSettings.daca)
-        reportError(tok, Severity::debug, "DacaWrongData", "Wrong data detected by condition " + std::string(str));
-    return true;
+    mErrorLogger.reportErr(errmsg);
 }
 
 ErrorPath CheckImpl::getErrorPath(const Token* errtok, const ValueFlow::Value* value, std::string bug) const

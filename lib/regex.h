@@ -44,6 +44,8 @@ public:
         Pcre = 1
     };
 
+    virtual Engine engine() const = 0;
+
     static std::shared_ptr<Regex> create(std::string pattern, Engine engine, std::string& err);
 };
 

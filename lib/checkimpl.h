@@ -37,7 +37,7 @@ class CPPCHECKLIB CheckImpl
 {
 protected:
     /** This constructor is used when running checks. */
-    CheckImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : mTokenizer(tokenizer), mSettings(settings), mErrorLogger(errorLogger) {}
 
 public:
@@ -47,7 +47,7 @@ public:
 protected:
     const Tokenizer* const mTokenizer{};
     const Settings& mSettings;
-    ErrorLogger* const mErrorLogger{};
+    ErrorLogger& mErrorLogger;
 
     /** report an error */
     void reportError(const Token *tok, const Severity severity, const std::string &id, const std::string &msg) {
@@ -71,12 +71,6 @@ protected:
     void reportError(ErrorPath errorPath, Severity severity, const char id[], const std::string &msg, const CWE &cwe, Certainty certainty);
 
     ErrorPath getErrorPath(const Token* errtok, const ValueFlow::Value* value, std::string bug) const;
-
-    /**
-     * Use WRONG_DATA in checkers when you check for wrong data. That
-     * will call this method
-     */
-    bool wrongData(const Token *tok, const char *str);
 
 public: // TODO: should be protected
     void logChecker(const char id[]);

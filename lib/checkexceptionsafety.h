@@ -50,10 +50,10 @@ public:
     CheckExceptionSafety() : Check("Exception Safety") {}
 
 private:
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
     /** Generate all possible errors (for --errorlist) */
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
     /** wiki formatted description of the class (for --doc) */
     std::string classInfo() const override {
@@ -71,7 +71,7 @@ private:
 class CPPCHECKLIB CheckExceptionSafetyImpl : public CheckImpl {
 public:
     /** This constructor is used when running checks. */
-    CheckExceptionSafetyImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckExceptionSafetyImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     /** Don't throw exceptions in destructors */

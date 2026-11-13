@@ -56,6 +56,8 @@ public:
      * @param suppressions Suppressions instance that keeps the suppressions
      */
     CmdLineParser(CmdLineLogger &logger, Settings &settings, Suppressions &suppressions);
+    CmdLineParser(const CmdLineParser &) = delete;
+    CmdLineParser &operator=(const CmdLineParser &) = delete;
 
     enum class Result : std::uint8_t { Success, Exit, Fail };
 
@@ -152,10 +154,10 @@ private:
 
     void outputFormatOptionMixingError() const;
 
-    CmdLineLogger &mLogger;
+    CmdLineLogger& mLogger;
 
-    Settings &mSettings;
-    Suppressions &mSuppressions;
+    Settings& mSettings;
+    Suppressions& mSuppressions;
 
 protected:
     std::vector<std::string> mPathNames;

@@ -377,7 +377,7 @@ void CheckInternalImpl::extraWhitespaceError(const Token* tok, const std::string
                 );
 }
 
-void CheckInternal::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckInternal::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     if (!tokenizer.getSettings().checks.isEnabled(Checks::internalCheck))
         return;
@@ -393,7 +393,7 @@ void CheckInternal::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogg
     checkInternal.checkRedundantTokCheck();
 }
 
-void CheckInternal::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void CheckInternal::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
     CheckInternalImpl c(nullptr, settings, errorLogger);
     c.simplePatternError(nullptr, "class {", "Match");

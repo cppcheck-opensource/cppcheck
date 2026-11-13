@@ -102,7 +102,7 @@ int TokenList::appendFileIfNew(std::string fileName)
     if (it != mFiles.cend())
         return static_cast<int>(std::distance(mFiles.cbegin(), it));
 
-    assert(mTokensFrontBack->front == nullptr); // has no effect if tokens have already been created
+    assert(mSettings.clang || mTokensFrontBack->front == nullptr); // has no effect if tokens have already been created
 
     // The "mFiles" vector remembers what files have been tokenized..
     mFiles.push_back(std::move(fileName));
@@ -354,7 +354,9 @@ bool TokenList::createTokensFromBufferInternal(const char* data, size_t size, co
 #endif
 
     simplecpp::OutputList outputList;
-    simplecpp::TokenList tokens({data, size}, mFiles, file0, &outputList);
+    simplecpp::DUI dui;
+    dui.std = mSettings.standards.getStdForLanguage(mLang);
+    simplecpp::TokenList tokens({data, size}, mFiles, file0, dui, &outputList);
 
     createTokens(std::move(tokens));
 
@@ -461,7 +463,7 @@ static Token* skipDecl(Token* tok, std::vector<Token*>* inner = nullptr)
         return Token::Match(tok, "%name%| ,|)");
     };
 
-    if (!Token::Match(tok->previous(), "( %name%"))
+    if (tok->varId() || !Token::Match(tok->previous(), "( %name%"))
         return tok;
     Token *vartok = tok;
     while (Token::Match(vartok, "%name%|*|&|&&|::|<")) {
@@ -967,6 +969,21 @@ static bool isPrefixUnary(const Token* tok, bool cpp)
     return tok->strAt(-1) == ")" && iscast(tok->linkAt(-1), cpp);
 }
 
+template<class T, REQUIRES("T must be a Token class", std::is_convertible<T*, const Token*> )>
+static T* skipTrailingReturnType(T* tok)
+{
+    if (!Token::Match(tok, ".|->")) // TODO: fix simplification (see garbageCode228)
+        return tok;
+    tok = tok->next();
+    while (Token::Match(tok, "%type%|%name%|::|&|&&|*|<|(")) {
+        if (tok->link())
+            tok = tok->link()->next();
+        else
+            tok = tok->next();
+    }
+    return tok;
+}
+
 /**
  * @throws InternalError thrown if unexpected tokens are encountered
  */
@@ -1011,7 +1028,7 @@ static void compilePrecedence2(Token *&tok, AST_state& state)
             else
                 compileUnaryOp(tok, state, compileScope);
         } else if (tok->str() == "[") {
-            if (state.cpp && isPrefixUnary(tok, /*cpp*/ true) && Token::Match(tok->link(), "] (|{|<")) { // Lambda
+            if (state.cpp && isPrefixUnary(tok, /*cpp*/ true) && Token::Match(tok->link(), "] [({<.]")) { // Lambda
                 // What we do here:
                 // - Nest the round bracket under the square bracket.
                 // - Nest what follows the lambda (if anything) with the lambda opening [
@@ -1060,7 +1077,10 @@ static void compilePrecedence2(Token *&tok, AST_state& state)
                         continue;
                     }
                 } else {
-                    Token* const curlyBracket = squareBracket->link()->next();
+                    Token* curlyBracket = squareBracket->link()->next();
+                    curlyBracket = skipTrailingReturnType(curlyBracket);
+                    if (!Token::simpleMatch(curlyBracket, "{"))
+                        throw InternalError(tok, "Syntax error in lambda", InternalError::AST);
                     squareBracket->astOperand1(curlyBracket);
                     state.op.push(squareBracket);
                     tok = curlyBracket->link() ? curlyBracket->link()->next() : nullptr;
@@ -1505,15 +1525,7 @@ const Token* findLambdaEndTokenWithoutAST(const Token* tok) {
         tok = tok->link()->next();
     if (Token::simpleMatch(tok, "mutable"))
         tok = tok->next();
-    if (Token::Match(tok, ".|->")) { // trailing return type
-        tok = tok->next();
-        while (Token::Match(tok, "%type%|%name%|::|&|&&|*|<|(")) {
-            if (tok->link())
-                tok = tok->link()->next();
-            else
-                tok = tok->next();
-        }
-    }
+    tok = skipTrailingReturnType(tok);
     if (!(Token::simpleMatch(tok, "{") && tok->link()))
         return nullptr;
     return tok->link()->next();
@@ -1695,6 +1707,8 @@ static Token * createAstAtToken(Token *tok)
 
                 tok->next()->astOperand1(tok);
                 tok->next()->astOperand2(colon);
+
+                createAstAtTokenInner(colon, tok->linkAt(1), cpp);
 
                 return decl;
             }
@@ -1945,12 +1959,18 @@ void TokenList::validateAst(bool print) const
         if ((tok->isAssignmentOp() || tok->isComparisonOp() || Token::Match(tok,"[|^/%]")) && tok->astOperand1() && !tok->astOperand2())
             throw InternalError(tok, "Syntax Error: AST broken, binary operator has only one operand.", InternalError::AST);
 
+        if (!(tok->astOperand1() && tok->astOperand2()) && ((isC() && tok->str() == "&&") || Token::Match(tok, "%or%|%oror%")))
+            throw InternalError(tok, "Syntax Error: AST broken, binary operator is missing operand(s).", InternalError::AST);
+
         // Syntax error if we encounter "?" with operand2 that is not ":"
         if (tok->str() == "?") {
             if (!tok->astOperand1() || !tok->astOperand2())
                 throw InternalError(tok, "AST broken, ternary operator missing operand(s)", InternalError::AST);
-            if (tok->astOperand2()->str() != ":")
+            const Token* colon = tok->astOperand2();
+            if (colon->str() != ":")
                 throw InternalError(tok, "Syntax Error: AST broken, ternary operator lacks ':'.", InternalError::AST);
+            if ((colon->astOperand1() && !precedes(colon->astOperand1(), colon)) || !succeeds(colon->astOperand2(), colon))
+                throw InternalError(tok, "AST broken, ternary operator has bad operand(s)", InternalError::AST);
         }
 
         // Check for endless recursion
@@ -2000,7 +2020,7 @@ void TokenList::validateAst(bool print) const
             if (Token::simpleMatch(tok->previous(), "operator"))
                 continue;
             // Skip incomplete code
-            if (!tok->astOperand1() && !tok->astOperand2() && !tok->astParent())
+            if (!tok->astOperand1() && !tok->astOperand2() && !tok->astParent() && !(tok->str().size() == 2 && tok->str()[1] == '='))
                 continue;
             // Skip lambda assignment and/or initializer
             if (Token::Match(tok, "= {|^|["))
@@ -2024,9 +2044,9 @@ void TokenList::validateAst(bool print) const
                                     "' doesn't have two operands.",
                                     InternalError::AST);
         }
-        if (tok->str() == "case" && !tok->astOperand1()) {
+        if (!tok->astOperand1() && Token::Match(tok, "case|!")) {
             throw InternalError(tok,
-                                "Syntax Error: AST broken, 'case' doesn't have an operand.",
+                                "Syntax Error: AST broken, '" + tok->str() + "' doesn't have an operand.",
                                 InternalError::AST);
         }
 

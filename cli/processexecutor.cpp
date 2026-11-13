@@ -96,7 +96,7 @@ namespace {
             {
                 if (suppr.isInline)
                     writeToPipe(REPORT_SUPPR_INLINE, suppressionToString(suppr));
-                else if (suppr.checked)
+                else if (suppr.checked && suppr.hash == 0)
                     writeToPipe(REPORT_SUPPR, suppressionToString(suppr));
             }
         }
@@ -172,8 +172,8 @@ namespace {
                 writeToPipeInternal(type, data.c_str(), len);
         }
 
-        const int mWpipe;
-        const bool mDebug;
+        int mWpipe;
+        bool mDebug;
     };
 }
 

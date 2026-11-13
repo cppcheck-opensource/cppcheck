@@ -32,7 +32,9 @@
 #include "fixture.h"
 #include "helpers.h"
 
+#include <algorithm>
 #include <cstring>
+#include <iterator>
 #include <list>
 #include <map>
 #include <set>
@@ -50,13 +52,14 @@ public:
     TestPreprocessor() : TestFixture("TestPreprocessor") {}
 
 private:
+    #define expandMacros(...) expandMacros_(__FILE__, __LINE__, __VA_ARGS__)
     template<size_t size>
-    std::string expandMacros(const char (&code)[size], ErrorLogger &errorLogger) const {
+    std::string expandMacros_(const char* file, int line, const char (&code)[size], ErrorLogger &errorLogger) const {
         simplecpp::OutputList outputList;
         std::vector<std::string> files;
-        simplecpp::TokenList tokens1 = simplecpp::TokenList(code, files, "file.cpp", &outputList);
+        simplecpp::TokenList tokens1 = simplecpp::TokenList(code, files, "file.cpp", {}, &outputList);
         Preprocessor p(tokens1, settingsDefault, errorLogger, Path::identify(tokens1.getFiles()[0], false));
-        ASSERT(p.loadFiles(files));
+        ASSERT_LOC(p.loadAllIncludes(files), file, line);
         simplecpp::TokenList tokens2 = p.preprocess("", files, outputList);
         (void)p.reportOutput(outputList, true);
         return tokens2.stringify();
@@ -72,7 +75,7 @@ private:
             throw std::runtime_error("token list not empty");
 
         simplecpp::OutputList outputList;
-        const simplecpp::TokenList tokens1(code, files, file0, &outputList);
+        const simplecpp::TokenList tokens1(code, files, file0, dui, &outputList);
 
         // Preprocess..
         simplecpp::TokenList tokens2(files);
@@ -121,7 +124,7 @@ private:
         simplecpp::OutputList outputList;
         std::vector<std::string> files;
 
-        simplecpp::TokenList tokens({code, size}, files, Path::simplifyPath(filename), &outputList);
+        simplecpp::TokenList tokens({code, size}, files, Path::simplifyPath(filename), {}, &outputList);
 
         // TODO: we should be using the actual Preprocessor implementation
         Preprocessor preprocessor(tokens, settings, errorlogger, Path::identify(tokens.getFiles()[0], false));
@@ -136,12 +139,15 @@ private:
         preprocessor.simplifyPragmaAsm();
 
         std::map<std::string, std::string> cfgcode;
-        if (cfgs.empty())
-            cfgs = preprocessor.getConfigs();
+        if (cfgs.empty()) {
+            cfgs.insert("");
+            std::set<std::string> configDefines = { "__cplusplus" };
+            preprocessor.getConfigs(configDefines, cfgs);
+        }
         for (const std::string & config : cfgs) {
             try {
-                const bool writeLocations = (strstr(code, "#file") != nullptr) || (strstr(code, "#include") != nullptr);
-                cfgcode[config] = preprocessor.getcode(config, files, writeLocations);
+                const bool writeLocs = (strstr(code, "#include") != nullptr);
+                cfgcode[config] = preprocessor.getcode(config, files, writeLocs);
             } catch (const simplecpp::Output &) {
                 cfgcode[config] = "";
             }
@@ -367,17 +373,24 @@ private:
         TEST_CASE(testMissingIncludeMixed);
         TEST_CASE(testMissingIncludeCheckConfig);
 
+        TEST_CASE(testLazyInclude);
+        TEST_CASE(testKeepComments);
+        TEST_CASE(testKeepCommentsMultiline);
+
         TEST_CASE(hasInclude);
 
         TEST_CASE(limitsDefines);
 
         TEST_CASE(hashCalculation);
+        TEST_CASE(hashCalculationIncludeOrder);
 
         TEST_CASE(standard);
 
         TEST_CASE(writeLocations);
 
         TEST_CASE(pragmaAsm);
+
+        TEST_CASE(dumpPreprocessor);
     }
 
     template<size_t size>
@@ -391,12 +404,27 @@ private:
             ASSERT(settings.library.load("", library, false).errorcode == Library::ErrorCode::OK);
         std::vector<std::string> files;
         simplecpp::OutputList outputList;
-        simplecpp::TokenList tokens(code,files,"test.c",&outputList);
-        Preprocessor preprocessor(tokens, settings, *this, Standards::Language::C); // TODO: do we need to consider #file?
-        ASSERT(preprocessor.loadFiles(files));
-        ASSERT(!preprocessor.reportOutput(outputList, true));
+        simplecpp::TokenList tokens(code, files, "test.c", {}, &outputList);
+        Preprocessor preprocessor(tokens, settings, *this, Standards::Language::C);
+        std::set<std::string> configs = { "" };
+        std::set<std::string> configDefines = { "__cplusplus" };
+        const auto getDefineName = [](const std::string &defineString) {
+            return defineString.substr(0, defineString.find_first_of("( "));
+        };
+        std::transform(settings.library.defines().begin(),
+                       settings.library.defines().end(),
+                       std::inserter(configDefines, configDefines.end()),
+                       getDefineName);
+        preprocessor.setLoadCallback([&](simplecpp::FileData &data, bool loaded) {
+            if (loaded) {
+                Preprocessor::removeComments(data.tokens);
+                preprocessor.getConfigs(data.filename, data.tokens, configDefines, configs);
+            }
+        });
         preprocessor.removeComments();
-        const std::set<std::string> configs = preprocessor.getConfigs();
+        preprocessor.getConfigs(configDefines, configs);
+        ASSERT(preprocessor.loadAllIncludes(files));
+        ASSERT(!preprocessor.reportOutput(outputList, true));
         std::string ret;
         for (const std::string & config : configs)
             ret += config + '\n';
@@ -407,9 +435,14 @@ private:
     std::size_t getHash(const char (&code)[size]) {
         std::vector<std::string> files;
         simplecpp::TokenList tokens(code,files,"test.c");
-        Preprocessor preprocessor(tokens, settingsDefault, *this, Standards::Language::C); // TODO: do we need to consider #file?
-        ASSERT(preprocessor.loadFiles(files));
+        Preprocessor preprocessor(tokens, settingsDefault, *this, Standards::Language::C);
+        preprocessor.setLoadCallback([](simplecpp::FileData &data, bool loaded) {
+            if (loaded) {
+                Preprocessor::removeComments(data.tokens);
+            }
+        });
         preprocessor.removeComments();
+        ASSERT(preprocessor.loadAllIncludes(files));
         return preprocessor.calculateHash("");
     }
 
@@ -418,7 +451,7 @@ private:
                                 "cpp\n"
                                 "#else\n"
                                 "c\n"
-                                "#endif";
+                                "#endif\n";
 
         {
             // Preprocess => actual result..
@@ -472,16 +505,19 @@ private:
     void error4() {
         // In included file
         {
+            ScopedFile header("ab.h", "#error hello world!\n");
             const auto settings = dinit(Settings, $.userDefines = "TEST");
-            const char code[] = "#file \"ab.h\"\n#error hello world!\n#endfile";
+            const char code[] = "#include \"ab.h\"\n";
             (void)getcodeforcfg(settings, *this, code, "TEST", "test.c");
             ASSERT_EQUALS("[ab.h:1:2]: (error) #error hello world! [preprocessorErrorDirective]\n", errout_str());
         }
 
         // After including a file
         {
+            ScopedFile header("ab.h", "");
             const auto settings = dinit(Settings, $.userDefines = "TEST");
-            const char code[] = "#file \"ab.h\"\n\n#endfile\n#error aaa";
+            const char code[] = "#include \"ab.h\"\n"
+                                "#error aaa\n";
             (void)getcodeforcfg(settings, *this, code, "TEST", "test.c");
             ASSERT_EQUALS("[test.c:2:2]: (error) #error aaa [preprocessorErrorDirective]\n", errout_str());
         }
@@ -550,7 +586,7 @@ private:
                                 "\n"
                                 "#ifndef C\n"
                                 "#error aa\n"
-                                "#endif";
+                                "#endif\n";
         ASSERT_EQUALS("A=A;B=B;C\nA=A;C\nC\n", getConfigsStr(filedata));
     }
 
@@ -584,35 +620,35 @@ private:
     }
 
     void includeguard1() {
+        ScopedFile header("abc.h",
+                          "#ifndef abcH\n"
+                          "#define abcH\n"
+                          "#endif\n");
         // Handling include guards..
-        const char filedata[] = "#file \"abc.h\"\n"
-                                "#ifndef abcH\n"
-                                "#define abcH\n"
-                                "#endif\n"
-                                "#endfile\n"
+        const char filedata[] = "#include \"abc.h\"\n"
                                 "#ifdef ABC\n"
-                                "#endif";
+                                "#endif\n";
         ASSERT_EQUALS("\nABC=ABC\n", getConfigsStr(filedata));
     }
 
     void includeguard2() {
+        ScopedFile header("abc.h",
+                          "foo\n"
+                          "#ifdef ABC\n"
+                          "\n"
+                          "#endif\n");
         // Handling include guards..
-        const char filedata[] = "#file \"abc.h\"\n"
-                                "foo\n"
-                                "#ifdef ABC\n"
-                                "\n"
-                                "#endif\n"
-                                "#endfile\n";
+        const char filedata[] = "#include \"abc.h\"\n";
         ASSERT_EQUALS("\nABC=ABC\n", getConfigsStr(filedata));
     }
 
 
     void ifdefwithfile() {
+        ScopedFile header("abc.h", "class A{};/*\n\n\n\n\n\n\n*/\n");
+
         // Handling include guards..
         const char filedata[] = "#ifdef ABC\n"
-                                "#file \"abc.h\"\n"
-                                "class A{};/*\n\n\n\n\n\n\n*/\n"
-                                "#endfile\n"
+                                "#include \"abc.h\"\n"
                                 "#endif\n"
                                 "int main() {}\n";
 
@@ -927,7 +963,7 @@ private:
     void ticket_4922() { // #4922
         const char code[] = "__asm__ \n"
                             "{ int extern __value) 0; (double return (\"\" } extern\n"
-                            "__typeof __finite (__finite) __finite __inline \"__GI___finite\");";
+                            "__typeof __finite (__finite) __finite __inline \"__GI___finite\");\n";
         (void)getcode(settings0, *this, code);
     }
 
@@ -1038,7 +1074,7 @@ private:
 
     void macro_simple16() {  // # 4703
         const char filedata[] = "#define MACRO( A, B, C ) class A##B##C##Creator {};\n"
-                                "MACRO( B\t, U , G )";
+                                "MACRO( B\t, U , G )\n";
         ASSERT_EQUALS("\nclass BUGCreator { } ;", expandMacros(filedata, *this));
     }
 
@@ -1046,41 +1082,41 @@ private:
         // It would probably be OK if the generated code was
         // "\n123+$123" since the first 123 comes from the source code
         const char filedata[] = "#define MACRO(A) A+123\n"
-                                "MACRO(123)";
+                                "MACRO(123)\n";
         ASSERT_EQUALS("\n123 + 123", expandMacros(filedata, *this));
     }
 
     void macro_simple18() {  // (1e-7)
         const char filedata1[] = "#define A (1e-7)\n"
-                                 "a=A;";
+                                 "a=A;\n";
         ASSERT_EQUALS("\na = ( 1e-7 ) ;", expandMacros(filedata1, *this));
 
         const char filedata2[] = "#define A (1E-7)\n"
-                                 "a=A;";
+                                 "a=A;\n";
         ASSERT_EQUALS("\na = ( 1E-7 ) ;", expandMacros(filedata2, *this));
 
         const char filedata3[] = "#define A (1e+7)\n"
-                                 "a=A;";
+                                 "a=A;\n";
         ASSERT_EQUALS("\na = ( 1e+7 ) ;", expandMacros(filedata3, *this));
 
         const char filedata4[] = "#define A (1.e+7)\n"
-                                 "a=A;";
+                                 "a=A;\n";
         ASSERT_EQUALS("\na = ( 1.e+7 ) ;", expandMacros(filedata4, *this));
 
         const char filedata5[] = "#define A (1.7f)\n"
-                                 "a=A;";
+                                 "a=A;\n";
         ASSERT_EQUALS("\na = ( 1.7f ) ;", expandMacros(filedata5, *this));
 
         const char filedata6[] = "#define A (.1)\n"
-                                 "a=A;";
+                                 "a=A;\n";
         ASSERT_EQUALS("\na = ( .1 ) ;", expandMacros(filedata6, *this));
 
         const char filedata7[] = "#define A (1.)\n"
-                                 "a=A;";
+                                 "a=A;\n";
         ASSERT_EQUALS("\na = ( 1. ) ;", expandMacros(filedata7, *this));
 
         const char filedata8[] = "#define A (8.0E+007)\n"
-                                 "a=A;";
+                                 "a=A;\n";
         ASSERT_EQUALS("\na = ( 8.0E+007 ) ;", expandMacros(filedata8, *this));
     }
 
@@ -1252,8 +1288,8 @@ private:
 
     void macro_NULL() {
         // See ticket #4482 - UB when passing NULL to variadic function
-        ASSERT_EQUALS("\n0", expandMacros("#define null 0\nnull", *this));
-        TODO_ASSERT_EQUALS("\nNULL", "\n0", expandMacros("#define NULL 0\nNULL", *this)); // TODO: Let the tokenizer handle NULL?
+        ASSERT_EQUALS("\n0", expandMacros("#define null 0\nnull\n", *this));
+        TODO_ASSERT_EQUALS("\nNULL\n", "\n0", expandMacros("#define NULL 0\nNULL\n", *this)); // TODO: Let the tokenizer handle NULL?
     }
 
     void string1() {
@@ -1503,7 +1539,7 @@ private:
                                 "#pragma asm foo\n"
                                 "    mov r1, 11\n"
                                 "#pragma endasm bar\n"
-                                "bbb";
+                                "bbb\n";
 
         // Preprocess => actual result..
         const std::map<std::string, std::string> actual = getcode(settings0, *this, filedata);
@@ -1517,7 +1553,7 @@ private:
         const char filedata[] = "#pragma asm\n"
                                 "    mov @w1, 11\n"
                                 "#pragma endasm ( temp=@w1 )\n"
-                                "bbb";
+                                "bbb\n";
 
         // Preprocess => actual result..
         const std::map<std::string, std::string> actual = getcode(settings0, *this, filedata);
@@ -1576,22 +1612,9 @@ private:
         }
 
         {
-            const char filedata[] = "#file \"abc.h\"\n"
-                                    "#define a\n"
-                                    "\"\n"
-                                    "#endfile\n";
-
-            // expand macros..
-            const std::string actual(expandMacros(filedata, *this));
-
-            ASSERT_EQUALS("", actual);
-            ASSERT_EQUALS("[abc.h:2:1]: (error) No pair for character (\"). Can't process file. File is either invalid or unicode, which is currently not supported. [syntaxError]\n", errout_str());
-        }
-
-        {
-            const char filedata[] = "#file \"abc.h\"\n"
-                                    "#define a\n"
-                                    "#endfile\n"
+            ScopedFile header("abc.h",
+                              "#define a\n");
+            const char filedata[] = "#include \"abc.h\"\n"
                                     "\"\n";
 
             // expand macros..
@@ -1652,7 +1675,7 @@ private:
                                 "#else\n"
                                 "#define N 20\n"
                                 "#endif\n"
-                                "N";
+                                "N\n";
 
         // Preprocess => actual result..
         const std::map<std::string, std::string> actual = getcode(settings0, *this, filedata);
@@ -1720,14 +1743,14 @@ private:
             const char filedata[] = "#define A 0\n"
                                     "#if A\n"
                                     "FOO\n"
-                                    "#endif";
+                                    "#endif\n";
             ASSERT_EQUALS("", getcodeforcfg(settings0, *this, filedata,"","test.c"));
         }
         {
             const char filedata[] = "#define A 1\n"
                                     "#if A==1\n"
                                     "FOO\n"
-                                    "#endif";
+                                    "#endif\n";
             ASSERT_EQUALS("\n\nFOO", getcodeforcfg(settings0, *this, filedata,"","test.c"));
         }
     }
@@ -1737,7 +1760,7 @@ private:
                                 "#define B A\n"
                                 "#if (B==A) || (B==C)\n"
                                 "FOO\n"
-                                "#endif";
+                                "#endif\n";
         ASSERT_EQUALS("\n\n\nFOO", getcodeforcfg(settings0, *this, filedata,"","test.c"));
     }
 
@@ -1745,7 +1768,7 @@ private:
         const char filedata[] = "#define A 0\n"
                                 "#if (A==0)\n"
                                 "FOO\n"
-                                "#endif";
+                                "#endif\n";
         ASSERT_EQUALS("\n\nFOO", getcodeforcfg(settings0, *this, filedata,"","test.c"));
     }
 
@@ -1753,7 +1776,7 @@ private:
         const char filedata[] = "#define X +123\n"
                                 "#if X==123\n"
                                 "FOO\n"
-                                "#endif";
+                                "#endif\n";
         ASSERT_EQUALS("\n\nFOO", getcodeforcfg(settings0, *this, filedata,"","test.c"));
     }
 
@@ -1763,7 +1786,7 @@ private:
                                     "#define B (A & 0x00f0)\n"
                                     "#if B==0x0010\n"
                                     "FOO\n"
-                                    "#endif";
+                                    "#endif\n";
             ASSERT_EQUALS("\n\n\nFOO", getcodeforcfg(settings0, *this, filedata,"","test.c"));
         }
         {
@@ -1772,14 +1795,14 @@ private:
                                     "#define C (B & A)\n"
                                     "#if C==0x0010\n"
                                     "FOO\n"
-                                    "#endif";
+                                    "#endif\n";
             ASSERT_EQUALS("\n\n\n\nFOO", getcodeforcfg(settings0, *this, filedata,"","test.c"));
         }
         {
             const char filedata[] = "#define A (1+A)\n" // don't hang for recursive macros
                                     "#if A==1\n"
                                     "FOO\n"
-                                    "#endif";
+                                    "#endif\n";
             ASSERT_EQUALS("\n\nFOO", getcodeforcfg(settings0, *this, filedata,"","test.c"));
         }
     }
@@ -1911,7 +1934,7 @@ private:
         const char filedata[] = "#ifndef A\n"
                                 "#define A(x) x\n"
                                 "#endif\n"
-                                "A(123);";
+                                "A(123);\n";
 
         // Preprocess => actual result..
         const std::map<std::string, std::string> actual = getcode(settings0, *this, filedata);
@@ -2097,7 +2120,7 @@ private:
     }
 
     void remarkComment4() {
-        const char code[] = "//REMARK /";
+        const char code[] = "//REMARK /\n";
         const auto remarkComments = getRemarkComments(code, *this);
         ASSERT_EQUALS(0, remarkComments.size());
     }
@@ -2146,19 +2169,19 @@ private:
 
     void predefine5() {  // #3737, #5119 - automatically define __cplusplus
         // #3737...
-        const char code[] = "#ifdef __cplusplus\n123\n#endif";
+        const char code[] = "#ifdef __cplusplus\n123\n#endif\n";
         ASSERT_EQUALS("",      getcodeforcfg(settings0, *this, code, "", "test.c"));
         ASSERT_EQUALS("\n123", getcodeforcfg(settings0, *this, code, "", "test.cpp"));
     }
 
     void predefine6() { // automatically define __STDC_VERSION__
-        const char code[] = "#ifdef __STDC_VERSION__\n123\n#endif";
+        const char code[] = "#ifdef __STDC_VERSION__\n123\n#endif\n";
         ASSERT_EQUALS("\n123", getcodeforcfg(settings0, *this, code, "", "test.c"));
         ASSERT_EQUALS("",      getcodeforcfg(settings0, *this, code, "", "test.cpp"));
     }
 
     void strictAnsi() {
-        const char code[] = "#ifdef __STRICT_ANSI__\n123\n#endif";
+        const char code[] = "#ifdef __STRICT_ANSI__\n123\n#endif\n";
         Settings settings;
 
         settings.standards.setStd("gnu99");
@@ -2286,14 +2309,14 @@ private:
     }
 
     void getConfigs7e() {
+        ScopedFile header("test.h",
+                          "#ifndef test_h\n"
+                          "#define test_h\n"
+                          "#ifdef ABC\n"
+                          "#endif\n"
+                          "#endif\n");
         const char filedata[] = "#ifdef ABC\n"
-                                "#file \"test.h\"\n"
-                                "#ifndef test_h\n"
-                                "#define test_h\n"
-                                "#ifdef ABC\n"
-                                "#endif\n"
-                                "#endif\n"
-                                "#endfile\n"
+                                "#include \"test.h\"\n"
                                 "#endif\n";
         ASSERT_EQUALS("\nABC=ABC\n", getConfigsStr(filedata));
     }
@@ -2310,17 +2333,17 @@ private:
                                 "#define bar foo\n"
                                 "#define baz bar+0\n"
                                 "#if 0\n"
-                                "#endif";
+                                "#endif\n";
         ASSERT_EQUALS("\n", getConfigsStr(filedata));
     }
 
     void getConfigs11() { // #9832 - include guards
-        const char filedata[] = "#file \"test.h\"\n"
-                                "#if !defined(test_h)\n"
-                                "#define test_h\n"
-                                "123\n"
-                                "#endif\n"
-                                "#endfile\n";
+        ScopedFile header("test.h",
+                          "#if !defined(test_h)\n"
+                          "#define test_h\n"
+                          "123\n"
+                          "#endif\n");
+        const char filedata[] = "#include \"test.h\"\n";
         ASSERT_EQUALS("\n", getConfigsStr(filedata));
     }
 
@@ -2719,27 +2742,27 @@ private:
 
     void getConfigsInvalid() { // #14732
         {
-            const char filedata[] = "#if<";
+            const char filedata[] = "#if<\n";
             ASSERT_EQUALS("\n", getConfigsStr(filedata));
         }
         {
-            const char filedata[] = "#if>";
+            const char filedata[] = "#if>\n";
             ASSERT_EQUALS("\n", getConfigsStr(filedata));
         }
         {
-            const char filedata[] = "#if==";
+            const char filedata[] = "#if==\n";
             ASSERT_EQUALS("\n", getConfigsStr(filedata));
         }
         {
-            const char filedata[] = "#if<=";
+            const char filedata[] = "#if<=\n";
             ASSERT_EQUALS("\n", getConfigsStr(filedata));
         }
         {
-            const char filedata[] = "#if>=";
+            const char filedata[] = "#if>=\n";
             ASSERT_EQUALS("\n", getConfigsStr(filedata));
         }
         {
-            const char filedata[] = "#if!";
+            const char filedata[] = "#if!\n";
             ASSERT_EQUALS("\n", getConfigsStr(filedata));
         }
     }
@@ -2750,7 +2773,7 @@ private:
                             "#elif sizeof(unsigned short) == 4\n"
                             "Fred & Wilma\n"
                             "#else\n"
-                            "#endif";
+                            "#endif\n";
 
         const std::map<std::string, std::string> actual = getcode(settings0, *this, code);
         ASSERT_EQUALS("\nFred & Wilma", actual.at(""));
@@ -2778,7 +2801,7 @@ private:
     void garbage() {
         const char filedata[] = "V\n"
                                 "#define X b   #endif #line 0 \"x\"  ;\n"
-                                "#if ! defined ( Y )    #endif";
+                                "#if ! defined ( Y )    #endif\n";
 
         // Preprocess => don't crash..
         (void)getcode(settings0, *this, filedata);
@@ -2802,7 +2825,7 @@ private:
 
         ScopedFile header("header.h", "");
 
-        const char code[] = "#include \"header.h\"";
+        const char code[] = "#include \"header.h\"\n";
         (void)getcodeforcfg(settings, *this, code, "", "test.c");
 
         ASSERT_EQUALS("", errout_str());
@@ -2817,7 +2840,7 @@ private:
                                     );
         setTemplateFormat("simple");
 
-        const char code[] = "#include \"header.h\"";
+        const char code[] = "#include \"header.h\"\n";
         (void)getcodeforcfg(settings, *this, code, "", "test.c");
 
         ASSERT_EQUALS("test.c:1:2: information: Include file: \"header.h\" not found. [missingInclude]\n", errout_str());
@@ -2834,7 +2857,7 @@ private:
 
         ScopedFile header("header.h", "", "inc");
 
-        const char code[] = "#include \"header.h\"";
+        const char code[] = "#include \"header.h\"\n";
         (void)getcodeforcfg(settings, *this, code, "", "test.c");
 
         ASSERT_EQUALS("test.c:1:2: information: Include file: \"header.h\" not found. [missingInclude]\n", errout_str());
@@ -2852,7 +2875,7 @@ private:
 
         ScopedFile header("header.h", "", "inc");
 
-        const char code[] = "#include \"inc/header.h\"";
+        const char code[] = "#include \"inc/header.h\"\n";
         (void)getcodeforcfg(settings, *this, code, "", "test.c");
 
         ASSERT_EQUALS("", errout_str());
@@ -2870,7 +2893,7 @@ private:
 
         ScopedFile header("header.h", "", Path::getCurrentPath());
 
-        std::string code("#include \"" + header.path() + "\"");
+        std::string code("#include \"" + header.path() + "\"\n");
         (void)getcodeforcfg(settings, *this, code.data(), code.size(), "", "test.c");
 
         ASSERT_EQUALS("", errout_str());
@@ -2887,7 +2910,7 @@ private:
 
         const std::string header = Path::join(Path::getCurrentPath(), "header.h");
 
-        std::string code("#include \"" + header + "\"");
+        std::string code("#include \"" + header + "\"\n");
         (void)getcodeforcfg(settings, *this, code.data(), code.size(), "", "test.c");
 
         ASSERT_EQUALS("test.c:1:2: information: Include file: \"" + header + "\" not found. [missingInclude]\n", errout_str());
@@ -2904,7 +2927,7 @@ private:
 
         ScopedFile header("header.h", "");
 
-        const char code[] = "#include <header.h>";
+        const char code[] = "#include <header.h>\n";
         (void)getcodeforcfg(settings, *this, code, "", "test.c");
 
         ASSERT_EQUALS("test.c:1:2: information: Include file: <header.h> not found. Please note: Standard library headers do not need to be provided to get proper results. [missingIncludeSystem]\n", errout_str());
@@ -2919,7 +2942,7 @@ private:
                                     );
         setTemplateFormat("simple");
 
-        const char code[] = "#include <header.h>";
+        const char code[] = "#include <header.h>\n";
         (void)getcodeforcfg(settings, *this, code, "", "test.c");
 
         ASSERT_EQUALS("test.c:1:2: information: Include file: <header.h> not found. Please note: Standard library headers do not need to be provided to get proper results. [missingIncludeSystem]\n", errout_str());
@@ -2937,7 +2960,7 @@ private:
 
         ScopedFile header("header.h", "", "system");
 
-        const char code[] = "#include <header.h>";
+        const char code[] = "#include <header.h>\n";
         (void)getcodeforcfg(settings, *this, code, "", "test.c");
 
         ASSERT_EQUALS("", errout_str());
@@ -2955,7 +2978,7 @@ private:
 
         ScopedFile header("header.h", "", Path::getCurrentPath());
 
-        std::string code("#include <" + header.path() + ">");
+        std::string code("#include <" + header.path() + ">\n");
         (void)getcodeforcfg(settings, *this, code.data(), code.size(), "", "test.c");
 
         ASSERT_EQUALS("", errout_str());
@@ -2972,7 +2995,7 @@ private:
 
         const std::string header = Path::join(Path::getCurrentPath(), "header.h");
 
-        std::string code("#include <" + header + ">");
+        std::string code("#include <" + header + ">\n");
         (void)getcodeforcfg(settings, *this, code.data(), code.size(), "", "test.c");
 
         ASSERT_EQUALS("test.c:1:2: information: Include file: <" + header + "> not found. Please note: Standard library headers do not need to be provided to get proper results. [missingIncludeSystem]\n", errout_str());
@@ -2994,7 +3017,7 @@ private:
         const char code[] = "#include \"missing.h\"\n"
                             "#include <header.h>\n"
                             "#include <missing2.h>\n"
-                            "#include \"header2.h\"";
+                            "#include \"header2.h\"\n";
         (void)getcodeforcfg(settings, *this, code, "", "test.c");
 
         ASSERT_EQUALS("test.c:1:2: information: Include file: \"missing.h\" not found. [missingInclude]\n"
@@ -3042,8 +3065,84 @@ private:
                       "test.c:11:2: information: Include file: <" + missing4 + "> not found. Please note: Standard library headers do not need to be provided to get proper results. [missingIncludeSystem]\n", errout_str());
     }
 
+    void testLazyInclude() {
+        const char *code = "#ifdef CONFIG1\n"
+                           "#include \"header1.h\"\n"
+                           "#include \"missing1.h\"\n"
+                           "#else\n"
+                           "#include \"header2.h\"\n"
+                           "#include \"missing2.h\"\n"
+                           "#endif\n";
+
+        std::vector<std::string> files;
+        simplecpp::TokenList tokens(code, files, "test.c");
+
+        ScopedFile header1("header1.h", "1\n");
+        ScopedFile header2("header2.h", "2\n");
+
+        Settings settings;
+        Preprocessor preprocessor(tokens, settings, *this, Standards::Language::CPP);
+
+        simplecpp::OutputList outputList;
+        simplecpp::TokenList tokens2 = preprocessor.preprocess("CONFIG1", files, outputList);
+        std::string out = tokens2.stringify();
+
+        const simplecpp::FileDataCache &cache = preprocessor.mFileCache;
+
+        ASSERT_EQUALS("\n#line 1 \"header1.h\"\n1", out);
+        ASSERT_EQUALS(1, outputList.size());
+        ASSERT_EQUALS("Header not found: \"missing1.h\"", outputList.begin()->msg);
+        ASSERT_EQUALS(1, cache.size());
+    }
+
+    void testKeepComments() {
+        const char *code = "#include \"header.h\"\n"
+                           "// source file comment\n"
+                           "/* source file comment */\n";
+        std::vector<std::string> files;
+        simplecpp::TokenList tokens(code, files, "test.c");
+
+        ScopedFile header("header.h",
+                          "// header comment\n"
+                          "/* header comment */\n");
+
+        Settings settings;
+        settings.keepComments = true;
+        Preprocessor preprocessor(tokens, settings, *this, Standards::Language::CPP);
+
+        simplecpp::OutputList outputList;
+        simplecpp::TokenList tokens2 = preprocessor.preprocess("", files, outputList);
+        std::string out = tokens2.stringify();
+
+        const char *expected = "\n"
+                               "#line 1 \"header.h\"\n"
+                               "// header comment\n"
+                               "/* header comment */\n"
+                               "#line 2 \"test.c\"\n"
+                               "// source file comment\n"
+                               "/* source file comment */";
+        ASSERT_EQUALS(expected, out);
+    }
+
+    void testKeepCommentsMultiline() {
+        const char *code = "/* multi...\n"
+                           "   ...line */\n"
+                           "int x;\n";
+        std::vector<std::string> files;
+        simplecpp::TokenList tokens(code, files, "test.c");
+
+        Settings settings;
+        settings.keepComments = true;
+        Preprocessor preprocessor(tokens, settings, *this, Standards::Language::C);
+
+        const char *expected = "/* multi...\n"
+                               "   ...line */\n"
+                               "int x ;";
+        ASSERT_EQUALS(expected, preprocessor.getcode("", files, false));
+    }
+
     void hasInclude() {
-        const char code[] = "#if __has_include(<directory/non-existent-header.h>)\n123\n#endif";
+        const char code[] = "#if __has_include(<directory/non-existent-header.h>)\n123\n#endif\n";
         Settings settings;
 
         settings.standards.setStd("c++11");
@@ -3063,7 +3162,7 @@ private:
         // #11928 / #10045
         const char code[] = "void f(long l) {\n"
                             "  if (l > INT_MAX) {}\n"
-                            "}";
+                            "}\n";
         const std::string actual = getcodeforcfg(settings0, *this, code, "", "test.c");
         ASSERT_EQUALS("void f ( long l ) {\n"
                       "if ( l > $2147483647 ) { }\n"
@@ -3072,9 +3171,9 @@ private:
 
     void hashCalculation() {
         // #12383
-        const char code[] = "int a;";
-        const char code2[] = "int  a;"; // extra space
-        const char code3[] = "\n\nint a;"; // extra new line
+        const char code[] = "int a;\n";
+        const char code2[] = "int  a;\n"; // extra space
+        const char code3[] = "\n\nint a;\n"; // extra new line
 
         ASSERT_EQUALS(getHash(code), getHash(code));
         ASSERT_EQUALS(getHash(code2), getHash(code2));
@@ -3084,9 +3183,28 @@ private:
         ASSERT(getHash(code2) != getHash(code3));
     }
 
+    void hashCalculationIncludeOrder() {
+        // #15132 - the load order of the includes must not change the hash
+        const ScopedFile headerA("hash_a.h", "int a;\n");
+        const ScopedFile headerZ("hash_z.h", "int z;\n");
+        const char code[] = "#include \"hash_z.h\"\n"
+                            "#include \"hash_a.h\"\n";
+
+        const auto getHashLoadOrder = [&](const std::vector<std::string> &loadOrder) {
+            std::vector<std::string> files;
+            simplecpp::TokenList tokens(code, files, "test.c");
+            Preprocessor preprocessor(tokens, settingsDefault, *this, Standards::Language::C);
+            for (const std::string &header : loadOrder)
+                ASSERT(preprocessor.loadFile(files, header));
+            return preprocessor.calculateHash("");
+        };
+
+        ASSERT_EQUALS(getHashLoadOrder({"hash_z.h", "hash_a.h"}), getHashLoadOrder({"hash_a.h", "hash_z.h"}));
+    }
+
     void standard() {
 
-        const char code[] = "int a;";
+        const char code[] = "int a;\n";
         // TODO: this bypasses the standard determined from the settings - the parameter should not be exposed
         simplecpp::DUI dui;
 
@@ -3127,7 +3245,7 @@ private:
             std::vector<std::string> files;
             TokenList tokenlist{settingsDefault, Standards::Language::CPP};
             // TODO: can this happen from application code? if yes we need to turn it into a proper error
-            ASSERT_THROW_EQUALS(preprocess(code, files, "test.cpp", tokenlist, dui), std::runtime_error, "unexpected simplecpp::Output type 9");
+            ASSERT_THROW_EQUALS(preprocess(code, files, "test.cpp", tokenlist, dui), std::runtime_error, "unexpected simplecpp::Output type 12");
             ASSERT(!tokenlist.front()); // nothing is tokenized when an unknown standard is provided
         }
     }
@@ -3137,8 +3255,8 @@ private:
         const char inc[] = "class A {\n"
                            "public:\n"
                            "    void f() {}\n"
-                           "};";
-        const char code[] = R"(#include "test.h")";
+                           "};\n";
+        const char code[] = "#include \"test.h\"\n";
         ScopedFile header("test.h", inc);
         const std::string processed = getcodeforcfg(settingsDefault, *this, code, "", "test.cpp");
         ASSERT_EQUALS(
@@ -3153,8 +3271,32 @@ private:
 
     void pragmaAsm()
     {
-        const char code[] = "#pragma asm";
+        const char code[] = "#pragma asm\n";
         ASSERT_THROW_INTERNAL(getcodeforcfg(settingsDefault, *this, code, "", "test.cpp"), InternalError::SYNTAX);
+    }
+
+    void dumpPreprocessor() {
+        const char code[] = "#if M == 0\n"
+                            "#endif\n;\n";
+        std::vector<std::string> files;
+        simplecpp::OutputList outputList;
+
+        Settings settings;
+        settings.relativePaths = true;
+        settings.basePaths.emplace_back("/some/path");
+
+        simplecpp::TokenList tokens1(code, files, "/some/path/test.cpp", {}, &outputList);
+        Preprocessor preprocessor(tokens1, settings, *this, Standards::Language::CPP);
+        (void)preprocessor.preprocess("", files, outputList);
+        (void)preprocessor.reportOutput(outputList, true);
+
+        std::ostringstream ostr;
+        preprocessor.dump(ostr);
+        ASSERT_EQUALS(
+            "  <simplecpp-if-cond>\n"
+            "    <if-cond file=\"test.cpp\" line=\"1\" column=\"2\" E=\"M == 0\" result=\"1\"/>\n"
+            "  </simplecpp-if-cond>\n",
+            ostr.str());
     }
 };
 

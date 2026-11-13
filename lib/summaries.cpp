@@ -34,6 +34,14 @@
 #include <vector>
 
 
+static std::string getSummaryFile(std::string analyzerInfoFile)
+{
+    const std::string::size_type pos = analyzerInfoFile.rfind(".a");
+    if (pos == std::string::npos)
+        return "";
+    analyzerInfoFile[pos+1] = 's';
+    return analyzerInfoFile;
+}
 
 std::string Summaries::create(const Tokenizer &tokenizer, const std::string &cfg, std::size_t fsFileId)
 {
@@ -83,10 +91,8 @@ std::string Summaries::create(const Tokenizer &tokenizer, const std::string &cfg
     }
 
     if (!settings.buildDir.empty()) {
-        std::string filename = AnalyzerInformation::getAnalyzerInfoFile(settings.buildDir, Path::simplifyPath(tokenizer.list.getSourceFilePath()), cfg, fsFileId);
-        const std::string::size_type pos = filename.rfind(".a");
-        if (pos != std::string::npos) {
-            filename[pos+1] = 's';
+        const std::string filename = getSummaryFile(AnalyzerInformation::getAnalyzerInfoFile(settings.buildDir, Path::simplifyPath(tokenizer.list.getSourceFilePath()), cfg, fsFileId));
+        if (!filename.empty()) {
             std::ofstream fout(filename);
             fout << ostr.str();
         }
@@ -106,13 +112,12 @@ static std::vector<std::string> getSummaryFiles(const std::string &filename)
         return ret;
     std::string line;
     while (std::getline(fin, line)) {
-        const std::string::size_type dotA = line.find(".a");
-        const std::string::size_type colon = line.find(':');
-        if (colon > line.size() || dotA > colon)
+        AnalyzerInformation::Info filesTxtInfo;
+        if (!filesTxtInfo.parse(line))
             continue;
-        std::string f = line.substr(0,colon);
-        f[dotA + 1] = 's';
-        ret.push_back(std::move(f));
+        std::string f = getSummaryFile(filesTxtInfo.afile);
+        if (!f.empty())
+            ret.push_back(std::move(f));
     }
     return ret;
 }

@@ -102,7 +102,9 @@ void CheckTypeImpl::checkTooBigBitwiseShift()
         const ValueFlow::Value * value = tok->astOperand2()->getValueGE(lhsbits, mSettings);
         if (value && mSettings.isEnabled(value, false))
             tooBigBitwiseShiftError(tok, lhsbits, *value);
-        else if (lhstype->sign == ValueType::Sign::SIGNED) {
+        else if (lhstype->sign == ValueType::Sign::SIGNED && Token::Match(tok, "<<|<<=")) {
+            // Shifting a signed value left by its width minus one bit is undefined. A right shift by
+            // that many bits is defined (implementation-defined for a negative value, as any right shift).
             value = tok->astOperand2()->getValueGE(lhsbits-1, mSettings);
             if (value && mSettings.isEnabled(value, false))
                 tooBigSignedBitwiseShiftError(tok, lhsbits, *value);
@@ -531,7 +533,7 @@ void CheckTypeImpl::floatToIntegerOverflowError(const Token *tok, const ValueFlo
                 errmsg.str(), CWE190, value.isInconclusive() ? Certainty::inconclusive : Certainty::normal);
 }
 
-void CheckType::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
+void CheckType::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     // These are not "simplified" because casts can't be ignored
     CheckTypeImpl checkType(&tokenizer, tokenizer.getSettings(), errorLogger);
@@ -542,7 +544,7 @@ void CheckType::runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger)
     checkType.checkFloatToIntegerOverflow();
 }
 
-void CheckType::getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const
+void CheckType::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
     CheckTypeImpl c(nullptr, settings, errorLogger);
     c.tooBigBitwiseShiftError(nullptr, 32, ValueFlow::Value(64));

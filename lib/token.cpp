@@ -39,6 +39,7 @@
 #include <functional>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <map>
 #include <set>
 #include <sstream>
@@ -204,7 +205,6 @@ static const std::unordered_set<std::string> stdTypes = { "bool"
                                                           , "int"
                                                           , "long"
                                                           , "short"
-                                                          , "size_t"
                                                           , "void"
                                                           , "wchar_t"
                                                           , "signed"
@@ -614,7 +614,6 @@ bool Token::simpleMatch(const Token *tok, const char pattern[], size_t pattern_l
         return false; // shortcut
     const char *current = pattern;
     const char *end = pattern + pattern_len;
-    // cppcheck-suppress shadowFunction - TODO: fix this
     const char *next = static_cast<const char*>(std::memchr(pattern, ' ', pattern_len));
     if (!next)
         next = end;
@@ -769,7 +768,6 @@ nonneg int Token::getStrArraySize(const Token *tok)
 {
     assert(tok != nullptr);
     assert(tok->tokType() == eString);
-    // cppcheck-suppress shadowFunction - TODO: fix this
     const std::string str(getStringLiteral(tok->str()));
     int sizeofstring = 1;
     for (int i = 0; i < static_cast<int>(str.size()); i++) {
@@ -1333,10 +1331,10 @@ std::string Token::stringifyList(const stringifyOptions& options, const std::vec
 
     std::string ret;
 
-    unsigned int lineNumber = mImpl->mLineNumber - (options.linenumbers ? 1U : 0U);
+    nonneg int lineNumber = mImpl->mLineNumber - (options.linenumbers ? 1 : 0);
     // cppcheck-suppress shadowFunction - TODO: fix this
-    unsigned int fileIndex = options.files ? ~0U : mImpl->mFileIndex;
-    std::map<int, unsigned int> lineNumbers;
+    nonneg int fileIndex = options.files ? ~0U : mImpl->mFileIndex;
+    std::map<nonneg int, nonneg int> lineNumbers;
     for (const Token *tok = this; tok != end; tok = tok->next()) {
         assert(tok && "end precedes token");
         if (!tok)
@@ -2024,7 +2022,10 @@ static bool isAdjacent(const ValueFlow::Value& x, const ValueFlow::Value& y)
         return true;
     if (x.valueType == ValueFlow::Value::ValueType::FLOAT)
         return false;
-    return std::abs(x.intvalue - y.intvalue) == 1;
+    // Compared without a difference, which could overflow
+    const MathLib::bigint low = std::min(x.intvalue, y.intvalue);
+    const MathLib::bigint high = std::max(x.intvalue, y.intvalue);
+    return low != std::numeric_limits<MathLib::bigint>::max() && high == low + 1;
 }
 
 static bool removePointValue(std::list<ValueFlow::Value>& values, std::list<ValueFlow::Value>::iterator& x)
@@ -2201,7 +2202,7 @@ static void removeOverlaps(std::list<ValueFlow::Value>& values)
 
 // Removing contradictions is an NP-hard problem. Instead we run multiple
 // passes to try to catch most contradictions
-static void removeContradictions(std::list<ValueFlow::Value>& values)
+void Token::removeContradictions(std::list<ValueFlow::Value>& values)
 {
     removeOverlaps(values);
     for (int i = 0; i < 4; i++) {
@@ -2243,9 +2244,9 @@ bool Token::addValue(const ValueFlow::Value &value)
     // }));
 
     if (mImpl->mValues) {
-        // Don't handle more than 10 values for performance reasons
+        // Don't handle more values for performance reasons
         // TODO: add setting?
-        if (mImpl->mValues->size() >= 10U)
+        if (mImpl->mValues->size() >= ValueFlow::maxValues)
             return false;
 
         // if value already exists, don't add it again
@@ -2359,11 +2360,9 @@ const ::Type* Token::typeOf(const Token* tok, const Token** typeTok)
     if (tok->valueType() && tok->valueType()->typeScope && tok->valueType()->typeScope->definedType)
         return tok->valueType()->typeScope->definedType;
     if (Token::simpleMatch(tok, "return")) {
-        // cppcheck-suppress shadowFunction - TODO: fix this
         const Scope *scope = tok->scope();
         if (!scope)
             return nullptr;
-        // cppcheck-suppress shadowFunction - TODO: fix this
         const Function *function = scope->function;
         if (!function)
             return nullptr;
@@ -2438,6 +2437,7 @@ std::pair<const Token*, const Token*> Token::typeDecl(const Token* tok, bool poi
                     varTok = varTok->next();
                 while (Token::Match(varTok, "%name% ::"))
                     varTok = varTok->tokAt(2);
+                assert(varTok != tok);
                 std::pair<const Token*, const Token*> r = typeDecl(varTok);
                 if (r.first)
                     return r;
@@ -2473,18 +2473,15 @@ std::pair<const Token*, const Token*> Token::typeDecl(const Token* tok, bool poi
         return {var->typeStartToken(), var->typeEndToken()->next()};
     }
     if (Token::simpleMatch(tok, "return")) {
-        // cppcheck-suppress shadowFunction - TODO: fix this
         const Scope* scope = tok->scope();
         if (!scope)
             return {};
-        // cppcheck-suppress shadowFunction - TODO: fix this
         const Function* function = scope->function;
         if (!function)
             return {};
         return { function->retDef, function->returnDefEnd() };
     }
     if (tok->previous() && tok->previous()->function()) {
-        // cppcheck-suppress shadowFunction - TODO: fix this
         const Function *function = tok->previous()->function();
         return {function->retDef, function->returnDefEnd()};
     }

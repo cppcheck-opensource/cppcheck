@@ -64,17 +64,17 @@ public:
     CheckBufferOverrun() : Check("Bounds checking") {}
 
 private:
-    void runChecks(const Tokenizer &tokenizer, ErrorLogger *errorLogger) override;
+    void runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger) override;
 
     /** @brief Parse current TU and extract file info */
-    Check::FileInfo *getFileInfo(const Tokenizer &tokenizer, const Settings &settings, const std::string& /*currentConfig*/) const override;
+    const Check::FileInfo *getFileInfo(const Tokenizer &tokenizer, const Settings &settings, const std::string& /*currentConfig*/) const override;
 
     /** @brief Analyse all file infos for all TU */
-    bool analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger) override;
+    bool analyseWholeProgram(const CTU::FileInfo &ctu, const std::list<const Check::FileInfo*> &fileInfo, const Settings& settings, ErrorLogger &errorLogger) override;
 
-    void getErrorMessages(ErrorLogger *errorLogger, const Settings &settings) const override;
+    void getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const override;
 
-    Check::FileInfo * loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement) const override;
+    const Check::FileInfo * loadFileInfoFromXml(const tinyxml2::XMLElement *xmlElement, const std::string& file0) const override;
 
     std::string classInfo() const override {
         return "Out of bounds checking:\n"
@@ -96,7 +96,7 @@ class CPPCHECKLIB CheckBufferOverrunImpl : public CheckImpl
 {
 public:
     /** This constructor is used when running checks. */
-    CheckBufferOverrunImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger *errorLogger)
+    CheckBufferOverrunImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
         : CheckImpl(tokenizer, settings, errorLogger) {}
 
     void arrayIndex();
@@ -129,7 +129,7 @@ public:
     void objectIndex();
     void objectIndexError(const Token *tok, const ValueFlow::Value *v, bool known);
 
-    ValueFlow::Value getBufferSize(const Token *bufTok) const;
+    ValueFlow::Value getBufferSize(const Token *bufTok, const Settings& settings, bool checkStringLiteral = false) const;
 
     // CTU
     static bool isCtuUnsafeBufferUsage(const Settings &settings, const Token *argtok, CTU::FileInfo::Value *offset, int type);
