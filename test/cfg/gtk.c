@@ -746,7 +746,6 @@ static void destroy_notify_frees_data(gpointer data)
 // from then on, so it does not leak.
 void g_idle_add_takes_data_test(void)
 {
-    // cppcheck-suppress constVariablePointer
     gchar *data = g_strdup("data");
     g_idle_add(source_func_frees_data, data);
 
@@ -756,19 +755,15 @@ void g_idle_add_takes_data_test(void)
 
 void g_timeout_add_takes_data_test(void)
 {
-    // cppcheck-suppress constVariablePointer
     gchar *data = g_strdup("data");
     g_timeout_add(10, source_func_frees_data, data);
 
-    // cppcheck-suppress constVariablePointer
     gchar *data_seconds = g_strdup("data");
     g_timeout_add_seconds(1, source_func_frees_data, data_seconds);
 
-    // cppcheck-suppress constVariablePointer
     gchar *data_full = g_strdup("data");
     g_timeout_add_full(0, 10, source_func_frees_data, data_full, destroy_notify_frees_data);
 
-    // cppcheck-suppress constVariablePointer
     gchar *data_seconds_full = g_strdup("data");
     g_timeout_add_seconds_full(0, 1, source_func_frees_data, data_seconds_full, destroy_notify_frees_data);
 }
