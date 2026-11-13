@@ -109,13 +109,24 @@ public:
     void setLocationMacros(const Token* startTok, const std::vector<std::string>& files, const std::list<simplecpp::MacroUsage>& macroUsage)
     {
         mLocationMacros.clear();
-        for (const Token* tok = startTok; tok; tok = tok->next()) {
-            if (!tok->getMacroName().empty())
-                mLocationMacros[Location(files[tok->fileIndex()], tok->linenr())].emplace(tok->getMacroName());
-        }
-        // a token only knows the innermost macro it was expanded from
+        std::set<std::string> usedNames;
         for (const simplecpp::MacroUsage& usage : macroUsage)
-            mLocationMacros[Location(files[usage.useLocation.fileIndex], usage.useLocation.line)].emplace(usage.macroName);
+            usedNames.emplace(usage.macroName);
+        std::set<std::pair<Location, std::string>> unexpanded;
+        for (const Token* tok = startTok; tok; tok = tok->next()) {
+            const Location loc(files[tok->fileIndex()], tok->linenr());
+            if (!tok->getMacroName().empty())
+                mLocationMacros[loc].emplace(tok->getMacroName());
+            else if (tok->isName() && usedNames.count(tok->str()) != 0)
+                unexpanded.emplace(loc, tok->str());
+        }
+        // a token only knows the innermost macro it was expanded from; usages that produced no tokens are skipped
+        for (const simplecpp::MacroUsage& usage : macroUsage) {
+            const Location loc(files[usage.useLocation.fileIndex], usage.useLocation.line);
+            const auto it = mLocationMacros.find(loc);
+            if (it != mLocationMacros.end() && unexpanded.count({loc, usage.macroName}) == 0)
+                it->second.emplace(usage.macroName);
+        }
     }
 
     void resetExitCode()
