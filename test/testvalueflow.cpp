@@ -829,6 +829,23 @@ private:
         }
 
         {
+            // lifetime of global array must not be forwarded into the next function
+            const char code[] = "int x[10];\n"
+                                "void f() { int* p = x + 1; }\n"
+                                "void g() { x[0] = 0; }\n";
+            ASSERT_EQUALS(false, testLifetimeOfX(code, 3, "x ["));
+        }
+
+        {
+            // array of pointers is not decayed when it is subscripted
+            const char code[] = "const char* x[10];\n"
+                                "void f() {\n"
+                                "    x[0] = \"a\";\n"
+                                "}\n";
+            ASSERT_EQUALS(false, testLifetimeOfX(code, 3, "x ["));
+        }
+
+        {
             const char code[] = "void f() {\n"
                                 "    std::vector<int> v;\n"
                                 "    auto x = v.begin();\n"
@@ -8333,6 +8350,20 @@ private:
 
     void valueFlowCrash() {
         const char* code;
+
+        code = "struct N {\n" // isAliasOf() was called with expr=nullptr
+               "    N* r;\n"
+               "    N root() const;\n"
+               "    N f(const char* path, char d) const;\n"
+               "};\n"
+               "N N::f(const char* path, char d) const {\n"
+               "    N c = path[0] == d ? root() : *this;\n"
+               "    if (!c.r) return N();\n"
+               "    const char* p = path;\n"
+               "    while (*p == d) ++p;\n"
+               "    return c;\n"
+               "}\n";
+        (void)valueOfTok(code, "p");
 
         code = "void f(int x) {\n"
                "    if (0 * (x > 2)) {}\n"

@@ -6952,7 +6952,7 @@ void SymbolDatabase::setValueType(Token* tok, const Variable& var, const SourceL
     }
 }
 
-static ValueType::Type getEnumType(const Scope* scope, const Platform& platform);
+static ValueType::Type getEnumTypeCached(const Scope* scope, const Platform& platform);
 
 void SymbolDatabase::setValueType(Token* tok, const Enumerator& enumerator, const SourceLocation &loc)
 {
@@ -6982,7 +6982,7 @@ void SymbolDatabase::setValueType(Token* tok, const Enumerator& enumerator, cons
         setValueType(tok, valuetype);
     } else {
         valuetype.sign = ValueType::SIGNED;
-        valuetype.type = getEnumType(enumerator.scope, mSettings.platform);
+        valuetype.type = getEnumTypeCached(enumerator.scope, mSettings.platform);
         setValueType(tok, valuetype);
     }
 }
@@ -7547,7 +7547,7 @@ void SymbolDatabase::setValueType(Token* tok, const ValueType& valuetype, const 
     }
 }
 
-static ValueType::Type getEnumType(const Scope* scope, const Platform& platform) // TODO: also determine sign?
+static ValueType::Type getEnumType(const Scope* scope, const Platform& platform, bool* complete = nullptr) // TODO: also determine sign?
 {
     ValueType::Type type = ValueType::Type::INT;
     for (const Token* tok = scope->bodyStart; tok && tok != scope->bodyEnd; tok = tok->next()) {
@@ -7564,6 +7564,9 @@ static ValueType::Type getEnumType(const Scope* scope, const Platform& platform)
             if (const ValueType* vt = vTok->valueType()) {
                 if ((vt->type > type && (vt->type == ValueType::Type::LONG || vt->type == ValueType::Type::LONGLONG)))
                     type = vt->type;
+            } else if (complete) {
+                // the literal does not have a valuetype yet, the result might change later
+                *complete = false;
             }
             continue;
         }
@@ -7574,6 +7577,23 @@ static ValueType::Type getEnumType(const Scope* scope, const Platform& platform)
                 type = ValueType::Type::LONGLONG;
         }
     }
+    return type;
+}
+
+// Cache for getEnumType(), only active during SymbolDatabase::setValueTypeInTokenList()
+static thread_local std::unordered_map<const Scope*, ValueType::Type>* enumTypeCache = nullptr;
+
+static ValueType::Type getEnumTypeCached(const Scope* scope, const Platform& platform)
+{
+    if (!enumTypeCache)
+        return getEnumType(scope, platform);
+    const auto it = enumTypeCache->find(scope);
+    if (it != enumTypeCache->end())
+        return it->second;
+    bool complete = true;
+    const ValueType::Type type = getEnumType(scope, platform, &complete);
+    if (complete)
+        enumTypeCache->emplace(scope, type);
     return type;
 }
 
@@ -7609,7 +7629,7 @@ static const Token* parsedecl(const Token* type,
             else if (enum_type->isStandardType())
                 valuetype->fromLibraryType(enum_type->str(), settings);
         } else
-            valuetype->type = getEnumType(valuetype->typeScope, settings.platform);
+            valuetype->type = getEnumTypeCached(valuetype->typeScope, settings.platform);
     } else
         valuetype->type = ValueType::Type::RECORD;
     const bool cpp = type->isCpp();
@@ -7776,7 +7796,7 @@ static const Token* parsedecl(const Token* type,
         else if (!valuetype->typeScope && type->type() && type->type()->classScope && valuetype->type != ValueType::Type::SMART_POINTER) {
             if (type->type()->classScope->type == ScopeType::eEnum) {
                 valuetype->sign = ValueType::Sign::SIGNED;
-                valuetype->type = getEnumType(type->type()->classScope, settings.platform);
+                valuetype->type = getEnumTypeCached(type->type()->classScope, settings.platform);
             } else {
                 valuetype->type = ValueType::Type::RECORD;
             }
@@ -7965,6 +7985,17 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
 {
     if (!tokens)
         tokens = mTokenizer.list.front();
+
+    std::unordered_map<const Scope*, ValueType::Type> enumTypes;
+    struct EnumTypeCacheGuard {
+        explicit EnumTypeCacheGuard(std::unordered_map<const Scope*, ValueType::Type>* cache) {
+            enumTypeCache = cache;
+        }
+        ~EnumTypeCacheGuard() {
+            enumTypeCache = prev;
+        }
+        std::unordered_map<const Scope*, ValueType::Type>* prev{enumTypeCache};
+    } enumTypeCacheGuard(&enumTypes);
 
     for (Token *tok = tokens; tok; tok = tok->next())
         tok->setValueType(nullptr);

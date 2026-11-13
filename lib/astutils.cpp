@@ -1088,29 +1088,32 @@ bool isAliasOf(const Token* tok, const Token* expr, nonneg int* indirect)
     if (!tok)
         return false;
     const Token* r = nullptr;
+    std::vector<const Token*> aliasValues;
     for (const ReferenceToken& ref : tok->refs()) {
         const bool pointer = astIsPointer(ref.token);
+        const bool deref = expr && ref.token != tok && ref.token->isUnaryOp("*") && expr->exprId() == ref.token->astOperand1()->exprId();
+        aliasValues.clear();
+        for (const ValueFlow::Value& val : ref.token->values()) {
+            if (val.isImpossible())
+                continue;
+            if (val.isLocalLifetimeValue() || (pointer && val.isSymbolicValue() && val.intvalue == 0))
+                aliasValues.push_back(val.tokvalue);
+        }
+        if (!deref && aliasValues.empty())
+            continue;
         r = findAstNode(expr, [&](const Token* childTok) {
             if (childTok->exprId() == 0)
                 return false;
-            if (ref.token != tok && expr->exprId() == childTok->exprId() && ref.token->isUnaryOp("*") && expr->exprId() == ref.token->astOperand1()->exprId()) {
+            if (deref && expr->exprId() == childTok->exprId()) {
                 if (indirect)
                     *indirect = 0;
                 return true;
             }
-            for (const ValueFlow::Value& val : ref.token->values()) {
-                if (val.isImpossible())
-                    continue;
-                if (val.isLocalLifetimeValue() || (pointer && val.isSymbolicValue() && val.intvalue == 0)) {
-                    if (findAstNode(val.tokvalue,
-                                    [&](const Token* aliasTok) {
-                        return aliasTok != childTok && aliasTok->exprId() == childTok->exprId();
-                    })) {
-                        return true;
-                    }
-                }
-            }
-            return false;
+            return std::any_of(aliasValues.cbegin(), aliasValues.cend(), [&](const Token* aliasValue) {
+                return findAstNode(aliasValue, [&](const Token* aliasTok) {
+                    return aliasTok != childTok && aliasTok->exprId() == childTok->exprId();
+                }) != nullptr;
+            });
         });
         if (r)
             break;
