@@ -46,6 +46,7 @@
 #include <iomanip>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <numeric>
 #include <sstream>
 #include <stack>
@@ -2513,6 +2514,22 @@ Variable& Variable::operator=(const Variable &var) &
 
 bool Variable::isMember() const {
     return mScope && mScope->isClassOrStructOrUnion();
+}
+
+bool Variable::dimensionsProduct(MathLib::bigint &product) const
+{
+    const MathLib::bigint maxValue = std::numeric_limits<MathLib::bigint>::max();
+    const MathLib::bigint minValue = std::numeric_limits<MathLib::bigint>::min();
+    product = 1;
+    for (const Dimension &dim : mDimensions) {
+        const MathLib::bigint n = dim.num;
+        if (product > 0 && (n > 0 ? product > maxValue / n : n < minValue / product))
+            return false;
+        if (product < 0 && (n > 0 ? product < minValue / n : (n < 0 && product < maxValue / n)))
+            return false;
+        product *= n;
+    }
+    return true;
 }
 
 bool Variable::isPointerArray() const
@@ -8698,9 +8715,9 @@ static Result accumulateStructMembers(const Scope* scope, F f, ValueType::Accura
         if (const ValueType* vt = var.valueType()) {
             if (vt->type == ValueType::Type::RECORD && vt->typeScope == scope)
                 return {0, false};
-            const MathLib::bigint dim = std::accumulate(var.dimensions().cbegin(), var.dimensions().cend(), MathLib::bigint(1), [](MathLib::bigint i1, const Dimension& dim) {
-                return i1 * dim.num;
-            });
+            MathLib::bigint dim = 0;
+            if (!var.dimensionsProduct(dim))
+                return {0, false};
             if (var.nameToken()->scope() != scope && var.nameToken()->scope()->definedType) { // anonymous union
                 const auto ret = anonScopes.insert(var.nameToken()->scope());
                 if (ret.second)

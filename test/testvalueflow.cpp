@@ -1864,6 +1864,13 @@ private:
         ASSERT_EQUALS(1U, values.size());
         ASSERT_EQUALS(settings.platform.sizeof_int, values.back().intvalue);
         ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueKind::Known, values.back().valueKind);
+
+        // the number of array elements does not fit in a MathLib::bigint
+        code = "struct S { char m[0x4000000000000001][4]; };\n"
+               "x = sizeof(S);\n";
+        values = tokenValues(code, "( S");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT(values.back().isImpossible());
     }
 
     void valueFlowComma()

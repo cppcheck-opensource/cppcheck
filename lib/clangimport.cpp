@@ -43,7 +43,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <numeric>
 
 class Settings;
 
@@ -1638,9 +1637,11 @@ static void setValues(const Tokenizer &tokenizer, const SymbolDatabase *symbolDa
 
         MathLib::bigint typeSize = 0;
         for (const Variable &var: scope.varlist) {
-            const MathLib::bigint mul = std::accumulate(var.dimensions().cbegin(), var.dimensions().cend(), MathLib::bigint(1), [](MathLib::bigint v, const Dimension& dim) {
-                return v * dim.num;
-            });
+            MathLib::bigint mul = 0;
+            if (!var.dimensionsProduct(mul)) {
+                typeSize = 0;
+                break;
+            }
             if (var.valueType())
                 typeSize += mul * var.valueType()->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
         }

@@ -271,6 +271,7 @@ private:
         TEST_CASE(minsize_strlen);
         TEST_CASE(minsize_mul);
         TEST_CASE(minsize_overflow);
+        TEST_CASE(arraysize_overflow);
         TEST_CASE(unknownType);
 
         TEST_CASE(terminateStrncpy1);
@@ -4988,6 +4989,21 @@ private:
               "    (void)wmemchr(buf, L'a', 0x4000000000000000LL);\n"
               "}\n", settings0);
         ASSERT_EQUALS("[test.cpp:3:19]: (error) Buffer is accessed out of bounds: buf [bufferAccessOutOfBounds]\n", errout_str());
+    }
+
+    void arraysize_overflow() {
+        // the number of array elements must not wrap around
+        check("void f() {\n"
+              "    char a[0x4000000000000001][4];\n"
+              "    memset(a, 0, 10);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f() {\n"
+              "    char a[0x100000000][0x100000000];\n"
+              "    memset(a, 0, 10);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("", errout_str());
     }
 
     // extracttests.enable
