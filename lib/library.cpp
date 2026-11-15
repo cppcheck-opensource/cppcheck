@@ -1697,8 +1697,18 @@ const std::string& Library::returnValueType(const Token *ftok) const
     if (isNotLibraryFunction(ftok)) {
         if (Token::simpleMatch(ftok->astParent(), ".") && ftok->astParent()->astOperand1()) {
             const Token* contTok = ftok->astParent()->astOperand1();
-            if (contTok->valueType() && contTok->valueType()->container)
-                return contTok->valueType()->container->getReturnType(ftok->str());
+            if (const ValueType* vt = contTok->valueType()) {
+                if (vt->container)
+                    return vt->container->getReturnType(ftok->str());
+                // member function of a container accessed through a smart pointer
+                if (ftok->astParent()->originalName() == "->" && vt->type == ValueType::Type::SMART_POINTER && vt->pointer == 0) {
+                    const Token* typeTok = vt->smartPointerTypeToken;
+                    while (Token::Match(typeTok, "const|volatile"))
+                        typeTok = typeTok->next();
+                    if (const Container* container = detectContainer(typeTok))
+                        return container->getReturnType(ftok->str());
+                }
+            }
         }
         return mEmptyString;
     }

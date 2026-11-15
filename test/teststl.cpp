@@ -176,6 +176,7 @@ private:
         TEST_CASE(loopAlgoMultipleReturn);
 
         TEST_CASE(invalidContainer);
+        TEST_CASE(invalidContainerSmartPointer);
         TEST_CASE(invalidContainerLoop);
         TEST_CASE(findInsert);
 
@@ -1127,6 +1128,12 @@ private:
         ASSERT_EQUALS("[test.cpp:4:6]: (error) Out of bounds access in expression 'it' because 'vec' is empty. [containerOutOfBounds]\n",
                       errout_str());
 
+        check("int f(const std::shared_ptr<std::vector<int>>& v) {\n"
+              "    auto it = v->end();\n"
+              "    return *it;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:13]: (error) Dereference of an invalid iterator: it [derefInvalidIterator]\n", errout_str());
+
         check("int f(std::span<int> s) {\n"
               "    std::span<int>::iterator it = s.end();\n"
               "    return *it;\n"
@@ -1407,6 +1414,53 @@ private:
               "    s3.replace(s3.begin(), s3.end(), 3, 'c');\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:3:38]: (error) Iterators of different containers 's1' and 's2' are used together. [mismatchingContainers]\n", errout_str());
+
+        // containers owned by smart pointers
+        check("void foo(std::unique_ptr<std::vector<int>> &a, std::unique_ptr<std::vector<int>> &b)\n"
+              "{\n"
+              "    std::vector<int>::iterator it = std::find(a->begin(), b->end(), 1);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:47]: (error) Iterators of different containers 'a' and 'b' are used together. [mismatchingContainers]\n", errout_str());
+
+        check("void foo(std::shared_ptr<std::vector<int>> sp)\n"
+              "{\n"
+              "    auto& v = *sp;\n"
+              "    v.insert(sp->begin(), 1);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // iterator range passed to a member function of a container owned by a smart pointer
+        check("void foo(std::unique_ptr<std::vector<int>> &a, std::unique_ptr<std::vector<int>> &b, std::unique_ptr<std::vector<int>> &c)\n"
+              "{\n"
+              "    c->insert(c->end(), a->begin(), b->end());\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:25]: (error) Iterators of different containers 'a' and 'b' are used together. [mismatchingContainers]\n", errout_str());
+
+        check("void foo(std::unique_ptr<std::vector<int>> &a, std::unique_ptr<std::vector<int>> &c)\n"
+              "{\n"
+              "    c->insert(c->end(), a->begin(), a->end());\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void foo(std::unique_ptr<std::vector<int>> &a, std::unique_ptr<std::vector<int>> &b, std::unique_ptr<std::vector<int>> &c)\n"
+              "{\n"
+              "    c->assign(a->begin(), b->end());\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:15]: (error) Iterators of different containers 'a' and 'b' are used together. [mismatchingContainers]\n", errout_str());
+
+        // shared pointers might own the same container
+        check("void foo(std::shared_ptr<std::vector<int>> &a, std::shared_ptr<std::vector<int>> &b, std::unique_ptr<std::vector<int>> &c)\n"
+              "{\n"
+              "    c->insert(c->end(), a->begin(), b->end());\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:25]: (warning) Iterators to containers from different expressions 'a' and 'b' are used together. [mismatchingContainerExpression]\n", errout_str());
+
+        // insert(hint, value) through a smart pointer
+        check("void foo(std::unique_ptr<std::set<std::vector<int>::iterator>> &s, std::vector<int> &v)\n"
+              "{\n"
+              "    s->insert(s->end(), v.begin());\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
 
         // insert(hint, value) where the value is an iterator
         check("void foo(std::set<std::vector<int>::iterator> &s, std::vector<int> &v)\n"
@@ -7244,6 +7298,88 @@ private:
         ASSERT_EQUALS(
             "[test.cpp:7:17] -> [test.cpp:7:24] -> [test.cpp:8:10] -> [test.cpp:9:18]: (error) Reference to vec1 that may be invalid. [invalidContainerReference]\n",
             errout_str());
+    }
+
+    void invalidContainerSmartPointer() {
+        check("int f(std::shared_ptr<std::vector<int>> v) {\n"
+              "    auto it = v->begin();\n"
+              "    v->push_back(1);\n"
+              "    return *it;\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:2:23] -> [test.cpp:3:8] -> [test.cpp:1:41] -> [test.cpp:4:13]: (error) Using iterator to local container 'v' that may be invalid. [invalidContainer]\n", errout_str());
+
+        check("int f(std::unique_ptr<std::vector<int>>& v) {\n"
+              "    std::vector<int>::iterator it = v->begin();\n"
+              "    v->clear();\n"
+              "    return *it;\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:1:43] -> [test.cpp:2:45] -> [test.cpp:3:8] -> [test.cpp:1:42] -> [test.cpp:4:13]: (error) Using iterator to local container 'v' that may be invalid. [invalidContainer]\n", errout_str());
+
+        check("void f(std::shared_ptr<std::vector<int>> v) {\n"
+              "    for (auto it = v->begin(); it != v->end(); ++it)\n"
+              "        v->push_back(*it);\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:2:28] -> [test.cpp:2:35] -> [test.cpp:3:12] -> [test.cpp:1:42] -> [test.cpp:2:32]: (error) Using iterator to local container 'v' that may be invalid. [invalidContainer]\n", errout_str());
+
+        check("struct S {\n"
+              "    std::shared_ptr<std::vector<int>> m;\n"
+              "    void add() { m->push_back(1); }\n"
+              "    int f() {\n"
+              "        auto it = m->begin();\n"
+              "        add();\n"
+              "        return *it;\n"
+              "    }\n"
+              "};\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("[test.cpp:5:27] -> [test.cpp:6:9] -> [test.cpp:3:21] -> [test.cpp:7:17]: (error) Using iterator to member container 'm' that may be invalid. [invalidContainer]\n", errout_str());
+
+        // iterator is reassigned
+        check("int f(std::shared_ptr<std::vector<int>> v) {\n"
+              "    auto it = v->begin();\n"
+              "    v->push_back(1);\n"
+              "    it = v->begin();\n"
+              "    return *it;\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f(std::shared_ptr<std::vector<int>> v) {\n"
+              "    for (auto it = v->begin(); it != v->end();)\n"
+              "        it = v->erase(it);\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
+
+        // container is not changed
+        check("int f(std::shared_ptr<std::vector<int>> v) {\n"
+              "    auto it = v->begin();\n"
+              "    const int n = v->size();\n"
+              "    return *it + n;\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
+
+        // another shared pointer is changed
+        check("int f(std::shared_ptr<std::vector<int>> v, std::shared_ptr<std::vector<int>> w) {\n"
+              "    auto it = v->begin();\n"
+              "    w->push_back(1);\n"
+              "    v = w;\n"
+              "    return *it;\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
+
+        // the reference refers to the container, which is not invalidated
+        check("int f(std::unique_ptr<std::vector<int>>& v) {\n"
+              "    auto& x = *v;\n"
+              "    v->push_back(1);\n"
+              "    return x.size();\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
     }
 
     void invalidContainerLoop() {

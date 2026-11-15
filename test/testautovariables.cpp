@@ -2502,6 +2502,16 @@ private:
     }
 
     void danglingLifetimeContainer() {
+        // container owned by a smart pointer, the container might be shared or moved
+        check("std::vector<int>::iterator f(std::shared_ptr<std::vector<int>> v) {\n"
+              "    return v->begin();\n"
+              "}\n"
+              "std::vector<int>::iterator g() {\n"
+              "    auto v = std::make_unique<std::vector<int>>();\n"
+              "    return v->begin();\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
         check("auto f(const std::vector<int>& x) {\n"
               "    auto it = x.begin();\n"
               "    return it;\n"

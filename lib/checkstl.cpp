@@ -771,6 +771,21 @@ static bool sizeValueAppliesToIterator(const ValueFlow::Value& sizeValue, const 
            (iterValue.container->exprId() != 0 && iterValue.container->exprId() == sizeValue.container->exprId());
 }
 
+// Is the lifetime an iterator to a container that is owned by a smart pointer?
+static bool isSmartPointerIteratorLifetime(const ValueFlow::Value& val)
+{
+    return val.lifetimeKind == ValueFlow::Value::LifetimeKind::Iterator && astIsSmartPointer(val.tokvalue);
+}
+
+// Iterators to containers owned by smart pointers. Different unique pointers can't own the same
+// container, but a shared pointer or a reference to the container (auto& c = *p) can refer to it.
+static bool mayBeSameSmartPointerContainer(const ValueFlow::Value& val1, const ValueFlow::Value& val2)
+{
+    if (!isSmartPointerIteratorLifetime(val1) && !isSmartPointerIteratorLifetime(val2))
+        return false;
+    return !astIsUniqueSmartPointer(val1.tokvalue) || !astIsUniqueSmartPointer(val2.tokvalue);
+}
+
 bool CheckStlImpl::checkIteratorPair(const Token* tok1, const Token* tok2)
 {
     if (!tok1)
@@ -779,7 +794,8 @@ bool CheckStlImpl::checkIteratorPair(const Token* tok1, const Token* tok2)
         return false;
     ValueFlow::Value val1 = getLifetimeIteratorValue(tok1);
     ValueFlow::Value val2 = getLifetimeIteratorValue(tok2);
-    if (val1.tokvalue && val2.tokvalue && val1.lifetimeKind == val2.lifetimeKind) {
+    if (val1.tokvalue && val2.tokvalue && val1.lifetimeKind == val2.lifetimeKind &&
+        !mayBeSameSmartPointerContainer(val1, val2)) {
         if (val1.lifetimeKind == ValueFlow::Value::LifetimeKind::Lambda)
             return false;
         if (tok1->astParent() == tok2->astParent() && Token::Match(tok1->astParent(), "%comp%|-")) {
@@ -817,16 +833,20 @@ bool CheckStlImpl::checkIteratorPair(const Token* tok1, const Token* tok2)
 }
 
 // Get the iterator range [first, last) that is passed to a member function of a container, e.g.
-// 'c.insert(first, last)', 'c.insert(pos, first, last)', 'c.assign(first, last)'. Both iterators must
-// refer to the same container.
+// 'c.insert(first, last)', 'c.insert(pos, first, last)', 'c.assign(first, last)', or 'p->insert(first, last)'
+// when the container is owned by a smart pointer. Both iterators must refer to the same container.
 static std::pair<const Token*, const Token*> getMemberIteratorRange(const Token* ftok, const std::vector<const Token*>& args, const Settings& settings)
 {
     if (!Token::simpleMatch(ftok->astParent(), ".") || ftok->astParent()->astOperand2() != ftok)
         return {};
     const Token* const contTok = ftok->astParent()->astOperand1();
-    if (!astIsContainer(contTok) || !contTok->valueType()->container)
+    const Library::Container* container = nullptr;
+    if (astIsContainer(contTok))
+        container = contTok->valueType()->container;
+    else if (astIsSmartPointerContainerAccess(contTok, settings)) // container owned by a smart pointer, e.g. 'p->insert(first, last)'
+        container = getSmartPointerContainer(contTok, settings);
+    if (!container)
         return {};
-    const Library::Container* const container = contTok->valueType()->container;
 
     std::size_t first;
     if (ftok->str() == "insert") {
@@ -973,6 +993,8 @@ void CheckStlImpl::mismatchingContainerIterator()
                 continue;
             if (val.lifetimeKind != ValueFlow::Value::LifetimeKind::Iterator)
                 continue;
+            if (isSmartPointerIteratorLifetime(val)) // the smart pointer might point at the container
+                continue;
             if (iterTok->str() == "*" && iterTok->astOperand1()->valueType() && iterTok->astOperand1()->valueType()->type == ValueType::ITERATOR)
                 continue;
             if (isSameIteratorContainerExpression(tok, val.tokvalue, mSettings))
@@ -982,10 +1004,17 @@ void CheckStlImpl::mismatchingContainerIterator()
     }
 }
 
-static const Token* getInvalidMethod(const Token* tok)
+static const Token* getInvalidMethod(const Token* tok, const Settings& settings)
 {
     if (!astIsLHS(tok))
         return nullptr;
+    // Container owned by a smart pointer, only member functions called with '->' change the container
+    const Library::Container* c = tok->valueType()->container;
+    if (!c) {
+        if (!astIsSmartPointerContainerAccess(tok, settings))
+            return nullptr;
+        c = getSmartPointerContainer(tok, settings);
+    }
     if (Token::Match(tok->astParent(), ". assign|clear|swap"))
         return tok->astParent()->next();
     if (Token::Match(tok->astParent(), "%assign%"))
@@ -995,7 +1024,7 @@ static const Token* getInvalidMethod(const Token* tok)
         ftok = tok->astParent()->next();
     if (!ftok)
         return nullptr;
-    if (const Library::Container * c = tok->valueType()->container) {
+    if (c) {
         const Library::Container::Action action = c->getAction(ftok->str());
         if (c->unstableErase) {
             if (action == Library::Container::Action::ERASE)
@@ -1050,6 +1079,9 @@ namespace {
                 return result;
             }
         };
+        explicit InvalidContainerAnalyzer(const Settings& settings) : settings(settings) {}
+
+        const Settings& settings;
         std::unordered_map<const Function*, Info> invalidMethods;
 
         std::vector<Info::Reference> invalidatesContainer(const Token* tok) const {
@@ -1091,8 +1123,8 @@ namespace {
                         }
                     }
                 }
-            } else if (astIsContainer(tok)) {
-                const Token* ftok = getInvalidMethod(tok);
+            } else if (astIsContainer(tok) || astIsSmartPointerContainerAccess(tok, settings)) {
+                const Token* ftok = getInvalidMethod(tok, settings);
                 if (ftok) {
                     ErrorPath ep;
                     ep.emplace_front(ftok,
@@ -1187,7 +1219,7 @@ void CheckStlImpl::invalidContainer()
 {
     logChecker("CheckStl::invalidContainer");
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
-    InvalidContainerAnalyzer analyzer;
+    InvalidContainerAnalyzer analyzer(mSettings);
     analyzer.analyze(symbolDatabase);
     for (const Scope * scope : symbolDatabase->functionScopes) {
         for (const Token* tok = scope->bodyStart->next(); tok != scope->bodyEnd; tok = tok->next()) {
@@ -1219,7 +1251,7 @@ void CheckStlImpl::invalidContainer()
                 }
             } else {
                 for (const InvalidContainerAnalyzer::Info::Reference& r : analyzer.invalidatesContainer(tok)) {
-                    if (!astIsContainer(r.tok))
+                    if (!astIsContainer(r.tok) && !getSmartPointerContainer(r.tok, mSettings))
                         continue;
                     std::set<nonneg int> skipVarIds;
                     // Skip if the variable is assigned to
@@ -1250,7 +1282,9 @@ void CheckStlImpl::invalidContainer()
                         // return false;
                         if (Token::Match(info.tok->astParent(), "%assign%") && astIsLHS(info.tok))
                             skipVarIds.insert(info.tok->varId());
-                        if (info.tok->variable()->isReference() && !isVariableDecl(info.tok) &&
+                        // References to a container owned by a smart pointer are not tracked, the
+                        // reference refers to the container object that is not invalidated
+                        if (info.tok->variable()->isReference() && !isVariableDecl(info.tok) && astIsContainer(r.tok) &&
                             reaches(info.tok->variable()->nameToken(), tok, nullptr)) {
 
                             if ((assignExpr && Token::Match(assignExpr->astOperand1()->previous(), "& %varid%", info.tok->varId()))) {

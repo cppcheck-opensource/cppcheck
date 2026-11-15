@@ -595,6 +595,7 @@ private:
         TEST_CASE(valueType2);
         TEST_CASE(valueTypeStringIterator);
         TEST_CASE(valueTypeSpanIterator);
+        TEST_CASE(valueTypeSmartPointerContainer);
         TEST_CASE(valueType3);
         TEST_CASE(valueTypeThis);
         TEST_CASE(valueTypeChar);
@@ -10421,6 +10422,37 @@ private:
 
         tok = Token::findsimplematch(tok, "n");
         ASSERT(tok && (!tok->valueType() || tok->valueType()->type != ValueType::Type::ITERATOR));
+    }
+
+    void valueTypeSmartPointerContainer() { // #13105
+        GET_SYMBOL_DB("void f(std::shared_ptr<std::map<int, int>> m, std::unique_ptr<const std::vector<int>> v, std::shared_ptr<std::string> s) {\n"
+                      "    auto a = m->find(1);\n"
+                      "    auto b = m->size();\n"
+                      "    auto c = v->begin();\n"
+                      "    auto d = v->at(0);\n"
+                      "    auto e = s->c_str();\n"
+                      "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        const Token* tok = Token::findsimplematch(tokenizer.tokens(), "auto a");
+        ASSERT(tok && tok->valueType());
+        ASSERT_EQUALS("iterator(std :: map|unordered_map <)", tok->valueType()->str());
+
+        tok = Token::findsimplematch(tok, "auto b");
+        ASSERT(tok && tok->valueType());
+        ASSERT_EQUALS("std::size_t", tok->valueType()->originalTypeName);
+
+        tok = Token::findsimplematch(tok, "auto c");
+        ASSERT(tok && tok->valueType());
+        ASSERT_EQUALS("iterator(std :: vector <)", tok->valueType()->str());
+
+        tok = Token::findsimplematch(tok, "( 0 )");
+        ASSERT(tok && tok->valueType());
+        ASSERT_EQUALS("const signed int &", tok->valueType()->str());
+
+        tok = Token::findsimplematch(tok, "auto e");
+        ASSERT(tok && tok->valueType());
+        ASSERT_EQUALS("const char *", tok->valueType()->str());
     }
 
     void valueTypeSpanIterator() {

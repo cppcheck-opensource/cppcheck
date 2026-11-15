@@ -625,6 +625,10 @@ void CheckAutoVariablesImpl::checkVarLifetimeScope(const Token * start, const To
                 continue;
             if (!printInconclusive && val.isInconclusive())
                 continue;
+            // Iterator to a container owned by a smart pointer. The container might be shared or moved,
+            // so its lifetime is not bound to the smart pointer variable.
+            if (val.lifetimeKind == ValueFlow::Value::LifetimeKind::Iterator && astIsSmartPointer(val.tokvalue))
+                continue;
             const Token* parent = getParentLifetime(val.tokvalue, mSettings.library);
             if (!exprs.insert(parent).second)
                 continue;
