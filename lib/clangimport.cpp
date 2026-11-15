@@ -34,6 +34,7 @@
 #include <cstring>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <list>
 #include <map>
 #include <memory>
@@ -1642,8 +1643,14 @@ static void setValues(const Tokenizer &tokenizer, const SymbolDatabase *symbolDa
                 typeSize = 0;
                 break;
             }
-            if (var.valueType())
-                typeSize += mul * var.valueType()->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
+            if (var.valueType()) {
+                const MathLib::bigint size = var.valueType()->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
+                if (MathLib::mulOverflows(mul, size) || mul * size > std::numeric_limits<MathLib::bigint>::max() - typeSize) {
+                    typeSize = 0;
+                    break;
+                }
+                typeSize += mul * size;
+            }
         }
         scope.definedType->sizeOf = typeSize;
     }

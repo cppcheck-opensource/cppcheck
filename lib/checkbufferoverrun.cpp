@@ -635,32 +635,22 @@ ValueFlow::Value CheckBufferOverrunImpl::getBufferSize(const Token *bufTok, cons
     if (!var->dimensionsProduct(dim))
         return ValueFlow::Value(-1);
 
+    MathLib::bigint typeSize;
+    if (var->isPointerArray())
+        typeSize = mSettings.platform.sizeof_pointer;
+    else
+        typeSize = bufTok->valueType()->getSizeOf(mSettings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointee);
+    if (MathLib::mulOverflows(dim - index, typeSize))
+        return ValueFlow::Value(-1);
+
     ValueFlow::Value v;
     v.setKnown();
     v.valueType = ValueFlow::Value::ValueType::BUFFER_SIZE;
-
-    if (var->isPointerArray())
-        v.intvalue = (dim - index) * mSettings.platform.sizeof_pointer;
-    else {
-        const size_t typeSize = bufTok->valueType()->getSizeOf(mSettings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointee);
-        v.intvalue = (dim - index) * typeSize;
-    }
+    v.intvalue = (dim - index) * typeSize;
 
     return v;
 }
 //---------------------------------------------------------------------------
-
-// Return true if a * b does not fit in a MathLib::bigint
-static bool mulOverflows(MathLib::bigint a, MathLib::bigint b)
-{
-    const MathLib::bigint maxValue = std::numeric_limits<MathLib::bigint>::max();
-    const MathLib::bigint minValue = std::numeric_limits<MathLib::bigint>::min();
-    if (a > 0)
-        return b > 0 ? a > maxValue / b : b < minValue / a;
-    if (a < 0)
-        return b > 0 ? a < minValue / b : (b < 0 && a < maxValue / b);
-    return false;
-}
 
 static bool checkBufferSize(const Token *ftok, const Library::ArgumentChecks::MinSize &minsize, const std::vector<const Token *> &args, ValueFlow::Value& bufferSize, const Settings &settings, const Tokenizer* tokenizer)
 {
@@ -686,7 +676,7 @@ static bool checkBufferSize(const Token *ftok, const Library::ArgumentChecks::Mi
                 break;
             MathLib::bigint myMinsize = argVal->intvalue;
             const int baseSize = tokenizer->sizeOfType(minsize.baseType);
-            const bool overflow = baseSize != 0 && mulOverflows(myMinsize, baseSize);
+            const bool overflow = baseSize != 0 && MathLib::mulOverflows(myMinsize, baseSize);
             if (baseSize != 0 && !overflow)
                 myMinsize *= baseSize;
             const bool ok = !overflow && myMinsize <= bufferSize.intvalue;
@@ -704,7 +694,7 @@ static bool checkBufferSize(const Token *ftok, const Library::ArgumentChecks::Mi
         break;
     case Library::ArgumentChecks::MinSize::Type::MUL:
         if (arg && arg2 && arg->hasKnownIntValue() && arg2->hasKnownIntValue()) {
-            if (mulOverflows(arg->getKnownIntValue(), arg2->getKnownIntValue()))
+            if (MathLib::mulOverflows(arg->getKnownIntValue(), arg2->getKnownIntValue()))
                 return false;
             return (arg->getKnownIntValue() * arg2->getKnownIntValue()) <= bufferSize.intvalue;
         }
@@ -713,7 +703,7 @@ static bool checkBufferSize(const Token *ftok, const Library::ArgumentChecks::Mi
         MathLib::bigint myMinsize = minsize.value;
         const int baseSize = tokenizer->sizeOfType(minsize.baseType);
         if (baseSize != 0) {
-            if (mulOverflows(myMinsize, baseSize))
+            if (MathLib::mulOverflows(myMinsize, baseSize))
                 return false;
             myMinsize *= baseSize;
         }

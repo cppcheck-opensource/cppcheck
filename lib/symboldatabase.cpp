@@ -2518,16 +2518,11 @@ bool Variable::isMember() const {
 
 bool Variable::dimensionsProduct(MathLib::bigint &product) const
 {
-    const MathLib::bigint maxValue = std::numeric_limits<MathLib::bigint>::max();
-    const MathLib::bigint minValue = std::numeric_limits<MathLib::bigint>::min();
     product = 1;
     for (const Dimension &dim : mDimensions) {
-        const MathLib::bigint n = dim.num;
-        if (product > 0 && (n > 0 ? product > maxValue / n : n < minValue / product))
+        if (MathLib::mulOverflows(product, dim.num))
             return false;
-        if (product < 0 && (n > 0 ? product < minValue / n : (n < 0 && product < maxValue / n)))
-            return false;
-        product *= n;
+        product *= dim.num;
     }
     return true;
 }
@@ -8844,8 +8839,14 @@ size_t ValueType::getSizeOf( const Settings& settings, Accuracy accuracy, SizeOf
                 currentBitCount += nBits;
                 return ret;
             }
+            // the size must fit in a MathLib::bigint
+            const size_t maxSize = std::numeric_limits<MathLib::bigint>::max();
+            if (MathLib::mulOverflows(static_cast<MathLib::bigint>(n), static_cast<MathLib::bigint>(dim)))
+                return accuracy == Accuracy::ExactOrZero ? 0 : total;
             n *= dim;
             size_t padding = (a - (total % a)) % a;
+            if (total + padding > maxSize || n > maxSize - total - padding)
+                return accuracy == Accuracy::ExactOrZero ? 0 : total;
             if (currentBitCount > 0) {
                 bool fitsInBitfield = currentBitCount + (n * charBit) <= currentBitfieldAlloc * charBit;
                 bool isAligned = currentBitCount % (charBit * a) == 0;

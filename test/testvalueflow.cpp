@@ -1871,6 +1871,13 @@ private:
         values = tokenValues(code, "( S");
         ASSERT_EQUALS(1U, values.size());
         ASSERT(values.back().isImpossible());
+
+        // the size in bytes does not fit in a MathLib::bigint
+        code = "struct S { int m[0x4000000000000001]; };\n"
+               "x = sizeof(S);\n";
+        values = tokenValues(code, "( S");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT(values.back().isImpossible());
     }
 
     void valueFlowComma()

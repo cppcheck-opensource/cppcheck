@@ -5004,6 +5004,19 @@ private:
               "    memset(a, 0, 10);\n"
               "}\n", settings0);
         ASSERT_EQUALS("", errout_str());
+
+        // the size in bytes must not wrap around
+        check("void f() {\n"
+              "    int a[0x4000000000000001];\n"
+              "    memset(a, 0, 10);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f() {\n"
+              "    int a[0x4000000000000001][1];\n"
+              "    memset(a, 0, 10);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("", errout_str());
     }
 
     // extracttests.enable
