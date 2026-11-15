@@ -26,4 +26,4 @@ Infrastructure & dependencies:
   and rule files work unchanged. On Windows the Visual Studio project now expects pcre2-8.lib and pcre2.h in externals.
 
 Other:
--
+- Fixed false positive knownConditionTrueFalse when a member is read through a pointer ('p->i') and a function call in between may change the object that the pointer points at (#12795).
