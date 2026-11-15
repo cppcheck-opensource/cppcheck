@@ -2471,6 +2471,14 @@ private:
                "}\n";
         ASSERT_EQUALS(true, testValueOfX(code, 3U, 1));
 
+        // increment past the maximum wraps without signed integer overflow
+        code = "void f() {\n"
+               "    long long x = 0x7fffffffffffffff;\n"
+               "    x++;\n"
+               "    a = x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, LLONG_MIN));
+
         code = "void f() {\n"
                "    int x = 123;\n"
                "    a = sizeof(x);\n"

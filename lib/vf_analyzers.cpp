@@ -371,7 +371,7 @@ struct ValueFlowAnalyzer : Analyzer {
             const std::string opName(inc ? "incremented" : "decremented");
             if (d == Direction::Reverse)
                 inc = !inc;
-            value->intvalue += (inc ? 1 : -1);
+            value->intvalue = calculateArithmetic<MathLib::bigint>(inc ? '+' : '-', value->intvalue, 1);
 
             /* Truncate value */
             const ValueType *dst = tok->valueType();
