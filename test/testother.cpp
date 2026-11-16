@@ -4302,8 +4302,8 @@ private:
                       errout_str());
 
         check("void f(std::vector<int>& v) {\n"
-	        "    int *p = v.data();\n"
-	        "    p[0] += 1;\n"
+              "    int *p = v.data();\n"
+              "    p[0] += 1;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
     }
@@ -14090,7 +14090,7 @@ private:
     void unusedVariableValueTemplate() {
         check("#include <functional>\n"
               "class A\n"
-              "{\n"
+              "{\n"s
               "public:\n"
               "    class Hash\n"
               "    {\n"
