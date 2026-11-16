@@ -14090,7 +14090,7 @@ private:
     void unusedVariableValueTemplate() {
         check("#include <functional>\n"
               "class A\n"
-              "{\n"s
+              "{\n"
               "public:\n"
               "    class Hash\n"
               "    {\n"
