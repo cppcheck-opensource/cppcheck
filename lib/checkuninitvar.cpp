@@ -98,13 +98,15 @@ static std::map<nonneg int, VariableValue> getVariableValues(const Token* tok) {
     return ret;
 }
 
-bool CheckUninitVarImpl::diag(const Token* tok)
+bool CheckUninitVarImpl::diag(const Token* tok, bool insert)
 {
     if (!tok)
         return true;
     while (Token::Match(tok->astParent(), "*|&|."))
         tok = tok->astParent();
-    return !mUninitDiags.insert(tok).second;
+    if (!insert)
+        return mUninitDiags.find(tok) != mUninitDiags.end();
+	return !mUninitDiags.insert(tok).second;    
 }
 
 void CheckUninitVarImpl::check()
@@ -1620,6 +1622,8 @@ void CheckUninitVarImpl::uninitvarError(const Token* tok, const ValueFlow::Value
 
 void CheckUninitVarImpl::uninitStructMemberError(const Token *tok, const std::string &membername)
 {
+    if (diag(tok, /*insert*/ false))
+        return;
     reportError(tok,
                 Severity::error,
                 "uninitStructMember",
