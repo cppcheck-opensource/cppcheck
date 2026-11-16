@@ -122,6 +122,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <numeric>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -2014,6 +2015,12 @@ static void valueFlowForwardLifetime(Token * tok, const TokenList &tokenlist, Er
     } else if (tok->variable() && tok->variable()->scope()) {
         const Variable *var = tok->variable();
         const Token *endOfVarScope = var->scope()->bodyEnd;
+        // Non-local variable: do not forward past the end of the current function
+        if (!var->isLocal() && !var->isArgument()) {
+            const Token* endOfFunction = ValueFlow::getEndOfExprScope(tok);
+            if (endOfFunction && (!endOfVarScope || precedes(endOfFunction, endOfVarScope)))
+                endOfVarScope = endOfFunction;
+        }
 
         std::list<ValueFlow::Value> values = tok->values();
         Token *nextExpression = nextAfterAstRightmostLeaf(parent);
@@ -2835,6 +2842,9 @@ static bool isDecayedPointer(const Token *tok)
     if (!tok)
         return false;
     if (!tok->astParent())
+        return false;
+    // Subscript 'arr[i]': the element is accessed, the array itself is not used as a pointer
+    if (Token::simpleMatch(tok->astParent(), "[") && astIsLHS(tok))
         return false;
     if (Token::simpleMatch(tok->astParent(), "=") && astIsRHS(tok))
         return true;
@@ -7321,6 +7331,8 @@ struct ValueFlowPass {
     virtual void run(const ValueFlowState& state) const = 0;
     // Returns true if pass needs C++
     virtual bool cpp() const = 0;
+    // Returns true if pass does not analyse the skipped functions
+    virtual bool usesSkippedFunctions() const = 0;
     virtual ~ValueFlowPass() noexcept = default;
 };
 
@@ -7341,12 +7353,31 @@ struct ValueFlowPassRunner {
         });
     }
 
-    bool run(std::initializer_list<ValuePtr<ValueFlowPass>> passes) const
+    bool run(std::initializer_list<ValuePtr<ValueFlowPass>> passes)
     {
         std::size_t values = 0;
         std::size_t n = state.settings().vfOptions.maxIterations;
         const bool doProgress = state.settings().reportProgress >= 0;
+        // A function is skipped in the next iteration when no value changed in the previous iteration
+        // and the passes that can skip it did not change it either. Other passes can remove a value that
+        // a skipping pass adds again; such a function must not be skipped.
+        const std::set<const Scope*> skippedFunctions = state.skippedFunctions;
+        const std::vector<const Scope*>& functionScopes = state.symboldatabase().functionScopes;
+        std::vector<std::size_t> functionValues = getFunctionValues();
+        std::vector<bool> changedBySkippingPass(functionScopes.size(), false);
+        bool first = true;
         while (n > 0 && values != getTotalValues()) {
+            if (!first) {
+                std::vector<std::size_t> newFunctionValues = getFunctionValues();
+                state.skippedFunctions = skippedFunctions;
+                for (std::size_t i = 0; i < functionScopes.size(); ++i) {
+                    if (newFunctionValues[i] == functionValues[i] && !changedBySkippingPass[i])
+                        state.skippedFunctions.insert(functionScopes[i]);
+                }
+                functionValues = std::move(newFunctionValues);
+            }
+            first = false;
+            changedBySkippingPass.assign(functionScopes.size(), false);
             values = getTotalValues();
             const std::size_t passnum = state.settings().vfOptions.maxIterations - n + 1;
             const std::string passnum_s = std::to_string(passnum);
@@ -7354,11 +7385,21 @@ struct ValueFlowPassRunner {
                 // the string concatination is a hot spot in TestIO::testScanfArgument and TestIO::testPrintfArgumentVariables
                 std::string stage = doProgress ? std::string("ValueFlow::") + pass->name() + (' ' + passnum_s) : "";
                 ProgressReporter progressReporter(state.errorLogger, state.settings().reportProgress, state.tokenlist().getSourceFilePath(), std::move(stage));
-                return run(pass, passnum);
+                if (!pass->usesSkippedFunctions())
+                    return run(pass, passnum);
+                const std::vector<std::size_t> before = getFunctionValues(true);
+                const bool ret = run(pass, passnum);
+                const std::vector<std::size_t> after = getFunctionValues(true);
+                for (std::size_t i = 0; i < functionScopes.size(); ++i) {
+                    if (before[i] != after[i])
+                        changedBySkippingPass[i] = true;
+                }
+                return ret;
             }))
                 return true;
             --n;
         }
+        state.skippedFunctions = skippedFunctions;
         if (state.settings().debugwarnings) {
             if (n == 0 && values != getTotalValues()) {
                 ErrorMessage::FileLocation loc(state.tokenlist().getFiles()[0], 0, 0);
@@ -7395,6 +7436,52 @@ struct ValueFlowPassRunner {
             pass->run(state);
         }
         return false;
+    }
+
+    static std::size_t hashValue(const ValueFlow::Value& v)
+    {
+        std::size_t h = std::hash<MathLib::bigint>{}(v.intvalue);
+        const auto combine = [&h](std::size_t x) {
+            h ^= x + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+        };
+        combine(static_cast<std::size_t>(v.valueType));
+        combine(static_cast<std::size_t>(v.valueKind));
+        combine(static_cast<std::size_t>(v.bound));
+        combine(std::hash<const Token*>{}(v.tokvalue));
+        combine(std::hash<const Token*>{}(v.condition));
+        combine(std::hash<double>{}(v.floatValue));
+        combine(std::hash<MathLib::bigint>{}(v.varvalue));
+        combine(std::hash<MathLib::bigint>{}(v.path));
+        combine(v.varId);
+        combine(static_cast<std::size_t>(v.conditional));
+        combine(static_cast<std::size_t>(v.moveKind));
+        combine(static_cast<std::size_t>(v.lifetimeKind));
+        combine(static_cast<std::size_t>(v.lifetimeScope));
+        return h;
+    }
+
+    // Hash of the values in each function scope (same order as symboldatabase.functionScopes)
+    // onlyAnalysed: the skipped functions get hash 0
+    std::vector<std::size_t> getFunctionValues(bool onlyAnalysed = false) const
+    {
+        const std::vector<const Scope*>& functionScopes = state.symboldatabase().functionScopes;
+        std::vector<std::size_t> result(functionScopes.size());
+        for (std::size_t i = 0; i < functionScopes.size(); ++i) {
+            const Scope* scope = functionScopes[i];
+            if (!scope->bodyStart)
+                continue;
+            if (onlyAnalysed && state.skippedFunctions.count(scope) != 0)
+                continue;
+            std::size_t h = 0;
+            for (const Token* tok = scope->bodyStart; tok != scope->bodyEnd; tok = tok->next()) {
+                const std::size_t k = (2 * reinterpret_cast<std::uintptr_t>(tok)) + 1;
+                h = std::accumulate(tok->values().cbegin(), tok->values().cend(), h, [&](std::size_t acc, const ValueFlow::Value& v) {
+                    return acc + (hashValue(v) * k);
+                });
+            }
+            result[i] = h;
+        }
+        return result;
     }
 
     std::size_t getTotalValues() const
@@ -7457,8 +7544,10 @@ template<class F>
 struct ValueFlowPassAdaptor : ValueFlowPass {
     const char* mName = nullptr;
     bool mCPP = false;
+    bool mUsesSkippedFunctions = false;
     F mRun;
-    ValueFlowPassAdaptor(const char* pname, bool pcpp, F prun) : ValueFlowPass(), mName(pname), mCPP(pcpp), mRun(prun) {}
+    ValueFlowPassAdaptor(const char* pname, bool pcpp, F prun)
+        : ValueFlowPass(), mName(pname), mCPP(pcpp), mUsesSkippedFunctions(std::strstr(pname, "skippedFunctions") != nullptr), mRun(prun) {}
     const char* name() const override {
         return mName;
     }
@@ -7468,6 +7557,9 @@ struct ValueFlowPassAdaptor : ValueFlowPass {
     }
     bool cpp() const override {
         return mCPP;
+    }
+    bool usesSkippedFunctions() const override {
+        return mUsesSkippedFunctions;
     }
 };
 
