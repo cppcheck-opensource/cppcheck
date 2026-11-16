@@ -106,7 +106,7 @@ bool CheckUninitVarImpl::diag(const Token* tok, bool insert)
         tok = tok->astParent();
     if (!insert)
         return mUninitDiags.find(tok) != mUninitDiags.end();
-	return !mUninitDiags.insert(tok).second;    
+    return !mUninitDiags.insert(tok).second;    
 }
 
 void CheckUninitVarImpl::check()
