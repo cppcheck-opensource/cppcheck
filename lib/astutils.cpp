@@ -2646,7 +2646,7 @@ bool isVariableChanged(const Token *tok, int indirect, const Settings &settings,
         return false;
 
     const Token *tok2 = tok;
-    int derefs = 0;
+    int derefs = 0, arrayAccess = 0;
     while ((tok2->astParent() && tok2->astParent()->isUnaryOp("*")) ||
            (Token::simpleMatch(tok2->astParent(), ".") && !Token::Match(tok2->astParent()->astParent(), "[(,]")) ||
            (tok2->astParent() && tok2->astParent()->isUnaryOp("&") && Token::simpleMatch(tok2->astParent()->astParent(), ".") && tok2->astParent()->astParent()->originalName()=="->") ||
@@ -2654,6 +2654,8 @@ bool isVariableChanged(const Token *tok, int indirect, const Settings &settings,
            (Token::simpleMatch(tok2->astParent(), "(") && tok2->astParent()->isCast())) {
         if (tok2->astParent() && (tok2->astParent()->isUnaryOp("*") || (astIsLHS(tok2) && tok2->astParent()->originalName() == "->" && !hasOverloadedMemberAccess(tok2))))
             derefs++;
+        if (Token::simpleMatch(tok2->astParent(), "[") && tok2->valueType() && tok2->valueType()->pointer > 0)
+            arrayAccess++;
         if (derefs > indirect)
             break;
         if (tok2->astParent() && tok2->astParent()->isUnaryOp("&") && Token::simpleMatch(tok2->astParent()->astParent(), ".") && tok2->astParent()->astParent()->originalName()=="->")
@@ -2688,7 +2690,7 @@ bool isVariableChanged(const Token *tok, int indirect, const Settings &settings,
     };
     tok2 = skipRedundantPtrOp(tok2, tok2->astParent());
 
-    if (tok2->astParent() && tok2->astParent()->isAssignmentOp() && (indirect == 0 || tok2->astParent()->str() == "=")) {
+    if (tok2->astParent() && tok2->astParent()->isAssignmentOp() && (indirect - derefs - arrayAccess == 0 || tok2->astParent()->str() == "=")) {
         if (astIsLHS(tok2))
             return true;
         // Check if assigning to a non-const lvalue

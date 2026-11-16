@@ -4300,6 +4300,12 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:3:7]: (style) Variable 'a' can be declared as const array [constVariable]\n",
                       errout_str());
+
+        check("void f(std::vector<int>& v) {\n"
+	        "    int *p = v.data();\n"
+	        "    p[0] += 1;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void constParameterCallback() {
