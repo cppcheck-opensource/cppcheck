@@ -262,9 +262,12 @@ namespace ValueFlow
                     }
                     // find the number of elements
                     size_t count = 1;
-                    for (size_t i = 0; i < var->dimensions().size(); ++i) {
-                        if (var->dimensionKnown(i))
-                            count *= var->dimension(i);
+                    for (const Dimension& dim : var->dimensions()) {
+                        const Value* v = dim.tok ? dim.tok->getKnownValue(Value::ValueType::INT) : nullptr;
+                        if (dim.known)
+                            count *= dim.num;
+                        else if (v && v->intvalue > 0)
+                            count *= v->intvalue;
                         else
                             count = 0;
                     }

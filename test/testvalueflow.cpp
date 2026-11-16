@@ -1533,6 +1533,34 @@ private:
         ASSERT_EQUALS(1U, values.size());
         ASSERT_EQUALS(2, values.back().intvalue);
 
+        code  = "struct S { char c[4]; };\n"
+                "void f() {\n"
+                "    char a[10 + sizeof(struct S)];\n"
+                "    x = sizeof(a);\n"
+                "}\n";
+        values = tokenValues(code, "( a )");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(14, values.back().intvalue);
+
+        code  = "void f() {\n"
+                "    short s;\n"
+                "    char a[10 + sizeof(s)];\n"
+                "    x = sizeof(a);\n"
+                "}\n";
+        values = tokenValues(code, "( a )");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(12, values.back().intvalue);
+
+        code  = "struct S { char c[4]; };\n"
+                "struct S *p;\n"
+                "void f() {\n"
+                "    char a[10 + sizeof(*p)];\n"
+                "    x = sizeof(a);\n"
+                "}\n";
+        values = tokenValues(code, "( a )");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(14, values.back().intvalue);
+
 #define CHECK(A, B, C, D)                         \
     do {                                      \
         code = "enum " A " E " B " { E0, E1 };\n" \
