@@ -486,7 +486,7 @@ namespace ValueFlow
         }
 
         // Calculations..
-        else if ((parent->isArithmeticalOp() || parent->isComparisonOp() || (parent->tokType() == Token::eBitOp) ||
+        else if ((parent->isArithmeticalOp() || parent->isComparisonOp() || (parent->tokType() == Token::eBitOp) || (Token::Match(parent, "%assign%") && parent->str().size() > 1) ||
                   (parent->tokType() == Token::eLogicalOp)) &&
                  parent->astOperand1() && parent->astOperand2()) {
 
