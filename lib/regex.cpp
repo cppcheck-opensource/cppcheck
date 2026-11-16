@@ -22,11 +22,18 @@
 
 #include <utility>
 
+#if defined(HAVE_STD_REGEX)
+#include <regex>
+#endif
+
+#if defined(HAVE_PCRE)
 #ifdef _WIN32
 #define PCRE_STATIC
 #endif
 #include <pcre.h>
+#endif
 
+#if defined(HAVE_PCRE)
 namespace {
     std::string pcreErrorCodeToString(const int pcreExecRet)
     {
@@ -249,6 +256,58 @@ namespace {
         return "";
     }
 }
+#endif // HAVE_PCRE
+
+#if defined(HAVE_STD_REGEX)
+namespace {
+    class StdRegex : public Regex
+    {
+    public:
+        explicit StdRegex(std::string pattern)
+            : mPattern(std::move(pattern))
+        {}
+
+        std::string compile()
+        {
+            if (mCompiled)
+                return "regular expression has already been compiled";
+
+            try {
+                mRegex = std::regex(mPattern);
+            } catch (const std::exception& e) {
+                return e.what();
+            }
+            mCompiled = true;
+            return "";
+        }
+
+        std::string match(const std::string& str, const MatchFn& matchFn) const override
+        {
+            if (!mCompiled)
+                return "regular expression has not been compiled yet";
+
+            auto I = std::sregex_iterator(str.cbegin(), str.cend(), mRegex);
+            const auto E = std::sregex_iterator();
+            while (I != E)
+            {
+                const std::smatch& match = *I;
+                matchFn(match.position(), match.position() + match.length());
+                ++I;
+            }
+            return "";
+        }
+
+        Engine engine() const override {
+            return Engine::Std;
+        }
+
+    private:
+        std::string mPattern;
+        std::regex mRegex;
+        bool mCompiled{};
+    };
+}
+#endif // HAVE_STD_REGEX
 
 template<typename T>
 static T* createAndCompileRegex(std::string pattern, std::string& err)
@@ -261,16 +320,54 @@ static T* createAndCompileRegex(std::string pattern, std::string& err)
 std::shared_ptr<Regex> Regex::create(std::string pattern, Engine engine, std::string& err)
 {
     Regex* regex = nullptr;
-    if (engine == Engine::Pcre)
-        regex = createAndCompileRegex<PcreRegex>(std::move(pattern), err);
-    else {
-        err = "unknown regular expression engine";
+    switch(engine)
+    {
+#if defined(HAVE_PCRE)
+        case Engine::Pcre:
+            regex = createAndCompileRegex<PcreRegex>(std::move(pattern), err);
+            break;
+#endif
+#if defined(HAVE_STD_REGEX)
+        case Engine::Std:
+            regex = createAndCompileRegex<StdRegex>(std::move(pattern), err);
+            break;
+#endif
+        default:
+            err = "unknown regular expression engine";
+            break;
     }
     if (!err.empty()) {
         delete regex;
         return nullptr;
     }
     return std::shared_ptr<Regex>(regex);
+}
+
+bool Regex::stringToEngine(const char* engine, Regex::Engine& regexEngine)
+{
+#if defined(HAVE_PCRE)
+    if (std::strcmp(engine, "pcre") == 0) {
+        regexEngine = Regex::Engine::Pcre;
+        return true;
+    }
+#endif
+#if defined(HAVE_STD_REGEX)
+    if (std::strcmp(engine, "std") == 0) {
+        regexEngine = Regex::Engine::Std;
+        return true;
+    }
+#endif
+    regexEngine = Regex::Engine::Unknown;
+    return false;
+}
+
+Regex::Engine Regex::defaultEngine()
+{
+#if defined(HAVE_PCRE)
+    return Regex::Engine::Pcre;
+#else
+    return Regex::Engine::Std;
+#endif
 }
 
 #endif // HAVE_RULES

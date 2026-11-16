@@ -85,8 +85,24 @@ private:
 
     void compileError() const {
         std::string exp;
+#if defined(HAVE_PCRE)
         if (mEngine == Regex::Engine::Pcre)
             exp = "missing terminating ] for character class";
+#endif
+#if defined(HAVE_STD_REGEX)
+        if (mEngine == Regex::Engine::Std)
+        {
+#if defined(_MSC_VER)
+            exp = "regex_error(error_brack): The expression contained mismatched [ and ].";
+#elif defined(_LIBCPP_VERSION)
+            exp = "The expression contained mismatched [ and ].";
+#elif defined(__clang__)
+            exp = "Unexpected character within '[...]' in regular expression";
+#else
+            exp = "Unexpected character in bracket expression.";
+#endif
+        }
+#endif
 
         (void)assertRegex("[", exp);
     }
@@ -198,11 +214,22 @@ private:
 #undef assertRegex
 };
 
+#if defined (HAVE_PCRE)
 class TestRegExPcre : public TestRegExBase {
 public:
     TestRegExPcre() : TestRegExBase("TestRegExPcre", Regex::Engine::Pcre) {}
 };
 
 REGISTER_TEST(TestRegExPcre)
+#endif
+
+#if defined (HAVE_STD_REGEX)
+class TestRegExStd : public TestRegExBase {
+public:
+    TestRegExStd() : TestRegExBase("TestRegExStd", Regex::Engine::Std) {}
+};
+
+REGISTER_TEST(TestRegExStd)
+#endif
 
 #endif // HAVE_RULES
