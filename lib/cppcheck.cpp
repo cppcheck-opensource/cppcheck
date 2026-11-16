@@ -686,7 +686,7 @@ unsigned int CppCheck::checkClang(const FileWithDetails &file)
     // #15221 - clangimport is deprecated and will be removed
     {
         ErrorMessage errmsg;
-        errmsg.callStack.push_back(ErrorMessage::FileLocation(file.spath(), 1, 1));
+        errmsg.callStack.emplace_back(file.spath(), 1, 1);
         errmsg.setmsg("clang import is deprecated, it will be removed in 2.27");
         errmsg.severity = Severity::information;
         errmsg.id = "clangimport";
