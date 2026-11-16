@@ -1547,6 +1547,91 @@ private:
         ASSERT_EQUALS(1U, values.size());
         ASSERT_EQUALS(2, values.back().intvalue);
 
+        code  = "struct S { char c[4]; };\n"
+                "void f() {\n"
+                "    char a[10 + sizeof(struct S)];\n"
+                "    x = sizeof(a);\n"
+                "}\n";
+        values = tokenValues(code, "( a )");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(14, values.back().intvalue);
+
+        code  = "void f() {\n"
+                "    short s;\n"
+                "    char a[10 + sizeof(s)];\n"
+                "    x = sizeof(a);\n"
+                "}\n";
+        values = tokenValues(code, "( a )");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(12, values.back().intvalue);
+
+        code  = "struct S { char c[4]; };\n"
+                "struct S *p;\n"
+                "void f() {\n"
+                "    char a[10 + sizeof(*p)];\n"
+                "    x = sizeof(a);\n"
+                "}\n";
+        values = tokenValues(code, "( a )");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(14, values.back().intvalue);
+
+        code  = "struct S { char c[4]; };\n"
+                "void f() {\n"
+                "    int a[2 + sizeof(struct S)];\n"
+                "    x = sizeof(a) / sizeof(a[0]);\n"
+                "}\n";
+        values = tokenValues(code, "/");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(6, values.back().intvalue);
+
+        code  = "struct S { char c[4]; };\n"
+                "struct T { char m[10 + sizeof(struct S)]; };\n"
+                "void f() {\n"
+                "    x = sizeof(struct T);\n"
+                "}\n";
+        values = tokenValues(code, "( struct T )");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(14, values.back().intvalue);
+
+        code  = "struct S { char c[4]; };\n"
+                "void f() {\n"
+                "    char a[10 + sizeof(struct S)];\n"
+                "    char b[sizeof(a)][2];\n"
+                "    x = sizeof(b);\n"
+                "}\n";
+        values = tokenValues(code, "( b )");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(28, values.back().intvalue);
+
+        code  = "void f(char a[10]) {\n" // array parameter is a pointer
+                "    x = sizeof(a);\n"
+                "}\n";
+        values = tokenValues(code, "( a )");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(settings.platform.sizeof_pointer, values.back().intvalue);
+
+        code  = "struct S { char c[4]; };\n"
+                "void f(char a[10 + sizeof(struct S)]) {\n"
+                "    x = sizeof(a);\n"
+                "}\n";
+        values = tokenValues(code, "( a )");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(settings.platform.sizeof_pointer, values.back().intvalue);
+
+        code  = "void f(char (&a)[10]) {\n"
+                "    x = sizeof(a);\n"
+                "}\n";
+        values = tokenValues(code, "( a )");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(10, values.back().intvalue);
+
+        code  = "void f(std::array<char, 10> a) {\n"
+                "    x = sizeof(a);\n"
+                "}\n";
+        values = tokenValues(code, "( a )");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(10, values.back().intvalue);
+
 #define CHECK(A, B, C, D)                         \
     do {                                      \
         code = "enum " A " E " B " { E0, E1 };\n" \
