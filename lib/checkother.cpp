@@ -2089,7 +2089,9 @@ void CheckOtherImpl::checkConstPointer()
             }
         } else {
             int argn = -1;
-            if (Token::Match(parent, "%oror%|%comp%|&&|?|!|-|<<|;"))
+            if (Token::Match(parent, "%oror%|%comp%|&&|?|-|!|<<|;"))
+                continue;
+            if (Token::simpleMatch(parent, "-") && parent->valueType() && parent->valueType()->pointer == 0)
                 continue;
             if (hasIncDecPlus && (!parent->astParent() || parent->astParent()->str() == ";"))
                 continue;
