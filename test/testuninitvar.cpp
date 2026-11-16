@@ -101,13 +101,12 @@ private:
         TEST_CASE(uninitvar_nonmember); // crash in ycmd test
         TEST_CASE(uninitvarDesignatedInitializers);
         TEST_CASE(uninitvarMemberPointer);
-        TEST_CASE(uninitvarDiag);
 
         TEST_CASE(isVariableUsageDeref); // *p
         TEST_CASE(isVariableUsageDerefValueflow); // *p
 
         TEST_CASE(uninitvar_memberaccess); // (&(a))->b <=> a.b
-        
+        TEST_CASE(uninitvar_diag);
 
         // whole program analysis
         TEST_CASE(ctuTest);
@@ -8058,15 +8057,6 @@ private:
         ASSERT_EQUALS("[test.cpp:5:7]: (error) Uninitialized variable: mp [legacyUninitvar]\n", errout_str());
     }
 
-    void uninitvarDiag() {
-        checkUninitVarAll("struct S { int x; };\n" // #15216
-                          "int f() {\n"
-                          "    S s;\n"
-                          "    return s.x;\n"
-                          "}\n");
-        ASSERT_EQUALS("[test.cpp:4:14]: (error) Uninitialized variable: s.x [uninitvar]\n", errout_str());
-    }
-
     void isVariableUsageDeref() {
         // *p
         checkUninitVar("void f() {\n"
@@ -8277,6 +8267,15 @@ private:
                         "    p = &s;\n"
                         "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void uninitvar_diag() {
+        checkUninitVarAll("struct S { int x; };\n" // #15216
+                          "int f() {\n"
+                          "    S s;\n"
+                          "    return s.x;\n"
+                          "}\n");
+        ASSERT_EQUALS("[test.cpp:4:14]: (error) Uninitialized variable: s.x [uninitvar]\n", errout_str());
     }
 
     void ctuTest() {
