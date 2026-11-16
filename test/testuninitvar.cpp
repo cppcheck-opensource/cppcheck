@@ -101,11 +101,13 @@ private:
         TEST_CASE(uninitvar_nonmember); // crash in ycmd test
         TEST_CASE(uninitvarDesignatedInitializers);
         TEST_CASE(uninitvarMemberPointer);
+        TEST_CASE(uninitvarDiag);
 
         TEST_CASE(isVariableUsageDeref); // *p
         TEST_CASE(isVariableUsageDerefValueflow); // *p
 
         TEST_CASE(uninitvar_memberaccess); // (&(a))->b <=> a.b
+        
 
         // whole program analysis
         TEST_CASE(ctuTest);
@@ -129,6 +131,17 @@ private:
 
         // Check for redundant code..
         CheckUninitVarImpl checkuninitvar(&tokenizer, settings1, *this);
+        checkuninitvar.check();
+    }
+
+#define checkUninitVarAll(...) checkUninitVarAll_(__FILE__, __LINE__, __VA_ARGS__)
+    template<size_t size>
+    void checkUninitVarAll_(const char* file, int line, const char (&code)[size]) {
+        SimpleTokenizer tokenizer(settings, *this, true);
+        ASSERT_LOC(tokenizer.tokenize(code), file, line);
+
+        CheckUninitVarImpl checkuninitvar(&tokenizer, settings, *this);
+        checkuninitvar.valueFlowUninit();
         checkuninitvar.check();
     }
 
@@ -8043,6 +8056,15 @@ private:
                        "  if (mp) {}\n"
                        "}\n");
         ASSERT_EQUALS("[test.cpp:5:7]: (error) Uninitialized variable: mp [legacyUninitvar]\n", errout_str());
+    }
+
+    void uninitvarDiag() {
+        checkUninitVarAll("struct S { int x; };\n" // #15216
+                          "int f() {\n"
+                          "    S s;\n"
+                          "    return s.x;\n"
+                          "}\n");
+        ASSERT_EQUALS("[test.cpp:4:14]: (error) Uninitialized variable: s.x [uninitvar]\n", errout_str());
     }
 
     void isVariableUsageDeref() {
