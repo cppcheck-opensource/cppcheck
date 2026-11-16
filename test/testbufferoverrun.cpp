@@ -3799,6 +3799,17 @@ private:
                       "[test.cpp:9:14]: note: Assignment 'j=-1', assigned value is -1\n"
                       "[test.cpp:10:9]: note: Assuming condition is false\n"
                       "[test.cpp:12:13]: note: Negative array index\n", errout_str());
+
+        check("char g(const char* s) {\n"
+              "    return s[6];\n"
+              "}\n"
+              "void f() {\n"
+              "    g(\"abc\");\n"
+              "}\n", s);
+        ASSERT_EQUALS("[test.cpp:2:13]: error: Array 's[4]' accessed at index 6, which is out of bounds. [arrayIndexOutOfBounds]\n"
+                      "[test.cpp:5:7]: note: Calling function 'g', 1st argument '\"abc\"' value is \"abc\"\n"
+                      "[test.cpp:2:13]: note: Array index out of bounds\n",
+                      errout_str());
     }
 
     void buffer_overrun_bailoutIfSwitch() {
