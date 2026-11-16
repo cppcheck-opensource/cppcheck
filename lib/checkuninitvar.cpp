@@ -1622,7 +1622,7 @@ void CheckUninitVarImpl::uninitvarError(const Token* tok, const ValueFlow::Value
 
 void CheckUninitVarImpl::uninitStructMemberError(const Token *tok, const std::string &membername)
 {
-    if (diag(tok, /*insert*/ false))
+    if (tok && diag(tok, /*insert*/ false))
         return;
     reportError(tok,
                 Severity::error,
