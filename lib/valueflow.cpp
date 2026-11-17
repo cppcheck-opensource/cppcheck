@@ -427,7 +427,7 @@ static void valueFlowArrayDimensions(const Token* tok)
 {
     const Token* start = tok->link();
     while (Token::simpleMatch(start->previous(), "]"))
-        start = start->previous()->link();
+        start = start->linkAt(-1);
     const Token* const nameTok = start->previous();
     const Variable* const var = nameTok ? nameTok->variable() : nullptr;
     if (!var || var->nameToken() != nameTok || !var->isArray())
