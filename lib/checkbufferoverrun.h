@@ -103,7 +103,7 @@ public:
     void arrayIndexError(const Token* tok,
                          const std::vector<Dimension>& dimensions,
                          const std::vector<ValueFlow::Value>& indexes,
-                         const ErrorPath& errorPathArray);
+                         ErrorPath errorPath);
     void negativeIndexError(const Token* tok,
                             const std::vector<Dimension>& dimensions,
                             const std::vector<ValueFlow::Value>& indexes);
