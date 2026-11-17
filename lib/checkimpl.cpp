@@ -47,9 +47,6 @@ ErrorPath CheckImpl::getErrorPath(const Token* errtok, const ValueFlow::Value* v
         errorPath.emplace_back(errtok, std::move(bug));
     } else if (mSettings.verbose || mSettings.outputFormat == Settings::OutputFormat::xml || !mSettings.templateLocation.empty()) {
         errorPath = value->errorPath;
-        // array passed to subfunction
-        if (errorPath.empty() && Token::simpleMatch(errtok, "[") && errtok->astOperand1() && !errtok->astOperand1()->values().empty() && errtok->astOperand1()->values().front().isTokValue())
-            errorPath = errtok->astOperand1()->values().front().errorPath;
         errorPath.emplace_back(errtok, std::move(bug));
     } else {
         if (value->condition)
