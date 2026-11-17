@@ -4304,6 +4304,14 @@ private:
         check("void f(std::vector<int>& v) {\n"
               "    int *p = v.data();\n"
               "    p[0] += 1;\n"
+              "}\n"
+              "void g(std::vector<int*>& v) {\n"
+              "    int** p = v.data();\n"
+              "    p[0][0] += 1;\n"
+              "}\n"
+              "void h(std::vector<int*>& v) {\n"
+              "    int** p = v.data();\n"
+              "    *p[0] += 1;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
     }
