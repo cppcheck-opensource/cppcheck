@@ -1878,6 +1878,44 @@ private:
         values = tokenValues(code, "( S");
         ASSERT_EQUALS(1U, values.size());
         ASSERT(values.back().isImpossible());
+
+        // the overflow must not be lost when base classes are added
+        code = "struct B { int i; };\n"
+               "struct D : B { int m[0x4000000000000001]; };\n"
+               "x = sizeof(D);\n";
+        values = tokenValues(code, "( D");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT(values.back().isImpossible());
+
+        code = "struct B { int i; };\n"
+               "struct D : B { char m[0x100000000][0x100000000]; };\n"
+               "x = sizeof(D);\n";
+        values = tokenValues(code, "( D");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT(values.back().isImpossible());
+
+        code = "struct B { int i; };\n"
+               "struct D : B { char b[0x6000000000000000]; char c[0x6000000000000000]; };\n"
+               "x = sizeof(D);\n";
+        values = tokenValues(code, "( D");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT(values.back().isImpossible());
+
+        code = "struct B { char m[0x100000000][0x100000000]; };\n"
+               "struct D : B { int i; };\n"
+               "x = sizeof(D);\n";
+        values = tokenValues(code, "( D");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT(values.back().isImpossible());
+
+        // the sum of the base class sizes does not fit in a MathLib::bigint
+        code = "struct B1 { char m[0x6000000000000000]; };\n"
+               "struct B2 { char m[0x6000000000000000]; };\n"
+               "struct D : B1, B2 { char c; };\n"
+               "x = sizeof(D);\n";
+        values = tokenValues(code, "( D");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT(values.back().isImpossible());
     }
 
     void valueFlowComma()

@@ -5017,6 +5017,23 @@ private:
               "    memset(a, 0, 10);\n"
               "}\n", settings0);
         ASSERT_EQUALS("", errout_str());
+
+        // the size of a derived class must not wrap around
+        check("struct B { int i; };\n"
+              "struct D : B { char m[0x100000000][0x100000000]; };\n"
+              "void f() {\n"
+              "    D d;\n"
+              "    memset(&d, 0, 10);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct B { int i; };\n"
+              "struct D : B { char b[0x6000000000000000]; char c[0x6000000000000000]; };\n"
+              "int f() {\n"
+              "    char buf[2] = {0};\n"
+              "    return buf[sizeof(D)];\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("", errout_str());
     }
 
     // extracttests.enable

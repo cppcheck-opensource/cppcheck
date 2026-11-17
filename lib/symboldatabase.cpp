@@ -8695,6 +8695,7 @@ namespace {
     {
         size_t total;
         bool success;
+        bool overflow;
     };
 }
 
@@ -8709,10 +8710,10 @@ static Result accumulateStructMembers(const Scope* scope, F f, ValueType::Accura
         const MathLib::bigint bits = var.nameToken() ? var.nameToken()->bits() : -1;
         if (const ValueType* vt = var.valueType()) {
             if (vt->type == ValueType::Type::RECORD && vt->typeScope == scope)
-                return {0, false};
+                return {0, false, false};
             MathLib::bigint dim = 0;
             if (!var.dimensionsProduct(dim))
-                return {0, false};
+                return {0, false, true};
             if (var.nameToken()->scope() != scope && var.nameToken()->scope()->definedType) { // anonymous union
                 const auto ret = anonScopes.insert(var.nameToken()->scope());
                 if (ret.second)
@@ -8726,9 +8727,9 @@ static Result accumulateStructMembers(const Scope* scope, F f, ValueType::Accura
                 total = f(total, *vt, dim, bits);
         }
         if (accuracy == ValueType::Accuracy::ExactOrZero && total == 0 && bits == -1)
-            return {0, false};
+            return {0, false, false};
     }
-    return {total, true};
+    return {total, true, false};
 }
 
 
@@ -8809,6 +8810,9 @@ size_t ValueType::getSizeOf( const Settings& settings, Accuracy accuracy, SizeOf
     if (type == ValueType::Type::RECORD && typeScope) {
         size_t currentBitCount = 0;
         size_t currentBitfieldAlloc = 0;
+        // the size must fit in a MathLib::bigint
+        const size_t maxSize = std::numeric_limits<MathLib::bigint>::max();
+        bool overflow = false;
         auto accHelper = [&](size_t total, const ValueType& vt2, size_t dim, MathLib::bigint nBits) -> size_t {
             const size_t charBit = settings.platform.char_bit;
             size_t n = vt2.getSizeOf(settings, accuracy, SizeOf::Pointer, ++maxRecursion);
@@ -8839,14 +8843,16 @@ size_t ValueType::getSizeOf( const Settings& settings, Accuracy accuracy, SizeOf
                 currentBitCount += nBits;
                 return ret;
             }
-            // the size must fit in a MathLib::bigint
-            const size_t maxSize = std::numeric_limits<MathLib::bigint>::max();
-            if (MathLib::mulOverflows(static_cast<MathLib::bigint>(n), static_cast<MathLib::bigint>(dim)))
+            if (MathLib::mulOverflows(static_cast<MathLib::bigint>(n), static_cast<MathLib::bigint>(dim))) {
+                overflow = true;
                 return accuracy == Accuracy::ExactOrZero ? 0 : total;
+            }
             n *= dim;
             size_t padding = (a - (total % a)) % a;
-            if (total + padding > maxSize || n > maxSize - total - padding)
+            if (total + padding > maxSize || n > maxSize - total - padding) {
+                overflow = true;
                 return accuracy == Accuracy::ExactOrZero ? 0 : total;
+            }
             if (currentBitCount > 0) {
                 bool fitsInBitfield = currentBitCount + (n * charBit) <= currentBitfieldAlloc * charBit;
                 bool isAligned = currentBitCount % (charBit * a) == 0;
@@ -8861,17 +8867,23 @@ size_t ValueType::getSizeOf( const Settings& settings, Accuracy accuracy, SizeOf
             return typeScope->type == ScopeType::eUnion ? std::max(total, n) : total + padding + n;
         };
         Result result = accumulateStructMembers(typeScope, accHelper, accuracy, settings);
+        overflow = overflow || result.overflow;
         size_t total = result.total;
         if (currentBitCount > 0)
             total += currentBitfieldAlloc;
         if (const ::Type* dt = typeScope->definedType) {
             total = std::accumulate(dt->derivedFrom.begin(), dt->derivedFrom.end(), total, [&](size_t v, const ::Type::BaseInfo& bi) {
-                if (bi.type && bi.type->classScope)
-                    v += accumulateStructMembers(bi.type->classScope, accHelper, accuracy, settings).total;
+                if (bi.type && bi.type->classScope) {
+                    const Result baseResult = accumulateStructMembers(bi.type->classScope, accHelper, accuracy, settings);
+                    if (baseResult.overflow || v > maxSize || baseResult.total > maxSize - v)
+                        overflow = true;
+                    else
+                        v += baseResult.total;
+                }
                 return v;
             });
         }
-        if (accuracy == Accuracy::ExactOrZero && total == 0 && !result.success)
+        if (accuracy == Accuracy::ExactOrZero && (overflow || (total == 0 && !result.success)))
             return 0;
         total = std::max(size_t{1}, total);
         size_t align = getAlignOf(*this, settings, accuracy, sizeOf);
