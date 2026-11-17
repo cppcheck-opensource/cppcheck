@@ -2017,8 +2017,8 @@ void CheckOtherImpl::checkConstPointer()
         pointers.emplace(var);
         const Token* parent = tok->astParent();
         enum Deref : std::uint8_t { NONE, DEREF, MEMBER } deref = NONE;
-        bool hasIncDecPlus = false;
-        if (parent && (parent->isUnaryOp("*") || (((hasIncDecPlus = parent->isIncDecOp()) || (hasIncDecPlus = (parent->str() == "+"))) &&
+        bool hasIncDecPlusMinus = false;
+        if (parent && (parent->isUnaryOp("*") || (((hasIncDecPlusMinus = parent->isIncDecOp()) || (hasIncDecPlusMinus = Token::Match(parent, "[+-]"))) &&
                                                   parent->astParent() && parent->astParent()->isUnaryOp("*"))))
             deref = DEREF;
         else if (Token::simpleMatch(parent, "[") && parent->astOperand1() == tok && tok != nameTok)
@@ -2054,7 +2054,7 @@ void CheckOtherImpl::checkConstPointer()
                     }
                 }
             }
-            if (hasIncDecPlus) {
+            if (hasIncDecPlusMinus) {
                 parent = gparent;
                 gparent = gparent ? gparent->astParent() : nullptr;
             }
@@ -2093,7 +2093,7 @@ void CheckOtherImpl::checkConstPointer()
                 continue;
             if (Token::simpleMatch(parent, "-") && parent->valueType() && parent->valueType()->pointer == 0)
                 continue;
-            if (hasIncDecPlus && (!parent->astParent() || parent->astParent()->str() == ";"))
+            if (hasIncDecPlusMinus && (!parent->astParent() || parent->astParent()->str() == ";"))
                 continue;
             if (Token::simpleMatch(parent, "(") && Token::Match(parent->astOperand1(), "if|while"))
                 continue;
