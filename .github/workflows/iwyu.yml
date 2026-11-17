@@ -47,7 +47,7 @@ jobs:
         if: contains(matrix.image, 'debian')
         run: |
           apt-get update
-          apt-get install -y cmake clang make libpcre3-dev
+          apt-get install -y cmake clang make libpcre2-dev
           apt-get install -y libgl-dev  # fixes missing dependency for Qt in CMake
           apt-get install -y iwyu
 
@@ -56,7 +56,7 @@ jobs:
         run: |
           set -x
           pacman -Sy
-          pacman -S cmake make clang pcre --noconfirm
+          pacman -S cmake make clang pcre2 --noconfirm
           pacman -S libglvnd --noconfirm  # fixes missing dependency for Qt in CMake
           pacman-key --init
           pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
@@ -88,7 +88,7 @@ jobs:
       - name: Install missing software on OpenSUSE
         if: contains(matrix.image, 'opensuse')
         run: |
-          zypper install -y cmake clang pcre-devel
+          zypper install -y cmake clang pcre2-devel
           zypper install -y include-what-you-use-tools
           ln -s iwyu_tool.py /usr/bin/iwyu_tool
 
@@ -96,7 +96,7 @@ jobs:
       - name: Install missing software on macOS
         if: contains(matrix.os, 'macos')
         run: |
-          brew install include-what-you-use pcre coreutils
+          brew install include-what-you-use pcre2 coreutils
           # on Apple Silicon files are symlinked under /opt/homebrew/bin
           ln -s /opt/homebrew/bin/iwyu_tool.py /usr/local/bin/iwyu_tool
 
@@ -206,7 +206,7 @@ jobs:
       - name: Install missing software
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake make libpcre3-dev
+          sudo apt-get install -y cmake make libpcre2-dev
           sudo apt-get install -y libgl-dev  # missing dependency for using Qt in CMake
 
       - name: Install clang

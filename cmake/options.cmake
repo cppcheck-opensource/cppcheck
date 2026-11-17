@@ -94,7 +94,7 @@ if(NOT BUILD_GUI)
     endif()
 endif()
 
-option(HAVE_RULES           "Usage of rules (needs PCRE library and headers)"               OFF)
+option(HAVE_RULES           "Usage of rules (needs PCRE2 library and headers)"              OFF)
 option(USE_BUNDLED_TINYXML2 "Usage of bundled TinyXML2 library"                             ON)
 if(BUILD_CORE_DLL AND NOT USE_BUNDLED_TINYXML2)
     message(FATAL_ERROR "Cannot use external TinyXML2 library when building lib as DLL")

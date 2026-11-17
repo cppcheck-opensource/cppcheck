@@ -140,16 +140,16 @@ ifeq (g++, $(findstring g++,$(CXX)))
 endif
 override CXXFLAGS += -std=c++11
 ifeq ($(HAVE_RULES),yes)
-    PCRE_CONFIG = $(shell which pcre-config)
+    PCRE_CONFIG = $(shell which pcre2-config)
     ifeq ($(PCRE_CONFIG),)
-        $(error Did not find pcre-config)
+        $(error Did not find pcre2-config)
     endif
     override CXXFLAGS += $(shell $(PCRE_CONFIG) --cflags)
     override CPPFLAGS += -DHAVE_RULES
     ifdef LIBS
-        LIBS += $(shell $(PCRE_CONFIG) --libs)
+        LIBS += $(shell $(PCRE_CONFIG) --libs8)
     else
-        LIBS=$(shell $(PCRE_CONFIG) --libs)
+        LIBS=$(shell $(PCRE_CONFIG) --libs8)
     endif
 else ifneq ($(HAVE_RULES),)
     $(error invalid HAVE_RULES value '$(HAVE_RULES)')

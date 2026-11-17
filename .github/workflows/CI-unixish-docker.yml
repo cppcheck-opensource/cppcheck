@@ -51,7 +51,7 @@ jobs:
         if: contains(matrix.image, 'ubuntu')
         run: |
           apt-get update
-          apt-get install -y cmake g++ make libxml2-utils libpcre3-dev
+          apt-get install -y cmake g++ make libxml2-utils libpcre2-dev
 
       - name: Install missing software (gui) on latest ubuntu
         if: contains(matrix.image, 'ubuntu')
@@ -61,7 +61,7 @@ jobs:
       - name: Install missing software on Alpine
         if: contains(matrix.image, 'alpine')
         run: |
-          apk add cmake make g++ pcre-dev
+          apk add cmake make g++ pcre2-dev
 
       # needs to be called after the package installation since
       # - it doesn't call "apt-get update"
@@ -104,12 +104,12 @@ jobs:
         if: contains(matrix.image, 'ubuntu')
         run: |
           apt-get update
-          apt-get install -y g++ make python3 libxml2-utils libpcre3-dev
+          apt-get install -y g++ make python3 libxml2-utils libpcre2-dev
 
       - name: Install missing software on Alpine
         if: contains(matrix.image, 'alpine')
         run: |
-          apk add make g++ pcre-dev bash python3 libxml2-utils
+          apk add make g++ pcre2-dev bash python3 libxml2-utils
 
       # needs to be called after the package installation since
       # - it doesn't call "apt-get update"
