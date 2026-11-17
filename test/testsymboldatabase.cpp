@@ -9929,6 +9929,11 @@ private:
         ASSERT_EQUALS("unsigned long long", typeOf("0x100000000U;\n", "0x100000000U", false, &s));
         ASSERT_EQUALS("unsigned long long", typeOf("0x100000000UL;\n", "0x100000000UL", false, &s));
         ASSERT_EQUALS("signed long long", typeOf("0x1FFFFFFFF;\n", "0x1FFFFFFFF", false, &s));
+        ASSERT_EQUALS("signed int", typeOf("077777;\n", "077777", false, &s));
+        ASSERT_EQUALS("unsigned int", typeOf("0177777;\n", "0177777", false, &s));
+        ASSERT_EQUALS("signed long", typeOf("0200000;\n", "0200000", false, &s));
+        ASSERT_EQUALS("unsigned long", typeOf("037777777777;\n", "037777777777", false, &s));
+        ASSERT_EQUALS("signed long long", typeOf("040000000000;\n", "040000000000", false, &s));
 
         ASSERT_EQUALS("signed long", typeOf("2147483648;\n", "2147483648", false, &sSameSize));
         ASSERT_EQUALS("unsigned long", typeOf("0xc000000000000000;\n", "0xc000000000000000", false, &sSameSize));
