@@ -1405,6 +1405,12 @@ private:
                 "}\n";
         ASSERT_NO_THROW(tokenValues(code, "<=>"));
 
+        code  = "int f() {\n" // #15184
+                "    int i = -1;\n"
+                "    return 1 / (i += 1);\n"
+                "}\n";
+        ASSERT_EQUALS(true, testKnownValueOfTok(code, "+=", 0));
+
         // Comparison of string
         values = removeImpossible(tokenValues("f(\"xyz\" == \"xyz\");\n", "==")); // implementation defined
         ASSERT_EQUALS(0U, values.size()); // <- no value
