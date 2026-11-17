@@ -38,6 +38,8 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.os }}
+          # only save cache in main/release branches, PRs restore the cache of the base branch
+          save: ${{ github.event_name != 'pull_request' }}
 
       - name: Install missing software on ubuntu
         if: contains(matrix.os, 'ubuntu')
@@ -92,6 +94,8 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.os }}
+          # only save cache in main/release branches, PRs restore the cache of the base branch
+          save: ${{ github.event_name != 'pull_request' }}
 
       # TODO: move latest compiler to separate step
       # TODO: bail out on warnings with latest GCC
@@ -222,6 +226,8 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.os }}-${{ matrix.cxxstd }}
+          # only save cache in main/release branches, PRs restore the cache of the base branch
+          save: ${{ github.event_name != 'pull_request' }}
 
       - name: Install missing software on ubuntu
         if: contains(matrix.os, 'ubuntu')
@@ -270,6 +276,8 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.os }}
+          # only save cache in main/release branches, PRs restore the cache of the base branch
+          save: ${{ github.event_name != 'pull_request' }}
 
       # coreutils contains "nproc"
       - name: Install missing software on macos
@@ -304,6 +312,8 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.os }}
+          # only save cache in main/release branches, PRs restore the cache of the base branch
+          save: ${{ github.event_name != 'pull_request' }}
 
       # coreutils contains "nproc"
       - name: Install missing software on macos
@@ -366,6 +376,8 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.os }}
+          # only save cache in main/release branches, PRs restore the cache of the base branch
+          save: ${{ github.event_name != 'pull_request' }}
 
       - name: Run CMake on macOS (force Boost)
         run: |
@@ -466,6 +478,8 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.os }}
+          # only save cache in main/release branches, PRs restore the cache of the base branch
+          save: ${{ github.event_name != 'pull_request' }}
 
       - name: Install missing software on ubuntu
         if: contains(matrix.os, 'ubuntu')
@@ -716,6 +730,8 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.os }}
+          # only save cache in main/release branches, PRs restore the cache of the base branch
+          save: ${{ github.event_name != 'pull_request' }}
 
       - name: Install missing software on ubuntu
         run: |
