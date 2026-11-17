@@ -6682,7 +6682,8 @@ private:
               "        c ++;\n"
               "    }\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:31]: (warning, inconclusive) Found suspicious equality comparison. Did you intend to assign a value instead? [constStatement]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:31]: (warning, inconclusive) Found suspicious equality comparison. Did you intend to assign a value instead? [constStatement]\n"
+                      "[test.cpp:2:5]: (warning) The loop variable 'i' is not updated in this for-loop, so the loop might never terminate. [missingForLoopIncrement]\n", errout_str());
 
         check("void foo(int c) {\n"
               "    for (; running == 1;) {\n"
@@ -8641,7 +8642,8 @@ private:
               "        if( i != 0 ) {}\n"
               "    }\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:17] -> [test.cpp:3:15]: (style) The comparison 'i != 0' is always false. [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:17] -> [test.cpp:3:15]: (style) The comparison 'i != 0' is always false. [knownConditionTrueFalse]\n"
+                      "[test.cpp:2:5]: (warning) The loop variable 'i' is not updated in this for-loop, so the loop might never terminate. [missingForLoopIncrement]\n", errout_str());
 
         check("void f() {\n"
               "    for(int i = 0; i < 10;) {\n"
@@ -14692,6 +14694,21 @@ private:
               "  for (int i = 0; i < n;) {\n"
               "    g(i);\n"
               "  }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Nested update in step — OK 
+        check("void f(const std::vector<int*>& v) {\n"
+              "  for (auto it = v.begin(); it != v.end(); delete *it++);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Loop var updated on RHS of step assignment — OK
+        check("void dostuff(int);\n"
+              "void foo(int num) {\n"
+              "  int a = num;\n"
+              "  for (int b = 0; b < num; a = b++)\n"
+              "    dostuff(a);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
     }

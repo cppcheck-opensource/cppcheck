@@ -4914,13 +4914,12 @@ static bool stepUpdatesVar(const Token* stepTok, nonneg int varId)
 {
     if (!stepTok || varId == 0)
         return false;
-    if (stepTok->str() == ",")
-        return stepUpdatesVar(stepTok->astOperand1(), varId) || stepUpdatesVar(stepTok->astOperand2(), varId);
     if (stepTok->isIncDecOp() && stepTok->astOperand1() && stepTok->astOperand1()->varId() == varId)
         return true;
-    if (stepTok->isAssignmentOp() && stepTok->astOperand1() && stepTok->astOperand1()->varId() == varId) // TODO: WILL THIS RETURN TRUE IF STEP IS SOMETHING LIKE: i=i 
+    if (stepTok->isAssignmentOp() && stepTok->astOperand1() && stepTok->astOperand1()->varId() == varId)
         return true;
-    return false;
+    // Recurse so nested updates are found, e.g. "delete *it++" or "a = b++"
+    return stepUpdatesVar(stepTok->astOperand1(), varId) || stepUpdatesVar(stepTok->astOperand2(), varId);
 }
 
 static bool hasForLoopExit(const Scope& scope)
@@ -4938,7 +4937,7 @@ static bool hasForLoopExit(const Scope& scope)
         }
         if (!tok->isName() || !tok->isKeyword())
             continue;
-        if (Token::Match(tok, "goto|return|throw")) //TODO: WILL THIS RETURN TRUE IF GOTO STAYS WITHIN THE LOOP
+        if (Token::Match(tok, "goto|return|throw"))
             return true;
         if (tok->str() != "break")
             continue;
