@@ -77,6 +77,7 @@ private:
                // warning
                "- either division by zero or useless condition\n"
                "- access of moved or forwarded variable.\n"
+               "- for-loop that never updates its control variable\n"
 
                // performance
                "- redundant data copying for const variable\n"
@@ -267,6 +268,9 @@ public:
     void overlappingWriteUnion(const Token *tok);
     void overlappingWriteFunction(const Token *tok, const std::string& funcname);
 
+    /** @brief %Check for for-loops that never update their control variable (#5459) */
+    void checkMissingForLoopIncrement();
+
     // Error messages..
     void checkComparisonFunctionIsAlwaysTrueOrFalseError(const Token* tok, const std::string &functionName, const std::string &varName, bool result);
     void checkCastIntToCharAndBackError(const Token *tok, const std::string &strFunctionName);
@@ -328,6 +332,7 @@ public:
     void comparePointersError(const Token *tok, const ValueFlow::Value *v1, const ValueFlow::Value *v2, bool subtract);
     void checkModuloOfOneError(const Token *tok);
     void unionZeroInitError(const Token *tok, const UnionMember& largestMember);
+    void missingForLoopIncrementError(const Token *tok, const std::string &varname);
 
     bool diag(const Token* tok) {
         return !mRedundantAssignmentDiag.emplace(tok).second;
