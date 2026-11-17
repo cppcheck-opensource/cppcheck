@@ -221,7 +221,7 @@ static bool getDimensionsEtc(const Token * const arrayToken, const Settings &set
                 return ChildrenToVisit::op1_and_op2;
             });
         }
-    } else if (const Token *stringLiteral = array->getValueTokenMinStrSize(settings, &path)) {
+    } else if (const Token *stringLiteral = array->getValueTokenMinStrSize(settings, &path, &errorPath)) {
         Dimension dim;
         dim.tok = nullptr;
         dim.num = Token::getStrArraySize(stringLiteral);
@@ -360,7 +360,7 @@ void CheckBufferOverrunImpl::arrayIndex()
             const std::vector<ValueFlow::Value>& indexValues =
                 getOverrunIndexValues(tok, tok->astOperand1(), dimensions, indexTokens, path);
             if (!indexValues.empty())
-                arrayIndexError(tok, dimensions, indexValues);
+                arrayIndexError(tok, dimensions, indexValues, std::move(errorPath));
         }
 
         // Negative index
@@ -421,7 +421,8 @@ static std::string arrayIndexMessage(const Token* tok,
 
 void CheckBufferOverrunImpl::arrayIndexError(const Token* tok,
                                              const std::vector<Dimension>& dimensions,
-                                             const std::vector<ValueFlow::Value>& indexes)
+                                             const std::vector<ValueFlow::Value>& indexes,
+                                             const ErrorPath& errorPathArray)
 {
     if (!tok) {
         reportError(tok, Severity::error, "arrayIndexOutOfBounds", "Array 'arr[16]' accessed at index 16, which is out of bounds.", CWE_BUFFER_OVERRUN, Certainty::normal);
@@ -440,7 +441,10 @@ void CheckBufferOverrunImpl::arrayIndexError(const Token* tok,
             index = &indexValue;
     }
 
-    reportError(getErrorPath(tok, index, "Array index out of bounds"),
+    ErrorPath errorPath = getErrorPath(tok, index, "Array index out of bounds");
+    errorPath.insert(errorPath.end(), errorPathArray.begin(), errorPathArray.end());
+
+    reportError(errorPath,
                 index->errorSeverity() ? Severity::error : Severity::warning,
                 index->condition ? "arrayIndexOutOfBoundsCond" : "arrayIndexOutOfBounds",
                 arrayIndexMessage(tok, dimensions, indexes, condition),
@@ -1342,7 +1346,7 @@ void CheckBufferOverrun::runChecks(const Tokenizer &tokenizer, ErrorLogger& erro
 void CheckBufferOverrun::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
 {
     CheckBufferOverrunImpl c(nullptr, settings, errorLogger);
-    c.arrayIndexError(nullptr, std::vector<Dimension>(), std::vector<ValueFlow::Value>());
+    c.arrayIndexError(nullptr, std::vector<Dimension>(), std::vector<ValueFlow::Value>(), {});
     c.pointerArithmeticError(nullptr, nullptr, nullptr);
     c.negativeIndexError(nullptr, std::vector<Dimension>(), std::vector<ValueFlow::Value>());
     c.arrayIndexThenCheckError(nullptr, "i");
