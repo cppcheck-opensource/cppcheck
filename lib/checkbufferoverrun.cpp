@@ -422,7 +422,7 @@ static std::string arrayIndexMessage(const Token* tok,
 void CheckBufferOverrunImpl::arrayIndexError(const Token* tok,
                                              const std::vector<Dimension>& dimensions,
                                              const std::vector<ValueFlow::Value>& indexes,
-                                             const ErrorPath& errorPathArray)
+                                             ErrorPath errorPath)
 {
     if (!tok) {
         reportError(tok, Severity::error, "arrayIndexOutOfBounds", "Array 'arr[16]' accessed at index 16, which is out of bounds.", CWE_BUFFER_OVERRUN, Certainty::normal);
@@ -441,8 +441,8 @@ void CheckBufferOverrunImpl::arrayIndexError(const Token* tok,
             index = &indexValue;
     }
 
-    ErrorPath errorPath = getErrorPath(tok, index, "Array index out of bounds");
-    errorPath.insert(errorPath.end(), errorPathArray.begin(), errorPathArray.end());
+    const ErrorPath errorPathTok = getErrorPath(tok, index, "Array index out of bounds");
+    errorPath.insert(errorPath.end(), errorPathTok.begin(), errorPathTok.end());
 
     reportError(errorPath,
                 index->errorSeverity() ? Severity::error : Severity::warning,
