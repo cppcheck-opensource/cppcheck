@@ -69,6 +69,8 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ matrix.image }}
+          # only save cache in main/release branches, PRs restore the cache of the base branch
+          save: ${{ github.event_name != 'pull_request' }}
 
       - name: Run CMake
         run: |
@@ -117,6 +119,8 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ matrix.image }}
+          # only save cache in main/release branches, PRs restore the cache of the base branch
+          save: ${{ github.event_name != 'pull_request' }}
 
       # /usr/lib/ccache/bin - Alpine Linux
 
