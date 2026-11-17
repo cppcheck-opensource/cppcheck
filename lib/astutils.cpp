@@ -2690,7 +2690,7 @@ bool isVariableChanged(const Token *tok, int indirect, const Settings &settings,
     };
     tok2 = skipRedundantPtrOp(tok2, tok2->astParent());
 
-    if (tok2->astParent() && tok2->astParent()->isAssignmentOp() && (indirect - derefs - arrayAccess == 0 || tok2->astParent()->str() == "=")) {
+    if (tok2->astParent() && tok2->astParent()->isAssignmentOp() && (indirect - derefs - arrayAccess <= 0 || tok2->astParent()->str() == "=")) {
         if (astIsLHS(tok2))
             return true;
         // Check if assigning to a non-const lvalue
