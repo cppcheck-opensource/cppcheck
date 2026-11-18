@@ -2479,6 +2479,14 @@ private:
                "}\n";
         ASSERT_EQUALS(true, testValueOfX(code, 4U, LLONG_MIN));
 
+        // negating the minimum wraps without signed integer overflow
+        code = "long long f() {\n"
+               "    long long m = -0x7fffffffffffffff - 1;\n"
+               "    long long x = -m;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, LLONG_MIN));
+
         code = "void f() {\n"
                "    int x = 123;\n"
                "    a = sizeof(x);\n"

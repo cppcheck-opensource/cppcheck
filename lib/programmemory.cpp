@@ -2104,7 +2104,7 @@ namespace {
                 }
                 if (expr->str() == "-") {
                     for (ValueFlow::Value& v : lhs) {
-                        v.intvalue = -v.intvalue;
+                        v.intvalue = calculateArithmetic<MathLib::bigint>('-', 0, v.intvalue);
                         v.invertBound();
                     }
                 }
