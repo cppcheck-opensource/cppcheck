@@ -303,6 +303,7 @@ void CheckBufferOverrunImpl::arrayIndex()
     logChecker("CheckBufferOverrun::arrayIndex");
 
     for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
+        tok = skipUnreachableBranch(tok);
         if (tok->str() != "[")
             continue;
         const Token *array = tok->astOperand1();
