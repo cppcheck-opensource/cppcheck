@@ -3181,13 +3181,13 @@ private:
             s.daca = true;
 
             check("void f() {\n"
-                "    const char a[][5] = { \"1\", \"true\", \"on\", \"yes\" };\n"
-                "}\n", s);
+                  "    const char a[][5] = { \"1\", \"true\", \"on\", \"yes\" };\n"
+                  "}\n", s);
             ASSERT_EQUALS("", errout_str());
         }
 
         {
-            Settings s = settings;            
+            Settings s = settings;
             const char code[] = "char f(const std::string& s, bool b) {\n"
                                 "    int i = -1;\n"
                                 "    if (b)\n"
