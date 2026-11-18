@@ -1635,7 +1635,9 @@ private:
                 "A e(int c);\n"
                 "A h(T (*p)[16]);\n"
                 "int x(g(1)[0]);\n"
-                "A u(T (*)[16]);\n", dinit(TokenizeOptions, $.cpp = false));
+                "A u(T (*)[16]);\n"
+                "A h3(T (*const p)[16]);\n"
+                "A h4(T (**p)[16]);\n", dinit(TokenizeOptions, $.cpp = false));
 
             const char expected[] = "1: A f@1 ( 3 ) ;\n"
                                     "2: A f2@2 ( true ) ;\n"
@@ -1643,7 +1645,9 @@ private:
                                     "4: A e ( int c@3 ) ;\n"
                                     "5: A h ( T ( * p@4 ) [ 16 ] ) ;\n"
                                     "6: int x@5 ( g ( 1 ) [ 0 ] ) ;\n"
-                                    "7: A u ( T ( * ) [ 16 ] ) ;\n";
+                                    "7: A u ( T ( * ) [ 16 ] ) ;\n"
+                                    "8: A h3 ( T ( * const p@6 ) [ 16 ] ) ;\n"
+                                    "9: A h4 ( T ( * * p@7 ) [ 16 ] ) ;\n";
 
             ASSERT_EQUALS(expected, actual);
         }
