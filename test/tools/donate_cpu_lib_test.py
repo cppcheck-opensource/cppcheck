@@ -70,11 +70,11 @@ def test_match_multiple_time(tmpdir):
     _test_library_includes(tmpdir, ['posix', 'gnu', 'bsd', 'zlib'], '#include <zlib.h>', libinc)
     _test_library_includes(tmpdir, ['posix', 'gnu', 'bsd', 'zlib'], '#include <zlib.h>', libinc)
 
-def _add_tar_member(tf, name, linkname=None):
+def _add_tar_member(tf, name, linkname=None, linktype=tarfile.SYMTYPE):
     info = tarfile.TarInfo(name)
     data = b''
     if linkname is not None:
-        info.type = tarfile.SYMTYPE
+        info.type = linktype
         info.linkname = linkname
     else:
         data = b'int x;\n'
@@ -96,3 +96,27 @@ def test_unpack_package_outside_temp(tmpdir):
     assert source_found
     assert os.path.isfile(os.path.join(temp_path, 'pkg', 'main.c'))
     assert os.listdir(outside_path) == []
+
+def test_unpack_package_duplicate_name(tmpdir):
+    work_path = str(tmpdir)
+    outside_path = os.path.join(work_path, 'outside')
+    os.mkdir(outside_path)
+    outside_file = os.path.join(outside_path, 'target.c')
+    with open(outside_file, 'w', encoding='utf-8') as f:
+        f.write('int y;\n')
+    tgz = os.path.join(work_path, 'temp.tgz')
+    with tarfile.open(tgz, 'w:gz') as tf:
+        # a harmless member followed by a link with the same name that points outside temp
+        _add_tar_member(tf, 'pkg/sym.c')
+        _add_tar_member(tf, 'pkg/sym.c', linkname=outside_file)
+        _add_tar_member(tf, 'pkg/hard.c')
+        _add_tar_member(tf, 'pkg/hard.c', linkname='../outside/target.c', linktype=tarfile.LNKTYPE)
+
+    temp_path, source_found = unpack_package(work_path, tgz)
+    assert source_found
+    for name in ('sym.c', 'hard.c'):
+        path = os.path.join(temp_path, 'pkg', name)
+        assert os.path.isfile(path)
+        assert not os.path.islink(path)
+        assert not os.path.samefile(path, outside_file)
+    assert os.listdir(outside_path) == ['target.c']

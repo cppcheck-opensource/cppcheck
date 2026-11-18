@@ -406,7 +406,7 @@ def unpack_package(work_path, tgz, cpp_only=False, c_only=False, skip_files=None
                             skipped += 1
                             continue
                     try:
-                        tf.extract(member.name, temp_path, **extract_args)
+                        tf.extract(member, temp_path, **extract_args)
                         if is_source:
                             source_found = True
                         extracted += 1
