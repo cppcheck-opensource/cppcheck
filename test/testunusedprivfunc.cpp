@@ -24,7 +24,6 @@
 #include "fixture.h"
 
 #include <cstddef>
-#include <string>
 
 class TestUnusedPrivateFunction : public TestFixture {
 public:

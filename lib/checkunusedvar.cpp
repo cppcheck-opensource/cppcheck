@@ -34,7 +34,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
-#include <list>
 #include <set>
 #include <utility>
 #include <vector>

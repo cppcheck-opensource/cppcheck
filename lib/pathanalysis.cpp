@@ -24,7 +24,6 @@
 #include "vfvalue.h"
 
 #include <algorithm>
-#include <string>
 #include <tuple>
 
 const Scope* PathAnalysis::findOuterScope(const Scope * scope)

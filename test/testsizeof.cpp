@@ -23,7 +23,6 @@
 #include "settings.h"
 
 #include <cstddef>
-#include <string>
 
 class TestSizeof : public TestFixture {
 public:

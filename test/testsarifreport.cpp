@@ -24,7 +24,6 @@
 #include <cmath>
 #include <set>
 #include <string>
-#include <vector>
 
 #include "json.h"
 

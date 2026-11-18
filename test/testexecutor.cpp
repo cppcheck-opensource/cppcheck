@@ -29,7 +29,6 @@
 
 #include <list>
 #include <stdexcept>
-#include <string>
 #include <utility>
 
 class DummyExecutor : public Executor
