@@ -683,6 +683,16 @@ unsigned int CppCheck::checkClang(const FileWithDetails &file)
 {
     // TODO: clear exitcode
 
+    // #15221 - clangimport is deprecated and will be removed
+    {
+        ErrorMessage errmsg;
+        errmsg.callStack.emplace_back(file.spath(), 1, 1);
+        errmsg.setmsg("clang import is deprecated, it will be removed in 2.27");
+        errmsg.severity = Severity::information;
+        errmsg.id = "clangimport";
+        mErrorLogger.reportErr(errmsg);
+    }
+
     if (mSettings.checks.isEnabled(Checks::unusedFunction) && !mUnusedFunctionsCheck)
         mUnusedFunctionsCheck.reset(new CheckUnusedFunctions());
 
