@@ -1916,6 +1916,31 @@ private:
         values = tokenValues(code, "( D");
         ASSERT_EQUALS(1U, values.size());
         ASSERT(values.back().isImpossible());
+
+        // the number of bits of an array after a bitfield does not fit in a size_t,
+        // the array must not be counted as part of the bitfield
+        code = "struct S { int a : 8; char c[0x2000000000000000]; };\n"
+               "x = sizeof(S);\n";
+        values = tokenValues(code, "( S");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(0x2000000000000004LL, values.back().intvalue);
+
+        // the size in bytes of an array variable does not fit in a MathLib::bigint
+        code = "void f() {\n"
+               "    int a[0x4000000000000001];\n"
+               "    x = sizeof(a);\n"
+               "}\n";
+        values = tokenValues(code, "( a");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT(values.back().isImpossible());
+
+        code = "void f() {\n"
+               "    char a[0x100000000][0x100000000];\n"
+               "    x = sizeof(a);\n"
+               "}\n";
+        values = tokenValues(code, "( a");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT(values.back().isImpossible());
     }
 
     void valueFlowComma()

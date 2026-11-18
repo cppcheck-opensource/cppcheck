@@ -8819,6 +8819,10 @@ size_t ValueType::getSizeOf( const Settings& settings, Accuracy accuracy, SizeOf
             size_t a = getAlignOf(vt2, settings, accuracy, SizeOf::Pointer);
             if (n == 0 || a == 0)
                 return accuracy == Accuracy::ExactOrZero ? 0 : total;
+            if (nBits >= 0 && n > maxSize / charBit) {
+                overflow = true;
+                return accuracy == Accuracy::ExactOrZero ? 0 : total;
+            }
             if (nBits == 0) {
                 if (currentBitfieldAlloc == 0) {
                     nBits = n * charBit;
@@ -8854,7 +8858,9 @@ size_t ValueType::getSizeOf( const Settings& settings, Accuracy accuracy, SizeOf
                 return accuracy == Accuracy::ExactOrZero ? 0 : total;
             }
             if (currentBitCount > 0) {
-                bool fitsInBitfield = currentBitCount + (n * charBit) <= currentBitfieldAlloc * charBit;
+                // n * charBit can wrap, so compare against the remaining bits divided by charBit
+                const size_t allocBits = currentBitfieldAlloc * charBit;
+                bool fitsInBitfield = currentBitCount <= allocBits && n <= (allocBits - currentBitCount) / charBit;
                 bool isAligned = currentBitCount % (charBit * a) == 0;
                 if (vt2.isIntegral() && fitsInBitfield && isAligned) {
                     currentBitCount += charBit * n;

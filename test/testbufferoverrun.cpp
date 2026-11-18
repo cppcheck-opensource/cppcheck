@@ -5034,6 +5034,22 @@ private:
               "    return buf[sizeof(D)];\n"
               "}\n", settings0);
         ASSERT_EQUALS("", errout_str());
+
+        // an array after a bitfield must not be counted as part of the bitfield
+        check("struct S { int a : 8; char c[0x2000000000000000]; };\n"
+              "void f() {\n"
+              "    S s;\n"
+              "    memset(&s, 0, 10);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("", errout_str());
+
+        // sizeof of an array variable must not wrap around
+        check("int f() {\n"
+              "    int a[0x4000000000000001];\n"
+              "    char buf[2] = {0};\n"
+              "    return buf[sizeof(a)];\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("", errout_str());
     }
 
     // extracttests.enable
