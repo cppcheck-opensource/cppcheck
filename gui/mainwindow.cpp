@@ -2051,7 +2051,7 @@ void MainWindow::analyzeProject(const ProjectFile *projectFile, const QStringLis
     }
 
     // the exclude paths can only be validated when the whole project is analyzed
-    const bool checkUnusedExcludes = recheckFiles.isEmpty();
+    const bool checkUnusedExcludes = (recheck == Recheck::None);
     doAnalyzeFiles(paths, checkLib, checkConfig, checkUnusedExcludes, selectedFiles, recheck);
 }
 
