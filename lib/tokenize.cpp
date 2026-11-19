@@ -7511,6 +7511,7 @@ void Tokenizer::simplifyVarDecl(const bool only_k_r_fpar)
     simplifyVarDecl(list.front(), nullptr, only_k_r_fpar);
 }
 
+// Returns the closing parenthesis of the parameter list if tok ends a trailing return type
 static Token* isTrailingReturnType(Token* tok)
 {
     while (Token::Match(tok, "%name%|::|>")) {
@@ -7519,8 +7520,20 @@ static Token* isTrailingReturnType(Token* tok)
         else
             tok = tok->tokAt(-1);
     }
-    if (tok && Token::simpleMatch(tok->tokAt(-1), ") ."))
-        return tok->tokAt(-1);
+    if (!Token::simpleMatch(tok, "."))
+        return nullptr;
+    // Skip the specifiers between the parameter list and the trailing return type
+    tok = tok->previous();
+    while (tok) {
+        if (Token::Match(tok, "const|volatile|&|&&|noexcept|mutable|constexpr|consteval|static"))
+            tok = tok->previous();
+        else if (tok->str() == ")" && Token::Match(tok->link()->previous(), "noexcept|throw"))
+            tok = tok->link()->tokAt(-2);
+        else
+            break;
+    }
+    if (Token::simpleMatch(tok, ")"))
+        return tok;
     return nullptr;
 }
 
