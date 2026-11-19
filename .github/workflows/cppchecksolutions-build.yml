@@ -1,0 +1,125 @@
+# Syntax reference https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions
+# Environment reference https://help.github.com/en/actions/reference/virtual-environments-for-github-hosted-runners
+name: cppchecksolutions-build
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'releases/**'
+      - '2.*'
+    tags:
+      - '2.*'
+  pull_request:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  build_and_test:
+
+    strategy:
+      matrix:
+        image:
+          - "ghcr.io/cppchecksolutions/buildtools-ubuntu-22.04:v3"
+          - "ghcr.io/cppchecksolutions/buildtools-ubuntu-24.04:v3"
+          - "ghcr.io/cppchecksolutions/buildtools-ubuntu-26.04:v1"
+      fail-fast: false # Prefer quick result
+
+    runs-on: ubuntu-24.04
+
+    container:
+      image: ${{ matrix.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # the buildtools images only contain the compilers and build tools
+      - name: Install missing software
+        run: |
+          apt-get update
+          apt-get install -y libpcre2-dev libxml2-utils python3-pytest python3-pytest-xdist python3-pytest-timeout python3-psutil python3-pygments
+
+      - name: Build cppcheck
+        run: |
+          make -j$(nproc) CXXOPTS="-Werror" HAVE_RULES=yes
+
+      - name: Build test
+        run: |
+          make -j$(nproc) CXXOPTS="-Werror" HAVE_RULES=yes testrunner
+
+      - name: Run test
+        run: |
+          make -j$(nproc) HAVE_RULES=yes test
+
+      - name: Run extra tests
+        run: |
+          test/scripts/generate_and_run_more_tests.sh
+
+      - name: Run test/cli
+        run: |
+          python3 -m pytest -Werror --strict-markers -vv -n auto test/cli
+
+      - name: Run cfg tests
+        run: |
+          make -j$(nproc) checkcfg
+
+      - name: Validate
+        run: |
+          make -j$(nproc) checkCWEEntries validateXML
+
+      - name: Test addons
+        run: |
+          set -x
+          ./cppcheck --error-exitcode=1 --inline-suppr --addon=threadsafety addons/test/threadsafety
+          ./cppcheck --error-exitcode=1 --inline-suppr --addon=threadsafety --std=c++03 addons/test/threadsafety
+          ./cppcheck --error-exitcode=1 --inline-suppr --addon=misra addons/test/misra/crash*.c
+          ./cppcheck --error-exitcode=1 --inline-suppr --addon=misra --enable=information addons/test/misra/config*.c
+
+          ./cppcheck --addon=misra --enable=style --inline-suppr --enable=information --error-exitcode=1 addons/test/misra/misra-ctu-*-test.c
+          cd addons/test
+          # We'll force C89 standard to enable an additional verification for
+          # rules 5.4 and 5.5 which have standard-dependent options.
+          ../../cppcheck --dump -DDUMMY --suppress=uninitvar --inline-suppr misra/misra-test.c --std=c89 --platform=unix64
+          python3 ../misra.py -verify misra/misra-test.c.dump
+          # Test slight MISRA differences in C11 standard
+          ../../cppcheck --dump -DDUMMY --suppress=uninitvar --inline-suppr misra/misra-test-c11.c --std=c11 --platform=unix64
+          python3 ../misra.py -verify misra/misra-test-c11.c.dump
+          ../../cppcheck --dump -DDUMMY --suppress=uninitvar --suppress=uninitStructMember --std=c89 misra/misra-test.h
+          ../../cppcheck --dump misra/misra-test.cpp
+          python3 ../misra.py -verify misra/misra-test.cpp.dump
+          python3 ../misra.py --rule-texts=misra/misra2012_rules_dummy_ascii.txt -verify misra/misra-test.cpp.dump
+          python3 ../misra.py --rule-texts=misra/misra2012_rules_dummy_utf8.txt -verify misra/misra-test.cpp.dump
+          python3 ../misra.py --rule-texts=misra/misra2012_rules_dummy_windows1250.txt -verify misra/misra-test.cpp.dump
+          ../../cppcheck --addon=misra --enable=style --platform=avr8 --error-exitcode=1 misra/misra-test-avr8.c
+          ../../cppcheck --dump misc-test.cpp
+          python3 ../misc.py -verify misc-test.cpp.dump
+          ../../cppcheck --dump naming_test.c
+          python3 ../naming.py --var='[a-z].*' --function='[a-z].*' naming_test.c.dump
+          ../../cppcheck --dump naming_test.cpp
+          python3 ../naming.py --var='[a-z].*' --function='[a-z].*' naming_test.cpp.dump
+
+      # TODO: run with "-n auto" when misra_test.py can be run in parallel
+      # we cannot specify -Werror on Ubuntu 22.04 since xml/etree/ElementTree.py in Python 3.10 contains an unclosed file
+      - name: Test addons (Python)
+        run: |
+          python3 -m pytest $PYTEST_WERROR --strict-markers -vv -n 1 addons/test
+        env:
+          PYTHONPATH: ./addons
+          PYTEST_WERROR: ${{ !contains(matrix.image, '22.04') && '-Werror' || '' }}
+
+      - name: Test tools
+        run: |
+          python3 test/tools/test_matchcompiler.py
+          test/tools/htmlreport/test_htmlreport.py
+          test/tools/htmlreport/check.sh
+          python3 -m pytest -Werror --strict-markers -vv test/tools/reduce_test.py test/tools/donate_cpu_lib_test.py test/tools/donate_cpu_server_test.py
+          rm -f test/tools/donate-cpu-server.log
+        env:
+          PYTHONPATH: ./tools
