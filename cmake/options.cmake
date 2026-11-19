@@ -81,7 +81,7 @@ endif()
 
 option(BUILD_GUI            "Build the qt application"                                      OFF)
 if(WITH_QCHART)
-    message(DEPRECATION "WITH_QCHART is deprecated and has no effect - the QtCharts usage in the GUI has been removed")
+    message(WARNING "WITH_QCHART is deprecated and has no effect - the QtCharts usage in the GUI has been removed")
 endif()
 option(REGISTER_GUI_TESTS   "Register GUI tests in CTest"                                   ON)
 option(BUILD_ONLINE_HELP    "Build online help"                                             OFF)
