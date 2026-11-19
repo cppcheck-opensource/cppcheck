@@ -7,6 +7,7 @@ License: No restrictions, use this as you need.
 """
 
 import argparse
+import functools
 import json
 import os
 import sys
@@ -1691,17 +1692,32 @@ class CompiledPattern:
             return None
         return m
 
-# pattern string -> CompiledPattern
-_pattern_cache = {}
+@functools.lru_cache(maxsize=1024)
+def compile_pattern(pattern):
+    """
+    Return the CompiledPattern for a pattern string.
+
+    The most recently used patterns are kept, so compiling the same pattern
+    string again is cheap.
+    """
+    return CompiledPattern(pattern)
 
 def match(token, pattern):
+    """
+    Match the tokens starting at token against pattern.
+
+    Returns a MatchResult, which is true when the pattern matches.
+
+    Use constant pattern strings. A pattern is compiled the first time it is
+    used and only a limited number of compiled patterns are kept, so a pattern
+    string built at run time, such as name + ' (', is compiled again for every
+    new string. Compare the varying part separately instead:
+
+        match(tok, '%name% (') and tok.str == name
+    """
     if not pattern:
         return MatchResult(False)
-    compiled = _pattern_cache.get(pattern)
-    if compiled is None:
-        compiled = CompiledPattern(pattern)
-        _pattern_cache[pattern] = compiled
-    return compiled.match(token)
+    return compile_pattern(pattern).match(token)
 
 def get_function_call_name_args(token):
     """Get function name and arguments for function call

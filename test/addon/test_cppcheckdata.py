@@ -791,6 +791,23 @@ class TestMatch:
         assert res.end.str == '{'
         assert not cppcheckdata.match(calc_def, 'calc **nosuchtoken')
 
+    # ---- compiled pattern cache ----
+
+    def test_compile_pattern_reused(self):
+        compiled = cppcheckdata.compile_pattern('calc ( %var%')
+        assert compiled.pattern == 'calc ( %var%'
+        assert cppcheckdata.compile_pattern('calc ( %var%') is compiled
+
+    def test_compiled_patterns_limited(self, match_cfg):
+        calc_def = find_token(match_cfg, 'calc')
+        maxsize = cppcheckdata.compile_pattern.cache_info().maxsize
+        assert maxsize is not None
+        for i in range(maxsize + 100):
+            assert not cppcheckdata.match(calc_def, 'nosuchtoken{} ('.format(i))
+        assert cppcheckdata.compile_pattern.cache_info().currsize == maxsize
+        # a pattern that was dropped is compiled again and still matches
+        assert cppcheckdata.match(calc_def, 'calc ( int')
+
 
 class TestSuppressions:
     def make_suppression(self, **kwargs):
