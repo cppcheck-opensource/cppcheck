@@ -173,12 +173,22 @@ public:
     /**
      * @brief Get the patterns that have not matched any path.
      *
-     * A pattern that has not matched itself is still considered used if it is covered by
-     * a pattern that has matched, since paths inside an ignored directory are not traversed.
-     *
      * @return The patterns that have not matched any path passed to match().
      */
     std::vector<std::string> unmatched() const;
+
+    /**
+     * @brief Only record the patterns that match, match() returns false.
+     *
+     * Use it to walk the paths in excluded directories: nothing is excluded and every
+     * path is matched against the patterns.
+     *
+     * @param recordOnly true: match() records the matching patterns and returns false.
+     */
+    void setRecordOnly(bool recordOnly)
+    {
+        mRecordOnly = recordOnly;
+    }
 
 protected:
     class PathIterator;
@@ -191,6 +201,8 @@ private:
     std::string mBasepath;
     /* The syntax to use */
     Syntax mSyntax;
+    /* match() only records the matching patterns */
+    bool mRecordOnly{};
 };
 
 /**

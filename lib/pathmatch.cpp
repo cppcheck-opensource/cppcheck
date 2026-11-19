@@ -42,7 +42,7 @@ bool PathMatch::match(const std::string &path, Filemode mode)
             ret = true;
         }
     }
-    return ret;
+    return ret && !mRecordOnly;
 }
 
 bool PathMatch::match(const std::string &pattern, const std::string &path, const std::string &basepath, Filemode mode, Syntax syntax)
@@ -160,14 +160,7 @@ bool PathMatch::match(const std::string &pattern, const std::string &path, const
 std::vector<std::string> PathMatch::unmatched() const {
     std::vector<std::string> ret;
     std::copy_if(mPatterns.cbegin(), mPatterns.cend(), std::back_inserter(ret), [this](const std::string& s) {
-        if (mMatchedPatterns.count(s) != 0)
-            return false;
-        // paths inside a matched directory are not traversed, so a pattern that is
-        // covered by a matched pattern is considered used
-        const Filemode mode = !s.empty() && PathIterator::issep(s.back(), mSyntax) ? Filemode::directory : Filemode::regular;
-        return std::none_of(mMatchedPatterns.cbegin(), mMatchedPatterns.cend(), [&](const std::string& matched) {
-            return match(matched, s, mBasepath, mode, mSyntax);
-        });
+        return mMatchedPatterns.count(s) == 0;
     });
     return ret;
 }

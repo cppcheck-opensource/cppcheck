@@ -522,6 +522,10 @@ private:
         TEST_CASE(ignoreUnused1);
         TEST_CASE(ignoreUnused2);
         TEST_CASE(ignoreUsed);
+        TEST_CASE(ignoreUsedInExcludedDir1);
+        TEST_CASE(ignoreUsedInExcludedDir2);
+        TEST_CASE(ignoreUsedInExcludedDir3);
+        TEST_CASE(ignoreUnusedExcludedDir);
         TEST_CASE(ignoreUnusedProject);
         TEST_CASE(ignoreUsedProject);
 
@@ -3680,6 +3684,47 @@ private:
         ASSERT_EQUALS("", logger->str());
         ASSERT_EQUALS(1, parser->getFiles().size());
         ASSERT_EQUALS("file2.cpp", parser->getFiles().cbegin()->path());
+    }
+
+    // the files in an excluded directory are not listed, a pattern that matches them is still used
+    void ignoreUsedInExcludedDir1() {
+        REDIRECT;
+        ScopedFile file1("a.cpp", "", "iued1");
+        ScopedFile file2("b.cpp", "", "iued1/sub");
+        const char * const argv[] = {"cppcheck", "-iiued1/sub/", "-ib.cpp", "iued1"};
+        ASSERT(fillSettingsFromArgs(argv));
+        ASSERT_EQUALS("", logger->str());
+        ASSERT_EQUALS(1, parser->getFiles().size());
+        ASSERT_EQUALS("iued1/a.cpp", parser->getFiles().cbegin()->path());
+    }
+
+    void ignoreUsedInExcludedDir2() {
+        REDIRECT;
+        ScopedFile file1("a.cpp", "", "iued2");
+        ScopedFile file2("b.cpp", "", "iued2/sub");
+        const char * const argv[] = {"cppcheck", "-iiued2/sub/", "-isub/b.cpp", "iued2"};
+        ASSERT(fillSettingsFromArgs(argv));
+        ASSERT_EQUALS("", logger->str());
+        ASSERT_EQUALS(1, parser->getFiles().size());
+    }
+
+    void ignoreUsedInExcludedDir3() {
+        REDIRECT;
+        ScopedFile file1("a.cpp", "", "iued3");
+        ScopedFile file2("b.pb.cc", "", "iued3/third_party");
+        const char * const argv[] = {"cppcheck", "-iiued3/third_party/", "-i*.pb.cc", "iued3"};
+        ASSERT(fillSettingsFromArgs(argv));
+        ASSERT_EQUALS("", logger->str());
+        ASSERT_EQUALS(1, parser->getFiles().size());
+    }
+
+    void ignoreUnusedExcludedDir() {
+        REDIRECT;
+        ScopedFile file1("a.cpp", "", "iued4");
+        ScopedFile file2("b.cpp", "", "iued4/sub");
+        const char * const argv[] = {"cppcheck", "-iiued4/sub/", "-ic.cpp", "iued4"};
+        ASSERT(!fillSettingsFromArgs(argv));
+        ASSERT_EQUALS("cppcheck: error: unused ignore/exclude path 'c.cpp'. To hide warnings in certain files use suppressions instead.\n", logger->str());
     }
 
     void ignoreUnusedProject() {

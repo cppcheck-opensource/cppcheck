@@ -91,6 +91,7 @@ private:
         TEST_CASE(unmatched4);
         TEST_CASE(unmatched5);
         TEST_CASE(unmatched6);
+        TEST_CASE(recordOnly);
     }
 
     // Test empty PathMatch
@@ -362,11 +363,23 @@ private:
     }
 
     void unmatched6() const {
-        // a pattern inside a matched directory is considered used
+        // only the patterns that matched a path are used, the text of the patterns is not compared
         PathMatch match({"src/", "src/foo.cpp", "src/lib/", "lib/foo.cpp"});
         ASSERT(match.match("src/", ifdir));
+        ASSERT_EQUALS(3, match.unmatched().size());
+        ASSERT_EQUALS("src/foo.cpp", match.unmatched()[0]);
+        ASSERT_EQUALS("src/lib/", match.unmatched()[1]);
+        ASSERT_EQUALS("lib/foo.cpp", match.unmatched()[2]);
+    }
+
+    void recordOnly() const {
+        // the matching patterns are recorded, but nothing is matched
+        PathMatch match({"src/", "*.pb.cc", "foo.cpp"});
+        match.setRecordOnly(true);
+        ASSERT(!match.match("src/", ifdir));
+        ASSERT(!match.match("src/a.pb.cc"));
         ASSERT_EQUALS(1, match.unmatched().size());
-        ASSERT_EQUALS("lib/foo.cpp", match.unmatched()[0]);
+        ASSERT_EQUALS("foo.cpp", match.unmatched()[0]);
     }
 };
 

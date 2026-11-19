@@ -148,6 +148,23 @@ CmdLineParser::CmdLineParser(CmdLineLogger &logger, Settings &settings, Suppress
     , mSuppressions(suppressions)
 {}
 
+// The file lister does not walk into an excluded directory, so a pattern that only matches paths in
+// there looks unused. Walk the paths again without excluding anything to find out which of the
+// remaining patterns match something. This is only done when some patterns look unused.
+static std::vector<std::string> unmatchedIgnoredPaths(const PathMatch &matcher, const std::vector<std::string> &pathnames, const std::set<std::string> &extra)
+{
+    std::vector<std::string> unmatched = matcher.unmatched();
+    if (unmatched.empty())
+        return unmatched;
+
+    PathMatch recorder(std::move(unmatched), Path::getCurrentPath());
+    recorder.setRecordOnly(true);
+    std::list<FileWithDetails> files;
+    for (const std::string &pathname : pathnames)
+        (void)FileLister::recursiveAddFiles(files, Path::toNativeSeparators(pathname), extra, recorder);
+    return recorder.unmatched();
+}
+
 bool CmdLineParser::fillSettingsFromArgs(int argc, const char* const argv[])
 {
     const Result result = parseFromArgs(argc, argv);
@@ -264,7 +281,7 @@ bool CmdLineParser::fillSettingsFromArgs(int argc, const char* const argv[])
             return false;
         }
 
-        const auto& unmatched = matcher.unmatched();
+        const std::vector<std::string> unmatched = unmatchedIgnoredPaths(matcher, pathnamesRef, mSettings.library.markupExtensions());
         if (!unmatched.empty()) {
             mLogger.printError("unused ignore/exclude path '" + unmatched.front() + "'. To hide warnings in certain files use suppressions instead.");
             return false;
