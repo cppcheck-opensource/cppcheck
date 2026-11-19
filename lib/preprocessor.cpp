@@ -1116,8 +1116,10 @@ void Preprocessor::dump(std::ostream &out) const
                 << " usefile=\"" << ErrorLogger::toxml(mSettings.relativePaths ? Path::getRelativePath(mTokens.file(macroUsage.useLocation), mSettings.basePaths) : mTokens.file(macroUsage.useLocation)) << "\""
                 << " useline=\"" << macroUsage.useLocation.line << "\""
                 << " usecolumn=\"" << macroUsage.useLocation.col << "\""
-                << " is-known-value=\"" << bool_to_string(macroUsage.macroValueKnown) << "\""
-                << "/>" << std::endl;
+                << " is-known-value=\"" << bool_to_string(macroUsage.macroValueKnown) << "\"";
+            if (!macroUsage.arg.empty())
+                out << " arg=\"" << ErrorLogger::toxml(macroUsage.arg) << "\"";
+            out << "/>" << std::endl;
         }
         out << "  </macro-usage>" << std::endl;
     }
