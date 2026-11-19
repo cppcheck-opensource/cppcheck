@@ -242,6 +242,7 @@ private:
         TEST_CASE(vardecl35);
         TEST_CASE(vardecl36);
         TEST_CASE(vardecl37);
+        TEST_CASE(vardecl38);
         TEST_CASE(vardecl_stl_1);
         TEST_CASE(vardecl_stl_2);
         TEST_CASE(vardecl_stl_3);
@@ -3116,6 +3117,11 @@ private:
                           "auto m ; m = [ ] ( int x ) noexcept ( true ) . int { int a ; a = 1 ; int b ; b = 2 ; return a + b + x ; } ;",
                           tokenizeAndStringify(code));
         }
+    }
+
+    void vardecl38() { // #15245 range ending in ')' before a braced initializer's '}'
+        ASSERT_EQUALS("int * q { new int [ 2 ] { ( 1 ) } } ;",
+                      tokenizeAndStringify("int* q{new int[2]{(1)}};"));
     }
 
     void volatile_variables() {
