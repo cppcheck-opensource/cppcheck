@@ -1,8 +1,5 @@
 if(BUILD_GUI)
     list(APPEND qt_components Core Gui Widgets PrintSupport LinguistTools Help Network)
-    if(WITH_QCHART)
-        list(APPEND qt_components Charts)
-    endif()
     if(BUILD_TESTING)
         list(APPEND qt_components Test)
     endif()

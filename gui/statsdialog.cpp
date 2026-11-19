@@ -22,8 +22,6 @@
 #include "projectfile.h"
 #include "showtypes.h"
 
-#include <algorithm>
-
 #include "ui_statsdialog.h"
 
 #include <QApplication>
@@ -43,29 +41,6 @@
 #include <QTextDocument>
 #include <QWidget>
 #include <Qt>
-
-#ifdef QT_CHARTS_LIB
-#include "common.h"
-
-#include <QAbstractSeries>
-#include <QChartView>
-#include <QDateTime>
-#include <QDateTimeAxis>
-#include <QDir>
-#include <QFile>
-#include <QIODevice>
-#include <QLayout>
-#include <QLineSeries>
-#include <QList>
-#include <QPainter>
-#include <QPointF>
-#include <QRegularExpression>
-#include <QTextStream>
-#include <QValueAxis>
-
-static QLineSeries *numberOfReports(const QString &fileName, const QString &severity);
-static QChartView *createChart(const QString &statsFile, const QString &tool);
-#endif
 
 static const QString CPPCHECK("cppcheck");
 
@@ -98,32 +73,6 @@ void StatsDialog::setProject(const ProjectFile* projectFile)
         mUI->mIncludePaths->setText(projectFile->getIncludeDirs().join(";"));
         mUI->mDefines->setText(projectFile->getDefines().join(";"));
         mUI->mUndefines->setText(projectFile->getUndefines().join(";"));
-#ifndef QT_CHARTS_LIB
-        mUI->mTabHistory->setVisible(false);
-#else
-        QString statsFile;
-        if (!projectFile->getBuildDir().isEmpty()) {
-            const QString prjpath = QFileInfo(projectFile->getFilename()).absolutePath();
-            const QString buildDir = prjpath + '/' + projectFile->getBuildDir();
-            if (QDir(buildDir).exists()) {
-                statsFile = buildDir + "/statistics.txt";
-            }
-        }
-        mUI->mLblHistoryFile->setText(tr("File: ") + (statsFile.isEmpty() ? tr("No cppcheck build dir") : statsFile));
-        if (!statsFile.isEmpty()) {
-            QChartView *chartView = createChart(statsFile, "cppcheck");
-            mUI->mTabHistory->layout()->addWidget(chartView);
-            // cppcheck-suppress knownConditionTrueFalse - TODO in getClangAnalyzer()
-            if (projectFile->getClangAnalyzer()) {
-                chartView = createChart(statsFile, CLANG_ANALYZER);
-                mUI->mTabHistory->layout()->addWidget(chartView);
-            }
-            if (projectFile->getClangTidy()) {
-                chartView = createChart(statsFile, CLANG_TIDY);
-                mUI->mTabHistory->layout()->addWidget(chartView);
-            }
-        }
-#endif
     } else {
         mUI->mProject->setText(QString());
         mUI->mPaths->setText(QString());
@@ -379,79 +328,3 @@ void StatsDialog::setStatistics(const CheckStatistics *stats)
     mUI->mLblActiveCheckers->setText(QString::number(stats->getNumberOfActiveCheckers()));
     mUI->mCheckersReport->setPlainText(stats->getCheckersReport());
 }
-
-#ifdef QT_CHARTS_LIB
-QChartView *createChart(const QString &statsFile, const QString &tool)
-{
-    auto *chart = new QChart;
-    chart->addSeries(numberOfReports(statsFile, tool + "-error"));
-    chart->addSeries(numberOfReports(statsFile, tool + "-warning"));
-    chart->addSeries(numberOfReports(statsFile, tool + "-style"));
-    chart->addSeries(numberOfReports(statsFile, tool + "-performance"));
-    chart->addSeries(numberOfReports(statsFile, tool + "-portability"));
-
-    auto *axisX = new QDateTimeAxis;
-    axisX->setTitleText("Date");
-    chart->addAxis(axisX, Qt::AlignBottom);
-
-    for (QAbstractSeries *s : chart->series()) {
-        s->attachAxis(axisX);
-    }
-
-    auto *axisY = new QValueAxis;
-    axisY->setLabelFormat("%i");
-    axisY->setTitleText("Count");
-    chart->addAxis(axisY, Qt::AlignLeft);
-
-    qreal maxY = 0;
-    for (QAbstractSeries *s : chart->series()) {
-        s->attachAxis(axisY);
-        if (const auto *ls = dynamic_cast<const QLineSeries*>(s)) {
-            for (QPointF p : ls->points()) {
-                // cppcheck-suppress useStlAlgorithm - this would reduce the readability of the code
-                maxY = std::max(p.y(), maxY);
-            }
-        }
-    }
-    axisY->setMax(maxY);
-
-    //chart->createDefaultAxes();
-    chart->setTitle(tool);
-
-    auto *chartView = new QChartView(chart);
-    chartView->setRenderHint(QPainter::Antialiasing);
-    return chartView;
-}
-
-QLineSeries *numberOfReports(const QString &fileName, const QString &severity)
-{
-    auto *series = new QLineSeries();
-    series->setName(severity);
-    QFile f(fileName);
-    if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        quint64 t = 0;
-        QTextStream in(&f);
-        while (!in.atEnd()) {
-            QString line = in.readLine();
-            static const QRegularExpression rxdate("^\\[(\\d\\d)\\.(\\d\\d)\\.(\\d\\d\\d\\d)\\]$");
-            const QRegularExpressionMatch matchRes = rxdate.match(line);
-            if (matchRes.hasMatch()) {
-                const int y = matchRes.captured(3).toInt();
-                const int m = matchRes.captured(2).toInt();
-                const int d = matchRes.captured(1).toInt();
-                QDateTime dt;
-                dt.setDate(QDate(y,m,d));
-                if (t == dt.toMSecsSinceEpoch())
-                    t += 1000;
-                else
-                    t = dt.toMSecsSinceEpoch();
-            }
-            if (line.startsWith(severity + ':')) {
-                const int y = line.mid(1+severity.length()).toInt();
-                series->append(t, y);
-            }
-        }
-    }
-    return series;
-}
-#endif
