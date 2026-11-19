@@ -1703,6 +1703,15 @@ namespace {
             return !values.empty() && values.front().isImpossible();
         }
 
+        // Is the value of the pointer the address of an object, so that it is not null?
+        static bool isObjectAddress(const Token* expr, const Values& values)
+        {
+            if (!expr->valueType() || expr->valueType()->pointer == 0)
+                return false;
+            return values.size() == 1 && values.front().isLifetimeValue() &&
+                   values.front().lifetimeKind == ValueFlow::Value::LifetimeKind::Address;
+        }
+
         // The value of a condition: constraints that exclude zero are true, a value stands for itself
         static ValueFlow::Value conditionValue(Values values)
         {
@@ -2134,6 +2143,12 @@ namespace {
                 const Values* stored = pm->getValues(expr->exprId());
                 if (!stored || *stored != *tracked)
                     pm->setValues(expr, *tracked);
+                // A pointer to an object is true as a bool
+                if (isObjectAddress(expr, *tracked) && isUsedAsBool(expr, settings)) {
+                    ValueFlow::Value result{1};
+                    result.setKnown();
+                    return single(std::move(result));
+                }
                 return *tracked;
             }
             if (const Values* stored = getStoredValues(expr)) {
