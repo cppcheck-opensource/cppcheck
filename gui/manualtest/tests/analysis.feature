@@ -53,3 +53,11 @@ Feature: Analysis and recheck
       | latin1           |
       | long_line        |
       | unclosed_nesting |
+
+  @id:t1508ae01 @ticket:15081 @project:unused-exclude
+  Scenario: Unused exclude paths are reported
+    When I open the project file {project:unused-exclude}/p.cppcheck
+    Then a warning message box says that there are unused exclude paths
+    And the message lists src/missing/
+    And the message does not list src/skip/, that exclude path is used
+    And the message says that suppressions should be used to hide warnings in certain files
