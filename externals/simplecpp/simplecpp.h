@@ -165,7 +165,7 @@ namespace simplecpp {
         }
 
         Token(const Token &tok) :
-            macro(tok.macro), op(tok.op), comment(tok.comment), name(tok.name), number(tok.number), whitespaceahead(tok.whitespaceahead), location(tok.location), string(tok.string), mExpandedFrom(tok.mExpandedFrom) {}
+            macro(tok.macro), op(tok.op), comment(tok.comment), name(tok.name), number(tok.number), whitespaceahead(tok.whitespaceahead), skippedByRescan(tok.skippedByRescan), location(tok.location), string(tok.string), mExpandedFrom(tok.mExpandedFrom) {}
 
         Token &operator=(const Token &tok) = delete;
 
@@ -191,6 +191,11 @@ namespace simplecpp {
         bool name;
         bool number;
         bool whitespaceahead;
+        /** The macro rescan has examined this token and passed it: a function-like
+         *  macro name that was not followed by '(' at that point. A '(' that comes
+         *  later does not make it a macro call, until the token is substituted into
+         *  a replacement list and rescanned again. */
+        bool skippedByRescan{};
         Location location;
         Token *previous{};
         Token *next{};
@@ -251,6 +256,7 @@ namespace simplecpp {
             PORTABILITY_BACKSLASH,
             PORTABILITY_LINE_DIRECTIVE,
             PORTABILITY_NO_EOF_NEWLINE,
+            PORTABILITY_STRINGIFY,
             UNHANDLED_CHAR_ERROR,
             EXPLICIT_INCLUDE_NOT_FOUND,
             FILE_NOT_FOUND,
@@ -428,6 +434,27 @@ namespace simplecpp {
         const Token* lastLineTok(int maxsize=1000) const;
         const Token* isLastLinePreprocessor(int maxsize=1000) const;
 
+        /**
+         * Read a block comment, up to and including the closing star-slash.
+         * Each backslash-newline is removed from the text. If the comment is
+         * on a continued line or in a preprocessor directive, its newlines are
+         * removed too, so that the directive keeps going after the comment.
+         * @param stream    the stream to read from. The first '/' is already
+         *                  read, and the next character is '*'.
+         * @param multiline incremented for each newline that is removed
+         * @return the comment text
+         */
+        TokenString readBlockComment(Stream &stream, unsigned int &multiline);
+        /**
+         * Read the text of a #error or #warning directive, up to but not
+         * including the newline, and add it as one token. A backslash-newline
+         * continues the text on the next line and is removed from it.
+         * @param stream   the stream to read from
+         * @param ch       the first character of the text, already read from the stream
+         * @param location the location of the text. Updated to point after it.
+         */
+        void readErrorText(Stream &stream, unsigned char ch, Location &location);
+
         unsigned int fileIndex(const std::string &filename);
 
         Token *frontToken;
@@ -442,6 +469,11 @@ namespace simplecpp {
         Location macroLocation;
         Location useLocation;
         bool macroValueKnown;
+        /** The argument of a call of INTn_C / UINTn_C (n = 8, 16, 32, 64, MAX): the tokens between the parentheses
+         *  joined with a single space, comments are skipped. Empty for all other macros.
+         *  For a call in the code this is the argument as written. For a call in a macro body it is the argument
+         *  after the parameters of the enclosing macro are substituted and the macros in them are expanded. */
+        std::string arg;
     };
 
     /** Tracking #if/#elif expressions */
