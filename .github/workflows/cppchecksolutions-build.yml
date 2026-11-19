@@ -44,7 +44,7 @@ jobs:
       - name: Install missing software
         run: |
           apt-get update
-          apt-get install -y libpcre2-dev libxml2-utils python3-pytest python3-pytest-xdist python3-pytest-timeout python3-psutil python3-pygments strace
+          apt-get install -y libpcre2-dev libxml2-utils python3-pytest python3-pytest-xdist python3-pytest-timeout python3-psutil python3-pygments strace tidy
 
       - name: Build cppcheck
         run: |
