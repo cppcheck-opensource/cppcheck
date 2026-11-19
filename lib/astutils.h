@@ -230,12 +230,16 @@ const Token* getCondTokFromEnd(const Token* endBlock);
 const Token *findNextTokenFromBreak(const Token *breakToken);
 
 /**
- * Extract for loop values: loopvar varid, init value, step value, last value (inclusive)
+ * Extract for loop values: loopvar varid, init value, step value, last value (inclusive).
+ * `initValueSource` identifies the fact supplying the minimum; `initValueWitnessSource`
+ * identifies an actual negative point or upper bound, if present.
  */
 bool extractForLoopValues(const Token *forToken,
                           nonneg int &varid,
                           bool &knownInitValue,
                           MathLib::bigint &initValue,
+                          const ValueFlow::Value*& initValueSource,
+                          const ValueFlow::Value*& initValueWitnessSource,
                           bool &partialCond,
                           MathLib::bigint &stepValue,
                           MathLib::bigint &lastValue);
@@ -465,6 +469,9 @@ bool isExhaustiveSwitch(const Token *startbrace);
 bool isUnreachableOperand(const Token *tok);
 
 const Token *skipUnreachableBranch(const Token *tok);
+
+/** Is 'tok' inside a branch that skipUnreachableBranch() proves unreachable? */
+bool isInUnreachableBranch(const Token *tok);
 
 bool isEscapeKeyword(const Token *tok, const Settings &settings);
 
