@@ -1,11 +1,43 @@
 include(CheckCXXCompilerFlag)
 
+# compile options, compile definitions and link options for all targets
+# directory-level commands like add_compile_options() are not recommended so these are collected in lists and
+# applied to the targets with cppcheck_apply_global_options()
+set(CPPCHECK_COMPILE_OPTIONS)
+set(CPPCHECK_COMPILE_DEFINITIONS)
+set(CPPCHECK_LINK_OPTIONS)
+
 function(add_compile_options_safe FLAG)
     string(MAKE_C_IDENTIFIER "HAS_CXX_FLAG${FLAG}" mangled_flag)
     check_cxx_compiler_flag(${FLAG} ${mangled_flag})
     if(${mangled_flag})
-        add_compile_options(${FLAG})
+        set(CPPCHECK_COMPILE_OPTIONS ${CPPCHECK_COMPILE_OPTIONS} ${FLAG} PARENT_SCOPE)
     endif()
+endfunction()
+
+# applies CPPCHECK_COMPILE_OPTIONS, CPPCHECK_COMPILE_DEFINITIONS and CPPCHECK_LINK_OPTIONS to all targets which are
+# built in DIR and its subdirectories - they are prepended so they come before the target-specific ones like they
+# did with the directory-level commands
+function(cppcheck_apply_global_options DIR)
+    get_property(targets DIRECTORY ${DIR} PROPERTY BUILDSYSTEM_TARGETS)
+    foreach(target ${targets})
+        get_target_property(type ${target} TYPE)
+        if(type STREQUAL "INTERFACE_LIBRARY" OR type STREQUAL "UTILITY")
+            continue()
+        endif()
+        foreach(prop COMPILE_OPTIONS COMPILE_DEFINITIONS LINK_OPTIONS)
+            get_target_property(values ${target} ${prop})
+            if(NOT values)
+                set(values)
+            endif()
+            set_property(TARGET ${target} PROPERTY ${prop} ${CPPCHECK_${prop}} ${values})
+        endforeach()
+    endforeach()
+
+    get_property(subdirs DIRECTORY ${DIR} PROPERTY SUBDIRECTORIES)
+    foreach(subdir ${subdirs})
+        cppcheck_apply_global_options(${subdir})
+    endforeach()
 endfunction()
 
 function(target_compile_options_safe TARGET FLAG)
@@ -47,46 +79,46 @@ function(target_dll_compile_definitions TARGET)
 endfunction()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    add_compile_options(-Weverything)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Weverything)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
         # "Release" uses -O3 by default
-        add_compile_options(-O2)
+        list(APPEND CPPCHECK_COMPILE_OPTIONS -O2)
     endif()
     if(CMAKE_COMPILE_WARNING_AS_ERROR)
-        add_compile_options(-Werror)
+        list(APPEND CPPCHECK_COMPILE_OPTIONS -Werror)
     endif()
-    add_compile_options(-pedantic) # TODO: is this implied by -Weverything?
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -pedantic) # TODO: is this implied by -Weverything?
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    add_compile_options(-Wall)
-    add_compile_options(-Wextra)
-    add_compile_options(-Wcast-qual)                # Cast for removing type qualifiers
-    add_compile_options(-Wfloat-equal)              # Floating values used in equality comparisons
-    add_compile_options(-Wmissing-declarations)     # If a global function is defined without a previous declaration
-    add_compile_options(-Wmissing-format-attribute) #
-    add_compile_options(-Wno-long-long)
-    add_compile_options(-Wpacked)                   #
-    add_compile_options(-Wredundant-decls)          # if anything is declared more than once in the same scope
-    add_compile_options(-Wundef)
-    add_compile_options(-Wno-sign-compare)
-    add_compile_options(-Wno-multichar)
-    add_compile_options(-Woverloaded-virtual)       # when a function declaration hides virtual functions from a base class
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wall)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wextra)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wcast-qual)                # Cast for removing type qualifiers
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wfloat-equal)              # Floating values used in equality comparisons
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wmissing-declarations)     # If a global function is defined without a previous declaration
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wmissing-format-attribute) #
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wno-long-long)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wpacked)                   #
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wredundant-decls)          # if anything is declared more than once in the same scope
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wundef)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wno-sign-compare)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wno-multichar)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Woverloaded-virtual)       # when a function declaration hides virtual functions from a base class
 
     # TODO: evaluate
-    #add_compile_options(-Wconversion)  # danmar: gives fp. for instance: unsigned int sizeof_pointer = sizeof(void *);
-    #add_compile_options(-Wlogical-op) # doesn't work on older GCC
-    #add_compile_options(-Wsign-conversion) # too many warnings
-    #add_compile_options(-Wunreachable-code) # some GCC versions report lots of warnings
-    #add_compile_options(-Wsign-promo)
+    #list(APPEND CPPCHECK_COMPILE_OPTIONS -Wconversion)  # danmar: gives fp. for instance: unsigned int sizeof_pointer = sizeof(void *);
+    #list(APPEND CPPCHECK_COMPILE_OPTIONS -Wlogical-op) # doesn't work on older GCC
+    #list(APPEND CPPCHECK_COMPILE_OPTIONS -Wsign-conversion) # too many warnings
+    #list(APPEND CPPCHECK_COMPILE_OPTIONS -Wunreachable-code) # some GCC versions report lots of warnings
+    #list(APPEND CPPCHECK_COMPILE_OPTIONS -Wsign-promo)
 
     # use pipes instead of temporary files - greatly reduces I/O usage
-    add_compile_options(-pipe)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -pipe)
 
-    add_compile_options(-Wsuggest-attribute=noreturn)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wsuggest-attribute=noreturn)
     add_compile_options_safe(-Wuseless-cast)
     # add_compile_options_safe(-Wsuggest-attribute=returns_nonnull) # reports the warning even if the attribute is set
 
@@ -114,20 +146,20 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
             # work around performance regression - see https://github.com/llvm/llvm-project/issues/53555
             check_cxx_compiler_flag("-mllvm -inline-deferral" _has_mllvm_inline_deferral)
             if(_has_mllvm_inline_deferral)
-                add_compile_options(-mllvm -inline-deferral)
+                list(APPEND CPPCHECK_COMPILE_OPTIONS -mllvm -inline-deferral)
             endif()
         endif()
 
         # use force DWARF 4 debug format since not all tools might be able to handle DWARF 5 yet - e.g. valgrind on ubuntu 20.04
-        add_compile_options(-gdwarf-4)
+        list(APPEND CPPCHECK_COMPILE_OPTIONS -gdwarf-4)
     endif()
 
     if (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
-        add_compile_options(-Wno-poison-system-directories)
+        list(APPEND CPPCHECK_COMPILE_OPTIONS -Wno-poison-system-directories)
     endif()
 
     if(USE_LIBCXX)
-        add_compile_options(-stdlib=libc++)
+        list(APPEND CPPCHECK_COMPILE_OPTIONS -stdlib=libc++)
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lc++")
     endif()
 
@@ -141,8 +173,8 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options_safe(-Wno-implicit-float-conversion)
     add_compile_options_safe(-Wno-switch-enum)
     add_compile_options_safe(-Wno-date-time)
-    add_compile_options(-Wno-disabled-macro-expansion)
-    add_compile_options(-Wno-sign-compare)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wno-disabled-macro-expansion)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wno-sign-compare)
     add_compile_options_safe(-Wno-ms-bitfield-padding) # TODO: fix this
 
     # these cannot be fixed properly without adopting later C++ standards
@@ -151,12 +183,12 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options_safe(-Wno-exit-time-destructors)
 
     # can only be partially addressed
-    add_compile_options(-Wno-padded)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wno-padded)
     add_compile_options_safe(-Wno-nrvo)
 
     # no need for C++98 compatibility
-    add_compile_options(-Wno-c++98-compat)
-    add_compile_options(-Wno-c++98-compat-pedantic)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wno-c++98-compat)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wno-c++98-compat-pedantic)
 
     # only needs to be addressed to work around issues in older compilers
     add_compile_options_safe(-Wno-return-std-move-in-c++11)
@@ -165,9 +197,9 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options_safe(-Wno-switch-default)
 
     # warnings we are currently not interested in
-    add_compile_options(-Wno-four-char-constants)
-    add_compile_options(-Wno-weak-vtables)
-    add_compile_options(-Wno-multichar)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wno-four-char-constants)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wno-weak-vtables)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wno-multichar)
 
     # FIXME: only reported when running clang-tidy
     # /home/runner/work/cppcheck/cppcheck/tools/triage/mainwindow.cpp:19:10: error: multiple candidates for header 'mainwindow.h' found; directory '/home/runner/work/cppcheck/cppcheck/tools/triage' chosen, ignoring others including '/home/runner/work/cppcheck/cppcheck/gui' [clang-diagnostic-shadow-header]
@@ -181,87 +213,85 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 if(MSVC)
-    # add_link_options() requires CMake 3.13
-
     # General
-    add_compile_options(/W4) # Warning Level
-    add_compile_options(/Zi) # Debug Information Format - Program Database
+    list(APPEND CPPCHECK_COMPILE_OPTIONS /W4) # Warning Level
+    list(APPEND CPPCHECK_COMPILE_OPTIONS /Zi) # Debug Information Format - Program Database
     if(CMAKE_COMPILE_WARNING_AS_ERROR)
-        add_compile_options(/WX) # Treat Warning As Errors
+        list(APPEND CPPCHECK_COMPILE_OPTIONS /WX) # Treat Warning As Errors
     endif()
-    add_compile_options(/MP) # Multi-processor Compilation
+    list(APPEND CPPCHECK_COMPILE_OPTIONS /MP) # Multi-processor Compilation
 
     # Advanced
     # Character Set - Use Unicode Character Set
     # No Whole Program Optimization
 
     # C/C++ - Optimization
-    add_compile_options($<$<NOT:$<CONFIG:Debug>>:/O2>) # Optimization - Maximum Optimization (Favor Speed)
-    add_compile_options($<$<NOT:$<CONFIG:Debug>>:/Ob2>) # Inline Function Expansion - Any Suitable
-    add_compile_options($<$<NOT:$<CONFIG:Debug>>:/Oi>) # Enable Intrinsic Functions
-    add_compile_options($<$<NOT:$<CONFIG:Debug>>:/Ot>) # Favor fast code
-    add_compile_options($<$<NOT:$<CONFIG:Debug>>:/Oy>) # Omit Frame Pointers
-    add_compile_options($<$<CONFIG:Debug>:/Od>) # Optimization - Disabled
+    list(APPEND CPPCHECK_COMPILE_OPTIONS $<$<NOT:$<CONFIG:Debug>>:/O2>) # Optimization - Maximum Optimization (Favor Speed)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS $<$<NOT:$<CONFIG:Debug>>:/Ob2>) # Inline Function Expansion - Any Suitable
+    list(APPEND CPPCHECK_COMPILE_OPTIONS $<$<NOT:$<CONFIG:Debug>>:/Oi>) # Enable Intrinsic Functions
+    list(APPEND CPPCHECK_COMPILE_OPTIONS $<$<NOT:$<CONFIG:Debug>>:/Ot>) # Favor fast code
+    list(APPEND CPPCHECK_COMPILE_OPTIONS $<$<NOT:$<CONFIG:Debug>>:/Oy>) # Omit Frame Pointers
+    list(APPEND CPPCHECK_COMPILE_OPTIONS $<$<CONFIG:Debug>:/Od>) # Optimization - Disabled
 
     # C/C++ - Code Generation
-    add_compile_options($<$<NOT:$<CONFIG:Debug>>:/GF>) # Enable String Pooling
-    add_compile_options($<$<NOT:$<CONFIG:Debug>>:/MD>) # Runtime Library - Multi-threaded DLL
-    add_compile_options($<$<NOT:$<CONFIG:Debug>>:/GS->) # Disable Security Check
-    add_compile_options($<$<NOT:$<CONFIG:Debug>>:/Gy>) # Enable Function-Level Linking
-    add_compile_options($<$<CONFIG:Debug>:/MDd>) # Runtime Library - Multi-threaded Debug DLL
-    add_compile_options($<$<CONFIG:Debug>:/GS>) # Enable Security Check
+    list(APPEND CPPCHECK_COMPILE_OPTIONS $<$<NOT:$<CONFIG:Debug>>:/GF>) # Enable String Pooling
+    list(APPEND CPPCHECK_COMPILE_OPTIONS $<$<NOT:$<CONFIG:Debug>>:/MD>) # Runtime Library - Multi-threaded DLL
+    list(APPEND CPPCHECK_COMPILE_OPTIONS $<$<NOT:$<CONFIG:Debug>>:/GS->) # Disable Security Check
+    list(APPEND CPPCHECK_COMPILE_OPTIONS $<$<NOT:$<CONFIG:Debug>>:/Gy>) # Enable Function-Level Linking
+    list(APPEND CPPCHECK_COMPILE_OPTIONS $<$<CONFIG:Debug>:/MDd>) # Runtime Library - Multi-threaded Debug DLL
+    list(APPEND CPPCHECK_COMPILE_OPTIONS $<$<CONFIG:Debug>:/GS>) # Enable Security Check
 
     # C/C++ - Language
-    add_compile_options(/Zc:rvalueCast) # Enforce type conversion rules
-    #add_compile_options(/std:c++14) # C++ Language Standard - ISO C++14 Standard
+    list(APPEND CPPCHECK_COMPILE_OPTIONS /Zc:rvalueCast) # Enforce type conversion rules
+    #list(APPEND CPPCHECK_COMPILE_OPTIONS /std:c++14) # C++ Language Standard - ISO C++14 Standard
 
     # C/C++ - Browse Information
     # Enable Browse Information - No
 
     # C/C++ - Advanced
-    add_compile_options(/wd4018) # warning C4018: '>': signed/unsigned mismatch
-    add_compile_options(/wd4127) # warning C4127: conditional expression is constant
-    add_compile_options(/wd4146) # warning C4146: unary minus operator applied to unsigned type, result still unsigned
-    add_compile_options(/wd4244) # warning C4244: 'initializing': conversion from 'int' to 'char', possible loss of data
-    add_compile_options(/wd4251) # warning C4251: 'x': class 'y' needs to have dll-interface to be used by clients of struct 'u'
+    list(APPEND CPPCHECK_COMPILE_OPTIONS /wd4018) # warning C4018: '>': signed/unsigned mismatch
+    list(APPEND CPPCHECK_COMPILE_OPTIONS /wd4127) # warning C4127: conditional expression is constant
+    list(APPEND CPPCHECK_COMPILE_OPTIONS /wd4146) # warning C4146: unary minus operator applied to unsigned type, result still unsigned
+    list(APPEND CPPCHECK_COMPILE_OPTIONS /wd4244) # warning C4244: 'initializing': conversion from 'int' to 'char', possible loss of data
+    list(APPEND CPPCHECK_COMPILE_OPTIONS /wd4251) # warning C4251: 'x': class 'y' needs to have dll-interface to be used by clients of struct 'u'
     # Clang: -Wshorten-64-to-32 -Wimplicit-int-conversion
-    add_compile_options(/wd4267) # warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
-    add_compile_options(/wd4389) # warning C4389: '==': signed/unsigned mismatch
-    add_compile_options(/wd4701) # warning C4701: potentially uninitialized local variable 'err' used
-    add_compile_options(/wd4706) # warning C4706: assignment within conditional expression
-    add_compile_options(/wd4800) # warning C4800: 'const SymbolDatabase *' : forcing value to bool 'true' or 'false' (performance warning)
-    add_compile_options(/wd4805) # warning C4805: '==' : unsafe mix of type 'bool' and type 'long long' in operation
+    list(APPEND CPPCHECK_COMPILE_OPTIONS /wd4267) # warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
+    list(APPEND CPPCHECK_COMPILE_OPTIONS /wd4389) # warning C4389: '==': signed/unsigned mismatch
+    list(APPEND CPPCHECK_COMPILE_OPTIONS /wd4701) # warning C4701: potentially uninitialized local variable 'err' used
+    list(APPEND CPPCHECK_COMPILE_OPTIONS /wd4706) # warning C4706: assignment within conditional expression
+    list(APPEND CPPCHECK_COMPILE_OPTIONS /wd4800) # warning C4800: 'const SymbolDatabase *' : forcing value to bool 'true' or 'false' (performance warning)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS /wd4805) # warning C4805: '==' : unsafe mix of type 'bool' and type 'long long' in operation
 
     # C/C++ - All Options
-    add_compile_options(/Zc:throwingNew /Zc:__cplusplus) # Additional Options
+    list(APPEND CPPCHECK_COMPILE_OPTIONS /Zc:throwingNew /Zc:__cplusplus) # Additional Options
 
     # Linker - General
-    add_link_options($<$<CONFIG:Debug>:/INCREMENTAL>) # Enable Incremental Linking - Yes
+    list(APPEND CPPCHECK_LINK_OPTIONS $<$<CONFIG:Debug>:/INCREMENTAL>) # Enable Incremental Linking - Yes
 
-    add_link_options(/NOLOGO) # Suppress Startup Banner - Yes
+    list(APPEND CPPCHECK_LINK_OPTIONS /NOLOGO) # Suppress Startup Banner - Yes
     # Ignore Import Library - Yes
 
     # Linker - Debugging
-    add_link_options(/DEBUG) # Generate Debug Information
+    list(APPEND CPPCHECK_LINK_OPTIONS /DEBUG) # Generate Debug Information
 
     # Linker - System
     # Stack Reserve Size - 8000000
     # Stack Commit Size - 8000000
-    add_link_options(/LARGEADDRESSAWARE) # Enable Large Addresses - Yes
+    list(APPEND CPPCHECK_LINK_OPTIONS /LARGEADDRESSAWARE) # Enable Large Addresses - Yes
 
     # Linker - Optimization
-    add_link_options(/OPT:REF) # References - Yes
-    add_link_options(/OPT:ICF) # Enable COMDAT Folding - Yes
+    list(APPEND CPPCHECK_LINK_OPTIONS /OPT:REF) # References - Yes
+    list(APPEND CPPCHECK_LINK_OPTIONS /OPT:ICF) # Enable COMDAT Folding - Yes
 
     # Linker - Advanced
-    add_link_options($<$<NOT:$<CONFIG:Debug>>:/RELEASE>) # Set Checksum - Yes
+    list(APPEND CPPCHECK_LINK_OPTIONS $<$<NOT:$<CONFIG:Debug>>:/RELEASE>) # Set Checksum - Yes
 endif()
 
 # TODO: check if this can be enabled again - also done in Makefile
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND
     CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
-    add_compile_options(-U_GLIBCXX_DEBUG)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -U_GLIBCXX_DEBUG)
 endif()
 
 if(MSVC)
@@ -270,7 +300,7 @@ endif()
 
 if(CYGWIN)
     # TODO: this is a linker flag - not a compiler flag
-    add_compile_options(-Wl,--stack,8388608)
+    list(APPEND CPPCHECK_COMPILE_OPTIONS -Wl,--stack,8388608)
 endif()
 
 include(cmake/dynamic_analyzer_options.cmake)

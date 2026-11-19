@@ -116,4 +116,6 @@ add_subdirectory(gui)   # Graphical application
 add_subdirectory(tools)
 add_subdirectory(man)
 
+cppcheck_apply_global_options(${CMAKE_SOURCE_DIR})
+
 include(cmake/clang_tidy.cmake)
