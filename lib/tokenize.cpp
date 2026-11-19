@@ -7594,7 +7594,8 @@ void Tokenizer::simplifyVarDecl(Token * tokBegin, const Token * const tokEnd, co
         if (only_k_r_fpar && finishedwithkr) {
             if (Token::Match(tok, "(|[|{")) {
                 tok = tok->link();
-                if (tok->next() && Token::Match(tok, ") !!{"))
+                // Don't step onto tokEnd: the loop increment would then step past it
+                if (tok->next() && tok->next() != tokEnd && Token::Match(tok, ") !!{"))
                     tok = tok->next();
                 else
                     continue;
