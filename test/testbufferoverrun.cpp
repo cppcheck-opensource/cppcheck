@@ -165,6 +165,7 @@ private:
         TEST_CASE(array_index_75);
         TEST_CASE(array_index_76);
         TEST_CASE(array_index_77);
+        TEST_CASE(array_index_78);
         TEST_CASE(array_index_multidim);
         TEST_CASE(array_index_switch_in_for);
         TEST_CASE(array_index_for_in_for);   // FP: #2634
@@ -2029,6 +2030,22 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:7:11]: (error) Array 'a[2]' accessed at index 2, which is out of bounds. [arrayIndexOutOfBounds]\n",
                       errout_str());
+    }
+
+    void array_index_78()
+    {
+        check("void f() {\n"
+              "    struct {\n"
+              "        int a; \n"
+              "        void set(int i) { a = i; }\n"
+              "    } v[4];\n"
+              "    int idx = 0;\n"
+              "    v[idx++].set(0);\n"
+              "    v[idx++].set(0);\n"
+              "    v[idx++].set(0);\n"
+              "    v[idx++].set(0);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void array_index_multidim() {
