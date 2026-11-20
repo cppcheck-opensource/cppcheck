@@ -4912,9 +4912,13 @@ class MisraChecker:
         def is_different_file(loc1, loc2):
             return loc1['file'] != loc2['file']
 
+        def read_lines(filename):
+            with open(filename, 'rt') as f:
+                yield from f
+
         try:
             for filename in ctu_info_files:
-                for line in open(filename, 'rt'):
+                for line in read_lines(filename):
                     s = self.read_ctu_info_line(line)
                     if s is None:
                         continue
