@@ -7612,8 +7612,6 @@ const ValueFlow::Value* ValueFlow::findValue(const std::list<ValueFlow::Value>& 
     if (ret) {
         if (ret->isInconclusive() && !settings.certainty.isEnabled(Certainty::inconclusive))
             return nullptr;
-        if (ret->condition && !settings.severity.isEnabled(Severity::warning))
-            return nullptr;
     }
     return ret;
 }
