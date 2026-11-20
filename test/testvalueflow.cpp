@@ -1878,6 +1878,83 @@ private:
         ASSERT_EQUALS(1U, values.size());
         ASSERT_EQUALS(settings.platform.sizeof_int, values.back().intvalue);
         ASSERT_EQUALS_ENUM(ValueFlow::Value::ValueKind::Known, values.back().valueKind);
+
+        // the number of array elements does not fit in a MathLib::bigint
+        code = "struct S { char m[0x4000000000000001][4]; };\n"
+               "x = sizeof(S);\n";
+        values = tokenValues(code, "( S");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT(values.back().isImpossible());
+
+        // the size in bytes does not fit in a MathLib::bigint
+        code = "struct S { int m[0x4000000000000001]; };\n"
+               "x = sizeof(S);\n";
+        values = tokenValues(code, "( S");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT(values.back().isImpossible());
+
+        // the overflow must not be lost when base classes are added
+        code = "struct B { int i; };\n"
+               "struct D : B { int m[0x4000000000000001]; };\n"
+               "x = sizeof(D);\n";
+        values = tokenValues(code, "( D");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT(values.back().isImpossible());
+
+        code = "struct B { int i; };\n"
+               "struct D : B { char m[0x100000000][0x100000000]; };\n"
+               "x = sizeof(D);\n";
+        values = tokenValues(code, "( D");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT(values.back().isImpossible());
+
+        code = "struct B { int i; };\n"
+               "struct D : B { char b[0x6000000000000000]; char c[0x6000000000000000]; };\n"
+               "x = sizeof(D);\n";
+        values = tokenValues(code, "( D");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT(values.back().isImpossible());
+
+        code = "struct B { char m[0x100000000][0x100000000]; };\n"
+               "struct D : B { int i; };\n"
+               "x = sizeof(D);\n";
+        values = tokenValues(code, "( D");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT(values.back().isImpossible());
+
+        // the sum of the base class sizes does not fit in a MathLib::bigint
+        code = "struct B1 { char m[0x6000000000000000]; };\n"
+               "struct B2 { char m[0x6000000000000000]; };\n"
+               "struct D : B1, B2 { char c; };\n"
+               "x = sizeof(D);\n";
+        values = tokenValues(code, "( D");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT(values.back().isImpossible());
+
+        // the number of bits of an array after a bitfield does not fit in a size_t,
+        // the array must not be counted as part of the bitfield
+        code = "struct S { int a : 8; char c[0x2000000000000000]; };\n"
+               "x = sizeof(S);\n";
+        values = tokenValues(code, "( S");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(0x2000000000000004LL, values.back().intvalue);
+
+        // the size in bytes of an array variable does not fit in a MathLib::bigint
+        code = "void f() {\n"
+               "    int a[0x4000000000000001];\n"
+               "    x = sizeof(a);\n"
+               "}\n";
+        values = tokenValues(code, "( a");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT(values.back().isImpossible());
+
+        code = "void f() {\n"
+               "    char a[0x100000000][0x100000000];\n"
+               "    x = sizeof(a);\n"
+               "}\n";
+        values = tokenValues(code, "( a");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT(values.back().isImpossible());
     }
 
     void valueFlowComma()

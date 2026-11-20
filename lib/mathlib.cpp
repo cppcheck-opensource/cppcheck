@@ -1334,6 +1334,17 @@ bool MathLib::isOctalDigit(char c)
     return (c >= '0' && c <= '7');
 }
 
+bool MathLib::mulOverflows(bigint a, bigint b)
+{
+    const bigint maxValue = std::numeric_limits<bigint>::max();
+    const bigint minValue = std::numeric_limits<bigint>::min();
+    if (a > 0)
+        return b > 0 ? a > maxValue / b : b < minValue / a;
+    if (a < 0)
+        return b > 0 ? a < minValue / b : (b < 0 && a < maxValue / b);
+    return false;
+}
+
 MathLib::value operator+(const MathLib::value &v1, const MathLib::value &v2)
 {
     return MathLib::value::calc('+',v1,v2);

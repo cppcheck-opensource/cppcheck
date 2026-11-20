@@ -46,6 +46,7 @@
 #include <iomanip>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <numeric>
 #include <sstream>
 #include <stack>
@@ -2513,6 +2514,17 @@ Variable& Variable::operator=(const Variable &var) &
 
 bool Variable::isMember() const {
     return mScope && mScope->isClassOrStructOrUnion();
+}
+
+bool Variable::dimensionsProduct(MathLib::bigint &product) const
+{
+    product = 1;
+    for (const Dimension &dim : mDimensions) {
+        if (MathLib::mulOverflows(product, dim.num))
+            return false;
+        product *= dim.num;
+    }
+    return true;
 }
 
 bool Variable::isPointerArray() const
@@ -8683,6 +8695,7 @@ namespace {
     {
         size_t total;
         bool success;
+        bool overflow;
     };
 }
 
@@ -8697,10 +8710,10 @@ static Result accumulateStructMembers(const Scope* scope, F f, ValueType::Accura
         const MathLib::bigint bits = var.nameToken() ? var.nameToken()->bits() : -1;
         if (const ValueType* vt = var.valueType()) {
             if (vt->type == ValueType::Type::RECORD && vt->typeScope == scope)
-                return {0, false};
-            const MathLib::bigint dim = std::accumulate(var.dimensions().cbegin(), var.dimensions().cend(), MathLib::bigint(1), [](MathLib::bigint i1, const Dimension& dim) {
-                return i1 * dim.num;
-            });
+                return {0, false, false};
+            MathLib::bigint dim = 0;
+            if (!var.dimensionsProduct(dim))
+                return {0, false, true};
             if (var.nameToken()->scope() != scope && var.nameToken()->scope()->definedType) { // anonymous union
                 const auto ret = anonScopes.insert(var.nameToken()->scope());
                 if (ret.second)
@@ -8714,9 +8727,9 @@ static Result accumulateStructMembers(const Scope* scope, F f, ValueType::Accura
                 total = f(total, *vt, dim, bits);
         }
         if (accuracy == ValueType::Accuracy::ExactOrZero && total == 0 && bits == -1)
-            return {0, false};
+            return {0, false, false};
     }
-    return {total, true};
+    return {total, true, false};
 }
 
 
@@ -8797,12 +8810,19 @@ size_t ValueType::getSizeOf( const Settings& settings, Accuracy accuracy, SizeOf
     if (type == ValueType::Type::RECORD && typeScope) {
         size_t currentBitCount = 0;
         size_t currentBitfieldAlloc = 0;
+        // the size must fit in a MathLib::bigint
+        const size_t maxSize = std::numeric_limits<MathLib::bigint>::max();
+        bool overflow = false;
         auto accHelper = [&](size_t total, const ValueType& vt2, size_t dim, MathLib::bigint nBits) -> size_t {
             const size_t charBit = settings.platform.char_bit;
             size_t n = vt2.getSizeOf(settings, accuracy, SizeOf::Pointer, ++maxRecursion);
             size_t a = getAlignOf(vt2, settings, accuracy, SizeOf::Pointer);
             if (n == 0 || a == 0)
                 return accuracy == Accuracy::ExactOrZero ? 0 : total;
+            if (nBits >= 0 && n > maxSize / charBit) {
+                overflow = true;
+                return accuracy == Accuracy::ExactOrZero ? 0 : total;
+            }
             if (nBits == 0) {
                 if (currentBitfieldAlloc == 0) {
                     nBits = n * charBit;
@@ -8827,10 +8847,20 @@ size_t ValueType::getSizeOf( const Settings& settings, Accuracy accuracy, SizeOf
                 currentBitCount += nBits;
                 return ret;
             }
+            if (MathLib::mulOverflows(static_cast<MathLib::bigint>(n), static_cast<MathLib::bigint>(dim))) {
+                overflow = true;
+                return accuracy == Accuracy::ExactOrZero ? 0 : total;
+            }
             n *= dim;
             size_t padding = (a - (total % a)) % a;
+            if (total + padding > maxSize || n > maxSize - total - padding) {
+                overflow = true;
+                return accuracy == Accuracy::ExactOrZero ? 0 : total;
+            }
             if (currentBitCount > 0) {
-                bool fitsInBitfield = currentBitCount + (n * charBit) <= currentBitfieldAlloc * charBit;
+                // n * charBit can wrap, so compare against the remaining bits divided by charBit
+                const size_t allocBits = currentBitfieldAlloc * charBit;
+                bool fitsInBitfield = currentBitCount <= allocBits && n <= (allocBits - currentBitCount) / charBit;
                 bool isAligned = currentBitCount % (charBit * a) == 0;
                 if (vt2.isIntegral() && fitsInBitfield && isAligned) {
                     currentBitCount += charBit * n;
@@ -8843,17 +8873,23 @@ size_t ValueType::getSizeOf( const Settings& settings, Accuracy accuracy, SizeOf
             return typeScope->type == ScopeType::eUnion ? std::max(total, n) : total + padding + n;
         };
         Result result = accumulateStructMembers(typeScope, accHelper, accuracy, settings);
+        overflow = overflow || result.overflow;
         size_t total = result.total;
         if (currentBitCount > 0)
             total += currentBitfieldAlloc;
         if (const ::Type* dt = typeScope->definedType) {
             total = std::accumulate(dt->derivedFrom.begin(), dt->derivedFrom.end(), total, [&](size_t v, const ::Type::BaseInfo& bi) {
-                if (bi.type && bi.type->classScope)
-                    v += accumulateStructMembers(bi.type->classScope, accHelper, accuracy, settings).total;
+                if (bi.type && bi.type->classScope) {
+                    const Result baseResult = accumulateStructMembers(bi.type->classScope, accHelper, accuracy, settings);
+                    if (baseResult.overflow || v > maxSize || baseResult.total > maxSize - v)
+                        overflow = true;
+                    else
+                        v += baseResult.total;
+                }
                 return v;
             });
         }
-        if (accuracy == Accuracy::ExactOrZero && total == 0 && !result.success)
+        if (accuracy == Accuracy::ExactOrZero && (overflow || (total == 0 && !result.success)))
             return 0;
         total = std::max(size_t{1}, total);
         size_t align = getAlignOf(*this, settings, accuracy, sizeOf);

@@ -34,6 +34,7 @@
 #include <cstring>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <list>
 #include <map>
 #include <memory>
@@ -43,7 +44,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <numeric>
 
 class Settings;
 
@@ -1638,11 +1638,19 @@ static void setValues(const Tokenizer &tokenizer, const SymbolDatabase *symbolDa
 
         MathLib::bigint typeSize = 0;
         for (const Variable &var: scope.varlist) {
-            const MathLib::bigint mul = std::accumulate(var.dimensions().cbegin(), var.dimensions().cend(), MathLib::bigint(1), [](MathLib::bigint v, const Dimension& dim) {
-                return v * dim.num;
-            });
-            if (var.valueType())
-                typeSize += mul * var.valueType()->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
+            MathLib::bigint mul = 0;
+            if (!var.dimensionsProduct(mul)) {
+                typeSize = 0;
+                break;
+            }
+            if (var.valueType()) {
+                const MathLib::bigint size = var.valueType()->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
+                if (MathLib::mulOverflows(mul, size) || mul * size > std::numeric_limits<MathLib::bigint>::max() - typeSize) {
+                    typeSize = 0;
+                    break;
+                }
+                typeSize += mul * size;
+            }
         }
         scope.definedType->sizeOf = typeSize;
     }

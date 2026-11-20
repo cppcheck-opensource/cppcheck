@@ -170,6 +170,9 @@ public:
      */
     static bool isOctalDigit(char c);
 
+    /** @brief Return true if a * b does not fit in a bigint */
+    static bool mulOverflows(bigint a, bigint b);
+
     static unsigned int encodeMultiChar(const std::string& str);
 };
 
