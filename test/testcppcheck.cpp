@@ -101,6 +101,13 @@ private:
         TEST_CASE(checkPlistOutput);
         TEST_CASE(premiumResultsCache);
         TEST_CASE(purgedConfiguration);
+        TEST_CASE(checkConfigurationInvalid);
+        TEST_CASE(checkConfigurationValid);
+        TEST_CASE(checkConfigurationSuppression);
+        TEST_CASE(checkConfigurationExplicitError);
+        TEST_CASE(checkConfigurationCombinedDefines);
+        TEST_CASE(checkConfigurationNormalAnalysis);
+        TEST_CASE(checkConfigurationHeader);
         TEST_CASE(recheckInclude);
     }
 
@@ -126,6 +133,7 @@ private:
         bool foundTooManyConfigs = false;
         bool foundMissingInclude = false; // #11984
         bool foundMissingIncludeSystem = false; // #11984
+        bool foundInvalidConfiguration = false;
         for (const std::string & it : errorLogger.ids) {
             if (it == "purgedConfiguration")
                 foundPurgedConfiguration = true;
@@ -135,11 +143,14 @@ private:
                 foundMissingInclude = true;
             else if (it == "missingIncludeSystem")
                 foundMissingIncludeSystem = true;
+            else if (it == "invalidConfiguration")
+                foundInvalidConfiguration = true;
         }
         ASSERT(foundPurgedConfiguration);
         ASSERT(foundTooManyConfigs);
         ASSERT(foundMissingInclude);
         ASSERT(foundMissingIncludeSystem);
+        ASSERT(foundInvalidConfiguration);
     }
 
     static std::string exename_(const std::string& exe)
@@ -637,6 +648,100 @@ private:
         auto it = errorLogger.errmsgs.cbegin();
         ASSERT_EQUALS("test.cpp:0:0: information: The configuration 'X=X' was not checked because its code equals another one. [purgedConfiguration]",
                       it->toString(false, templateFormat, ""));
+    }
+
+    static const char* invalidConfigurationCode() {
+        return "#ifndef PLATFORM\n"
+               "#error Select PLATFORM\n"
+               "#endif\n"
+               "int base;\n"
+               "#ifdef FEATURE\n"
+               "int feature;\n"
+               "#endif\n";
+    }
+
+    std::list<ErrorMessage> configurationMessages(const char* code, const Settings& settings, const char* suppression = nullptr) const {
+        const ScopedFile source("check-config.c", code);
+        Settings configuredSettings = settings;
+        configuredSettings.templateFormat = templateFormat;
+        Suppressions supprs;
+        if (suppression)
+            ASSERT_EQUALS("", supprs.nomsg.addSuppressionLine(suppression));
+        ErrorLogger2 errorLogger;
+        CppCheck cppcheck(configuredSettings, supprs, errorLogger, nullptr, true, {});
+        cppcheck.check(FileWithDetails(source.path(), Path::identify(source.path(), false), 0));
+        errorLogger.errmsgs.remove_if([](const ErrorMessage& msg) {
+            return msg.id == "logChecker";
+        });
+        return errorLogger.errmsgs;
+    }
+
+    void checkConfigurationInvalid() const {
+        // Trac #6672: FEATURE is considered independently of the required PLATFORM.
+        const auto settings = dinit(Settings, $.checkConfiguration = true, $.templateFormat = templateFormat);
+        const auto messages = configurationMessages(invalidConfigurationCode(), settings);
+        ASSERT_EQUALS(1, messages.size());
+        const ErrorMessage& msg = messages.front();
+        ASSERT_EQUALS("invalidConfiguration", msg.id);
+        ASSERT(msg.severity == Severity::information);
+        ASSERT_EQUALS("check-config.c", msg.file0);
+        ASSERT_EQUALS(1, msg.callStack.size());
+        ASSERT_EQUALS("check-config.c", msg.callStack.back().getfile(false));
+        ASSERT_EQUALS(2, msg.callStack.back().line);
+        ASSERT(msg.shortMessage().find("FEATURE") != std::string::npos);
+        ASSERT(msg.shortMessage().find("#error Select PLATFORM") != std::string::npos);
+    }
+
+    void checkConfigurationValid() const {
+        const auto settings = dinit(Settings, $.checkConfiguration = true, $.userDefines = "PLATFORM=1");
+        ASSERT(configurationMessages(invalidConfigurationCode(), settings).empty());
+
+        const auto automaticSettings = dinit(Settings, $.checkConfiguration = true);
+        ASSERT(configurationMessages("#if 0\n#error inactive\n#endif\nint value;\n", automaticSettings).empty());
+        ASSERT(configurationMessages("#ifdef FEATURE\nint feature;\n#endif\nint value;\n", automaticSettings).empty());
+    }
+
+    void checkConfigurationSuppression() const {
+        const auto settings = dinit(Settings, $.checkConfiguration = true);
+        ASSERT(configurationMessages(invalidConfigurationCode(), settings, "invalidConfiguration").empty());
+    }
+
+    void checkConfigurationExplicitError() const {
+        const auto settings = dinit(Settings, $.checkConfiguration = true, $.userDefines = "FEATURE=1");
+        const auto messages = configurationMessages(invalidConfigurationCode(), settings);
+        ASSERT_EQUALS(1, messages.size());
+        ASSERT_EQUALS("preprocessorErrorDirective", messages.front().id);
+        ASSERT(messages.front().severity == Severity::error);
+    }
+
+    void checkConfigurationCombinedDefines() const {
+        const auto settings = dinit(Settings, $.checkConfiguration = true, $.force = true, $.userDefines = "EXTRA=7");
+        const auto messages = configurationMessages(invalidConfigurationCode(), settings);
+        ASSERT_EQUALS(1, messages.size());
+        ASSERT_EQUALS("invalidConfiguration", messages.front().id);
+        const std::string& message = messages.front().shortMessage();
+        ASSERT(message.find("EXTRA=7;FEATURE") != std::string::npos);
+        ASSERT(message.find("EXTRA=7", message.find("EXTRA=7") + 1) == std::string::npos);
+    }
+
+    void checkConfigurationNormalAnalysis() const {
+        const auto settings = dinit(Settings, $.force = true, $.severity.enable(Severity::information));
+        ASSERT(configurationMessages(invalidConfigurationCode(), settings).empty());
+    }
+
+    void checkConfigurationHeader() const {
+        const ScopedFile header("config-error.h", "#ifndef PLATFORM\n#error Select PLATFORM\n#endif\n");
+        const auto settings = dinit(Settings, $.checkConfiguration = true);
+        const auto messages = configurationMessages("#include \"config-error.h\"\n#ifdef FEATURE\nint feature;\n#endif\n", settings);
+        // Both the empty and FEATURE configurations fail in the included header.
+        ASSERT_EQUALS(2, messages.size());
+        ASSERT(messages.front().shortMessage() != messages.back().shortMessage());
+        for (const ErrorMessage& message : messages) {
+            ASSERT_EQUALS("invalidConfiguration", message.id);
+            ASSERT_EQUALS("check-config.c", message.file0);
+            ASSERT_EQUALS("config-error.h", message.callStack.back().getfile(false));
+            ASSERT_EQUALS(2, message.callStack.back().line);
+        }
     }
 
     void recheckInclude() const
