@@ -413,7 +413,7 @@ namespace simplecpp {
 
         void combineOperators();
 
-        void constFoldUnaryNotPosNeg(Token *tok);
+        void constFoldUnaryNotPosNeg(Token *tok1);
         /**
          * @throws std::overflow_error thrown on overflow or division by zero
          */
@@ -444,7 +444,7 @@ namespace simplecpp {
          * @param multiline incremented for each newline that is removed
          * @return the comment text
          */
-        TokenString readBlockComment(Stream &stream, unsigned int &multiline);
+        TokenString readBlockComment(Stream &stream, unsigned int &multiline) const;
         /**
          * Read the text of a #error or #warning directive, up to but not
          * including the newline, and add it as one token. A backslash-newline
