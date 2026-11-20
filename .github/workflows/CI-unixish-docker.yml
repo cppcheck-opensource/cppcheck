@@ -68,7 +68,7 @@ jobs:
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2.24
         with:
-          key: ${{ github.workflow }}-${{ matrix.image }}
+          key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.image }}
           # only save cache in main/release branches, PRs restore the cache of the base branch
           save: ${{ github.event_name != 'pull_request' }}
 
@@ -118,7 +118,7 @@ jobs:
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2.24
         with:
-          key: ${{ github.workflow }}-${{ matrix.image }}
+          key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.image }}
           # only save cache in main/release branches, PRs restore the cache of the base branch
           save: ${{ github.event_name != 'pull_request' }}
 
