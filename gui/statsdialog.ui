@@ -394,20 +394,6 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="mTabHistory">
-      <attribute name="title">
-       <string>History</string>
-      </attribute>
-      <layout class="QVBoxLayout" name="verticalLayout_3">
-       <item>
-        <widget class="QLabel" name="mLblHistoryFile">
-         <property name="text">
-          <string>File:</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
     </widget>
    </item>
    <item>

@@ -79,13 +79,6 @@ public:
     void clearRecheckFile(const QString &filename);
 
     /**
-     * @brief Write statistics in file
-     *
-     * @param filename Filename to save statistics to
-     */
-    void saveStatistics(const QString &filename) const;
-
-    /**
      * @brief Save results to a file
      *
      * @param filename Filename to save results to

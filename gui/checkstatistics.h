@@ -24,7 +24,6 @@
 #include <QMap>
 #include <QObject>
 #include <QString>
-#include <QStringList>
 
 #include <set>
 #include <string>
@@ -75,9 +74,6 @@ public:
     int getNumberOfActiveCheckers() const {
         return mActiveCheckers.size();
     }
-
-    /** Get tools with results */
-    QStringList getTools() const;
 
     void setCheckersReport(QString report) {
         mCheckersReport = std::move(report);
