@@ -2379,7 +2379,7 @@ const Token * TokenList::isFunctionHead(const Token *tok, const std::string &suf
             tok = tok->linkAt(1)->next();
         if (Token::Match(tok, "%name% (") && tok->isUpperCaseName())
             tok = tok->linkAt(1)->next();
-        if (tok && tok->originalName() == "->") { // trailing return type
+        if (tok && (tok->str() == "->" || tok->originalName() == "->")) { // trailing return type
             for (tok = tok->next(); tok && !Token::Match(tok, ";|{|override|final|}|)|]"); tok = tok->next())
                 if (tok->link() && Token::Match(tok, "<|[|("))
                     tok = tok->link();
