@@ -102,6 +102,7 @@ private:
         TEST_CASE(simplifyUsing10720);
         TEST_CASE(simplifyUsing13873); // function declaration
         TEST_CASE(simplifyUsing14877);
+        TEST_CASE(simplifyUsingMacroName);
 
         TEST_CASE(scopeInfo1);
         TEST_CASE(scopeInfo2);
@@ -1723,6 +1724,16 @@ private:
         const char code[] = "using C = struct C { C() {} };\n";
         const char expected[] = "struct C { C ( ) { } } ;";
         ASSERT_EQUALS(expected, tok(code));
+    }
+
+    void simplifyUsingMacroName() {
+        const char code[] = "#define A int\n"
+                            "using F = void (*)(A x);\n"
+                            "void f(F g);\n";
+        const Settings settings = settingsBuilder(settings0).cpp(Standards::CPPLatest).build();
+        SimpleTokenizer2 tokenizer(settings, *this, code, "test.cpp");
+        ASSERT(tokenizer.simplifyTokens1(""));
+        ASSERT_EQUALS("void f ( void ( * g ) ( $int ) ) ;", tokenizer.tokens()->stringifyList(false, true, false, false, false));
     }
 
     void scopeInfo1() {
