@@ -593,6 +593,8 @@ private:
 
         TEST_CASE(valueType1);
         TEST_CASE(valueType2);
+        TEST_CASE(valueTypeStringIterator);
+        TEST_CASE(valueTypeSpanIterator);
         TEST_CASE(valueType3);
         TEST_CASE(valueTypeThis);
         TEST_CASE(valueTypeChar);
@@ -10390,6 +10392,68 @@ private:
             ASSERT(tok && tok->valueType());
             ASSERT_EQUALS("iterator(std :: map|unordered_map <)", tok->valueType()->str());
         }
+    }
+
+    void valueTypeStringIterator() {
+        GET_SYMBOL_DB("void f(std::string& s, std::wstring_view w) {\n"
+                      "    std::string::iterator it = s.begin();\n"
+                      "    std::string::const_reverse_iterator rit = s.crbegin();\n"
+                      "    std::wstring_view::const_iterator wit = w.begin();\n"
+                      "    std::string::size_type n = s.size();\n"
+                      "    func(it, rit, wit, n);\n"
+                      "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        const Token* tok = Token::findsimplematch(tokenizer.tokens(), "func (");
+        ASSERT(tok);
+
+        tok = Token::findsimplematch(tok, "it");
+        ASSERT(tok && tok->valueType());
+        ASSERT_EQUALS("iterator(std :: string|wstring|u16string|u32string)", tok->valueType()->str());
+
+        tok = Token::findsimplematch(tok, "rit");
+        ASSERT(tok && tok->valueType());
+        ASSERT_EQUALS("iterator(std :: string|wstring|u16string|u32string)", tok->valueType()->str());
+
+        tok = Token::findsimplematch(tok, "wit");
+        ASSERT(tok && tok->valueType());
+        ASSERT_EQUALS("iterator(std :: string_view|wstring_view|u16string_view|u32string_view)", tok->valueType()->str());
+
+        tok = Token::findsimplematch(tok, "n");
+        ASSERT(tok && (!tok->valueType() || tok->valueType()->type != ValueType::Type::ITERATOR));
+    }
+
+    void valueTypeSpanIterator() {
+        GET_SYMBOL_DB("void f(std::span<int> s, std::vector<int>& v) {\n"
+                      "    std::span<int>::iterator it = s.begin();\n"
+                      "    std::span<int>::reverse_iterator rit = s.rbegin();\n"
+                      "    std::span<int>::size_type n = s.size();\n"
+                      "    std::span t{v};\n"
+                      "    func(s, it, rit, n, t);\n"
+                      "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        const Token* tok = Token::findsimplematch(tokenizer.tokens(), "func (");
+        ASSERT(tok);
+
+        tok = Token::findsimplematch(tok, "s");
+        ASSERT(tok && tok->valueType());
+        ASSERT_EQUALS("container(std :: span)", tok->valueType()->str());
+
+        tok = Token::findsimplematch(tok, "it");
+        ASSERT(tok && tok->valueType());
+        ASSERT_EQUALS("iterator(std :: span)", tok->valueType()->str());
+
+        tok = Token::findsimplematch(tok, "rit");
+        ASSERT(tok && tok->valueType());
+        ASSERT_EQUALS("iterator(std :: span)", tok->valueType()->str());
+
+        tok = Token::findsimplematch(tok, "n");
+        ASSERT(tok && (!tok->valueType() || (tok->valueType()->type != ValueType::Type::CONTAINER && tok->valueType()->type != ValueType::Type::ITERATOR)));
+
+        tok = Token::findsimplematch(tok, "t");
+        ASSERT(tok && tok->valueType());
+        ASSERT_EQUALS("container(std :: span)", tok->valueType()->str());
     }
 
     void valueType3() {

@@ -1139,6 +1139,21 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:4:6]: (error) Out of bounds access in expression 'it' because 'vec' is empty. [containerOutOfBounds]\n",
                       errout_str());
+
+        check("int f(std::span<int> s) {\n"
+              "    std::span<int>::iterator it = s.end();\n"
+              "    return *it;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:13]: (error) Dereference of an invalid iterator: it [derefInvalidIterator]\n", errout_str());
+
+        // iterators of non-template containers
+        check("void f() {\n"
+              "    std::string s;\n"
+              "    std::string::iterator it = s.begin();\n"
+              "    *it = 'a';\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:6]: (error) Out of bounds access in expression 'it' because 's' is empty. [containerOutOfBounds]\n",
+                      errout_str());
     }
 
     void outOfBoundsErrorPath() {
@@ -1351,7 +1366,74 @@ private:
               "    std::set<int>::iterator it2 = ints2.end();\n"
               "    ints2.insert(it1, it2);\n"
               "}\n");
-        TODO_ASSERT_EQUALS("[test.cpp:6]: (error) Iterators of different containers are used together.\n", "", errout_str());
+        ASSERT_EQUALS("[test.cpp:4:35]: (error) Iterators of different containers 'ints1' and 'ints2' are used together. [mismatchingContainers]\n", errout_str());
+
+        check("void foo(const std::set<int> &ints1, std::set<int> &ints2)\n"
+              "{\n"
+              "    ints2.insert(ints1.begin(), ints2.end());\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:18]: (error) Iterators of different containers 'ints1' and 'ints2' are used together. [mismatchingContainers]\n", errout_str());
+
+        check("void foo(const std::map<int, int> &m1, const std::map<int, int> &m2, std::map<int, int> &m3)\n"
+              "{\n"
+              "    m3.insert(m1.begin(), m2.end());\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:15]: (error) Iterators of different containers 'm1' and 'm2' are used together. [mismatchingContainers]\n", errout_str());
+
+        // insert(pos, first, last)
+        check("void foo(const std::vector<int> &v1, const std::vector<int> &v2, std::vector<int> &v3)\n"
+              "{\n"
+              "    v3.insert(v3.end(), v1.begin(), v2.end());\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:25]: (error) Iterators of different containers 'v1' and 'v2' are used together. [mismatchingContainers]\n", errout_str());
+
+        check("void foo(const std::vector<int> &v1, std::vector<int> &v3)\n"
+              "{\n"
+              "    v3.insert(v3.end(), v1.begin(), v1.end());\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // assign(first, last), append(first, last)
+        check("void foo(const std::vector<int> &v1, const std::vector<int> &v2, std::vector<int> &v3)\n"
+              "{\n"
+              "    v3.assign(v1.begin(), v2.end());\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:15]: (error) Iterators of different containers 'v1' and 'v2' are used together. [mismatchingContainers]\n", errout_str());
+
+        check("void foo(const std::vector<int> &v1, std::vector<int> &v3)\n"
+              "{\n"
+              "    v3.assign(v1.begin(), v1.end());\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void foo(const std::string &s1, const std::string &s2, std::string &s3)\n"
+              "{\n"
+              "    s3.append(s1.begin(), s2.end());\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:15]: (error) Iterators of different containers 's1' and 's2' are used together. [mismatchingContainers]\n", errout_str());
+
+        // replace(first1, last1, first2, last2)
+        check("void foo(const std::string &s1, const std::string &s2, std::string &s3)\n"
+              "{\n"
+              "    s3.replace(s3.begin(), s3.end(), s1.begin(), s2.end());\n"
+              "    s3.replace(s3.begin(), s3.end(), s1.begin(), s1.end());\n"
+              "    s3.replace(s3.begin(), s3.end(), 3, 'c');\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:38]: (error) Iterators of different containers 's1' and 's2' are used together. [mismatchingContainers]\n", errout_str());
+
+        // insert(hint, value) where the value is an iterator
+        check("void foo(std::set<std::vector<int>::iterator> &s, std::vector<int> &v)\n"
+              "{\n"
+              "    s.insert(s.end(), v.begin());\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // insert(pos, value) where the value is an iterator
+        check("void foo(std::vector<std::vector<int>::iterator> &s, std::vector<int> &v)\n"
+              "{\n"
+              "    s.insert(s.end(), v.begin());\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void iterator7() {
@@ -2304,6 +2386,15 @@ private:
               "    return a;\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:2:5]: (error) Iterator 'b.begin()' referring to container 'b' is used with container 'a'. [mismatchingContainerIterator]\n", errout_str());
+
+        // iterators of non-template containers
+        check("void f(std::string& a, std::string& b) {\n"
+              "    std::string::iterator it = b.begin();\n"
+              "    a.erase(it);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:5]: (error) Same iterator is used with different containers 'b' and 'a'. [iterators1]\n"
+                      "[test.cpp:3:5]: (error) Iterator 'it' referring to container 'b' is used with container 'a'. [mismatchingContainerIterator]\n",
+                      errout_str());
 
         // #9973
         check("void f() {\n"
