@@ -5096,6 +5096,15 @@ private:
         ASSERT_EQUALS("[test.cpp:3:8]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n"
                       "[test.cpp:3:8]: (style) Parameter 'q' can be declared as pointer to const [constParameterPointer]\n",
                       errout_str());
+
+        check("int* f(int* s) {\n" // #15219
+              "    int* q = s - 1;\n"
+              "    return q;\n"
+              "}\n"
+              "int g(int* p) {\n"
+              "    return *(p - 1);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:5:12]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n", errout_str());
     }
 
     void constArray() {
