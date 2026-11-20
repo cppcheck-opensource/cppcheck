@@ -3590,6 +3590,18 @@ bool Tokenizer::simplifyTokens1(const std::string &configuration)
         mSymbolDatabase->setValueTypeInTokenList(true);
     });
 
+    if (isCPP() && mTemplateSimplifier->hasPendingTypeDeductions()) {
+        Timer::run("Tokenizer::simplifyTokens1::simplifyTemplatesUsingTypeInformation", mTimerResults, [&]() {
+            simplifyTemplatesUsingTypeInformation();
+        });
+    }
+
+    // the phases that only later analysis needs run when the template simplifier can
+    // no longer change the token list
+    Timer::run("Tokenizer::simplifyTokens1::finalizeSymbolDatabase", mTimerResults, [&]() {
+        mSymbolDatabase->finalize();
+    });
+
     // TODO: apply this through Settings::ValueFlowOptions
     // TODO: do not run valueflow if no checks are being performed at all - e.g. unusedFunctions only
     // TODO: log message when this is active?
@@ -4036,7 +4048,6 @@ void Tokenizer::arraySize()
     }
 }
 
-// cppcheck-suppress functionConst
 void Tokenizer::arraySizeAfterValueFlow()
 {
     // After ValueFlow, adjust array sizes.
@@ -4309,6 +4320,170 @@ void Tokenizer::simplifyTemplates()
     mTemplateSimplifier->simplifyTemplates(
         maxTime);
 }
+
+void Tokenizer::simplifyTemplatesUsingTypeInformation()
+{
+    if (isC())
+        return;
+
+    const std::time_t maxTime = mSettings.templateMaxTime > 0 ? std::time(nullptr) + mSettings.templateMaxTime : 0;
+
+    // for testing and debugging: recreate the symbol database etc. from scratch after
+    // each deduction round instead of updating them incrementally
+    const bool allowIncremental = !mSettings.templateFullRebuild;
+
+    constexpr int maxRounds = 5;
+    for (int round = 0; round < maxRounds; ++round) {
+        if (Settings::terminated())
+            return;
+        if (!mTemplateSimplifier->simplifyTemplatesUsingTypeInformation(maxTime))
+            break;
+        const bool incremental = allowIncremental && mTemplateSimplifier->incrementalUpdatePossible();
+        // when no deductions are pending anymore the deferred template declarations can
+        // be removed now, so that the updated token information is already final
+        if (!mTemplateSimplifier->hasPendingTypeDeductions()) {
+            mTemplateSimplifier->removeDeferredTemplateDeclarations(incremental ? mSymbolDatabase : nullptr);
+            updateOrRebuildTokenDataAfterTemplateSimplification(incremental);
+            return;
+        }
+        updateOrRebuildTokenDataAfterTemplateSimplification(incremental);
+    }
+    // deductions are still pending (or no round changed anything): remove the deferred
+    // declarations that are not called anymore
+    const bool incremental = allowIncremental && mTemplateSimplifier->incrementalUpdatePossible();
+    if (mTemplateSimplifier->removeDeferredTemplateDeclarations(incremental ? mSymbolDatabase : nullptr))
+        updateOrRebuildTokenDataAfterTemplateSimplification(incremental);
+}
+
+void Tokenizer::updateOrRebuildTokenDataAfterTemplateSimplification(bool incremental)
+{
+    if (incremental)
+        updateTokenDataAfterTemplateSimplification();
+    else {
+        mTemplateSimplifier->clearTokenChanges();
+        rebuildTokenDataAfterTemplateSimplification();
+    }
+}
+
+void Tokenizer::rebuildTokenDataAfterTemplateSimplification()
+{
+    // recreate the supporting token information for the added and removed tokens, in
+    // the same order the information was created initially
+    createLinks();
+    setVarId();
+    createLinks2();
+    Token::assignProgressValues(list.front());
+    list.front()->assignIndexes();
+    list.clearAst();
+    list.createAst();
+    list.validateAst(mSettings.debugnormal);
+    delete mSymbolDatabase;
+    mSymbolDatabase = nullptr;
+    // the phases that only later analysis needs are run by finalize() after the
+    // template simplification is done
+    createSymbolDatabase();
+    mSymbolDatabase->setValueTypeInTokenList(false);
+    mSymbolDatabase->setValueTypeInTokenList(true);
+}
+
+void Tokenizer::updateTokenDataAfterTemplateSimplification()
+{
+    // update the supporting token information incrementally: the information of the
+    // unchanged tokens - variable ids, symbols, AST, valuetypes - stays valid
+    setVarId(/*incremental*/ true);
+    createLinks2(); // adds the "<>" links of the new tokens
+    Token::assignProgressValues(list.front());
+    list.front()->assignIndexes();
+
+    // The token regions whose AST and valuetypes must be recreated: the new tokens and
+    // the function bodies around the changed call sites.
+    bool rebuildAll = false;
+    // the regions (first and last token, inclusive) whose AST and valuetypes must be recreated
+    std::vector<std::pair<Token*, Token*>> regions = mTemplateSimplifier->newTokenRanges();
+    for (const Token* siteTok : mTemplateSimplifier->dirtyCallSites()) {
+        const Scope* scope = siteTok->scope();
+        if (!scope)
+            continue; // a new token - covered by the new token ranges
+        // the outermost executable scope is the function body around the call
+        const Scope* functionScope = nullptr;
+        for (const Scope* s = scope; s; s = s->nestedIn) {
+            if (s->isExecutable())
+                functionScope = s;
+        }
+        if (!functionScope || !functionScope->bodyStart || !functionScope->bodyEnd ||
+            functionScope->bodyStart->astParent()) {
+            // no function body around the call (global initializer, lambda body that is
+            // part of an expression, ..) - recreate everything
+            rebuildAll = true;
+            break;
+        }
+        regions.emplace_back(const_cast<Token*>(functionScope->bodyStart), const_cast<Token*>(functionScope->bodyEnd));
+    }
+
+    if (!rebuildAll && !regions.empty()) {
+        // merge the overlapping regions - Token::index() is up to date
+        std::sort(regions.begin(),
+                  regions.end(),
+                  [](const std::pair<Token*, Token*>& lhs, const std::pair<Token*, Token*>& rhs) {
+            return lhs.first->index() < rhs.first->index();
+        });
+        std::vector<std::pair<Token*, Token*>> merged;
+        for (const auto& region : regions) {
+            if (!merged.empty() && region.first->index() <= merged.back().second->index()) {
+                if (region.second->index() > merged.back().second->index())
+                    merged.back().second = region.second;
+            } else
+                merged.push_back(region);
+        }
+        regions = std::move(merged);
+    }
+
+    if (rebuildAll) {
+        list.clearAst();
+        list.createAst();
+    } else {
+        for (const auto& region : regions) {
+            for (Token* tok = region.first; tok; tok = tok->next()) {
+                tok->clearAst();
+                if (tok == region.second)
+                    break;
+            }
+            TokenList::createAst(region.first, region.second->next());
+        }
+    }
+    list.validateAst(mSettings.debugnormal);
+
+    for (const Token* nameTok : mTemplateSimplifier->convertedSpecializations()) {
+        // the specialization became a normal function: its "template < >" tokens are gone
+        if (nameTok->function())
+            const_cast<Function*>(nameTok->function())->templateDef = nullptr;
+    }
+    mSymbolDatabase->addSymbolsForNewTokenRanges(mTemplateSimplifier->newTokenRanges());
+    // safety net: every token needs a scope. A token that was added by a simplification
+    // that is not covered by the new token ranges gets the scope of the preceding token.
+    const Scope* lastScope = nullptr;
+    for (Token* tok = list.front(); tok; tok = tok->next()) {
+        if (tok->scope())
+            lastScope = SymbolDatabase::scopeAfterToken(tok);
+        else if (lastScope)
+            tok->scope(lastScope);
+    }
+
+    // recreate the valuetypes of the changed regions. Like the whole-list variant: the
+    // function and variable pointers are updated with the new valuetypes in between
+    if (rebuildAll) {
+        mSymbolDatabase->setValueTypeInTokenList(false);
+        mSymbolDatabase->setValueTypeInTokenList(true);
+    } else {
+        for (const auto& region : regions)
+            mSymbolDatabase->setValueTypeInTokenList(false, region.first, region.second->next());
+        mSymbolDatabase->updateFunctionAndVariablePointers();
+        for (const auto& region : regions)
+            mSymbolDatabase->setValueTypeInTokenList(true, region.first, region.second->next());
+    }
+    mTemplateSimplifier->clearTokenChanges();
+    mSymbolDatabase->validate();
+}
 //---------------------------------------------------------------------------
 
 
@@ -4327,7 +4502,7 @@ namespace {
         VariableMap() = default;
         void enterScope();
         bool leaveScope();
-        void addVariable(const std::string& varname, bool globalNamespace);
+        void addVariable(const std::string& varname, bool globalNamespace, nonneg int existingVarId = 0);
         bool hasVariable(const std::string& varname) const {
             return mVariableId.find(varname) != mVariableId.end();
         }
@@ -4365,10 +4540,13 @@ bool VariableMap::leaveScope()
     return true;
 }
 
-void VariableMap::addVariable(const std::string& varname, bool globalNamespace)
+void VariableMap::addVariable(const std::string& varname, bool globalNamespace, nonneg int existingVarId)
 {
+    // a variable that already has an id keeps it, so ids are stable when the pass is
+    // run again after the template simplifier added tokens (incremental)
+    const nonneg int id = (existingVarId != 0) ? existingVarId : ++mVarId;
     if (mScopeInfo.empty()) {
-        mVariableId[varname].id = ++mVarId;
+        mVariableId[varname].id = id;
         if (globalNamespace)
             mVariableId_global[varname] = mVariableId[varname];
         return;
@@ -4376,13 +4554,13 @@ void VariableMap::addVariable(const std::string& varname, bool globalNamespace)
     const auto it = mVariableId.find(varname);
     if (it == mVariableId.end()) {
         mScopeInfo.top().emplace_back(varname, VarInfo{});
-        mVariableId[varname].id = ++mVarId;
+        mVariableId[varname].id = id;
         if (globalNamespace)
             mVariableId_global[varname] = mVariableId[varname];
         return;
     }
     mScopeInfo.top().emplace_back(varname, it->second);
-    it->second.id = ++mVarId;
+    it->second.id = id;
     it->second.assigned = false;
 }
 
@@ -4554,8 +4732,12 @@ static void setVarIdStructMembers(Token *&tok1,
                 tok = tok->next();
                 const auto it = utils::as_const(members).find(tok->str());
                 if (it == members.cend()) {
-                    members[tok->str()] = ++varId;
-                    tok->varId(varId);
+                    if (tok->varId() != 0)
+                        members[tok->str()] = tok->varId(); // keep the id (incremental pass)
+                    else {
+                        members[tok->str()] = ++varId;
+                        tok->varId(varId);
+                    }
                 } else {
                     tok->varId(it->second);
                 }
@@ -4594,8 +4776,12 @@ static void setVarIdStructMembers(Token *&tok1,
         if (it == members.cend()) {
             if (Token::Match(tok, "%name% ("))
                 break;
-            members[tok->str()] = ++varId;
-            tok->varId(varId);
+            if (tok->varId() != 0)
+                members[tok->str()] = tok->varId(); // keep the id (incremental pass)
+            else {
+                members[tok->str()] = ++varId;
+                tok->varId(varId);
+            }
         } else {
             tok->varId(it->second);
         }
@@ -4734,17 +4920,20 @@ void Tokenizer::setVarIdClassFunction(const std::string &classname,
     }
 }
 
-
-
-void Tokenizer::setVarId()
+void Tokenizer::setVarId(bool incremental)
 {
-    // Clear all variable ids
-    for (Token *tok = list.front(); tok; tok = tok->next()) {
-        if (tok->isName())
-            tok->varId(0);
+    if (!incremental) {
+        // Clear all variable ids
+        for (Token* tok = list.front(); tok; tok = tok->next()) {
+            if (tok->isName())
+                tok->varId(0);
+        }
     }
+    // incremental: tokens keep their variable ids and only tokens without an id get
+    // one, continuing above the previous maximum. This keeps the ids stable so the
+    // symbol database can be updated instead of recreated.
 
-    setVarIdPass1();
+    setVarIdPass1(incremental);
 
     setPodTypes();
 
@@ -4779,13 +4968,15 @@ static const Token* findInitListLambdaEnd(const Token* tok)
     return findLambdaEndScope(tok);
 }
 
-void Tokenizer::setVarIdPass1()
+void Tokenizer::setVarIdPass1(bool incremental)
 {
     const bool cpp = isCPP();
     // Variable declarations can't start with "return" etc.
     const std::unordered_set<std::string>& notstart = (isC()) ? notstart_c : notstart_cpp;
 
     VariableMap variableMap;
+    if (incremental)
+        variableMap.getVarId() = mVarId; // new ids continue above the previous maximum
     std::map<nonneg int, std::map<std::string, nonneg int>> structMembers;
 
     std::stack<VarIdScopeInfo> scopeStack;
@@ -4979,7 +5170,7 @@ void Tokenizer::setVarIdPass1()
                     Token::simpleMatch(tok2->link(), "] =")) {
                     while (tok2 && tok2->str() != "]") {
                         if (Token::Match(tok2, "%name% [,]]"))
-                            variableMap.addVariable(tok2->str(), false);
+                            variableMap.addVariable(tok2->str(), false, tok2->varId());
                         tok2 = tok2->next();
                     }
                     continue;
@@ -5079,14 +5270,14 @@ void Tokenizer::setVarIdPass1()
                 if (decl) {
                     if (isC() && Token::Match(prev2->previous(), "&|&&"))
                         syntaxErrorC(prev2, prev2->strAt(-2) + prev2->strAt(-1) + " " + prev2->str());
-                    variableMap.addVariable(prev2->str(), scopeStack.size() <= 1 && !functionDeclEndToken);
+                    variableMap.addVariable(prev2->str(), scopeStack.size() <= 1 && !functionDeclEndToken, prev2->varId());
 
                     if (Token::simpleMatch(tok->previous(), "for (") && Token::Match(prev2, "%name% [=[({,]")) {
                         for (const Token *tok3 = prev2->next(); tok3 && tok3->str() != ";"; tok3 = tok3->next()) {
                             if (Token::Match(tok3, "[([]"))
                                 tok3 = tok3->link();
                             if (Token::Match(tok3, ", %name% [=[({,;]"))
-                                variableMap.addVariable(tok3->strAt(1), false);
+                                variableMap.addVariable(tok3->strAt(1), false, tok3->next()->varId());
                         }
                     }
 

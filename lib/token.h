@@ -1241,7 +1241,7 @@ public:
         if (v || mImpl->mVarId)
             tokType(eVariable);
         else if (mTokType == eVariable)
-            tokType(eName);
+            update_property_info(); // eType for standard types, eKeyword for keywords, eName otherwise
     }
 
     /**
@@ -1655,6 +1655,15 @@ public:
     void clearValueFlow() {
         delete mImpl->mValues;
         mImpl->mValues = nullptr;
+    }
+
+    /** Clear the AST links (operands, parent and the cached top token) so the AST can be created again */
+    void clearAst()
+    {
+        mImpl->mAstOperand1 = nullptr;
+        mImpl->mAstOperand2 = nullptr;
+        mImpl->mAstParent = nullptr;
+        mImpl->mAstTop = nullptr;
     }
 
     // cppcheck-suppress unusedFunction - used in tests only
