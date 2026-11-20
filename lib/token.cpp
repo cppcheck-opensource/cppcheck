@@ -1978,12 +1978,13 @@ const ValueFlow::Value * Token::getInvalidValue(const Token *ftok, nonneg int ar
     return ret;
 }
 
-const Token *Token::getValueTokenMinStrSize(const Settings &settings, MathLib::bigint* path) const
+const Token *Token::getValueTokenMinStrSize(const Settings &settings, MathLib::bigint* path, ErrorPath* errorPath) const
 {
     if (!mImpl->mValues)
         return nullptr;
     const Token *ret = nullptr;
     int minsize = INT_MAX;
+    auto itMin = mImpl->mValues->end();
     for (auto it = mImpl->mValues->begin(); it != mImpl->mValues->end(); ++it) {
         if (it->isTokValue() && it->tokvalue && it->tokvalue->tokType() == Token::eString) {
             const int size = getStrSize(it->tokvalue, settings);
@@ -1992,9 +1993,12 @@ const Token *Token::getValueTokenMinStrSize(const Settings &settings, MathLib::b
                 ret = it->tokvalue;
                 if (path)
                     *path = it->path;
+                itMin = it;
             }
         }
     }
+    if (errorPath && itMin != mImpl->mValues->end())
+        errorPath->insert(errorPath->end(), itMin->errorPath.begin(), itMin->errorPath.end());
     return ret;
 }
 
