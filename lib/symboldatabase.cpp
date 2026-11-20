@@ -888,6 +888,23 @@ void SymbolDatabase::createSymbolDatabaseClassInfo()
 }
 
 
+static std::vector<nonneg int> findLifetimeBoundArgs(const Token* argStart)
+{
+    std::vector<nonneg int> result;
+    if (!Token::simpleMatch(argStart, "("))
+        return result;
+    nonneg int index = 0;
+    for (const Token* tok = argStart->next(); tok && tok != argStart->link(); tok = tok->next()) {
+        if (tok->link() && Token::Match(tok, "(|[|{|<"))
+            tok = tok->link();
+        if (tok->str() == ",")
+            index++;
+        else if (tok->isAttributeLifetimeBound() && (result.empty() || result.back() != index))
+            result.push_back(index);
+    }
+    return result;
+}
+
 void SymbolDatabase::createSymbolDatabaseVariableInfo()
 {
     // fill in variable info
@@ -901,6 +918,14 @@ void SymbolDatabase::createSymbolDatabaseVariableInfo()
         for (auto func = scope.functionList.begin(); func != scope.functionList.end(); ++func) {
             // add arguments
             func->addArguments(&scope);
+
+            // the attribute can be on the declaration, the definition or both
+            for (const Token* argStart : {func->argDef, func->arg}) {
+                for (const nonneg int index : findLifetimeBoundArgs(argStart)) {
+                    if (index < func->argumentList.size())
+                        std::next(func->argumentList.begin(), index)->setFlag(Variable::fIsLifetimeBound, true);
+                }
+            }
         }
     }
 }

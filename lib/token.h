@@ -586,6 +586,12 @@ public:
     void isAttributeFallthrough(const bool value) {
         setFlag(fIsAttributeFallthrough, value);
     }
+    bool isAttributeLifetimeBound() const {
+        return getFlag(fIsAttributeLifetimeBound);
+    }
+    void isAttributeLifetimeBound(const bool value) {
+        setFlag(fIsAttributeLifetimeBound, value);
+    }
     std::vector<std::string> getAttributeAlignas() const {
         return mImpl->mAttributeAlignas ? *mImpl->mAttributeAlignas : std::vector<std::string>();
     }
@@ -1522,6 +1528,7 @@ private:
         fIsInitBracket          = (1ULL << 44), // Is this bracket used as a part of variable initialization i.e: int a{5}, b(2);
         fIsAnonymous            = (1ULL << 45), // Is this a token added for an unnamed member
         fIsInsertedBrace        = (1ULL << 46), // brace added when simplifying e.g. if (x) f(); => if (x) { f(); }
+        fIsAttributeLifetimeBound = (1ULL << 47), // [[clang::lifetimebound]], __attribute__((lifetimebound))
     };
 
     enum : std::uint8_t {

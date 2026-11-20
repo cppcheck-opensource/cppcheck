@@ -299,6 +299,7 @@ private:
         TEST_CASE(cppMaybeUnusedAfter2);
         TEST_CASE(cppMaybeUnusedAfter3);
         TEST_CASE(cppMaybeUnusedStructuredBinding);
+        TEST_CASE(lifetimeBoundAttribute);
 
         TEST_CASE(attributeAlignasBefore);
         TEST_CASE(attributeAlignasAfter);
@@ -4620,6 +4621,75 @@ private:
         ASSERT(var1 && var1->isAttributeMaybeUnused());
         const Token *var2 = Token::findsimplematch(tokenizer.tokens(), "var2");
         ASSERT(var2 && var2->isAttributeMaybeUnused());
+    }
+
+    void lifetimeBoundAttribute() {
+        {
+            const char code[] = "const int& f(const int& x [[clang::lifetimebound]], [[clang::lifetimebound]] const int& y, const int& z);\n";
+            const char expected[] = "const int & f ( const int & x , const int & y , const int & z ) ;";
+
+            SimpleTokenizer tokenizer(settingsDefault, *this);
+            ASSERT(tokenizer.tokenize(code));
+
+            ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
+
+            const Token* f = Token::findsimplematch(tokenizer.tokens(), "f");
+            ASSERT(f && !f->isAttributeLifetimeBound());
+            const Token* x = Token::findsimplematch(tokenizer.tokens(), "x");
+            ASSERT(x && x->isAttributeLifetimeBound());
+            const Token* y = Token::findsimplematch(tokenizer.tokens(), "y");
+            ASSERT(y && y->isAttributeLifetimeBound());
+            const Token* z = Token::findsimplematch(tokenizer.tokens(), "z");
+            ASSERT(z && !z->isAttributeLifetimeBound());
+        }
+        {
+            const char code[] = "const int* f(const int* x __attribute__((lifetimebound)), __attribute__((__lifetimebound__)) const int* y, const int* z);\n";
+            const char expected[] = "const int * f ( const int * x , const int * y , const int * z ) ;";
+
+            SimpleTokenizer tokenizer(settingsDefault, *this, false);
+            ASSERT(tokenizer.tokenize(code));
+
+            ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
+
+            const Token* f = Token::findsimplematch(tokenizer.tokens(), "f");
+            ASSERT(f && !f->isAttributeLifetimeBound());
+            const Token* x = Token::findsimplematch(tokenizer.tokens(), "x");
+            ASSERT(x && x->isAttributeLifetimeBound());
+            const Token* y = Token::findsimplematch(tokenizer.tokens(), "y");
+            ASSERT(y && y->isAttributeLifetimeBound());
+            const Token* z = Token::findsimplematch(tokenizer.tokens(), "z");
+            ASSERT(z && !z->isAttributeLifetimeBound());
+        }
+        {
+            const char code[] = "struct S {\n"
+                                "    const int& f(const int& x) const noexcept [[clang::lifetimebound]];\n"
+                                "    const int* g(const int& y) const noexcept(true) __attribute__((lifetimebound));\n"
+                                "    int& operator[](int z) & [[clang::lifetimebound]];\n"
+                                "};\n";
+            const char expected[] = "struct S { "
+                                    "const int & f ( const int & x ) const noexcept ; "
+                                    "const int * g ( const int & y ) const noexcept ( true ) ; "
+                                    "int & operator[] ( int z ) & ; "
+                                    "} ;";
+
+            SimpleTokenizer tokenizer(settingsDefault, *this);
+            ASSERT(tokenizer.tokenize(code));
+
+            ASSERT_EQUALS(expected, tokenizer.tokens()->stringifyList(nullptr, false));
+
+            const Token* f = Token::findsimplematch(tokenizer.tokens(), "f");
+            ASSERT(f && f->isAttributeLifetimeBound());
+            const Token* g = Token::findsimplematch(tokenizer.tokens(), "g");
+            ASSERT(g && g->isAttributeLifetimeBound());
+            const Token* op = Token::findsimplematch(tokenizer.tokens(), "operator[]");
+            ASSERT(op && op->isAttributeLifetimeBound());
+            const Token* x = Token::findsimplematch(tokenizer.tokens(), "x");
+            ASSERT(x && !x->isAttributeLifetimeBound());
+            const Token* y = Token::findsimplematch(tokenizer.tokens(), "y");
+            ASSERT(y && !y->isAttributeLifetimeBound());
+            const Token* z = Token::findsimplematch(tokenizer.tokens(), "z");
+            ASSERT(z && !z->isAttributeLifetimeBound());
+        }
     }
 
     void attributeAlignasBefore() {

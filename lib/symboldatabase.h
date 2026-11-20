@@ -191,6 +191,7 @@ class CPPCHECKLIB Variable {
         fIsSmartPointer = (1 << 14),/** @brief std::shared_ptr|unique_ptr */
         fIsMaybeUnused = (1 << 15), /** @brief marked [[maybe_unused]] */
         fIsInit       = (1 << 16), /** @brief Is variable initialized in declaration */
+        fIsLifetimeBound = (1 << 17), /** @brief function argument marked [[clang::lifetimebound]] */
     };
 
     /**
@@ -648,6 +649,14 @@ public:
         return getFlag(fIsMaybeUnused);
     }
 
+    /**
+     * Is this a function argument marked [[clang::lifetimebound]]?
+     * The return value of the function (or the constructed object) may refer to it.
+     */
+    bool isLifetimeBound() const {
+        return getFlag(fIsLifetimeBound);
+    }
+
     const ValueType *valueType() const {
         return mValueType;
     }
@@ -830,6 +839,10 @@ public:
     }
     bool isAttributeMaybeUnused() const {
         return tokenDef->isAttributeMaybeUnused();
+    }
+    /** The implicit object parameter is marked [[clang::lifetimebound]] */
+    bool isAttributeLifetimeBound() const {
+        return tokenDef->isAttributeLifetimeBound() || (token && token->isAttributeLifetimeBound());
     }
 
     bool hasBody() const {

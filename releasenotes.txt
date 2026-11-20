@@ -13,7 +13,9 @@ New checks:
 -
 
 C/C++ support:
--
+- The lifetime analysis now uses the lifetimebound attribute ([[clang::lifetimebound]], [[msvc::lifetimebound]]
+  and __attribute__((lifetimebound))) on function parameters, constructor parameters and member functions.
+  This finds dangling references and pointers when the body of the called function is not available.
 
 GUI:
 -

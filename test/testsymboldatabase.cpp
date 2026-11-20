@@ -574,6 +574,7 @@ private:
 
         TEST_CASE(noreturnAttributeFunction);
         TEST_CASE(nodiscardAttributeFunction);
+        TEST_CASE(lifetimeBoundAttribute);
 
         TEST_CASE(varTypesIntegral); // known integral
         TEST_CASE(varTypesFloating); // known floating
@@ -9607,6 +9608,83 @@ private:
         func = findFunctionByName("func6", &db->scopeList.front());
         ASSERT_EQUALS(true, func != nullptr);
         ASSERT_EQUALS(true, func->isAttributeNodiscard());
+    }
+
+    void lifetimeBoundAttribute() {
+        GET_SYMBOL_DB("struct A { int x; };\n"
+                      "const A& func1(const A& a [[clang::lifetimebound]], const A& b);\n"
+                      "const A& func2(int n, [[clang::lifetimebound]] const A& a);\n"
+                      "const A& func3(const A& a __attribute__((lifetimebound)), const A& b);\n"
+                      "const A& func4(__attribute__((lifetimebound)) const A&, const A&);\n"
+                      "const A& func5(const std::map<int, A>& m [[_Clang::__lifetimebound__]], std::map<int, int> n);\n"
+                      "const A& func6(const A& a [[clang::lifetimebound]], const A& b);\n"
+                      "const A& func6(const A& a, const A& b) { return a.x ? a : b; }\n"
+                      "const A& func7(const A& a, const A& b);\n"
+                      "const A& func7(const A& a, const A& b [[clang::lifetimebound]]) { return a.x ? a : b; }\n"
+                      "template<class T> const T& func8(const T& a [[clang::lifetimebound]] = T{}, const T& b = T{}) { return a; }\n"
+                      "void func9() { int i = 0; func8<int>(i); }\n"
+                      "struct S {\n"
+                      "    S(const A& a [[clang::lifetimebound]], const A& b);\n"
+                      "    const int& mem1() const [[clang::lifetimebound]];\n"
+                      "    const int* mem2(const A& a) const noexcept __attribute__((lifetimebound));\n"
+                      "    const int& mem3(const A& a [[clang::lifetimebound]]) const;\n"
+                      "    const int& mem4() const;\n"
+                      "    int i;\n"
+                      "};\n"
+                      "const int& S::mem4() const [[clang::lifetimebound]] { return i; }\n");
+        ASSERT_EQUALS("", errout_str());
+        ASSERT(db != nullptr);
+
+        const Scope* const globalScope = &db->scopeList.front();
+        const struct {
+            const char* name;
+            bool arg0;
+            bool arg1;
+        } funcs[] = {
+            {"func1", true, false},
+            {"func2", false, true},
+            {"func3", true, false},
+            {"func4", true, false},
+            {"func5", true, false},
+            {"func6", true, false},
+            {"func7", false, true},
+            {"func8 < int >", true, false},
+        };
+        for (const auto& expected : funcs) {
+            const Function* func = findFunctionByName(expected.name, globalScope);
+            ASSERT_MSG(func != nullptr, expected.name);
+            ASSERT_EQUALS_MSG(false, func->isAttributeLifetimeBound(), expected.name);
+            ASSERT_EQUALS_MSG(2U, func->argCount(), expected.name);
+            ASSERT_EQUALS_MSG(expected.arg0, func->getArgumentVar(0)->isLifetimeBound(), expected.name);
+            ASSERT_EQUALS_MSG(expected.arg1, func->getArgumentVar(1)->isLifetimeBound(), expected.name);
+        }
+
+        const Scope* const classScope = db->findScopeByName("S");
+        ASSERT(classScope != nullptr);
+
+        const Function* func = findFunctionByName("S", classScope);
+        ASSERT(func != nullptr);
+        ASSERT_EQUALS(false, func->isAttributeLifetimeBound());
+        ASSERT_EQUALS(true, func->getArgumentVar(0)->isLifetimeBound());
+        ASSERT_EQUALS(false, func->getArgumentVar(1)->isLifetimeBound());
+
+        func = findFunctionByName("mem1", classScope);
+        ASSERT(func != nullptr);
+        ASSERT_EQUALS(true, func->isAttributeLifetimeBound());
+
+        func = findFunctionByName("mem2", classScope);
+        ASSERT(func != nullptr);
+        ASSERT_EQUALS(true, func->isAttributeLifetimeBound());
+        ASSERT_EQUALS(false, func->getArgumentVar(0)->isLifetimeBound());
+
+        func = findFunctionByName("mem3", classScope);
+        ASSERT(func != nullptr);
+        ASSERT_EQUALS(false, func->isAttributeLifetimeBound());
+        ASSERT_EQUALS(true, func->getArgumentVar(0)->isLifetimeBound());
+
+        func = findFunctionByName("mem4", classScope);
+        ASSERT(func != nullptr);
+        ASSERT_EQUALS(true, func->isAttributeLifetimeBound());
     }
 
     void varTypesIntegral() {
