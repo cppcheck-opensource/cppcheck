@@ -68,6 +68,7 @@ static const CWE CWE704(704U);   // Incorrect Type Conversion or Cast
 static const CWE CWE758(758U);   // Reliance on Undefined, Unspecified, or Implementation-Defined Behavior
 static const CWE CWE768(768U);   // Incorrect Short Circuit Evaluation
 static const CWE CWE783(783U);   // Operator Precedence Logic Error
+static const CWE CWE835(835U);   // Loop with Unreachable Exit Condition ('Infinite Loop')
 
 //----------------------------------------------------------------------------------
 // The return value of fgetc(), getc(), ungetc(), getchar() etc. is an integer value.
@@ -4905,6 +4906,131 @@ void CheckOtherImpl::overlappingWriteFunction(const Token *tok, const std::strin
     reportError(tok, Severity::error, "overlappingWriteFunction", "Overlapping read/write in " + funcname + "() is undefined behavior");
 }
 
+//---------------------------------------------------------------------------
+// Detect for-loops that never update their control variable (#5459)
+//---------------------------------------------------------------------------
+
+static bool stepUpdatesVar(const Token* stepTok, nonneg int varId)
+{
+    if (!stepTok || varId == 0)
+        return false;
+    if (stepTok->isIncDecOp() && stepTok->astOperand1() && stepTok->astOperand1()->varId() == varId)
+        return true;
+    if (stepTok->isAssignmentOp() && stepTok->astOperand1() && stepTok->astOperand1()->varId() == varId)
+        return true;
+    // Recurse so nested updates are found, e.g. "delete *it++" or "a = b++"
+    return stepUpdatesVar(stepTok->astOperand1(), varId) || stepUpdatesVar(stepTok->astOperand2(), varId);
+}
+
+static bool hasForLoopExit(const Scope& scope)
+{
+    for (const Token* tok = scope.bodyStart; tok != scope.bodyEnd; tok = tok->next()) {
+        const Scope* escapeScope = tok->scope();
+        if (!escapeScope || !escapeScope->isExecutable()) {
+            if (escapeScope)
+                tok = escapeScope->bodyEnd;
+            continue;
+        }
+        if (const Token* lambdaEnd = findLambdaEndToken(tok)) {
+            tok = lambdaEnd;
+            continue;
+        }
+        if (!tok->isName() || !tok->isKeyword())
+            continue;
+        if (Token::Match(tok, "goto|return|throw"))
+            return true;
+        if (tok->str() != "break")
+            continue;
+        // break only exits this loop if it is not nested in an inner loop/switch
+        while (escapeScope && escapeScope != &scope) {
+            if (escapeScope->isLoopScope() || escapeScope->type == ScopeType::eSwitch)
+                break;
+            escapeScope = escapeScope->nestedIn;
+        }
+        if (escapeScope == &scope)
+            return true;
+    }
+    return false;
+}
+
+static const Token* findForLoopControlVar(const Token* initTok, const Token* condTok)
+{
+    if (!initTok || !condTok || !condTok->isComparisonOp())
+        return nullptr;
+
+    const Token* initLhs = Token::simpleMatch(initTok, "=") ? initTok->astOperand1() : nullptr;
+    if (!Token::Match(initLhs, "%var%") || initLhs->varId() == 0) //TODO: WILL THIS BE NULLPTR DEFERENCE IF initLhs IS SET TO NULLPTR ON LINE 4962??
+        return nullptr;
+
+    const Variable* var = initLhs->variable();
+    if (!var || !var->isLocal() || var->isStatic() || var->isReference() || var->isRValueReference())
+        return nullptr;
+
+    auto isAcceptableLoopVar = [](const Token* tok) -> bool {
+        if (!Token::Match(tok, "%var%") || tok->varId() == 0)
+            return false;
+        if (!tok->valueType())
+            return true; // incomplete type info; still allow for C / missing VT
+        return tok->valueType()->isIntegral() || tok->valueType()->type == ValueType::Type::ITERATOR;
+    };
+
+    const Token* op1 = condTok->astOperand1();
+    const Token* op2 = condTok->astOperand2();
+    if (isAcceptableLoopVar(op1) && op1->varId() == initLhs->varId())
+        return op1;
+    if (isAcceptableLoopVar(op2) && op2->varId() == initLhs->varId())
+        return op2;
+    return nullptr;
+}
+
+void CheckOtherImpl::checkMissingForLoopIncrement()
+{
+    if (!mSettings.severity.isEnabled(Severity::warning))
+        return;
+
+    logChecker("CheckOther::checkMissingForLoopIncrement"); // warning
+
+    const SymbolDatabase* symbolDatabase = mTokenizer->getSymbolDatabase();
+    for (const Scope& scope : symbolDatabase->scopeList) {
+        if (scope.type != ScopeType::eFor || !scope.classDef)
+            continue;
+
+        const Token* forTok = scope.classDef;
+        const Token* initTok = getInitTok(forTok);
+        const Token* condTok = getCondTok(forTok);
+        const Token* stepTok = getStepTok(forTok);
+        if (!initTok || !condTok)
+            continue;
+
+        const Token* loopVarTok = findForLoopControlVar(initTok, condTok);
+        if (!loopVarTok)
+            continue;
+
+        const nonneg int varId = loopVarTok->varId();
+        if (stepUpdatesVar(stepTok, varId))
+            continue;
+
+        if (!astHasVar(condTok, varId))
+            continue;
+
+        if (hasForLoopExit(scope))
+            continue;
+
+        if (findExpressionChanged(loopVarTok, scope.bodyStart, scope.bodyEnd, mSettings))
+            continue;
+
+        missingForLoopIncrementError(forTok, loopVarTok->str());
+    }
+}
+
+void CheckOtherImpl::missingForLoopIncrementError(const Token *tok, const std::string &varname)
+{
+    reportError(tok, Severity::warning, "missingForLoopIncrement",
+                "$symbol:" + varname + "\n"
+                "The loop variable '$symbol' is not updated in this for-loop, so the loop might never terminate.",
+                CWE835, Certainty::normal);
+}
+
 void CheckOther::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     CheckOtherImpl checkOther(&tokenizer, tokenizer.getSettings(), errorLogger);
@@ -4956,6 +5082,7 @@ void CheckOther::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
     checkOther.checkModuloOfOne();
     checkOther.checkOverlappingWrite();
     checkOther.checkUnionZeroInit();
+    checkOther.checkMissingForLoopIncrement();
 }
 
 void CheckOther::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
@@ -5041,4 +5168,5 @@ void CheckOther::getErrorMessages(ErrorLogger& errorLogger, const Settings &sett
     c.funcArgOrderDifferent("function", nullptr, nullptr, nullvec, nullvec);
     c.checkModuloOfOneError(nullptr);
     c.unionZeroInitError(nullptr, UnionMember());
+    c.missingForLoopIncrementError(nullptr, "i");
 }
