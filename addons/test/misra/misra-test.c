@@ -1943,10 +1943,10 @@ struct { int a; } struct_20_7_s; // 8.4
 #define MUL(a  ,b ) ( a * b ) // 20.7
 
 #if __LINE__  // 20.8
-#elif 2+5  // 20.8
-#elif 2-2
 #endif
-
+#if 2-2
+#elif 2+5  // 20.8
+#endif
 #if A // 20.9
 #elif B || C // 20.9
 #endif
