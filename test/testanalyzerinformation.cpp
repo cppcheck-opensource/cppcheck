@@ -21,10 +21,14 @@
 #include "errorlogger.h"
 #include "filesettings.h"
 #include "fixture.h"
+#include "helpers.h"
 #include "standards.h"
 
+#include <fstream>
 #include <list>
+#include <set>
 #include <sstream>
+#include <string>
 
 #include "xml.h"
 
@@ -45,6 +49,7 @@ private:
         TEST_CASE(filesTextDuplicateFile);
         TEST_CASE(parse);
         TEST_CASE(skipAnalysis);
+        TEST_CASE(loadFileOpenForWriting);
     }
 
     void getAnalyzerInfoFileFromFilesTxt() const {
@@ -306,6 +311,35 @@ private:
             ASSERT_EQUALS(tinyxml2::XML_SUCCESS, xmlError);
 
             ASSERT_EQUALS("no 'hash' node found", AnalyzerInformationTest::skipAnalysis(doc, 99, errorList));
+            ASSERT_EQUALS(0, errorList.size());
+        }
+    }
+
+    void loadFileOpenForWriting() const {
+        const std::string buildDir = "testanalyzerinfo-builddir";
+        const ScopedFile file("file1.c.analyzerinfo",
+                              "<?xml version=\"1.0\"?>\n"
+                              "<analyzerinfo>\n"
+                              "  <includes>\n"
+                              "    <filename>file1.h</filename>\n"
+                              "  </includes>\n"
+                              "  <hash>123</hash>\n"
+                              "</analyzerinfo>\n",
+                              buildDir);
+
+        std::ofstream writer(file.path(), std::ios::app);
+        ASSERT(writer.is_open());
+
+        {
+            const AnalyzerInformation analyzerInfo;
+            const std::set<std::string> includes = analyzerInfo.getIncludes(buildDir, "file1.c", "", 0);
+            ASSERT_EQUALS(1, includes.size());
+            ASSERT_EQUALS("file1.h", *includes.cbegin());
+        }
+        {
+            AnalyzerInformation analyzerInfo;
+            std::list<ErrorMessage> errorList;
+            ASSERT_EQUALS(false, analyzerInfo.analyzeFile(buildDir, "file1.c", "", 0, 123, errorList));
             ASSERT_EQUALS(0, errorList.size());
         }
     }

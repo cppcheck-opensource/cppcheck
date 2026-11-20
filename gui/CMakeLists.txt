@@ -15,9 +15,7 @@ CheckOptions:
     file(GLOB tss  "*.ts")
     QT_WRAP_UI(uis_hdrs ${uis})
     QT_ADD_RESOURCES(resources "gui.qrc")
-    # TODO: passing "-no-obsolete" here breaks the translations
-    QT_CREATE_TRANSLATION(qms ${CMAKE_CURRENT_SOURCE_DIR} ${tss})
-    list(APPEND cppcheck-gui-deps ${hdrs} ${uis_hdrs} ${resources} ${qms})
+    list(APPEND cppcheck-gui-deps ${hdrs} ${uis_hdrs} ${resources})
     add_custom_target(gui-build-deps SOURCES ${cppcheck-gui-deps})
 
     list(APPEND cppcheck-gui_SOURCES ${srcs})
@@ -27,6 +25,10 @@ CheckOptions:
 
     add_executable(cppcheck-gui ${cppcheck-gui-deps} ${cppcheck-gui_SOURCES})
     target_link_libraries(cppcheck-gui cppcheck-core simplecpp tinyxml2 picojson frontend)
+    qt_add_translations(cppcheck-gui
+      TS_FILES ${tss}
+      QM_FILES_OUTPUT_VARIABLE qms)
+    add_dependencies(cppcheck-gui release_translations)
 
     set_target_properties(cppcheck-gui PROPERTIES AUTOMOC ON)
     set_target_properties(cppcheck-gui PROPERTIES WIN32_EXECUTABLE ON)
@@ -37,9 +39,6 @@ CheckOptions:
         target_link_libraries(cppcheck-gui ${PCRE_LIBRARY})
     endif()
     target_link_libraries(cppcheck-gui ${QT_CORE_LIB} ${QT_GUI_LIB} ${QT_WIDGETS_LIB} ${QT_PRINTSUPPORT_LIB} ${QT_HELP_LIB} ${QT_NETWORK_LIB})
-    if(WITH_QCHART)
-        target_link_libraries(cppcheck-gui ${QT_CHARTS_LIB})
-    endif()
     if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         if(QT_VERSION VERSION_LESS "6.4.0")
             # caused by Qt generated moc code - see https://bugreports.qt.io/browse/QTBUG-100915
@@ -55,7 +54,6 @@ CheckOptions:
     endif()
     if(QT_VERSION VERSION_GREATER_EQUAL "6.9.2")
         # QBrush fails to compile before 6.9.0 - see https://bugreports.qt.io/browse/QTBUG-134038
-        # QtCharts/qxyseries.h fails to compile in 6.9.0 and 6.9.1 - see https://bugreports.qt.io/browse/QTBUG-135637
         #target_compile_definitions(cppcheck-gui PRIVATE -DQT_NO_QPAIR)
     endif()
     target_compile_definitions(cppcheck-gui PRIVATE -DQT_NO_FOREACH)

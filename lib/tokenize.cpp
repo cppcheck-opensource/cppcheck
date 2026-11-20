@@ -29,7 +29,6 @@
 #include "preprocessor.h"
 #include "settings.h"
 #include "standards.h"
-#include "summaries.h"
 #include "symboldatabase.h"
 #include "templatesimplifier.h"
 #include "timer.h"
@@ -3561,7 +3560,7 @@ void Tokenizer::simplifyUsingError(const Token* usingStart, const Token* usingEn
     }
 }
 
-bool Tokenizer::simplifyTokens1(const std::string &configuration, int fileIndex)
+bool Tokenizer::simplifyTokens1(const std::string &configuration)
 {
     // Fill the map mTypeSize..
     fillTypeSizes();
@@ -3590,9 +3589,6 @@ bool Tokenizer::simplifyTokens1(const std::string &configuration, int fileIndex)
         mSymbolDatabase->setValueTypeInTokenList(false);
         mSymbolDatabase->setValueTypeInTokenList(true);
     });
-
-    if (!mSettings.buildDir.empty())
-        Summaries::create(*this, configuration, fileIndex);
 
     // TODO: apply this through Settings::ValueFlowOptions
     // TODO: do not run valueflow if no checks are being performed at all - e.g. unusedFunctions only
@@ -9718,8 +9714,8 @@ static Token* getVariableTokenAfterAttributes(Token* tok) {
     Token *vartok = nullptr;
     Token *after = getTokenAfterAttributes(tok, true);
 
-    // check if after variable name
-    if (Token::Match(after, "[;={]")) {
+    // check if after variable or parameter name
+    if (Token::Match(after, "[;={,)]")) {
         Token *prev = tok->previous();
         while (Token::simpleMatch(prev, "]"))
             prev = prev->link()->previous();

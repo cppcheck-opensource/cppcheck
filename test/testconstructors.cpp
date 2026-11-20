@@ -893,6 +893,107 @@ private:
               "    return S{ {}, v.cbegin() };\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        const char code2[] = "struct S {\n" // #15177
+                             "    int i = 0;\n"
+                             "    unsigned u : 1;\n"
+                             "    int a[];\n"
+                             "    int b[0];\n"
+                             "};\n";
+        const Settings s17 = settingsBuilder(settings).cpp(Standards::CPP17).build();
+        check(code2, s17);
+        ASSERT_EQUALS("", errout_str());
+        check(code2);
+        ASSERT_EQUALS("[test.cpp:3:14]: (warning) Member variable 'S::u' has no initializer. [uninitMemberVarNoCtor]\n",
+                      errout_str());
+
+        const char code3[] = "struct S {\n"
+                             "    S() = default;\n"
+                             "    unsigned u : 1;\n"
+                             "};\n";
+        check(code3, s17);
+        ASSERT_EQUALS("[test.cpp:2:5]: (warning) Member variable 'S::u' is not initialized in the constructor. [uninitMemberVar]\n",
+                      errout_str());
+        check(code3);
+        ASSERT_EQUALS("[test.cpp:2:5]: (warning) Member variable 'S::u' is not initialized in the constructor. [uninitMemberVar]\n",
+                      errout_str());
+
+        check("struct S {\n"
+              "    int i = 0;\n"
+              "    int a[];\n"
+              "};\n"
+              "struct T {\n"
+              "    T() : i(0) {} \n"
+              "    int i;\n"
+              "    int a[];\n"
+              "};");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S {\n"
+              "    static std::string s;\n"
+              "    int x;\n"
+              "};\n"
+              "struct T {\n"
+              "    static const int i = 0;\n"
+              "    int x;\n"
+              "};");
+        ASSERT_EQUALS("[test.cpp:3:9]: (warning) Member variable 'S::x' has no initializer. [uninitMemberVarNoCtor]\n"
+                      "[test.cpp:7:9]: (warning) Member variable 'T::x' has no initializer. [uninitMemberVarNoCtor]\n",
+                      errout_str());
+
+        check("struct N {\n" // #15197
+              "    explicit N(int);\n"
+              "};\n"
+              "struct D {\n"
+              "    D() = delete;\n"
+              "};\n"
+              "struct S {\n"
+              "    N n;\n"
+              "    int i;\n"
+              "    bool b = true;\n"
+              "};\n"
+              "struct W {\n"
+              "    W(int, ...);\n"
+              "};\n"
+              "struct T {\n"
+              "    D d;\n"
+              "    int i;\n"
+              "    bool b = true;\n"
+              "};\n"
+              "struct U {\n"
+              "    W w;\n"
+              "    int i;\n"
+              "    bool b = true;\n"
+              "};\n"
+              "struct A {\n"
+              "    N a[2];\n"
+              "    int i;\n"
+              "    bool b = true;\n"
+              "};\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct N {\n"
+              "    explicit N(int = 0);\n"
+              "};\n"
+              "struct V {\n"
+              "    template<class... A> explicit V(A&&... a);\n"
+              "};\n"
+              "struct C {\n"
+              "    C(...);\n"
+              "};\n"
+              "struct M {\n"
+              "    explicit M(int);\n"
+              "};\n"
+              "struct S {\n"
+              "    N n;\n"
+              "    V v;\n"
+              "    C c;\n"
+              "    M* p;\n"
+              "    M* q[2];\n"
+              "    int i;\n"
+              "    bool b = true;\n"
+              "};\n");
+        ASSERT_EQUALS("[test.cpp:19:9]: (warning) Member variable 'S::i' has no initializer. [uninitMemberVarNoCtor]\n", errout_str());
     }
 
     // ticket #4290 "False Positive: style (noConstructor): The class 'foo' does not have a constructor."

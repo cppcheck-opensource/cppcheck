@@ -150,18 +150,6 @@ Typically a `compile_commands.json` contains absolute paths. However no matter i
 - a file with relative path `test1.cpp` can be checked.
 - a file with relative path `test/somefile.cpp` is not checked
 
-### Clang parser (experimental)
-
-By default Cppcheck uses an internal C/C++ parser. However there is an experimental option to use the Clang parser instead.
-
-Install `clang`. Then use Cppcheck option `--clang`.
-
-Cppcheck executes clang with the -ast-dump option, imports the output, converts it to Cppcheck's internal format, and then
-performs standard analysis.
-
-You can also pass a custom Clang executable to the option by using for example `--clang=clang-10`. You can also pass it
-with a path. On Windows it will append the `.exe` extension unless you use a path.
-
 ## Severities
 
 The possible severities for messages are:

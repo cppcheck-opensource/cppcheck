@@ -202,6 +202,7 @@ private:
         TEST_CASE(configuration4);
         TEST_CASE(configuration5);
         TEST_CASE(configuration6);
+        TEST_CASE(configurationUse);
 
         TEST_CASE(ptrptr);
 
@@ -3100,6 +3101,29 @@ private:
               "    }\n"
               "}\n", dinit(CheckOptions, $.cpp = true));
         ASSERT_EQUALS("[test.cpp:5:5]: (error) Resource leak: file [resourceLeak]\n", errout_str());
+    }
+
+    void configurationUse() {
+        // A function configured with <use> takes care of the memory, so it needs
+        // no further configuration.
+        constexpr char xmldata[] = "<?xml version=\"1.0\"?>\n"
+                                   "<def format=\"2\">\n"
+                                   "  <memory>\n"
+                                   "    <alloc>myalloc</alloc>\n"
+                                   "    <use>set_data</use>\n"
+                                   "    <dealloc>myfree</dealloc>\n"
+                                   "  </memory>\n"
+                                   "  <function name=\"set_data\">\n"
+                                   "    <noreturn>false</noreturn>\n"
+                                   "    <arg nr=\"1\"/>\n"
+                                   "  </function>\n"
+                                   "</def>\n";
+        const Settings settingsUse = settingsBuilder().libraryxml(xmldata).checkLibrary().build();
+        check("void f() {\n"
+              "    char *p = myalloc(10);\n"
+              "    set_data(p);\n"
+              "}\n", settingsUse);
+        ASSERT_EQUALS("", errout_str());
     }
 
     void configuration6() {

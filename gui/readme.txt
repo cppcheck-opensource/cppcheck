@@ -45,7 +45,11 @@ has several options to select tests etc. You can get the help by running
 Translations
 ------------
 The GUI is translated to several languages. Qt comes with two tools to update
-and compile the translations. lupdate updates translations files from the code
-and lrelease compiles translation files use with the executable.
+and compile the translations.
 
-The translations are automatically updated and compiled within CMake.
+1. lupdate updates translations files from the code.
+   Updating the translation files from the code is a separate step: run
+     "lupdate gui.pro"
+   in the gui directory.
+2. lrelease compiles translation files use with the executable.
+   The translations are automatically compiled within CMake.

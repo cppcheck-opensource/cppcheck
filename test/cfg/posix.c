@@ -1628,3 +1628,10 @@ void pthread_define_test()
     PTHREAD_SCOPE_PROCESS;
     PTHREAD_SCOPE_SYSTEM;
 }
+
+void mmap_fixed(void *addr) // No constParameterPointer: mmap() may replace the mapping at addr
+{
+    // cppcheck-suppress valueFlowBailoutIncompleteVar
+    // cppcheck-suppress leakReturnValNotUsed
+    (void)mmap(addr, 0x1000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED, 0, 0);
+}

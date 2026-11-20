@@ -93,6 +93,25 @@ class TestCppcheckData:
         assert not find_tokens(cfgs[0], 'foo')
         assert find_tokens(cfgs[1], 'foo')
 
+    def test_configurations_kept(self, multi_cfg_data):
+        data = cppcheckdata.parsedump(multi_cfg_data.filename)
+        cfgs = data.configurations
+        assert len(cfgs) == 2
+        # later accesses and iterconfigurations() return the same objects
+        assert data.configurations is cfgs
+        iterated = list(data.iterconfigurations())
+        assert len(iterated) == 2
+        assert iterated[0] is cfgs[0]
+        assert iterated[1] is cfgs[1]
+
+    def test_iterconfigurations_not_kept(self, multi_cfg_data):
+        data = cppcheckdata.parsedump(multi_cfg_data.filename)
+        first = next(data.iterconfigurations())
+        # each call parses the dump file again
+        assert next(data.iterconfigurations()) is not first
+        assert len(data.configurations) == 2
+        assert data.configurations[0] is not first
+
     def test_standards(self, sample_cfg, sample_cpp_cfg):
         assert sample_cfg.standards.c.startswith('c')
         assert sample_cpp_cfg.standards.cpp.startswith('c++')
@@ -818,12 +837,16 @@ class TestSuppressions:
         assert supp.isMatch('a.c', '5', 'msg', 'zerodiv')
         assert not supp.isMatch('a.c', '5', 'msg', 'nullPointer')
 
-    @pytest.mark.xfail(strict=False,
-                       reason='the "other suppression" fallback in Suppression.isMatch() does not check '
-                              'that lineNumber is unset, so a line suppression matches every line')
     def test_line_suppression_other_line(self):
         supp = self.make_suppression(errorId='zerodiv', lineNumber='5')
         assert not supp.isMatch('a.c', '6', 'msg', 'zerodiv')
+
+    def test_line_suppression_this_and_next_line(self):
+        supp = self.make_suppression(errorId='zerodiv', lineNumber='5', thisAndNextLine='true')
+        assert supp.isMatch('a.c', '5', 'msg', 'zerodiv')
+        assert supp.isMatch('a.c', '6', 'msg', 'zerodiv')
+        assert not supp.isMatch('a.c', '4', 'msg', 'zerodiv')
+        assert not supp.isMatch('a.c', '7', 'msg', 'zerodiv')
 
     def test_wildcard_errorId(self):
         supp = self.make_suppression(errorId='*', lineNumber='5')
@@ -868,7 +891,8 @@ class TestSuppressions:
         location = cppcheckdata.Location({'file': supp.fileName, 'line': '5', 'column': '5'})
         assert cppcheckdata.is_suppressed(location, 'msg', 'uninitvar')
         assert not cppcheckdata.is_suppressed(location, 'msg', 'nullPointer')
-        # NOTE: a non-matching line is not checked here - see test_line_suppression_other_line
+        location = cppcheckdata.Location({'file': supp.fileName, 'line': '6', 'column': '5'})
+        assert not cppcheckdata.is_suppressed(location, 'msg', 'uninitvar')
 
 
 class TestPureHelpers:

@@ -1,0 +1,63 @@
+# Syntax reference https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions
+# Environment reference https://help.github.com/en/actions/reference/virtual-environments-for-github-hosted-runners
+name: ccache-cleanup
+
+# hendrikmuhs/ccache-action saves a new cache entry with a timestamp suffix on every run but never
+# deletes the previous ones. Only the newest entry is ever restored, so the superseded ones just take
+# up space and push the repository over the cache size limit, which causes other caches to be evicted.
+
+on:
+  workflow_run:
+    workflows:
+      - CI-mingw
+      - CI-unixish
+      - CI-unixish-docker
+      - Coverage
+      - corpus
+      - sanitizers
+      - scriptcheck
+      - selfcheck
+      - valgrind
+    types:
+      - completed
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ccache-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+
+    # pull requests do not save ccache caches
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.event != 'pull_request'
+
+    runs-on: ubuntu-24.04
+
+    permissions:
+      actions: write
+
+    steps:
+      - name: Delete superseded ccache caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          # list all ccache entries, group them by ref and key without the timestamp suffix and keep only the newest of each group
+          gh api --paginate "repos/$REPO/actions/caches?key=ccache-&per_page=100" --jq '.actions_caches[]' |
+            jq -s -r '
+              map(. + {prefix: (.key | sub("-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z$"; ""))})
+              | group_by([.ref, .prefix])[]
+              | sort_by(.created_at) | .[:-1][]
+              | "\(.id) \(.size_in_bytes) \(.ref) \(.key)"' > superseded.txt
+          echo "superseded ccache caches: $(wc -l < superseded.txt)"
+          while read -r id size ref key; do
+            echo "deleting $key ($ref, $((size / 1048576)) MiB)"
+            # the cache might already have been deleted or evicted
+            gh api -X DELETE "repos/$REPO/actions/caches/$id" || true
+          done < superseded.txt

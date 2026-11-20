@@ -5,31 +5,26 @@
     <name>About</name>
     <message>
         <location filename="about.ui" line="14"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_about.h" line="130"/>
         <source>About Cppcheck</source>
         <translation>關於 Cppcheck</translation>
     </message>
     <message>
         <location filename="about.ui" line="64"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_about.h" line="132"/>
         <source>Version %1</source>
         <translation>版本 %1</translation>
     </message>
     <message>
         <location filename="about.ui" line="71"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_about.h" line="133"/>
         <source>Cppcheck - A tool for static C/C++ code analysis.</source>
         <translation>Cppcheck - 一款靜態 C/C++ 程式碼分析工具。</translation>
     </message>
     <message>
         <location filename="about.ui" line="81"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_about.h" line="134"/>
         <source>Copyright © 2007-%1 Cppcheck team.</source>
         <translation>著作權 © 2007-%1 Cppcheck 團隊。</translation>
     </message>
     <message>
         <location filename="about.ui" line="91"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_about.h" line="135"/>
         <source>This program is licensed under the terms
 of the GNU General Public License version 3</source>
         <translation>該程式是根據 GNU 通用公眾授權條款第 3 版
@@ -37,13 +32,11 @@ of the GNU General Public License version 3</source>
     </message>
     <message>
         <location filename="about.ui" line="102"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_about.h" line="137"/>
         <source>Visit Cppcheck homepage at %1</source>
         <translation>訪問 Cppcheck 主頁: %1</translation>
     </message>
     <message>
         <location filename="about.ui" line="115"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_about.h" line="138"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Many thanks to these libraries that we use:&lt;/p&gt;&lt;ul style=&quot;margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;&quot;&gt;&lt;li style=&quot; margin-top:12px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;PCRE&lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;PicoJSON&lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Qt&lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;TinyXML2&lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Boost&lt;/li&gt;&lt;/ul&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <oldsource>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Many thanks to these libraries that we use:&lt;/p&gt;&lt;ul style=&quot;margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;&quot;&gt;&lt;li style=&quot; margin-top:12px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;pcre&lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;picojson&lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;qt&lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;tinyxml2&lt;/li&gt;&lt;/ul&gt;&lt;/body&gt;&lt;/html&gt;</oldsource>
         <translation type="unfinished"></translation>
@@ -53,13 +46,11 @@ of the GNU General Public License version 3</source>
     <name>ApplicationDialog</name>
     <message>
         <location filename="applicationdialog.ui" line="23"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_applicationdialog.h" line="161"/>
         <source>Add an application</source>
         <translation>新增應用程式</translation>
     </message>
     <message>
         <location filename="applicationdialog.ui" line="41"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_applicationdialog.h" line="162"/>
         <source>Here you can add an application that can open error files. Specify a name for the application, the application executable and command line parameters for the application.
 
 The following texts in parameters are replaced with appropriate values when application is executed:
@@ -75,25 +66,21 @@ Parameters: -l(line) (file)</source>
     </message>
     <message>
         <location filename="applicationdialog.ui" line="76"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_applicationdialog.h" line="173"/>
         <source>&amp;Name:</source>
         <translation>名稱(&amp;N):</translation>
     </message>
     <message>
         <location filename="applicationdialog.ui" line="86"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_applicationdialog.h" line="174"/>
         <source>&amp;Executable:</source>
         <translation>執行檔(&amp;E):</translation>
     </message>
     <message>
         <location filename="applicationdialog.ui" line="96"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_applicationdialog.h" line="175"/>
         <source>&amp;Parameters:</source>
         <translation>參數(&amp;P):</translation>
     </message>
     <message>
         <location filename="applicationdialog.ui" line="138"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_applicationdialog.h" line="176"/>
         <source>Browse</source>
         <translation>瀏覽</translation>
     </message>
@@ -153,19 +140,16 @@ Parameters: -l(line) (file)</source>
     <name>HelpDialog</name>
     <message>
         <location filename="helpdialog.ui" line="14"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_helpdialog.h" line="88"/>
         <source>Cppcheck GUI help</source>
         <translation>Cppcheck GUI 幫助</translation>
     </message>
     <message>
         <location filename="helpdialog.ui" line="34"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_helpdialog.h" line="89"/>
         <source>Contents</source>
         <translation>內容</translation>
     </message>
     <message>
         <location filename="helpdialog.ui" line="44"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_helpdialog.h" line="90"/>
         <source>Index</source>
         <translation>索引</translation>
     </message>
@@ -183,19 +167,16 @@ Parameters: -l(line) (file)</source>
     <name>LibraryAddFunctionDialog</name>
     <message>
         <location filename="libraryaddfunctiondialog.ui" line="23"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryaddfunctiondialog.h" line="105"/>
         <source>Add function</source>
         <translation>新增函式</translation>
     </message>
     <message>
         <location filename="libraryaddfunctiondialog.ui" line="34"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryaddfunctiondialog.h" line="106"/>
         <source>Function name(s)</source>
         <translation>函式名稱</translation>
     </message>
     <message>
         <location filename="libraryaddfunctiondialog.ui" line="44"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryaddfunctiondialog.h" line="107"/>
         <source>Number of arguments</source>
         <translation>引數數量</translation>
     </message>
@@ -204,103 +185,86 @@ Parameters: -l(line) (file)</source>
     <name>LibraryDialog</name>
     <message>
         <location filename="librarydialog.ui" line="14"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_librarydialog.h" line="275"/>
         <source>Library Editor</source>
         <translation>程式庫編輯器</translation>
     </message>
     <message>
         <location filename="librarydialog.ui" line="22"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_librarydialog.h" line="276"/>
         <source>Open</source>
         <translation>開啟</translation>
     </message>
     <message>
         <location filename="librarydialog.ui" line="29"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_librarydialog.h" line="277"/>
         <source>Save</source>
         <translation>儲存</translation>
     </message>
     <message>
         <location filename="librarydialog.ui" line="36"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_librarydialog.h" line="278"/>
         <source>Save as</source>
         <translation type="unfinished">另存為</translation>
     </message>
     <message>
         <location filename="librarydialog.ui" line="62"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_librarydialog.h" line="279"/>
         <source>Functions</source>
         <translation>函式</translation>
     </message>
     <message>
         <location filename="librarydialog.ui" line="71"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_librarydialog.h" line="280"/>
         <source>Sort</source>
         <translation>排序</translation>
     </message>
     <message>
         <location filename="librarydialog.ui" line="111"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_librarydialog.h" line="281"/>
         <source>Add</source>
         <translation>新增</translation>
     </message>
     <message>
         <location filename="librarydialog.ui" line="131"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_librarydialog.h" line="282"/>
         <source>Filter:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="librarydialog.ui" line="164"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_librarydialog.h" line="283"/>
         <source>Comments</source>
         <translation>註釋</translation>
     </message>
     <message>
         <location filename="librarydialog.ui" line="204"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_librarydialog.h" line="284"/>
         <source>noreturn</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="librarydialog.ui" line="212"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_librarydialog.h" line="285"/>
         <source>False</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="librarydialog.ui" line="217"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_librarydialog.h" line="286"/>
         <source>True</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="librarydialog.ui" line="222"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_librarydialog.h" line="287"/>
         <source>Unknown</source>
         <translation>未知</translation>
     </message>
     <message>
         <location filename="librarydialog.ui" line="232"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_librarydialog.h" line="289"/>
         <source>return value must be used</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="librarydialog.ui" line="239"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_librarydialog.h" line="290"/>
         <source>ignore function in leaks checking</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="librarydialog.ui" line="246"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_librarydialog.h" line="291"/>
         <source>Arguments</source>
         <translation>引數</translation>
     </message>
     <message>
         <location filename="librarydialog.ui" line="258"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_librarydialog.h" line="292"/>
         <source>Edit</source>
         <translation>編輯</translation>
     </message>
@@ -344,13 +308,11 @@ Parameters: -l(line) (file)</source>
     <name>LibraryEditArgDialog</name>
     <message>
         <location filename="libraryeditargdialog.ui" line="14"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="284"/>
         <source>Edit argument</source>
         <translation>編輯引數</translation>
     </message>
     <message>
         <location filename="libraryeditargdialog.ui" line="20"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="286"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;
 &lt;p&gt;Is bool value allowed? For instance result from comparison or from &apos;!&apos; operator.&lt;/p&gt;
 &lt;p&gt;Typically, set this if the argument is a pointer, size, etc.&lt;/p&gt;
@@ -361,13 +323,11 @@ Parameters: -l(line) (file)</source>
     </message>
     <message>
         <location filename="libraryeditargdialog.ui" line="28"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="293"/>
         <source>Not bool</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="libraryeditargdialog.ui" line="35"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="295"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;
 &lt;p&gt;Is a null parameter value allowed?&lt;/p&gt;
 &lt;p&gt;Typically this should be used on any pointer parameter that does not allow null.&lt;/p&gt;
@@ -378,99 +338,78 @@ Parameters: -l(line) (file)</source>
     </message>
     <message>
         <location filename="libraryeditargdialog.ui" line="43"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="302"/>
         <source>Not null</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="libraryeditargdialog.ui" line="50"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="303"/>
         <source>Not uninit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="libraryeditargdialog.ui" line="57"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="304"/>
         <source>String</source>
         <translation>字串</translation>
     </message>
     <message>
         <location filename="libraryeditargdialog.ui" line="70"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="305"/>
         <source>Format string</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="libraryeditargdialog.ui" line="92"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="306"/>
         <source>Min size of buffer</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="libraryeditargdialog.ui" line="101"/>
         <location filename="libraryeditargdialog.ui" line="203"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="307"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="316"/>
         <source>Type</source>
         <translation>型別</translation>
     </message>
     <message>
         <location filename="libraryeditargdialog.ui" line="109"/>
         <location filename="libraryeditargdialog.ui" line="214"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="308"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="317"/>
         <source>None</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="libraryeditargdialog.ui" line="114"/>
         <location filename="libraryeditargdialog.ui" line="219"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="309"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="318"/>
         <source>argvalue</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="libraryeditargdialog.ui" line="119"/>
         <location filename="libraryeditargdialog.ui" line="224"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="310"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="319"/>
         <source>mul</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="libraryeditargdialog.ui" line="124"/>
         <location filename="libraryeditargdialog.ui" line="229"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="311"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="320"/>
         <source>strlen</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="libraryeditargdialog.ui" line="132"/>
         <location filename="libraryeditargdialog.ui" line="237"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="313"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="322"/>
         <source>Arg</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="libraryeditargdialog.ui" line="159"/>
         <location filename="libraryeditargdialog.ui" line="264"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="314"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="323"/>
         <source>Arg2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="libraryeditargdialog.ui" line="194"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="315"/>
         <source>and</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="libraryeditargdialog.ui" line="310"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_libraryeditargdialog.h" line="324"/>
         <source>Valid values</source>
         <translation>有效值</translation>
     </message>
@@ -483,644 +422,532 @@ Parameters: -l(line) (file)</source>
     </message>
     <message>
         <location filename="mainwindow.ui" line="84"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="738"/>
         <source>Checking for updates</source>
         <translation>檢查更新</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="100"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="739"/>
         <source>Hide</source>
         <translation>隱藏</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="132"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="740"/>
         <source>&amp;File</source>
         <translation>檔案(&amp;F)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="151"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="741"/>
         <source>&amp;View</source>
         <translation>檢視(&amp;V)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="155"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="742"/>
         <source>&amp;Toolbars</source>
         <translation>工具條(&amp;T)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="163"/>
         <location filename="mainwindow.ui" line="979"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="730"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="743"/>
         <source>Report</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="198"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="744"/>
         <source>&amp;Help</source>
         <translation>幫助(&amp;H)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="209"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="745"/>
         <source>A&amp;nalyze</source>
         <translation>分析(&amp;N)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="213"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="746"/>
         <source>C++ standard</source>
         <translation>C++ 標準</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="225"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="747"/>
         <source>&amp;C standard</source>
         <translation>C 標準(&amp;C)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="253"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="748"/>
         <source>&amp;Edit</source>
         <translation>編輯(&amp;E)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="266"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="749"/>
         <source>Standard</source>
         <translation>標準</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="284"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="750"/>
         <source>Categories</source>
         <translation>分類</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="303"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="751"/>
         <source>Filter</source>
         <translation>篩選</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="314"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="578"/>
         <source>&amp;License...</source>
         <translation>授權(&amp;L)...</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="319"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="579"/>
         <source>A&amp;uthors...</source>
         <translation>作者(&amp;U)...</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="328"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="580"/>
         <source>&amp;About...</source>
         <translation>關於(&amp;A)...</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="333"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="581"/>
         <source>&amp;Files...</source>
         <translation>檔案(&amp;F)...</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="336"/>
         <location filename="mainwindow.ui" line="339"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="582"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="584"/>
         <source>Analyze files</source>
         <translation>分析檔案</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="342"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="587"/>
         <source>Ctrl+F</source>
         <translation>Ctrl+F</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="351"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="589"/>
         <source>&amp;Directory...</source>
         <translation>目錄(&amp;D)...</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="354"/>
         <location filename="mainwindow.ui" line="357"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="590"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="592"/>
         <source>Analyze directory</source>
         <translation>分析目錄</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="360"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="595"/>
         <source>Ctrl+D</source>
         <translation>Ctrl+D</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="369"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="597"/>
         <source>&amp;Reanalyze modified files</source>
         <translation>重新分析已修改的檔案(&amp;R)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="372"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="599"/>
         <source>Ctrl+R</source>
         <translation>Ctrl+R</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="381"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="601"/>
         <source>Reanal&amp;yze all files</source>
         <translation>重新分析所有檔案(&amp;Y)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="390"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="602"/>
         <source>&amp;Stop</source>
         <translation>停止(&amp;S)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="393"/>
         <location filename="mainwindow.ui" line="396"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="603"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="605"/>
         <source>Stop analysis</source>
         <translation>停止分析</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="399"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="608"/>
         <source>Esc</source>
         <translation>Esc</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="408"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="610"/>
         <source>&amp;Save results to file...</source>
         <translation>儲存結果為檔案(&amp;S)...</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="411"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="612"/>
         <source>Ctrl+S</source>
         <translation>Ctrl+S</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="416"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="614"/>
         <source>&amp;Quit</source>
         <translation>退出(&amp;Q)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="419"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="616"/>
         <source>Ctrl+Q</source>
         <translation>Ctrl+Q</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="428"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="618"/>
         <source>&amp;Clear results</source>
         <translation>清除結果(&amp;C)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="437"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="619"/>
         <source>&amp;Preferences</source>
         <translation>偏好設定(&amp;P)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="449"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="620"/>
         <source>Style war&amp;nings</source>
         <translation>樣式警告(&amp;N)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="452"/>
         <location filename="mainwindow.ui" line="455"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="621"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="623"/>
         <source>Show style warnings</source>
         <translation>顯示樣式警告</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="467"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="625"/>
         <source>E&amp;rrors</source>
         <translation>錯誤(&amp;R)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="470"/>
         <location filename="mainwindow.ui" line="473"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="626"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="628"/>
         <location filename="mainwindow.cpp" line="2408"/>
         <source>Show errors</source>
         <translation>顯示錯誤</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="478"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="630"/>
         <source>&amp;Check all</source>
         <translation>全部檢查(&amp;C)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="483"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="631"/>
         <source>&amp;Uncheck all</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="488"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="632"/>
         <source>Collapse &amp;all</source>
         <translation>全部摺疊(&amp;A)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="493"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="633"/>
         <source>&amp;Expand all</source>
         <translation>全部展開(&amp;E)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="501"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="634"/>
         <source>&amp;Standard</source>
         <translation>標準(&amp;S)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="504"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="636"/>
         <source>Standard items</source>
         <translatorcomment>標準項目</translatorcomment>
         <translation></translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="509"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="638"/>
         <source>&amp;Contents</source>
         <translation>內容(&amp;C)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="512"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="640"/>
         <source>Open the help contents</source>
         <translation>開啟幫助內容</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="515"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="643"/>
         <source>F1</source>
         <translation>F1</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="520"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="645"/>
         <source>Toolbar</source>
         <translation>工具條</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="528"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="646"/>
         <source>&amp;Categories</source>
         <translation>分類(&amp;C)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="531"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="648"/>
         <source>Error categories</source>
         <translation>錯誤分類</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="536"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="650"/>
         <source>&amp;Open XML...</source>
         <translation>開啟 XML(&amp;O)...</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="545"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="651"/>
         <source>Open P&amp;roject File...</source>
         <translation>開啟專案檔(&amp;R)...</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="548"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="653"/>
         <source>Ctrl+Shift+O</source>
         <translation>Ctrl+Shift+O</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="557"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="655"/>
         <source>Sh&amp;ow Scratchpad...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="562"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="656"/>
         <source>&amp;New Project File...</source>
         <translation>新增專案檔(&amp;N)...</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="565"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="658"/>
         <source>Ctrl+Shift+N</source>
         <translation>Ctrl+Shift+N</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="570"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="660"/>
         <source>&amp;Log View</source>
         <translation>日誌檢視(&amp;L)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="573"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="662"/>
         <source>Log View</source>
         <translation>日誌檢視</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="581"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="664"/>
         <source>C&amp;lose Project File</source>
         <translation>關閉專案檔(&amp;L)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="589"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="665"/>
         <source>&amp;Edit Project File...</source>
         <translation>編輯專案檔(&amp;E)...</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="601"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="666"/>
         <source>&amp;Statistics</source>
         <translation>統計資料(&amp;S)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="613"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="667"/>
         <source>&amp;Warnings</source>
         <translation>警告(&amp;W)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="616"/>
         <location filename="mainwindow.ui" line="619"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="668"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="670"/>
         <location filename="mainwindow.cpp" line="2409"/>
         <source>Show warnings</source>
         <translation>顯示警告</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="631"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="672"/>
         <source>Per&amp;formance warnings</source>
         <translation>效能警告(&amp;F)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="634"/>
         <location filename="mainwindow.ui" line="637"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="673"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="675"/>
         <source>Show performance warnings</source>
         <translation>顯示下效能警告</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="645"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="677"/>
         <source>Show &amp;hidden</source>
         <translation>顯示隱藏項目(&amp;H)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="657"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="678"/>
         <source>&amp;Information</source>
         <translation>資訊(&amp;I)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="660"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="680"/>
         <source>Show information messages</source>
         <translation>顯示資訊訊息</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="672"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="682"/>
         <source>&amp;Portability</source>
         <translation>可移植性(&amp;P)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="675"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="684"/>
         <source>Show portability warnings</source>
         <translation>顯示可移植性警告</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="690"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="687"/>
         <source>Show Cppcheck results</source>
         <translation>顯示 Cppcheck 結果</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="702"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="689"/>
         <source>Clang</source>
         <translation>Clang</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="705"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="691"/>
         <source>Show Clang results</source>
         <translation>顯示 Clang 結果</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="713"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="693"/>
         <source>&amp;Filter</source>
         <translation>篩選(&amp;F)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="716"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="695"/>
         <source>Filter results</source>
         <translation>篩選結果</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="732"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="697"/>
         <source>Windows 32-bit ANSI</source>
         <translation>Windows 32 位元 ANSI</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="740"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="698"/>
         <source>Windows 32-bit Unicode</source>
         <translation>Windows 32 位元 Unicode</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="748"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="699"/>
         <source>Unix 32-bit</source>
         <translation>Unix 32 位元</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="756"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="700"/>
         <source>Unix 64-bit</source>
         <translation>Unix 64 位元</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="764"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="701"/>
         <source>Windows 64-bit</source>
         <translation>Windows 64 位元</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="772"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="702"/>
         <source>P&amp;latforms</source>
         <translation>平臺(&amp;L)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="786"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="703"/>
         <source>C++&amp;11</source>
         <translation>C++&amp;11</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="797"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="704"/>
         <source>C&amp;99</source>
         <translation>C&amp;99</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="805"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="705"/>
         <source>&amp;Posix</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="813"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="706"/>
         <source>C&amp;11</source>
         <translation>C&amp;11</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="845"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="707"/>
         <source>&amp;C89</source>
         <translation>&amp;C89</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="853"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="708"/>
         <source>&amp;C++03</source>
         <translation>&amp;C++03</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="858"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="709"/>
         <source>&amp;Print...</source>
         <translation>列印(&amp;P)...</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="861"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="711"/>
         <source>Print the Current Report</source>
         <translation>列印當前報告</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="866"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="713"/>
         <source>Print Pre&amp;view...</source>
         <translation>列印預覽(&amp;V)...</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="869"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="715"/>
         <source>Open a Print Preview Dialog for the Current Results</source>
         <translation>開啟當前結果的列印預覽視窗</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="874"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="717"/>
         <source>&amp;Library Editor...</source>
         <translation>程式庫編輯器(&amp;L)...</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="877"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="719"/>
         <source>Open library editor</source>
         <translation>開啟程式庫編輯器</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="885"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="721"/>
         <source>&amp;Auto-detect language</source>
         <translation>自動偵測語言(&amp;A)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="893"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="722"/>
         <source>&amp;Enforce C++</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="901"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="723"/>
         <source>E&amp;nforce C</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="912"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="724"/>
         <source>C++14</source>
         <translation>C++14</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="920"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="725"/>
         <source>Reanalyze and check library</source>
         <translation>重新分析並檢查程式庫</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="928"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="726"/>
         <source>Check configuration (defines, includes)</source>
         <translation>檢查組態 (定義、包含)</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="936"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="727"/>
         <source>C++17</source>
         <translation>C++17</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="947"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="728"/>
         <source>C++20</source>
         <translation>C++20</translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="974"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="729"/>
         <source>Compliance report...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="987"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="731"/>
         <source>Normal</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1134,25 +961,21 @@ Parameters: -l(line) (file)</source>
     </message>
     <message>
         <location filename="mainwindow.ui" line="1035"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="732"/>
         <source>Autosar</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="1040"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="733"/>
         <source>EULA...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="1045"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="734"/>
         <source>Thread Details</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="mainwindow.ui" line="1048"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_mainwindow.h" line="736"/>
         <source>Show thread details</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1589,31 +1412,26 @@ Do you want to remove the file from the recently used projects -list?</source>
     <name>NewSuppressionDialog</name>
     <message>
         <location filename="newsuppressiondialog.ui" line="17"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_newsuppressiondialog.h" line="114"/>
         <source>New suppression</source>
         <translation>新建抑制</translation>
     </message>
     <message>
         <location filename="newsuppressiondialog.ui" line="25"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_newsuppressiondialog.h" line="115"/>
         <source>Error ID</source>
         <translation>錯誤 ID</translation>
     </message>
     <message>
         <location filename="newsuppressiondialog.ui" line="32"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_newsuppressiondialog.h" line="116"/>
         <source>File name</source>
         <translation>檔案名稱</translation>
     </message>
     <message>
         <location filename="newsuppressiondialog.ui" line="42"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_newsuppressiondialog.h" line="117"/>
         <source>Line number</source>
         <translation>行號</translation>
     </message>
     <message>
         <location filename="newsuppressiondialog.ui" line="52"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_newsuppressiondialog.h" line="118"/>
         <source>Symbol name</source>
         <translation>符號名稱</translation>
     </message>
@@ -1655,59 +1473,48 @@ Do you want to remove the file from the recently used projects -list?</source>
     <name>ProjectFile</name>
     <message>
         <location filename="projectfile.ui" line="14"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="923"/>
         <source>Project File</source>
         <translation>專案檔</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="24"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="955"/>
         <source>Paths and Defines</source>
         <translation>路徑與定義</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="30"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="924"/>
         <source>Import Project (Visual studio / compile database/ Borland C++ Builder 6)</source>
         <translation>匯入專案 (Visual Studio / 編譯資料庫 / Borland C++ Builder 6)</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="60"/>
         <location filename="projectfile.ui" line="450"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="926"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="964"/>
         <source>Browse...</source>
         <translation>瀏覽...</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="73"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="928"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;You have a choice:&lt;/p&gt;&lt;p&gt; * Analyze all Debug and Release configurations&lt;/p&gt;&lt;p&gt; * Only analyze the first matching Debug configuration&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="76"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="930"/>
         <source>Analyze all Visual Studio configurations</source>
         <translation>分析所有 Visual Studio 組態</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="113"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="931"/>
         <source>Selected VS Configurations</source>
         <translation>選取 VS 組態</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="147"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="932"/>
         <source>Paths:</source>
         <translation>路徑:</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="181"/>
         <location filename="projectfile.ui" line="296"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="933"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="945"/>
         <source>Add...</source>
         <translation>新增...</translation>
     </message>
@@ -1715,9 +1522,6 @@ Do you want to remove the file from the recently used projects -list?</source>
         <location filename="projectfile.ui" line="188"/>
         <location filename="projectfile.ui" line="303"/>
         <location filename="projectfile.ui" line="699"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="934"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="946"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="994"/>
         <source>Edit</source>
         <translation>編輯</translation>
     </message>
@@ -1726,334 +1530,274 @@ Do you want to remove the file from the recently used projects -list?</source>
         <location filename="projectfile.ui" line="310"/>
         <location filename="projectfile.ui" line="706"/>
         <location filename="projectfile.ui" line="749"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="935"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="947"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="995"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="998"/>
         <source>Remove</source>
         <translation>移除</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="221"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="936"/>
         <source>Defines:</source>
         <translation>定義:</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="231"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="938"/>
         <source>Defines must be separated by a semicolon. Example: DEF1;DEF2=5;DEF3=int</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="242"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="940"/>
         <source>Undefines:</source>
         <translation>未定義:</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="252"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="942"/>
         <source>Undefines must be separated by a semicolon. Example: UNDEF1;UNDEF2;UNDEF3</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="265"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="944"/>
         <source>Include Paths:</source>
         <translation>包含路徑:</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="330"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="948"/>
         <source>Up</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="337"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="949"/>
         <source>Down</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="350"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="950"/>
         <source>Include file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="360"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="952"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-family:&apos;monospace&apos;; color:#000000; background-color:#ffffff;&quot;&gt;Force inclusion of a header file&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="367"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="954"/>
         <source>Browse..</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="390"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="959"/>
         <source>Types and Functions</source>
         <translation>型別與函式</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="396"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="956"/>
         <source>Platform</source>
         <translation>平臺</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="408"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="957"/>
         <source>Libraries</source>
         <translation>程式庫</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="417"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="958"/>
         <source>Note: Put your own custom .cfg files in the same folder as the project file. You should see them above.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="431"/>
         <location filename="projectfile.ui" line="516"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="972"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="982"/>
         <source>Analysis</source>
         <translation>分析</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="437"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="960"/>
         <source>Cppcheck build dir (whole program analysis, incremental analysis, statistics, etc)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="443"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="962"/>
         <source>This is a workfolder that Cppcheck will use for various purposes.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="460"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="965"/>
         <source>Parser</source>
         <translation>剖析器</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="466"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="966"/>
         <source>Cppcheck (built in)</source>
         <translation>Cppcheck (內建)</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="476"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="967"/>
         <source>Clang (experimental)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="486"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="968"/>
         <source>Check level</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="492"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="969"/>
         <source>Reduced -- meant for usage where developer wants results directly. Limited and faster analysis with fewer results.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="499"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="970"/>
         <source>Normal -- meant for normal analysis in CI. Analysis should finish in reasonable time.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="506"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="971"/>
         <source>Exhaustive -- meant for nightly builds etc. Analysis time can be longer (10x slower than compilation is OK).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="522"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="974"/>
         <source>If you want to design your classes to be as flexible and robust as possible then the public interface must be very robust. Cppcheck will asumme that arguments can take *any* value.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="525"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="976"/>
         <source>Check that each class has a safe public interface</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="541"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="977"/>
         <source>Limit analysis</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="547"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="978"/>
         <source>Check code in headers  (should be ON normally. if you want a limited quick analysis then turn this OFF)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="557"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="979"/>
         <source>Check code in unused templates (should be ON normally, however in theory you can safely ignore warnings in unused templates)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="569"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="980"/>
         <source>Max CTU depth</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="600"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="981"/>
         <source>Max recursion in template instantiation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="636"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1000"/>
         <source>Warning options</source>
         <translation>警告選項</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="642"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="983"/>
         <source>Root path:</source>
         <translation>根路徑:</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="648"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="985"/>
         <source>Filepaths in warnings will be relative to this path</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="658"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="987"/>
         <source>Warning tags (separated by semicolon)</source>
         <translation>警告標記 (由分號分隔)</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="664"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="989"/>
         <source>If tags are added, you will be able to right click on warnings and set one of these tags. You can manually categorize warnings.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="674"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="991"/>
         <source>Exclude source files</source>
         <translation>排除來源檔</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="685"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="992"/>
         <source>Exclude folder...</source>
         <translation>排除資料夾...</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="692"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="993"/>
         <source>Exclude file...</source>
         <translation>排除檔案...</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="731"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="996"/>
         <source>Suppressions</source>
         <translation>抑制</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="742"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="997"/>
         <source>Add</source>
         <translation>新增</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="774"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="999"/>
         <source>Enable inline suppressions</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="795"/>
         <location filename="projectfile.ui" line="801"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1001"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1028"/>
         <source>Addons</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="807"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1002"/>
         <source>Note: Addons require &lt;a href=&quot;https://www.python.org/&quot;&gt;Python&lt;/a&gt; being installed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="817"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1003"/>
         <source>Y2038</source>
         <translation>Y2038</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="824"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1004"/>
         <source>Thread safety</source>
         <translation>執行緒安全</translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="834"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1005"/>
         <source>Coding standards</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="842"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1006"/>
         <source>Misra C</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="850"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1007"/>
         <source>2012</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="855"/>
         <location filename="projectfile.ui" line="923"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1008"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1018"/>
         <source>2023</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="860"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1009"/>
         <source>2025</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="910"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1016"/>
         <source>Misra C++</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="918"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1017"/>
         <source>2008</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2063,19 +1807,16 @@ Do you want to remove the file from the recently used projects -list?</source>
     </message>
     <message>
         <location filename="projectfile.ui" line="885"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1011"/>
         <source>MISRA rule texts</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="892"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1013"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Copy/paste the text from Appendix A &amp;quot;Summary of guidelines&amp;quot; from the MISRA C 2012 pdf to a text file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="899"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1015"/>
         <source>...</source>
         <translation>...</translation>
     </message>
@@ -2085,49 +1826,41 @@ Do you want to remove the file from the recently used projects -list?</source>
     </message>
     <message>
         <location filename="projectfile.ui" line="946"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1020"/>
         <source>Cert C</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="955"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1021"/>
         <source>CERT-INT35-C:  int precision (if size equals precision, you can leave empty)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="967"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1022"/>
         <source>Cert C++</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="974"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1023"/>
         <source>Autosar</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="981"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1024"/>
         <source>Safety profiles (defined in C++ core guidelines)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="991"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1025"/>
         <source>Bug hunting (Premium)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="997"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1026"/>
         <source>Bug hunting</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="projectfile.ui" line="1007"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_projectfile.h" line="1027"/>
         <source>External tools</source>
         <translation>外部工具</translation>
     </message>
@@ -2654,25 +2387,21 @@ Please check the application path and parameters are correct.</source>
     <name>ResultsView</name>
     <message>
         <location filename="resultsview.ui" line="26"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_resultsview.h" line="147"/>
         <source>Results</source>
         <translation>結果</translation>
     </message>
     <message>
         <location filename="resultsview.ui" line="60"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_resultsview.h" line="148"/>
         <source>Critical errors</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="resultsview.ui" line="92"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_resultsview.h" line="149"/>
         <source>Analysis Log</source>
         <translation>分析日誌</translation>
     </message>
     <message>
         <location filename="resultsview.ui" line="114"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_resultsview.h" line="150"/>
         <source>Warning Details</source>
         <translation>警告詳細資訊</translation>
     </message>
@@ -2778,31 +2507,26 @@ To toggle what kind of errors are shown, open view menu.</source>
     <name>ScratchPad</name>
     <message>
         <location filename="scratchpad.ui" line="14"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_scratchpad.h" line="107"/>
         <source>Scratchpad</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="scratchpad.ui" line="20"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_scratchpad.h" line="108"/>
         <source>Copy or write some C/C++ code here:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="scratchpad.ui" line="37"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_scratchpad.h" line="109"/>
         <source>Optionally enter a filename (mainly for automatic language detection) and click on &quot;Check&quot;:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="scratchpad.ui" line="71"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_scratchpad.h" line="110"/>
         <source>filename</source>
         <translation>檔案名稱</translation>
     </message>
     <message>
         <location filename="scratchpad.ui" line="78"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_scratchpad.h" line="111"/>
         <source>Check</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2811,147 +2535,122 @@ To toggle what kind of errors are shown, open view menu.</source>
     <name>Settings</name>
     <message>
         <location filename="settings.ui" line="14"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="490"/>
         <source>Preferences</source>
         <translation>偏好設定</translation>
     </message>
     <message>
         <location filename="settings.ui" line="24"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="502"/>
         <source>General</source>
         <translation>一般</translation>
     </message>
     <message>
         <location filename="settings.ui" line="41"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="491"/>
         <source>Number of threads: </source>
         <translation>執行緒數量: </translation>
     </message>
     <message>
         <location filename="settings.ui" line="79"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="492"/>
         <source>Max count:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="settings.ui" line="108"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="493"/>
         <source>Force checking all #ifdef configurations</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="settings.ui" line="115"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="494"/>
         <source>Show full path of files</source>
         <translation>顯示檔案的完整路徑</translation>
     </message>
     <message>
         <location filename="settings.ui" line="122"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="495"/>
         <source>Show &quot;No errors found&quot; message when no errors found</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="settings.ui" line="129"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="496"/>
         <source>Display error Id in column &quot;Id&quot;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="settings.ui" line="136"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="497"/>
         <source>Enable inline suppressions</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="settings.ui" line="143"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="498"/>
         <source>Check for inconclusive errors also</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="settings.ui" line="150"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="499"/>
         <source>Show statistics on check completion</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="settings.ui" line="157"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="500"/>
         <source>Check for updates</source>
         <translation>檢查更新</translation>
     </message>
     <message>
         <location filename="settings.ui" line="177"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="501"/>
         <source>Show internal warnings in log</source>
         <translation>顯示日誌中的內部警告</translation>
     </message>
     <message>
         <location filename="settings.ui" line="185"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="507"/>
         <source>Applications</source>
         <translation>應用程式</translation>
     </message>
     <message>
         <location filename="settings.ui" line="196"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="503"/>
         <source>Add...</source>
         <translation>新增...</translation>
     </message>
     <message>
         <location filename="settings.ui" line="203"/>
         <location filename="settings.ui" line="479"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="504"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="532"/>
         <source>Edit...</source>
         <translation>編輯...</translation>
     </message>
     <message>
         <location filename="settings.ui" line="210"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="505"/>
         <source>Remove</source>
         <translation>移除</translation>
     </message>
     <message>
         <location filename="settings.ui" line="217"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="506"/>
         <source>Set as default</source>
         <translation>設定為預設值</translation>
     </message>
     <message>
         <location filename="settings.ui" line="240"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="510"/>
         <source>Reports</source>
         <translation>報告</translation>
     </message>
     <message>
         <location filename="settings.ui" line="246"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="508"/>
         <source>Save all errors when creating report</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="settings.ui" line="253"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="509"/>
         <source>Save full path to files in reports</source>
         <translation>在報告中儲存檔案的完整路徑</translation>
     </message>
     <message>
         <location filename="settings.ui" line="274"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="511"/>
         <source>Language</source>
         <translation>語言</translation>
     </message>
     <message>
         <location filename="settings.ui" line="288"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="521"/>
         <source>Addons</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="settings.ui" line="294"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="512"/>
         <source>Python binary (leave this empty to use python in the PATH)</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2959,87 +2658,71 @@ To toggle what kind of errors are shown, open view menu.</source>
         <location filename="settings.ui" line="305"/>
         <location filename="settings.ui" line="346"/>
         <location filename="settings.ui" line="391"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="513"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="520"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="523"/>
         <source>...</source>
         <translation>...</translation>
     </message>
     <message>
         <location filename="settings.ui" line="324"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="515"/>
         <source>MISRA addon</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="settings.ui" line="332"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="516"/>
         <source>MISRA rule texts file</source>
         <translation>MISRA 規則文字檔</translation>
     </message>
     <message>
         <location filename="settings.ui" line="339"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="518"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Copy/paste the text from Appendix A &amp;quot;Summary of guidelines&amp;quot; from the MISRA C 2012 pdf to a text file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="settings.ui" line="372"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="526"/>
         <source>Clang</source>
         <translation>Clang</translation>
     </message>
     <message>
         <location filename="settings.ui" line="378"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="522"/>
         <source>Clang path (leave empty to use system PATH)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="settings.ui" line="401"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="524"/>
         <source>Visual Studio headers</source>
         <translation>Visual Studio 標頭檔</translation>
     </message>
     <message>
         <location filename="settings.ui" line="407"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="525"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Paths to Visual Studio headers, separated by semicolon &apos;;&apos;.&lt;/p&gt;&lt;p&gt;You can open a Visual Studio command prompt, write &amp;quot;SET INCLUDE&amp;quot;. Then copy/paste the paths.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="settings.ui" line="437"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="533"/>
         <source>Code Editor</source>
         <translation>程式碼編輯器</translation>
     </message>
     <message>
         <location filename="settings.ui" line="443"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="527"/>
         <source>Code Editor Style</source>
         <translation>程式碼編輯器樣式</translation>
     </message>
     <message>
         <location filename="settings.ui" line="449"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="528"/>
         <source>System Style</source>
         <translation>系統樣式</translation>
     </message>
     <message>
         <location filename="settings.ui" line="456"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="529"/>
         <source>Default Light Style</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="settings.ui" line="463"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="530"/>
         <source>Default Dark Style</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="settings.ui" line="472"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_settings.h" line="531"/>
         <source>Custom</source>
         <translation>自訂</translation>
     </message>
@@ -3092,8 +2775,6 @@ To toggle what kind of errors are shown, open view menu.</source>
     <message>
         <location filename="statsdialog.ui" line="14"/>
         <location filename="statsdialog.ui" line="248"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="395"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="415"/>
         <location filename="statsdialog.cpp" line="184"/>
         <location filename="statsdialog.cpp" line="231"/>
         <source>Statistics</source>
@@ -3101,135 +2782,113 @@ To toggle what kind of errors are shown, open view menu.</source>
     </message>
     <message>
         <location filename="statsdialog.ui" line="27"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="401"/>
         <location filename="statsdialog.cpp" line="222"/>
         <source>Project</source>
         <translation>專案</translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="33"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="396"/>
         <source>Project:</source>
         <translation>專案:</translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="53"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="397"/>
         <source>Paths:</source>
         <translation>路徑:</translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="85"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="398"/>
         <source>Include paths:</source>
         <translation>包含路徑:</translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="108"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="399"/>
         <source>Defines:</source>
         <translation>定義:</translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="131"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="400"/>
         <source>Undefines:</source>
         <translation>未定義:</translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="165"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="407"/>
         <location filename="statsdialog.cpp" line="227"/>
         <source>Previous Scan</source>
         <translation>上一次掃描</translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="171"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="402"/>
         <source>Path Selected:</source>
         <translation>選取的路徑:</translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="181"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="403"/>
         <source>Number of Files Scanned:</source>
         <translation>已掃描的檔案數量:</translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="201"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="405"/>
         <source>Scan Duration:</source>
         <translation>掃描時間:</translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="254"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="408"/>
         <source>Errors:</source>
         <translation>錯誤:</translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="271"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="409"/>
         <source>Warnings:</source>
         <translation>警告:</translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="288"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="410"/>
         <source>Stylistic warnings:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="305"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="411"/>
         <source>Portability warnings:</source>
         <translation>可移植性警告:</translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="322"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="412"/>
         <source>Performance issues:</source>
         <translation>效能議題:</translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="339"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="413"/>
         <source>Information messages:</source>
         <translation>資訊訊息:</translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="356"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="414"/>
         <source>Active checkers:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="374"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="416"/>
         <source>Checkers</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="399"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="418"/>
         <source>History</source>
         <translation>歷史紀錄</translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="405"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="417"/>
         <source>File:</source>
         <translation>檔案:</translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="443"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="419"/>
         <source>Copy to Clipboard</source>
         <translation>複製到剪貼簿</translation>
     </message>
     <message>
         <location filename="statsdialog.ui" line="450"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_statsdialog.h" line="420"/>
         <source>Pdf Export</source>
         <translation>Pdf 匯出</translation>
     </message>
@@ -3379,7 +3038,6 @@ To toggle what kind of errors are shown, open view menu.</source>
     <name>ThreadDetails</name>
     <message>
         <location filename="threaddetails.ui" line="14"/>
-        <location filename="build/Skrivbord-Felsu00f6k/temp/ui_threaddetails.h" line="47"/>
         <source>Thread Details</source>
         <translation type="unfinished"></translation>
     </message>

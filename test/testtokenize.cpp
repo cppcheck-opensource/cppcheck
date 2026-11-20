@@ -4697,6 +4697,23 @@ private:
                           tokenizeAndStringify(code));
             ASSERT_EQUALS("", errout_str());
         }
+        {
+            const char code[] = "namespace N {\n" // #15192
+                                "    template <typename... Ts>\n"
+                                "    struct S {};\n"
+                                "}\n"
+                                "template <typename... Ts, typename = N::S<decltype(Ts())...>>\n"
+                                "void f() {}\n";
+            ASSERT_EQUALS("namespace N {\n"
+                          "template < typename ... Ts >\n"
+                          "struct S { } ;\n"
+                          "}\n"
+                          "template < typename ... Ts , typename = N :: S < decltype ( Ts ( ) ) ... > >\n"
+                          "void f ( ) { }",
+                          tokenizeAndStringify(code));
+            ASSERT_EQUALS("", errout_str());
+        }
+
     }
 
     void cpp03template1() {
@@ -5451,6 +5468,19 @@ private:
                                 "void search();\n"
                                 "void dostuff() { search(); }\n";
             ASSERT_EQUALS("void search ( ) ;\nvoid dostuff ( ) { search ( ) ; }", tokenizeAndStringify(code));
+        }
+
+        {
+            const char code[] = "using namespace std;\n" // #8789
+                                "void f(int* p, int* q) {\n"
+                                "    search(p, q, p);\n"
+                                "    search(p, q, p, q);\n"
+                                "}\n";
+            ASSERT_EQUALS("void f ( int * p , int * q ) {\n"
+                          "search ( p , q , p ) ;\n"
+                          "std :: search ( p , q , p , q ) ;\n"
+                          "}",
+                          tokenizeAndStringify(code));
         }
 
         {

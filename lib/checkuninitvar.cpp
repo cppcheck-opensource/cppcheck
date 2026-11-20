@@ -98,12 +98,14 @@ static std::map<nonneg int, VariableValue> getVariableValues(const Token* tok) {
     return ret;
 }
 
-bool CheckUninitVarImpl::diag(const Token* tok)
+bool CheckUninitVarImpl::diag(const Token* tok, bool insert)
 {
     if (!tok)
         return true;
     while (Token::Match(tok->astParent(), "*|&|."))
         tok = tok->astParent();
+    if (!insert)
+        return mUninitDiags.find(tok) != mUninitDiags.end();
     return !mUninitDiags.insert(tok).second;
 }
 
@@ -1593,7 +1595,7 @@ void CheckUninitVarImpl::uninitvarError(const Token* tok, const ValueFlow::Value
     const std::string& varname = ltok ? ltok->expressionString() : "x";
     ErrorPath errorPath = v.errorPath;
     errorPath.emplace_back(tok, "");
-    auto severity = v.isKnown() ? Severity::error : Severity::warning;
+    auto severity = v.isKnown() && !v.conditional ? Severity::error : Severity::warning;
     auto certainty = v.isInconclusive() ? Certainty::inconclusive : Certainty::normal;
     if (v.subexpressions.empty()) {
         reportError(std::move(errorPath),
@@ -1620,6 +1622,8 @@ void CheckUninitVarImpl::uninitvarError(const Token* tok, const ValueFlow::Value
 
 void CheckUninitVarImpl::uninitStructMemberError(const Token *tok, const std::string &membername)
 {
+    if (tok && diag(tok, /*insert*/ false))
+        return;
     reportError(tok,
                 Severity::error,
                 "uninitStructMember",

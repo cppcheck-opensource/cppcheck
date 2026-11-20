@@ -228,9 +228,3 @@ contains(QMAKE_CXX, clang++) {
     QMAKE_CXXFLAGS += -std=c++17 -pedantic -Wall -Wextra -Wcast-qual -Wno-deprecated-declarations -Wfloat-equal -Wmissing-declarations -Wmissing-format-attribute -Wno-long-long -Wpacked -Wredundant-decls -Wundef -Wno-shadow -Wno-missing-field-initializers -Wno-missing-braces -Wno-sign-compare -Wno-multichar
 }
 
-contains(HAVE_QCHART, [yY][eE][sS]) {
-    QT += charts
-} else {
-    message("Charts disabled - to enable it pass HAVE_QCHART=yes to qmake.")
-}
-

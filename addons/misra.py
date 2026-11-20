@@ -1169,8 +1169,14 @@ def numberOfParentheses(tok1, tok2):
 def findGotoLabel(gotoToken):
     label = gotoToken.next.str
     tok = gotoToken.next.next
+    functionScope = gotoToken.scope
+    while functionScope and functionScope.type != 'Function':
+        functionScope = functionScope.nestedIn
+    functionEnd = functionScope.bodyEnd if functionScope else None
     while tok:
-        if tok.str == '}' and tok.scope.type == 'Function':
+        if tok is functionEnd:
+            break
+        if functionEnd is None and tok.str == '}' and tok.scope and tok.scope.type == 'Function':
             break
         if tok.str == label and tok.next.str == ':':
             return tok
@@ -4906,9 +4912,13 @@ class MisraChecker:
         def is_different_file(loc1, loc2):
             return loc1['file'] != loc2['file']
 
+        def read_lines(filename):
+            with open(filename, 'rt') as f:
+                yield from f
+
         try:
             for filename in ctu_info_files:
-                for line in open(filename, 'rt'):
+                for line in read_lines(filename):
                     s = self.read_ctu_info_line(line)
                     if s is None:
                         continue

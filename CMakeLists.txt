@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.22)
 project(Cppcheck VERSION 2.22.99 LANGUAGES CXX)
 
+# CMake 4.5 added the opt-in CMD_STRICT diagnostics (e.g. non-target-directive).
+# They are ignored by default, but -Werror=dev promotes them to errors.
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 4.5)
+    cmake_diagnostic(SET CMD_STRICT IGNORE RECURSE)
+endif()
+
 include(cmake/options.cmake)
 
 include(cmake/cxx11.cmake)
