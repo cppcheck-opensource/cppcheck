@@ -47,7 +47,7 @@ jobs:
         if: contains(matrix.image, 'debian')
         run: |
           apt-get update
-          apt-get install -y cmake clang make libpcre3-dev
+          apt-get install -y cmake clang make libpcre2-dev
           apt-get install -y libgl-dev  # fixes missing dependency for Qt in CMake
           apt-get install -y iwyu
 
@@ -56,7 +56,7 @@ jobs:
         run: |
           set -x
           pacman -Sy
-          pacman -S cmake make clang pcre --noconfirm
+          pacman -S cmake make clang pcre2 --noconfirm
           pacman -S libglvnd --noconfirm  # fixes missing dependency for Qt in CMake
           pacman-key --init
           pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
@@ -88,7 +88,7 @@ jobs:
       - name: Install missing software on OpenSUSE
         if: contains(matrix.image, 'opensuse')
         run: |
-          zypper install -y cmake clang pcre-devel
+          zypper install -y cmake clang pcre2-devel
           zypper install -y include-what-you-use-tools
           ln -s iwyu_tool.py /usr/bin/iwyu_tool
 
@@ -96,7 +96,7 @@ jobs:
       - name: Install missing software on macOS
         if: contains(matrix.os, 'macos')
         run: |
-          brew install include-what-you-use pcre coreutils
+          brew install include-what-you-use pcre2 coreutils
           # on Apple Silicon files are symlinked under /opt/homebrew/bin
           ln -s /opt/homebrew/bin/iwyu_tool.py /usr/local/bin/iwyu_tool
 
@@ -110,7 +110,6 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
-          modules: 'qtcharts'
           setup-python: ${{ contains(matrix.os, 'macos') }}
           install-deps: false
           cache: true
@@ -126,7 +125,7 @@ jobs:
       - name: Prepare CMake
         run: |
           # TODO: re-enable HAVE_RULES
-          cmake -S . -B cmake.output -Werror=dev --warn-uninitialized -DCMAKE_BUILD_TYPE=Release -DHAVE_RULES=Off -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCPPCHK_GLIBCXX_DEBUG=Off -DUSE_MATCHCOMPILER=Off -DEXTERNALS_AS_SYSTEM=On -DUSE_LIBCXX=${{ matrix.stdlib == 'libc++' }}
+          cmake -S . -B cmake.output -Werror=dev --warn-uninitialized -DCMAKE_BUILD_TYPE=Release -DHAVE_RULES=Off -DBUILD_TESTING=On -DBUILD_GUI=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCPPCHK_GLIBCXX_DEBUG=Off -DUSE_MATCHCOMPILER=Off -DEXTERNALS_AS_SYSTEM=On -DUSE_LIBCXX=${{ matrix.stdlib == 'libc++' }}
         env:
           CC: clang
           CXX: clang++
@@ -206,7 +205,7 @@ jobs:
       - name: Install missing software
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake make libpcre3-dev
+          sudo apt-get install -y cmake make libpcre2-dev
           sudo apt-get install -y libgl-dev  # missing dependency for using Qt in CMake
 
       - name: Install clang
@@ -226,7 +225,6 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
-          modules: 'qtcharts'
           setup-python: 'false'
           install-deps: false
           cache: true
@@ -234,7 +232,7 @@ jobs:
       - name: Prepare CMake
         run: |
           # TODO: re-enable HAVE_RULES
-          cmake -S . -B cmake.output -Werror=dev --warn-uninitialized -DCMAKE_BUILD_TYPE=Release -DHAVE_RULES=Off -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCPPCHK_GLIBCXX_DEBUG=Off -DUSE_MATCHCOMPILER=Off -DEXTERNALS_AS_SYSTEM=On -DUSE_LIBCXX=${{ matrix.use_libcxx }}
+          cmake -S . -B cmake.output -Werror=dev --warn-uninitialized -DCMAKE_BUILD_TYPE=Release -DHAVE_RULES=Off -DBUILD_TESTING=On -DBUILD_GUI=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCMAKE_DISABLE_PRECOMPILE_HEADERS=On -DCPPCHK_GLIBCXX_DEBUG=Off -DUSE_MATCHCOMPILER=Off -DEXTERNALS_AS_SYSTEM=On -DUSE_LIBCXX=${{ matrix.use_libcxx }}
         env:
           CC: clang-22
           CXX: clang++-22

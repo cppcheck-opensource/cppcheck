@@ -42,6 +42,46 @@ namespace ExampleNamespace {
     }
 }
 
+namespace ActionNamespace {
+    int x;
+    // cppcheck-suppress autoNoType
+    ACTION(ExampleAction)
+    {
+        return x;
+    }
+
+    int y;
+    // cppcheck-suppress autoNoType
+    ACTION_P(ExampleActionP, p)
+    {
+        return p + y;
+    }
+
+    int z;
+    // cppcheck-suppress autoNoType
+    ACTION_P3(ExampleActionP3, p0, p1, p2)
+    {
+        return p0 + p1 + p2 + z;
+    }
+}
+
+namespace {
+    int w;
+    // cppcheck-suppress autoNoType
+    ACTION_P2(ExampleActionP2, p0, p1)
+    {
+        return p0 + p1 + w;
+    }
+}
+
+// cppcheck-suppress autoNoType
+ACTION(ExampleActionNullPointer)
+{
+    int *p = 0;
+    // cppcheck-suppress nullPointer
+    return *p;
+}
+
 TEST(ASSERT, ASSERT)
 {
     int *a = (int*)calloc(10,sizeof(int)); // cppcheck-suppress cstyleCast

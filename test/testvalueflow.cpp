@@ -829,6 +829,14 @@ private:
         }
 
         {
+            // lifetime of global array must not be forwarded into the next function
+            const char code[] = "int x[10];\n"
+                                "void f() { int* p = x + 1; }\n"
+                                "void g() { x[0] = 0; }\n";
+            ASSERT_EQUALS(false, testLifetimeOfX(code, 3, "x ["));
+        }
+
+        {
             const char code[] = "void f() {\n"
                                 "    std::vector<int> v;\n"
                                 "    auto x = v.begin();\n"
@@ -1404,6 +1412,12 @@ private:
                 "    return std::strong_ordering::less;\n"
                 "}\n";
         ASSERT_NO_THROW(tokenValues(code, "<=>"));
+
+        code  = "int f() {\n" // #15184
+                "    int i = -1;\n"
+                "    return 1 / (i += 1);\n"
+                "}\n";
+        ASSERT_EQUALS(true, testKnownValueOfTok(code, "+=", 0));
 
         // Comparison of string
         values = removeImpossible(tokenValues("f(\"xyz\" == \"xyz\");\n", "==")); // implementation defined

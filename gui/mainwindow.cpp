@@ -1311,7 +1311,6 @@ void MainWindow::analysisDone()
         const QString prjpath = QFileInfo(mProjectFile->getFilename()).absolutePath();
         const QString buildDir = prjpath + '/' + mProjectFile->getBuildDir();
         if (QDir(buildDir).exists()) {
-            mUI->mResults->saveStatistics(buildDir + "/statistics.txt");
             mUI->mResults->updateFromOldReport(buildDir + "/lastResults.xml");
             mUI->mResults->save(buildDir + "/lastResults.xml", Report::XMLV2, mCppcheckCfgProductName);
         }

@@ -21,8 +21,6 @@
 #include "utils.h"
 
 #include <QDebug>
-#include <QList>
-#include <QSet>
 #if (QT_VERSION >= QT_VERSION_CHECK(6, 5, 0))
 #include <QtLogging>
 #endif
@@ -104,15 +102,4 @@ unsigned CheckStatistics::getCount(const QString &tool, ShowTypes::ShowType type
         return 0;
     }
     cppcheck::unreachable();
-}
-
-QStringList CheckStatistics::getTools() const
-{
-    QSet<QString> ret;
-    std::copy(mStyle.keyBegin(), mStyle.keyEnd(), std::inserter(ret, ret.end()));
-    std::copy(mWarning.keyBegin(), mWarning.keyEnd(), std::inserter(ret, ret.end()));
-    std::copy(mPerformance.keyBegin(), mPerformance.keyEnd(), std::inserter(ret, ret.end()));
-    std::copy(mPortability.keyBegin(), mPortability.keyEnd(), std::inserter(ret, ret.end()));
-    std::copy(mError.keyBegin(), mError.keyEnd(), std::inserter(ret, ret.end()));
-    return ret.values();
 }

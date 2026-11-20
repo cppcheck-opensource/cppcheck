@@ -29,6 +29,8 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ runner.os }}
+          # only save cache in main/release branches, PRs restore the cache of the base branch
+          save: ${{ github.event_name != 'pull_request' }}
 
       - name: Install missing software on ubuntu
         run: |

@@ -39,9 +39,6 @@ CheckOptions:
         target_link_libraries(cppcheck-gui ${PCRE_LIBRARY})
     endif()
     target_link_libraries(cppcheck-gui ${QT_CORE_LIB} ${QT_GUI_LIB} ${QT_WIDGETS_LIB} ${QT_PRINTSUPPORT_LIB} ${QT_HELP_LIB} ${QT_NETWORK_LIB})
-    if(WITH_QCHART)
-        target_link_libraries(cppcheck-gui ${QT_CHARTS_LIB})
-    endif()
     if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         if(QT_VERSION VERSION_LESS "6.4.0")
             # caused by Qt generated moc code - see https://bugreports.qt.io/browse/QTBUG-100915
@@ -57,7 +54,6 @@ CheckOptions:
     endif()
     if(QT_VERSION VERSION_GREATER_EQUAL "6.9.2")
         # QBrush fails to compile before 6.9.0 - see https://bugreports.qt.io/browse/QTBUG-134038
-        # QtCharts/qxyseries.h fails to compile in 6.9.0 and 6.9.1 - see https://bugreports.qt.io/browse/QTBUG-135637
         #target_compile_definitions(cppcheck-gui PRIVATE -DQT_NO_QPAIR)
     endif()
     target_compile_definitions(cppcheck-gui PRIVATE -DQT_NO_FOREACH)

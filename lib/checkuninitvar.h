@@ -91,7 +91,7 @@ public:
 
     enum Alloc : std::uint8_t { NO_ALLOC, NO_CTOR_CALL, CTOR_CALL, ARRAY };
 
-    bool diag(const Token* tok);
+    bool diag(const Token* tok, bool insert = true);
     /** Check for uninitialized variables */
     void check();
     void checkScope(const Scope* scope, const std::set<std::string> &arrayTypeDefs);

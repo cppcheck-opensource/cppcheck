@@ -312,6 +312,7 @@ private:
         TEST_CASE(movePointerAlias);
         TEST_CASE(moveOutparam);
         TEST_CASE(moveTryEmplace);
+        TEST_CASE(moveSubFunction);
 
         TEST_CASE(funcArgNamesDifferent);
         TEST_CASE(funcArgOrderDifferent);
@@ -5086,6 +5087,15 @@ private:
               "void g(__attribute__((unused)) int *p) {}\n"
               "void h(int *p) {}\n");
         ASSERT_EQUALS("[test.cpp:3:13]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n", errout_str());
+
+        checkP("struct S { int i; };\n" // #15222
+               "#define DECL_ARGS S *p, S *q\n"
+               "void f(DECL_ARGS) {\n"
+               "    if (p->i == 0 && q->i == 1) {}\n"
+               "}\n");
+        ASSERT_EQUALS("[test.cpp:3:8]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n"
+                      "[test.cpp:3:8]: (style) Parameter 'q' can be declared as pointer to const [constParameterPointer]\n",
+                      errout_str());
 
         check("void f(std::vector<int>& v, int* p) {\n" // #15203
               "    v.push_back(*p);\n"
@@ -13411,6 +13421,30 @@ private:
               "    }\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void moveSubFunction()
+    {
+        check("struct T {\n" // #15150
+              "    void set(std::string a) { m = std::move(a); }\n"
+              "    std::string m;\n"
+              "};\n"
+              "void f(std::string s) {\n"
+              "    T t;\n"
+              "    t.set(std::move(s));\n"
+              "    t.set(s);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:8:11]: (warning) Access of moved variable 's'. [accessMoved]\n", errout_str());
+
+        check("void g(const std::string& s) {}\n"
+              "void h(std::string& r) { x = std::move(r); }\n"
+              "void f(std::string s1, std::string s2) {\n"
+              "    t1 = std::move(s1);\n"
+              "    t2 = std::move(s2);\n"
+              "    g(s1);\n"
+              "    h(s2);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:40]: (warning) Access of moved variable 'r'. [accessMoved]\n", errout_str());
     }
 
     void funcArgNamesDifferent() {

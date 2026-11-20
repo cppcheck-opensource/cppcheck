@@ -683,7 +683,7 @@ void g_ascii_formatd_format_test(const gchar *format, int i)
     struct {
         double x;
     } s;
-    // cppcheck-suppress [uninitvar, uninitStructMember]
+    // cppcheck-suppress uninitvar
     g_ascii_formatd(buf, sizeof(buf), format, s.x);
     g_print("%s", buf);
 }
@@ -730,3 +730,104 @@ int g_define_enum_and_flags_type_test(void) {
     return e + f;
 }
 #endif
+
+static gboolean source_func_frees_data(gpointer data)
+{
+    g_free(data);
+    return FALSE;
+}
+
+static void destroy_notify_frees_data(gpointer data)
+{
+    g_free(data);
+}
+
+// The data passed to a GSource is owned by the callback or the destroy notify
+// from then on, so it does not leak.
+void g_idle_add_takes_data_test(void)
+{
+    gchar *data = g_strdup("data");
+    g_idle_add(source_func_frees_data, data);
+
+    gchar *data_full = g_strdup("data");
+    g_idle_add_full(200, source_func_frees_data, data_full, NULL);
+}
+
+void g_timeout_add_takes_data_test(void)
+{
+    gchar *data = g_strdup("data");
+    g_timeout_add(10, source_func_frees_data, data);
+
+    gchar *data_seconds = g_strdup("data");
+    g_timeout_add_seconds(1, source_func_frees_data, data_seconds);
+
+    gchar *data_full = g_strdup("data");
+    g_timeout_add_full(0, 10, source_func_frees_data, data_full, destroy_notify_frees_data);
+
+    gchar *data_seconds_full = g_strdup("data");
+    g_timeout_add_seconds_full(0, 1, source_func_frees_data, data_seconds_full, destroy_notify_frees_data);
+}
+
+// Handing over data that is already freed is a use after free.
+// TODO: <use> functions don't get the deallocuse check yet.
+void g_idle_add_freed_data_test(void)
+{
+    gchar *data = g_strdup("data");
+    g_free(data);
+    // TODO cppcheck-suppress deallocuse
+    g_idle_add(source_func_frees_data, data);
+}
+
+static gpointer thread_func(gpointer data)
+{
+    return data;
+}
+
+void g_thread_join_releases_thread_test(void)
+{
+    GThread *thread = g_thread_new("test", thread_func, NULL);
+    g_thread_join(thread);
+
+    GThread *thread_try = g_thread_try_new("test", thread_func, NULL, NULL);
+    if (thread_try)
+        g_thread_join(thread_try);
+}
+
+// Creating a thread has side effects, so a thread that is only released is
+// not unused.
+void g_thread_unref_detaches_thread_test(void)
+{
+    GThread *thread = g_thread_new("test", thread_func, NULL);
+    g_thread_unref(thread);
+}
+
+void g_thread_join_parameter_test(GThread *thread)
+{
+    g_thread_join(thread);
+}
+
+// The thread function gets the data as a non-const gpointer.
+void g_thread_data_test(int *data)
+{
+    GThread *thread = g_thread_new("test", thread_func, data);
+    g_thread_join(thread);
+
+    GThread *thread_try = g_thread_try_new("test", thread_func, data, NULL);
+    if (thread_try)
+        g_thread_join(thread_try);
+}
+
+void g_thread_not_joined_test(void)
+{
+    GThread *thread = g_thread_new("test", thread_func, NULL);
+    (void)thread;
+    // cppcheck-suppress resourceLeak
+}
+
+void g_thread_joined_twice_test(void)
+{
+    GThread *thread = g_thread_new("test", thread_func, NULL);
+    g_thread_join(thread);
+    // cppcheck-suppress doubleFree
+    g_thread_join(thread);
+}

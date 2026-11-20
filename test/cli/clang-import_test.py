@@ -6,7 +6,7 @@ import re
 import subprocess
 import sys
 import pytest
-from testutils import cppcheck, assert_cppcheck
+from testutils import cppcheck
 
 try:
     # TODO: handle exitcode?
@@ -18,6 +18,19 @@ except OSError:
 # the IDs differ with Visual Studio
 if sys.platform == 'win32':
     pytest.skip(allow_module_level=True)
+
+
+__DEPRECATION_MSG = 'information: clang import is deprecated, it will be removed in 2.27 [clangimport]'
+
+
+# #15221 - clang import is deprecated; check the message and return the remaining stderr lines
+def __check_deprecation(stderr, filename):
+    lines = stderr.splitlines()
+    assert len(lines) >= 3, lines
+    assert lines[0] == '{}:1:1: {}'.format(filename, __DEPRECATION_MSG), lines
+    # the message is followed by the code snippet and the caret
+    assert lines[2] == '^', lines
+    return lines[3:]
 
 
 def __get_debug_section(title, stdout):
@@ -125,7 +138,10 @@ def test_log(tmpdir):
         'Checking {} ...'.format(test_file).replace('\\', '/'),
     ]
 
-    assert_cppcheck(args, ec_exp=0, err_exp=[], out_exp=out_lines)
+    exitcode, stdout, stderr = cppcheck(args)
+    assert exitcode == 0, stdout
+    assert stdout.splitlines() == out_lines
+    assert __check_deprecation(stderr, test_file) == []
 
 
 def test_include(tmp_path):
@@ -151,7 +167,7 @@ def test_warning(tmpdir):  # #12424
     exitcode, stdout, stderr = cppcheck(['-q', '--enable=warning', '--clang', test_file])
     assert exitcode == 0, stderr # do not assert
     assert stdout == ''
-    assert stderr == ''
+    assert __check_deprecation(stderr, test_file) == []
 
 
 def __test_cmd(tmp_path, file_name, extra_args, stdout_exp_1, content=''):
@@ -173,7 +189,7 @@ def __test_cmd(tmp_path, file_name, extra_args, stdout_exp_1, content=''):
 
     exitcode, stdout, stderr = cppcheck(args, cwd=tmp_path)
     assert exitcode == 0, stderr if not stdout else stdout
-    assert stderr == ''
+    assert __check_deprecation(stderr, file_name) == []
     assert stdout.splitlines() == [
         'Checking {} ...'.format(file_name),
         'clang -fsyntax-only -Xclang -ast-dump -fno-color-diagnostics {}{}'.format(stdout_exp_1, file_name)
@@ -279,7 +295,7 @@ void f() {}
 
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0, stderr if not stdout else stdout
-    assert stderr == ''
+    assert __check_deprecation(stderr, test_file) == []
     assert stdout.startswith('TranslationUnitDecl'), stdout
     assert stdout.find(str(test_file)) != -1, stdout
 
@@ -312,7 +328,7 @@ def test_debug_clang_output_failure_exitcode(tmp_path):
 
     exitcode, stdout, stderr = cppcheck(args)
     assert exitcode == 0, stderr if not stdout else stdout
-    stderr_lines = stderr.splitlines()
+    stderr_lines = __check_deprecation(stderr, test_file)
     assert len(stderr_lines) > 5, stderr_lines
     assert (stderr_lines[0] ==
             "Failed to execute 'clang -fsyntax-only -Xclang -ast-dump -fno-color-diagnostics -x c {} 2>&1' - (exitcode: 1 / output: {}:3:12: error: indirection requires pointer operand ('int' invalid)".format(test_file, test_file))

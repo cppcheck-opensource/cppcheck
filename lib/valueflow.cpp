@@ -2014,6 +2014,12 @@ static void valueFlowForwardLifetime(Token * tok, const TokenList &tokenlist, Er
     } else if (tok->variable() && tok->variable()->scope()) {
         const Variable *var = tok->variable();
         const Token *endOfVarScope = var->scope()->bodyEnd;
+        // Non-local variable: do not forward past the end of the current function
+        if (!var->isLocal() && !var->isArgument()) {
+            const Token* endOfFunction = ValueFlow::getEndOfExprScope(tok);
+            if (endOfFunction && (!endOfVarScope || precedes(endOfFunction, endOfVarScope)))
+                endOfVarScope = endOfFunction;
+        }
 
         std::list<ValueFlow::Value> values = tok->values();
         Token *nextExpression = nextAfterAstRightmostLeaf(parent);
@@ -5754,11 +5760,11 @@ static void valueFlowSubFunction(const TokenList& tokenlist,
                 // passing value(s) to function
                 std::list<ValueFlow::Value> argvalues(getFunctionArgumentValues(argtok));
 
-                // Remove non-local lifetimes
-                argvalues.remove_if([](const ValueFlow::Value& v) {
+                // Remove non-local lifetimes and moved values
+                argvalues.remove_if([argvar](const ValueFlow::Value& v) {
                     if (v.isLifetimeValue())
                         return !v.isLocalLifetimeValue() && !v.isSubFunctionLifetimeValue();
-                    return false;
+                    return v.isMovedValue() && !argvar->isReference();
                 });
                 // Remove uninit values if argument is passed by value
                 if (argtok->variable() && !argtok->variable()->isPointer() && argvalues.size() == 1 &&
