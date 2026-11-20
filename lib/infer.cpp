@@ -175,8 +175,12 @@ namespace {
         friend Interval operator-(const Interval& lhs, const Interval& rhs)
         {
             Interval result;
-            result.minvalue = Interval::apply(lhs.minvalue, rhs.maxvalue, std::minus<MathLib::bigint>{});
-            result.maxvalue = Interval::apply(lhs.maxvalue, rhs.minvalue, std::minus<MathLib::bigint>{});
+            result.minvalue = Interval::apply(lhs.minvalue, rhs.maxvalue, [](MathLib::bigint x, MathLib::bigint y) {
+                return calculateArithmetic('-', x, y);
+            });
+            result.maxvalue = Interval::apply(lhs.maxvalue, rhs.minvalue, [](MathLib::bigint x, MathLib::bigint y) {
+                return calculateArithmetic('-', x, y);
+            });
             if (!result.minvalue.empty())
                 result.minRef = merge(lhs.minRef, rhs.maxRef);
             if (!result.maxvalue.empty())

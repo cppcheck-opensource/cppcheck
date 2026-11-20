@@ -2487,6 +2487,31 @@ private:
                "}\n";
         ASSERT_EQUALS(true, testValueOfX(code, 4U, LLONG_MIN));
 
+        // prefix increment/decrement in an expression wraps without signed integer overflow
+        code = "long long f() {\n"
+               "    long long m = 0x7fffffffffffffff;\n"
+               "    long long x = ++m;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, LLONG_MIN));
+
+        code = "long long f() {\n"
+               "    long long m = -0x7fffffffffffffff - 1;\n"
+               "    long long x = --m;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, LLONG_MAX));
+
+        // solving chained subtractions of large constants wraps without signed integer overflow
+        code = "void f(long long a) {\n"
+               "    long long y = a - 0x7fffffffffffffff;\n"
+               "    long long x = y - 0x7fffffffffffffff;\n"
+               "    long long w = x - 0x7fffffffffffffff;\n"
+               "    if (w == 0) {}\n"
+               "    if (a == 0) {}\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 2));
+
         code = "void f() {\n"
                "    int x = 123;\n"
                "    a = sizeof(x);\n"

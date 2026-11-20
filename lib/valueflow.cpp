@@ -6284,16 +6284,16 @@ const Token* ValueFlow::solveExprValue(const Token* expr,
     if (binaryTok && expr->str().size() == 1) {
         switch (expr->str()[0]) {
         case '+': {
-            value.intvalue -= intval;
+            value.intvalue = calculateArithmetic<MathLib::bigint>('-', value.intvalue, intval);
             return ValueFlow::solveExprValue(binaryTok, eval, value);
         }
         case '-': {
             if (rhs) {
-                value.intvalue = intval - value.intvalue;
+                value.intvalue = calculateArithmetic<MathLib::bigint>('-', intval, value.intvalue);
                 // c - x >= a  <=>  x <= c - a
                 value.invertBound();
             } else
-                value.intvalue += intval;
+                value.intvalue = calculateArithmetic<MathLib::bigint>('+', value.intvalue, intval);
             return ValueFlow::solveExprValue(binaryTok, eval, value);
         }
         case '*': {
