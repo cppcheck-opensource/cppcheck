@@ -1148,6 +1148,10 @@ private:
         ASSERT_EQUALS(10, valueOfTok("x = static_cast<int>(10);\n", "( 10 )").intvalue);
         ASSERT_EQUALS(0, valueOfTok("x = sizeof (struct {int a;}) * 0;\n", "*").intvalue);
 
+        // out of range results wrap without signed integer overflow
+        ASSERT_EQUALS(LLONG_MIN, valueOfTok("x = 0x7fffffffffffffff + 1;\n", "+").intvalue);
+        ASSERT_EQUALS(-2, valueOfTok("x = 0x7fffffffffffffff * 2;\n", "*").intvalue);
+
         // Don't calculate or crash if there is UB or invalid operations
         ASSERT(tokenValues(";-1<<10;\n","<<").empty());
         ASSERT(tokenValues(";10<<-1;\n","<<").empty());
@@ -2466,6 +2470,47 @@ private:
                "    a = x;\n"
                "}\n";
         ASSERT_EQUALS(true, testValueOfX(code, 3U, 1));
+
+        // increment past the maximum wraps without signed integer overflow
+        code = "void f() {\n"
+               "    long long x = 0x7fffffffffffffff;\n"
+               "    x++;\n"
+               "    a = x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, LLONG_MIN));
+
+        // negating the minimum wraps without signed integer overflow
+        code = "long long f() {\n"
+               "    long long m = -0x7fffffffffffffff - 1;\n"
+               "    long long x = -m;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, LLONG_MIN));
+
+        // prefix increment/decrement in an expression wraps without signed integer overflow
+        code = "long long f() {\n"
+               "    long long m = 0x7fffffffffffffff;\n"
+               "    long long x = ++m;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, LLONG_MIN));
+
+        code = "long long f() {\n"
+               "    long long m = -0x7fffffffffffffff - 1;\n"
+               "    long long x = --m;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, LLONG_MAX));
+
+        // solving chained subtractions of large constants wraps without signed integer overflow
+        code = "void f(long long a) {\n"
+               "    long long y = a - 0x7fffffffffffffff;\n"
+               "    long long x = y - 0x7fffffffffffffff;\n"
+               "    long long w = x - 0x7fffffffffffffff;\n"
+               "    if (w == 0) {}\n"
+               "    if (a == 0) {}\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 4U, 2));
 
         code = "void f() {\n"
                "    int x = 123;\n"

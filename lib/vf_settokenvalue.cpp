@@ -682,16 +682,16 @@ namespace ValueFlow
                         const ValueType *dst = tok->valueType();
                         if (dst) {
                             const size_t sz = dst->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
-                            MathLib::bigint newvalue = ValueFlow::truncateIntValue(v.intvalue + 1, sz, dst, settings.platform);
+                            MathLib::bigint newvalue = ValueFlow::truncateIntValue(calculateArithmetic<MathLib::bigint>('+', v.intvalue, 1), sz, dst, settings.platform);
                             if (v.bound != ValueFlow::Value::Bound::Point) {
                                 if (newvalue < v.intvalue) {
                                     v.invertBound();
-                                    newvalue -= 2;
+                                    newvalue = calculateArithmetic<MathLib::bigint>('-', newvalue, 2);
                                 }
                             }
                             v.intvalue = newvalue;
                         } else {
-                            v.intvalue = v.intvalue + 1;
+                            v.intvalue = calculateArithmetic<MathLib::bigint>('+', v.intvalue, 1);
                         }
                     }
                     else
@@ -712,16 +712,16 @@ namespace ValueFlow
                         const ValueType *dst = tok->valueType();
                         if (dst) {
                             const size_t sz = dst->getSizeOf(settings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
-                            MathLib::bigint newvalue = ValueFlow::truncateIntValue(v.intvalue - 1, sz, dst, settings.platform);
+                            MathLib::bigint newvalue = ValueFlow::truncateIntValue(calculateArithmetic<MathLib::bigint>('-', v.intvalue, 1), sz, dst, settings.platform);
                             if (v.bound != ValueFlow::Value::Bound::Point) {
                                 if (newvalue > v.intvalue) {
                                     v.invertBound();
-                                    newvalue += 2;
+                                    newvalue = calculateArithmetic<MathLib::bigint>('+', newvalue, 2);
                                 }
                             }
                             v.intvalue = newvalue;
                         } else {
-                            v.intvalue = v.intvalue - 1;
+                            v.intvalue = calculateArithmetic<MathLib::bigint>('-', v.intvalue, 1);
                         }
                     }
                     else

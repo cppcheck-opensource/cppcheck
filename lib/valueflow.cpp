@@ -1146,12 +1146,13 @@ static void valueFlowEnumValue(SymbolDatabase & symboldatabase, const Settings &
                 if (rhs && rhs->hasKnownIntValue()) {
                     enumerator.value = rhs->getKnownIntValue();
                     enumerator.value_known = true;
-                    value = enumerator.value + 1;
+                    value = calculateArithmetic<MathLib::bigint>('+', enumerator.value, 1);
                     prev_enum_is_known = true;
                 } else
                     prev_enum_is_known = false;
             } else if (prev_enum_is_known) {
-                enumerator.value = value++;
+                enumerator.value = value;
+                value = calculateArithmetic<MathLib::bigint>('+', value, 1);
                 enumerator.value_known = true;
             }
         }
@@ -6283,16 +6284,16 @@ const Token* ValueFlow::solveExprValue(const Token* expr,
     if (binaryTok && expr->str().size() == 1) {
         switch (expr->str()[0]) {
         case '+': {
-            value.intvalue -= intval;
+            value.intvalue = calculateArithmetic<MathLib::bigint>('-', value.intvalue, intval);
             return ValueFlow::solveExprValue(binaryTok, eval, value);
         }
         case '-': {
             if (rhs) {
-                value.intvalue = intval - value.intvalue;
+                value.intvalue = calculateArithmetic<MathLib::bigint>('-', intval, value.intvalue);
                 // c - x >= a  <=>  x <= c - a
                 value.invertBound();
             } else
-                value.intvalue += intval;
+                value.intvalue = calculateArithmetic<MathLib::bigint>('+', value.intvalue, intval);
             return ValueFlow::solveExprValue(binaryTok, eval, value);
         }
         case '*': {

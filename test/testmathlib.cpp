@@ -157,6 +157,13 @@ private:
         ASSERT_THROW_INTERNAL_EQUALS(MathLib::divide("-9223372036854775808", "-1"), INTERNAL, "Internal Error: Division overflow"); // #4520 - out of range => throw
         ASSERT_EQUALS("4611686018427387904",  MathLib::divide("-9223372036854775808", "-2")); // #6679
 
+        // out of range results wrap without signed integer overflow
+        ASSERT_EQUALS("-9223372036854775808", MathLib::add("9223372036854775807", "1"));
+        ASSERT_EQUALS("9223372036854775807",  MathLib::subtract("-9223372036854775808", "1"));
+        ASSERT_EQUALS("-2",                   MathLib::multiply("9223372036854775807", "2"));
+        ASSERT_EQUALS("0",                    MathLib::mod("-9223372036854775808", "-1"));
+        ASSERT_EQUALS("0",                    MathLib::calculate("-9223372036854775808", "-1", '%'));
+
 
         // invoke for each supported action
         ASSERT_EQUALS("3", MathLib::calculate("2", "1", '+'));
