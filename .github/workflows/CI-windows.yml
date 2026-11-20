@@ -167,6 +167,13 @@ jobs:
         with:
           arch: x64
 
+      # the standalone LLVM installation can be older than what the MSVC STL requires (STL1000) - use the one bundled with Visual Studio instead
+      - name: Use clang-tidy bundled with Visual Studio
+        if: matrix.config == 'release'
+        run: |
+          echo %VCINSTALLDIR%Tools\Llvm\x64\bin>> %GITHUB_PATH%
+          "%VCINSTALLDIR%Tools\Llvm\x64\bin\clang-tidy.exe" --version || exit /b !errorlevel!
+
       - name: Cache PCRE2
         id: cache-pcre2
         uses: actions/cache@v5
