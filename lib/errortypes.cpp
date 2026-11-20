@@ -72,6 +72,31 @@ std::string severityToString(Severity severity)
     cppcheck::unreachable();
 }
 
+std::string coloredSeverityToString(Severity severity)
+{
+    switch (severity) {
+    case Severity::none:
+        return "";
+    case Severity::error:
+        return "{red}error";
+    case Severity::warning:
+        return "{magenta}warning";
+    case Severity::style:
+        return "{bold}style";
+    case Severity::performance:
+        return "{bold}performance";
+    case Severity::portability:
+        return "{bold}portability";
+    case Severity::information:
+        return "{green}information";
+    case Severity::debug:
+        return "debug";
+    case Severity::internal:
+        return "internal";
+    }
+    throw InternalError(nullptr, "Unknown severity");
+}
+
 // TODO: bail out on invalid severity
 Severity severityFromString(const std::string& severity)
 {

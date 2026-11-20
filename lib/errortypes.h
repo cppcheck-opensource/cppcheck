@@ -120,6 +120,7 @@ enum class Severity : std::uint8_t {
 };
 
 CPPCHECKLIB std::string severityToString(Severity severity);
+CPPCHECKLIB std::string coloredSeverityToString(Severity severity);
 CPPCHECKLIB Severity severityFromString(const std::string &severity);
 
 struct CWE {
