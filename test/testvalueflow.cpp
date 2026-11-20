@@ -1632,6 +1632,13 @@ private:
         ASSERT_EQUALS(1U, values.size());
         ASSERT_EQUALS(10, values.back().intvalue);
 
+        code  = "void f(std::array<int, 4> a[2]) {\n" // array of std::array parameter is a pointer
+                "    x = sizeof(a);\n"
+                "}\n";
+        values = tokenValues(code, "( a )");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(settings.platform.sizeof_pointer, values.back().intvalue);
+
 #define CHECK(A, B, C, D)                         \
     do {                                      \
         code = "enum " A " E " B " { E0, E1 };\n" \

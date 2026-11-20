@@ -339,8 +339,12 @@ private:
               "}\n"
               "int g(std::string a[2]) {\n"
               "    return sizeof(a);\n"
+              "}\n"
+              "int h(std::array<int, 2> a[2]) {\n"
+              "    return sizeof(a);\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:5:12]: (warning) Using 'sizeof' on array given as function argument returns size of a pointer. [sizeofwithsilentarraypointer]\n",
+        ASSERT_EQUALS("[test.cpp:5:12]: (warning) Using 'sizeof' on array given as function argument returns size of a pointer. [sizeofwithsilentarraypointer]\n"
+                      "[test.cpp:8:12]: (warning) Using 'sizeof' on array given as function argument returns size of a pointer. [sizeofwithsilentarraypointer]\n",
                       errout_str());
     }
 
