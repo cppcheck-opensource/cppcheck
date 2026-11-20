@@ -4383,7 +4383,7 @@ void CheckOtherImpl::checkKnownArgument()
         for (const Token *tok = functionScope->bodyStart; tok != functionScope->bodyEnd; tok = tok->next()) {
             if (!tok->hasKnownIntValue() || tok->isExpandedMacro())
                 continue;
-            if (Token::Match(tok, "++|--|%assign%"))
+            if (Token::Match(tok, "++|--|%assign%|%comp%"))
                 continue;
             if (!Token::Match(tok->astParent(), "(|{|,"))
                 continue;
@@ -4408,17 +4408,16 @@ void CheckOtherImpl::checkKnownArgument()
                 tok2 = tok2->astOperand2();
             if (isVariableExpression(tok2))
                 continue;
-            if (tok->isComparisonOp() &&
-                isSameExpression(
-                    true, tok->astOperand1(), tok->astOperand2(), mSettings, true, true))
-                continue;
             // ensure that there is a integer variable in expression with unknown value
             const Token* vartok = nullptr;
             visitAstNodes(tok, [&](const Token* child) {
                 if (Token::Match(child, "%var%|.|[")) {
                     if (child->hasKnownIntValue())
                         return ChildrenToVisit::none;
-                    if (astIsIntegral(child, false) && !astIsPointer(child) && child->values().empty()) {
+                    if (astIsIntegral(child, false) && !astIsPointer(child) &&
+                        std::none_of(child->values().begin(), child->values().end(), [](const ValueFlow::Value& v) {
+                        return v.isIntValue() && !v.isImpossible();
+                    })) {
                         vartok = child;
                         return ChildrenToVisit::done;
                     }
