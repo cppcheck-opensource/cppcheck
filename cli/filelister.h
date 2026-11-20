@@ -44,7 +44,7 @@ public:
      * @param debug log if path was ignored
      * @return On success, an empty string is returned. On error, a error message is returned.
      */
-    static std::string recursiveAddFiles(std::list<FileWithDetails> &files, const std::string &path, const std::set<std::string> &extra, const PathMatch& ignored, bool debug = false);
+    static std::string recursiveAddFiles(std::list<FileWithDetails> &files, const std::string &path, const std::set<std::string> &extra, PathMatch& ignored, bool debug = false);
 
     /**
      * @brief (Recursively) add source files to a map.
@@ -59,7 +59,7 @@ public:
      * @param debug log when a path was ignored
      * @return On success, an empty string is returned. On error, a error message is returned.
      */
-    static std::string addFiles(std::list<FileWithDetails> &files, const std::string &path, const std::set<std::string> &extra, bool recursive, const PathMatch& ignored, bool debug = false);
+    static std::string addFiles(std::list<FileWithDetails> &files, const std::string &path, const std::set<std::string> &extra, bool recursive, PathMatch& ignored, bool debug = false);
 };
 
 /// @}
