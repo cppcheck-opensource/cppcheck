@@ -111,6 +111,9 @@ def test_unpack_package_duplicate_name(tmpdir):
         _add_tar_member(tf, 'pkg/sym.c', linkname=outside_file)
         _add_tar_member(tf, 'pkg/hard.c')
         _add_tar_member(tf, 'pkg/hard.c', linkname='../outside/target.c', linktype=tarfile.LNKTYPE)
+        # a link inside temp followed by a same-named link that only looks inside when resolved through the first one
+        _add_tar_member(tf, 'pkg/inc.h', linkname='a/b/c')
+        _add_tar_member(tf, 'pkg/inc.h', linkname='../../outside')
 
     temp_path, source_found = unpack_package(work_path, tgz)
     assert source_found
@@ -119,4 +122,7 @@ def test_unpack_package_duplicate_name(tmpdir):
         assert os.path.isfile(path)
         assert not os.path.islink(path)
         assert not os.path.samefile(path, outside_file)
+    real_temp_path = os.path.realpath(temp_path)
+    inc_path = os.path.realpath(os.path.join(temp_path, 'pkg', 'inc.h'))
+    assert os.path.commonpath([real_temp_path, inc_path]) == real_temp_path
     assert os.listdir(outside_path) == ['target.c']

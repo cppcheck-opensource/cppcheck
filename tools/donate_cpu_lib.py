@@ -383,7 +383,9 @@ def unpack_package(work_path, tgz, cpp_only=False, c_only=False, skip_files=None
                 member_path = os.path.realpath(os.path.join(temp_path, member.name))
                 link_path = None
                 if member.issym():
-                    link_path = os.path.realpath(os.path.join(os.path.dirname(member_path), member.linkname))
+                    # resolve from the directory the link is created in, not through an existing link with the same name
+                    link_parent = os.path.realpath(os.path.dirname(os.path.join(temp_path, member.name)))
+                    link_path = os.path.realpath(os.path.join(link_parent, member.linkname))
                 elif member.islnk():
                     link_path = os.path.realpath(os.path.join(temp_path, member.linkname))
                 if not __is_inside_path(real_temp_path, member_path) or \
