@@ -20,6 +20,10 @@
 
 #include <algorithm>
 #include <cctype>
+#include <fstream>
+#include <functional>
+#include <ios>
+#include <sstream>
 #include <stack>
 #include <utility>
 
@@ -197,4 +201,14 @@ std::vector<std::string> splitString(const std::string& str, char sep)
         pos1 = pos2 + 1;
     }
     return l;
+}
+
+std::string hashFileContent(const std::string& path)
+{
+    std::ifstream fin(path, std::ios::binary);
+    if (!fin.is_open())
+        return "";
+    std::ostringstream ostr;
+    ostr << fin.rdbuf();
+    return std::to_string(std::hash<std::string> {}(ostr.str()));
 }

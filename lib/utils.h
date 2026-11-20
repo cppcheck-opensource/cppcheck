@@ -431,6 +431,13 @@ static inline T* empty_if_null(T* p)
  */
 CPPCHECKLIB std::vector<std::string> splitString(const std::string& str, char sep);
 
+/**
+ * Hash the content of a file.
+ * @param path The file to read
+ * @return The hash, empty if the file cannot be opened.
+ */
+CPPCHECKLIB std::string hashFileContent(const std::string& path);
+
 namespace utils {
     /**
      * Drop-in replacement for C++17's std::as_const
