@@ -7601,8 +7601,13 @@ static const Token* parsedecl(const Token* type,
                 valuetype->sign = ValueType::Sign::SIGNED;
             else if (enum_type->isUnsigned())
                 valuetype->sign = ValueType::Sign::UNSIGNED;
-            else
-                valuetype->sign = defaultSignedness; // TODO: this is implementation-dependent might be separate from char
+            else if (!enum_type->isStandardType()) {
+                ValueType evt;
+                if (parsedecl(enum_type, &evt, defaultSignedness, settings))
+                    *valuetype = evt;
+                else
+                    valuetype->sign = defaultSignedness; // TODO: this is implementation-dependent might be separate from char
+            }
             const ValueType::Type t = ValueType::typeFromString(enum_type->str(), enum_type->isLong());
             if (t != ValueType::Type::UNKNOWN_TYPE)
                 valuetype->type = t;
@@ -7775,13 +7780,15 @@ static const Token* parsedecl(const Token* type,
             valuetype->type = type->str() == "struct" ? ValueType::Type::RECORD : ValueType::Type::NONSTD;
         else if (!valuetype->typeScope && type->type() && type->type()->classScope && valuetype->type != ValueType::Type::SMART_POINTER) {
             if (type->type()->classScope->type == ScopeType::eEnum) {
-                valuetype->sign = ValueType::Sign::SIGNED;
-                valuetype->type = getEnumType(type->type()->classScope, settings.platform);
+                if (valuetype->type == ValueType::Type::UNKNOWN_TYPE) {
+                    valuetype->sign = ValueType::Sign::SIGNED;
+                    valuetype->type = getEnumType(type->type()->classScope, settings.platform);
+                }
             } else {
                 valuetype->type = ValueType::Type::RECORD;
             }
             valuetype->typeScope = type->type()->classScope;
-        } else if (type->isName() && valuetype->sign != ValueType::Sign::UNKNOWN_SIGN && valuetype->pointer == 0U)
+        } else if (type->isNameOnly() && valuetype->sign != ValueType::Sign::UNKNOWN_SIGN && valuetype->pointer == 0U)
             return nullptr;
         else if (Token::Match(type->previous(), "!!:: %name% !!::")) {
             if (!type->isKeyword())
