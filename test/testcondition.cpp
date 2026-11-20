@@ -5295,9 +5295,138 @@ private:
               "    t.modify();\n"
               "    if (p->i == o) {}\n"
               "}\n");
-        TODO_ASSERT_EQUALS("",
-                           "[test.cpp:11:14]: (style) Condition 'p->i==o' is always true [knownConditionTrueFalse]\n",
-                           errout_str());
+        ASSERT_EQUALS("", errout_str());
+
+        // the object pointed at might be changed by the function call
+        check("struct S { int i; };\n"
+              "void modify();\n"
+              "void f(const S* p) {\n"
+              "    const int o = p->i;\n"
+              "    modify();\n"
+              "    if (p->i == o) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S { int i; };\n"
+              "void modify();\n"
+              "const S* get();\n"
+              "void f() {\n"
+              "    const S* p = get();\n"
+              "    const int o = p->i;\n"
+              "    modify();\n"
+              "    if (p->i == o) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // the pointer points at a local object
+        check("struct S { int i; };\n"
+              "void modify();\n"
+              "void f() {\n"
+              "    S s{};\n"
+              "    const S* p = &s;\n"
+              "    const int o = p->i;\n"
+              "    modify();\n"
+              "    if (p->i == o) {}\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:8:14]: (style) Condition 'p->i==o' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        // the pointer points at an allocated object that can't be accessed by other code
+        check("struct S { int i; };\n"
+              "void modify();\n"
+              "void f() {\n"
+              "    S* p = new S{};\n"
+              "    const int o = p->i;\n"
+              "    modify();\n"
+              "    if (p->i == o) {}\n"
+              "    delete p;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:7:14]: (style) Condition 'p->i==o' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        // the allocated object escapes
+        check("struct S { int i; };\n"
+              "void modify();\n"
+              "void g(S*);\n"
+              "void f() {\n"
+              "    S* p = new S{};\n"
+              "    g(p);\n"
+              "    const int o = p->i;\n"
+              "    modify();\n"
+              "    if (p->i == o) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S { int i; };\n"
+              "void modify();\n"
+              "void g(int&);\n"
+              "void f() {\n"
+              "    S* p = new S{};\n"
+              "    g(p->i);\n"
+              "    const int o = p->i;\n"
+              "    modify();\n"
+              "    if (p->i == o) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S { int i; };\n"
+              "void modify();\n"
+              "S* f() {\n"
+              "    S* p = new S{};\n"
+              "    const int o = p->i;\n"
+              "    modify();\n"
+              "    if (p->i == o) {}\n"
+              "    return p;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // the constructor might store the address of the object
+        check("struct S { S(); int i; };\n"
+              "void modify();\n"
+              "void f() {\n"
+              "    S* p = new S;\n"
+              "    const int o = p->i;\n"
+              "    modify();\n"
+              "    if (p->i == o) {}\n"
+              "    delete p;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // memory from a library allocation function that can't be accessed outside the function
+        check("struct S { int i; };\n"
+              "void modify(void);\n"
+              "void f(void) {\n"
+              "    struct S* p = calloc(1, sizeof(struct S));\n"
+              "    if (!p) return;\n"
+              "    const int o = p->i;\n"
+              "    modify();\n"
+              "    if (p->i == o) {}\n"
+              "    free(p);\n"
+              "}\n", dinit(CheckOptions, $.cpp = false));
+        ASSERT_EQUALS("[test.c:8:14]: (style) Condition 'p->i==o' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        check("struct S { int i; };\n"
+              "void modify();\n"
+              "void f() {\n"
+              "    S* p = static_cast<S*>(std::malloc(sizeof(S)));\n"
+              "    const int o = p->i;\n"
+              "    modify();\n"
+              "    if (p->i == o) {}\n"
+              "    std::free(p);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:7:14]: (style) Condition 'p->i==o' is always true [knownConditionTrueFalse]\n", errout_str());
+
+        // the allocated memory escapes
+        check("struct S { int i; };\n"
+              "void modify(void);\n"
+              "void g(struct S*);\n"
+              "void f(void) {\n"
+              "    struct S* p = calloc(1, sizeof(struct S));\n"
+              "    g(p);\n"
+              "    const int o = p->i;\n"
+              "    modify();\n"
+              "    if (p->i == o) {}\n"
+              "    free(p);\n"
+              "}\n", dinit(CheckOptions, $.cpp = false));
+        ASSERT_EQUALS("", errout_str());
 
         check("void f(int x) {\n" // #12320
               "    int a = 0, b = 0, c = 0;\n"
