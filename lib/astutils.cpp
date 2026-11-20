@@ -252,6 +252,23 @@ bool astIsUniqueSmartPointer(const Token* tok)
     return tok->valueType()->smartPointer->unique;
 }
 
+const Library::Container* getSmartPointerContainer(const Token* tok, const Settings& settings)
+{
+    if (!astIsSmartPointer(tok) || tok->valueType()->pointer != 0)
+        return nullptr;
+    const ValueType pointee = ValueType::parseDecl(tok->valueType()->smartPointerTypeToken, settings);
+    if (pointee.type != ValueType::Type::CONTAINER || pointee.pointer != 0)
+        return nullptr;
+    return pointee.container;
+}
+
+bool astIsSmartPointerContainerAccess(const Token* tok, const Settings& settings)
+{
+    if (!Token::simpleMatch(tok ? tok->astParent() : nullptr, ".") || tok->astParent()->originalName() != "->" || !astIsLHS(tok))
+        return false;
+    return getSmartPointerContainer(tok, settings) != nullptr;
+}
+
 bool astIsIterator(const Token *tok)
 {
     return tok && tok->valueType() && tok->valueType()->type == ValueType::Type::ITERATOR;
@@ -292,8 +309,15 @@ bool astIsContainerString(const Token* tok)
 static std::pair<const Token*, const Library::Container*> getContainerFunction(const Token* tok, const Library& library)
 {
     const Library::Container* cont{};
-    if (!tok || !tok->valueType() || (!tok->valueType()->container && (!(cont = library.detectContainerOrIterator(tok->valueType()->smartPointerTypeToken)))))
+    if (!tok || !tok->valueType())
         return {};
+    if (!tok->valueType()->container) {
+        const Token* typeTok = tok->valueType()->smartPointerTypeToken;
+        while (Token::Match(typeTok, "const|volatile"))
+            typeTok = typeTok->next();
+        if (!(cont = library.detectContainerOrIterator(typeTok)))
+            return {};
+    }
     const Token* parent = tok->astParent();
     if (Token::Match(parent, ". %name% [(<]") && astIsLHS(tok)) {
         return { parent->next(), cont ? cont : tok->valueType()->container };

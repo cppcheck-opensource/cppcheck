@@ -621,6 +621,7 @@ Library::Error Library::load(const tinyxml2::XMLDocument &doc)
                 if (!endsWith(container.startPattern, '<'))
                     container.startPattern2 += " !!::";
                 container.startPatternHasStd = startsWith(container.startPattern2, "std :: ");
+                container.startPatternTokenCount = 1 + static_cast<int>(std::count(container.startPattern.cbegin(), container.startPattern.cend(), ' '));
             }
             const char* const endPattern = node->Attribute("endPattern");
             if (endPattern)
@@ -1412,11 +1413,33 @@ const Library::Container* Library::detectContainerInternal(const Token* const ty
 
         const int offset = (withoutStd && container.startPatternHasStd) ? 7 : 0;
 
-        // If endPattern is undefined, it will always match, but itEndPattern has to be defined.
-        if (detect != IteratorOnly && container.endPattern.empty()) {
-            if (!Token::Match(typeStart, container.startPattern2.c_str() + offset))
+        // If endPattern is undefined the container is a non-template container (e.g. std::string) or
+        // a container whose template arguments can be deduced (e.g. std::span).
+        // The iterator type is then matched with itEndPattern after the container type.
+        if (container.endPattern.empty()) {
+            if (!Token::Match(typeStart, container.startPattern.c_str() + offset))
                 continue;
 
+            // find the token after the container type (and its template arguments, if any)
+            const Token* endTok = typeStart->tokAt(container.startPatternTokenCount - (offset > 0 ? 3 : 1));
+            if (endTok && endTok->str() == "<" && endTok->link())
+                endTok = endTok->link();
+            endTok = endTok ? endTok->next() : nullptr;
+            if (endTok && endTok->str() == "<" && endTok->link())
+                endTok = endTok->link()->next();
+
+            if (Token::simpleMatch(endTok, "::")) {
+                // a type that is nested in the container, e.g. std::string::iterator or std::span<int>::size_type
+                if (detect != ContainerOnly && !container.itEndPattern.empty() && Token::Match(endTok, container.itEndPattern.c_str())) {
+                    if (isIterator)
+                        *isIterator = true;
+                    return &container;
+                }
+                continue;
+            }
+
+            if (detect == IteratorOnly)
+                continue;
             if (isIterator)
                 *isIterator = false;
             return &container;
@@ -1674,8 +1697,18 @@ const std::string& Library::returnValueType(const Token *ftok) const
     if (isNotLibraryFunction(ftok)) {
         if (Token::simpleMatch(ftok->astParent(), ".") && ftok->astParent()->astOperand1()) {
             const Token* contTok = ftok->astParent()->astOperand1();
-            if (contTok->valueType() && contTok->valueType()->container)
-                return contTok->valueType()->container->getReturnType(ftok->str());
+            if (const ValueType* vt = contTok->valueType()) {
+                if (vt->container)
+                    return vt->container->getReturnType(ftok->str());
+                // member function of a container accessed through a smart pointer
+                if (ftok->astParent()->originalName() == "->" && vt->type == ValueType::Type::SMART_POINTER && vt->pointer == 0) {
+                    const Token* typeTok = vt->smartPointerTypeToken;
+                    while (Token::Match(typeTok, "const|volatile"))
+                        typeTok = typeTok->next();
+                    if (const Container* container = detectContainer(typeTok))
+                        return container->getReturnType(ftok->str());
+                }
+            }
         }
         return mEmptyString;
     }

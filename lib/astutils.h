@@ -154,6 +154,11 @@ bool astIsPointer(const Token *tok);
 bool astIsSmartPointer(const Token* tok);
 bool astIsUniqueSmartPointer(const Token* tok);
 
+/** If tok is a smart pointer to a library container, get that container (e.g. std::vector for std::shared_ptr<std::vector<int>>) */
+const Library::Container* getSmartPointerContainer(const Token* tok, const Settings& settings);
+/** Is tok a smart pointer to a library container whose member is accessed with '->' (e.g. 'p' in 'p->begin()') */
+bool astIsSmartPointerContainerAccess(const Token* tok, const Settings& settings);
+
 bool astIsIterator(const Token *tok);
 
 bool astIsContainer(const Token *tok);

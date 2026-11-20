@@ -226,6 +226,8 @@ public:
             int templateParameter; // TODO: use this
         };
         std::string startPattern, startPattern2, endPattern, itEndPattern;
+        /** Number of tokens matched by startPattern */
+        int startPatternTokenCount{};
         std::map<std::string, Function> functions;
         int type_templateArgNo = -1;
         std::vector<RangeItemRecordTypeItem> rangeItemRecordType;

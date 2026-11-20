@@ -2264,7 +2264,7 @@ private:
               "    const bool b = it != m->end();\n"
               "    return b;\n"
               "}\n", s);
-        TODO_ASSERT_EQUALS("", "[test.cpp:6:5]: (debug) auto token with no type. [autoNoType]\n", errout_str());
+        ASSERT_EQUALS("", errout_str());
 
         check("template <typename T>\n" // #13509
               "void f(const T& t) {\n"
