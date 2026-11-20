@@ -997,6 +997,7 @@ class Suppression:
       errorId     The id string of the error to suppress, can be a wildcard
       fileName    The name of the file to suppress warnings for, can include wildcards
       lineNumber  The number of the line to suppress warnings from, can be 0 to represent any line
+      thisAndNextLine  Set if the line after lineNumber is suppressed too
       symbolName  The name of the symbol to match warnings for, can include wildcards
       lineBegin   The first line to suppress warnings from
       lineEnd     The last line to suppress warnings from
@@ -1006,6 +1007,7 @@ class Suppression:
     errorId = None
     fileName = None
     lineNumber = None
+    thisAndNextLine = None
     symbolName = None
     lineBegin = None
     lineEnd = None
@@ -1015,13 +1017,14 @@ class Suppression:
         self.errorId = element.get('errorId')
         self.fileName = element.get('fileName')
         self.lineNumber = element.get('lineNumber')
+        self.thisAndNextLine = element.get('thisAndNextLine')
         self.symbolName = element.get('symbolName')
         self.lineBegin = element.get('lineBegin')
         self.lineEnd = element.get('lineEnd')
         self.suppressionType = element.get('type')
 
     def __repr__(self):
-        attrs = ["errorId", "fileName", "lineNumber", "symbolName", "lineBegin", "lineEnd","suppressionType"]
+        attrs = ["errorId", "fileName", "lineNumber", "thisAndNextLine", "symbolName", "lineBegin", "lineEnd","suppressionType"]
         return "{}({})".format(
             "Suppression",
             ", ".join(("{}={}".format(a, repr(getattr(self, a))) for a in attrs))
@@ -1031,7 +1034,7 @@ class Suppression:
         # Line Suppression
         if ((self.fileName is None or fnmatch(file, self.fileName))
                 and (self.suppressionType is None) # Verify use of default suppression type (None = unique)
-                and (self.lineNumber is not None and int(line) == int(self.lineNumber))
+                and (self.lineNumber is not None and (int(line) == int(self.lineNumber) or (self.thisAndNextLine and int(line) == int(self.lineNumber) + 1)))
                 and (self.symbolName is None or fnmatch(message, '*'+self.symbolName+'*'))
                 and fnmatch(errorId, self.errorId)):
             return True
@@ -1052,6 +1055,7 @@ class Suppression:
         # Other Suppression (Globally set via suppression file or cli command)
         if ((self.fileName is None or fnmatch(file, self.fileName))
                 and (self.suppressionType is None)
+                and (self.lineNumber is None)
                 and (self.symbolName is None or fnmatch(message, '*'+self.symbolName+'*'))
                 and fnmatch(errorId, self.errorId)):
             return True

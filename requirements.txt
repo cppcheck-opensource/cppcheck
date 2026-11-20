@@ -1,1 +1,1 @@
-pcre,pfultz2/pcre@8.45 -H sha256:d6f7182602a775a7d500a0cedca6449af0400c6493951513046d17615ed0bf11
+PCRE2Project/pcre2@pcre2-10.49 -H sha256:69d04dcddcf9e038aeae8f58b0c07ee5e08abb835ee8daa2bd6acee433dc112c

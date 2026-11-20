@@ -1019,6 +1019,19 @@ private:
                     "    return outStr;\n"
                     "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        checkNormal("struct S {\n" // #12731
+                    "   void f(int j = 0) { a = j; }\n"
+                    "   int a;\n"
+                    "};\n"
+                    "std::vector<S*> g() {\n"
+                    "   int i = 0;\n"
+                    "   std::vector<S*> v;\n"
+                    "   v.push_back(new S());\n"
+                    "   v[i++].f(1);\n"
+                    "   return v;\n"
+                    "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void outOfBoundsSymbolic()

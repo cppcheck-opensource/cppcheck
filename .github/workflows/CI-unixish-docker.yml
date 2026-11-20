@@ -51,17 +51,17 @@ jobs:
         if: contains(matrix.image, 'ubuntu')
         run: |
           apt-get update
-          apt-get install -y cmake g++ make libxml2-utils libpcre3-dev
+          apt-get install -y cmake g++ make libxml2-utils libpcre2-dev
 
       - name: Install missing software (gui) on latest ubuntu
         if: contains(matrix.image, 'ubuntu')
         run: |
-          apt-get install -y qt6-base-dev qt6-charts-dev qt6-tools-dev
+          apt-get install -y qt6-base-dev qt6-tools-dev
 
       - name: Install missing software on Alpine
         if: contains(matrix.image, 'alpine')
         run: |
-          apk add cmake make g++ pcre-dev
+          apk add cmake make g++ pcre2-dev
 
       # needs to be called after the package installation since
       # - it doesn't call "apt-get update"
@@ -69,10 +69,12 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ matrix.image }}
+          # only save cache in main/release branches, PRs restore the cache of the base branch
+          save: ${{ github.event_name != 'pull_request' }}
 
       - name: Run CMake
         run: |
-          cmake -S . -B cmake.output -Werror=dev --warn-uninitialized -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=${{ matrix.with_gui }} -DWITH_QCHART=On -DBUILD_TRIAGE=${{ matrix.with_gui }} -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake -S . -B cmake.output -Werror=dev --warn-uninitialized -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=${{ matrix.with_gui }} -DBUILD_TRIAGE=${{ matrix.with_gui }} -DCMAKE_COMPILE_WARNING_AS_ERROR=On -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: CMake build
         if: matrix.full_build
@@ -104,12 +106,12 @@ jobs:
         if: contains(matrix.image, 'ubuntu')
         run: |
           apt-get update
-          apt-get install -y g++ make python3 libxml2-utils libpcre3-dev
+          apt-get install -y g++ make python3 libxml2-utils libpcre2-dev
 
       - name: Install missing software on Alpine
         if: contains(matrix.image, 'alpine')
         run: |
-          apk add make g++ pcre-dev bash python3 libxml2-utils
+          apk add make g++ pcre2-dev bash python3 libxml2-utils
 
       # needs to be called after the package installation since
       # - it doesn't call "apt-get update"
@@ -117,6 +119,8 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           key: ${{ github.workflow }}-${{ matrix.image }}
+          # only save cache in main/release branches, PRs restore the cache of the base branch
+          save: ${{ github.event_name != 'pull_request' }}
 
       # /usr/lib/ccache/bin - Alpine Linux
 

@@ -43,7 +43,6 @@
             <File Id='Qt6Sqldll' Name='Qt6Sql.dll' Source='$(var.QtDllDir)\Qt6Sql.dll' />
             <File Id='Qt6Widgetsdll' Name='Qt6Widgets.dll' Source='$(var.QtDllDir)\Qt6Widgets.dll' />
             <File Id='Qt6PrintSupportdll' Name='Qt6PrintSupport.dll' Source='$(var.QtDllDir)\Qt6PrintSupport.dll' />
-            <File Id='Qt6Chartsdll' Name='Qt6Charts.dll' Source='$(var.QtDllDir)\Qt6Charts.dll' />
             <File Id='Qt6Network.dll' Name='Qt6Network.dll' DiskId='1' Source='$(var.QtDllDir)\Qt6Network.dll' />
             <File Id='Qt6OpenGL.dll' Name='Qt6OpenGL.dll' DiskId='1' Source='$(var.QtDllDir)\Qt6OpenGL.dll' />
             <File Id='Qt6OpenGLWidgets.dll' Name='Qt6OpenGLWidgets.dll' DiskId='1' Source='$(var.QtDllDir)\Qt6OpenGLWidgets.dll' />

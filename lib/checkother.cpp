@@ -1941,17 +1941,7 @@ static bool isConstPointerVariable(const Variable* p, const Settings& settings)
 namespace {
     struct CompareVariables {
         bool operator()(const Variable* a, const Variable* b) const {
-            const int fileA = a->nameToken()->fileIndex();
-            const int fileB = b->nameToken()->fileIndex();
-            if (fileA != fileB)
-                return fileA < fileB;
-            const int lineA = a->nameToken()->linenr();
-            const int lineB = b->nameToken()->linenr();
-            if (lineA != lineB)
-                return lineA < lineB;
-            const int columnA = a->nameToken()->column();
-            const int columnB = b->nameToken()->column();
-            return columnA < columnB;
+            return precedes(a->nameToken(), b->nameToken());
         }
     };
 }

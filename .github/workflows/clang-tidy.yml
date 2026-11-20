@@ -35,7 +35,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake make
-          sudo apt-get install -y libpcre3-dev
+          sudo apt-get install -y libpcre2-dev
           sudo apt-get install -y libgl-dev  # fixes missing dependency for Qt in CMake
 
       - name: Install clang
@@ -50,7 +50,6 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
-          modules: 'qtcharts'
           setup-python: 'false'
           install-deps: false
           cache: true
@@ -61,7 +60,7 @@ jobs:
 
       - name: Prepare CMake
         run: |
-          cmake -S . -B cmake.output -Werror=dev --warn-uninitialized -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DWITH_QCHART=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCPPCHK_GLIBCXX_DEBUG=Off -DCMAKE_COMPILE_WARNING_AS_ERROR=On
+          cmake -S . -B cmake.output -Werror=dev --warn-uninitialized -DHAVE_RULES=On -DBUILD_TESTING=On -DBUILD_GUI=On -DBUILD_TRIAGE=On -DENABLE_CHECK_INTERNAL=On -DCMAKE_GLOBAL_AUTOGEN_TARGET=On -DDISABLE_DMAKE=On -DCPPCHK_GLIBCXX_DEBUG=Off -DCMAKE_COMPILE_WARNING_AS_ERROR=On
         env:
           CC: clang-22
           CXX: clang++-22

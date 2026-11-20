@@ -1,6 +1,11 @@
 
 Release Notes for Cppcheck 2.23
 
+Options:
+- Rules: The PCRE library that we used is end-of-life. We have switched to PCRE2 instead. Existing rule files
+  will hopefully work without changes.
+- The --clang option has been deprecated, it will be removed in Cppcheck 2.27
+
 Major bug fixes & crashes:
 -
 
@@ -22,6 +27,11 @@ Import project:
 Infrastructure & dependencies:
 - Added arm64 platform files arm64-windows.xml, arm64-linux.xml and arm64-macos.xml (Apple Silicon).
   These describe the default setup for that OS. The arm64-wchar_t2.xml and arm64-wchar_t4.xml files are kept.
+- The rules feature (HAVE_RULES) now uses PCRE2 instead of the discontinued PCRE library. On Windows the
+  Visual Studio project now expects pcre2-8.lib and pcre2.h in externals.
+- The QtCharts dependency has been removed from the GUI, and with it the History tab in the statistics dialog.
+  The GUI no longer writes statistics.txt to the build dir. The WITH_QCHART CMake option is deprecated and has
+  no effect.
 
 Other:
 -

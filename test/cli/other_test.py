@@ -3457,7 +3457,7 @@ def __test_clang_tidy(tmpdir, use_compdb):
         f.write(
 """static void foo() // NOLINT(misc-use-anonymous-namespace)
 {
-    (void)(*((int*)nullptr));
+    (void)(*((int*)nullptr)); // NOLINT(modernize-avoid-c-style-cast)
 }""")
 
     project_file = __write_compdb(tmpdir, test_file) if use_compdb else None
