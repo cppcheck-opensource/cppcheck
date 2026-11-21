@@ -448,6 +448,12 @@ public:
     }
 
     /**
+     * Is variable an array function parameter, which is a pointer.
+     * @return true if array parameter that decays to a pointer, false if not
+     */
+    bool isDecayedArrayArgument() const;
+
+    /**
      * Is pointer variable.
      * @return true if pointer, false otherwise
      */
