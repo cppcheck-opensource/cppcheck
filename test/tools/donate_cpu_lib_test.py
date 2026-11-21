@@ -16,6 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import io
+import tarfile
+
 from donate_cpu_lib import *
 
 def _test_library_includes(tmpdir, libs, content, libinc_obj=None):
@@ -66,3 +69,88 @@ def test_match_multiple_time(tmpdir):
     # there was a bug that we would only match each library once successfully
     _test_library_includes(tmpdir, ['posix', 'gnu', 'bsd', 'zlib'], '#include <zlib.h>', libinc)
     _test_library_includes(tmpdir, ['posix', 'gnu', 'bsd', 'zlib'], '#include <zlib.h>', libinc)
+
+def _add_tar_member(tf, name, linkname=None, linktype=tarfile.SYMTYPE):
+    info = tarfile.TarInfo(name)
+    data = b''
+    if linkname is not None:
+        info.type = linktype
+        info.linkname = linkname
+    else:
+        data = b'int x;\n'
+        info.size = len(data)
+    tf.addfile(info, io.BytesIO(data))
+
+def test_unpack_package_outside_temp(tmpdir):
+    work_path = str(tmpdir)
+    outside_path = os.path.join(work_path, 'outside')
+    os.mkdir(outside_path)
+    tgz = os.path.join(work_path, 'temp.tgz')
+    with tarfile.open(tgz, 'w:gz') as tf:
+        _add_tar_member(tf, 'pkg/main.c')
+        _add_tar_member(tf, 'pkg/../../outside/dotdot.c')
+        _add_tar_member(tf, 'pkg/inc.h', linkname=outside_path)
+        _add_tar_member(tf, 'pkg/inc.h/symlink.c')
+
+    temp_path, source_found = unpack_package(work_path, tgz)
+    assert source_found
+    assert os.path.isfile(os.path.join(temp_path, 'pkg', 'main.c'))
+    assert os.listdir(outside_path) == []
+
+def test_unpack_package_duplicate_name(tmpdir):
+    work_path = str(tmpdir)
+    outside_path = os.path.join(work_path, 'outside')
+    os.mkdir(outside_path)
+    outside_file = os.path.join(outside_path, 'target.c')
+    with open(outside_file, 'w', encoding='utf-8') as f:
+        f.write('int y;\n')
+    tgz = os.path.join(work_path, 'temp.tgz')
+    with tarfile.open(tgz, 'w:gz') as tf:
+        # a harmless member followed by a link with the same name that points outside temp
+        _add_tar_member(tf, 'pkg/sym.c')
+        _add_tar_member(tf, 'pkg/sym.c', linkname=outside_file)
+        _add_tar_member(tf, 'pkg/hard.c')
+        _add_tar_member(tf, 'pkg/hard.c', linkname='../outside/target.c', linktype=tarfile.LNKTYPE)
+        # a link inside temp followed by a same-named link that only looks inside when resolved through the first one
+        _add_tar_member(tf, 'pkg/inc.h', linkname='a/b/c')
+        _add_tar_member(tf, 'pkg/inc.h', linkname='../../outside')
+
+    temp_path, source_found = unpack_package(work_path, tgz)
+    assert source_found
+    for name in ('sym.c', 'hard.c'):
+        path = os.path.join(temp_path, 'pkg', name)
+        assert os.path.isfile(path)
+        assert not os.path.islink(path)
+        assert not os.path.samefile(path, outside_file)
+    real_temp_path = os.path.realpath(temp_path)
+    inc_path = os.path.realpath(os.path.join(temp_path, 'pkg', 'inc.h'))
+    assert os.path.commonpath([real_temp_path, inc_path]) == real_temp_path
+    assert os.listdir(outside_path) == ['target.c']
+
+def test_unpack_package_link_redirected_later(tmpdir):
+    work_path = str(tmpdir)
+    outside_path = os.path.join(work_path, 'outside')
+    os.mkdir(outside_path)
+    with open(os.path.join(outside_path, 'secret.c'), 'w', encoding='utf-8') as f:
+        f.write('int secret;\n')
+    tgz = os.path.join(work_path, 'temp.tgz')
+    with tarfile.open(tgz, 'w:gz') as tf:
+        _add_tar_member(tf, 'pkg/src/main.c')
+        # 'd.h' does not exist yet, so this target is resolved as temp/outside and looks harmless
+        _add_tar_member(tf, 'pkg/l.h', linkname='d.h/../../outside')
+        # turns the missing component into a link, which redirects 'l.h' out of temp
+        _add_tar_member(tf, 'pkg/d.h', linkname='.')
+        # a link that stays inside the package is still extracted
+        _add_tar_member(tf, 'pkg/include/main.c', linkname='../src/main.c')
+
+    temp_path, source_found = unpack_package(work_path, tgz)
+    assert source_found
+    real_temp_path = os.path.realpath(temp_path)
+    for name in ('l.h', 'd.h'):
+        path = os.path.join(temp_path, 'pkg', name)
+        if os.path.lexists(path):
+            assert os.path.commonpath([real_temp_path, os.path.realpath(path)]) == real_temp_path
+    inc_path = os.path.join(temp_path, 'pkg', 'include', 'main.c')
+    if os.path.islink(inc_path):
+        assert os.path.samefile(inc_path, os.path.join(temp_path, 'pkg', 'src', 'main.c'))
+    assert os.listdir(outside_path) == ['secret.c']
