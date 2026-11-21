@@ -983,8 +983,6 @@ const simplecpp::Output* Preprocessor::reportOutput(const simplecpp::OutputList 
 
 void Preprocessor::reportSimplecppPortability(const simplecpp::OutputList &outputList)
 {
-    if (!mSettings.severity.isEnabled(Severity::portability) && (mSettings.premiumArgs.find("misra") == std::string::npos))
-        return;
     for (const simplecpp::Output &out : outputList) {
         switch (out.type) {
         case simplecpp::Output::ERROR:
@@ -1058,7 +1056,7 @@ void Preprocessor::error(const simplecpp::Location& loc, const std::string &msg,
 
 void Preprocessor::portability(const simplecpp::Location& loc, const std::string &msg, simplecpp::Output::Type type) const
 {
-    if (!mSettings.severity.isEnabled(Severity::portability))
+    if (!mSettings.severity.isEnabled(Severity::portability) && (mSettings.premiumArgs.find("misra") == std::string::npos))
         return;
     report(loc, msg, simplecppErrToId(type), Severity::portability);
 }
