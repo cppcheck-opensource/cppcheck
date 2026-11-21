@@ -944,9 +944,14 @@ const simplecpp::Output* Preprocessor::reportOutput(const simplecpp::OutputList 
                 error(out.location, out.msg, out.type);
             break;
         case simplecpp::Output::WARNING:
+            // A #warning is reported by the compiler, so we don't need to handle it here.
+            break;
         case simplecpp::Output::PORTABILITY_BACKSLASH:
         case simplecpp::Output::PORTABILITY_LINE_DIRECTIVE:
         case simplecpp::Output::PORTABILITY_NO_EOF_NEWLINE:
+        case simplecpp::Output::PORTABILITY_STRINGIFY:
+            // not considered an "error"
+            portability(out.location, out.msg, out.type);
             break;
         case simplecpp::Output::MISSING_HEADER: {
             // not considered an "error"
@@ -992,15 +997,20 @@ static std::string simplecppErrToId(simplecpp::Output::Type type)
         return "missingFile";
     case simplecpp::Output::EXPLICIT_INCLUDE_NOT_FOUND:
         return "missingIncludeExplicit";
+    case simplecpp::Output::PORTABILITY_BACKSLASH:
+        return "simplecppPortabilityBackslash";
+    case simplecpp::Output::PORTABILITY_LINE_DIRECTIVE:
+        return "simplecppPortabilityLineDirective";
+    case simplecpp::Output::PORTABILITY_NO_EOF_NEWLINE:
+        return "simplecppPortabilityNoEofNewline";
+    case simplecpp::Output::PORTABILITY_STRINGIFY:
+        return "simplecppPortabilityStringify";
     // should never occur
     case simplecpp::Output::DUI_ERROR:
     // handled separately
     case simplecpp::Output::MISSING_HEADER:
     // no handled at all (warnings)
     case simplecpp::Output::WARNING:
-    case simplecpp::Output::PORTABILITY_BACKSLASH:
-    case simplecpp::Output::PORTABILITY_LINE_DIRECTIVE:
-    case simplecpp::Output::PORTABILITY_NO_EOF_NEWLINE:
         throw std::runtime_error("unexpected simplecpp::Output type " + std::to_string(type));
     }
 
@@ -1014,6 +1024,18 @@ void Preprocessor::error(const simplecpp::Location& loc, const std::string &msg,
 
 void Preprocessor::error(const simplecpp::Location& loc, const std::string &msg, const std::string& id) const
 {
+    report(loc, msg, id, Severity::error);
+}
+
+void Preprocessor::portability(const simplecpp::Location& loc, const std::string &msg, simplecpp::Output::Type type) const
+{
+    if (!mSettings.severity.isEnabled(Severity::portability))
+        return;
+    report(loc, msg, simplecppErrToId(type), Severity::portability);
+}
+
+void Preprocessor::report(const simplecpp::Location& loc, const std::string &msg, const std::string& id, Severity severity) const
+{
     std::list<ErrorMessage::FileLocation> locationList;
     if (!mTokens.file(loc).empty()) {
         std::string file = Path::fromNativeSeparators(mTokens.file(loc));
@@ -1024,7 +1046,7 @@ void Preprocessor::error(const simplecpp::Location& loc, const std::string &msg,
     }
     mErrorLogger.reportErr(ErrorMessage(std::move(locationList),
                                         mFile0,
-                                        Severity::error,
+                                        severity,
                                         msg,
                                         id,
                                         Certainty::normal));
@@ -1072,6 +1094,10 @@ void Preprocessor::getErrorMessages(ErrorLogger &errorLogger, const Settings &se
     preprocessor.error(loc, "message", simplecpp::Output::INCLUDE_NESTED_TOO_DEEPLY);
     preprocessor.error(loc, "message", simplecpp::Output::FILE_NOT_FOUND);
     preprocessor.error(loc, "message", simplecpp::Output::EXPLICIT_INCLUDE_NOT_FOUND);
+    preprocessor.report(loc, "message", simplecppErrToId(simplecpp::Output::PORTABILITY_BACKSLASH), Severity::portability);
+    preprocessor.report(loc, "message", simplecppErrToId(simplecpp::Output::PORTABILITY_LINE_DIRECTIVE), Severity::portability);
+    preprocessor.report(loc, "message", simplecppErrToId(simplecpp::Output::PORTABILITY_NO_EOF_NEWLINE), Severity::portability);
+    preprocessor.report(loc, "message", simplecppErrToId(simplecpp::Output::PORTABILITY_STRINGIFY), Severity::portability);
     preprocessor.invalidSuppression(loc, "message");
 }
 
@@ -1090,8 +1116,10 @@ void Preprocessor::dump(std::ostream &out) const
                 << " usefile=\"" << ErrorLogger::toxml(mSettings.relativePaths ? Path::getRelativePath(mTokens.file(macroUsage.useLocation), mSettings.basePaths) : mTokens.file(macroUsage.useLocation)) << "\""
                 << " useline=\"" << macroUsage.useLocation.line << "\""
                 << " usecolumn=\"" << macroUsage.useLocation.col << "\""
-                << " is-known-value=\"" << bool_to_string(macroUsage.macroValueKnown) << "\""
-                << "/>" << std::endl;
+                << " is-known-value=\"" << bool_to_string(macroUsage.macroValueKnown) << "\"";
+            if (!macroUsage.arg.empty())
+                out << " arg=\"" << ErrorLogger::toxml(macroUsage.arg) << "\"";
+            out << "/>" << std::endl;
         }
         out << "  </macro-usage>" << std::endl;
     }
