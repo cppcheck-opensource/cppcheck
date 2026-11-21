@@ -436,6 +436,8 @@ static void valueFlowArrayDimensions(const Token* tok)
         auto& dimension = const_cast<Dimension&>(constDimension);
         if (dimension.known || dimension.num != 0 || !dimension.tok)
             continue;
+        if (Token::Match(dimension.tok->previous(), "[<,]"))
+            continue;
         const ValueFlow::Value* const v = dimension.tok->getKnownValue(ValueFlow::Value::ValueType::INT);
         if (v && v->intvalue > 0) {
             dimension.known = true;

@@ -2064,6 +2064,14 @@ private:
               "    a[sizeof(a) / sizeof(a[0])] = 0;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct S { char c[4]; };\n"
+              "void f() {\n"
+              "    std::array<char, 3 + sizeof(S)> a[2];\n"
+              "    char buf[sizeof(a)];\n"
+              "    buf[5] = 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void array_index_multidim() {
