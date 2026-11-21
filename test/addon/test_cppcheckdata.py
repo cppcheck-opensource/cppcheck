@@ -523,6 +523,7 @@ class TestMatch:
     def test_empty_pattern_and_no_token(self, match_cfg):
         calc_def = find_token(match_cfg, 'calc')
         assert not cppcheckdata.match(calc_def, '')
+        assert not cppcheckdata.match(calc_def, None)
         assert not cppcheckdata.match(None, 'calc')
 
     def test_end(self, match_cfg):
@@ -571,6 +572,23 @@ class TestMatch:
         mod = find_token(match_cfg, '%')
         assert cppcheckdata.match(mod, '%')
         assert cppcheckdata.match(mod.previous, '%var% % %var% ;')
+
+    def test_literal_or_assign(self, match_cfg):
+        or_assign = find_token(match_cfg, '|=')
+        assert cppcheckdata.match(or_assign, '|=')
+        assert cppcheckdata.match(or_assign.previous, '%var% |= %var% ;')
+        assert cppcheckdata.match(or_assign, '%assign%')
+        assert not cppcheckdata.match(find_token(match_cfg, '|'), '|=')
+        # '|=' is a literal, not an alternation of '' and '='
+        # (unlike the C++ Token::Match, which also matches a '=' token here)
+        assert not cppcheckdata.match(find_token(match_cfg, '='), '|=')
+
+    def test_whitespace_only_pattern(self, match_cfg):
+        calc_def = find_token(match_cfg, 'calc')
+        res = cppcheckdata.match(calc_def, '   ')
+        assert not res
+        with pytest.raises(AttributeError):
+            res.end # pylint: disable=W0104
 
     def test_literal_parentheses(self, match_cfg):
         calc_call = find_token(match_cfg, 'calc', skip=1)
@@ -696,6 +714,37 @@ class TestMatch:
         assert cppcheckdata.match(calc_call, '%name% !!%op%')
         assert not cppcheckdata.match(calc_call, '%name% !!(')
 
+    def test_negation_literal_or_assign(self, match_cfg):
+        # '!!|=' is "not |=", not an alternation of '!!' and '='
+        or_assign = find_token(match_cfg, '|=')
+        assert not cppcheckdata.match(or_assign.previous, '%var% !!|=')
+        bit_or = find_token(match_cfg, '|')
+        assert cppcheckdata.match(bit_or.previous, '%var% !!|=')
+        assert cppcheckdata.match(find_token(match_cfg, '=').previous, '%var% !!|=')
+
+    def test_negation_alternatives(self, match_cfg):
+        # '!!a|b' is "not a, or b", as in the C++ Token::Match
+        struct_tok = find_token(match_cfg, 'struct')
+        assert not cppcheckdata.match(struct_tok, 'struct !!Point|Foo')
+        assert cppcheckdata.match(struct_tok, 'struct !!Foo|Point')
+        assert cppcheckdata.match(struct_tok, 'struct !!Foo|Bar')
+
+    def test_find_forward_alternatives(self, match_cfg):
+        # '**a|b' is "a somewhere ahead, or b here"
+        calc_def = find_token(match_cfg, 'calc')
+        res = cppcheckdata.match(calc_def, 'calc **{|nosuchtoken')
+        assert res
+        assert res.end.str == '{'
+        res = cppcheckdata.match(calc_def, 'calc **nosuchtoken|(')
+        assert res
+        assert res.end.str == '('
+        assert not cppcheckdata.match(calc_def, 'calc **nosuchtoken|{')
+        # but a literal word is searched for as a whole
+        arr_decl = find_token(match_cfg, 'arr')
+        res = cppcheckdata.match(arr_decl, 'arr **|=')
+        assert res
+        assert res.end.str == '|='
+
     @pytest.mark.xfail(strict=False,
                        reason='in the C++ Token::Match a negation also matches when there is no token, '
                               'in match() it does not')
@@ -760,6 +809,23 @@ class TestMatch:
         assert res
         assert res.end.str == '{'
         assert not cppcheckdata.match(calc_def, 'calc **nosuchtoken')
+
+    # ---- compiled pattern cache ----
+
+    def test_compile_pattern_reused(self):
+        compiled = cppcheckdata.compile_pattern('calc ( %var%')
+        assert compiled.pattern == 'calc ( %var%'
+        assert cppcheckdata.compile_pattern('calc ( %var%') is compiled
+
+    def test_compiled_patterns_limited(self, match_cfg):
+        calc_def = find_token(match_cfg, 'calc')
+        maxsize = cppcheckdata.compile_pattern.cache_info().maxsize
+        assert maxsize is not None
+        for i in range(maxsize + 100):
+            assert not cppcheckdata.match(calc_def, 'nosuchtoken{} ('.format(i))
+        assert cppcheckdata.compile_pattern.cache_info().currsize == maxsize
+        # a pattern that was dropped is compiled again and still matches
+        assert cppcheckdata.match(calc_def, 'calc ( int')
 
 
 class TestSuppressions:
