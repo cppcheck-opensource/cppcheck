@@ -5096,6 +5096,11 @@ private:
         ASSERT_EQUALS("[test.cpp:3:8]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n"
                       "[test.cpp:3:8]: (style) Parameter 'q' can be declared as pointer to const [constParameterPointer]\n",
                       errout_str());
+
+        check("void f(std::vector<int>& v, int* p) {\n" // #15203
+              "    v.push_back(*p);\n"
+              "};\n");
+        ASSERT_EQUALS("[test.cpp:1:34]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n", errout_str());
     }
 
     void constArray() {
@@ -10507,6 +10512,14 @@ private:
               "double g(const std::array<double, 9>& a) {\n"
               "    M m = a;\n"
               "    return m.trace();\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("std::string f(const std::string& s) {\n"
+              "    std::string u = s;\n"
+              "    std::string::iterator i = u.begin();\n"
+              "    *i = toupper(*i);\n"
+              "    return u;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
     }
