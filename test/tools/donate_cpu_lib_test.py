@@ -126,3 +126,31 @@ def test_unpack_package_duplicate_name(tmpdir):
     inc_path = os.path.realpath(os.path.join(temp_path, 'pkg', 'inc.h'))
     assert os.path.commonpath([real_temp_path, inc_path]) == real_temp_path
     assert os.listdir(outside_path) == ['target.c']
+
+def test_unpack_package_link_redirected_later(tmpdir):
+    work_path = str(tmpdir)
+    outside_path = os.path.join(work_path, 'outside')
+    os.mkdir(outside_path)
+    with open(os.path.join(outside_path, 'secret.c'), 'w', encoding='utf-8') as f:
+        f.write('int secret;\n')
+    tgz = os.path.join(work_path, 'temp.tgz')
+    with tarfile.open(tgz, 'w:gz') as tf:
+        _add_tar_member(tf, 'pkg/src/main.c')
+        # 'd.h' does not exist yet, so this target is resolved as temp/outside and looks harmless
+        _add_tar_member(tf, 'pkg/l.h', linkname='d.h/../../outside')
+        # turns the missing component into a link, which redirects 'l.h' out of temp
+        _add_tar_member(tf, 'pkg/d.h', linkname='.')
+        # a link that stays inside the package is still extracted
+        _add_tar_member(tf, 'pkg/include/main.c', linkname='../src/main.c')
+
+    temp_path, source_found = unpack_package(work_path, tgz)
+    assert source_found
+    real_temp_path = os.path.realpath(temp_path)
+    for name in ('l.h', 'd.h'):
+        path = os.path.join(temp_path, 'pkg', name)
+        if os.path.lexists(path):
+            assert os.path.commonpath([real_temp_path, os.path.realpath(path)]) == real_temp_path
+    inc_path = os.path.join(temp_path, 'pkg', 'include', 'main.c')
+    if os.path.islink(inc_path):
+        assert os.path.samefile(inc_path, os.path.join(temp_path, 'pkg', 'src', 'main.c'))
+    assert os.listdir(outside_path) == ['secret.c']

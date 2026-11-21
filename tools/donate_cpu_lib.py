@@ -352,6 +352,33 @@ def __is_inside_path(base_path, path):
         return False
 
 
+def __remove_escaping_links(real_temp_path):
+    # A link that still pointed inside real_temp_path when it was extracted can be redirected
+    # by a link that is extracted later, so all links are checked again afterwards. Removing a
+    # link changes what the remaining ones resolve to, so this is repeated until nothing is left.
+    removed = 0
+    while True:
+        links = []
+        for root, dirs, files in os.walk(real_temp_path):
+            for name in dirs + files:
+                path = os.path.join(root, name)
+                if os.path.islink(path) and not __is_inside_path(real_temp_path, os.path.realpath(path)):
+                    links.append(path)
+        if not links:
+            return removed
+        for path in links:
+            try:
+                os.remove(path)
+                removed += 1
+            except OSError:
+                try:
+                    # a directory symlink on Windows
+                    os.rmdir(path)
+                    removed += 1
+                except OSError:
+                    return removed
+
+
 def unpack_package(work_path, tgz, cpp_only=False, c_only=False, skip_files=None):
     temp_path = os.path.join(work_path, 'temp')
     __remove_tree(temp_path)
@@ -418,6 +445,9 @@ def unpack_package(work_path, tgz, cpp_only=False, c_only=False, skip_files=None
                         pass
                     except tarfile.TarError:
                         pass
+            removed = __remove_escaping_links(real_temp_path)
+            extracted -= removed
+            skipped += removed
             print('extracted {} of {} files (skipped {}{})'.format(extracted, total, skipped, (' / only headers' if (extracted and not source_found) else '')))
     return temp_path, source_found
 
