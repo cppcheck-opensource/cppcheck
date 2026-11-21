@@ -10514,6 +10514,14 @@ private:
               "    return m.trace();\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("std::string f(const std::string& s) {\n"
+              "    std::string u = s;\n"
+              "    std::string::iterator i = u.begin();\n"
+	        "    *i = toupper(*i);\n"
+              "    return u;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void checkNegativeShift() {

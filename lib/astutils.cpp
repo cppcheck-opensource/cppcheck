@@ -2794,7 +2794,7 @@ bool isVariableChanged(const Token *tok, int indirect, const Settings &settings,
         const Token * ptok = tok2;
         while (Token::Match(ptok->astParent(), ".|::"))
             ptok = ptok->astParent();
-        int pindirect = indirect - derefs;
+        int pindirect = std::max(indirect - derefs, 0);
         if (indirect == 0 && astIsLHS(tok2) && Token::Match(ptok, ". %var%") && astIsPointer(ptok->next()))
             pindirect = 1;
         bool inconclusive = false;
