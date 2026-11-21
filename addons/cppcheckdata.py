@@ -7,7 +7,6 @@ License: No restrictions, use this as you need.
 """
 
 import argparse
-import functools
 import contextlib
 import functools
 import gc
