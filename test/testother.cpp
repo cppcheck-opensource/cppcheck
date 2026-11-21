@@ -14697,7 +14697,7 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        // Nested update in step — OK 
+        // Nested update in step — OK
         check("void f(const std::vector<int*>& v) {\n"
               "  for (auto it = v.begin(); it != v.end(); delete *it++);\n"
               "}\n");
