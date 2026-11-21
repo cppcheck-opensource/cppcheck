@@ -839,6 +839,7 @@ bool Preprocessor::loadAllIncludes(std::vector<std::string> &files)
 
     simplecpp::OutputList outputList;
     mFileCache = simplecpp::load(mTokens, files, dui, &outputList, std::move(mFileCache));
+    reportSimplecppPortability(outputList);
     return !handleErrors(outputList);
 }
 
@@ -887,6 +888,7 @@ simplecpp::TokenList Preprocessor::preprocess(const std::string &cfgStr, std::ve
     std::list<simplecpp::IfCond> ifCond;
     simplecpp::TokenList tokens2(files);
     simplecpp::preprocess(tokens2, mTokens, files, mFileCache, dui, &outputList, &macroUsage, &ifCond);
+    reportSimplecppPortability(outputList);
     mMacroUsage = std::move(macroUsage);
     mIfCond = std::move(ifCond);
 

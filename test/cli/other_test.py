@@ -90,6 +90,37 @@ def test_preprocessor_error(tmpdir):
     assert exitcode != 0
 
 
+# without -D the header is loaded by Preprocessor::loadAllIncludes(), with -D by Preprocessor::preprocess()
+@pytest.mark.parametrize("extra_args", [[], ['-DA']])
+def test_simplecpp_portability_header(tmpdir, extra_args):
+    test_file = os.path.join(tmpdir, 'test.c')
+    with open(test_file, 'wt') as f:
+        f.write('#include "test.h"\n')
+    test_h = os.path.join(tmpdir, 'test.h')
+    with open(test_h, 'wt') as f:
+        f.write('#ifdef A\nint a;\n#endif\nint x;')  # no newline at end of file
+
+    args = ['-q', '--enable=portability', '--template=simple'] + extra_args + [test_file]
+
+    _, _, stderr = cppcheck(args)
+    assert stderr == '{}:4:7: portability: No newline at end of file is undefined behavior in C. [simplecppPortabilityNoEofNewline]\n'.format(test_h)
+
+
+@pytest.mark.parametrize("extra_args", [[], ['-DA']])
+def test_simplecpp_portability_header_inline_suppr(tmpdir, extra_args):
+    test_file = os.path.join(tmpdir, 'test.c')
+    with open(test_file, 'wt') as f:
+        f.write('#include "test.h"\n')
+    test_h = os.path.join(tmpdir, 'test.h')
+    with open(test_h, 'wt') as f:
+        f.write('#ifdef A\nint a;\n#endif\n// cppcheck-suppress simplecppPortabilityNoEofNewline\nint x;')
+
+    args = ['-q', '--enable=portability', '--inline-suppr', '--template=simple'] + extra_args + [test_file]
+
+    _, _, stderr = cppcheck(args)
+    assert stderr == ''
+
+
 __ANSI_BOLD = "\x1b[1m"
 __ANSI_FG_RED = "\x1b[31m"
 __ANSI_FG_DEFAULT = "\x1b[39m"
