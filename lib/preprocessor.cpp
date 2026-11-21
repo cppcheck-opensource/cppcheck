@@ -950,8 +950,7 @@ const simplecpp::Output* Preprocessor::reportOutput(const simplecpp::OutputList 
         case simplecpp::Output::PORTABILITY_LINE_DIRECTIVE:
         case simplecpp::Output::PORTABILITY_NO_EOF_NEWLINE:
         case simplecpp::Output::PORTABILITY_STRINGIFY:
-            // not considered an "error"
-            portability(out.location, out.msg, out.type);
+            // reported by reportSimplecppPortability
             break;
         case simplecpp::Output::MISSING_HEADER: {
             // not considered an "error"
@@ -978,6 +977,34 @@ const simplecpp::Output* Preprocessor::reportOutput(const simplecpp::OutputList 
     }
 
     return out_ret;
+}
+
+void Preprocessor::reportSimplecppPortability(const simplecpp::OutputList &outputList)
+{
+    if (!mSettings.severity.isEnabled(Severity::portability) && (mSettings.premiumArgs.find("misra") == std::string::npos))
+        return;
+    for (const simplecpp::Output &out : outputList) {
+        switch (out.type) {
+        case simplecpp::Output::ERROR:
+        case simplecpp::Output::WARNING:
+        case simplecpp::Output::MISSING_HEADER:
+        case simplecpp::Output::DIRECTIVE_AS_MACRO_PARAMETER:
+        case simplecpp::Output::INCLUDE_NESTED_TOO_DEEPLY:
+        case simplecpp::Output::SYNTAX_ERROR:
+        case simplecpp::Output::UNHANDLED_CHAR_ERROR:
+        case simplecpp::Output::EXPLICIT_INCLUDE_NOT_FOUND:
+        case simplecpp::Output::FILE_NOT_FOUND:
+        case simplecpp::Output::DUI_ERROR:
+            break;
+
+        case simplecpp::Output::PORTABILITY_BACKSLASH:
+        case simplecpp::Output::PORTABILITY_LINE_DIRECTIVE:
+        case simplecpp::Output::PORTABILITY_NO_EOF_NEWLINE:
+        case simplecpp::Output::PORTABILITY_STRINGIFY:
+            portability(out.location, out.msg, out.type);
+            break;
+        }
+    }
 }
 
 static std::string simplecppErrToId(simplecpp::Output::Type type)

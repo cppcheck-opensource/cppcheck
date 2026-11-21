@@ -163,6 +163,7 @@ public:
     void dump(std::ostream &out) const;
 
     const simplecpp::Output* reportOutput(const simplecpp::OutputList &outputList, bool showerror);
+    void reportSimplecppPortability(const simplecpp::OutputList &outputList);
 
     void error(const simplecpp::Location& loc, const std::string &msg, simplecpp::Output::Type type) const;
 
