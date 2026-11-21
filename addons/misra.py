@@ -4912,6 +4912,17 @@ class MisraChecker:
         def is_different_file(loc1, loc2):
             return loc1['file'] != loc2['file']
 
+        def add_declaration(all_info, new_info, num1, num2):
+            declarations = all_info.setdefault(new_info['name'], [])
+            for info in declarations:
+                if not is_different_location(info, new_info):
+                    info['used'] = info['used'] or new_info['used']
+                    return
+            if declarations:
+                self.reportError(Location(declarations[0]), num1, num2)
+                self.reportError(Location(new_info), num1, num2)
+            declarations.append(new_info)
+
         def read_lines(filename):
             with open(filename, 'rt') as f:
                 yield from f
@@ -4927,29 +4938,11 @@ class MisraChecker:
 
                     if summary_type == 'MisraTypedefInfo':
                         for new_typedef_info in summary_data:
-                            key = new_typedef_info['name']
-                            existing_typedef_info = all_typedef_info.get(key, None)
-                            if existing_typedef_info:
-                                if is_different_location(existing_typedef_info, new_typedef_info):
-                                    self.reportError(Location(existing_typedef_info), 5, 6)
-                                    self.reportError(Location(new_typedef_info), 5, 6)
-                                else:
-                                    existing_typedef_info['used'] = existing_typedef_info['used'] or new_typedef_info['used']
-                            else:
-                                all_typedef_info[key] = new_typedef_info
+                            add_declaration(all_typedef_info, new_typedef_info, 5, 6)
 
                     if summary_type == 'MisraTagName':
                         for new_tagname_info in summary_data:
-                            key = new_tagname_info['name']
-                            existing_tagname_info = all_tagname_info.get(key, None)
-                            if existing_tagname_info:
-                                if is_different_location(existing_tagname_info, new_tagname_info):
-                                    self.reportError(Location(existing_tagname_info), 5, 7)
-                                    self.reportError(Location(new_tagname_info), 5, 7)
-                                else:
-                                    existing_tagname_info['used'] = existing_tagname_info['used'] or new_tagname_info['used']
-                            else:
-                                all_tagname_info[key] = new_tagname_info
+                            add_declaration(all_tagname_info, new_tagname_info, 5, 7)
 
                     if summary_type == 'MisraMacro':
                         for new_macro in summary_data:
@@ -5000,11 +4993,11 @@ class MisraChecker:
         except FileNotFoundError:
             return
 
-        unused_typedefs = [tdi for tdi in all_typedef_info.values() if not tdi['used']]
+        unused_typedefs = [tdi for tdis in all_typedef_info.values() for tdi in tdis if not tdi['used']]
         for tdi in unused_typedefs:
             self.reportError(Location(tdi), 2, 3)
 
-        unused_tags = [tag for tag in all_tagname_info.values() if not tag['used']]
+        unused_tags = [tag for tags in all_tagname_info.values() for tag in tags if not tag['used']]
         for tag in unused_tags:
             self.reportError(Location(tag), 2, 4)
 
