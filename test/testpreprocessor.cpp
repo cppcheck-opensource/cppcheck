@@ -2805,6 +2805,8 @@ private:
 
         // Preprocess => don't crash..
         (void)getcode(settings0, *this, filedata);
+        ASSERT_EQUALS("[file.c:3:2]: (error) failed to evaluate #if condition, invalid expression [syntaxError]\n"
+                      "[file.c:3:2]: (error) failed to evaluate #if condition, invalid expression [syntaxError]\n", errout_str());
     }
 
     void wrongPathOnErrorDirective() {
@@ -3245,7 +3247,7 @@ private:
             std::vector<std::string> files;
             TokenList tokenlist{settingsDefault, Standards::Language::CPP};
             // TODO: can this happen from application code? if yes we need to turn it into a proper error
-            ASSERT_THROW_EQUALS(preprocess(code, files, "test.cpp", tokenlist, dui), std::runtime_error, "unexpected simplecpp::Output type 12");
+            ASSERT_THROW_EQUALS(preprocess(code, files, "test.cpp", tokenlist, dui), std::runtime_error, "unexpected simplecpp::Output type 13");
             ASSERT(!tokenlist.front()); // nothing is tokenized when an unknown standard is provided
         }
     }

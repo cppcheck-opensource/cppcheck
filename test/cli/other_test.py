@@ -90,6 +90,37 @@ def test_preprocessor_error(tmpdir):
     assert exitcode != 0
 
 
+# without -D the header is loaded by Preprocessor::loadAllIncludes(), with -D by Preprocessor::preprocess()
+@pytest.mark.parametrize("extra_args", [[], ['-DA']])
+def test_simplecpp_portability_header(tmpdir, extra_args):
+    test_file = os.path.join(tmpdir, 'test.c')
+    with open(test_file, 'wt') as f:
+        f.write('#include "test.h"\n')
+    test_h = os.path.join(tmpdir, 'test.h')
+    with open(test_h, 'wt') as f:
+        f.write('#ifdef A\nint a;\n#endif\nint x;')  # no newline at end of file
+
+    args = ['-q', '--enable=portability', '--template=simple'] + extra_args + [test_file]
+
+    _, _, stderr = cppcheck(args)
+    assert stderr == '{}:4:7: portability: No newline at end of file is undefined behavior in C. [simplecppPortabilityNoEofNewline]\n'.format(test_h)
+
+
+@pytest.mark.parametrize("extra_args", [[], ['-DA']])
+def test_simplecpp_portability_header_inline_suppr(tmpdir, extra_args):
+    test_file = os.path.join(tmpdir, 'test.c')
+    with open(test_file, 'wt') as f:
+        f.write('#include "test.h"\n')
+    test_h = os.path.join(tmpdir, 'test.h')
+    with open(test_h, 'wt') as f:
+        f.write('#ifdef A\nint a;\n#endif\n// cppcheck-suppress simplecppPortabilityNoEofNewline\nint x;')
+
+    args = ['-q', '--enable=portability', '--inline-suppr', '--template=simple'] + extra_args + [test_file]
+
+    _, _, stderr = cppcheck(args)
+    assert stderr == ''
+
+
 __ANSI_BOLD = "\x1b[1m"
 __ANSI_FG_RED = "\x1b[31m"
 __ANSI_FG_DEFAULT = "\x1b[39m"
@@ -157,7 +188,7 @@ def test_progress(tmpdir):
                 int main(int argc)
                 {
                 }
-                """)
+""")
 
     args = ['--report-progress=0', '--enable=all', '--inconclusive', '-j1', test_file]
 
@@ -248,7 +279,7 @@ def test_progress_j(tmpdir):
                 int main(int argc)
                 {
                 }
-                """)
+""")
 
     args = ['--report-progress=0', '--enable=all', '--inconclusive', '-j2', '--disable=unusedFunction', test_file]
 
@@ -2764,7 +2795,7 @@ def __test_addon_suppr(tmp_path, extra_args):
 // cppcheck-suppress misra-c2012-2.3
 typedef int MISRA_5_6_VIOLATION;
 typedef int MISRA_5_6_VIOLATION_1;
-        """)
+""")
 
     args = [
         '-q',
@@ -2818,7 +2849,7 @@ int main() {
     int *p = 0;
 f(p);
 }
-        """)
+""")
 
     args = [
         '-q',
@@ -2868,7 +2899,7 @@ int main() {
     int *p = 0;
 f(p);
 }
-        """)
+""")
 
     args = [
         '-q',
@@ -4522,7 +4553,7 @@ def test_analyzerinfo(tmp_path):
 
     # modified file
     with open(test_file, 'a') as f:
-        f.write('\n#define DEF')
+        f.write('\n#define DEF\n')
 
     run_and_assert_cppcheck([
         "discarding cached result from '{}' for '{}' - hash mismatch".format(test_a1_file_s, test_file_s)
@@ -4930,7 +4961,7 @@ def test_ipc_inline_suppressions(tmp_path):
 def test_ipc_hash_suppressions(tmp_path):
     test_file = tmp_path / 'test.c'
     with open(test_file, "w") as f:
-        f.write('void f() { int x = 1; }')
+        f.write('void f() { int x = 1; }\n')
 
     _, _, stderr = cppcheck(['--enable=style', '--xml-version=3', str(test_file)])
     error_hash = ElementTree.fromstring(stderr).find('.//error').get('hash')
