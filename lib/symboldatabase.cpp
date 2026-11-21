@@ -8938,9 +8938,9 @@ std::string ValueType::str() const
     }
     for (nonneg int p = 0; p < pointer; p++) {
         ret += " *";
-        if (constness & (2 << p))
+        if (constness & qualifierBit(p + 1))
             ret += " const";
-        if (volatileness & (2 << p))
+        if (volatileness & qualifierBit(p + 1))
             ret += " volatile";
     }
     if (reference == Reference::LValue)

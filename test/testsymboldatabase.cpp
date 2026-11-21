@@ -1889,6 +1889,10 @@ private:
         ASSERT(!p->valueType()->isVolatile(0));
         ASSERT(p->valueType()->isConst(32));
         ASSERT(p->valueType()->isVolatile(32));
+        std::string expected("signed int * const volatile");
+        for (int i = 1; i < 33; ++i)
+            expected += " *";
+        ASSERT_EQUALS(expected, p->valueType()->str());
     }
 
     void variableConstexpr() {
