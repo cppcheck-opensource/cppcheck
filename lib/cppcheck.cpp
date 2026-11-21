@@ -1055,6 +1055,8 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         if (!mSettings.keepComments)
             preprocessor.removeComments();
 
+        preprocessor.reportSimplecppPortability(outputList);
+
         // Get directives
         std::list<Directive> directives;
         preprocessor.createDirectives(directives);

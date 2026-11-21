@@ -736,7 +736,7 @@ cli/threadexecutor.o: cli/threadexecutor.cpp cli/executor.h cli/threadexecutor.h
 test/fixture.o: test/fixture.cpp externals/tinyxml2/tinyxml2.h lib/check.h lib/checkers.h lib/color.h lib/config.h lib/errorlogger.h lib/errortypes.h lib/library.h lib/mathlib.h lib/path.h lib/platform.h lib/refthunk.h lib/settings.h lib/standards.h lib/timer.h lib/tokenize.h lib/tokenlist.h lib/utils.h lib/xml.h test/fixture.h test/helpers.h test/options.h test/redirect.h
 	$(CXX) ${INCLUDE_FOR_TEST} ${CFLAGS_FOR_TEST} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ test/fixture.cpp
 
-test/helpers.o: test/helpers.cpp cli/filelister.h externals/simplecpp/simplecpp.h externals/tinyxml2/tinyxml2.h lib/checkers.h lib/config.h lib/filesettings.h lib/library.h lib/mathlib.h lib/path.h lib/pathmatch.h lib/platform.h lib/preprocessor.h lib/settings.h lib/standards.h lib/tokenize.h lib/tokenlist.h lib/utils.h lib/xml.h test/helpers.h
+test/helpers.o: test/helpers.cpp cli/filelister.h externals/simplecpp/simplecpp.h externals/tinyxml2/tinyxml2.h lib/checkers.h lib/config.h lib/errortypes.h lib/filesettings.h lib/library.h lib/mathlib.h lib/path.h lib/pathmatch.h lib/platform.h lib/preprocessor.h lib/settings.h lib/standards.h lib/tokenize.h lib/tokenlist.h lib/utils.h lib/xml.h test/helpers.h
 	$(CXX) ${INCLUDE_FOR_TEST} ${CFLAGS_FOR_TEST} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ test/helpers.cpp
 
 test/main.o: test/main.cpp externals/simplecpp/simplecpp.h lib/check.h lib/checkers.h lib/color.h lib/config.h lib/errorlogger.h lib/errortypes.h lib/library.h lib/mathlib.h lib/platform.h lib/preprocessor.h lib/refthunk.h lib/settings.h lib/standards.h lib/utils.h test/fixture.h test/options.h

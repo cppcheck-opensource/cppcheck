@@ -22,6 +22,7 @@
 //---------------------------------------------------------------------------
 
 #include "config.h"
+#include "errortypes.h"
 #include "standards.h"
 
 #include <cstddef>
@@ -162,6 +163,7 @@ public:
     void dump(std::ostream &out) const;
 
     const simplecpp::Output* reportOutput(const simplecpp::OutputList &outputList, bool showerror);
+    void reportSimplecppPortability(const simplecpp::OutputList &outputList);
 
     void error(const simplecpp::Location& loc, const std::string &msg, simplecpp::Output::Type type) const;
 
@@ -184,6 +186,8 @@ private:
     void missingInclude(const simplecpp::Location& loc, const std::string &header, HeaderTypes headerType);
     void invalidSuppression(const simplecpp::Location& loc, const std::string &msg) const;
     void error(const simplecpp::Location& loc, const std::string &msg, const std::string& id) const;
+    void portability(const simplecpp::Location& loc, const std::string &msg, simplecpp::Output::Type type) const;
+    void report(const simplecpp::Location& loc, const std::string &msg, const std::string& id, Severity severity) const;
 
     simplecpp::TokenList& mTokens;
 
