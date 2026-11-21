@@ -1175,6 +1175,9 @@ void CheckBufferOverrunImpl::objectIndex()
             const Token *idx = tok->astOperand2();
             if (!idx || !obj)
                 continue;
+            // An object such as a view can refer to a variable but indexing it calls operator[]
+            if (obj->valueType() && obj->valueType()->pointer == 0)
+                continue;
             if (const ValueFlow::Value* v = idx->getKnownValue(ValueFlow::Value::ValueType::INT)) {
                 if (v->intvalue == 0)
                     continue;
