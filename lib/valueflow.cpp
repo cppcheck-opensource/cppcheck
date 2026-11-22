@@ -1542,14 +1542,10 @@ static bool returnsElementOf(const Function* f, const ValueType& container, cons
     return tok && !Token::Match(tok, "*|&|&&");
 }
 
-static bool isViewType(const ValueType* vt)
-{
-    return vt && vt->type == ValueType::Type::CONTAINER && vt->pointer == 0 && vt->container && vt->container->view;
-}
-
 static bool isViewOf(const ValueType& view, const ValueType& container)
 {
-    if (!isViewType(&view) || container.container->view)
+    if (view.type != ValueType::Type::CONTAINER || view.pointer != 0 || !view.container || !view.container->view ||
+        container.container->view)
         return false;
     if (!view.containerTypeToken && !container.containerTypeToken)
         return view.container->stdStringLike && container.container->stdStringLike;
@@ -1603,19 +1599,17 @@ static LifetimeBoundRelation getLifetimeBoundRelation(const ValueType* objType,
     return LifetimeBoundRelation::Unknown;
 }
 
-// The argument is a member or an element of the object that the lifetime token refers to
-static bool isInteriorLifetimeToken(const ValueFlow::LifetimeToken& lt, const Token* argtok)
+// The expression is a member or an element of the object that the lifetime token refers to. An element of an array
+// is not included since a pointer to it has the same kind of lifetime as a pointer to the array.
+static bool isInteriorLifetimeToken(const ValueFlow::LifetimeToken& lt)
 {
-    return lt.token != argtok && !lt.addressOf && !astIsPointer(lt.token) &&
-           Token::Match(lt.token->astParent(), ".|[");
+    return !lt.addressOf && !astIsPointer(lt.token);
 }
 
 static bool isInteriorArgument(const Token* argtok, const Settings& settings)
 {
     const std::vector<ValueFlow::LifetimeToken> lts = ValueFlow::getLifetimeTokens(argtok, settings);
-    return std::any_of(lts.cbegin(), lts.cend(), [&](const ValueFlow::LifetimeToken& lt) {
-        return isInteriorLifetimeToken(lt, argtok);
-    });
+    return std::any_of(lts.cbegin(), lts.cend(), &isInteriorLifetimeToken);
 }
 
 static bool isInteriorLifetimeKind(ValueFlow::Value::LifetimeKind kind)
@@ -1637,13 +1631,10 @@ static bool hasInteriorCapture(const ValueFlow::Value& v, int depth = 4)
 
 // The kind of lifetime that the result of a call has for an object when the returned expression has the lifetime v
 // for the parameter that the object is bound to
-static ValueFlow::Value::LifetimeKind getReturnedLifetimeKind(const ValueFlow::Value& v, const Token* call, bool interior)
+static ValueFlow::Value::LifetimeKind getReturnedLifetimeKind(const ValueFlow::Value& v, bool interior)
 {
     const ValueFlow::Value::LifetimeKind kind = v.lifetimeKind;
     if (kind == ValueFlow::Value::LifetimeKind::Address && interior)
-        return ValueFlow::Value::LifetimeKind::Object;
-    // A view refers to the contents of the container
-    if (kind == ValueFlow::Value::LifetimeKind::SubObject && isViewType(call->valueType()))
         return ValueFlow::Value::LifetimeKind::Object;
     // The captured token is in the called function so the capture cannot be followed from the result
     if ((kind == ValueFlow::Value::LifetimeKind::SubObject || kind == ValueFlow::Value::LifetimeKind::Lambda) &&
@@ -1673,13 +1664,6 @@ static ValueFlow::Value::LifetimeKind getLifetimeBoundKind(LifetimeBoundRelation
 struct LifetimeBoundByValKind {
     LifetimeBoundRelation relation;
     bool iteratorResult;
-    // The lifetime of a view is stored as SubObject and it refers to the contents of the container
-    bool viewParam;
-
-    ValueFlow::Value::LifetimeKind interiorKind() const
-    {
-        return iteratorResult ? ValueFlow::Value::LifetimeKind::Iterator : ValueFlow::Value::LifetimeKind::Object;
-    }
 
     ValueFlow::Value::LifetimeKind operator()(ValueFlow::Value::LifetimeKind argKind) const
     {
@@ -1687,11 +1671,10 @@ struct LifetimeBoundByValKind {
         case ValueFlow::Value::LifetimeKind::Address:
             return getLifetimeBoundKind(relation, false);
         case ValueFlow::Value::LifetimeKind::Iterator:
-            return interiorKind();
         case ValueFlow::Value::LifetimeKind::Object:
-            return ValueFlow::Value::LifetimeKind::Object;
+            return iteratorResult ? ValueFlow::Value::LifetimeKind::Iterator : ValueFlow::Value::LifetimeKind::Object;
         case ValueFlow::Value::LifetimeKind::SubObject:
-            return viewParam ? interiorKind() : ValueFlow::Value::LifetimeKind::SubObject;
+            return ValueFlow::Value::LifetimeKind::SubObject;
         case ValueFlow::Value::LifetimeKind::Lambda:
             return relation == LifetimeBoundRelation::Same ? ValueFlow::Value::LifetimeKind::Lambda
                                                            : ValueFlow::Value::LifetimeKind::SubObject;
@@ -1782,20 +1765,21 @@ static std::vector<ValueFlow::LifetimeToken> getLifetimeBoundTokens(const Token*
             er.push_back(errorPathItem);
             arglts = getLifetimeTokens(boundArg.tok, escape, std::move(er), pred, settings, depth - 1);
             for (ValueFlow::LifetimeToken& lt : arglts) {
-                const bool interior = isInteriorLifetimeToken(lt, boundArg.tok);
-                lt.addressOf = !isInteriorLifetimeKind(getLifetimeBoundKind(boundArg.relation, interior));
+                if (isInteriorLifetimeKind(getLifetimeBoundKind(boundArg.relation, isInteriorLifetimeToken(lt))))
+                    lt.addressOf = false;
             }
         } else if (boundArg.param) {
-            const LifetimeBoundByValKind byValKind{boundArg.relation, false, isViewType(boundArg.param->valueType())};
+            const LifetimeBoundByValKind byValKind{boundArg.relation, false};
             for (const ValueFlow::Value& v : boundArg.tok->values()) {
                 if (!v.isLocalLifetimeValue())
                     continue;
                 ErrorPath er = errorPath;
                 er.insert(er.end(), v.errorPath.cbegin(), v.errorPath.cend());
                 er.push_back(errorPathItem);
-                std::vector<ValueFlow::LifetimeToken> vallts = ValueFlow::LifetimeToken::setAddressOf(
-                    getLifetimeTokens(v.tokvalue, escape, std::move(er), pred, settings, depth - 1),
-                    !isInteriorLifetimeKind(byValKind(v.lifetimeKind)));
+                std::vector<ValueFlow::LifetimeToken> vallts =
+                    getLifetimeTokens(v.tokvalue, escape, std::move(er), pred, settings, depth - 1);
+                if (isInteriorLifetimeKind(byValKind(v.lifetimeKind)))
+                    vallts = ValueFlow::LifetimeToken::setAddressOf(std::move(vallts), false);
                 arglts.insert(arglts.end(), vallts.cbegin(), vallts.cend());
             }
         }
@@ -1894,6 +1878,7 @@ static std::vector<ValueFlow::LifetimeToken> getLifetimeTokens(const Token* tok,
                     const Token* argvarTok = lt.token;
                     const Variable* argvar = argvarTok->variable();
                     const Token* argTok = nullptr;
+                    bool returnsObject = lt.addressOf;
                     if (argvar && argvar->isArgument() && (argvar->isReference() || argvar->isRValueReference())) {
                         const int n = getArgumentPos(argvar, f);
                         if (n < 0)
@@ -1908,6 +1893,9 @@ static std::vector<ValueFlow::LifetimeToken> getLifetimeTokens(const Token* tok,
                     } else if (Token::Match(tok->tokAt(-2), ". %name% (") && !derefShared(tok->tokAt(-2)) &&
                                exprDependsOnThis(argvarTok)) {
                         argTok = tok->tokAt(-2)->astOperand1();
+                        // A member is a part of the object
+                        returnsObject = returnsObject && argvarTok->isUnaryOp("*") &&
+                                        Token::simpleMatch(argvarTok->astOperand1(), "this");
                         lt.errorPath.emplace_back(returnTok, "Return reference that depends on 'this'.");
                         lt.errorPath.emplace_back(tok->previous(),
                                                   "Calling member function on '" + argTok->expressionString() + "'.");
@@ -1916,9 +1904,8 @@ static std::vector<ValueFlow::LifetimeToken> getLifetimeTokens(const Token* tok,
                         std::vector<ValueFlow::LifetimeToken> arglts = ValueFlow::LifetimeToken::setInconclusive(
                             getLifetimeTokens(argTok, escape, std::move(lt.errorPath), pred, settings, depth - returns.size()),
                             returns.size() > 1);
-                        // The result is the object itself only when the function returns the object itself
                         for (ValueFlow::LifetimeToken& arglt : arglts)
-                            arglt.addressOf = lt.addressOf && !isInteriorLifetimeToken(arglt, argTok);
+                            arglt.addressOf = arglt.addressOf && returnsObject;
                         result.insert(result.end(), arglts.cbegin(), arglts.cend());
                     }
                 }
@@ -1938,14 +1925,17 @@ static std::vector<ValueFlow::LifetimeToken> getLifetimeTokens(const Token* tok,
     } else if (Token::Match(tok, ".|::|[") || tok->isUnaryOp("*")) {
 
         const Token *vartok = tok;
+        bool member = false;
+        int derefs = 0;
         while (vartok) {
-            if (vartok->str() == "[" || vartok->isUnaryOp("*"))
+            if (vartok->str() == "[" || vartok->isUnaryOp("*")) {
                 vartok = vartok->astOperand1();
-            else if (vartok->str() == ".") {
-                if (checkDotLifetime(vartok, tok))
-                    vartok = vartok->astOperand1();
-                else
+                derefs++;
+            } else if (vartok->str() == ".") {
+                if (!checkDotLifetime(vartok, tok))
                     break;
+                vartok = vartok->astOperand1();
+                member = true;
             }
             else if (vartok->str() == "::")
                 vartok = vartok->astOperand2();
@@ -1962,13 +1952,19 @@ static std::vector<ValueFlow::LifetimeToken> getLifetimeTokens(const Token* tok,
                 if (v.tokvalue == tok)
                     continue;
                 errorPath.insert(errorPath.end(), v.errorPath.cbegin(), v.errorPath.cend());
-                return ValueFlow::LifetimeToken::setAddressOf(
-                    getLifetimeTokens(v.tokvalue, escape, std::move(errorPath), pred, settings, depth - 1),
-                    false);
+                std::vector<ValueFlow::LifetimeToken> result =
+                    getLifetimeTokens(v.tokvalue, escape, std::move(errorPath), pred, settings, depth - 1);
+                // Only a dereferenced pointer to the object is the object itself
+                if (member || derefs > 1 || v.lifetimeKind != ValueFlow::Value::LifetimeKind::Address)
+                    result = ValueFlow::LifetimeToken::setAddressOf(std::move(result), false);
+                return result;
             }
         } else {
-            return ValueFlow::LifetimeToken::setAddressOf(
-                getLifetimeTokens(vartok, escape, std::move(errorPath), pred, settings, depth - 1), false);
+            std::vector<ValueFlow::LifetimeToken> result =
+                getLifetimeTokens(vartok, escape, std::move(errorPath), pred, settings, depth - 1);
+            if (member || derefs > 0)
+                result = ValueFlow::LifetimeToken::setAddressOf(std::move(result), false);
+            return result;
         }
     } else if (Token::simpleMatch(tok, "{") && getArgumentStart(tok) &&
                !Token::simpleMatch(getArgumentStart(tok), ",") && getArgumentStart(tok)->valueType()) {
@@ -2732,9 +2728,7 @@ static bool valueFlowLifetimeBoundArg(Token* tok,
         ls.type = getLifetimeBoundKind(boundArg.relation, isInteriorArgument(boundArg.tok, settings));
         return ls.byRef(tok, tokenlist, errorLogger, settings);
     }
-    ls.byValKind = LifetimeBoundByValKind{boundArg.relation,
-                                          astIsIterator(tok),
-                                          boundArg.param && isViewType(boundArg.param->valueType())};
+    ls.byValKind = LifetimeBoundByValKind{boundArg.relation, astIsIterator(tok)};
     return ls.byVal(tok, tokenlist, errorLogger, settings);
 }
 
@@ -2923,9 +2917,7 @@ static void valueFlowLifetimeFunction(Token *tok, const TokenList &tokenlist, Er
                 ls.forward = false;
                 // The result is the argument when the parameter itself is returned
                 if (returnTok->variable() == returnVar)
-                    ls.byValKind = LifetimeBoundByValKind{LifetimeBoundRelation::Same,
-                                                          astIsIterator(tok->next()),
-                                                          isViewType(returnVar->valueType())};
+                    ls.byValKind = LifetimeBoundByValKind{LifetimeBoundRelation::Same, astIsIterator(tok->next())};
                 update |= ls.byVal(tok->next(), tokenlist, errorLogger, settings);
             }
             for (const ValueFlow::Value &v : returnTok->values()) {
@@ -2940,7 +2932,7 @@ static void valueFlowLifetimeFunction(Token *tok, const TokenList &tokenlist, Er
                     // The returned expression refers to a member so it is a part of the object
                     LifetimeStore ls = LifetimeStore{memtok,
                                                      "Passed to member function '" + tok->expressionString() + "'.",
-                                                     getReturnedLifetimeKind(v, tok->next(),true)};
+                                                     getReturnedLifetimeKind(v, true)};
                     ls.inconclusive = inconclusive;
                     ls.forward = false;
                     ls.errorPath = v.errorPath;
@@ -2967,10 +2959,10 @@ static void valueFlowLifetimeFunction(Token *tok, const TokenList &tokenlist, Er
                 if (!v.isArgumentLifetimeValue() && (var->isReference() || var->isRValueReference())) {
                     const bool interior = v.lifetimeKind == ValueFlow::Value::LifetimeKind::Address &&
                                           isInteriorArgument(ls.argtok, settings);
-                    ls.type = getReturnedLifetimeKind(v, tok->next(), interior);
+                    ls.type = getReturnedLifetimeKind(v, interior);
                     update |= ls.byRef(tok->next(), tokenlist, errorLogger, settings);
                 } else if (v.isArgumentLifetimeValue()) {
-                    ls.type = getReturnedLifetimeKind(v, tok->next(), false);
+                    ls.type = getReturnedLifetimeKind(v, false);
                     update |= ls.byVal(tok->next(), tokenlist, errorLogger, settings);
                 }
             }
@@ -3169,7 +3161,8 @@ static void valueFlowLifetimeConstructor(Token* tok, const TokenList& tokenlist,
         } else if (vt.container && vt.type == ValueType::CONTAINER) {
             std::vector<const Token*> args = getArguments(tok);
             if (args.size() == 1 && vt.container->view && astIsContainerOwned(args.front())) {
-                LifetimeStore{args.front(), "Passed to container view.", ValueFlow::Value::LifetimeKind::SubObject}
+                // A view refers to the contents of the container
+                LifetimeStore{args.front(), "Passed to container view.", ValueFlow::Value::LifetimeKind::Object}
                 .byRef(tok, tokenlist, errorLogger, settings);
             } else if (args.size() == 2 && (astIsIterator(args[0]) || astIsIterator(args[1]))) {
                 LifetimeStore::forEach(
@@ -3436,7 +3429,7 @@ static void valueFlowLifetime(TokenList &tokenlist, ErrorLogger &errorLogger, co
                 value.lifetimeScope = ValueFlow::Value::LifetimeScope::Local;
                 value.tokvalue = lt.token;
                 value.errorPath = std::move(errorPath);
-                if (lt.addressOf || astIsPointer(lt.token) || !Token::Match(lt.token->astParent(), ".|["))
+                if (!isInteriorLifetimeToken(lt))
                     value.lifetimeKind = ValueFlow::Value::LifetimeKind::Address;
                 value.setInconclusive(lt.inconclusive);
                 setTokenValue(tok, std::move(value), settings);
@@ -3447,7 +3440,7 @@ static void valueFlowLifetime(TokenList &tokenlist, ErrorLogger &errorLogger, co
         // Converting to container view
         else if (astIsContainerOwned(tok) && isConvertedToView(tok, settings)) {
             LifetimeStore ls =
-                LifetimeStore{tok, "Converted to container view", ValueFlow::Value::LifetimeKind::SubObject};
+                LifetimeStore{tok, "Converted to container view", ValueFlow::Value::LifetimeKind::Object};
             ls.byRef(tok, tokenlist, errorLogger, settings);
             valueFlowForwardLifetime(tok, tokenlist, errorLogger, settings);
         }

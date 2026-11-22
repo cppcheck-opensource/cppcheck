@@ -942,6 +942,26 @@ private:
               "    free(p);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        // Only the function that returns the object itself gives the address of the variable
+        check("struct S {\n"
+              "    S& self() { return *this; }\n"
+              "    int& get() { return x; }\n"
+              "    int x;\n"
+              "};\n"
+              "void f() {\n"
+              "    S s;\n"
+              "    S* p = &s.self();\n"
+              "    delete p;\n"
+              "}\n"
+              "void g() {\n"
+              "    S s;\n"
+              "    int* p = &s.get();\n"
+              "    delete p;\n"
+              "}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:9:12]: (error) Deallocation of an auto-variable (s) results in undefined behaviour. [autovarInvalidDeallocation]\n",
+            errout_str());
     }
 
     void testinvaliddealloc_string() {

@@ -7168,6 +7168,103 @@ private:
         ASSERT_EQUALS(
             "[test.cpp:7:17] -> [test.cpp:7:24] -> [test.cpp:8:10] -> [test.cpp:9:18]: (error) Reference to vec1 that may be invalid. [invalidContainerReference]\n",
             errout_str());
+
+        // A reference to the container itself stays valid
+        check("int f() {\n"
+              "    std::vector<int> v = {1};\n"
+              "    const std::vector<int>& r = v;\n"
+              "    v.push_back(1);\n"
+              "    return r.size();\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
+
+        check("int f() {\n"
+              "    std::vector<int> v = {1};\n"
+              "    std::vector<int>* p = &v;\n"
+              "    const std::vector<int>& r = *p;\n"
+              "    v.push_back(1);\n"
+              "    return r.size();\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
+
+        check("int f() {\n"
+              "    std::vector<int> v = {1};\n"
+              "    std::vector<int>* p = &v;\n"
+              "    const int* q = &(*p)[0];\n"
+              "    v.push_back(1);\n"
+              "    return *q;\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS(
+            "[test.cpp:3:27] -> [test.cpp:4:20] -> [test.cpp:5:7] -> [test.cpp:2:22] -> [test.cpp:6:13]: (error) Using pointer to local variable 'v' that may be invalid. [invalidContainer]\n",
+            errout_str());
+
+        check("int f() {\n"
+              "    std::vector<int> v = {1};\n"
+              "    const int* q = &*std::begin(v);\n"
+              "    v.push_back(1);\n"
+              "    return *q;\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS(
+            "[test.cpp:3:32] -> [test.cpp:3:20] -> [test.cpp:3:20] -> [test.cpp:4:7] -> [test.cpp:2:22] -> [test.cpp:5:13]: (error) Using pointer to local variable 'v' that may be invalid. [invalidContainer]\n",
+            errout_str());
+
+        // A view refers to the contents of the container
+        check("int f() {\n"
+              "    std::string s = \"a\";\n"
+              "    std::string_view sv = s;\n"
+              "    s += \"x\";\n"
+              "    return sv.size();\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS(
+            "[test.cpp:3:27] -> [test.cpp:4:7] -> [test.cpp:2:17] -> [test.cpp:5:12]: (error) Using object that points to local variable 's' that may be invalid. [invalidContainer]\n",
+            errout_str());
+
+        check("int f() {\n"
+              "    std::vector<int> v = {1};\n"
+              "    std::span<int> sp = v;\n"
+              "    v.push_back(1);\n"
+              "    return sp[0];\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS(
+            "[test.cpp:3:25] -> [test.cpp:4:7] -> [test.cpp:2:22] -> [test.cpp:5:12]: (error) Using object that points to local variable 'v' that may be invalid. [invalidContainer]\n",
+            errout_str());
+
+        check("int f() {\n"
+              "    std::string s = \"a\";\n"
+              "    std::string_view sv = s;\n"
+              "    s[0] = 'b';\n"
+              "    return sv.size();\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
+
+        check("int f() {\n"
+              "    std::string s = \"a\";\n"
+              "    std::string_view sv = s;\n"
+              "    s += \"x\";\n"
+              "    sv = s;\n"
+              "    return sv.size();\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct T { std::string_view sv; };\n"
+              "int f() {\n"
+              "    std::string s = \"a\";\n"
+              "    T t{s};\n"
+              "    s += \"x\";\n"
+              "    return t.sv.size();\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS(
+            "[test.cpp:4:9] -> [test.cpp:5:7] -> [test.cpp:3:17] -> [test.cpp:6:12]: (error) Using object that points to local variable 's' that may be invalid. [invalidContainer]\n",
+            errout_str());
     }
 
     void invalidContainerLifetimeBound() {
@@ -7679,6 +7776,28 @@ private:
               "    auto g = lam(v);\n"
               "    v.push_back(1);\n"
               "    return g();\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
+
+        check("int& first(std::vector<int>& x) { return x[0]; }\n"
+              "int f() {\n"
+              "    std::vector<int> v = {1};\n"
+              "    const int* q = &first(v);\n"
+              "    v.push_back(1);\n"
+              "    return *q;\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS(
+            "[test.cpp:1:31] -> [test.cpp:1:43] -> [test.cpp:4:21] -> [test.cpp:4:20] -> [test.cpp:5:7] -> [test.cpp:3:22] -> [test.cpp:6:13]: (error) Using pointer to local variable 'v' that may be invalid. [invalidContainer]\n",
+            errout_str());
+
+        check("std::vector<int>& same(std::vector<int>& x) { return x; }\n"
+              "int f() {\n"
+              "    std::vector<int> v = {1};\n"
+              "    const std::vector<int>* q = &same(v);\n"
+              "    v.push_back(1);\n"
+              "    return q->size();\n"
               "}\n",
               dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
