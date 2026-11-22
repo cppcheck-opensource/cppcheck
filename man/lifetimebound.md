@@ -418,6 +418,23 @@ This is only reported with `--inconclusive`:
 
     test.cpp:5:15: error, inconclusive: Reference to local variable returned. [returnReference]
 
+Constructors are different, because the constructed object can refer to all of the annotated arguments:
+
+    struct Pair {
+        Pair(const int& a [[clang::lifetimebound]], const int& b [[clang::lifetimebound]]);
+        const int* a;
+        const int* b;
+    };
+
+    Pair f(const int& a) {
+        int b = 0;
+        return Pair(a, b);
+    }
+
+This is reported without `--inconclusive`:
+
+    test.cpp:9:16: error: Returning object that points to local variable 'b' that will be invalid when returning. [returnDanglingLifetime]
+
 # Limitations
 
 - The type comparison only works when the types are written the same way. `std::basic_string_view<char>` from a `std::string` is not recognized as a view of the contents.

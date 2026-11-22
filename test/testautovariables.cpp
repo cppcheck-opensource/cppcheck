@@ -4067,6 +4067,20 @@ private:
             "[test.cpp:9:20] -> [test.cpp:9:20] -> [test.cpp:8:9] -> [test.cpp:9:16]: (error) Returning object that points to local variable 'x' that will be invalid when returning. [returnDanglingLifetime]\n"
             "[test.cpp:13:17] -> [test.cpp:12:17] -> [test.cpp:13:16]: (error) Returning object that points to local variable 's' that will be invalid when returning. [returnDanglingLifetime]\n",
             errout_str());
+
+        // The constructed object can refer to both arguments so this is not inconclusive
+        check("struct Pair {\n"
+              "    Pair(const int& a [[clang::lifetimebound]], const int& b [[clang::lifetimebound]]);\n"
+              "    const int* a;\n"
+              "    const int* b;\n"
+              "};\n"
+              "Pair f(const int& a) {\n"
+              "    int b = 0;\n"
+              "    return Pair(a, b);\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = false));
+        ASSERT_EQUALS(
+            "[test.cpp:8:20] -> [test.cpp:7:9] -> [test.cpp:8:16]: (error) Returning object that points to local variable 'b' that will be invalid when returning. [returnDanglingLifetime]\n",
+            errout_str());
     }
 
     void danglingLifetimeUserConstructor()

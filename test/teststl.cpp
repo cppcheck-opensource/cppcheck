@@ -7474,6 +7474,63 @@ private:
         ASSERT_EQUALS(
             "[test.cpp:5:19] -> [test.cpp:2:14] -> [test.cpp:1:70] -> [test.cpp:2:16] -> [test.cpp:5:21] -> [test.cpp:4:30] -> [test.cpp:6:7] -> [test.cpp:7:12]: (error) Reference to m that may be invalid. [invalidContainerReference]\n",
             errout_str());
+
+        // Constructors
+        check("struct ElemRef {\n"
+              "    ElemRef(const int& x [[clang::lifetimebound]]);\n"
+              "    const int* p;\n"
+              "};\n"
+              "int f() {\n"
+              "    std::vector<int> v = {1};\n"
+              "    ElemRef r(v[0]);\n"
+              "    v.push_back(2);\n"
+              "    return *r.p;\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS(
+            "[test.cpp:7:16] -> [test.cpp:8:7] -> [test.cpp:6:22] -> [test.cpp:9:13]: (error) Using object that points to local variable 'v' that may be invalid. [invalidContainer]\n",
+            errout_str());
+
+        check("struct DataPtr {\n"
+              "    DataPtr(const int* p [[clang::lifetimebound]]);\n"
+              "    const int* p;\n"
+              "};\n"
+              "int f() {\n"
+              "    std::vector<int> v = {1};\n"
+              "    DataPtr r(v.data());\n"
+              "    v.push_back(2);\n"
+              "    return *r.p;\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS(
+            "[test.cpp:7:21] -> [test.cpp:7:21] -> [test.cpp:8:7] -> [test.cpp:6:22] -> [test.cpp:9:13]: (error) Using object that points to local variable 'v' that may be invalid. [invalidContainer]\n",
+            errout_str());
+
+        check("struct VecRef {\n"
+              "    VecRef(const std::vector<int>& v [[clang::lifetimebound]]);\n"
+              "    const std::vector<int>* p;\n"
+              "};\n"
+              "std::size_t f() {\n"
+              "    std::vector<int> v = {1};\n"
+              "    VecRef r(v);\n"
+              "    v.push_back(2);\n"
+              "    return r.p->size();\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct VecPtr {\n"
+              "    VecPtr(const std::vector<int>* p [[clang::lifetimebound]]);\n"
+              "    const std::vector<int>* p;\n"
+              "};\n"
+              "std::size_t f() {\n"
+              "    std::vector<int> v = {1};\n"
+              "    VecPtr r(&v);\n"
+              "    v.push_back(2);\n"
+              "    return r.p->size();\n"
+              "}\n",
+              dinit(CheckOptions, $.inconclusive = true));
+        ASSERT_EQUALS("", errout_str());
     }
 
     // The result of a call has the kind of lifetime that the returned expression has
