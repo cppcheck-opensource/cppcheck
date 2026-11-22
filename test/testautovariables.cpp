@@ -3647,7 +3647,7 @@ private:
               "    return by_value(v.begin());\n"
               "}\n");
         ASSERT_EQUALS(
-            "[test.cpp:7:28] -> [test.cpp:7:28] -> [test.cpp:3:12] -> [test.cpp:3:25] -> [test.cpp:6:22] -> [test.cpp:7:20]: (error) Returning object that points to local variable 'v' that will be invalid when returning. [returnDanglingLifetime]\n",
+            "[test.cpp:7:28] -> [test.cpp:7:28] -> [test.cpp:3:12] -> [test.cpp:3:25] -> [test.cpp:6:22] -> [test.cpp:7:20]: (error) Returning lambda that captures local variable 'v' that will be invalid when returning. [returnDanglingLifetime]\n",
             errout_str());
 
         check("template<class T>\n"
@@ -3659,7 +3659,7 @@ private:
               "    return by_value(v.begin());\n"
               "}\n");
         ASSERT_EQUALS(
-            "[test.cpp:7:28] -> [test.cpp:7:28] -> [test.cpp:3:12] -> [test.cpp:3:25] -> [test.cpp:6:22] -> [test.cpp:7:20]: (error) Returning object that points to local variable 'v' that will be invalid when returning. [returnDanglingLifetime]\n",
+            "[test.cpp:7:28] -> [test.cpp:7:28] -> [test.cpp:3:12] -> [test.cpp:3:25] -> [test.cpp:6:22] -> [test.cpp:7:20]: (error) Returning lambda that captures local variable 'v' that will be invalid when returning. [returnDanglingLifetime]\n",
             errout_str());
 
         check("auto by_ref(int& x) {\n"
@@ -3670,7 +3670,7 @@ private:
               "    return by_ref(i);\n"
               "}\n");
         ASSERT_EQUALS(
-            "[test.cpp:2:12] -> [test.cpp:1:19] -> [test.cpp:2:25] -> [test.cpp:6:19] -> [test.cpp:5:9] -> [test.cpp:6:18]: (error) Returning object that points to local variable 'i' that will be invalid when returning. [returnDanglingLifetime]\n",
+            "[test.cpp:2:12] -> [test.cpp:1:19] -> [test.cpp:2:25] -> [test.cpp:6:19] -> [test.cpp:5:9] -> [test.cpp:6:18]: (error) Returning lambda that captures local variable 'i' that will be invalid when returning. [returnDanglingLifetime]\n",
             errout_str());
 
         check("auto by_ref(const int& x) {\n"
@@ -3893,19 +3893,21 @@ private:
             "[test.cpp:12:12] -> [test.cpp:11:7] -> [test.cpp:12:18]: (error) Returning pointer to local variable 's' that will be invalid when returning. [returnDanglingLifetime]\n",
             errout_str());
 
-        check("struct S {\n"
+        check("struct S;\n"
+              "const int& lookup(const S& s);\n"
+              "struct S {\n"
               "    const int& get() const;\n"
               "    int m;\n"
               "};\n"
               "const int& S::get() const [[clang::lifetimebound]] {\n"
-              "    return *std::addressof(m);\n"
+              "    return lookup(*this);\n"
               "}\n"
               "const int& f() {\n"
               "    S s{};\n"
               "    return s.get();\n"
               "}\n");
         ASSERT_EQUALS(
-            "[test.cpp:10:14] -> [test.cpp:10:17]: (error) Reference to local variable returned. [returnReference]\n",
+            "[test.cpp:12:14] -> [test.cpp:12:17]: (error) Reference to local variable returned. [returnReference]\n",
             errout_str());
 
         check("struct S {\n"
@@ -3978,6 +3980,79 @@ private:
               "}\n", dinit(CheckOptions, $.inconclusive = false));
         ASSERT_EQUALS(
             "[test.cpp:12:20] -> [test.cpp:12:20] -> [test.cpp:11:9] -> [test.cpp:12:16]: (error) Returning object that points to local variable 'x' that will be invalid when returning. [returnDanglingLifetime]\n",
+            errout_str());
+
+        // The lifetimes from the function body and from the attribute are both used
+        check("const int* h(const int* p);\n"
+              "const int* g(const int* p [[clang::lifetimebound]], const int* q, bool b) {\n"
+              "    if (b)\n"
+              "        return h(p);\n"
+              "    return q;\n"
+              "}\n"
+              "const int* f1(const int* q) {\n"
+              "    int x = 0;\n"
+              "    return g(&x, q, true);\n"
+              "}\n"
+              "const int* f2(const int* p) {\n"
+              "    int y = 0;\n"
+              "    return g(p, &y, false);\n"
+              "}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:9:14] -> [test.cpp:9:14] -> [test.cpp:8:9] -> [test.cpp:9:13]: (error) Returning pointer to local variable 'x' that will be invalid when returning. [returnDanglingLifetime]\n"
+            "[test.cpp:13:17] -> [test.cpp:13:17] -> [test.cpp:12:9] -> [test.cpp:13:13]: (error, inconclusive) Returning pointer to local variable 'y' that will be invalid when returning. [returnDanglingLifetime]\n",
+            errout_str());
+
+        check("const int& h(const int& x);\n"
+              "const int& g(const int& x [[clang::lifetimebound]], const int& y, bool b) {\n"
+              "    if (b)\n"
+              "        return h(x);\n"
+              "    return y;\n"
+              "}\n"
+              "const int& f1(const int& y) {\n"
+              "    int x = 0;\n"
+              "    return g(x, y, true);\n"
+              "}\n"
+              "const int& f2(const int& x) {\n"
+              "    int y = 0;\n"
+              "    return g(x, y, false);\n"
+              "}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:9:12] -> [test.cpp:9:13]: (error) Reference to local variable returned. [returnReference]\n"
+            "[test.cpp:2:65] -> [test.cpp:5:12] -> [test.cpp:13:12] -> [test.cpp:13:13]: (error, inconclusive) Reference to local variable returned. [returnReference]\n",
+            errout_str());
+
+        // The attribute makes a lifetime from one of several return statements conclusive
+        check("const int& g(const int& x [[clang::lifetimebound]], bool b) {\n"
+              "    static int y = 0;\n"
+              "    if (b)\n"
+              "        return y;\n"
+              "    return x;\n"
+              "}\n"
+              "const int& f() {\n"
+              "    int x = 0;\n"
+              "    return g(x, false);\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = false));
+        ASSERT_EQUALS(
+            "[test.cpp:1:51] -> [test.cpp:5:12] -> [test.cpp:9:12] -> [test.cpp:9:13]: (error) Reference to local variable returned. [returnReference]\n",
+            errout_str());
+
+        check("const char* get(const std::string& s);\n"
+              "struct View {\n"
+              "    View(const std::string& s [[clang::lifetimebound]], const int* q) : mq(q) { mp = get(s); }\n"
+              "    const char* mp;\n"
+              "    const int* mq;\n"
+              "};\n"
+              "View f1(const std::string& s) {\n"
+              "    int x = 0;\n"
+              "    return View(s, &x);\n"
+              "}\n"
+              "View f2(const int* q) {\n"
+              "    std::string s;\n"
+              "    return View(s, q);\n"
+              "}\n", dinit(CheckOptions, $.inconclusive = false));
+        ASSERT_EQUALS(
+            "[test.cpp:9:20] -> [test.cpp:9:20] -> [test.cpp:8:9] -> [test.cpp:9:16]: (error) Returning object that points to local variable 'x' that will be invalid when returning. [returnDanglingLifetime]\n"
+            "[test.cpp:13:17] -> [test.cpp:12:17] -> [test.cpp:13:16]: (error) Returning object that points to local variable 's' that will be invalid when returning. [returnDanglingLifetime]\n",
             errout_str());
     }
 
@@ -4699,7 +4774,7 @@ private:
               "    return y();\n"
               "}\n");
         ASSERT_EQUALS(
-            "[test.cpp:3:12] -> [test.cpp:2:13] -> [test.cpp:4:16] -> [test.cpp:8:16] -> [test.cpp:8:16] -> [test.cpp:9:12]: (error) Using object that is a temporary. [danglingTemporaryLifetime]\n",
+            "[test.cpp:3:12] -> [test.cpp:2:13] -> [test.cpp:4:16] -> [test.cpp:8:16] -> [test.cpp:8:16] -> [test.cpp:9:12]: (error) Using lambda that is a temporary. [danglingTemporaryLifetime]\n",
             errout_str());
     }
 
@@ -4915,7 +4990,7 @@ private:
               "    return A().f();\n"
               "}\n");
         ASSERT_EQUALS(
-            "[test.cpp:4:16] -> [test.cpp:4:28] -> [test.cpp:8:13] -> [test.cpp:8:17]: (error) Returning object that will be invalid when returning. [returnDanglingLifetime]\n",
+            "[test.cpp:4:16] -> [test.cpp:4:28] -> [test.cpp:8:13] -> [test.cpp:8:17]: (error) Returning lambda that will be invalid when returning. [returnDanglingLifetime]\n",
             errout_str());
 
         check("struct A {\n"
@@ -4940,7 +5015,7 @@ private:
               "    return A{&i}.f();\n"
               "}\n");
         ASSERT_EQUALS(
-            "[test.cpp:9:14] -> [test.cpp:9:14] -> [test.cpp:9:13] -> [test.cpp:4:16] -> [test.cpp:4:18] -> [test.cpp:8:9] -> [test.cpp:9:19]: (error) Returning object that points to local variable 'i' that will be invalid when returning. [returnDanglingLifetime]\n",
+            "[test.cpp:9:14] -> [test.cpp:9:14] -> [test.cpp:9:13] -> [test.cpp:4:16] -> [test.cpp:4:18] -> [test.cpp:8:9] -> [test.cpp:9:19]: (error) Returning lambda that captures local variable 'i' that will be invalid when returning. [returnDanglingLifetime]\n",
             errout_str());
 
         check("struct S {\n"
