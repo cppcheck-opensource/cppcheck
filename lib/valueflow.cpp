@@ -1481,27 +1481,26 @@ static bool checkDotLifetime(const Token* dot, const Token* tok)
     return true;
 }
 
-static bool isSameTypeToken(const Token* tok1, const Token* tok2)
+static const Token* skipCV(const Token* tok)
 {
-    return tok1->str() == tok2->str() && tok1->isUnsigned() == tok2->isUnsigned() &&
-           tok1->isSigned() == tok2->isSigned() && tok1->isLong() == tok2->isLong();
+    while (Token::Match(tok, "const|volatile"))
+        tok = tok->next();
+    return tok;
 }
 
 // Returns the token after the type at typeTok when it is the same type as the template argument at argTok.
 // The tokens are compared so that types that are not declared in the translation unit can be matched.
 static const Token* skipSameType(const Token* typeTok, const Token* argTok)
 {
-    while (Token::Match(typeTok, "const|volatile"))
-        typeTok = typeTok->next();
-    while (Token::Match(argTok, "const|volatile"))
-        argTok = argTok->next();
+    typeTok = skipCV(typeTok);
+    argTok = skipCV(argTok);
     if (!Token::Match(argTok, "%name%|::"))
         return nullptr;
     int depth = 0;
     for (; typeTok && argTok; typeTok = typeTok->next(), argTok = argTok->next()) {
         if (depth == 0 && Token::Match(argTok, ",|>"))
             return typeTok;
-        if (!isSameTypeToken(typeTok, argTok))
+        if (typeTok->str() != argTok->str() || !compareTokenFlags(typeTok, argTok, false))
             return nullptr;
         if (typeTok->str() == "<")
             depth++;
@@ -1536,14 +1535,10 @@ static bool returnsElementOf(const Function* f, const ValueType& container, cons
     if (!container.containerTypeToken)
         return container.container->stdStringLike && result.pointer == 0 &&
                (result.type == ValueType::Type::CHAR || result.type == ValueType::Type::WCHAR_T);
-    const Token* tok = skipSameType(f->retDef, container.containerTypeToken);
-    while (Token::Match(tok, "const|volatile"))
-        tok = tok->next();
+    const Token* tok = skipCV(skipSameType(f->retDef, container.containerTypeToken));
     if (!Token::simpleMatch(tok, reference ? "&" : "*"))
         return false;
-    tok = tok->next();
-    while (Token::Match(tok, "const|volatile"))
-        tok = tok->next();
+    tok = skipCV(tok->next());
     return tok && !Token::Match(tok, "*|&|&&");
 }
 
@@ -1573,12 +1568,13 @@ enum class LifetimeBoundRelation : std::uint8_t {
     Iterator
 };
 
-// The bound object is the argument (objIndirect is 0) or what the argument points to (objIndirect is 1)
+// The bound object is the argument when byRef is set, otherwise it is what the argument points to
 static LifetimeBoundRelation getLifetimeBoundRelation(const ValueType* objType,
-                                                      nonneg int objIndirect,
+                                                      bool byRef,
                                                       const Token* call,
                                                       const Function* f)
 {
+    const nonneg int objIndirect = byRef ? 0 : 1;
     const ValueType* resultType = call->valueType();
     if (!objType || !resultType || objType->pointer < objIndirect)
         return LifetimeBoundRelation::Unknown;
@@ -1713,15 +1709,24 @@ struct LifetimeBoundArg {
     LifetimeBoundRelation relation;
 };
 
+static bool hasLifetimeBound(const Function* f)
+{
+    return f->isAttributeLifetimeBound() ||
+           std::any_of(f->argumentList.cbegin(), f->argumentList.cend(), [](const Variable& param) {
+        return param.isLifetimeBound();
+    });
+}
+
 // The arguments in the function call that are passed to parameters marked with the lifetimebound attribute
 static std::vector<LifetimeBoundArg> getLifetimeBoundArgs(const Token* ftok, const Function* f)
 {
     std::vector<LifetimeBoundArg> result;
+    if (!hasLifetimeBound(f))
+        return result;
     if (f->isAttributeLifetimeBound() && Token::Match(ftok->astParent(), ". %name% (") && astIsRHS(ftok)) {
         const Token* objTok = ftok->astParent()->astOperand1();
         const bool byRef = !derefShared(ftok->astParent());
-        result.push_back(
-            {objTok, nullptr, byRef, getLifetimeBoundRelation(objTok->valueType(), byRef ? 0 : 1, ftok->next(), f)});
+        result.push_back({objTok, nullptr, byRef, getLifetimeBoundRelation(objTok->valueType(), byRef, ftok->next(), f)});
     }
     const std::vector<const Token*> args = getArguments(ftok);
     for (const Variable& param : f->argumentList) {
@@ -1729,20 +1734,10 @@ static std::vector<LifetimeBoundArg> getLifetimeBoundArgs(const Token* ftok, con
         if (!param.isLifetimeBound() || param.index() >= args.size())
             continue;
         const bool byRef = param.isReference() || param.isRValueReference();
-        result.push_back({args[param.index()],
-                          &param,
-                          byRef,
-                          getLifetimeBoundRelation(param.valueType(), byRef ? 0 : 1, ftok->next(), f)});
+        result.push_back(
+            {args[param.index()], &param, byRef, getLifetimeBoundRelation(param.valueType(), byRef, ftok->next(), f)});
     }
     return result;
-}
-
-static bool hasLifetimeBound(const Function* f)
-{
-    return f->isAttributeLifetimeBound() ||
-           std::any_of(f->argumentList.cbegin(), f->argumentList.cend(), [](const Variable& param) {
-        return param.isLifetimeBound();
-    });
 }
 
 template<class Predicate>
@@ -1878,9 +1873,8 @@ static std::vector<ValueFlow::LifetimeToken> getLifetimeTokens(const Token* tok,
         if (f) {
             if (!Function::returnsReference(f))
                 return {{tok, std::move(errorPath)}};
-            std::vector<ValueFlow::LifetimeToken> boundlts;
-            if (hasLifetimeBound(f))
-                boundlts = getLifetimeBoundTokens(tok, f, escape, errorPath, pred, settings, depth);
+            std::vector<ValueFlow::LifetimeToken> boundlts =
+                getLifetimeBoundTokens(tok, f, escape, errorPath, pred, settings, depth);
             std::vector<ValueFlow::LifetimeToken> result;
             std::vector<const Token*> returns = Function::findReturns(f);
             for (const Token* returnTok : returns) {
@@ -2921,7 +2915,7 @@ static void valueFlowLifetimeFunction(Token *tok, const TokenList &tokenlist, Er
                     // The returned expression refers to a member so it is a part of the object
                     LifetimeStore ls = LifetimeStore{memtok,
                                                      "Passed to member function '" + tok->expressionString() + "'.",
-                                                     getReturnedLifetimeKind(v,tok->next(), true)};
+                                                     getReturnedLifetimeKind(v, tok->next(),true)};
                     ls.inconclusive = inconclusive;
                     ls.forward = false;
                     ls.errorPath = v.errorPath;
@@ -2946,34 +2940,34 @@ static void valueFlowLifetimeFunction(Token *tok, const TokenList &tokenlist, Er
                 ls.errorPath = v.errorPath;
                 ls.errorPath.emplace_front(returnTok, "Return " + lifetimeType(returnTok, &v) + ".");
                 if (!v.isArgumentLifetimeValue() && (var->isReference() || var->isRValueReference())) {
-                    ls.type = getReturnedLifetimeKind(v,tok->next(), isInteriorArgument(ls.argtok, settings));
+                    const bool interior = v.lifetimeKind == ValueFlow::Value::LifetimeKind::Address &&
+                                          isInteriorArgument(ls.argtok, settings);
+                    ls.type = getReturnedLifetimeKind(v, tok->next(), interior);
                     update |= ls.byRef(tok->next(), tokenlist, errorLogger, settings);
                 } else if (v.isArgumentLifetimeValue()) {
-                    ls.type = getReturnedLifetimeKind(v,tok->next(), false);
+                    ls.type = getReturnedLifetimeKind(v, tok->next(),false);
                     update |= ls.byVal(tok->next(), tokenlist, errorLogger, settings);
                 }
             }
         }
-        if (hasLifetimeBound(f)) {
-            const std::vector<LifetimeBoundArg> boundArgs = getLifetimeBoundArgs(tok, f);
-            for (const LifetimeBoundArg& boundArg : boundArgs) {
-                LifetimeStore ls{boundArg.tok,
-                                 boundArg.param ? "Passed to '" + tok->expressionString() + "'."
-                                                : "Passed to member function '" + tok->expressionString() + "'.",
-                                 ValueFlow::Value::LifetimeKind::Object};
-                ls.inconclusive = boundArgs.size() > 1;
-                ls.forward = false;
-                // The lifetimes from the function body are stored before this
-                ls.keepKind = true;
-                if (boundArg.byRef) {
-                    ls.type = getLifetimeBoundKind(boundArg.relation, isInteriorArgument(boundArg.tok, settings));
-                    update |= ls.byRef(tok->next(), tokenlist, errorLogger, settings);
-                } else {
-                    ls.byValKind = LifetimeBoundByValKind{boundArg.relation,
-                                                          astIsIterator(tok->next()),
-                                                          boundArg.param && isViewType(boundArg.param->valueType())};
-                    update |= ls.byVal(tok->next(), tokenlist, errorLogger, settings);
-                }
+        const std::vector<LifetimeBoundArg> boundArgs = getLifetimeBoundArgs(tok, f);
+        for (const LifetimeBoundArg& boundArg : boundArgs) {
+            LifetimeStore ls{boundArg.tok,
+                             boundArg.param ? "Passed to '" + tok->expressionString() + "'."
+                                            : "Passed to member function '" + tok->expressionString() + "'.",
+                             ValueFlow::Value::LifetimeKind::Object};
+            ls.inconclusive = boundArgs.size() > 1;
+            ls.forward = false;
+            // The lifetimes from the function body are stored before this
+            ls.keepKind = true;
+            if (boundArg.byRef) {
+                ls.type = getLifetimeBoundKind(boundArg.relation, isInteriorArgument(boundArg.tok, settings));
+                update |= ls.byRef(tok->next(), tokenlist, errorLogger, settings);
+            } else {
+                ls.byValKind = LifetimeBoundByValKind{boundArg.relation,
+                                                      astIsIterator(tok->next()),
+                                                      boundArg.param && isViewType(boundArg.param->valueType())};
+                update |= ls.byVal(tok->next(), tokenlist, errorLogger, settings);
             }
         }
         if (update)
