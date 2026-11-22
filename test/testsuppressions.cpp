@@ -1075,6 +1075,18 @@ private:
         ASSERT_EQUALS("[test.cpp:4:18]: (error) Division by zero. [zerodiv]\n"
                       "[test.cpp:2:1]: (information) Unmatched suppression: zerodiv [unmatchedSuppression]\n", errout_str());
 
+        // function-like macro name that is not expanded, on a line where another macro is
+        ASSERT_EQUALS(1,
+                      (this->*check)("#define DIV(A,B) A/B\n"
+                                     "// cppcheck-suppress-macro zerodiv\n"
+                                     "#define ALIAS(A,B) A/B\n"
+                                     "void f() {\n"
+                                     "    int ALIAS = DIV(1,0);\n"
+                                     "}\n",
+                                     ""));
+        ASSERT_EQUALS("[test.cpp:5:17]: (error) Division by zero. [zerodiv]\n"
+                      "[test.cpp:3:1]: (information) Unmatched suppression: zerodiv [unmatchedSuppression]\n", errout_str());
+
         // empty macro on the line
         ASSERT_EQUALS(1,
                       (this->*check)("// cppcheck-suppress-macro zerodiv\n"
