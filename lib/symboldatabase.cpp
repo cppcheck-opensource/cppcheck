@@ -888,9 +888,16 @@ void SymbolDatabase::createSymbolDatabaseClassInfo()
 }
 
 
-static std::vector<nonneg int> findLifetimeBoundArgs(const Token* argStart)
+namespace {
+    struct LifetimeBoundParam {
+        nonneg int index;
+        Token::LifetimeAttrMode mode;
+    };
+}
+
+static std::vector<LifetimeBoundParam> findLifetimeBoundParams(const Token* argStart)
 {
-    std::vector<nonneg int> result;
+    std::vector<LifetimeBoundParam> result;
     if (!Token::simpleMatch(argStart, "("))
         return result;
     nonneg int index = 0;
@@ -899,8 +906,8 @@ static std::vector<nonneg int> findLifetimeBoundArgs(const Token* argStart)
             tok = tok->link();
         if (tok->str() == ",")
             index++;
-        else if (tok->isAttributeLifetimeBound() && (result.empty() || result.back() != index))
-            result.push_back(index);
+        else if (tok->isAttributeLifetimeBound() && (result.empty() || result.back().index != index))
+            result.push_back({index, tok->getAttributeLifetimeBound()});
     }
     return result;
 }
@@ -921,9 +928,9 @@ void SymbolDatabase::createSymbolDatabaseVariableInfo()
 
             // the attribute can be on the declaration, the definition or both
             for (const Token* argStart : {func->argDef, func->arg}) {
-                for (const nonneg int index : findLifetimeBoundArgs(argStart)) {
-                    if (index < func->argumentList.size())
-                        std::next(func->argumentList.begin(), index)->setFlag(Variable::fIsLifetimeBound, true);
+                for (const LifetimeBoundParam& arg : findLifetimeBoundParams(argStart)) {
+                    if (arg.index < func->argumentList.size())
+                        std::next(func->argumentList.begin(), arg.index)->mLifetimeBound = arg.mode;
                 }
             }
         }
@@ -2527,6 +2534,7 @@ Variable& Variable::operator=(const Variable &var) &
     mIndex = var.mIndex;
     mAccess = var.mAccess;
     mFlags = var.mFlags;
+    mLifetimeBound = var.mLifetimeBound;
     mType = var.mType;
     mScope = var.mScope;
     mDimensions = var.mDimensions;

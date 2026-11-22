@@ -9902,7 +9902,7 @@ void Tokenizer::simplifyAttribute()
 
                 else if (Token::Match(attr, "[(,] lifetimebound|__lifetimebound__ [,)]")) {
                     if (Token* lifetimeBoundTok = getLifetimeBoundTok(tok, getTokenAfterAttributes(tok, true)))
-                        lifetimeBoundTok->isAttributeLifetimeBound(true);
+                        lifetimeBoundTok->setAttributeLifetimeBound(Token::LifetimeAttrMode::OBJECT);
                 }
 
                 else if (functok && Token::simpleMatch(attr, "( __visibility__ ( \"default\" ) )"))
@@ -9990,7 +9990,7 @@ void Tokenizer::simplifyCPPAttribute()
                 while (isCPPAttribute(head) || isAlignAttribute(head))
                     head = skipCPPOrAlignAttribute(head)->next();
                 if (Token* lifetimeBoundTok = getLifetimeBoundTok(tok, head))
-                    lifetimeBoundTok->isAttributeLifetimeBound(true);
+                    lifetimeBoundTok->setAttributeLifetimeBound(Token::LifetimeAttrMode::OBJECT);
             }
             if (Token::findsimplematch(tok->tokAt(2), "noreturn", tok->link())) {
                 Token * head = skipCPPOrAlignAttribute(tok)->next();

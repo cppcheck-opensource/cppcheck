@@ -3943,6 +3943,19 @@ private:
             "[test.cpp:8:14] -> [test.cpp:8:19]: (error) Reference to local variable returned. [returnReference]\n",
             errout_str());
 
+        check("template<class T>\n"
+              "struct Opt {\n"
+              "    const T& value_or(const T& d [[clang::lifetimebound]]) const;\n"
+              "    T t;\n"
+              "};\n"
+              "const int& f(const Opt<int>& o) {\n"
+              "    int d = 0;\n"
+              "    return o.value_or(d);\n"
+              "}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:8:14] -> [test.cpp:8:22]: (error) Reference to local variable returned. [returnReference]\n",
+            errout_str());
+
         check("struct View {\n"
               "    View(const std::string& s [[clang::lifetimebound]], int n);\n"
               "    const char* p;\n"

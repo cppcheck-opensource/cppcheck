@@ -191,7 +191,6 @@ class CPPCHECKLIB Variable {
         fIsSmartPointer = (1 << 14),/** @brief std::shared_ptr|unique_ptr */
         fIsMaybeUnused = (1 << 15), /** @brief marked [[maybe_unused]] */
         fIsInit       = (1 << 16), /** @brief Is variable initialized in declaration */
-        fIsLifetimeBound = (1 << 17), /** @brief function argument marked [[clang::lifetimebound]] */
     };
 
     /**
@@ -654,7 +653,7 @@ public:
      * The return value of the function (or the constructed object) may refer to it.
      */
     bool isLifetimeBound() const {
-        return getFlag(fIsLifetimeBound);
+        return mLifetimeBound != Token::LifetimeAttrMode::NONE;
     }
 
     const ValueType *valueType() const {
@@ -698,6 +697,9 @@ private:
 
     /** @brief flags */
     unsigned int mFlags;
+
+    /** @brief function argument marked [[clang::lifetimebound]] */
+    Token::LifetimeAttrMode mLifetimeBound = Token::LifetimeAttrMode::NONE;
 
     /** @brief pointer to user defined type info (for known types) */
     const Type *mType;

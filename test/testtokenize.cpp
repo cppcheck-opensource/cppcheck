@@ -4690,6 +4690,40 @@ private:
             const Token* z = Token::findsimplematch(tokenizer.tokens(), "z");
             ASSERT(z && !z->isAttributeLifetimeBound());
         }
+        {
+            const char code[] = "const int& f(const int& x [[clang::lifetimebound]], const int& y);\n";
+
+            SimpleTokenizer tokenizer(settingsDefault, *this);
+            ASSERT(tokenizer.tokenize(code));
+
+            const Token* x = Token::findsimplematch(tokenizer.tokens(), "x");
+            ASSERT(x && x->getAttributeLifetimeBound() == Token::LifetimeAttrMode::OBJECT);
+            const Token* y = Token::findsimplematch(tokenizer.tokens(), "y");
+            ASSERT(y && y->getAttributeLifetimeBound() == Token::LifetimeAttrMode::NONE);
+
+            // the attribute is the only difference so it has to be a part of the hash
+            SimpleTokenizer tokenizer2(settingsDefault, *this);
+            ASSERT(tokenizer2.tokenize("const int& f(const int& x, const int& y);\n"));
+            ASSERT(tokenizer.list.calculateHash() != tokenizer2.list.calculateHash());
+        }
+        {
+            // the tokens of the instantiated template are copies
+            const char code[] = "template<class T>\n"
+                                "struct Opt {\n"
+                                "    const T& value_or(const T& d [[clang::lifetimebound]]) const [[clang::lifetimebound]];\n"
+                                "};\n"
+                                "Opt<int> o;\n";
+
+            SimpleTokenizer tokenizer(settingsDefault, *this);
+            ASSERT(tokenizer.tokenize(code));
+
+            ASSERT(!Token::findsimplematch(tokenizer.tokens(), "template"));
+            ASSERT(Token::findsimplematch(tokenizer.tokens(), "const int & value_or ("));
+            const Token* f = Token::findsimplematch(tokenizer.tokens(), "value_or");
+            ASSERT(f && f->isAttributeLifetimeBound());
+            const Token* d = Token::findsimplematch(tokenizer.tokens(), "d");
+            ASSERT(d && d->isAttributeLifetimeBound());
+        }
     }
 
     void attributeAlignasBefore() {

@@ -84,6 +84,8 @@ class CPPCHECKLIB Token {
 public:
     enum CppcheckAttributesType : std::uint8_t { LOW, HIGH };
     enum class Cpp11init : std::uint8_t { UNKNOWN, CPP11INIT, NOINIT };
+    /** What a lifetime attribute such as [[clang::lifetimebound]] applies to. OBJECT is the object that is passed. */
+    enum class LifetimeAttrMode : std::uint8_t { NONE, OBJECT };
 
 private:
     struct Impl {
@@ -163,6 +165,9 @@ private:
         }
 
         std::string mAttributeCleanup;
+
+        // [[clang::lifetimebound]], __attribute__((lifetimebound))
+        LifetimeAttrMode mAttributeLifetimeBound{LifetimeAttrMode::NONE};
 
         // For memoization, to speed up parsing of huge arrays #8897
         Cpp11init mCpp11init{Cpp11init::UNKNOWN};
@@ -587,10 +592,17 @@ public:
         setFlag(fIsAttributeFallthrough, value);
     }
     bool isAttributeLifetimeBound() const {
-        return getFlag(fIsAttributeLifetimeBound);
+        return mImpl->mAttributeLifetimeBound != LifetimeAttrMode::NONE;
     }
-    void isAttributeLifetimeBound(const bool value) {
-        setFlag(fIsAttributeLifetimeBound, value);
+    LifetimeAttrMode getAttributeLifetimeBound() const {
+        return mImpl->mAttributeLifetimeBound;
+    }
+    void setAttributeLifetimeBound(LifetimeAttrMode mode) {
+        mImpl->mAttributeLifetimeBound = mode;
+    }
+    /** Copy the lifetime attributes. They are not a part of flags(). */
+    void copyLifetimeAttributes(const Token& tok) {
+        mImpl->mAttributeLifetimeBound = tok.mImpl->mAttributeLifetimeBound;
     }
     std::vector<std::string> getAttributeAlignas() const {
         return mImpl->mAttributeAlignas ? *mImpl->mAttributeAlignas : std::vector<std::string>();
@@ -1528,7 +1540,6 @@ private:
         fIsInitBracket          = (1ULL << 44), // Is this bracket used as a part of variable initialization i.e: int a{5}, b(2);
         fIsAnonymous            = (1ULL << 45), // Is this a token added for an unnamed member
         fIsInsertedBrace        = (1ULL << 46), // brace added when simplifying e.g. if (x) f(); => if (x) { f(); }
-        fIsAttributeLifetimeBound = (1ULL << 47), // [[clang::lifetimebound]], __attribute__((lifetimebound))
     };
 
     enum : std::uint8_t {
