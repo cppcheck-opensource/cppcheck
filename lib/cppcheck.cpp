@@ -326,9 +326,9 @@ namespace {
     };
 }
 
-std::string CppCheck::cmdFileName(std::string f)
+/** throw if filename contains characters that potentially has a special meaning for the shell */
+static void checkCmdFileName(const std::string& f)
 {
-    // do not allow characters that potentially has a special meaning for the shell
     const auto badpos = f.find_first_of("\t\n\r;$<>|&`");
     if (badpos != std::string::npos) {
         std::string c;
@@ -342,6 +342,11 @@ std::string CppCheck::cmdFileName(std::string f)
             c += f[badpos];
         throw std::runtime_error("Cppcheck does not allow character " + c + " in filename " + f);
     }
+}
+
+std::string CppCheck::cmdFileName(std::string f)
+{
+    checkCmdFileName(f);
     f = Path::toNativeSeparators(std::move(f));
     if (f.find(' ') != std::string::npos)
         return "\"" + f + "\"";
@@ -477,9 +482,11 @@ static std::vector<picojson::value> executeAddon(const AddonInfo &addonInfo,
 
     std::string pythonExe;
 
-    if (!addonInfo.executable.empty())
-        pythonExe = CppCheck::cmdFileName(addonInfo.executable);
-    else if (!addonInfo.python.empty())
+    if (!addonInfo.executable.empty()) {
+        // no quoting here, executeCommand quotes the executable if needed
+        checkCmdFileName(addonInfo.executable);
+        pythonExe = addonInfo.executable;
+    } else if (!addonInfo.python.empty())
         pythonExe = CppCheck::cmdFileName(addonInfo.python);
     else if (!defaultPythonExe.empty())
         pythonExe = CppCheck::cmdFileName(defaultPythonExe);
