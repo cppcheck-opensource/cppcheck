@@ -98,7 +98,7 @@ namespace ValueFlow
 
     MathLib::bigint truncateIntValue(MathLib::bigint value, size_t value_size, const ValueType* dst, const Platform& platform)
     {
-        if (value_size == 0)
+        if (value_size == 0 || value_size >= sizeof(MathLib::biguint))
             return value;
 
         const MathLib::biguint unsignedMaxValue = std::numeric_limits<MathLib::biguint>::max() >> ((sizeof(unsignedMaxValue) - value_size) * 8);
@@ -360,7 +360,7 @@ namespace ValueFlow
                 value.intvalue = 0;
             }
         }
-        if (bit < MathLib::bigint_bits) {
+        if (bit > 0 && bit < MathLib::bigint_bits) {
             constexpr MathLib::biguint one = 1;
             value.intvalue &= (one << bit) - 1;
             if (sign == ValueType::Sign::SIGNED && value.intvalue & (one << (bit - 1))) {
