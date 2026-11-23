@@ -936,6 +936,77 @@ private:
               "    return 0;\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:4:26]: (warning) Division by zero. [zerodivcond]\n", errout_str());
+
+        // the path that falls through the then-block assigns a (#15264)
+        check("bool g();\n"
+              "int f(int a) {\n"
+              "    if (a == 0) {\n"
+              "        bool w = false;\n"
+              "        if (g())\n"
+              "            w = true;\n"
+              "        if (!w)\n"
+              "            return 0;\n"
+              "        a = 1;\n"
+              "    }\n"
+              "    return 10 / a;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("bool g();\n"
+              "int f(int a, int n) {\n"
+              "    if (a == 0) {\n"
+              "        for (int i = 0; i < n; i++) {\n"
+              "            bool w = false;\n"
+              "            if (g())\n"
+              "                w = true;\n"
+              "            if (!w)\n"
+              "                return 0;\n"
+              "        }\n"
+              "        a = 1;\n"
+              "    }\n"
+              "    return 10 / a;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // the then-paths that are not followed at the normal check level return as well
+        Settings settingsNormal = settingsBuilder(settings1).checkLevel(Settings::CheckLevel::normal).build();
+        check("bool g();\n"
+              "bool h();\n"
+              "void use(int);\n"
+              "int f(int x) {\n"
+              "    if (x == 0) {\n"
+              "        bool w = true;\n"
+              "        if (g())\n"
+              "            use(1);\n"
+              "        if (h())\n"
+              "            use(2);\n"
+              "        if (w) {\n"
+              "            use(3);\n"
+              "            return 0;\n"
+              "        }\n"
+              "    }\n"
+              "    return 10 / x;\n"
+              "}\n", dinit(CheckOptions, $.settings = &settingsNormal));
+        ASSERT_EQUALS("", errout_str());
+
+        // a fork that stops at the branch limit does not fall through with the assignment
+        check("bool g(int);\n"
+              "void use(int);\n"
+              "int f(int x) {\n"
+              "    if (x == 0) {\n"
+              "        bool w = false;\n"
+              "        if (g(0))\n"
+              "            w = true;\n"
+              "        if (!w)\n"
+              "            return 0;\n"
+              "        if (g(1)) use(1);\n"
+              "        if (g(2)) use(2);\n"
+              "        if (g(3)) use(3);\n"
+              "        x = 1;\n"
+              "    }\n"
+              "    return 10 / x;\n"
+              "}\n", dinit(CheckOptions, $.settings = &settingsNormal));
+        ASSERT_EQUALS("", errout_str());
     }
 
     void zeroDivErrorPath() {

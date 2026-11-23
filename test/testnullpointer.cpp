@@ -174,6 +174,7 @@ private:
         TEST_CASE(nullpointerDelete);
         TEST_CASE(nullpointerSubFunction);
         TEST_CASE(nullpointerExit);
+        TEST_CASE(nullpointerAfterConditionalEscape); // #15264
         TEST_CASE(nullpointerStdString);
         TEST_CASE(nullpointerStdStream);
         TEST_CASE(nullpointerSmartPointer);
@@ -4268,6 +4269,25 @@ private:
               "  k->f();\n"
               "}\n", dinit(CheckOptions, $.inconclusive = true));
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void nullpointerAfterConditionalEscape() {
+        // the then-block falls through when g() is true, so p can be null after it
+        check("bool g();\n"
+              "void use(int);\n"
+              "void f(int *p) {\n"
+              "    if (!p) {\n"
+              "        bool w = false;\n"
+              "        if (g())\n"
+              "            w = true;\n"
+              "        if (!w)\n"
+              "            return;\n"
+              "    }\n"
+              "    use(*p);\n"
+              "}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:4:9] -> [test.cpp:11:10]: (warning) Either the condition '!p' is redundant or there is possible null pointer dereference: p. [nullPointerRedundantCheck]\n",
+            errout_str());
     }
 
     void nullpointerStdString() {
