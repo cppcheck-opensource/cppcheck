@@ -154,3 +154,16 @@ def test_unpack_package_link_redirected_later(tmpdir):
     if os.path.islink(inc_path):
         assert os.path.samefile(inc_path, os.path.join(temp_path, 'pkg', 'src', 'main.c'))
     assert os.listdir(outside_path) == ['secret.c']
+
+def test_unpack_package_hardlink_missing_target(tmpdir):
+    work_path = str(tmpdir)
+    tgz = os.path.join(work_path, 'temp.tgz')
+    with tarfile.open(tgz, 'w:gz') as tf:
+        _add_tar_member(tf, 'pkg/main.c')
+        # the target is neither on disk nor in the archive, so tarfile raises KeyError instead of OSError
+        _add_tar_member(tf, 'pkg/copy.c', linkname='pkg/missing.c', linktype=tarfile.LNKTYPE)
+
+    temp_path, source_found = unpack_package(work_path, tgz)
+    assert source_found
+    assert os.path.isfile(os.path.join(temp_path, 'pkg', 'main.c'))
+    assert not os.path.lexists(os.path.join(temp_path, 'pkg', 'copy.c'))

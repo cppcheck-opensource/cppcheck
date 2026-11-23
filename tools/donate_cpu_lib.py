@@ -443,7 +443,8 @@ def unpack_package(work_path, tgz, cpp_only=False, c_only=False, skip_files=None
                         pass
                     except AttributeError:
                         pass
-                    except tarfile.TarError:
+                    except (tarfile.TarError, KeyError):
+                        # KeyError: hardlink to a member that is neither on disk nor in the archive
                         pass
             removed = __remove_escaping_links(real_temp_path)
             extracted -= removed
