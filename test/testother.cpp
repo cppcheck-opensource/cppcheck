@@ -5096,6 +5096,26 @@ private:
         ASSERT_EQUALS("[test.cpp:3:8]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n"
                       "[test.cpp:3:8]: (style) Parameter 'q' can be declared as pointer to const [constParameterPointer]\n",
                       errout_str());
+
+        check("int f(int** pp) {\n" // #15267
+              "    int* s = *pp;\n"
+              "    *pp += 2;\n"
+              "    return *s;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:10]: (style) Variable 's' can be declared as pointer to const [constVariablePointer]\n", errout_str());
+
+        check("int f(int* p) {\n"
+              "    int* s = p;\n"
+              "    p -= 2;\n"
+              "    return *s;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:10]: (style) Variable 's' can be declared as pointer to const [constVariablePointer]\n", errout_str());
+
+        check("void f(int* p) {\n" // writing through the alias changes the pointee
+              "    int* s = p;\n"
+              "    *p += 2;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void constArray() {
