@@ -140,27 +140,27 @@ ifeq (g++, $(findstring g++,$(CXX)))
 endif
 override CXXFLAGS += -std=c++11
 ifeq ($(HAVE_RULES),yes)
-    PCRE_CONFIG = $(shell which pcre-config)
+    PCRE_CONFIG = $(shell which pcre2-config)
     ifeq ($(PCRE_CONFIG),)
-        $(error Did not find pcre-config)
+        $(error Did not find pcre2-config)
     endif
     override CXXFLAGS += $(shell $(PCRE_CONFIG) --cflags)
     override CPPFLAGS += -DHAVE_RULES
     ifdef LIBS
-        LIBS += $(shell $(PCRE_CONFIG) --libs)
+        LIBS += $(shell $(PCRE_CONFIG) --libs8)
     else
-        LIBS=$(shell $(PCRE_CONFIG) --libs)
+        LIBS=$(shell $(PCRE_CONFIG) --libs8)
     endif
 else ifneq ($(HAVE_RULES),)
     $(error invalid HAVE_RULES value '$(HAVE_RULES)')
 endif
 
 # older make versions do not support # in $(shell) and newer ones handle the escape sequence literally
-REQUIRE_ESCAPE=$(shell echo "\#define DEF" | $(CXX) -c -xc - 2> /dev/null && echo "1" || echo "0")
+REQUIRE_ESCAPE=$(shell echo "\#define DEF" | $(CXX) -fsyntax-only -xc - 2> /dev/null && echo "1" || echo "0")
 ifeq ($(REQUIRE_ESCAPE),1)
-    HAVE_EXECINFO_H=$(shell echo "\#include <execinfo.h>" | $(CXX) -c -xc - 2> /dev/null && echo "1" || echo "0")
+    HAVE_EXECINFO_H=$(shell echo "\#include <execinfo.h>" | $(CXX) -fsyntax-only -xc - 2> /dev/null && echo "1" || echo "0")
 else
-    HAVE_EXECINFO_H=$(shell echo "#include <execinfo.h>" | $(CXX) -c -xc - 2> /dev/null && echo "1" || echo "0")
+    HAVE_EXECINFO_H=$(shell echo "#include <execinfo.h>" | $(CXX) -fsyntax-only -xc - 2> /dev/null && echo "1" || echo "0")
 endif
 override CPPFLAGS += -DHAVE_EXECINFO_H=$(HAVE_EXECINFO_H)
 
@@ -736,7 +736,7 @@ cli/threadexecutor.o: cli/threadexecutor.cpp cli/executor.h cli/threadexecutor.h
 test/fixture.o: test/fixture.cpp externals/tinyxml2/tinyxml2.h lib/check.h lib/checkers.h lib/color.h lib/config.h lib/errorlogger.h lib/errortypes.h lib/library.h lib/mathlib.h lib/path.h lib/platform.h lib/refthunk.h lib/settings.h lib/standards.h lib/timer.h lib/tokenize.h lib/tokenlist.h lib/utils.h lib/xml.h test/fixture.h test/helpers.h test/options.h test/redirect.h
 	$(CXX) ${INCLUDE_FOR_TEST} ${CFLAGS_FOR_TEST} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ test/fixture.cpp
 
-test/helpers.o: test/helpers.cpp cli/filelister.h externals/simplecpp/simplecpp.h externals/tinyxml2/tinyxml2.h lib/checkers.h lib/config.h lib/filesettings.h lib/library.h lib/mathlib.h lib/path.h lib/pathmatch.h lib/platform.h lib/preprocessor.h lib/settings.h lib/standards.h lib/tokenize.h lib/tokenlist.h lib/utils.h lib/xml.h test/helpers.h
+test/helpers.o: test/helpers.cpp cli/filelister.h externals/simplecpp/simplecpp.h externals/tinyxml2/tinyxml2.h lib/checkers.h lib/config.h lib/errortypes.h lib/filesettings.h lib/library.h lib/mathlib.h lib/path.h lib/pathmatch.h lib/platform.h lib/preprocessor.h lib/settings.h lib/standards.h lib/tokenize.h lib/tokenlist.h lib/utils.h lib/xml.h test/helpers.h
 	$(CXX) ${INCLUDE_FOR_TEST} ${CFLAGS_FOR_TEST} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ test/helpers.cpp
 
 test/main.o: test/main.cpp externals/simplecpp/simplecpp.h lib/check.h lib/checkers.h lib/color.h lib/config.h lib/errorlogger.h lib/errortypes.h lib/library.h lib/mathlib.h lib/platform.h lib/preprocessor.h lib/refthunk.h lib/settings.h lib/standards.h lib/utils.h test/fixture.h test/options.h

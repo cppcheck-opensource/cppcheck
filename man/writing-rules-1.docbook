@@ -49,10 +49,10 @@
     <section>
       <title>Step 1 - Creating the regular expression</title>
 
-      <para>Cppcheck uses the PCRE library to handle regular expressions.
+      <para>Cppcheck uses the PCRE2 library to handle regular expressions.
       <acronym>PCRE</acronym> stands for "Perl Compatible Regular Expressions".
-      The homepage for PCRE is <ulink url="http://www.pcre.org/">
-      http://www.pcre.org/</ulink>.</para>
+      The homepage for PCRE2 is <ulink url="https://www.pcre.org/">
+      https://www.pcre.org/</ulink>.</para>
 
       <para>Let's create a regular expression that checks for code such
       as:</para>

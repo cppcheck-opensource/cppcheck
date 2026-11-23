@@ -1798,13 +1798,8 @@ void CmdLineParser::printHelp() const
         "                         incomplete info.\n"
         "    --checkers-report=<file>\n"
         "                         Write a report of all the active checkers to the given file.\n"
-        "    --clang=<path>       Experimental: Use Clang parser instead of the builtin Cppcheck\n"
-        "                         parser. Takes the executable as optional parameter and\n"
-        "                         defaults to `clang`. Cppcheck will run the given Clang\n"
-        "                         executable, import the Clang AST and convert it into\n"
-        "                         Cppcheck data. After that the normal Cppcheck analysis is\n"
-        "                         used. You must have the executable in PATH if no path is\n"
-        "                         given.\n"
+        "    --clang=<path>       Deprecated: Use Clang parser instead of the builtin Cppcheck\n"
+        "                         parser. This option will be removed in Cppcheck 2.27.\n"
         "    --config-exclude=<dir>\n"
         "                         Path (prefix) to be excluded from configuration\n"
         "                         checking. Preprocessor configurations defined in\n"
@@ -2137,7 +2132,7 @@ void CmdLineParser::printHelp() const
         "Many thanks to the 3rd party libraries we use:\n"
         " * tinyxml2 -- loading project/library/ctu files.\n"
         " * picojson -- loading compile database.\n"
-        " * pcre -- rules.\n"
+        " * pcre2 -- rules.\n"
         " * qt -- used in GUI\n";
 
     mLogger.printRaw(oss.str());

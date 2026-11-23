@@ -106,6 +106,7 @@ private:
         TEST_CASE(isVariableUsageDerefValueflow); // *p
 
         TEST_CASE(uninitvar_memberaccess); // (&(a))->b <=> a.b
+        TEST_CASE(uninitvar_diag);
 
         // whole program analysis
         TEST_CASE(ctuTest);
@@ -129,6 +130,17 @@ private:
 
         // Check for redundant code..
         CheckUninitVarImpl checkuninitvar(&tokenizer, settings1, *this);
+        checkuninitvar.check();
+    }
+
+#define checkUninitVarAll(...) checkUninitVarAll_(__FILE__, __LINE__, __VA_ARGS__)
+    template<size_t size>
+    void checkUninitVarAll_(const char* file, int line, const char (&code)[size]) {
+        SimpleTokenizer tokenizer(settings, *this, true);
+        ASSERT_LOC(tokenizer.tokenize(code), file, line);
+
+        CheckUninitVarImpl checkuninitvar(&tokenizer, settings, *this);
+        checkuninitvar.valueFlowUninit();
         checkuninitvar.check();
     }
 
@@ -6861,6 +6873,26 @@ private:
                         "    return a[0];\n"
                         "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        valueFlowUninit("int f() {\n" // #15210
+                        "    int a;\n"
+                        "    int b{ a };\n"
+                        "    return b;\n"
+                        "}\n"
+                        "int g() {\n"
+                        "    int a;\n"
+                        "    int b(a);\n"
+                        "    return b;\n"
+                        "}\n"
+                        "int h() {\n"
+                        "    int a;\n"
+                        "    int& b{ a };\n"
+                        "    b = 0;\n"
+                        "    return b;\n"
+                        "}\n");
+        ASSERT_EQUALS("[test.cpp:3:12]: (error) Uninitialized variable: a [uninitvar]\n"
+                      "[test.cpp:8:11]: (error) Uninitialized variable: a [uninitvar]\n",
+                      errout_str());
     }
 
     void valueFlowUninitBreak() { // Do not show duplicate warnings about the same uninitialized value
@@ -8255,6 +8287,15 @@ private:
                         "    p = &s;\n"
                         "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void uninitvar_diag() {
+        checkUninitVarAll("struct S { int x; };\n" // #15216
+                          "int f() {\n"
+                          "    S s;\n"
+                          "    return s.x;\n"
+                          "}\n");
+        ASSERT_EQUALS("[test.cpp:4:14]: (error) Uninitialized variable: s.x [uninitvar]\n", errout_str());
     }
 
     void ctuTest() {

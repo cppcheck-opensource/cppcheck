@@ -683,7 +683,7 @@ void g_ascii_formatd_format_test(const gchar *format, int i)
     struct {
         double x;
     } s;
-    // cppcheck-suppress [uninitvar, uninitStructMember]
+    // cppcheck-suppress uninitvar
     g_ascii_formatd(buf, sizeof(buf), format, s.x);
     g_print("%s", buf);
 }

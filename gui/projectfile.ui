@@ -472,8 +472,11 @@
           </item>
           <item>
            <widget class="QRadioButton" name="mBtnClangParser">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <property name="text">
-             <string>Clang (experimental)</string>
+             <string>Clang (this feature is deprecated; this option will be removed in 2.27)</string>
             </property>
            </widget>
           </item>
