@@ -28,6 +28,11 @@ def build_cppcheck(bisect_path):
     print('patching cli/cppcheckexecutor.cpp')
     subprocess.check_call(['sed', '-i', 's/SIGSTKSZ/32768/g', os.path.join(bisect_repo_dir, 'cli', 'cppcheckexecutor.cpp')])
 
+    pmPath = os.path.join(bisect_repo_dir, 'lib', 'programmemory.cpp')
+    if os.path.isfile(pmPath):
+        print('patching lib/programmmemory.cpp')
+        subprocess.check_call(['sed', '-i', '1s/^/#include <limits> /', pmPath])
+
     # TODO: older versions do not build because of include changes in libstdc++ - check compiler version and try to use an earlier one
     # TODO: make jobs configurable
     # TODO: use "make install"?
