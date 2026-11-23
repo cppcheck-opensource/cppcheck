@@ -70,10 +70,13 @@ def test_match_multiple_time(tmpdir):
     _test_library_includes(tmpdir, ['posix', 'gnu', 'bsd', 'zlib'], '#include <zlib.h>', libinc)
     _test_library_includes(tmpdir, ['posix', 'gnu', 'bsd', 'zlib'], '#include <zlib.h>', libinc)
 
-def _add_tar_member(tf, name, linkname=None, linktype=tarfile.SYMTYPE):
+def _add_tar_member(tf, name, linkname=None, linktype=tarfile.SYMTYPE, dirmode=None):
     info = tarfile.TarInfo(name)
     data = b''
-    if linkname is not None:
+    if dirmode is not None:
+        info.type = tarfile.DIRTYPE
+        info.mode = dirmode
+    elif linkname is not None:
         info.type = linktype
         info.linkname = linkname
     else:
@@ -167,3 +170,28 @@ def test_unpack_package_hardlink_missing_target(tmpdir):
     assert source_found
     assert os.path.isfile(os.path.join(temp_path, 'pkg', 'main.c'))
     assert not os.path.lexists(os.path.join(temp_path, 'pkg', 'copy.c'))
+
+def test_unpack_package_link_in_readonly_dir(tmpdir):
+    work_path = str(tmpdir)
+    outside_path = os.path.join(work_path, 'outside')
+    os.mkdir(outside_path)
+    with open(os.path.join(outside_path, 'secret.c'), 'w', encoding='utf-8') as f:
+        f.write('int secret;\n')
+    tgz = os.path.join(work_path, 'temp.tgz')
+    with tarfile.open(tgz, 'w:gz') as tf:
+        _add_tar_member(tf, 'pkg/main.c')
+        # redirected out of temp by the next member, like in test_unpack_package_link_redirected_later
+        _add_tar_member(tf, 'pkg/x.h/l.h', linkname='d.h/../../../outside')
+        _add_tar_member(tf, 'pkg/x.h/d.h', linkname='.')
+        # a directory member with a header-like name makes the folder read-only after the links exist
+        _add_tar_member(tf, 'pkg/x.h', dirmode=0o555)
+
+    temp_path, source_found = unpack_package(work_path, tgz)
+    assert source_found
+    assert os.path.isfile(os.path.join(temp_path, 'pkg', 'main.c'))
+    real_temp_path = os.path.realpath(temp_path)
+    for name in ('l.h', 'd.h'):
+        path = os.path.join(temp_path, 'pkg', 'x.h', name)
+        if os.path.lexists(path):
+            assert os.path.commonpath([real_temp_path, os.path.realpath(path)]) == real_temp_path
+    assert os.listdir(outside_path) == ['secret.c']

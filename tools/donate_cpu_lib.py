@@ -352,10 +352,20 @@ def __is_inside_path(base_path, path):
         return False
 
 
+def __remove_link(path):
+    try:
+        os.remove(path)
+    except OSError:
+        # a directory symlink on Windows
+        os.rmdir(path)
+
+
 def __remove_escaping_links(real_temp_path):
     # A link that still pointed inside real_temp_path when it was extracted can be redirected
     # by a link that is extracted later, so all links are checked again afterwards. Removing a
     # link changes what the remaining ones resolve to, so this is repeated until nothing is left.
+    # Raises OSError if a link cannot be removed.
+    import stat
     removed = 0
     while True:
         links = []
@@ -368,15 +378,13 @@ def __remove_escaping_links(real_temp_path):
             return removed
         for path in links:
             try:
-                os.remove(path)
-                removed += 1
+                __remove_link(path)
             except OSError:
-                try:
-                    # a directory symlink on Windows
-                    os.rmdir(path)
-                    removed += 1
-                except OSError:
-                    return removed
+                # a directory member extracted after the link can have made its folder read-only
+                parent = os.path.dirname(path)
+                os.chmod(parent, stat.S_IMODE(os.lstat(parent).st_mode) | stat.S_IWUSR)
+                __remove_link(path)
+            removed += 1
 
 
 def unpack_package(work_path, tgz, cpp_only=False, c_only=False, skip_files=None):
@@ -446,7 +454,12 @@ def unpack_package(work_path, tgz, cpp_only=False, c_only=False, skip_files=None
                     except (tarfile.TarError, KeyError):
                         # KeyError: hardlink to a member that is neither on disk nor in the archive
                         pass
-            removed = __remove_escaping_links(real_temp_path)
+            try:
+                removed = __remove_escaping_links(real_temp_path)
+            except OSError as e:
+                # do not analyse a package with a link pointing outside of temp_path
+                print('Failed to remove link pointing outside of {}: {}'.format(temp_path, e))
+                return temp_path, False
             extracted -= removed
             skipped += removed
             print('extracted {} of {} files (skipped {}{})'.format(extracted, total, skipped, (' / only headers' if (extracted and not source_found) else '')))
