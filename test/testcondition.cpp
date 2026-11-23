@@ -131,6 +131,7 @@ private:
         TEST_CASE(knownConditionIncDecOperator);
         TEST_CASE(knownConditionFloating);
         TEST_CASE(knownConditionRecordedComparison);
+        TEST_CASE(knownConditionFlagSetInNestedBranch);
     }
 
     struct CheckOptions
@@ -6955,6 +6956,27 @@ private:
             "[test.cpp:3]: (style) Condition 'nf>-1.0' is always false\n",
             "",
             errout_str());
+    }
+
+    void knownConditionFlagSetInNestedBranch() {
+        check("bool g();\n" // #15266
+              "bool h();\n"
+              "int send();\n"
+              "int f() {\n"
+              "    int x = 0;\n"
+              "    bool b = false;\n"
+              "    if (g()) {\n"
+              "        if (h())\n"
+              "            b = true;\n"
+              "    }\n"
+              "    if (b) {\n"
+              "        if (x == 0)\n"
+              "            x = send();\n"
+              "    }\n"
+              "    return x;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:12:15]: (style) Condition 'x==0' is always true [knownConditionTrueFalse]\n",
+                      errout_str());
     }
 
     // TODO: a comparison of two expressions without values should decide the comparisons of the pair

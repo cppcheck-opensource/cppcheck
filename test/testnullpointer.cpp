@@ -3296,6 +3296,32 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
+        // inside a block that does not return
+        check("void g(int);\n"
+              "void f(int x, int c) {\n"
+              "    int *p = 0;\n"
+              "    if (c) {\n"
+              "        if (x > 5) x = 5;\n"
+              "        if (x > 5) g(*p);\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // the flag is set in a nested branch
+        check("bool g();\n" // #15266
+              "int f(int c) {\n"
+              "    int *p = 0;\n"
+              "    bool b = false;\n"
+              "    if (c) {\n"
+              "        if (g())\n"
+              "            b = true;\n"
+              "    }\n"
+              "    if (b)\n"
+              "        return *p;\n"
+              "    return 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:10:17]: (error) Null pointer dereference: p [nullPointer]\n", errout_str());
+
         // false on both paths
         check("int f(int x) {\n"
               "    int *p = 0;\n"
