@@ -695,12 +695,12 @@ static ProgramMemory getInitialProgramState(const Token* tok,
 ProgramMemoryState::ProgramMemoryState(const Settings& s) : settings(s), changedCache(std::make_shared<ChangedCache>())
 {}
 
-void ProgramMemoryState::replace(ProgramMemory pm, const Token* origin)
+void ProgramMemoryState::replace(ProgramMemory pm, const Token* origin, bool skipUnknown)
 {
     if (origin)
         for (const auto& p : pm)
             origins[p.first.getExpressionId()] = origin;
-    state.replace(std::move(pm), /*skipUnknown*/ true);
+    state.replace(std::move(pm), skipUnknown);
 }
 
 static void addVars(ProgramMemory& pm, const ProgramMemory::Map& vars)
@@ -723,6 +723,8 @@ void ProgramMemoryState::addState(const Token* tok, const ProgramMemory::Map& va
 
 void ProgramMemoryState::assume(const Token* tok, bool b, bool isEmpty, const Token* origin)
 {
+    // An origin is only given when the true path is assumed again at the end of its block
+    const bool reassumed = origin != nullptr;
     ProgramMemory pm = state;
     if (isEmpty)
         pm.setContainerSizeValue(tok, 0, b);
@@ -741,7 +743,10 @@ void ProgramMemoryState::assume(const Token* tok, bool b, bool isEmpty, const To
             }
         }
     }
-    replace(std::move(pm), origin);
+    // pm is the state with the condition applied, so the condition also replaces an unknown value. Not when
+    // it is assumed again at the end of the block: the path past the if would then know values that the
+    // forward analysis does not lower when only other paths modify the tracked value.
+    replace(std::move(pm), origin, /*skipUnknown*/ reassumed);
 }
 
 ProgramMemoryState::FindChangedFn ProgramMemoryState::getCachedFindExpressionChanged(bool skipDeadCode) const

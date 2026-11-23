@@ -215,7 +215,7 @@ struct CPPCHECKLIB ProgramMemoryState {
 
     explicit ProgramMemoryState(const Settings& s);
 
-    void replace(ProgramMemory pm, const Token* origin = nullptr);
+    void replace(ProgramMemory pm, const Token* origin = nullptr, bool skipUnknown = true);
 
     void addState(const Token* tok, const ProgramMemory::Map& vars);
 
