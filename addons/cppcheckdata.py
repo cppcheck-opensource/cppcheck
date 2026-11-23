@@ -1702,14 +1702,16 @@ class CompiledPattern:
         if p in patterns:
             return patterns[p]
         prefix, word = p[:2], p[2:]
-        # a '!!' or '**' prefix applies to the whole word only when the word
-        # is a literal: '!!|=' is "not |=", but '!!a|b' is "not a, or b"
-        if '|' in p and not (prefix in ('!!', '**') and word in cls._literal_atoms):
-            return cls._match_alternatives([cls.compile_atom(x) for x in p.split('|')])
         if prefix == '!!':
-            return cls._match_negation(cls.compile_atom(word))
+            # as in the C++ Token::Match, '!!' is checked before alternation
+            # and the rest is compared as a whole: '!!a|b' is "not the token a|b"
+            inner = cls._match_literal(word) if '|' in word else cls.compile_atom(word)
+            return cls._match_negation(inner)
         if prefix == '**':
+            # '**a|b' searches ahead for a or b
             return cls._match_forward(cls.compile_atom(word))
+        if '|' in p:
+            return cls._match_alternatives([cls.compile_atom(x) for x in p.split('|')])
         return cls._match_literal(p)
 
     @staticmethod

@@ -722,28 +722,56 @@ class TestMatch:
         assert cppcheckdata.match(bit_or.previous, '%var% !!|=')
         assert cppcheckdata.match(find_token(match_cfg, '=').previous, '%var% !!|=')
 
+    def test_negation_literal_bitwise_or(self, match_cfg):
+        bit_or = find_token(match_cfg, '|')
+        assert not cppcheckdata.match(bit_or.previous, '%var% !!|')
+        assert cppcheckdata.match(find_token(match_cfg, '||').previous, '%var% !!|')
+        assert cppcheckdata.match(find_token(match_cfg, '|=').previous, '%var% !!|')
+
+    def test_negation_literal_logical_or(self, match_cfg):
+        log_or = find_token(match_cfg, '||')
+        assert not cppcheckdata.match(log_or.previous, '%var% !!||')
+        assert cppcheckdata.match(find_token(match_cfg, '|').previous, '%var% !!||')
+        assert cppcheckdata.match(find_token(match_cfg, '|=').previous, '%var% !!||')
+
     def test_negation_alternatives(self, match_cfg):
-        # '!!a|b' is "not a, or b", as in the C++ Token::Match
+        # as in the C++ Token::Match, the word after '!!' is not split into
+        # alternatives: '!!a|b' is "not the token a|b"
         struct_tok = find_token(match_cfg, 'struct')
-        assert not cppcheckdata.match(struct_tok, 'struct !!Point|Foo')
+        assert cppcheckdata.match(struct_tok, 'struct !!Point|Foo')
         assert cppcheckdata.match(struct_tok, 'struct !!Foo|Point')
         assert cppcheckdata.match(struct_tok, 'struct !!Foo|Bar')
+        assert cppcheckdata.match(struct_tok, 'struct !!%name%|;')
 
     def test_find_forward_alternatives(self, match_cfg):
-        # '**a|b' is "a somewhere ahead, or b here"
+        # '**a|b' searches ahead for the first token that is a or b
         calc_def = find_token(match_cfg, 'calc')
         res = cppcheckdata.match(calc_def, 'calc **{|nosuchtoken')
         assert res
         assert res.end.str == '{'
-        res = cppcheckdata.match(calc_def, 'calc **nosuchtoken|(')
+        res = cppcheckdata.match(calc_def, 'calc **nosuchtoken|{')
+        assert res
+        assert res.end.str == '{'
+        res = cppcheckdata.match(calc_def, 'calc **{|(')
         assert res
         assert res.end.str == '('
-        assert not cppcheckdata.match(calc_def, 'calc **nosuchtoken|{')
-        # but a literal word is searched for as a whole
-        arr_decl = find_token(match_cfg, 'arr')
-        res = cppcheckdata.match(arr_decl, 'arr **|=')
+        res = cppcheckdata.match(calc_def, 'calc **%op%|{')
         assert res
-        assert res.end.str == '|='
+        assert res.end.str == '{'
+        assert not cppcheckdata.match(calc_def, 'calc **nosuchtoken|nosuchtoken2')
+
+    def test_find_forward_literal_or_operators(self, match_cfg):
+        # '**|', '**||' and '**|=' search for the operator as a whole
+        bit_or_decl = find_token(match_cfg, 'bit_or')
+        for op in ('|', '||', '|='):
+            res = cppcheckdata.match(bit_or_decl, 'bit_or **' + op)
+            assert res
+            assert res.end.str == op
+        # past the last '|' and '||' only the '|=' is left to find
+        arr_decl = find_token(match_cfg, 'arr')
+        assert not cppcheckdata.match(arr_decl, 'arr **|')
+        assert not cppcheckdata.match(arr_decl, 'arr **||')
+        assert cppcheckdata.match(arr_decl, 'arr **|=')
 
     @pytest.mark.xfail(strict=False,
                        reason='in the C++ Token::Match a negation also matches when there is no token, '
