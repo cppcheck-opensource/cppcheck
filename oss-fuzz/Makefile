@@ -30,7 +30,7 @@ else
     $(error invalid MATCHCOMPILER value '$(MATCHCOMPILER)')
 endif
 
-INCS=-I../lib -isystem../externals/simplecpp -isystem../externals/tinyxml2 -isystem../externals/picojson
+INCS=-I../lib -I../cli -I../frontend -isystem../externals/simplecpp -isystem../externals/tinyxml2 -isystem../externals/picojson
 
 override CXXFLAGS+=-std=c++11 -g -w
 override CPPFLAGS+=$(INCS)
@@ -124,7 +124,7 @@ translate: translate.o type2.o
 	${CXX} -std=c++11 -g ${CXXFLAGS} -o $@ type2.cpp translate.cpp
 
 clean:
-	rm -f *.o build/*.o oss-fuzz-client no-fuzz translate
+	rm -f *.o build/*.o oss-fuzz-client oss-fuzz-client-cli no-fuzz translate
 
 preprare-samples:
 	rm -rf samples
@@ -378,3 +378,18 @@ main.o: main.cpp type2.h
 
 main_nofuzz.o: main.cpp type2.h
 	$(CXX) ${LIB_FUZZING_ENGINE} $(CPPFLAGS) $(CXXFLAGS) -DNO_FUZZ -c -o $@ main.cpp
+
+cmdlineparser.o: ../cli/cmdlineparser.cpp ../cli/cmdlineparser.h ../cli/cmdlinelogger.h ../cli/filelister.h ../frontend/frontend.h ../lib/settings.h ../lib/suppressions.h ../lib/library.h ../lib/importproject.h ../lib/filesettings.h ../lib/addoninfo.h
+	$(CXX) ${LIB_FUZZING_ENGINE} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ ../cli/cmdlineparser.cpp
+
+frontend.o: ../frontend/frontend.cpp ../frontend/frontend.h ../lib/filesettings.h ../lib/settings.h ../lib/standards.h
+	$(CXX) ${LIB_FUZZING_ENGINE} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ ../frontend/frontend.cpp
+
+filelister.o: ../cli/filelister.cpp ../cli/filelister.h ../lib/filesettings.h ../lib/path.h ../lib/pathmatch.h ../lib/standards.h ../lib/utils.h
+	$(CXX) ${LIB_FUZZING_ENGINE} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ ../cli/filelister.cpp
+
+cli_fuzzer.o: cli_fuzzer.cpp ../cli/cmdlineparser.h ../cli/cmdlinelogger.h ../lib/settings.h ../lib/suppressions.h
+	$(CXX) ${LIB_FUZZING_ENGINE} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ cli_fuzzer.cpp
+
+oss-fuzz-client-cli: $(EXTOBJ) $(LIBOBJ) cmdlineparser.o frontend.o filelister.o cli_fuzzer.o
+	${CXX} ${CXXFLAGS} -o $@ $^ ${LIB_FUZZING_ENGINE}
