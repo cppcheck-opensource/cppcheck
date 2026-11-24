@@ -1536,7 +1536,7 @@ static bool returnsElementOf(const Function* f, const ValueType& container, cons
         return container.container->stdStringLike && result.pointer == 0 &&
                (result.type == ValueType::Type::CHAR || result.type == ValueType::Type::WCHAR_T);
     const Token* tok = skipCV(skipSameType(f->retDef, container.containerTypeToken));
-    if (!Token::simpleMatch(tok, reference ? "&" : "*"))
+    if (!tok || tok->str() != (reference ? "&" : "*"))
         return false;
     tok = skipCV(tok->next());
     return tok && !Token::Match(tok, "*|&|&&");
