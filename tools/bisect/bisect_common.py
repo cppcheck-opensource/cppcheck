@@ -30,8 +30,8 @@ def build_cppcheck(bisect_path):
 
     pmPath = os.path.join(bisect_repo_dir, 'lib', 'programmemory.cpp')
     if os.path.isfile(pmPath):
-        print('patching lib/programmmemory.cpp')
-        subprocess.check_call(['sed', '-i', '1s/^/#include <limits> /', pmPath])
+        print('patching lib/programmemory.cpp')
+        subprocess.check_call(['sed', '-i', '1i #include <limits>', pmPath])
 
     # TODO: older versions do not build because of include changes in libstdc++ - check compiler version and try to use an earlier one
     # TODO: make jobs configurable
