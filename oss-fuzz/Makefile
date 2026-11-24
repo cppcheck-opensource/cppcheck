@@ -124,7 +124,7 @@ translate: translate.o type2.o
 	${CXX} -std=c++11 -g ${CXXFLAGS} -o $@ type2.cpp translate.cpp
 
 clean:
-	rm -f *.o build/*.o oss-fuzz-client no-fuzz translate
+	rm -f *.o build/*.o oss-fuzz-client oss-fuzz-client-cfg no-fuzz translate
 
 preprare-samples:
 	rm -rf samples
@@ -378,3 +378,9 @@ main.o: main.cpp type2.h
 
 main_nofuzz.o: main.cpp type2.h
 	$(CXX) ${LIB_FUZZING_ENGINE} $(CPPFLAGS) $(CXXFLAGS) -DNO_FUZZ -c -o $@ main.cpp
+
+cfg_fuzzer.o: cfg_fuzzer.cpp ../lib/config.h ../lib/library.h ../lib/errortypes.h ../lib/path.h
+	$(CXX) ${LIB_FUZZING_ENGINE} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ cfg_fuzzer.cpp
+
+oss-fuzz-client-cfg: $(EXTOBJ) $(LIBOBJ) cfg_fuzzer.o
+	${CXX} ${CXXFLAGS} -o $@ $^ ${LIB_FUZZING_ENGINE}
