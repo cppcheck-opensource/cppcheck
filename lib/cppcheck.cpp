@@ -1843,7 +1843,7 @@ void CppCheck::analyseClangTidy(const FileSettings &fileSettings)
     std::string line;
 
     if (!mSettings.buildDir.empty()) {
-        const std::string analyzerInfoFile = AnalyzerInformation::getAnalyzerInfoFile(mSettings.buildDir, fileSettings.sfilename(), "", fileSettings.file.fsFileId());
+        const std::string analyzerInfoFile = AnalyzerInformation::getAnalyzerInfoFile(mSettings.buildDir, fileSettings.sfilename(), fileSettings.cfg, fileSettings.file.fsFileId());
         std::ofstream fcmd(analyzerInfoFile + ".clang-tidy-cmd");
         fcmd << istr.str();
     }
