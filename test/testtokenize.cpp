@@ -536,6 +536,7 @@ private:
         TEST_CASE(constFunctionPtrTypedef); // #12135
 
         TEST_CASE(simplifyPlatformTypes);
+        TEST_CASE(platformTypeExpandedMacro);
 
         TEST_CASE(dumpFallthrough);
         TEST_CASE(dumpAttributeUsed);
@@ -9388,6 +9389,15 @@ private:
                             "}\n";
         ASSERT_NO_THROW(tokenizeAndStringify(code));
         ASSERT_EQUALS("void ( * const f ) ( ) ;", tokenizeAndStringify("typedef void (*fp_t)(); fp_t const f;\n"));
+    }
+
+    void platformTypeExpandedMacro() {
+        const char code[] = "#define A DWORD\n"
+                            "A x;\n";
+        SimpleTokenizer2 tokenizer(settings_win32a, *this, code, "test.c");
+        ASSERT(tokenizer.simplifyTokens1(""));
+        const Token* tok = Token::findsimplematch(tokenizer.tokens(), "x");
+        ASSERT(tok && tok->previous()->isExpandedMacro());
     }
 
     void simplifyPlatformTypes() {

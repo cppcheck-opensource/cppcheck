@@ -500,11 +500,12 @@ public:
         setFlag(fIsStandardType, b);
     }
     /**
-     * Is this token macro code at this location? Tokens copied from a
-     * typedef are excluded, see hasMacroName().
+     * Is this token macro code at this location? Tokens whose macro name was
+     * copied from another token (e.g. a typedef definition) are excluded,
+     * see hasMacroName().
      */
     bool isExpandedMacro() const {
-        return mImpl->mMacroName && !isSimplifiedTypedef();
+        return mImpl->mMacroName && !getFlag(fIsMacroNameCopied);
     }
     /**
      * Did the token text originate from a macro? Also true for tokens copied
@@ -876,6 +877,12 @@ public:
             mImpl->mMacroName = new std::string(std::move(name));
         else
             *mImpl->mMacroName = std::move(name);
+    }
+    void copyMacroName(const Token* from) {
+        if (from->hasMacroName()) {
+            setMacroName(from->getMacroName());
+            setFlag(fIsMacroNameCopied, true);
+        }
     }
 
     template<size_t count>
@@ -1533,6 +1540,7 @@ private:
         fIsInitBracket          = (1ULL << 44), // Is this bracket used as a part of variable initialization i.e: int a{5}, b(2);
         fIsAnonymous            = (1ULL << 45), // Is this a token added for an unnamed member
         fIsInsertedBrace        = (1ULL << 46), // brace added when simplifying e.g. if (x) f(); => if (x) { f(); }
+        fIsMacroNameCopied      = (1ULL << 47), // macro name copied from another token, e.g. a typedef definition
     };
 
     enum : std::uint8_t {

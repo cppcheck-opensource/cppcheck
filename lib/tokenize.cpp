@@ -1033,8 +1033,7 @@ namespace {
                 to = to->next();
                 to->isSimplifiedTypedef(true);
                 to->isExternC(from->isExternC());
-                if (from->hasMacroName())
-                    to->setMacroName(from->getMacroName());
+                to->copyMacroName(from);
             }
             return to;
         }
