@@ -13682,6 +13682,19 @@ private:
               "int i = 1;\n");
         ASSERT_EQUALS("", errout_str());
 
+        check("template <class E>\n" // #15269
+              "struct unexpected {\n"
+              "    explicit unexpected(E e) : err(e) {}\n"
+              "    E err;\n"
+              "};\n"
+              "template <class E>\n"
+              "unexpected(E) -> unexpected<E>;\n"
+              "int f(int x) {\n"
+              "    const int unexpected = x + 1;\n"
+              "    return unexpected;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
         {
             ScopedFile inc("test.h", "int pad1;\nint pad2;\nint pad3;\nint pad4;\nfloat f;\n");
             checkP("void g() {\n"

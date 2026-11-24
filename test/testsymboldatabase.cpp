@@ -263,6 +263,7 @@ private:
         TEST_CASE(hasSubClassConstructor);
         TEST_CASE(testConstructors);
         TEST_CASE(functionDeclarationTemplate);
+        TEST_CASE(functionDeclarationDeductionGuide);
         TEST_CASE(functionDeclarations);
         TEST_CASE(functionDeclarations2);
         TEST_CASE(constexprFunction);
@@ -2539,6 +2540,62 @@ private:
 
         ASSERT(foo && foo->token->str() == "foo");
         ASSERT(foo && foo->hasBody());
+    }
+
+    void functionDeclarationDeductionGuide() { // #15269
+        {
+            GET_SYMBOL_DB("template <class T> struct S { S(T) {} };\n"
+                          "template <class T> S(T) -> S<T>;\n");
+            ASSERT(db);
+            ASSERT_EQUALS(0, db->scopeList.front().functionList.size());
+        }
+        {
+            GET_SYMBOL_DB("template <class T> struct S { explicit S(T*) {} };\n"
+                          "template <class T> explicit S(T*) -> S<T>;\n");
+            ASSERT(db);
+            ASSERT_EQUALS(0, db->scopeList.front().functionList.size());
+        }
+        {
+            GET_SYMBOL_DB("template <class T> struct S { S(T) {} };\n"
+                          "explicit S(const char*) -> S<int>;\n");
+            ASSERT(db);
+            ASSERT_EQUALS(0, db->scopeList.front().functionList.size());
+        }
+        {
+            GET_SYMBOL_DB("struct O {\n"
+                          "    template <class T> struct S { S(T) {} };\n"
+                          "    S(const char*) -> S<int>;\n"
+                          "};\n");
+            ASSERT(db);
+            const Scope* o = db->findScopeByName("O");
+            ASSERT(o);
+            ASSERT_EQUALS(0, o->functionList.size());
+        }
+        {
+            GET_SYMBOL_DB("template <class T> struct S { S(T) {} };\n"
+                          "template <class T> S(T*) -> ::S<T>;\n");
+            ASSERT(db);
+            ASSERT_EQUALS(0, db->scopeList.front().functionList.size());
+        }
+        {
+            GET_SYMBOL_DB("struct O {\n"
+                          "    template <class T> struct S { S(T) {} };\n"
+                          "    template <class T> S(T*) -> O::S<T>;\n"
+                          "};\n");
+            ASSERT(db);
+            const Scope* o = db->findScopeByName("O");
+            ASSERT(o);
+            ASSERT_EQUALS(0, o->functionList.size());
+        }
+        {
+            // a function returning a class template of the same name is no deduction guide
+            GET_SYMBOL_DB("template <class T> struct X {};\n"
+                          "namespace n { auto X(int) -> X<int>; }\n");
+            ASSERT(db);
+            const Scope* n = db->findScopeByName("n");
+            ASSERT(n);
+            ASSERT_EQUALS(1, n->functionList.size());
+        }
     }
 
     void functionDeclarations() {
