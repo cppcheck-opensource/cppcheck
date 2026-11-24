@@ -4968,6 +4968,21 @@ static const Token* findInitListLambdaEnd(const Token* tok)
     return findLambdaEndScope(tok);
 }
 
+static bool isPointerToArrayDeclarator(const Token* tok, const VariableMap& variableMap)
+{
+    if (!Token::Match(tok, "( *|&|&&"))
+        return false;
+    tok = tok->next();
+    while (Token::Match(tok, "*|&|&&|const|volatile"))
+        tok = tok->next();
+    if (tok && tok->isName()) {
+        if (variableMap.hasVariable(tok->str()))
+            return false;
+        tok = tok->next();
+    }
+    return Token::simpleMatch(tok, ") [");
+}
+
 void Tokenizer::setVarIdPass1(bool incremental)
 {
     const bool cpp = isCPP();
@@ -5249,7 +5264,8 @@ void Tokenizer::setVarIdPass1(bool incremental)
 
                                 if (tok3->isLiteral() ||
                                     (tok3->isName() && (variableMap.hasVariable(tok3->str()) ||
-                                                        (tok3->strAt(-1) == "(" && Token::simpleMatch(tok3->next(), "(") && !Token::simpleMatch(tok3->linkAt(1)->next(), "(")))) ||
+                                                        (tok3->strAt(-1) == "(" && Token::simpleMatch(tok3->next(), "(") && !Token::simpleMatch(tok3->linkAt(1)->next(), "(") &&
+                                                         !isPointerToArrayDeclarator(tok3->next(), variableMap)))) ||
                                     tok3->isOp() ||
                                     tok3->str() == "(" ||
                                     notstart.find(tok3->str()) != notstart.end()) {
