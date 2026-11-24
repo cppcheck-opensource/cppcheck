@@ -2621,6 +2621,51 @@ def test_inline_suppr_builddir_j_cached(tmp_path):
     __test_inline_suppr(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j2'])
 
 
+def __test_inline_suppr_project(tmp_path, extra_args):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, 'wt') as f:
+        f.write("""
+void f() {
+  // cppcheck-suppress memleak
+}
+""")
+
+    configs = ''.join(
+        f'<ProjectConfiguration Include="{c}|x64"><Configuration>{c}</Configuration><Platform>x64</Platform></ProjectConfiguration>'
+        for c in ('Debug', 'Release'))
+    project_file = tmp_path / 'test.vcxproj'
+    with open(project_file, 'wt') as f:
+        f.write('<?xml version="1.0" encoding="utf-8"?>'
+                '<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'
+                f'<ItemGroup Label="ProjectConfigurations">{configs}</ItemGroup>'
+                '<ItemGroup><ClCompile Include="test.c" /></ItemGroup>'
+                '</Project>')
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--enable=information',
+        '--inline-suppr',
+        '--project={}'.format(project_file)
+    ]
+
+    args += extra_args
+
+    exitcode, stdout, stderr, = cppcheck(args)
+    assert exitcode == 0, stdout
+    assert stdout == ''
+    assert stderr.splitlines() == [
+        '{}:4:1: information: Unmatched suppression: memleak [unmatchedSuppression]'.format(test_file)
+    ]
+
+
+def test_inline_suppr_builddir_project_cached(tmp_path):
+    build_dir = tmp_path / 'b1'
+    os.mkdir(build_dir)
+    __test_inline_suppr_project(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j1'])
+    __test_inline_suppr_project(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j1'])
+
+
 def test_duplicate_suppression(tmp_path):
     test_file = tmp_path / 'file.cpp'
     with open(test_file, 'wt'):
