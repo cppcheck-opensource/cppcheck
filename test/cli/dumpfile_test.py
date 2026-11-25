@@ -165,3 +165,32 @@ def test_suppression_this_and_next_line(tmpdir):
         dump = f.read()
     assert 'lineNumber="2" thisAndNextLine="true" inline="true"' in dump
     assert 'lineNumber="4" inline="true"' in dump
+
+def test_build_dir_project_configurations(tmp_path):
+    test_file = tmp_path / 'main.c'
+    with open(test_file, 'wt') as f:
+        f.write('int main(void) { return 0; }\n')
+
+    configs = ''.join(
+        f'<ProjectConfiguration Include="{c}|{p}"><Configuration>{c}</Configuration><Platform>{p}</Platform></ProjectConfiguration>'
+        for c in ('Debug', 'Release') for p in ('Win32', 'x64'))
+    project_file = tmp_path / 'test.vcxproj'
+    with open(project_file, 'wt') as f:
+        f.write('<?xml version="1.0" encoding="utf-8"?>'
+                '<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'
+                f'<ItemGroup Label="ProjectConfigurations">{configs}</ItemGroup>'
+                '<ItemGroup><ClCompile Include="main.c" /></ItemGroup>'
+                '</Project>')
+
+    build_dir = tmp_path / 'b'
+    os.mkdir(build_dir)
+
+    args = ['-q', '--project=test.vcxproj', '--cppcheck-build-dir=b', '--addon=misra']
+    exitcode, stdout, stderr = cppcheck(args, cwd=str(tmp_path))
+    assert exitcode == 0, stdout
+    assert stderr == ''
+
+    files = os.listdir(build_dir)
+    assert 'main.c.analyzerinfo.ctu-info' not in files
+    for i in range(1, 5):
+        assert f'main.a{i}.ctu-info' in files

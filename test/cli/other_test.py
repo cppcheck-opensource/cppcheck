@@ -1165,6 +1165,36 @@ def test_showtime_summary_clang_tidy_compdb(tmp_path):
     __test_showtime_summary(tmp_path, use_clang_tidy=True, use_compdb=True)
 
 
+@pytest.mark.skipif(not __has_clang_tidy, reason='clang-tidy is not available')
+def test_clang_tidy_builddir_project_configurations(tmp_path):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, 'wt') as f:
+        f.write('int main(void) { return 0; }\n')
+
+    configs = ''.join(
+        f'<ProjectConfiguration Include="{c}|x64"><Configuration>{c}</Configuration><Platform>x64</Platform></ProjectConfiguration>'
+        for c in ('Debug', 'Release'))
+    project_file = tmp_path / 'test.vcxproj'
+    with open(project_file, 'wt') as f:
+        f.write('<?xml version="1.0" encoding="utf-8"?>'
+                '<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'
+                f'<ItemGroup Label="ProjectConfigurations">{configs}</ItemGroup>'
+                '<ItemGroup><ClCompile Include="test.c" /></ItemGroup>'
+                '</Project>')
+
+    build_dir = tmp_path / 'b'
+    os.mkdir(build_dir)
+
+    args = ['-q', '--clang-tidy', '--project=test.vcxproj', '--cppcheck-build-dir=b']
+    exitcode, stdout, _ = cppcheck(args, cwd=str(tmp_path))
+    assert exitcode == 0, stdout
+
+    files = os.listdir(build_dir)
+    assert 'test.c.analyzerinfo.clang-tidy-cmd' not in files
+    for i in range(1, 3):
+        assert f'test.a{i}.clang-tidy-cmd' in files
+
+
 def __test_showtime_file_total(tmp_path, use_compdb=False):
     __test_showtime(tmp_path, 'file-total', 0, 'Check time: ', use_compdb=use_compdb)
 
@@ -2619,6 +2649,86 @@ def test_inline_suppr_builddir_j_cached(tmp_path):
     os.mkdir(build_dir)
     __test_inline_suppr(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j2'])
     __test_inline_suppr(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j2'])
+
+
+def __test_inline_suppr_project(tmp_path, extra_args):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, 'wt') as f:
+        f.write("""
+void f() {
+  // cppcheck-suppress memleak
+}
+""")
+
+    configs = ''.join(
+        f'<ProjectConfiguration Include="{c}|x64"><Configuration>{c}</Configuration><Platform>x64</Platform></ProjectConfiguration>'
+        for c in ('Debug', 'Release'))
+    project_file = tmp_path / 'test.vcxproj'
+    with open(project_file, 'wt') as f:
+        f.write('<?xml version="1.0" encoding="utf-8"?>'
+                '<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'
+                f'<ItemGroup Label="ProjectConfigurations">{configs}</ItemGroup>'
+                '<ItemGroup><ClCompile Include="test.c" /></ItemGroup>'
+                '</Project>')
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--enable=information',
+        '--inline-suppr',
+        '--project={}'.format(project_file)
+    ]
+
+    args += extra_args
+
+    exitcode, stdout, stderr, = cppcheck(args)
+    assert exitcode == 0, stdout
+    assert stdout == ''
+    assert stderr.splitlines() == [
+        '{}:4:1: information: Unmatched suppression: memleak [unmatchedSuppression]'.format(test_file)
+    ]
+
+
+def test_inline_suppr_builddir_project_cached(tmp_path):
+    build_dir = tmp_path / 'b1'
+    os.mkdir(build_dir)
+    __test_inline_suppr_project(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j1'])
+    __test_inline_suppr_project(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j1'])
+
+
+def test_inline_suppr_builddir_compdb_duplicate(tmp_path):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, 'wt') as f:
+        f.write("""
+void f() {
+  // cppcheck-suppress memleak
+}
+""")
+
+    # The same file listed twice gets one analyzer information file per entry
+    compdb_file = tmp_path / 'compile_commands.json'
+    create_compile_commands(compdb_file, [test_file, test_file])
+
+    build_dir = tmp_path / 'b1'
+    os.mkdir(build_dir)
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--enable=information',
+        '--inline-suppr',
+        '--cppcheck-build-dir={}'.format(build_dir),
+        '--project={}'.format(compdb_file)
+    ]
+
+    exitcode, stdout, stderr, = cppcheck(args)
+    assert exitcode == 0, stdout
+    assert stdout == ''
+    assert '{}:4:1: information: Unmatched suppression: memleak [unmatchedSuppression]'.format(test_file) in stderr.splitlines()
+
+    for afile in ('test.a1', 'test.a2'):
+        with open(build_dir / afile, 'rt') as f:
+            assert f.read().count('id="unmatchedSuppression"') == 1, afile
 
 
 def test_duplicate_suppression(tmp_path):
