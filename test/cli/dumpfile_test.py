@@ -146,3 +146,22 @@ def test_line_macro(tmpdir):
     with open(dumpfile, 'rt') as f:
         dump = f.read()
     assert 'type="number" isInt="true" macroName="__LINE__"' in dump
+
+
+def test_suppression_this_and_next_line(tmpdir):
+    test_file = str(tmpdir / 'test.c')
+    with open(test_file, 'wt') as f:
+        f.write('void f(void)\n')
+        f.write('{ // cppcheck-suppress id1\n')
+        f.write('    // cppcheck-suppress id2\n')
+        f.write('    x = 0;\n')
+        f.write('}\n')
+
+    exitcode, _, stderr = cppcheck(['--dump', '--inline-suppr', test_file])
+    assert exitcode == 0, stderr
+
+    dumpfile = test_file + '.dump'
+    with open(dumpfile, 'rt') as f:
+        dump = f.read()
+    assert 'lineNumber="2" thisAndNextLine="true" inline="true"' in dump
+    assert 'lineNumber="4" inline="true"' in dump

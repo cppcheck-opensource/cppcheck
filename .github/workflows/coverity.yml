@@ -20,7 +20,7 @@ jobs:
     - name: Install missing software on ubuntu
       run: |
         sudo apt-get update
-        sudo apt-get install qtbase5-dev qttools5-dev libqt5charts5-dev libboost-container-dev
+        sudo apt-get install qtbase5-dev qttools5-dev libboost-container-dev
     - name: Download Coverity build tool
       run: |
         wget -c -N https://scan.coverity.com/download/linux64 --post-data "token=${{ secrets.COVERITY_SCAN_TOKEN }}&project=cppcheck" -O coverity_tool.tar.gz

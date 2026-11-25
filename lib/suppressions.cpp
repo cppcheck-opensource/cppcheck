@@ -609,6 +609,8 @@ void SuppressionList::dump(std::ostream & out, const std::string& filePath) cons
             out << " fileName=\"" << ErrorLogger::toxml(suppression.fileName) << '"';
         if (suppression.lineNumber != Suppression::NO_LINE)
             out << " lineNumber=\"" << suppression.lineNumber << '"';
+        if (suppression.thisAndNextLine)
+            out << " thisAndNextLine=\"true\"";
         if (!suppression.symbolName.empty())
             out << " symbolName=\"" << ErrorLogger::toxml(suppression.symbolName) << '\"';
         if (suppression.hash > 0)

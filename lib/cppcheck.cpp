@@ -107,12 +107,19 @@ public:
         mRemarkComments.insert(mRemarkComments.end(), remarkComments.begin(), remarkComments.end());
     }
 
-    void setLocationMacros(const Token* startTok, const std::vector<std::string>& files)
+    void setLocationMacros(const Token* startTok, const std::vector<std::string>& files, const std::list<simplecpp::MacroUsage>& macroUsage)
     {
         mLocationMacros.clear();
         for (const Token* tok = startTok; tok; tok = tok->next()) {
             if (!tok->getMacroName().empty())
                 mLocationMacros[Location(files[tok->fileIndex()], tok->linenr())].emplace(tok->getMacroName());
+        }
+        // a token only knows the innermost macro it was expanded from; usages on lines without macro-expanded tokens are skipped
+        for (const simplecpp::MacroUsage& usage : macroUsage) {
+            const Location loc(files[usage.useLocation.fileIndex], usage.useLocation.line);
+            const auto it = mLocationMacros.find(loc);
+            if (it != mLocationMacros.end())
+                it->second.emplace(usage.macroName);
         }
     }
 
@@ -683,6 +690,16 @@ unsigned int CppCheck::checkClang(const FileWithDetails &file)
 {
     // TODO: clear exitcode
 
+    // #15221 - clangimport is deprecated and will be removed
+    {
+        ErrorMessage errmsg;
+        errmsg.callStack.emplace_back(file.spath(), 1, 1);
+        errmsg.setmsg("clang import is deprecated, it will be removed in 2.27");
+        errmsg.severity = Severity::information;
+        errmsg.id = "clangimport";
+        mErrorLogger.reportErr(errmsg);
+    }
+
     if (mSettings.checks.isEnabled(Checks::unusedFunction) && !mUnusedFunctionsCheck)
         mUnusedFunctionsCheck.reset(new CheckUnusedFunctions());
 
@@ -1030,6 +1047,8 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         if (!mSettings.keepComments)
             preprocessor.removeComments();
 
+        preprocessor.reportSimplecppPortability(outputList);
+
         // Get directives
         std::list<Directive> directives;
         preprocessor.createDirectives(directives);
@@ -1230,7 +1249,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
                 tokenizer.setDirectives(directives); // TODO: how to avoid repeated copies?
 
                 // locations macros
-                mLogger->setLocationMacros(tokenizer.tokens(), files);
+                mLogger->setLocationMacros(tokenizer.tokens(), files, preprocessor.getMacroUsage());
 
                 // If only errors are printed, print filename after the check
                 if (!mSettings.quiet && (!currentConfig.empty() || checkCount > 1)) {

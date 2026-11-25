@@ -2014,6 +2014,12 @@ static void valueFlowForwardLifetime(Token * tok, const TokenList &tokenlist, Er
     } else if (tok->variable() && tok->variable()->scope()) {
         const Variable *var = tok->variable();
         const Token *endOfVarScope = var->scope()->bodyEnd;
+        // Non-local variable: do not forward past the end of the current function
+        if (!var->isLocal() && !var->isArgument()) {
+            const Token* endOfFunction = ValueFlow::getEndOfExprScope(tok);
+            if (endOfFunction && (!endOfVarScope || precedes(endOfFunction, endOfVarScope)))
+                endOfVarScope = endOfFunction;
+        }
 
         std::list<ValueFlow::Value> values = tok->values();
         Token *nextExpression = nextAfterAstRightmostLeaf(parent);
@@ -2835,6 +2841,9 @@ static bool isDecayedPointer(const Token *tok)
     if (!tok)
         return false;
     if (!tok->astParent())
+        return false;
+    // Subscript 'arr[i]': the element is accessed, the array itself is not used as a pointer
+    if (Token::simpleMatch(tok->astParent(), "[") && astIsLHS(tok))
         return false;
     if (Token::simpleMatch(tok->astParent(), "=") && astIsRHS(tok))
         return true;

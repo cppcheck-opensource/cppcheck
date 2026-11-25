@@ -57,6 +57,15 @@
 #include <utility>
 //---------------------------------------------------------------------------
 
+// Bit for the given indirection level in ValueType::constness / ValueType::volatileness.
+// Only the first 32 levels have a bit; deeper levels are not tracked.
+static int qualifierBit(int indirection)
+{
+    if (indirection < 0 || indirection >= 32)
+        return 0;
+    return static_cast<int>(1U << indirection);
+}
+
 SymbolDatabase::SymbolDatabase(Tokenizer& tokenizer)
     : mTokenizer(tokenizer)
     , mSettings(tokenizer.getSettings())
@@ -2671,8 +2680,8 @@ void Variable::setValueType(const ValueType &vt)
     mValueType = tmp;
     if ((mValueType->pointer > 0) && (!isArray() || Token::Match(mNameToken->previous(), "( * %name% )")))
         setFlag(fIsPointer, true);
-    setFlag(fIsConst, mValueType->constness & (1U << mValueType->pointer));
-    setFlag(fIsVolatile, mValueType->volatileness & (1U << mValueType->pointer));
+    setFlag(fIsConst, mValueType->constness & qualifierBit(mValueType->pointer));
+    setFlag(fIsVolatile, mValueType->volatileness & qualifierBit(mValueType->pointer));
     if (mValueType->smartPointerType)
         setFlag(fIsSmartPointer, true);
 }
@@ -6183,9 +6192,9 @@ const Function* Scope::findFunction(const Token* tok, bool requireConst, Referen
                         while (Token::Match(typeToken, "%name%|*|&|::|<"))
                         {
                             if (typeToken->str() == "const")
-                                ret.constness |= (1 << ret.pointer);
+                                ret.constness |= qualifierBit(ret.pointer);
                             else if (typeToken->str() == "volatile")
-                                ret.volatileness |= (1 << ret.pointer);
+                                ret.volatileness |= qualifierBit(ret.pointer);
                             else if (typeToken->str() == "*")
                                 ret.pointer++;
                             else if (typeToken->str() == "<") {
@@ -6939,13 +6948,13 @@ void SymbolDatabase::setValueType(Token* tok, const Variable& var, const SourceL
                 if (var.isArray()) // constness propagates to arrays, but not to regular pointers
                     valuetype.constness |= 1;
                 else
-                    valuetype.constness |= (1 << valuetype.pointer);
+                    valuetype.constness |= qualifierBit(valuetype.pointer);
             }
             if (vt && (vt->volatileness & 1) != 0) {
                 if (var.isArray())
                     valuetype.volatileness |= 1;
                 else
-                    valuetype.volatileness |= (1 << valuetype.pointer);
+                    valuetype.volatileness |= qualifierBit(valuetype.pointer);
             }
         }
         setValueType(tok, valuetype);
@@ -7078,16 +7087,16 @@ void SymbolDatabase::setValueType(Token* tok, const ValueType& valuetype, const 
                 autoTok = var1Tok->tokAt(-3);
             if (autoTok) {
                 ValueType vt(*vt2);
-                if (vt.constness & (1 << vt.pointer))
-                    vt.constness &= ~(1 << vt.pointer);
-                if (vt.volatileness & (1 << vt.pointer))
-                    vt.volatileness &= ~(1 << vt.pointer);
+                if (vt.constness & qualifierBit(vt.pointer))
+                    vt.constness &= ~qualifierBit(vt.pointer);
+                if (vt.volatileness & qualifierBit(vt.pointer))
+                    vt.volatileness &= ~qualifierBit(vt.pointer);
                 if (autoTok->strAt(1) == "*" && vt.pointer)
                     vt.pointer--;
                 if (Token::Match(autoTok->tokAt(-1), "const|constexpr"))
-                    vt.constness |= (1 << vt.pointer);
+                    vt.constness |= qualifierBit(vt.pointer);
                 if (Token::simpleMatch(autoTok->tokAt(-1), "volatile"))
-                    vt.volatileness |= (1 << vt.pointer);
+                    vt.volatileness |= qualifierBit(vt.pointer);
                 setValueType(autoTok, vt);
                 setAutoTokenProperties(autoTok);
                 if (vt2->pointer > vt.pointer)
@@ -7104,18 +7113,18 @@ void SymbolDatabase::setValueType(Token* tok, const ValueType& valuetype, const 
                     ValueType vt2_(*vt2);
                     if (vt2_.pointer == 0 && autoTok->strAt(1) == "*")
                         vt2_.pointer = 1;
-                    if ((vt.constness & (1 << vt2->pointer)) != 0)
-                        vt2_.constness |= (1 << vt2->pointer);
-                    if ((vt.volatileness & (1 << vt2->pointer)) != 0)
-                        vt2_.volatileness |= (1 << vt2->pointer);
+                    if ((vt.constness & qualifierBit(vt2->pointer)) != 0)
+                        vt2_.constness |= qualifierBit(vt2->pointer);
+                    if ((vt.volatileness & qualifierBit(vt2->pointer)) != 0)
+                        vt2_.volatileness |= qualifierBit(vt2->pointer);
                     if (!Token::Match(autoTok->tokAt(1), "*|&")) {
                         vt2_.constness = vt.constness;
                         vt2_.volatileness = vt.volatileness;
                     }
                     if (Token::simpleMatch(autoTok->tokAt(1), "* const"))
-                        vt2_.constness |= (1 << vt2->pointer);
+                        vt2_.constness |= qualifierBit(vt2->pointer);
                     if (Token::simpleMatch(autoTok->tokAt(1), "* volatile"))
-                        vt2_.volatileness |= (1 << vt2->pointer);
+                        vt2_.volatileness |= qualifierBit(vt2->pointer);
                     var->setValueType(vt2_);
                     if (vt2->typeScope && vt2->typeScope->definedType) {
                         var->type(vt2->typeScope->definedType);
@@ -7259,13 +7268,13 @@ void SymbolDatabase::setValueType(Token* tok, const ValueType& valuetype, const 
                 varvt.reference = Reference::LValue;
             if (isconst) {
                 if (varvt.pointer && varvt.reference != Reference::None)
-                    varvt.constness |= (1 << varvt.pointer);
+                    varvt.constness |= qualifierBit(varvt.pointer);
                 else
                     varvt.constness |= 1;
             }
             if (isvolatile) {
                 if (varvt.pointer && varvt.reference != Reference::None)
-                    varvt.volatileness |= (1 << varvt.pointer);
+                    varvt.volatileness |= qualifierBit(varvt.pointer);
                 else
                     varvt.volatileness |= 1;
             }
@@ -7340,9 +7349,9 @@ void SymbolDatabase::setValueType(Token* tok, const ValueType& valuetype, const 
                 if (autoToken->strAt(1) == "*" && autovt.pointer)
                     autovt.pointer--;
                 if (isconst)
-                    varvt.constness |= (1 << autovt.pointer);
+                    varvt.constness |= qualifierBit(autovt.pointer);
                 if (isvolatile)
-                    varvt.volatileness |= (1 << autovt.pointer);
+                    varvt.volatileness |= qualifierBit(autovt.pointer);
                 setValueType(parent->previous(), varvt);
                 auto * var = const_cast<Variable *>(parent->previous()->variable());
                 if (var) {
@@ -7389,9 +7398,9 @@ void SymbolDatabase::setValueType(Token* tok, const ValueType& valuetype, const 
             else if (typeTok->str() == "*")
                 pointer++;
             else if (typeTok->str() == "const")
-                constness |= 1 << pointer;
+                constness |= qualifierBit(pointer);
             else if (typeTok->str() == "volatile")
-                volatileness |= 1 << pointer;
+                volatileness |= qualifierBit(pointer);
             typeTok = typeTok->previous();
         }
 
@@ -7406,10 +7415,10 @@ void SymbolDatabase::setValueType(Token* tok, const ValueType& valuetype, const 
             varVt->volatileness |= volatileness;
 
             if (Token::simpleMatch(typeTok->previous(), "const auto"))
-                varVt->constness |= 1 << pointer;
+                varVt->constness |= qualifierBit(pointer);
 
             if (Token::simpleMatch(typeTok->previous(), "volatile auto"))
-                varVt->volatileness |= 1 << pointer;
+                varVt->volatileness |= qualifierBit(pointer);
 
             varTok->setValueType(varVt);
 
@@ -7647,9 +7656,9 @@ static const Token* parsedecl(const Token* type,
             type->type()->typeStart->str() != type->str() && type->type()->typeStart != previousType)
             parsedecl(type->type()->typeStart, valuetype, defaultSignedness, settings);
         else if (Token::Match(type, "const|constexpr"))
-            valuetype->constness |= (1 << (valuetype->pointer - pointer0));
+            valuetype->constness |= qualifierBit(valuetype->pointer - pointer0);
         else if (Token::simpleMatch(type, "volatile"))
-            valuetype->volatileness |= (1 << (valuetype->pointer - pointer0));
+            valuetype->volatileness |= qualifierBit(valuetype->pointer - pointer0);
         else if (settings.clang && type->str().size() > 2 && type->str().find("::") < type->str().find('<')) {
             TokenList typeTokens(settings, type->isCpp() ? Standards::Language::CPP : Standards::Language::C);
             std::string::size_type pos1 = 0;
@@ -7713,9 +7722,9 @@ static const Token* parsedecl(const Token* type,
                     valuetype->reference = Reference::RValue;
                 }
                 if (type->str() == "const")
-                    valuetype->constness |= (1 << valuetype->pointer);
+                    valuetype->constness |= qualifierBit(valuetype->pointer);
                 if (type->str() == "volatile")
-                    valuetype->volatileness |= (1 << valuetype->pointer);
+                    valuetype->volatileness |= qualifierBit(valuetype->pointer);
                 type = type->next();
             }
             break;
@@ -7914,7 +7923,7 @@ void SymbolDatabase::setGenericValueType(Token *par)
 
     const auto matchVt = [](const ValueType *control, const ValueType *type) {
         // Strip top level qualifiers of controlling expression
-        const unsigned int controlMask = ~(1U << control->pointer);
+        const unsigned int controlMask = ~static_cast<unsigned int>(qualifierBit(control->pointer));
         return control->isTypeEqual(type) &&
                control->sign == type->sign &&
                (static_cast<unsigned int>(control->constness) & controlMask) == static_cast<unsigned int>(type->constness) &&
@@ -8668,14 +8677,14 @@ bool ValueType::isConst(nonneg int indirect) const
 {
     if (indirect > pointer)
         return false;
-    return constness & (1 << (pointer - indirect));
+    return constness & qualifierBit(pointer - indirect);
 }
 
 bool ValueType::isVolatile(nonneg int indirect) const
 {
     if (indirect > pointer)
         return false;
-    return volatileness & (1 << (pointer - indirect));
+    return volatileness & qualifierBit(pointer - indirect);
 }
 
 namespace {
@@ -8929,9 +8938,9 @@ std::string ValueType::str() const
     }
     for (nonneg int p = 0; p < pointer; p++) {
         ret += " *";
-        if (constness & (2 << p))
+        if (constness & qualifierBit(p + 1))
             ret += " const";
-        if (volatileness & (2 << p))
+        if (volatileness & qualifierBit(p + 1))
             ret += " volatile";
     }
     if (reference == Reference::LValue)
@@ -8967,7 +8976,7 @@ ValueType::MatchResult ValueType::matchParameter(const ValueType *call, const Va
         return ValueType::MatchResult::NOMATCH; // TODO
     }
     if (call->pointer > 0) {
-        const unsigned int mask = (1U << call->pointer) - 1;
+        const unsigned int mask = static_cast<unsigned int>(qualifierBit(call->pointer)) - 1;
         if (((call->constness | func->constness) & mask) != (func->constness & mask))
             return ValueType::MatchResult::NOMATCH;
         if ((call->volatileness | func->volatileness) != func->volatileness)

@@ -760,27 +760,27 @@ int main(int argc, char **argv)
          << "\n";
 
     fout << "ifeq ($(HAVE_RULES),yes)\n"
-         << "    PCRE_CONFIG = $(shell which pcre-config)\n"
+         << "    PCRE_CONFIG = $(shell which pcre2-config)\n"
          << "    ifeq ($(PCRE_CONFIG),)\n"
-         << "        $(error Did not find pcre-config)\n"
+         << "        $(error Did not find pcre2-config)\n"
          << "    endif\n"
          << "    override CXXFLAGS += $(shell $(PCRE_CONFIG) --cflags)\n"
          << "    override CPPFLAGS += -DHAVE_RULES\n"
          << "    ifdef LIBS\n"
-         << "        LIBS += $(shell $(PCRE_CONFIG) --libs)\n"
+         << "        LIBS += $(shell $(PCRE_CONFIG) --libs8)\n"
          << "    else\n"
-         << "        LIBS=$(shell $(PCRE_CONFIG) --libs)\n"
+         << "        LIBS=$(shell $(PCRE_CONFIG) --libs8)\n"
          << "    endif\n"
          << "else ifneq ($(HAVE_RULES),)\n"
          << "    $(error invalid HAVE_RULES value '$(HAVE_RULES)')\n"
          << "endif\n\n";
 
     fout << "# older make versions do not support # in $(shell) and newer ones handle the escape sequence literally\n"
-         << "REQUIRE_ESCAPE=$(shell echo \"\\#define DEF\" | $(CXX) -c -xc - 2> /dev/null && echo \"1\" || echo \"0\")\n"
+         << "REQUIRE_ESCAPE=$(shell echo \"\\#define DEF\" | $(CXX) -fsyntax-only -xc - 2> /dev/null && echo \"1\" || echo \"0\")\n"
          << "ifeq ($(REQUIRE_ESCAPE),1)\n"
-         << "    HAVE_EXECINFO_H=$(shell echo \"\\#include <execinfo.h>\" | $(CXX) -c -xc - 2> /dev/null && echo \"1\" || echo \"0\")\n"
+         << "    HAVE_EXECINFO_H=$(shell echo \"\\#include <execinfo.h>\" | $(CXX) -fsyntax-only -xc - 2> /dev/null && echo \"1\" || echo \"0\")\n"
          << "else\n"
-         << "    HAVE_EXECINFO_H=$(shell echo \"#include <execinfo.h>\" | $(CXX) -c -xc - 2> /dev/null && echo \"1\" || echo \"0\")\n"
+         << "    HAVE_EXECINFO_H=$(shell echo \"#include <execinfo.h>\" | $(CXX) -fsyntax-only -xc - 2> /dev/null && echo \"1\" || echo \"0\")\n"
          << "endif\n"
          << "override CPPFLAGS += -DHAVE_EXECINFO_H=$(HAVE_EXECINFO_H)\n\n";
 
