@@ -7761,7 +7761,7 @@ void Tokenizer::simplifyVarDecl(Token * tokBegin, const Token * const tokEnd, co
                 varName = varName->link()->previous();
                 endDecl->insertToken(";");
                 endDecl = endDecl->next();
-                endDecl->next()->isSplittedVarDeclEq(true);
+                endDecl->isSplittedVarDeclEq(true);
                 endDecl->insertToken(varName->str());
                 if (!varName->getMacroName().empty())
                     endDecl->next()->setMacroName(varName->getMacroName());
