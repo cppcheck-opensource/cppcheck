@@ -234,6 +234,7 @@ namespace ValueFlow
                 if (varid1 &&
                     sz1->variable() &&
                     sz1->variable()->isArray() &&
+                    !sz1->variable()->isDecayedArrayArgument() &&
                     !sz1->variable()->dimensions().empty() &&
                     sz1->variable()->dimensionKnown(0) &&
                     Token::Match(sz2->astOperand2(), "*|[") && Token::Match(sz2->astOperand2()->astOperand1(), "%varid%", varid1)) {
@@ -245,8 +246,11 @@ namespace ValueFlow
             } else if (Token::Match(tok2, "%var% )")) {
                 if (const Variable *var = tok2->variable()) {
                     // find the size of the type
+                    const bool isPointer = var->isDecayedArrayArgument();
                     size_t size = 0;
-                    if (var->isEnumType()) {
+                    if (isPointer) {
+                        size = settings.platform.sizeof_pointer;
+                    } else if (var->isEnumType()) {
                         size = settings.platform.sizeof_int;
                         if (var->type()->classScope && var->type()->classScope->enumType)
                             size = getSizeOfType(var->type()->classScope->enumType, settings);
@@ -262,7 +266,7 @@ namespace ValueFlow
                     }
                     // find the number of elements
                     size_t count = 1;
-                    for (size_t i = 0; i < var->dimensions().size(); ++i) {
+                    for (size_t i = 0; !isPointer && i < var->dimensions().size(); ++i) {
                         if (var->dimensionKnown(i))
                             count *= var->dimension(i);
                         else

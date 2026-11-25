@@ -2727,6 +2727,13 @@ bool Variable::isStlStringViewType() const
     return getFlag(fIsStlType) && valueType() && valueType()->container && valueType()->container->stdStringLike && valueType()->container->view;
 }
 
+bool Variable::isDecayedArrayArgument() const
+{
+    if (!isArray() || !isArgument() || isReference())
+        return false;
+    return !(isStlType() && getTypeName() == "std::array") || Token::simpleMatch(nameToken()->next(), "[");
+}
+
 std::string Variable::getTypeName() const
 {
     std::string ret;
