@@ -2745,7 +2745,6 @@ static void valueFlowLifetimeUserConstructor(Token* tok,
     std::unordered_map<const Token*, const Variable*> argToParam;
     for (std::size_t i = 0; i < args.size(); i++)
         argToParam[args[i]] = constructor->getArgumentVar(i);
-    const bool lifetimeBound = hasLifetimeBound(constructor);
     if (const Token* initList = constructor->constructorMemberInitialization()) {
         std::unordered_map<const Variable*, LifetimeCapture> paramCapture;
         for (const Token* tok2 : astFlatten(initList->astOperand2(), ",")) {
@@ -2809,7 +2808,7 @@ static void valueFlowLifetimeUserConstructor(Token* tok,
             else
                 ls.byVal(tok, tokenlist, errorLogger, settings);
         });
-    } else if (!lifetimeBound && hasBorrowingVariables(constructor->nestedIn->varlist, args)) {
+    } else if (hasBorrowingVariables(constructor->nestedIn->varlist, args)) {
         LifetimeStore::forEach(tokenlist,
                                errorLogger,
                                settings,
@@ -2817,8 +2816,11 @@ static void valueFlowLifetimeUserConstructor(Token* tok,
                                "Passed to constructor of '" + name + "'.",
                                ValueFlow::Value::LifetimeKind::SubObject,
                                [&](LifetimeStore& ls) {
-            ls.inconclusive = true;
             const Variable* var = argToParam.at(ls.argtok);
+            // The lifetimes of a bound argument are stored below and are not inconclusive
+            if (var && var->isLifetimeBound())
+                return;
+            ls.inconclusive = true;
             if (var && !var->isConst() && var->isReference())
                 ls.byRef(tok, tokenlist, errorLogger, settings);
             else

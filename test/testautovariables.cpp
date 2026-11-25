@@ -4101,6 +4101,25 @@ private:
         ASSERT_EQUALS(
             "[test.cpp:8:20] -> [test.cpp:7:9] -> [test.cpp:8:16]: (error) Returning object that points to local variable 'b' that will be invalid when returning. [returnDanglingLifetime]\n",
             errout_str());
+
+        // An argument for a parameter without the attribute is still inconclusive
+        check("struct Pair {\n"
+              "    Pair(const int& a [[clang::lifetimebound]], const int* b);\n"
+              "    const int* a;\n"
+              "    const int* b;\n"
+              "};\n"
+              "Pair f1(const int& a) {\n"
+              "    int b = 0;\n"
+              "    return Pair(a, &b);\n"
+              "}\n"
+              "Pair f2(const int* b) {\n"
+              "    int a = 0;\n"
+              "    return Pair(a, b);\n"
+              "}\n");
+        ASSERT_EQUALS(
+            "[test.cpp:8:20] -> [test.cpp:8:20] -> [test.cpp:7:9] -> [test.cpp:8:16]: (error, inconclusive) Returning object that points to local variable 'b' that will be invalid when returning. [returnDanglingLifetime]\n"
+            "[test.cpp:12:17] -> [test.cpp:11:9] -> [test.cpp:12:16]: (error) Returning object that points to local variable 'a' that will be invalid when returning. [returnDanglingLifetime]\n",
+            errout_str());
     }
 
     void danglingLifetimeUserConstructor()
