@@ -272,6 +272,7 @@ private:
         TEST_CASE(minsize_strlen);
         TEST_CASE(minsize_mul);
         TEST_CASE(minsize_overflow);
+        TEST_CASE(arraysize_overflow);
         TEST_CASE(unknownType);
 
         TEST_CASE(terminateStrncpy1);
@@ -5005,6 +5006,67 @@ private:
               "    (void)wmemchr(buf, L'a', 0x4000000000000000LL);\n"
               "}\n", settings0);
         ASSERT_EQUALS("[test.cpp:3:19]: (error) Buffer is accessed out of bounds: buf [bufferAccessOutOfBounds]\n", errout_str());
+    }
+
+    void arraysize_overflow() {
+        // the number of array elements must not wrap around
+        check("void f() {\n"
+              "    char a[0x4000000000000001][4];\n"
+              "    memset(a, 0, 10);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f() {\n"
+              "    char a[0x100000000][0x100000000];\n"
+              "    memset(a, 0, 10);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("", errout_str());
+
+        // the size in bytes must not wrap around
+        check("void f() {\n"
+              "    int a[0x4000000000000001];\n"
+              "    memset(a, 0, 10);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f() {\n"
+              "    int a[0x4000000000000001][1];\n"
+              "    memset(a, 0, 10);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("", errout_str());
+
+        // the size of a derived class must not wrap around
+        check("struct B { int i; };\n"
+              "struct D : B { char m[0x100000000][0x100000000]; };\n"
+              "void f() {\n"
+              "    D d;\n"
+              "    memset(&d, 0, 10);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct B { int i; };\n"
+              "struct D : B { char b[0x6000000000000000]; char c[0x6000000000000000]; };\n"
+              "int f() {\n"
+              "    char buf[2] = {0};\n"
+              "    return buf[sizeof(D)];\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("", errout_str());
+
+        // an array after a bitfield must not be counted as part of the bitfield
+        check("struct S { int a : 8; char c[0x2000000000000000]; };\n"
+              "void f() {\n"
+              "    S s;\n"
+              "    memset(&s, 0, 10);\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("", errout_str());
+
+        // sizeof of an array variable must not wrap around
+        check("int f() {\n"
+              "    int a[0x4000000000000001];\n"
+              "    char buf[2] = {0};\n"
+              "    return buf[sizeof(a)];\n"
+              "}\n", settings0);
+        ASSERT_EQUALS("", errout_str());
     }
 
     // extracttests.enable

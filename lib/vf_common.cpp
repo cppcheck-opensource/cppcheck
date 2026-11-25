@@ -261,14 +261,15 @@ namespace ValueFlow
                         size = getSizeOfType(var->typeStartToken(), settings);
                     }
                     // find the number of elements
-                    size_t count = 1;
+                    MathLib::bigint count = 1;
                     for (size_t i = 0; i < var->dimensions().size(); ++i) {
-                        if (var->dimensionKnown(i))
-                            count *= var->dimension(i);
-                        else
+                        if (!var->dimensionKnown(i) || MathLib::mulOverflows(count, var->dimension(i))) {
                             count = 0;
+                            break;
+                        }
+                        count *= var->dimension(i);
                     }
-                    if (size && count > 0) {
+                    if (size && count > 0 && !MathLib::mulOverflows(count, static_cast<MathLib::bigint>(size))) {
                         Value value(count * size);
                         if (settings.platform.type != Platform::Type::Unspecified)
                             value.setKnown();
