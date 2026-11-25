@@ -4269,7 +4269,8 @@ static void valueFlowAfterAssign(const TokenList &tokenlist,
                 });
             if (values.empty())
                 continue;
-            const bool init = vars.size() == 1 && (vars.front()->nameToken() == tok->astOperand1() || tok->isSplittedVarDeclEq());
+            const bool init = vars.size() == 1 && (vars.front()->nameToken() == tok->astOperand1() ||
+                                                   (Token::Match(tok->tokAt(-2), "; %var% =") && tok->tokAt(-2)->isSplittedVarDeclEq()));
             valueFlowForwardAssign(
                 rhs, tok->astOperand1(), std::move(vars), values, init, tokenlist, errorLogger, settings);
             // Back propagate symbolic values
