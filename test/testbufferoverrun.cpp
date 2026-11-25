@@ -166,6 +166,7 @@ private:
         TEST_CASE(array_index_76);
         TEST_CASE(array_index_77);
         TEST_CASE(array_index_78);
+        TEST_CASE(array_index_80); // #14992, #14989
         TEST_CASE(array_index_multidim);
         TEST_CASE(array_index_switch_in_for);
         TEST_CASE(array_index_for_in_for);   // FP: #2634
@@ -2044,6 +2045,44 @@ private:
               "    v[idx++].set(0);\n"
               "    v[idx++].set(0);\n"
               "    v[idx++].set(0);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void array_index_80()
+    {
+        check("constexpr char arr[] = {'A', 'B', 'C', 'D'};\n" // #14992
+              "int f() {\n"
+              "    if constexpr (4 < sizeof(arr) / sizeof(arr[0])) {\n"
+              "        return arr[4];\n"
+              "    } else {\n"
+              "        return -1;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("constexpr char arr[] = {'A', 'B', 'C', 'D'};\n"
+              "int f() {\n"
+              "    if constexpr (4 == sizeof(arr) / sizeof(arr[0])) {\n"
+              "        return arr[4];\n"
+              "    } else {\n"
+              "        return -1;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:19]: (error) Array 'arr[4]' accessed at index 4, which is out of bounds. [arrayIndexOutOfBounds]\n", errout_str());
+
+        check("struct S {\n" // #14989
+              "    int a[10];\n"
+              "};\n"
+              "template <int N>\n"
+              "int g(const S& x) {\n"
+              "    if (N == 7)\n"
+              "        return x.a[N];\n"
+              "    else\n"
+              "        return x.a[N - 17];\n"
+              "}\n"
+              "int f(const S& x) {\n"
+              "    return g<7>(x);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
     }
