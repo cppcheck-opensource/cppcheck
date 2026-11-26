@@ -8024,14 +8024,15 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
                     } else break;
                 }
                 if (mSettings.platform.type != Platform::Type::Unspecified) {
+                    const bool isDecimal = MathLib::isDec(tokStr) && !MathLib::isOct(tokStr);
                     if (type <= ValueType::Type::INT && mSettings.platform.isIntValue(unsignedSuffix ? (value >> 1) : value))
                         type = ValueType::Type::INT;
-                    else if (type <= ValueType::Type::INT && !MathLib::isDec(tokStr) && mSettings.platform.isIntValue(value >> 2)) {
+                    else if (type <= ValueType::Type::INT && !isDecimal && mSettings.platform.isIntValue(value >> 1)) {
                         type = ValueType::Type::INT;
                         sign = ValueType::Sign::UNSIGNED;
                     } else if (type <= ValueType::Type::LONG && mSettings.platform.isLongValue(unsignedSuffix ? (value >> 1) : value))
                         type = ValueType::Type::LONG;
-                    else if (type <= ValueType::Type::LONG && !MathLib::isDec(tokStr) && mSettings.platform.isLongValue(value >> 2)) {
+                    else if (type <= ValueType::Type::LONG && !isDecimal && mSettings.platform.isLongValue(value >> 1)) {
                         type = ValueType::Type::LONG;
                         sign = ValueType::Sign::UNSIGNED;
                     } else if (mSettings.platform.isLongLongValue(unsignedSuffix ? (value >> 1) : value))
