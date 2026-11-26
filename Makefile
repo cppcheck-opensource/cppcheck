@@ -246,6 +246,7 @@ LIBOBJ =      $(libcppdir)/valueflow.o \
               $(libcppdir)/findtoken.o \
               $(libcppdir)/forwardanalyzer.o \
               $(libcppdir)/fwdanalysis.o \
+              $(libcppdir)/gitlabcodequalityreport.o \
               $(libcppdir)/importproject.o \
               $(libcppdir)/infer.o \
               $(libcppdir)/keywords.o \
@@ -320,6 +321,7 @@ TESTOBJ =     test/fixture.o \
               test/testfrontend.o \
               test/testfunctions.o \
               test/testgarbage.o \
+              test/testgitlabcodequalityreport.o \
               test/testimportproject.o \
               test/testincompletestatement.o \
               test/testinternal.o \
@@ -616,6 +618,9 @@ $(libcppdir)/forwardanalyzer.o: lib/forwardanalyzer.cpp lib/analyzer.h lib/astut
 $(libcppdir)/fwdanalysis.o: lib/fwdanalysis.cpp lib/astutils.h lib/checkers.h lib/config.h lib/errortypes.h lib/fwdanalysis.h lib/library.h lib/mathlib.h lib/platform.h lib/refthunk.h lib/settings.h lib/smallvector.h lib/sourcelocation.h lib/standards.h lib/symboldatabase.h lib/templatesimplifier.h lib/token.h lib/utils.h lib/vfvalue.h
 	$(CXX) ${INCLUDE_FOR_LIB} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(libcppdir)/fwdanalysis.cpp
 
+$(libcppdir)/gitlabcodequalityreport.o: lib/gitlabcodequalityreport.cpp externals/picojson/picojson.h lib/config.h lib/errorlogger.h lib/errortypes.h lib/gitlabcodequalityreport.h lib/json.h lib/refthunk.h lib/utils.h
+	$(CXX) ${INCLUDE_FOR_LIB} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(libcppdir)/gitlabcodequalityreport.cpp
+
 $(libcppdir)/importproject.o: lib/importproject.cpp externals/picojson/picojson.h externals/tinyxml2/tinyxml2.h lib/checkers.h lib/config.h lib/filesettings.h lib/importproject.h lib/json.h lib/library.h lib/mathlib.h lib/path.h lib/pathmatch.h lib/platform.h lib/settings.h lib/standards.h lib/suppressions.h lib/utils.h lib/xml.h
 	$(CXX) ${INCLUDE_FOR_LIB} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(libcppdir)/importproject.cpp
 
@@ -703,7 +708,7 @@ frontend/frontend.o: frontend/frontend.cpp frontend/frontend.h lib/checkers.h li
 cli/cmdlineparser.o: cli/cmdlineparser.cpp cli/cmdlinelogger.h cli/cmdlineparser.h cli/filelister.h externals/tinyxml2/tinyxml2.h lib/addoninfo.h lib/check.h lib/checkers.h lib/checks.h lib/color.h lib/config.h lib/cppcheck.h lib/errorlogger.h lib/errortypes.h lib/filesettings.h lib/importproject.h lib/library.h lib/mathlib.h lib/path.h lib/pathmatch.h lib/platform.h lib/refthunk.h lib/regex.h lib/rule.h lib/settings.h lib/standards.h lib/suppressions.h lib/utils.h lib/xml.h
 	$(CXX) ${INCLUDE_FOR_CLI} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ cli/cmdlineparser.cpp
 
-cli/cppcheckexecutor.o: cli/cppcheckexecutor.cpp cli/cmdlinelogger.h cli/cmdlineparser.h cli/cppcheckexecutor.h cli/executor.h cli/processexecutor.h cli/sehwrapper.h cli/signalhandler.h cli/singleexecutor.h cli/threadexecutor.h externals/picojson/picojson.h lib/analyzerinfo.h lib/check.h lib/checkers.h lib/checkersreport.h lib/color.h lib/config.h lib/cppcheck.h lib/errorlogger.h lib/errortypes.h lib/filesettings.h lib/json.h lib/library.h lib/mathlib.h lib/path.h lib/platform.h lib/refthunk.h lib/sarifreport.h lib/settings.h lib/standards.h lib/suppressions.h lib/timer.h lib/utils.h
+cli/cppcheckexecutor.o: cli/cppcheckexecutor.cpp cli/cmdlinelogger.h cli/cmdlineparser.h cli/cppcheckexecutor.h cli/executor.h cli/processexecutor.h cli/sehwrapper.h cli/signalhandler.h cli/singleexecutor.h cli/threadexecutor.h externals/picojson/picojson.h lib/analyzerinfo.h lib/check.h lib/checkers.h lib/checkersreport.h lib/color.h lib/config.h lib/cppcheck.h lib/errorlogger.h lib/errortypes.h lib/filesettings.h lib/gitlabcodequalityreport.h lib/json.h lib/library.h lib/mathlib.h lib/path.h lib/platform.h lib/refthunk.h lib/sarifreport.h lib/settings.h lib/standards.h lib/suppressions.h lib/timer.h lib/utils.h
 	$(CXX) ${INCLUDE_FOR_CLI} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ cli/cppcheckexecutor.cpp
 
 cli/executor.o: cli/executor.cpp cli/executor.h lib/checkers.h lib/color.h lib/config.h lib/errorlogger.h lib/errortypes.h lib/library.h lib/mathlib.h lib/platform.h lib/refthunk.h lib/settings.h lib/standards.h lib/suppressions.h lib/utils.h
@@ -819,6 +824,9 @@ test/testfunctions.o: test/testfunctions.cpp lib/check.h lib/checkers.h lib/chec
 
 test/testgarbage.o: test/testgarbage.cpp lib/check.h lib/checkers.h lib/checks.h lib/color.h lib/config.h lib/errorlogger.h lib/errortypes.h lib/library.h lib/mathlib.h lib/path.h lib/platform.h lib/refthunk.h lib/settings.h lib/smallvector.h lib/standards.h lib/templatesimplifier.h lib/token.h lib/tokenize.h lib/tokenlist.h lib/utils.h lib/vfvalue.h test/fixture.h test/helpers.h
 	$(CXX) ${INCLUDE_FOR_TEST} ${CFLAGS_FOR_TEST} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ test/testgarbage.cpp
+
+test/testgitlabcodequalityreport.o: test/testgitlabcodequalityreport.cpp externals/picojson/picojson.h lib/check.h lib/checkers.h lib/color.h lib/config.h lib/errorlogger.h lib/errortypes.h lib/gitlabcodequalityreport.h lib/json.h lib/library.h lib/mathlib.h lib/platform.h lib/refthunk.h lib/settings.h lib/standards.h lib/utils.h test/fixture.h
+	$(CXX) ${INCLUDE_FOR_TEST} ${CFLAGS_FOR_TEST} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ test/testgitlabcodequalityreport.cpp
 
 test/testimportproject.o: test/testimportproject.cpp lib/check.h lib/checkers.h lib/color.h lib/config.h lib/errorlogger.h lib/errortypes.h lib/filesettings.h lib/importproject.h lib/library.h lib/mathlib.h lib/path.h lib/platform.h lib/refthunk.h lib/settings.h lib/standards.h lib/suppressions.h lib/tokenize.h lib/tokenlist.h lib/utils.h test/fixture.h test/helpers.h test/redirect.h
 	$(CXX) ${INCLUDE_FOR_TEST} ${CFLAGS_FOR_TEST} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ test/testimportproject.cpp

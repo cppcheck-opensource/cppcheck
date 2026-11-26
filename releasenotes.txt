@@ -5,6 +5,7 @@ Options:
 - Rules: The PCRE library that we used is end-of-life. We have switched to PCRE2 instead. Existing rule files
   will hopefully work without changes.
 - The --clang option has been deprecated, it will be removed in Cppcheck 2.27
+- New output format: --output-format=gitlab-codequality for GitLab Code Quality reports.
 
 Major bug fixes & crashes:
 -

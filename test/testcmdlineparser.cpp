@@ -243,6 +243,7 @@ private:
         TEST_CASE(maxConfigsTooSmall);
         TEST_CASE(outputFormatText);
         TEST_CASE(outputFormatSarif);
+        TEST_CASE(outputFormatGitlabCodeQuality);
         TEST_CASE(outputFormatXml);
         TEST_CASE(outputFormatXmlv2);
         TEST_CASE(outputFormatXmlv3);
@@ -1474,6 +1475,13 @@ private:
         ASSERT_EQUALS_ENUM(Settings::OutputFormat::sarif, settings->outputFormat);
     }
 
+    void outputFormatGitlabCodeQuality() {
+        REDIRECT;
+        const char * const argv[] = {"cppcheck", "--output-format=gitlab-codequality", "file.cpp"};
+        ASSERT_EQUALS_ENUM(CmdLineParser::Result::Success, parseFromArgs(argv));
+        ASSERT_EQUALS_ENUM(Settings::OutputFormat::gitlabCodeQuality, settings->outputFormat);
+    }
+
     void outputFormatXml() {
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--output-format=xml", "file.cpp"};
@@ -1501,7 +1509,7 @@ private:
         REDIRECT;
         const char * const argv[] = {"cppcheck", "--output-format=plist", "file.cpp"};
         ASSERT_EQUALS_ENUM(CmdLineParser::Result::Fail, parseFromArgs(argv));
-        ASSERT_EQUALS("cppcheck: error: argument to '--output-format=' must be 'text', 'sarif', 'xml' (deprecated), 'xmlv2' or 'xmlv3'.\n", logger->str());
+        ASSERT_EQUALS("cppcheck: error: argument to '--output-format=' must be 'text', 'sarif', 'gitlab-codequality', 'xml' (deprecated), 'xmlv2' or 'xmlv3'.\n", logger->str());
     }
 
     void outputFormatImplicitPlist() {

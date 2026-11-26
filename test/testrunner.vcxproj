@@ -69,6 +69,7 @@
     <ClCompile Include="testfrontend.cpp" />
     <ClCompile Include="testfunctions.cpp" />
     <ClCompile Include="testgarbage.cpp" />
+    <ClCompile Include="testgitlabcodequalityreport.cpp" />
     <ClCompile Include="testimportproject.cpp" />
     <ClCompile Include="testincompletestatement.cpp" />
     <ClCompile Include="testinternal.cpp" />
