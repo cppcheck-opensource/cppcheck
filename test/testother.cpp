@@ -14711,6 +14711,104 @@ private:
               "    dostuff(a);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        // Step updates via function call — OK (false positive previously)
+        check("void inc(int* p) { ++*p; }\n"
+              "void f(int n) {\n"
+              "  for (int i = 0; i < n; inc(&i)) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Step updates via std::advance — OK
+        check("#include <iterator>\n"
+              "#include <list>\n"
+              "void f(std::list<int>& l) {\n"
+              "  for (auto it = l.begin(); it != l.end(); std::advance(it, 1)) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Step updates via member taking reference — OK
+        check("struct S { void step(int& i); };\n"
+              "void f(S& s, int n) {\n"
+              "  for (int i = 0; i < n; s.step(i)) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Lambda in step that updates the variable — OK
+        check("void f(int n) {\n"
+              "  for (int i = 0; i < n; ([&]{ i++; })()) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Other operand of condition changes in body — OK
+        check("void use(int);\n"
+              "void f(int n) {\n"
+              "  for (int i = 0; i < n;) {\n"
+              "    use(i);\n"
+              "    n--;\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Other operand is a non-const function call — OK
+        check("int get();\n"
+              "void f() {\n"
+              "  for (int i = 0; i != get();) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Other operand reads volatile — OK
+        check("void f(const volatile int *p) {\n"
+              "  for (int i = 0; i < *p;) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Init assigns bound; step updates the other operand — OK
+        check("void f(int M) {\n"
+              "  int i = 0;\n"
+              "  for (int m = M; i < m; i++) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // noreturn/exit in body — OK
+        check("#include <stdlib.h>\n"
+              "void use(int);\n"
+              "void f(int n) {\n"
+              "  for (int i = 0; i < n;) {\n"
+              "    use(i);\n"
+              "    exit(1);\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // [[noreturn]] in body — OK
+        check("void use(int);\n"
+              "[[noreturn]] void fail();\n"
+              "void f(int n) {\n"
+              "  for (int i = 0; i < n;) {\n"
+              "    use(i);\n"
+              "    fail();\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // continue alone does not exit the loop — still warn
+        check("void use(int);\n"
+              "void f(int n) {\n"
+              "  for (int i = 0; i < n;) {\n"
+              "    if (n > 0)\n"
+              "      continue;\n"
+              "    use(i);\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:3]: (warning) The loop variable 'i' is not updated in this for-loop, so the loop might never terminate. [missingForLoopIncrement]\n", errout_str());
+
+        // Step updates a different variable, not the control var — still warn
+        check("void f() {\n"
+              "  int k = 0;\n"
+              "  for (int h = 35; h > 5; k++) {}\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:3]: (warning) The loop variable 'h' is not updated in this for-loop, so the loop might never terminate. [missingForLoopIncrement]\n", errout_str());
     }
 };
 

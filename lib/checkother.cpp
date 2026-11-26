@@ -4910,19 +4910,45 @@ void CheckOtherImpl::overlappingWriteFunction(const Token *tok, const std::strin
 // Detect for-loops that never update their control variable (#5459)
 //---------------------------------------------------------------------------
 
-static bool stepUpdatesVar(const Token* stepTok, nonneg int varId)
+static void getStepTokRange(const Token* stepTok, const Token*& stepStart, const Token*& stepEnd)
 {
-    if (!stepTok || varId == 0)
-        return false;
-    if (stepTok->isIncDecOp() && stepTok->astOperand1() && stepTok->astOperand1()->varId() == varId)
-        return true;
-    if (stepTok->isAssignmentOp() && stepTok->astOperand1() && stepTok->astOperand1()->varId() == varId)
-        return true;
-    // Recurse so nested updates are found, e.g. "delete *it++" or "a = b++"
-    return stepUpdatesVar(stepTok->astOperand1(), varId) || stepUpdatesVar(stepTok->astOperand2(), varId);
+    stepStart = nullptr;
+    stepEnd = nullptr;
+    if (!stepTok)
+        return;
+    stepStart = previousBeforeAstLeftmostLeaf(stepTok);
+    if (!stepStart)
+        stepStart = stepTok;
+    stepEnd = nextAfterAstRightmostLeaf(stepTok);
 }
 
-static bool hasForLoopExit(const Scope& scope)
+static bool stepMayUpdateVar(const Token* stepTok, const Token* loopVarTok, const Settings& settings)
+{
+    if (!stepTok || !loopVarTok)
+        return false;
+
+    const Token* stepStart = nullptr;
+    const Token* stepEnd = nullptr;
+    getStepTokRange(stepTok, stepStart, stepEnd);
+    if (!stepEnd)
+        return true; // cannot determine step range; be conservative
+
+    // Covers ++/--/assignment and updates through calls (inc(&i), std::advance, ...)
+    if (findExpressionChanged(loopVarTok, stepStart, stepEnd, settings))
+        return true;
+
+    // Opaque call/lambda in the step may update the variable in ways we do not see
+    if (findAstNode(stepTok, [](const Token* tok) {
+        if (findLambdaEndToken(tok))
+            return true;
+        return tok->isName() && Token::simpleMatch(tok->next(), "(") && !tok->isKeyword();
+    }))
+        return true;
+
+    return false;
+}
+
+static bool hasForLoopExit(const Scope& scope, const Library& library)
 {
     for (const Token* tok = scope.bodyStart; tok != scope.bodyEnd; tok = tok->next()) {
         const Scope* escapeScope = tok->scope();
@@ -4935,7 +4961,12 @@ static bool hasForLoopExit(const Scope& scope)
             tok = lambdaEnd;
             continue;
         }
-        if (!tok->isName() || !tok->isKeyword())
+        if (!tok->isName())
+            continue;
+        // exit/abort/longjmp/[[noreturn]] and similar
+        if (isEscapeFunction(tok, library))
+            return true;
+        if (!tok->isKeyword())
             continue;
         if (Token::Match(tok, "goto|return|throw"))
             return true;
@@ -4953,13 +4984,48 @@ static bool hasForLoopExit(const Scope& scope)
     return false;
 }
 
+static bool isStableLoopBound(const Token* boundTok,
+                               const Token* bodyStart,
+                               const Token* bodyEnd,
+                               const Token* stepTok,
+                               const Settings& settings)
+{
+    if (!boundTok)
+        return false;
+
+    // Bound must not contain non-const calls (e.g. get()) or side effects
+    if (!isConstExpression(boundTok, settings.library))
+        return false;
+
+    // Bound must not read volatile data (e.g. i < *p with volatile int *p)
+    if (findAstNode(boundTok, [](const Token* tok) {
+        return tok->valueType() && tok->valueType()->volatileness != 0;
+    }))
+        return false;
+
+    // Bound must not be modified in the body (e.g. i < n with n-- in the body)
+    if (findExpressionChanged(boundTok, bodyStart, bodyEnd, settings))
+        return false;
+
+    // Bound must not be modified in the step (e.g. for (m = M; i < m; i++))
+    if (stepTok) {
+        const Token* stepStart = nullptr;
+        const Token* stepEnd = nullptr;
+        getStepTokRange(stepTok, stepStart, stepEnd);
+        if (!stepEnd || findExpressionChanged(boundTok, stepStart, stepEnd, settings))
+            return false;
+    }
+
+    return true;
+}
+
 static const Token* findForLoopControlVar(const Token* initTok, const Token* condTok)
 {
     if (!initTok || !condTok || !condTok->isComparisonOp())
         return nullptr;
 
     const Token* initLhs = Token::simpleMatch(initTok, "=") ? initTok->astOperand1() : nullptr;
-    if (!Token::Match(initLhs, "%var%") || initLhs->varId() == 0) //TODO: WILL THIS BE NULLPTR DEFERENCE IF initLhs IS SET TO NULLPTR ON LINE 4962??
+    if (!Token::Match(initLhs, "%var%") || initLhs->varId() == 0)
         return nullptr;
 
     const Variable* var = initLhs->variable();
@@ -5007,13 +5073,21 @@ void CheckOtherImpl::checkMissingForLoopIncrement()
             continue;
 
         const nonneg int varId = loopVarTok->varId();
-        if (stepUpdatesVar(stepTok, varId))
+        if (stepMayUpdateVar(stepTok, loopVarTok, mSettings))
             continue;
 
         if (!astHasVar(condTok, varId))
             continue;
 
-        if (hasForLoopExit(scope))
+        // The other operand of the comparison must be a stable bound, otherwise the
+        // loop can terminate without updating the control variable.
+        const Token* otherBound = (loopVarTok == condTok->astOperand1())
+                                    ? condTok->astOperand2()
+                                    : condTok->astOperand1();
+        if (!isStableLoopBound(otherBound, scope.bodyStart, scope.bodyEnd, stepTok, mSettings))
+            continue;
+
+        if (hasForLoopExit(scope, mSettings.library))
             continue;
 
         if (findExpressionChanged(loopVarTok, scope.bodyStart, scope.bodyEnd, mSettings))
