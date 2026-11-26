@@ -360,20 +360,43 @@ def __remove_link(path):
         os.rmdir(path)
 
 
+def __find_escaping_links(real_temp_path):
+    # Returns the links below real_temp_path that resolve outside of it, and whether a folder had to
+    # be made readable to list it. Raises OSError for a folder that cannot be listed even then.
+    import stat
+    fixed = False
+
+    def onerror(e):
+        # a directory member extracted after the links can have made its folder unreadable
+        nonlocal fixed
+        mode = stat.S_IMODE(os.lstat(e.filename).st_mode)
+        missing = (stat.S_IRUSR | stat.S_IXUSR) & ~mode
+        if not missing:
+            raise e
+        os.chmod(e.filename, mode | missing)
+        fixed = True
+
+    links = []
+    for root, dirs, files in os.walk(real_temp_path, onerror=onerror):
+        for name in dirs + files:
+            path = os.path.join(root, name)
+            if os.path.islink(path) and not __is_inside_path(real_temp_path, os.path.realpath(path)):
+                links.append(path)
+    return links, fixed
+
+
 def __remove_escaping_links(real_temp_path):
     # A link that still pointed inside real_temp_path when it was extracted can be redirected
     # by a link that is extracted later, so all links are checked again afterwards. Removing a
     # link changes what the remaining ones resolve to, so this is repeated until nothing is left.
-    # Raises OSError if a link cannot be removed.
+    # Raises OSError if a folder cannot be listed or a link cannot be removed.
     import stat
     removed = 0
     while True:
-        links = []
-        for root, dirs, files in os.walk(real_temp_path):
-            for name in dirs + files:
-                path = os.path.join(root, name)
-                if os.path.islink(path) and not __is_inside_path(real_temp_path, os.path.realpath(path)):
-                    links.append(path)
+        links, fixed = __find_escaping_links(real_temp_path)
+        if fixed:
+            # a folder that was skipped by the walk is readable now, so look at its content as well
+            continue
         if not links:
             return removed
         for path in links:

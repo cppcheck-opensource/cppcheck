@@ -195,3 +195,28 @@ def test_unpack_package_link_in_readonly_dir(tmpdir):
         if os.path.lexists(path):
             assert os.path.commonpath([real_temp_path, os.path.realpath(path)]) == real_temp_path
     assert os.listdir(outside_path) == ['secret.c']
+
+def test_unpack_package_link_in_unreadable_dir(tmpdir):
+    work_path = str(tmpdir)
+    outside_path = os.path.join(work_path, 'outside')
+    os.mkdir(outside_path)
+    with open(os.path.join(outside_path, 'secret.c'), 'w', encoding='utf-8') as f:
+        f.write('int secret;\n')
+    tgz = os.path.join(work_path, 'temp.tgz')
+    with tarfile.open(tgz, 'w:gz') as tf:
+        _add_tar_member(tf, 'pkg/main.c')
+        # redirected out of temp by the next member, like in test_unpack_package_link_redirected_later
+        _add_tar_member(tf, 'pkg/q.h/l.h', linkname='d.h/../../../outside')
+        _add_tar_member(tf, 'pkg/q.h/d.h', linkname='.')
+        # a directory member with a header-like name makes the folder unlistable after the links exist
+        _add_tar_member(tf, 'pkg/q.h', dirmode=0o311)
+
+    temp_path, source_found = unpack_package(work_path, tgz)
+    assert source_found
+    assert os.path.isfile(os.path.join(temp_path, 'pkg', 'main.c'))
+    real_temp_path = os.path.realpath(temp_path)
+    for name in ('l.h', 'd.h'):
+        path = os.path.join(temp_path, 'pkg', 'q.h', name)
+        if os.path.lexists(path):
+            assert os.path.commonpath([real_temp_path, os.path.realpath(path)]) == real_temp_path
+    assert os.listdir(outside_path) == ['secret.c']
