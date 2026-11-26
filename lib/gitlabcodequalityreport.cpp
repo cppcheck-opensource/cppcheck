@@ -20,6 +20,7 @@
 
 #include "errorlogger.h"
 #include "errortypes.h"
+#include "path.h"
 #include "utils.h"
 
 #include <cstdint>
@@ -60,6 +61,9 @@ namespace {
 
 void GitlabCodeQualityReport::addFinding(ErrorMessage msg)
 {
+    if (!msg.callStack.empty() && Path::isAbsolute(locationPath(msg.callStack.back()))) {
+        mHasAbsolutePath = true;
+    }
     mFindings.push_back(std::move(msg));
 }
 

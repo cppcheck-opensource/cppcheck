@@ -124,6 +124,10 @@ namespace {
             if (mSettings.outputFormat == Settings::OutputFormat::sarif) {
                 reportErr(mSarifReport.serialize(mSettings.cppcheckCfgProductName));
             } else if (mSettings.outputFormat == Settings::OutputFormat::gitlabCodeQuality) {
+                if (mGitlabCodeQualityReport.hasAbsolutePath()) {
+                    // Keep the JSON report on stderr free of warnings.
+                    reportOut("cppcheck: warning: GitLab Code Quality requires repository-relative paths; use --relative-paths=<repository-root>.");
+                }
                 reportErr(mGitlabCodeQualityReport.serialize());
             }
             delete mErrorOutput;

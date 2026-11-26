@@ -42,6 +42,7 @@ private:
         TEST_CASE(severityMapping);
         TEST_CASE(fingerprint);
         TEST_CASE(pathWithoutDotSlash);
+        TEST_CASE(absolutePath);
     }
 
     static ErrorMessage createErrorMessage(const std::string& id,
@@ -164,6 +165,18 @@ private:
         ASSERT(parseJson(report.serialize(), json));
         const picojson::object& location = findingAt(json, 0).at("location").get<picojson::object>();
         ASSERT_EQUALS("src/test.cpp", location.at("path").get<std::string>());
+    }
+
+    void absolutePath()
+    {
+        GitlabCodeQualityReport report;
+        ASSERT(!report.hasAbsolutePath());
+
+        report.addFinding(createErrorMessage("testError", Severity::error, "Test error", "src/test.cpp", 10));
+        ASSERT(!report.hasAbsolutePath());
+
+        report.addFinding(createErrorMessage("testError", Severity::error, "Test error", "/repo/src/test.cpp", 10));
+        ASSERT(report.hasAbsolutePath());
     }
 };
 

@@ -69,11 +69,16 @@ public:
     void addFinding(ErrorMessage msg);
     std::string serialize() const;
 
+    bool hasAbsolutePath() const {
+        return mHasAbsolutePath;
+    }
+
 private:
     static picojson::object serializeFinding(const ErrorMessage& finding);
     static std::string codeQualitySeverity(const ErrorMessage& finding);
 
     std::vector<ErrorMessage> mFindings;
+    bool mHasAbsolutePath{};
 };
 
 #endif // GITLAB_CODE_QUALITY_REPORT_H

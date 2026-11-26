@@ -618,7 +618,7 @@ $(libcppdir)/forwardanalyzer.o: lib/forwardanalyzer.cpp lib/analyzer.h lib/astut
 $(libcppdir)/fwdanalysis.o: lib/fwdanalysis.cpp lib/astutils.h lib/checkers.h lib/config.h lib/errortypes.h lib/fwdanalysis.h lib/library.h lib/mathlib.h lib/platform.h lib/refthunk.h lib/settings.h lib/smallvector.h lib/sourcelocation.h lib/standards.h lib/symboldatabase.h lib/templatesimplifier.h lib/token.h lib/utils.h lib/vfvalue.h
 	$(CXX) ${INCLUDE_FOR_LIB} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(libcppdir)/fwdanalysis.cpp
 
-$(libcppdir)/gitlabcodequalityreport.o: lib/gitlabcodequalityreport.cpp externals/picojson/picojson.h lib/config.h lib/errorlogger.h lib/errortypes.h lib/gitlabcodequalityreport.h lib/json.h lib/refthunk.h lib/utils.h
+$(libcppdir)/gitlabcodequalityreport.o: lib/gitlabcodequalityreport.cpp externals/picojson/picojson.h lib/config.h lib/errorlogger.h lib/errortypes.h lib/gitlabcodequalityreport.h lib/json.h lib/path.h lib/refthunk.h lib/standards.h lib/utils.h
 	$(CXX) ${INCLUDE_FOR_LIB} $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(libcppdir)/gitlabcodequalityreport.cpp
 
 $(libcppdir)/importproject.o: lib/importproject.cpp externals/picojson/picojson.h externals/tinyxml2/tinyxml2.h lib/checkers.h lib/config.h lib/filesettings.h lib/importproject.h lib/json.h lib/library.h lib/mathlib.h lib/path.h lib/pathmatch.h lib/platform.h lib/settings.h lib/standards.h lib/suppressions.h lib/utils.h lib/xml.h
