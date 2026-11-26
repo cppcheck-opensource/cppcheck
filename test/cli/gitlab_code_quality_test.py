@@ -26,7 +26,7 @@ def test_gitlab_code_quality(tmp_path):
     assert len(findings) == 1
 
     finding = findings[0]
-    assert finding["description"] == "Division by zero."
+    assert finding["description"] == "Division by zero. (CWE-369)"
     assert finding["check_name"] == "zerodiv"
     assert finding["fingerprint"]
     assert finding["severity"] == "critical"

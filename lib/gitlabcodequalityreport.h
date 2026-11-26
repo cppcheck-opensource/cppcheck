@@ -45,7 +45,7 @@
  * @code{.json}
  * [
  *   {
- *     "description": "Division by zero.",
+ *     "description": "Division by zero. (CWE-369)",
  *     "check_name": "zerodiv",
  *     "fingerprint": "12532254259410460725",
  *     "severity": "critical",

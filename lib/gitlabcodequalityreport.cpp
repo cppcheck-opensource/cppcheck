@@ -71,8 +71,13 @@ picojson::object GitlabCodeQualityReport::serializeFinding(const ErrorMessage& f
 {
     const ErrorMessage::FileLocation& location = finding.callStack.back();
 
+    std::string description = finding.shortMessage();
+    if (finding.cwe.id > 0) {
+        description += " (CWE-" + std::to_string(finding.cwe.id) + ")";
+    }
+
     picojson::object result;
-    result["description"] = picojson::value(finding.shortMessage());
+    result["description"] = picojson::value(description);
     result["check_name"] = picojson::value(finding.id);
     result["fingerprint"] = picojson::value(fingerprint(finding));
     result["severity"] = picojson::value(codeQualitySeverity(finding));

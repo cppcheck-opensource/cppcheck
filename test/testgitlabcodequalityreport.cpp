@@ -43,6 +43,7 @@ private:
         TEST_CASE(fingerprint);
         TEST_CASE(pathWithoutDotSlash);
         TEST_CASE(absolutePath);
+        TEST_CASE(cweDescription);
     }
 
     static ErrorMessage createErrorMessage(const std::string& id,
@@ -177,6 +178,19 @@ private:
 
         report.addFinding(createErrorMessage("testError", Severity::error, "Test error", "/repo/src/test.cpp", 10));
         ASSERT(report.hasAbsolutePath());
+    }
+
+    void cweDescription()
+    {
+        ErrorMessage errorMessage = createErrorMessage("testError", Severity::error, "Test error");
+        errorMessage.cwe = CWE(369);
+
+        GitlabCodeQualityReport report;
+        report.addFinding(errorMessage);
+
+        picojson::value json;
+        ASSERT(parseJson(report.serialize(), json));
+        ASSERT_EQUALS("Test error (CWE-369)", findingAt(json, 0).at("description").get<std::string>());
     }
 };
 
