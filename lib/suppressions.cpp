@@ -923,7 +923,9 @@ int polyspace::Parser::parseRange(const std::string& comment, std::string::size_
         pos = endpos;
         return ret;
     } catch (const std::invalid_argument &) {
+        // not a number
     } catch (const std::out_of_range &) {
+        // does not fit in an int
     }
     return 0;
 }
