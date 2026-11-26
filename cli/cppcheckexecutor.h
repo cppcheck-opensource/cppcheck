@@ -59,12 +59,12 @@ public:
      */
     int check(int argc, const char* const argv[]);
 
-protected:
-
     /**
      * Execute a shell command and read the output from it. Returns exitcode of the executed command,.
      */
     static int executeCommand(std::string exe, std::vector<std::string> args, std::string redirect, std::string &output_);
+
+protected:
 
     static bool reportUnmatchedSuppressions(const Settings &settings, const SuppressionList& suppressions, const std::list<FileWithDetails> &files, const std::list<FileSettings>& fileSettings, ErrorLogger& errorLogger);
 
