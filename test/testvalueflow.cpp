@@ -4788,6 +4788,19 @@ private:
         ASSERT_EQUALS(true, testValueOfX(code, 6U, 5));
         ASSERT_EQUALS(false, testValueOfX(code, 7U, 5));
 
+        // the enclosing condition held for the value before it was changed
+        code = "void f(int n, int x) {\n"
+               "    if (x < n) {\n"
+               "        if (x == 4) {}\n"
+               "        x++;\n"
+               "        if (x < n) {\n"
+               "            int a = x;\n"
+               "        }\n"
+               "    }\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfX(code, 5U, 5));
+        ASSERT_EQUALS(false, testValueOfX(code, 6U, 5));
+
         // no fork: the main path still knows the condition is false
         /*const*/ Settings s(settings);
         s.vfOptions.maxForwardConditionForkDepth = 0;

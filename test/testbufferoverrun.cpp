@@ -2114,6 +2114,18 @@ private:
               "    return s;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("const int a[5] = {1,2,3,4,5};\n"
+              "int f(int N, int i) {\n"
+              "    if (i < N) {\n"
+              "        if (i == 4) {}\n"
+              "        i++;\n"
+              "        if (i < N)\n"
+              "            return a[i];\n"
+              "    }\n"
+              "    return 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void array_index_multidim() {
