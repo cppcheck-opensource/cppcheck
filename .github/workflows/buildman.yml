@@ -26,17 +26,17 @@ jobs:
       - run: |
           mkdir output
 
-      - uses: docker://pandoc/latex:3.6.3
-        with:
-          args: --output=output/manual.html man/manual.md
-
-      - uses: docker://pandoc/latex:3.6.3
-        with:
-          args: --output=output/manual.pdf man/manual.md
-
-      - uses: docker://pandoc/latex:3.6.3
-        with:
-          args: --output=output/manual-premium.pdf man/manual-premium.md
+      # buildman.sh runs in the pandoc container. The LaTeX packages used by manual-style.tex
+      # and the DejaVu fonts are not included in the image.
+      - name: Build manuals
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/data" -w /data/man --entrypoint sh pandoc/latex:3.6.3 -c '
+            set -e
+            tlmgr --repository https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2024/tlnet-final install titlesec newverbs
+            apk add --no-cache font-dejavu
+            ./buildman.sh
+            chown -R '"$(id -u):$(id -g)"' .'
+          cp man/*.pdf man/*.html man/manual.css output/
 
       - uses: actions/upload-artifact@v7
         with:

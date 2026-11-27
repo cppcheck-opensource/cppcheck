@@ -1,7 +1,17 @@
 #!/bin/sh
+# Usage:
+#   ./build-pdf.sh NAME                  # NAME.md -> NAME.pdf
+#   ./build-pdf.sh NAME INPUT... [pandoc options]
+#                                        # INPUT... -> NAME.pdf
+#
 # This uses installed fonts, which vary between systems
 # Segoe UI and Consolas are standard in Windows 10, DejaVu is more common on Linux
-echo Building $1.pdf
+name=$1
+shift
+if [ $# -eq 0 ]; then
+    set -- "$name.md"
+fi
+echo Building $name.pdf
 
 MainFont="Segoe UI"
 MonoFont="Consolas"
@@ -20,7 +30,7 @@ fi
 
 # echo Using $MainFont / $MonoFont
 
-pandoc $1.md -o $1.pdf -s --number-sections --toc \
+pandoc "$@" -o $name.pdf -s --number-sections --toc \
     --pdf-engine=xelatex \
     --listings \
     -f markdown \
@@ -29,4 +39,6 @@ pandoc $1.md -o $1.pdf -s --number-sections --toc \
     -V geometry:a4paper \
     -V geometry:margin=2.4cm \
     -V subparagraph \
-    -H manual-style.tex
+    -H manual-style.tex \
+    --lua-filter=filters/include-files.lua \
+    --lua-filter=filters/manual.lua

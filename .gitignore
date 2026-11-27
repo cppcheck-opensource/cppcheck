@@ -83,6 +83,7 @@ stage
 
 # Manual folder
 /man/manual.log
+/man/appendix-*.md
 /man/manual.tex
 /man/*.pdf
 /man/*.html
