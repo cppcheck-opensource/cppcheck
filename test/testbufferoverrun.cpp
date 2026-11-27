@@ -165,6 +165,8 @@ private:
         TEST_CASE(array_index_75);
         TEST_CASE(array_index_76);
         TEST_CASE(array_index_77);
+        TEST_CASE(array_index_78);
+        TEST_CASE(array_index_79); // #15225
         TEST_CASE(array_index_multidim);
         TEST_CASE(array_index_switch_in_for);
         TEST_CASE(array_index_for_in_for);   // FP: #2634
@@ -2029,6 +2031,47 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:7:11]: (error) Array 'a[2]' accessed at index 2, which is out of bounds. [arrayIndexOutOfBounds]\n",
                       errout_str());
+    }
+
+    void array_index_78()
+    {
+        check("void f() {\n"
+              "    struct {\n"
+              "        int a; \n"
+              "        void set(int i) { a = i; }\n"
+              "    } v[4];\n"
+              "    int idx = 0;\n"
+              "    v[idx++].set(0);\n"
+              "    v[idx++].set(0);\n"
+              "    v[idx++].set(0);\n"
+              "    v[idx++].set(0);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void array_index_79()
+    {
+        check("struct S { char c[4]; };\n" // #15225
+              "void f() {\n"
+              "    char a[10 + sizeof(struct S)];\n"
+              "    a[sizeof(a)] = 0;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:6]: (error) Array 'a[14]' accessed at index 14, which is out of bounds. [arrayIndexOutOfBounds]\n",
+                      errout_str());
+
+        check("void f(char a[10]) {\n"
+              "    a[sizeof(a)] = 0;\n"
+              "    a[sizeof(a) / sizeof(a[0])] = 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("struct S { char c[4]; };\n"
+              "void f() {\n"
+              "    std::array<char, 3 + sizeof(S)> a[2];\n"
+              "    char buf[sizeof(a)];\n"
+              "    buf[5] = 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void array_index_multidim() {

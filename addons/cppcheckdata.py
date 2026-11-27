@@ -150,6 +150,7 @@ class MacroUsage:
         useline
         usecolumn
         isKnownValue
+        arg          Argument of an integer constant macro call (INTn_C / UINTn_C), empty for other macros
     """
     #preprocessor.cpp/Preprocessor::dump
 
@@ -168,9 +169,10 @@ class MacroUsage:
         self.useline = element.get('useline')
         self.usecolumn = element.get('usecolumn')
         self.isKnownValue = element.get('is-known-value', 'false') == 'true'
+        self.arg = element.get('arg', '')
 
     def __repr__(self):
-        attrs = ["name", "file", "linenr", "column", "usefile", "useline", "usecolumn", "isKnownValue"]
+        attrs = ["name", "file", "linenr", "column", "usefile", "useline", "usecolumn", "isKnownValue", "arg"]
         return "{}({})".format(
             "MacroUsage",
             ", ".join(("{}={}".format(a, repr(getattr(self, a))) for a in attrs))

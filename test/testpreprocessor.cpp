@@ -136,6 +136,7 @@ private:
         if (inlineSuppression)
             preprocessor.inlineSuppressions(*inlineSuppression);
         preprocessor.removeComments();
+        preprocessor.reportSimplecppPortability(outputList);
         preprocessor.simplifyPragmaAsm();
 
         std::map<std::string, std::string> cfgcode;
@@ -391,6 +392,8 @@ private:
         TEST_CASE(pragmaAsm);
 
         TEST_CASE(dumpPreprocessor);
+        TEST_CASE(dumpMacroUsageArg);
+        TEST_CASE(portabilityReports);
     }
 
     template<size_t size>
@@ -2805,6 +2808,8 @@ private:
 
         // Preprocess => don't crash..
         (void)getcode(settings0, *this, filedata);
+        ASSERT_EQUALS("[file.c:3:2]: (error) failed to evaluate #if condition, invalid expression [syntaxError]\n"
+                      "[file.c:3:2]: (error) failed to evaluate #if condition, invalid expression [syntaxError]\n", errout_str());
     }
 
     void wrongPathOnErrorDirective() {
@@ -3245,7 +3250,7 @@ private:
             std::vector<std::string> files;
             TokenList tokenlist{settingsDefault, Standards::Language::CPP};
             // TODO: can this happen from application code? if yes we need to turn it into a proper error
-            ASSERT_THROW_EQUALS(preprocess(code, files, "test.cpp", tokenlist, dui), std::runtime_error, "unexpected simplecpp::Output type 12");
+            ASSERT_THROW_EQUALS(preprocess(code, files, "test.cpp", tokenlist, dui), std::runtime_error, "unexpected simplecpp::Output type 13");
             ASSERT(!tokenlist.front()); // nothing is tokenized when an unknown standard is provided
         }
     }
@@ -3297,6 +3302,41 @@ private:
             "    <if-cond file=\"test.cpp\" line=\"1\" column=\"2\" E=\"M == 0\" result=\"1\"/>\n"
             "  </simplecpp-if-cond>\n",
             ostr.str());
+    }
+    void dumpMacroUsageArg() {
+        const char code[] = "#define INT64_C(x) x ## LL\n"
+                            "#define F(x) x\n"
+                            "INT64_C(5) + F(1);\n";
+        std::vector<std::string> files;
+        simplecpp::OutputList outputList;
+        simplecpp::TokenList tokens1(code, files, "test.cpp", {}, &outputList);
+        Preprocessor preprocessor(tokens1, settingsDefault, *this, Standards::Language::CPP);
+        (void)preprocessor.preprocess("", files, outputList);
+        (void)preprocessor.reportOutput(outputList, true);
+
+        std::ostringstream ostr;
+        preprocessor.dump(ostr);
+        // simplecpp emits these from an unordered_map, so their order differs between standard libraries
+        const std::string dump = ostr.str();
+        std::size_t entries = 0;
+        for (std::string::size_type pos = dump.find("<macro "); pos != std::string::npos; pos = dump.find("<macro ", pos + 1))
+            ++entries;
+        ASSERT_EQUALS(2U, entries);
+        ASSERT(dump.find("    <macro name=\"INT64_C\" file=\"test.cpp\" line=\"1\" column=\"9\" usefile=\"test.cpp\" useline=\"3\" usecolumn=\"1\" is-known-value=\"true\" arg=\"5\"/>\n") != std::string::npos);
+        ASSERT(dump.find("    <macro name=\"F\" file=\"test.cpp\" line=\"2\" column=\"9\" usefile=\"test.cpp\" useline=\"3\" usecolumn=\"14\" is-known-value=\"true\"/>\n") != std::string::npos);
+    }
+
+    void portabilityReports() {
+        const char code[] = "#define A 1 \\ \n"
+                            "+ 2\n"
+                            "int x = A;";
+        const Settings settings = settingsBuilder().severity(Severity::portability).build();
+        (void)getcode(settings, *this, code);
+        ASSERT_EQUALS("[file.c:1:13]: (portability) Combination 'backslash space newline' is not portable. [simplecppPortabilityBackslash]\n"
+                      "[file.c:3:11]: (portability) No newline at end of file is undefined behavior in C. [simplecppPortabilityNoEofNewline]\n", errout_str());
+
+        (void)getcode(settingsDefault, *this, code);
+        ASSERT_EQUALS("", errout_str());
     }
 };
 

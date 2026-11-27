@@ -252,6 +252,7 @@ private:
         TEST_CASE(vardecl_par2);    // #3912 - set correct links
         TEST_CASE(vardecl_par3);    // #6556 - Fred x1(a), x2(b);
         TEST_CASE(vardecl_class_ref);
+        TEST_CASE(vardecl_funcptr_splitted);
         TEST_CASE(volatile_variables);
 
         // unsigned i; => unsigned int i;
@@ -2559,6 +2560,17 @@ private:
         ASSERT_EQUALS("class A { B & b1 ; B & b2 ; } ;", tokenizeAndStringify(code));
     }
 
+    void vardecl_funcptr_splitted() {
+        const char code[] = "int g(int);\n"
+                            "void f() { int (*fp)(int) = g; }\n";
+        SimpleTokenizer tokenizer(settings1, *this);
+        ASSERT(tokenizer.tokenize(code));
+        const Token* semi = Token::findsimplematch(tokenizer.tokens(), "; fp = g ;");
+        ASSERT(semi);
+        ASSERT(semi->isSplittedVarDeclEq());
+        ASSERT(!semi->tokAt(2)->isSplittedVarDeclEq());
+    }
+
     void vardec_static() {
         {
             // don't simplify declarations of static variables
@@ -4697,6 +4709,23 @@ private:
                           tokenizeAndStringify(code));
             ASSERT_EQUALS("", errout_str());
         }
+        {
+            const char code[] = "namespace N {\n" // #15192
+                                "    template <typename... Ts>\n"
+                                "    struct S {};\n"
+                                "}\n"
+                                "template <typename... Ts, typename = N::S<decltype(Ts())...>>\n"
+                                "void f() {}\n";
+            ASSERT_EQUALS("namespace N {\n"
+                          "template < typename ... Ts >\n"
+                          "struct S { } ;\n"
+                          "}\n"
+                          "template < typename ... Ts , typename = N :: S < decltype ( Ts ( ) ) ... > >\n"
+                          "void f ( ) { }",
+                          tokenizeAndStringify(code));
+            ASSERT_EQUALS("", errout_str());
+        }
+
     }
 
     void cpp03template1() {

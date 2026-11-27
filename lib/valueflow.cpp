@@ -422,9 +422,35 @@ void ValueFlow::combineValueProperties(const ValueFlow::Value &value1, const Val
         result.path = value1.path;
 }
 
+// Set the dimensions that are known when the array declaration ends at tok, so sizeof of the array is known
+static void valueFlowArrayDimensions(const Token* tok)
+{
+    const Token* start = tok->link();
+    while (Token::simpleMatch(start->previous(), "]"))
+        start = start->linkAt(-1);
+    const Token* const nameTok = start->previous();
+    const Variable* const var = nameTok ? nameTok->variable() : nullptr;
+    if (!var || var->nameToken() != nameTok || !var->isArray())
+        return;
+    for (const Dimension& constDimension : var->dimensions()) {
+        auto& dimension = const_cast<Dimension&>(constDimension);
+        if (dimension.known || dimension.num != 0 || !dimension.tok)
+            continue;
+        if (Token::Match(dimension.tok->previous(), "[<,]"))
+            continue;
+        const ValueFlow::Value* const v = dimension.tok->getKnownValue(ValueFlow::Value::ValueType::INT);
+        if (v && v->intvalue > 0) {
+            dimension.known = true;
+            dimension.num = v->intvalue;
+        }
+    }
+}
+
 static void valueFlowNumber(TokenList &tokenlist, const Settings& settings)
 {
     for (Token *tok = tokenlist.front(); tok;) {
+        if (tok->str() == "]" && !Token::simpleMatch(tok->next(), "["))
+            valueFlowArrayDimensions(tok);
         tok = ValueFlow::valueFlowSetConstantValue(tok, settings);
     }
 
@@ -2842,6 +2868,9 @@ static bool isDecayedPointer(const Token *tok)
         return false;
     if (!tok->astParent())
         return false;
+    // Subscript 'arr[i]': the element is accessed, the array itself is not used as a pointer
+    if (Token::simpleMatch(tok->astParent(), "[") && astIsLHS(tok))
+        return false;
     if (Token::simpleMatch(tok->astParent(), "=") && astIsRHS(tok))
         return true;
     if (astIsPointer(tok->astParent()) && !Token::simpleMatch(tok->astParent(), "return"))
@@ -4240,7 +4269,8 @@ static void valueFlowAfterAssign(const TokenList &tokenlist,
                 });
             if (values.empty())
                 continue;
-            const bool init = vars.size() == 1 && (vars.front()->nameToken() == tok->astOperand1() || tok->isSplittedVarDeclEq());
+            const bool init = vars.size() == 1 && (vars.front()->nameToken() == tok->astOperand1() ||
+                                                   (Token::Match(tok->tokAt(-2), "; %var% =") && tok->tokAt(-2)->isSplittedVarDeclEq()));
             valueFlowForwardAssign(
                 rhs, tok->astOperand1(), std::move(vars), values, init, tokenlist, errorLogger, settings);
             // Back propagate symbolic values

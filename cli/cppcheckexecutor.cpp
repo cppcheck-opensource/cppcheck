@@ -363,23 +363,38 @@ bool CppCheckExecutor::reportUnmatchedSuppressions(const Settings &settings, con
         supprlist.addSuppression(std::move(s));
     }
 
-    const auto reportErrorsFn = [&](const std::string& sourcefile, std::size_t fsFileId, const std::vector<ErrorMessage>& errors) -> bool {
+    using AnalyzerInfoId = std::pair<std::string, std::size_t>;
+    const auto getAnalyzerInfoIds = [&](const std::string &sourcefile) {
+        std::vector<AnalyzerInfoId> ids;
+        for (const FileSettings &fs : fileSettings) {
+            if (fs.file.spath() == Path::simplifyPath(sourcefile))
+                ids.emplace_back(fs.cfg, fs.file.fsFileId());
+        }
+        if (ids.empty())
+            ids.emplace_back("", 0);
+        return ids;
+    };
+
+    const auto reportErrorsFn = [&](const std::string &sourcefile, const std::vector<AnalyzerInfoId> &ids, const std::vector<ErrorMessage> &errors) -> bool {
         if (errors.empty())
             return false;
 
         // TODO: what if sourcefile is empty?
 
-        AnalyzerInformation analyzerInfo;
-        // FIXME: this is a horrible hack
-        // we need to "re-open" the file so we can add the unmatchedSuppression findings.
-        // we cannot keep it open conditionally because the whole program analysis reads the XML.
-        // re-ordering the code is also not an option because the unmatched suppression reporting needs to be run after all other checks.
-        analyzerInfo.reopen(settings.buildDir, sourcefile, /*cfgname*/ "", fsFileId);
+        for (const AnalyzerInfoId &id : ids) {
+            AnalyzerInformation analyzerInfo;
+            // FIXME: this is a horrible hack
+            // we need to "re-open" the file so we can add the unmatchedSuppression findings.
+            // we cannot keep it open conditionally because the whole program analysis reads the XML.
+            // re-ordering the code is also not an option because the unmatched suppression reporting needs to be run after all other checks.
+            analyzerInfo.reopen(settings.buildDir, sourcefile, id.first, id.second);
 
-        for (const auto& errmsg : errors) {
-            analyzerInfo.reportErr(errmsg);
-            errorLogger.reportErr(errmsg);
+            for (const auto &errmsg : errors)
+                analyzerInfo.reportErr(errmsg);
         }
+
+        for (const auto &errmsg : errors)
+            errorLogger.reportErr(errmsg);
         return true;
     };
 
@@ -387,12 +402,12 @@ bool CppCheckExecutor::reportUnmatchedSuppressions(const Settings &settings, con
 
     for (auto i = files.cbegin(); i != files.cend(); ++i) {
         const std::vector<ErrorMessage> errors = getUnmatchedSuppressions(supprlist.getUnmatchedLocalSuppressions(*i), settings.unmatchedSuppressionFilters);
-        err |= reportErrorsFn(i->spath(), i->fsFileId(), errors);
+        err |= reportErrorsFn(i->spath(), {{"", i->fsFileId()}}, errors);
     }
 
     for (auto i = fileSettings.cbegin(); i != fileSettings.cend(); ++i) {
         const std::vector<ErrorMessage> errors = getUnmatchedSuppressions(supprlist.getUnmatchedLocalSuppressions(i->file), settings.unmatchedSuppressionFilters);
-        err |= reportErrorsFn(i->file.spath(), i->file.fsFileId(), errors);
+        err |= reportErrorsFn(i->file.spath(), {{i->cfg, i->file.fsFileId()}}, errors);
     }
 
     if (settings.inlineSuppressions) {
@@ -401,7 +416,7 @@ bool CppCheckExecutor::reportUnmatchedSuppressions(const Settings &settings, con
             std::string sourcefile;
             if (!errmsg.callStack.empty())
                 sourcefile = errmsg.callStack.cbegin()->getfile(false); // TODO: simplify path?
-            err |= reportErrorsFn(sourcefile, 0, {errmsg});
+            err |= reportErrorsFn(sourcefile, getAnalyzerInfoIds(sourcefile), {errmsg});
         }
     }
 
@@ -410,7 +425,7 @@ bool CppCheckExecutor::reportUnmatchedSuppressions(const Settings &settings, con
         std::string sourcefile;
         if (!errmsg.callStack.empty())
             sourcefile = errmsg.callStack.cbegin()->getfile(false); // TODO: simplify path?
-        err |= reportErrorsFn(sourcefile, 0, {errmsg});
+        err |= reportErrorsFn(sourcefile, getAnalyzerInfoIds(sourcefile), {errmsg});
     }
     return err;
 }
@@ -750,4 +765,3 @@ int CppCheckExecutor::executeCommand(std::string exe, std::vector<std::string> a
 #endif
     return res;
 }
-

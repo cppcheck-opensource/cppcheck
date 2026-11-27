@@ -5090,6 +5090,15 @@ private:
               "void h(int *p) {}\n");
         ASSERT_EQUALS("[test.cpp:3:13]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n", errout_str());
 
+        checkP("struct S { int i; };\n" // #15222
+               "#define DECL_ARGS S *p, S *q\n"
+               "void f(DECL_ARGS) {\n"
+               "    if (p->i == 0 && q->i == 1) {}\n"
+               "}\n");
+        ASSERT_EQUALS("[test.cpp:3:8]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n"
+                      "[test.cpp:3:8]: (style) Parameter 'q' can be declared as pointer to const [constParameterPointer]\n",
+                      errout_str());
+
         check("void f(int* p, U n) {\n" // #15226
               "    g(*(p + n));\n"
               "}\n"

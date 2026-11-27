@@ -90,6 +90,37 @@ def test_preprocessor_error(tmpdir):
     assert exitcode != 0
 
 
+# without -D the header is loaded by Preprocessor::loadAllIncludes(), with -D by Preprocessor::preprocess()
+@pytest.mark.parametrize("extra_args", [[], ['-DA']])
+def test_simplecpp_portability_header(tmpdir, extra_args):
+    test_file = os.path.join(tmpdir, 'test.c')
+    with open(test_file, 'wt') as f:
+        f.write('#include "test.h"\n')
+    test_h = os.path.join(tmpdir, 'test.h')
+    with open(test_h, 'wt') as f:
+        f.write('#ifdef A\nint a;\n#endif\nint x;')  # no newline at end of file
+
+    args = ['-q', '--enable=portability', '--template=simple'] + extra_args + [test_file]
+
+    _, _, stderr = cppcheck(args)
+    assert stderr == '{}:4:7: portability: No newline at end of file is undefined behavior in C. [simplecppPortabilityNoEofNewline]\n'.format(test_h)
+
+
+@pytest.mark.parametrize("extra_args", [[], ['-DA']])
+def test_simplecpp_portability_header_inline_suppr(tmpdir, extra_args):
+    test_file = os.path.join(tmpdir, 'test.c')
+    with open(test_file, 'wt') as f:
+        f.write('#include "test.h"\n')
+    test_h = os.path.join(tmpdir, 'test.h')
+    with open(test_h, 'wt') as f:
+        f.write('#ifdef A\nint a;\n#endif\n// cppcheck-suppress simplecppPortabilityNoEofNewline\nint x;')
+
+    args = ['-q', '--enable=portability', '--inline-suppr', '--template=simple'] + extra_args + [test_file]
+
+    _, _, stderr = cppcheck(args)
+    assert stderr == ''
+
+
 __ANSI_BOLD = "\x1b[1m"
 __ANSI_FG_RED = "\x1b[31m"
 __ANSI_FG_DEFAULT = "\x1b[39m"
@@ -157,7 +188,7 @@ def test_progress(tmpdir):
                 int main(int argc)
                 {
                 }
-                """)
+""")
 
     args = ['--report-progress=0', '--enable=all', '--inconclusive', '-j1', test_file]
 
@@ -248,7 +279,7 @@ def test_progress_j(tmpdir):
                 int main(int argc)
                 {
                 }
-                """)
+""")
 
     args = ['--report-progress=0', '--enable=all', '--inconclusive', '-j2', '--disable=unusedFunction', test_file]
 
@@ -1132,6 +1163,36 @@ def test_showtime_summary_clang_tidy(tmp_path):
 @pytest.mark.skipif(not __has_clang_tidy, reason='clang-tidy is not available')
 def test_showtime_summary_clang_tidy_compdb(tmp_path):
     __test_showtime_summary(tmp_path, use_clang_tidy=True, use_compdb=True)
+
+
+@pytest.mark.skipif(not __has_clang_tidy, reason='clang-tidy is not available')
+def test_clang_tidy_builddir_project_configurations(tmp_path):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, 'wt') as f:
+        f.write('int main(void) { return 0; }\n')
+
+    configs = ''.join(
+        f'<ProjectConfiguration Include="{c}|x64"><Configuration>{c}</Configuration><Platform>x64</Platform></ProjectConfiguration>'
+        for c in ('Debug', 'Release'))
+    project_file = tmp_path / 'test.vcxproj'
+    with open(project_file, 'wt') as f:
+        f.write('<?xml version="1.0" encoding="utf-8"?>'
+                '<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'
+                f'<ItemGroup Label="ProjectConfigurations">{configs}</ItemGroup>'
+                '<ItemGroup><ClCompile Include="test.c" /></ItemGroup>'
+                '</Project>')
+
+    build_dir = tmp_path / 'b'
+    os.mkdir(build_dir)
+
+    args = ['-q', '--clang-tidy', '--project=test.vcxproj', '--cppcheck-build-dir=b']
+    exitcode, stdout, _ = cppcheck(args, cwd=str(tmp_path))
+    assert exitcode == 0, stdout
+
+    files = os.listdir(build_dir)
+    assert 'test.c.analyzerinfo.clang-tidy-cmd' not in files
+    for i in range(1, 3):
+        assert f'test.a{i}.clang-tidy-cmd' in files
 
 
 def __test_showtime_file_total(tmp_path, use_compdb=False):
@@ -2590,6 +2651,86 @@ def test_inline_suppr_builddir_j_cached(tmp_path):
     __test_inline_suppr(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j2'])
 
 
+def __test_inline_suppr_project(tmp_path, extra_args):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, 'wt') as f:
+        f.write("""
+void f() {
+  // cppcheck-suppress memleak
+}
+""")
+
+    configs = ''.join(
+        f'<ProjectConfiguration Include="{c}|x64"><Configuration>{c}</Configuration><Platform>x64</Platform></ProjectConfiguration>'
+        for c in ('Debug', 'Release'))
+    project_file = tmp_path / 'test.vcxproj'
+    with open(project_file, 'wt') as f:
+        f.write('<?xml version="1.0" encoding="utf-8"?>'
+                '<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'
+                f'<ItemGroup Label="ProjectConfigurations">{configs}</ItemGroup>'
+                '<ItemGroup><ClCompile Include="test.c" /></ItemGroup>'
+                '</Project>')
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--enable=information',
+        '--inline-suppr',
+        '--project={}'.format(project_file)
+    ]
+
+    args += extra_args
+
+    exitcode, stdout, stderr, = cppcheck(args)
+    assert exitcode == 0, stdout
+    assert stdout == ''
+    assert stderr.splitlines() == [
+        '{}:4:1: information: Unmatched suppression: memleak [unmatchedSuppression]'.format(test_file)
+    ]
+
+
+def test_inline_suppr_builddir_project_cached(tmp_path):
+    build_dir = tmp_path / 'b1'
+    os.mkdir(build_dir)
+    __test_inline_suppr_project(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j1'])
+    __test_inline_suppr_project(tmp_path, ['--cppcheck-build-dir={}'.format(build_dir), '-j1'])
+
+
+def test_inline_suppr_builddir_compdb_duplicate(tmp_path):
+    test_file = tmp_path / 'test.c'
+    with open(test_file, 'wt') as f:
+        f.write("""
+void f() {
+  // cppcheck-suppress memleak
+}
+""")
+
+    # The same file listed twice gets one analyzer information file per entry
+    compdb_file = tmp_path / 'compile_commands.json'
+    create_compile_commands(compdb_file, [test_file, test_file])
+
+    build_dir = tmp_path / 'b1'
+    os.mkdir(build_dir)
+
+    args = [
+        '-q',
+        '--template=simple',
+        '--enable=information',
+        '--inline-suppr',
+        '--cppcheck-build-dir={}'.format(build_dir),
+        '--project={}'.format(compdb_file)
+    ]
+
+    exitcode, stdout, stderr, = cppcheck(args)
+    assert exitcode == 0, stdout
+    assert stdout == ''
+    assert '{}:4:1: information: Unmatched suppression: memleak [unmatchedSuppression]'.format(test_file) in stderr.splitlines()
+
+    for afile in ('test.a1', 'test.a2'):
+        with open(build_dir / afile, 'rt') as f:
+            assert f.read().count('id="unmatchedSuppression"') == 1, afile
+
+
 def test_duplicate_suppression(tmp_path):
     test_file = tmp_path / 'file.cpp'
     with open(test_file, 'wt'):
@@ -2764,7 +2905,7 @@ def __test_addon_suppr(tmp_path, extra_args):
 // cppcheck-suppress misra-c2012-2.3
 typedef int MISRA_5_6_VIOLATION;
 typedef int MISRA_5_6_VIOLATION_1;
-        """)
+""")
 
     args = [
         '-q',
@@ -2818,7 +2959,7 @@ int main() {
     int *p = 0;
 f(p);
 }
-        """)
+""")
 
     args = [
         '-q',
@@ -2868,7 +3009,7 @@ int main() {
     int *p = 0;
 f(p);
 }
-        """)
+""")
 
     args = [
         '-q',
@@ -3457,7 +3598,7 @@ def __test_clang_tidy(tmpdir, use_compdb):
         f.write(
 """static void foo() // NOLINT(misc-use-anonymous-namespace)
 {
-    (void)(*((int*)nullptr));
+    (void)(*((int*)nullptr)); // NOLINT(modernize-avoid-c-style-cast)
 }""")
 
     project_file = __write_compdb(tmpdir, test_file) if use_compdb else None
@@ -4522,7 +4663,7 @@ def test_analyzerinfo(tmp_path):
 
     # modified file
     with open(test_file, 'a') as f:
-        f.write('\n#define DEF')
+        f.write('\n#define DEF\n')
 
     run_and_assert_cppcheck([
         "discarding cached result from '{}' for '{}' - hash mismatch".format(test_a1_file_s, test_file_s)
@@ -4930,7 +5071,7 @@ def test_ipc_inline_suppressions(tmp_path):
 def test_ipc_hash_suppressions(tmp_path):
     test_file = tmp_path / 'test.c'
     with open(test_file, "w") as f:
-        f.write('void f() { int x = 1; }')
+        f.write('void f() { int x = 1; }\n')
 
     _, _, stderr = cppcheck(['--enable=style', '--xml-version=3', str(test_file)])
     error_hash = ElementTree.fromstring(stderr).find('.//error').get('hash')

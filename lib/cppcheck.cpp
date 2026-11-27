@@ -107,12 +107,19 @@ public:
         mRemarkComments.insert(mRemarkComments.end(), remarkComments.begin(), remarkComments.end());
     }
 
-    void setLocationMacros(const Token* startTok, const std::vector<std::string>& files)
+    void setLocationMacros(const Token* startTok, const std::vector<std::string>& files, const std::list<simplecpp::MacroUsage>& macroUsage)
     {
         mLocationMacros.clear();
         for (const Token* tok = startTok; tok; tok = tok->next()) {
             if (!tok->getMacroName().empty())
                 mLocationMacros[Location(files[tok->fileIndex()], tok->linenr())].emplace(tok->getMacroName());
+        }
+        // a token only knows the innermost macro it was expanded from; usages on lines without macro-expanded tokens are skipped
+        for (const simplecpp::MacroUsage& usage : macroUsage) {
+            const Location loc(files[usage.useLocation.fileIndex], usage.useLocation.line);
+            const auto it = mLocationMacros.find(loc);
+            if (it != mLocationMacros.end())
+                it->second.emplace(usage.macroName);
         }
     }
 
@@ -350,7 +357,7 @@ static std::vector<std::string> split(const std::string &str, const std::string 
     return ret;
 }
 
-static std::string getDumpFileName(const Settings& settings, const FileWithDetails& file)
+static std::string getDumpFileName(const Settings& settings, const FileWithDetails& file, const std::string& cfg)
 {
     std::string extension = ".dump";
     if (file.fsFileId() > 0)
@@ -359,7 +366,7 @@ static std::string getDumpFileName(const Settings& settings, const FileWithDetai
         extension = "." + std::to_string(settings.pid) + extension;
 
     if (!settings.dump && !settings.buildDir.empty())
-        return AnalyzerInformation::getAnalyzerInfoFile(settings.buildDir, file.spath(), "", file.fsFileId()) + extension;
+        return AnalyzerInformation::getAnalyzerInfoFile(settings.buildDir, file.spath(), cfg, file.fsFileId()) + extension;
     return file.spath() + extension;
 }
 
@@ -370,12 +377,13 @@ static std::string getCtuInfoFileName(const std::string &dumpFile)
 
 static void createDumpFile(const Settings& settings,
                            const FileWithDetails& file,
+                           const std::string& cfg,
                            std::ofstream& fdump,
                            std::string& dumpFile)
 {
     if (!settings.dump && settings.addons.empty())
         return;
-    dumpFile = getDumpFileName(settings, file);
+    dumpFile = getDumpFileName(settings, file, cfg);
 
     fdump.open(dumpFile);
     if (!fdump.is_open())
@@ -776,7 +784,7 @@ unsigned int CppCheck::checkClang(const FileWithDetails &file)
         // create dumpfile
         std::ofstream fdump;
         std::string dumpFile;
-        createDumpFile(mSettings, file, fdump, dumpFile);
+        createDumpFile(mSettings, file, "", fdump, dumpFile);
         if (fdump.is_open()) {
             fdump << getLibraryDumpData();
             // TODO: use tinyxml2 to create XML
@@ -1040,6 +1048,8 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         if (!mSettings.keepComments)
             preprocessor.removeComments();
 
+        preprocessor.reportSimplecppPortability(outputList);
+
         // Get directives
         std::list<Directive> directives;
         preprocessor.createDirectives(directives);
@@ -1147,7 +1157,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
         // write dump file xml prolog
         std::ofstream fdump;
         std::string dumpFile;
-        createDumpFile(mSettings, file, fdump, dumpFile);
+        createDumpFile(mSettings, file, cfgname, fdump, dumpFile);
         if (fdump.is_open()) {
             fdump << getLibraryDumpData();
             if (!mSettings.dump)
@@ -1240,7 +1250,7 @@ unsigned int CppCheck::checkInternal(const FileWithDetails& file, const std::str
                 tokenizer.setDirectives(directives); // TODO: how to avoid repeated copies?
 
                 // locations macros
-                mLogger->setLocationMacros(tokenizer.tokens(), files);
+                mLogger->setLocationMacros(tokenizer.tokens(), files, preprocessor.getMacroUsage());
 
                 // If only errors are printed, print filename after the check
                 if (!mSettings.quiet && (!currentConfig.empty() || checkCount > 1)) {
@@ -1716,12 +1726,12 @@ void CppCheck::executeAddonsWholeProgram(const std::list<FileWithDetails> &files
 
     std::vector<std::string> ctuInfoFiles;
     for (const auto &f: files) {
-        const std::string &dumpFileName = getDumpFileName(mSettings, f);
+        const std::string &dumpFileName = getDumpFileName(mSettings, f, "");
         ctuInfoFiles.push_back(getCtuInfoFileName(dumpFileName));
     }
 
     for (const auto &fs: fileSettings) {
-        const std::string &dumpFileName = getDumpFileName(mSettings, fs.file);
+        const std::string &dumpFileName = getDumpFileName(mSettings, fs.file, fs.cfg);
         ctuInfoFiles.push_back(getCtuInfoFileName(dumpFileName));
     }
 
@@ -1833,7 +1843,7 @@ void CppCheck::analyseClangTidy(const FileSettings &fileSettings)
     std::string line;
 
     if (!mSettings.buildDir.empty()) {
-        const std::string analyzerInfoFile = AnalyzerInformation::getAnalyzerInfoFile(mSettings.buildDir, fileSettings.sfilename(), "", fileSettings.file.fsFileId());
+        const std::string analyzerInfoFile = AnalyzerInformation::getAnalyzerInfoFile(mSettings.buildDir, fileSettings.sfilename(), fileSettings.cfg, fileSettings.file.fsFileId());
         std::ofstream fcmd(analyzerInfoFile + ".clang-tidy-cmd");
         fcmd << istr.str();
     }

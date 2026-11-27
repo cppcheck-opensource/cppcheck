@@ -211,6 +211,7 @@ private:
         TEST_CASE(isVariablePointerToConstVolatilePointer);
         TEST_CASE(isVariableMultiplePointersAndQualifiers);
         TEST_CASE(variableVolatile);
+        TEST_CASE(variableDeepPointer);
         TEST_CASE(variableConstexpr);
         TEST_CASE(isVariableDecltype);
         TEST_CASE(isVariableAlignas);
@@ -1872,6 +1873,26 @@ private:
         ASSERT(y);
         ASSERT(y->variable());
         ASSERT(y->variable()->isVolatile());
+    }
+
+    void variableDeepPointer() {
+        // const/volatile only apply to the first pointer level
+        GET_SYMBOL_DB("int * const volatile ******************************** p;\n");
+
+        const Token *p = Token::findsimplematch(tokenizer.tokens(), "p");
+        ASSERT(p);
+        ASSERT(p->variable());
+        ASSERT(p->valueType());
+        ASSERT_EQUALS(33, p->valueType()->pointer);
+        ASSERT(!p->variable()->isConst());
+        ASSERT(!p->valueType()->isConst(0));
+        ASSERT(!p->valueType()->isVolatile(0));
+        ASSERT(p->valueType()->isConst(32));
+        ASSERT(p->valueType()->isVolatile(32));
+        std::string expected("signed int * const volatile");
+        for (int i = 1; i < 33; ++i)
+            expected += " *";
+        ASSERT_EQUALS(expected, p->valueType()->str());
     }
 
     void variableConstexpr() {
@@ -9922,6 +9943,18 @@ private:
         ASSERT_EQUALS("signed long long", typeOf("0xFFFFFFFFFFFF;\n", "0xFFFFFFFFFFFF", false, &s));
         ASSERT_EQUALS("unsigned long long", typeOf("0xFFFFFFFFFFFFU;\n", "0xFFFFFFFFFFFFU", false, &s));
         ASSERT_EQUALS("unsigned long long", typeOf("0xFFFFFFFF00000000;\n", "0xFFFFFFFF00000000", false, &s));
+        ASSERT_EQUALS("signed long", typeOf("0x10000;\n", "0x10000", false, &s));
+        ASSERT_EQUALS("signed long", typeOf("0x1FFFF;\n", "0x1FFFF", false, &s));
+        ASSERT_EQUALS("signed long long", typeOf("0x100000000;\n", "0x100000000", false, &s));
+        ASSERT_EQUALS("signed long long", typeOf("0x100000000L;\n", "0x100000000L", false, &s));
+        ASSERT_EQUALS("unsigned long long", typeOf("0x100000000U;\n", "0x100000000U", false, &s));
+        ASSERT_EQUALS("unsigned long long", typeOf("0x100000000UL;\n", "0x100000000UL", false, &s));
+        ASSERT_EQUALS("signed long long", typeOf("0x1FFFFFFFF;\n", "0x1FFFFFFFF", false, &s));
+        ASSERT_EQUALS("signed int", typeOf("077777;\n", "077777", false, &s));
+        ASSERT_EQUALS("unsigned int", typeOf("0177777;\n", "0177777", false, &s));
+        ASSERT_EQUALS("signed long", typeOf("0200000;\n", "0200000", false, &s));
+        ASSERT_EQUALS("unsigned long", typeOf("037777777777;\n", "037777777777", false, &s));
+        ASSERT_EQUALS("signed long long", typeOf("040000000000;\n", "040000000000", false, &s));
 
         ASSERT_EQUALS("signed long", typeOf("2147483648;\n", "2147483648", false, &sSameSize));
         ASSERT_EQUALS("unsigned long", typeOf("0xc000000000000000;\n", "0xc000000000000000", false, &sSameSize));

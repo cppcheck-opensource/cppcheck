@@ -104,6 +104,16 @@ static bool isVclTypeInit(const Type *type)
         return false;
     });
 }
+
+// Returns true if the class has constructors but none of them can be called without arguments
+static bool hasNoDefaultConstructor(const Scope& scope)
+{
+    return scope.numConstructors > 0 && std::none_of(scope.functionList.cbegin(), scope.functionList.cend(), [](const Function& func) {
+        // a variadic constructor can be called without arguments if only the parameter pack or ellipsis is left
+        const size_t requiredArgs = func.isVariadic() ? 1 : 0;
+        return func.isConstructor() && func.minArgCount() == requiredArgs && !func.isDelete();
+    });
+}
 //---------------------------------------------------------------------------
 
 CheckClassImpl::CheckClassImpl(const Tokenizer *tokenizer, const Settings &settings, ErrorLogger &errorLogger)
@@ -447,7 +457,8 @@ void CheckClassImpl::constructors()
                 if (var.hasDefault()) {
                     usage.init = true;
                     hasAnyDefaultInit = true;
-                } else if (!var.isStatic() && (var.isReference() || (var.isConst() && !var.isClass()))) {
+                } else if (!var.isStatic() && (var.isReference() || (var.isConst() && !var.isClass()) ||
+                                               (!var.isPointer() && !var.isPointerArray() && var.typeScope() && hasNoDefaultConstructor(*var.typeScope())))) {
                     // the default constructor is deleted, so all members are initialized by every instance
                     isDefaultConstructible = false;
                 } else if (cpp14OrLater && !hasAnySelfInit && checkInitialization(usage, FunctionType::eConstructor) == Initialization::Initialized) {
