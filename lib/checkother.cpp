@@ -4985,10 +4985,10 @@ static bool hasForLoopExit(const Scope& scope, const Library& library)
 }
 
 static bool isStableLoopBound(const Token* boundTok,
-                               const Token* bodyStart,
-                               const Token* bodyEnd,
-                               const Token* stepTok,
-                               const Settings& settings)
+                              const Token* bodyStart,
+                              const Token* bodyEnd,
+                              const Token* stepTok,
+                              const Settings& settings)
 {
     if (!boundTok)
         return false;
