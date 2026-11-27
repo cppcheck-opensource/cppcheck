@@ -21,10 +21,12 @@ fi
 title=$1
 shift
 
+fence='```'
+
 printf '# %s {.appendix}\n\n' "$title"
 # Sort case insensitive, independent of locale
 printf '%s\n' "$@" | LC_ALL=C sort -f | while read -r f; do
     # The identifier must match file_id() in filters/manual.lua
     id=file-$(printf '%s' "$f" | sed 's/[^A-Za-z0-9]/-/g')
-    printf '::: {#%s .included-file}\n\n```{.include shift-heading-level-by=1}\n%s\n```\n\n:::\n\n' "$id" "$f"
+    printf '::: {#%s .included-file}\n\n%s{.include shift-heading-level-by=1}\n%s\n%s\n\n:::\n\n' "$id" "$fence" "$f" "$fence"
 done
