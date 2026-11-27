@@ -1,0 +1,5 @@
+# Metadata for the open source manual: pandoc --metadata-file=manual-opensource.yaml
+profile: opensource
+title: Cppcheck manual
+subtitle: Version 2.23 dev
+author: Cppcheck team

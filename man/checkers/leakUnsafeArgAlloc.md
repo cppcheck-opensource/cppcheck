@@ -1,6 +1,6 @@
 # leakUnsafeArgAlloc
 
-**Message**: Unsafe allocation. If shared_ptr() throws, memory could be leaked. Use make_shared<T>() instead.<br/>
+**Message**: `Unsafe allocation. If shared_ptr() throws, memory could be leaked. Use make_shared<T>() instead.`<br/>
 **Category**: Correctness<br/>
 **Severity**: Warning (inconclusive)<br/>
 **Language**: C++

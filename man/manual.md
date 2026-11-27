@@ -1,7 +1,4 @@
 ---
-title: Cppcheck manual
-subtitle: Version 2.23 dev
-author: Cppcheck team
 lang: en
 documentclass: report
 ---
@@ -1184,6 +1181,8 @@ Cppcheck is distributed with a few addons which are listed below.
 
 ## Supported addons
 
+::: {.content-visible when-profile="opensource"}
+
 ### `misra.py`
 
 [`misra.py`](https://github.com/cppcheck-opensource/cppcheck/blob/main/addons/misra.py) is used to verify compliance with MISRA C 2012, a proprietary set of guidelines to avoid questionable code, developed for embedded systems.
@@ -1205,6 +1204,8 @@ To use that `misra.json` in Cppcheck analysis, use option `--addon=misra.json`:
     cppcheck --addon=misra.json --enable=style somefile.c
 
 Misra checkers in open source Cppcheck only cover MISRA rules partially and for full coverage use Cppcheck Premium.
+
+:::
 
 ### `namingng.py`
 
@@ -1448,3 +1449,170 @@ In the GUI:
 - In the "Analysis" tab there are several options.
 
 If you want to use these limitations on the command line too, you can import the GUI project file with `--project`.
+
+::: {.content-visible when-profile="premium"}
+
+# Cppcheck Premium
+
+## Bug hunting
+
+This is analysis that is more noisy than normal analysis. Most warnings will be false positives (Cppcheck will wrongly claim that there are bugs). The design goal is to not have more than roughly 5 to 10 false positives in each file.
+
+It is not intended to be used in normal CI or regular static analysis by developers. The noise makes it useless for that.
+
+It is intended to be used when you are looking for bugs and you really can accept noise. For example:
+
+- You have developed a brand new feature and want to ensure that there are no bugs.
+- Maybe as part of release testing your product you can run bug hunting on modified files.
+- Etc.
+
+Technically, analysis that is "sound" will detect all bugs. Analysis that is "soundy" has the goal to detect most bugs and it tries to keep the noise at an reasonable level.
+
+The Cppcheck bug hunting analysis is "soundy".
+
+Command:
+
+    cppcheck --premium=bughunting ...
+
+## Coding standards
+
+Command to activate Autosar checkers:
+
+    cppcheck --premium=autosar ...
+
+Command to activate Cert C checkers:
+
+    cppcheck --premium=cert-c ...
+
+Command to activate Cert C++ checkers:
+
+    cppcheck --premium=cert-c++ ...
+
+Command to activate Misra C 2012 checkers:
+
+    cppcheck --premium=misra-c-2012 ...
+
+Command to activate Misra C 2023 checkers:
+
+    cppcheck --premium=misra-c-2023 ...
+
+Command to activate Misra C 2025 checkers:
+
+    cppcheck --premium=misra-c-2025 ...
+
+Command to activate Misra C++ 2008 checkers:
+
+    cppcheck --premium=misra-c++-2008 ...
+
+Command to activate Misra C++ 2023 checkers:
+
+    cppcheck --premium=misra-c++-2023 ...
+
+### Checking all C and C++ files
+
+The `cert-c` and `misra-c-*` coding standards target C and therefore the checkers only check C files by default.
+
+The `autosar`, `cert-c++` and `misra-c++-*` coding standards target C++ and therefore the checkers only check C++ files by default.
+
+If you want to check all files, you can append `:all` to the coding standard. Example:
+
+    # Misra C checkers are executed on C files, not on C++ files
+    cppcheck --premium=misra-c-2025 path
+
+    # Misra C checkers are executed on C and C++ files
+    cppcheck --premium=misra-c-2025:all path
+
+## Compliance report
+
+### Command line
+
+There is a tool `compliance-report` that is distributed with Cppcheck Premium. To see
+all available options, run `compliance-report` in a terminal with no options.
+
+Below is example usage to generate a Misra C 2012 compliance report.
+
+`cppcheck --premium=misra-c-2012 --xml-version=3 src 2> results.xml`
+
+`compliance-report --misra-c-2012 --project-name=Device --project-version=2.3 --output-file=report.html results.xml`
+
+Description of the options:
+
+- `--misra-c-2012`: Generate a compliance report for misra-c-2012
+- `--project-name`: The name of the project
+- `--project-version`: The version of the project
+- `--output-file`: HTML filename that the report should be written to
+- `results.xml`: The XML output from Cppcheck
+
+## Metrics
+
+To generate metrics, add option `--premium=metrics`. The metrics are saved in the XML v3 report.
+Example:
+
+    cppcheck --premium=metrics test.c --xml-version=3 2> res.xml
+
+We provide a small simple python script that creates a metrics report in CSV format:
+
+    python3 HISReport.py -f res.xml -j path/to/cppcheck-id-mapping.json -o test.csv
+
+The `cppcheck-id-mapping.json` is provided in the Cppcheck premium installation folder, i.e.
+`/opt/cppcheckpremium` or `C:\Program Files\Cppcheck Premium`.
+
+We do not have a ready-made solution to generate a HTML/pdf report. You can easily tweak our
+`HISReport.py` script so that it generates HTML and get the report exactly as you want.
+
+## Licenses
+
+### Commercial terms
+
+Information about Cppcheck Premium licenses:
+<https://www.cppcheck.com/plans-pricing>
+
+### Installation / registration
+
+This is described on the Cppcheck Premium website:
+<https://www.cppcheck.com>
+
+### License file path
+
+There are predefined paths where the premium addon search for license files. If you want to
+provide an arbitrary license file path on the command line, you can use the option
+`--premium-license-file`. Example:
+
+    cppcheck --premium-license-file=path/to/file.lic test.cpp
+
+If an explicit path is provided like this, then premium addon does not search for license
+files in the predefined paths.
+
+### Troubleshooting
+
+#### Step 1: check `premiumaddon` debug output
+
+If your license does not work, you can get some details about the license validation by executing
+`premiumaddon` binary with the `--debug` option.
+
+Windows:
+
+    premiumaddon.exe --debug
+
+Linux/Mac:
+
+    premiumaddon --debug
+
+These commands can be executed from an arbitrary folder.
+
+#### Step 2: clean up Cppcheck build dir
+
+Command line:
+If you use `--cppcheck-build-dir`, then remove all files in the specified folder and recheck.
+
+Cppcheck GUI:
+The GUI normally by default creates a Cppcheck build dir. Clear all results and recheck.
+You can clear all results by clicking on the brush icon in the toolbar. Or by open `Edit` menu and selecting menu item `Clear results`.
+
+#### Step 3: remove `cppcheck-premium-loc` files
+
+If you have `cppcheck-premium-loc` files in your project folders, those should be removed.
+
+If such files are generated during analysis, then review your scripts to check why those files are generated.
+
+:::

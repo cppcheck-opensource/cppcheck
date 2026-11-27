@@ -1,6 +1,6 @@
 # checkLibraryUseIgnore
 
-**Message**: --check-library: Function f() should have <use>/<leak-ignore> configuration<br/>
+**Message**: `--check-library: Function f() should have <use>/<leak-ignore> configuration`<br/>
 **Category**: Configuration<br/>
 **Severity**: Information<br/>
 **Language**: C/C++

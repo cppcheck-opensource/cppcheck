@@ -1,0 +1,4 @@
+# Metadata for the Cppcheck Premium manual: pandoc --metadata-file=manual-premium.yaml
+profile: premium
+title: Cppcheck Premium manual
+author: Cppcheck team, Cppcheck Solutions AB

@@ -1,3 +1,5 @@
+::: {.content-visible when-profile="premium"}
+
 # premium-misra-config
 
 **Message**: Unknown constant x, please review cppcheck options<br/>
@@ -48,3 +50,4 @@ If the code depends on preprocessor macros that are not defined:
 cppcheck -DMISSING_MACRO=value file.c
 ```
 
+:::

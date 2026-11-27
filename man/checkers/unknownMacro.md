@@ -36,7 +36,9 @@ cppcheck should just ignore the keyword then an `-DKEYWORD=` option is suggested
 
 Warning:
 
+```
 canu-2.2/src/seqrequester/src/seqrequester/generate.H:72:41: error: There is an unknown macro here somewhere. Configuration is required. If F_U64 is a macro then please configure it. [unknownMacro]
+```
 
 Fix:
 
@@ -53,7 +55,9 @@ void AES_128::hw_aes_encrypt_n(const uint8_t in[], uint8_t out[], size_t blocks)
 
 Warning:
 
+```
 botan-2.19.5+dfsg/src/lib/block/aes/aes_power8/aes_power8.cpp:103:1: error: There is an unknown macro here somewhere. Configuration is required. If BOTAN_FUNC_ISA is a macro then please configure it. [unknownMacro]
+```
 
 Fix:
 
