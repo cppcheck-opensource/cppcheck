@@ -1006,52 +1006,60 @@ void TemplateSimplifier::getTemplateInstantiations()
 
             // Add outer template..
             if (templateParameters(tok->next()) || tok->strAt(2) == ">") {
-                while (true) {
-                    std::string fullName = scopeName + (scopeName.empty()?"":" :: ") +
-                                           qualification + (qualification.empty()?"":" :: ") + tok->str();
-                    const auto it = std::find_if(mTemplateDeclarations.cbegin(), mTemplateDeclarations.cend(), FindFullName(std::move(fullName)));
-                    if (it != mTemplateDeclarations.end()) {
-                        // full name matches
-                        addInstantiation(tok, it->scope());
-                        break;
-                    }
-                    // full name doesn't match so try with using namespaces if available
-                    bool found = false;
-                    for (const auto & nameSpace :  tok->scopeInfo()->usingNamespaces) {
-                        std::string fullNameSpace = scopeName + (scopeName.empty()?"":" :: ") +
-                                                    nameSpace + (qualification.empty()?"":" :: ") + qualification;
-                        std::string newFullName = fullNameSpace + " :: " + tok->str();
-                        const auto it1 = std::find_if(mTemplateDeclarations.cbegin(), mTemplateDeclarations.cend(), FindFullName(std::move(newFullName)));
-                        if (it1 != mTemplateDeclarations.end()) {
-                            // insert using namespace into token stream
-                            std::string::size_type offset = 0;
-                            std::string::size_type pos = 0;
-                            while ((pos = nameSpace.find(' ', offset)) != std::string::npos) {
-                                qualificationTok->insertTokenBefore(nameSpace.substr(offset, pos - offset));
-                                offset = pos + 1;
-                            }
-                            qualificationTok->insertTokenBefore(nameSpace.substr(offset));
-                            qualificationTok->insertTokenBefore("::");
-                            addInstantiation(tok, it1->scope());
-                            found = true;
-                            break;
+                std::string nameSpace;
+                const TokenAndName *declaration = findTemplateDeclaration(tok, qualification, &nameSpace);
+                if (!declaration) {
+                    if (!qualification.empty())
+                        addInstantiation(tok, qualification);
+                    else
+                        addInstantiation(tok,  tok->scopeInfo()->name);
+                } else {
+                    if (!nameSpace.empty()) {
+                        // insert using namespace into token stream
+                        std::string::size_type offset = 0;
+                        std::string::size_type pos = 0;
+                        while ((pos = nameSpace.find(' ', offset)) != std::string::npos) {
+                            qualificationTok->insertTokenBefore(nameSpace.substr(offset, pos - offset));
+                            offset = pos + 1;
                         }
+                        qualificationTok->insertTokenBefore(nameSpace.substr(offset));
+                        qualificationTok->insertTokenBefore("::");
                     }
-                    if (found)
-                        break;
-
-                    if (scopeName.empty()) {
-                        if (!qualification.empty())
-                            addInstantiation(tok, qualification);
-                        else
-                            addInstantiation(tok,  tok->scopeInfo()->name);
-                        break;
-                    }
-                    const std::string::size_type pos = scopeName.rfind(" :: ");
-                    scopeName = (pos == std::string::npos) ? std::string() : scopeName.substr(0,pos);
+                    addInstantiation(tok, declaration->scope());
                 }
             }
         }
+    }
+}
+
+const TemplateSimplifier::TokenAndName *TemplateSimplifier::findTemplateDeclaration(const Token *tok, const std::string &qualification, std::string *usingNamespace) const
+{
+    std::string scopeName = tok->scopeInfo()->name;
+    while (true) {
+        std::string fullName = scopeName + (scopeName.empty()?"":" :: ") +
+                               qualification + (qualification.empty()?"":" :: ") + tok->str();
+        const auto it = std::find_if(mTemplateDeclarations.cbegin(), mTemplateDeclarations.cend(), FindFullName(std::move(fullName)));
+        if (it != mTemplateDeclarations.cend())
+            return &*it;
+
+        // full name doesn't match so try with using namespaces if available
+        if (usingNamespace) {
+            for (const auto & nameSpace :  tok->scopeInfo()->usingNamespaces) {
+                std::string fullNameSpace = scopeName + (scopeName.empty()?"":" :: ") +
+                                            nameSpace + (qualification.empty()?"":" :: ") + qualification;
+                std::string newFullName = fullNameSpace + " :: " + tok->str();
+                const auto it1 = std::find_if(mTemplateDeclarations.cbegin(), mTemplateDeclarations.cend(), FindFullName(std::move(newFullName)));
+                if (it1 != mTemplateDeclarations.cend()) {
+                    *usingNamespace = nameSpace;
+                    return &*it1;
+                }
+            }
+        }
+
+        if (scopeName.empty())
+            return nullptr;
+        const std::string::size_type pos = scopeName.rfind(" :: ");
+        scopeName = (pos == std::string::npos) ? std::string() : scopeName.substr(0,pos);
     }
 }
 
@@ -1646,6 +1654,35 @@ struct newInstantiation {
     std::string scope;
 };
 
+/**
+ * Find the member template that a template name used inside a class template refers to. The
+ * name is looked up in the scope of the usage first and then in each enclosing scope, out to the
+ * class template itself.
+ * @param memberTemplates full names of the templates declared inside the class template
+ * @param classTemplate full name of the class template
+ * @param scopeName scope of the usage
+ * @param qualification qualification written before the name, or empty
+ * @param name the template name
+ * @return the scope of the member template, or empty if the name does not refer to one
+ */
+static std::string findMemberTemplateScope(const std::set<std::string> &memberTemplates,
+                                           const std::string &classTemplate,
+                                           std::string scopeName,
+                                           const std::string &qualification,
+                                           const std::string &name)
+{
+    if (memberTemplates.empty() || (scopeName != classTemplate && !startsWith(scopeName, classTemplate + " :: ")))
+        return "";
+    while (true) {
+        std::string scope = scopeName + (qualification.empty() ? "" : " :: ") + qualification;
+        if (memberTemplates.count(scope + " :: " + name) > 0)
+            return scope;
+        if (scopeName.size() == classTemplate.size())
+            return "";
+        scopeName.resize(scopeName.rfind(" :: "));
+    }
+}
+
 void TemplateSimplifier::expandTemplate(
     const TokenAndName &templateDeclaration,
     const TokenAndName &templateInstantiation,
@@ -1664,6 +1701,27 @@ void TemplateSimplifier::expandTemplate(
     const bool isVariable = templateDeclaration.isVariable();
 
     std::vector<newInstantiation> newInstantiations;
+
+    // Full names of the templates declared inside the class template. They hide templates of the
+    // same name in enclosing scopes, but they are not in mTemplateDeclarations until the class
+    // template has been instantiated.
+    std::set<std::string> memberTemplates;
+    if (isClass) {
+        const Token * const end = findTemplateDeclarationEnd(templateDeclaration.token());
+        for (const Token *tok = templateDeclarationToken->next(); tok && tok != end; tok = tok->next()) {
+            // skip template template parameters and the inner lists of "template <..> template <..>"
+            if (!Token::simpleMatch(tok, "template <") || Token::Match(tok->previous(), "<|,|>"))
+                continue;
+            const Token *parmEnd = tok->next()->findClosingBracket();
+            while (Token::simpleMatch(parmEnd, "> template <"))
+                parmEnd = parmEnd->tokAt(2)->findClosingBracket();
+            if (!parmEnd || !tok->scopeInfo())
+                continue;
+            const int namepos = getTemplateNamePosition(parmEnd);
+            if (namepos > 0)
+                memberTemplates.insert(tok->scopeInfo()->name + " :: " + parmEnd->strAt(namepos));
+        }
+    }
 
     for (const Token* tok = templateInstantiation.token()->next()->findClosingBracket();
          tok && tok != templateInstantiation.token(); tok = tok->previous()) {
@@ -2299,15 +2357,25 @@ void TemplateSimplifier::expandTemplate(
 
                 // check for global scope
                 if (prev->strAt(-1) != "::") {
-                    // adjust for current scope
-                    std::string token_scope = tok3->scopeInfo()->name;
-                    const std::string::size_type end = token_scope.find_last_of(" :: ");
-                    if (end != std::string::npos) {
-                        token_scope.resize(end);
-                        if (scope.empty())
-                            scope = std::move(token_scope);
-                        else
-                            scope = token_scope + " :: " + scope;
+                    const std::string &generic = templateDeclaration.fullName();
+                    const std::string memberScope = findMemberTemplateScope(memberTemplates, generic, tok3->scopeInfo()->name, scope, tok3->str());
+                    if (!memberScope.empty()) {
+                        // a member template of the new instantiation, which is declared in the next pass
+                        const std::string instantiated = templateDeclaration.scope().empty() ? newName : (templateDeclaration.scope() + " :: " + newName);
+                        scope = instantiated + memberScope.substr(generic.size());
+                    } else if (const TokenAndName *declaration = findTemplateDeclaration(tok3, scope, nullptr)) {
+                        scope = declaration->scope();
+                    } else {
+                        // adjust for current scope
+                        std::string token_scope = tok3->scopeInfo()->name;
+                        const std::string::size_type end = token_scope.rfind(" :: ");
+                        if (end != std::string::npos) {
+                            token_scope.resize(end);
+                            if (scope.empty())
+                                scope = std::move(token_scope);
+                            else
+                                scope = token_scope + " :: " + scope;
+                        }
                     }
                 }
 

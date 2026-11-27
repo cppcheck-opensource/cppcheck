@@ -356,6 +356,17 @@ private:
     void addInstantiation(Token *token, const std::string &scope);
 
     /**
+     * Find the template declaration that a template name refers to. The name is looked up in
+     * the scope of the usage first and then in each enclosing scope, innermost first.
+     * @param tok the template name at the usage
+     * @param qualification the qualification written before the name, or empty
+     * @param usingNamespace if not null, the using-directives in effect at the usage are tried
+     *        too, and the one through which the declaration is found is stored here
+     * @return the declaration, or nullptr if there is none
+     */
+    const TokenAndName *findTemplateDeclaration(const Token *tok, const std::string &qualification, std::string *usingNamespace) const;
+
+    /**
      * Get template instantiations
      */
     void getTemplateInstantiations();
