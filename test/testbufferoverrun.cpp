@@ -167,6 +167,7 @@ private:
         TEST_CASE(array_index_77);
         TEST_CASE(array_index_78);
         TEST_CASE(array_index_79); // #15225
+        TEST_CASE(array_index_80);
         TEST_CASE(array_index_multidim);
         TEST_CASE(array_index_switch_in_for);
         TEST_CASE(array_index_for_in_for);   // FP: #2634
@@ -2070,6 +2071,47 @@ private:
               "    std::array<char, 3 + sizeof(S)> a[2];\n"
               "    char buf[sizeof(a)];\n"
               "    buf[5] = 0;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+    }
+
+    void array_index_80()
+    {
+        check("const int a[5] = {1,2,3,4,5};\n"
+              "const int b[5] = {6,7,8,9,0};\n"
+              "int f(bool c) {\n"
+              "    int s = 0;\n"
+              "    const int N = c ? (sizeof(a) / sizeof(a[0])) : (sizeof(b) / sizeof(b[0]));\n"
+              "    for (int i = 0; i < N; i++) {\n"
+              "        s += (c ? a[i] : b[i]);\n"
+              "        if (i == 4) {}\n"
+              "    }\n"
+              "    return s;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("const int a[5] = {1,2,3,4,5};\n"
+              "int f(bool c) {\n"
+              "    int s = 0;\n"
+              "    int N = 4;\n"
+              "    if (c)\n"
+              "        N = 5;\n"
+              "    for (int i = 0; i < N; i++) {\n"
+              "        s += a[i];\n"
+              "        if (i == 4) {}\n"
+              "    }\n"
+              "    return s;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("const int a[5] = {1,2,3,4,5};\n"
+              "int f(int N) {\n"
+              "    int s = 0;\n"
+              "    for (int i = 0; i < N; i++) {\n"
+              "        s += a[i];\n"
+              "        if (i == 4) {}\n"
+              "    }\n"
+              "    return s;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
     }

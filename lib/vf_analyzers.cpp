@@ -404,10 +404,15 @@ struct ValueFlowAnalyzer : Analyzer {
     }
 
     // A conditional value is split only on a condition the state covers; an unknown one may be
-    // correlated with the assumption.
+    // correlated with the assumption. A condition that reads the value itself guards it, so the
+    // constraints on its other operands do not tell whether the value passes.
     bool canSplitConditional(const Token* condTok) const
     {
         if (!condTok)
+            return false;
+        if (findAstNode(condTok, [&](const Token* tok) {
+            return match(tok);
+        }))
             return false;
         return stateCoversCondition(condTok, pms.get(condTok, nullptr, getProgramState()));
     }
