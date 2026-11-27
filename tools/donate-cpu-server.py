@@ -26,10 +26,14 @@ from urllib.parse import urlparse
 # Version scheme (MAJOR.MINOR.PATCH) should orientate on "Semantic Versioning" https://semver.org/
 # Every change in this script should result in increasing the version number accordingly (exceptions may be cosmetic
 # changes)
-SERVER_VERSION = "1.3.70"
+SERVER_VERSION = "1.3.71"
 
 # TODO: fetch from GitHub tags
 OLD_VERSION = '2.22.0'
+
+# HTTP requests are redirected to the HTML reports served by donate-cpu-server-rest.py.
+# The URLs of the reports are the same, so the path is kept.
+REPORTS_URL = 'http://cppcheck1.osuosl.org'
 
 HEAD_MARKER = 'head results:'
 INFO_MARKER = 'info messages:'
@@ -1376,10 +1380,20 @@ def server(server_address_port: int, packages: list, packageIndex: int, resultPa
             connection.close()
             continue
         if cmd.startswith('GET /'):
-            cmd = cmd[:cmd.find('\r\n')]
-            print_ts(cmd)
-            newThread = HttpClientThread(connection, cmd, resultPath, latestResults)
-            newThread.start()
+            request_line = firstLine.rstrip('\r')
+            print_ts(request_line)
+            req_parts = request_line.split(' ')
+            path = req_parts[1] if len(req_parts) == 3 else '/'
+            location = REPORTS_URL + urllib.parse.quote(path, safe="/?=&%+-_.~:@!$'()*,;")
+            resp = 'HTTP/1.1 302 Found\r\n'
+            resp += 'Location: ' + location + '\r\n'
+            resp += 'Content-length: 0\r\n'
+            resp += 'Connection: close\r\n\r\n'
+            try:
+                sendAll(connection, resp)
+            except socket.error as e:
+                print_ts('Error: Send error: ' + str(e))
+            connection.close()
             continue
         if cmd == 'GetCppcheckVersions\n':
             reply = 'head ' + OLD_VERSION
