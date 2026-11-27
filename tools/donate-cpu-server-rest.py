@@ -310,6 +310,15 @@ def parse_info(text: str) -> Dict[str, Any]:
 PARSERS = {'results': parse_result, 'info': parse_info}
 
 
+def safe_path(directory: str, name: str) -> str:
+    """The file 'name' in 'directory'. Raises ValueError if 'name' is not a plain file name."""
+    directory = os.path.normpath(directory)
+    path = os.path.normpath(os.path.join(directory, name))
+    if not path.startswith(directory + os.sep) or os.path.dirname(path) != directory:
+        raise ValueError('invalid file name: {!r}'.format(name))
+    return path
+
+
 def read_text(path: str) -> str:
     with open(path, 'rt', encoding='utf-8', errors='replace') as f:
         return f.read()
@@ -343,10 +352,10 @@ class ResultIndex:
         self.ready = False
 
     def data_file(self, kind: str, package: str) -> str:
-        return os.path.join(self.data_dirs[kind], package)
+        return safe_path(self.data_dirs[kind], package)
 
     def _sidecar_file(self, kind: str, package: str) -> str:
-        return os.path.join(self.sidecar_dirs[kind], package + '.json')
+        return safe_path(self.sidecar_dirs[kind], package + '.json')
 
     def _set(self, kind: str, package: str, entry: Optional[Dict[str, Any]]) -> None:
         with self.lock:
@@ -1047,9 +1056,12 @@ def _upload_target(packages: PackageQueue, data: str) -> Tuple[str, str]:
     res = RE_DEBIAN_URL.match(url) or RE_CPPCHECK_URL.match(url)
     if res is None:
         raise HTTPException(status_code=400, detail='unsupported package url')
+    package = res.group(1)
+    if package.startswith('.'):
+        raise HTTPException(status_code=400, detail='invalid package name in url')
     if not packages.contains(url):
         raise HTTPException(status_code=404, detail='url is not in packages')
-    return url, res.group(1)
+    return url, package
 
 
 def _check_versions(data: str) -> None:
@@ -1256,7 +1268,10 @@ def create_app(work_path: str, rescan_interval: float = DEFAULT_RESCAN_INTERVAL)
 
     def raw(kind: str, package: str) -> PlainTextResponse:
         package = _safe_package_name(package)
-        path = index.data_file(kind, package)
+        try:
+            path = index.data_file(kind, package)
+        except ValueError:
+            raise HTTPException(status_code=404, detail='invalid package name') from None
         if not os.path.isfile(path):
             raise HTTPException(status_code=404, detail='no {} for {}'.format(kind, package))
         return PlainTextResponse(read_text(path))

@@ -200,6 +200,28 @@ def test_html_name_pages(client):
     assert 'please configure it' in client.get('/unknown_macro-FOO').text
 
 
+def test_safe_path(tmp_path):
+    directory = str(tmp_path)
+    assert server.safe_path(directory, 'pkg') == str(tmp_path / 'pkg')
+    assert server.safe_path(directory + '/', 'pkg') == str(tmp_path / 'pkg')
+    for name in ('', '.', '..', '../pkg', 'a/b', '/etc/passwd', 'a/../../pkg'):
+        with pytest.raises(ValueError):
+            server.safe_path(directory, name)
+
+
+def test_upload_invalid_package_name(work_path):
+    # even if such an url is in packages.txt, nothing is written outside the result path
+    url = 'ftp://ftp.de.debian.org/debian/pool/main/x/../x.orig.tar.gz'
+    with open(str(work_path / 'packages.txt'), 'at') as f:
+        f.write(url + '\n')
+    app = server.create_app(str(work_path), rescan_interval=0.2)
+    with TestClient(app) as client:
+        data = RESULT_CRASH.replace(PKG_A, url)
+        assert client.post('/api/v1/results', content=data).status_code == 400
+        assert client.post('/api/v1/info', content=data).status_code == 400
+    assert sorted(p.name for p in work_path.iterdir()) == ['donated-results', 'packages.txt', 'report-index']
+
+
 def test_raw_files(client):
     client.post('/api/v1/info', content=INFO)
     r = client.get('/ccc')
