@@ -1349,8 +1349,125 @@ struct ExpressionAnalyzer : SingleValueFlowAnalyzer {
     }
 
     static bool nonLocal(const Variable* var, bool deref) {
-        return !var || (!var->isLocal() && !var->isArgument()) || (deref && var->isArgument() && var->isPointer()) ||
+        return !var || (!var->isLocal() && !var->isArgument()) || (deref && var->isPointer()) ||
                var->isStatic() || var->isReference() || var->isExtern();
+    }
+
+    // Is the expression that dereferences the pointer only read or written, so that the
+    // address of the object (or its members) does not escape?
+    static bool isLocalDerefUse(const Token* deref) {
+        const Token* parent = deref->astParent();
+        if (!parent)
+            return true;
+        if (parent->isUnaryOp("&"))
+            return false;
+        // member function call, 'this' might escape
+        if (Token::Match(deref, ". %name% ("))
+            return false;
+        // passed to function, might be passed by reference
+        if (Token::Match(parent, ",|(") && !parent->isCast() && !(parent->str() == "(" && Token::Match(parent->previous(), "if|while|switch")))
+            return false;
+        if (Token::Match(parent, "{|:|return|throw"))
+            return false;
+        // bound to reference
+        if (parent->str() == "=" && astIsRHS(deref) && parent->astOperand1() && parent->astOperand1()->variable() &&
+            parent->astOperand1()->variable()->isReference())
+            return false;
+        return true;
+    }
+
+    // Skip pointer casts, e.g. '(S*)malloc(n)' or 'static_cast<S*>(malloc(n))'
+    static const Token* skipPointerCasts(const Token* tok) {
+        while (Token::simpleMatch(tok, "(")) {
+            if (tok->isCast())
+                tok = tok->astOperand2() ? tok->astOperand2() : tok->astOperand1();
+            else if (Token::Match(tok->astOperand1(), "static_cast|reinterpret_cast"))
+                tok = tok->astOperand2();
+            else
+                break;
+        }
+        return tok;
+    }
+
+    // Is the memory allocated by a library allocation function, e.g. 'malloc(n)'?
+    static bool isLibraryMemoryAllocation(const Token* tok, const Settings& settings) {
+        tok = skipPointerCasts(tok);
+        // the function name is the token before '(', also for 'std::malloc(n)'
+        if (!Token::simpleMatch(tok, "(") || !tok->astOperand1() || !Token::Match(tok->previous(), "%name% ("))
+            return false;
+        const Library::AllocFunc* allocFunc = settings.library.getAllocFuncInfo(tok->previous());
+        return allocFunc && Library::ismemory(allocFunc);
+    }
+
+    // Does the local pointer point at an object allocated with 'new' or a library allocation function
+    // (e.g. malloc) that can't be accessed outside the function?
+    static bool pointsToLocalAllocation(const Variable* var, const Settings& settings) {
+        if (!var || !var->isLocal() || var->isStatic() || !var->isPointer() || var->isReference() || var->isArray())
+            return false;
+        const Token* assignTok = var->nameToken()->next();
+        if (Token::Match(assignTok, "; %varid% =", var->declarationId())) // declaration is split
+            assignTok = assignTok->tokAt(2);
+        if (!Token::simpleMatch(assignTok, "=") || !var->scope() || !var->scope()->bodyEnd)
+            return false;
+        const Token* allocTok = assignTok->astOperand2();
+        if (allocTok && allocTok->isKeyword() && allocTok->str() == "new") {
+            // The constructor might store the address of the object
+            const Token* typeTok = allocTok->next();
+            while (Token::Match(typeTok, "%name% ::"))
+                typeTok = typeTok->tokAt(2);
+            if (!Token::Match(typeTok, "%type%"))
+                return false; // placement new
+            if (!typeTok->isStandardType()) {
+                const Type* type = typeTok->type();
+                if (!type || !type->classScope || type->classScope->numConstructors > 0 || !type->derivedFrom.empty())
+                    return false;
+            }
+        } else if (!isLibraryMemoryAllocation(allocTok, settings)) {
+            // No constructor is called for memory from an allocation function such as malloc
+            return false;
+        }
+        for (const Token* tok = assignTok; tok != var->scope()->bodyEnd; tok = tok->next()) {
+            if (tok->varId() != var->declarationId())
+                continue;
+            // The pointer is used in a lambda that might be called by another function
+            for (const Scope* scope = tok->scope(); scope && scope != var->scope(); scope = scope->nestedIn) {
+                if (scope->type == ScopeType::eLambda)
+                    return false;
+            }
+            const Token* parent = tok->astParent();
+            if (!parent)
+                return false;
+            if (Token::Match(parent, "delete|!|%comp%|&&|%oror%"))
+                continue;
+            if (parent->str() == "(" && Token::Match(parent->previous(), "if|while ("))
+                continue;
+            // deallocated with a library function, e.g. 'free(p)'
+            if (parent->str() == "(" && parent->astOperand2() == tok && parent->astOperand1() && Token::Match(parent->previous(), "%name% (") &&
+                settings.library.getDeallocFuncInfo(parent->previous()))
+                continue;
+            if ((parent->isUnaryOp("*") || (parent->originalName() == "->" && astIsLHS(tok)) ||
+                 (parent->str() == "[" && astIsLHS(tok))) && isLocalDerefUse(parent))
+                continue;
+            return false;
+        }
+        return true;
+    }
+
+    // Does the pointer point at a known local object?
+    static bool pointsToLocal(const Token* tok, const Settings& settings) {
+        if (pointsToLocalAllocation(tok->variable(), settings))
+            return true;
+        bool result = false;
+        for (const ValueFlow::Value& v : tok->values()) {
+            if (!v.isLifetimeValue())
+                continue;
+            if (!v.isLocalLifetimeValue() || v.isInconclusive() || v.lifetimeKind != ValueFlow::Value::LifetimeKind::Address)
+                return false;
+            if (!v.tokvalue || !v.tokvalue->variable() || nonLocal(v.tokvalue->variable(), false))
+                return false;
+            result = true;
+        }
+        return result;
     }
 
     void setupExprVarIds(const Token* start, int depth = 0) {
@@ -1388,8 +1505,9 @@ struct ExpressionAnalyzer : SingleValueFlowAnalyzer {
                         return ChildrenToVisit::none;
                     const bool deref = tok->astParent() &&
                                        (tok->astParent()->isUnaryOp("*") ||
-                                        (tok->astParent()->str() == "[" && tok == tok->astParent()->astOperand1()));
-                    local &= !nonLocal(tok->variable(), deref);
+                                        (tok->astParent()->str() == "[" && tok == tok->astParent()->astOperand1()) ||
+                                        (tok->astParent()->originalName() == "->" && tok == tok->astParent()->astOperand1()));
+                    local &= !nonLocal(tok->variable(), deref && !pointsToLocal(tok, settings()));
                 }
             }
             return ChildrenToVisit::op1_and_op2;

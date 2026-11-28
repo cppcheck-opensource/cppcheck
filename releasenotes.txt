@@ -34,4 +34,4 @@ Infrastructure & dependencies:
   no effect.
 
 Other:
--
+- Fixed false positive knownConditionTrueFalse when a member is read through a pointer ('p->i') and a function call in between may change the object that the pointer points at (#12795).
