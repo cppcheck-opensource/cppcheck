@@ -16,7 +16,7 @@ import copy
 # Version scheme (MAJOR.MINOR.PATCH) should orientate on "Semantic Versioning" https://semver.org/
 # Every change in this script should result in increasing the version number accordingly (exceptions may be cosmetic
 # changes)
-CLIENT_VERSION = "1.4.1"
+CLIENT_VERSION = "1.4.2"
 
 # Timeout for analysis with Cppcheck in seconds
 CPPCHECK_TIMEOUT = 30 * 60
@@ -437,6 +437,20 @@ def __run_command(cmd, print_cmd=True):
     return return_code, stdout, stderr, elapsed_time
 
 
+# glibc assertion failure message: "<program>: <file>:<line>: <function>: Assertion `<expression>' failed."
+# Example: cppcheck: lib/token.cpp:123: void Token::foo(): Assertion `x' failed.
+__assertion_failure_re = re.compile(r"^\S+: [^:\s]+:\d+: .+: Assertion `.+' failed\.$")
+
+
+def get_assertion_failures(text):
+    messages = []
+    for line in text.split('\n'):
+        line = line.strip()
+        if __assertion_failure_re.match(line) and line not in messages:
+            messages.append(line)
+    return messages
+
+
 def scan_package(cppcheck_path, source_path, libraries, capture_callstack=True, enable='style,information', debug_warnings=True, check_level=None, extra_args=None):
     print('Analyze..')
     libs = ''
@@ -536,6 +550,7 @@ def scan_package(cppcheck_path, source_path, libraries, capture_callstack=True, 
         # make sure we have the actual error code set
         if has_sig:
             returncode = -sig_num
+        assertion_failures = get_assertion_failures(stderr)
         stacktrace = ''
         if capture_callstack:
             # re-run within gdb to get a stacktrace
@@ -544,20 +559,33 @@ def scan_package(cppcheck_path, source_path, libraries, capture_callstack=True, 
                 cmd += sig_file
             else:
                 cmd += dir_to_scan
-            _, st_stdout, _, _ = __run_command(cmd)
+            _, st_stdout, st_stderr, _ = __run_command(cmd)
+            for msg in get_assertion_failures(st_stderr):
+                if msg not in assertion_failures:
+                    assertion_failures.append(msg)
             gdb_pos = st_stdout.find(" received signal")
             if gdb_pos != -1:
                 last_check_pos = st_stdout.rfind('Checking ', 0, gdb_pos)
                 if last_check_pos == -1:
                     stacktrace = st_stdout[gdb_pos:]
                 else:
-                    stacktrace = st_stdout[last_check_pos:]
+                    # put the assertion failure messages before the ' received signal ' line, the servers parse the stack trace after that line
+                    signal_line_pos = st_stdout.rfind('\n', 0, gdb_pos) + 1
+                    if signal_line_pos < last_check_pos:
+                        signal_line_pos = last_check_pos
+                    stacktrace = st_stdout[last_check_pos:signal_line_pos] + \
+                        ''.join(msg + '\n' for msg in assertion_failures) + \
+                        st_stdout[signal_line_pos:]
+                    assertion_failures = []
         # if no stacktrace was generated return the original stdout or internal errors list
         if not stacktrace:
             if has_sig:
                 stacktrace = ''.join(internal_error_messages_list)
             else:
                 stacktrace = stdout
+        # assertion failure messages that were not put in the gdb output
+        if assertion_failures:
+            stacktrace = ''.join(msg + '\n' for msg in assertion_failures) + stacktrace
         return returncode, stacktrace, '', returncode, options_j, ''
 
     if returncode != 0:
