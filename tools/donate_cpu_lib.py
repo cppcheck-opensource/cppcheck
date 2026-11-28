@@ -16,7 +16,7 @@ import copy
 # Version scheme (MAJOR.MINOR.PATCH) should orientate on "Semantic Versioning" https://semver.org/
 # Every change in this script should result in increasing the version number accordingly (exceptions may be cosmetic
 # changes)
-CLIENT_VERSION = "1.4.0"
+CLIENT_VERSION = "1.4.1"
 
 # Timeout for analysis with Cppcheck in seconds
 CPPCHECK_TIMEOUT = 30 * 60
@@ -344,10 +344,77 @@ def download_package(work_path, package, bandwidth_limit):
     return destfile
 
 
+def __is_inside_path(base_path, path):
+    try:
+        return os.path.commonpath([base_path, path]) == base_path
+    except ValueError:
+        # paths are on different drives
+        return False
+
+
+def __remove_link(path):
+    try:
+        os.remove(path)
+    except OSError:
+        # a directory symlink on Windows
+        os.rmdir(path)
+
+
+def __find_escaping_links(real_temp_path):
+    # Returns the links below real_temp_path that resolve outside of it, and whether a folder had to
+    # be made readable to list it. Raises OSError for a folder that cannot be listed even then.
+    import stat
+    fixed = False
+
+    def onerror(e):
+        # a directory member extracted after the links can have made its folder unreadable
+        nonlocal fixed
+        mode = stat.S_IMODE(os.lstat(e.filename).st_mode)
+        missing = (stat.S_IRUSR | stat.S_IXUSR) & ~mode
+        if not missing:
+            raise e
+        os.chmod(e.filename, mode | missing)
+        fixed = True
+
+    links = []
+    for root, dirs, files in os.walk(real_temp_path, onerror=onerror):
+        for name in dirs + files:
+            path = os.path.join(root, name)
+            if os.path.islink(path) and not __is_inside_path(real_temp_path, os.path.realpath(path)):
+                links.append(path)
+    return links, fixed
+
+
+def __remove_escaping_links(real_temp_path):
+    # A link that still pointed inside real_temp_path when it was extracted can be redirected
+    # by a link that is extracted later, so all links are checked again afterwards. Removing a
+    # link changes what the remaining ones resolve to, so this is repeated until nothing is left.
+    # Raises OSError if a folder cannot be listed or a link cannot be removed.
+    import stat
+    removed = 0
+    while True:
+        links, fixed = __find_escaping_links(real_temp_path)
+        if fixed:
+            # a folder that was skipped by the walk is readable now, so look at its content as well
+            continue
+        if not links:
+            return removed
+        for path in links:
+            try:
+                __remove_link(path)
+            except OSError:
+                # a directory member extracted after the link can have made its folder read-only
+                parent = os.path.dirname(path)
+                os.chmod(parent, stat.S_IMODE(os.lstat(parent).st_mode) | stat.S_IWUSR)
+                __remove_link(path)
+            removed += 1
+
+
 def unpack_package(work_path, tgz, cpp_only=False, c_only=False, skip_files=None):
     temp_path = os.path.join(work_path, 'temp')
     __remove_tree(temp_path)
     os.mkdir(temp_path)
+    real_temp_path = os.path.realpath(temp_path)
 
     header_endings = ('.hpp', '.h++', '.hxx', '.hh', '.h')
     cpp_source_endings = ('.cpp', '.c++', '.cxx', '.cc', '.tpp', '.txx', '.ipp', '.ixx', '.qml')
@@ -367,10 +434,21 @@ def unpack_package(work_path, tgz, cpp_only=False, c_only=False, skip_files=None
             total = 0
             extracted = 0
             skipped = 0
+            # Python versions with extraction filters reject members that leave temp_path as well
+            extract_args = {'filter': 'data'} if hasattr(tarfile, 'data_filter') else {}
             for member in tf:
                 total += 1
-                if member.name.startswith(('/', '..')):
-                    # Skip dangerous file names
+                member_path = os.path.realpath(os.path.join(temp_path, member.name))
+                link_path = None
+                if member.issym():
+                    # resolve from the directory the link is created in, not through an existing link with the same name
+                    link_parent = os.path.realpath(os.path.dirname(os.path.join(temp_path, member.name)))
+                    link_path = os.path.realpath(os.path.join(link_parent, member.linkname))
+                elif member.islnk():
+                    link_path = os.path.realpath(os.path.join(temp_path, member.linkname))
+                if not __is_inside_path(real_temp_path, member_path) or \
+                        (link_path is not None and not __is_inside_path(real_temp_path, link_path)):
+                    # Skip dangerous file names and links pointing outside of temp_path
                     # print('skipping dangerous file: ' + member.name)
                     skipped += 1
                     continue
@@ -388,7 +466,7 @@ def unpack_package(work_path, tgz, cpp_only=False, c_only=False, skip_files=None
                             skipped += 1
                             continue
                     try:
-                        tf.extract(member.name, temp_path)
+                        tf.extract(member, temp_path, **extract_args)
                         if is_source:
                             source_found = True
                         extracted += 1
@@ -396,6 +474,17 @@ def unpack_package(work_path, tgz, cpp_only=False, c_only=False, skip_files=None
                         pass
                     except AttributeError:
                         pass
+                    except (tarfile.TarError, KeyError):
+                        # KeyError: hardlink to a member that is neither on disk nor in the archive
+                        pass
+            try:
+                removed = __remove_escaping_links(real_temp_path)
+            except OSError as e:
+                # do not analyse a package with a link pointing outside of temp_path
+                print('Failed to remove link pointing outside of {}: {}'.format(temp_path, e))
+                return temp_path, False
+            extracted -= removed
+            skipped += removed
             print('extracted {} of {} files (skipped {}{})'.format(extracted, total, skipped, (' / only headers' if (extracted and not source_found) else '')))
     return temp_path, source_found
 
