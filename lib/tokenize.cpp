@@ -1033,6 +1033,7 @@ namespace {
                 to = to->next();
                 to->isSimplifiedTypedef(true);
                 to->isExternC(from->isExternC());
+                to->copyMacroName(from);
             }
             return to;
         }
@@ -6394,7 +6395,7 @@ void Tokenizer::dump(std::ostream &out) const
             outs += " isCast=\"true\"";
         if (tok->isExternC())
             outs += " externLang=\"C\"";
-        if (tok->isExpandedMacro())
+        if (tok->hasMacroName())
             outs += " macroName=\"" + tok->getMacroName() + "\"";
         if (tok->isTemplateArg()) {
             outs += " isTemplateArg=\"true\"";
