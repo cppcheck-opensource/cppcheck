@@ -1928,8 +1928,10 @@ static bool isConstPointerVariable(const Variable* p, const Settings& settings)
                findVariableChanged(start, p->scope()->bodyEnd, indirect, p->declarationId(), false, settings)) {
         if (p->isReference())
             return false;
-        // Assigning a pointer through another pointer may still be const
-        if (!Token::simpleMatch(tok->astParent(), "="))
+        // Assigning a pointer through another pointer may still be const; moving an alias (+=/-=)
+        // changes the pointer, not the pointee
+        if (!Token::simpleMatch(tok->astParent(), "=") &&
+            !(Token::Match(tok->astParent(), "+=|-=") && astIsPointer(tok)))
             return false;
         if (!astIsLHS(tok))
             return false;
