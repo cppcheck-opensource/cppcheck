@@ -75,6 +75,8 @@ static bool isRaiiClass(const ValueType *valueType, bool cpp, bool defaultReturn
     case ValueType::Type::SMART_POINTER:
     case ValueType::Type::CONTAINER:
     case ValueType::Type::ITERATOR:
+    case ValueType::Type::FUNCTION:
+    case ValueType::Type::MEMBER_POINTER:
     case ValueType::Type::VOID:
     case ValueType::Type::BOOL:
     case ValueType::Type::CHAR:
