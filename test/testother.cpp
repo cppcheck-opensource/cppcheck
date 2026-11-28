@@ -4300,6 +4300,20 @@ private:
               "}\n");
         ASSERT_EQUALS("[test.cpp:3:7]: (style) Variable 'a' can be declared as const array [constVariable]\n",
                       errout_str());
+
+        check("void f(std::vector<int>& v) {\n"
+              "    int *p = v.data();\n"
+              "    p[0] += 1;\n"
+              "}\n"
+              "void g(std::vector<int*>& v) {\n"
+              "    int** p = v.data();\n"
+              "    p[0][0] += 1;\n"
+              "}\n"
+              "void h(std::vector<int*>& v) {\n"
+              "    int** p = v.data();\n"
+              "    *p[0] += 1;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void constParameterCallback() {
@@ -5095,6 +5109,17 @@ private:
                "}\n");
         ASSERT_EQUALS("[test.cpp:3:8]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n"
                       "[test.cpp:3:8]: (style) Parameter 'q' can be declared as pointer to const [constParameterPointer]\n",
+                      errout_str());
+
+        check("void f(int *r, int s, int N) {\n"
+              "    int *p = nullptr;\n"
+              "    for (int j = 0; j < N; j++) {\n"
+              "        if (p) {}\n"
+              "        p = r;\n"
+              "        r += s;\n"
+              "    }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:10]: (style) Variable 'p' can be declared as pointer to const [constVariablePointer]\n",
                       errout_str());
     }
 
