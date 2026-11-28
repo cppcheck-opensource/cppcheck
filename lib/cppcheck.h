@@ -41,6 +41,7 @@ class FileWithDetails;
 class AnalyzerInformation;
 class ErrorLogger;
 class Settings;
+struct AddonInfo;
 struct Suppressions;
 class Preprocessor;
 class TimerResults;
@@ -131,6 +132,12 @@ public:
      * Also print out XML header and footer.
      */
     static void getErrorMessages(ErrorLogger &errorlogger);
+
+    /**
+     * @brief Get all error messages that an addon executable can report, by running it with --errorlist.
+     * @throws InternalError thrown when execution fails
+     */
+    static void getAddonErrorMessages(const AddonInfo &addonInfo, ErrorLogger &errorlogger, const ExecuteCmdFn &executeCommand);
 
     void tooManyConfigsError(const std::string &file, int numberOfConfigurations);
 

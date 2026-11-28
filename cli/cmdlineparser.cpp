@@ -25,6 +25,7 @@
 #include "color.h"
 #include "config.h"
 #include "cppcheck.h"
+#include "cppcheckexecutor.h"
 #include "errorlogger.h"
 #include "errortypes.h"
 #include "filelister.h"
@@ -121,9 +122,13 @@ static bool addPathsToSet(const std::string& fileName, std::set<std::string>& se
 namespace {
     class XMLErrorMessagesLogger : public ErrorLogger
     {
+    public:
+        explicit XMLErrorMessagesLogger(std::ostream &out) : mOut(out) {}
+
+    private:
         void reportOut(const std::string & outmsg, Color /*c*/ = Color::Reset) override
         {
-            std::cout << outmsg << std::endl;
+            mOut << outmsg << std::endl;
         }
 
         void reportErr(const ErrorMessage &msg) override
@@ -139,6 +144,8 @@ namespace {
 
         void reportProgress(const std::string & /*filename*/, const char /*stage*/[], const std::size_t /*value*/) override
         {}
+
+        std::ostream &mOut;
     };
 }
 
@@ -377,9 +384,18 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         // print all possible error messages..
         if (std::strcmp(argv[i], "--errorlist") == 0) {
             {
-                XMLErrorMessagesLogger xmlLogger;
+                // get the premium messages first so there is no partial output if that fails
+                std::ostringstream premiumErrors;
+                if (mSettings.premium) {
+                    XMLErrorMessagesLogger premiumLogger(premiumErrors);
+                    if (!getPremiumErrorMessages(premiumLogger))
+                        return Result::Fail;
+                }
+
+                XMLErrorMessagesLogger xmlLogger(std::cout);
                 std::cout << ErrorMessage::getXMLHeader(mSettings.cppcheckCfgProductName, 2);
                 CppCheck::getErrorMessages(xmlLogger);
+                std::cout << premiumErrors.str();
                 std::cout << ErrorMessage::getXMLFooter(2) << std::endl;
             }
             return Result::Exit;
@@ -2231,6 +2247,27 @@ bool CmdLineParser::loadAddons(Settings& settings)
         settings.addonInfos.emplace_back(std::move(addonInfo));
     }
     return result;
+}
+
+bool CmdLineParser::getPremiumErrorMessages(ErrorLogger &errorLogger)
+{
+    for (const std::string &addon: mSettings.addons) {
+        AddonInfo addonInfo;
+        const std::string failedToGetAddonInfo = addonInfo.getAddonInfo(addon, mSettings.exename, mSettings.debuglookup || mSettings.debuglookupAddon);
+        if (!failedToGetAddonInfo.empty()) {
+            mLogger.printError(failedToGetAddonInfo);
+            return false;
+        }
+        if (addonInfo.name != "premiumaddon.json" || addonInfo.executable.empty())
+            continue;
+        try {
+            CppCheck::getAddonErrorMessages(addonInfo, errorLogger, CppCheckExecutor::executeCommand);
+        } catch (const InternalError &e) {
+            mLogger.printError(e.errorMessage + (e.details.empty() ? "" : "\n" + e.details));
+            return false;
+        }
+    }
+    return true;
 }
 
 bool CmdLineParser::loadCppcheckCfg()

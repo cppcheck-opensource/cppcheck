@@ -453,6 +453,73 @@ static std::string detectPython(const CppCheck::ExecuteCmdFn &executeCommand)
 /**
  * @throws InternalError thrown when execution fails
  */
+static std::vector<picojson::value> runAddonCommand(const std::string &addonName,
+                                                    const std::string &exe,
+                                                    const std::string &args,
+                                                    const CppCheck::ExecuteCmdFn &executeCommand)
+{
+    std::string result;
+    if (const int exitcode = executeCommand(exe, split(args), "2>&1", result)) {
+        std::string message("Failed to execute addon '" + addonName + "' - exitcode is " + std::to_string(exitcode));
+        std::string details = exe + " " + args;
+        if (result.size() > 2) {
+            details += "\nOutput:\n";
+            details += result;
+            const auto pos = details.find_last_not_of("\n\r");
+            if (pos != std::string::npos)
+                details.resize(pos + 1);
+        }
+        throw InternalError(nullptr, std::move(message), std::move(details));
+    }
+
+    std::vector<picojson::value> addonResult;
+
+    // Validate output..
+    std::istringstream istr(result);
+    std::string line;
+    while (std::getline(istr, line)) {
+        // TODO: also bail out?
+        if (line.empty()) {
+            //std::cout << "addon '" << addonName <<  "' result contains empty line" << std::endl;
+            continue;
+        }
+
+        // TODO: get rid of this
+        if (startsWith(line,"Checking ")) {
+            //std::cout << "addon '" << addonName <<  "' result contains 'Checking ' line" << std::endl;
+            continue;
+        }
+
+        if (line[0] != '{') {
+            //std::cout << "addon '" << addonName <<  "' result is not a JSON" << std::endl;
+
+            result.erase(result.find_last_not_of('\n') + 1, std::string::npos); // Remove trailing newlines
+            throw InternalError(nullptr, "Failed to execute '" + exe + " " + args + "'. " + result);
+        }
+
+        //std::cout << "addon '" << addonName <<  "' result is " << line << std::endl;
+
+        // TODO: make these failures?
+        picojson::value res;
+        const std::string err = picojson::parse(res, line);
+        if (!err.empty()) {
+            //std::cout << "addon '" << addonName <<  "' result is not a valid JSON (" << err << ")" << std::endl;
+            continue;
+        }
+        if (!res.is<picojson::object>()) {
+            //std::cout << "addon '" << addonName <<  "' result is not a JSON object" << std::endl;
+            continue;
+        }
+        addonResult.emplace_back(std::move(res));
+    }
+
+    // Valid results
+    return addonResult;
+}
+
+/**
+ * @throws InternalError thrown when execution fails
+ */
 static std::vector<picojson::value> executeAddon(const AddonInfo &addonInfo,
                                                  const std::string &defaultPythonExe,
                                                  const std::string &file,
@@ -489,63 +556,7 @@ static std::vector<picojson::value> executeAddon(const AddonInfo &addonInfo,
     const std::string fileArg = (is_file_list ? " --file-list " : " ") + cmdFileName(file);
     args += fileArg;
 
-    std::string result;
-    if (const int exitcode = executeCommand(pythonExe, split(args), "2>&1", result)) {
-        std::string message("Failed to execute addon '" + addonInfo.name + "' - exitcode is " + std::to_string(exitcode));
-        std::string details = pythonExe + " " + args;
-        if (result.size() > 2) {
-            details += "\nOutput:\n";
-            details += result;
-            const auto pos = details.find_last_not_of("\n\r");
-            if (pos != std::string::npos)
-                details.resize(pos + 1);
-        }
-        throw InternalError(nullptr, std::move(message), std::move(details));
-    }
-
-    std::vector<picojson::value> addonResult;
-
-    // Validate output..
-    std::istringstream istr(result);
-    std::string line;
-    while (std::getline(istr, line)) {
-        // TODO: also bail out?
-        if (line.empty()) {
-            //std::cout << "addon '" << addonInfo.name <<  "' result contains empty line" << std::endl;
-            continue;
-        }
-
-        // TODO: get rid of this
-        if (startsWith(line,"Checking ")) {
-            //std::cout << "addon '" << addonInfo.name <<  "' result contains 'Checking ' line" << std::endl;
-            continue;
-        }
-
-        if (line[0] != '{') {
-            //std::cout << "addon '" << addonInfo.name <<  "' result is not a JSON" << std::endl;
-
-            result.erase(result.find_last_not_of('\n') + 1, std::string::npos); // Remove trailing newlines
-            throw InternalError(nullptr, "Failed to execute '" + pythonExe + " " + args + "'. " + result);
-        }
-
-        //std::cout << "addon '" << addonInfo.name <<  "' result is " << line << std::endl;
-
-        // TODO: make these failures?
-        picojson::value res;
-        const std::string err = picojson::parse(res, line);
-        if (!err.empty()) {
-            //std::cout << "addon '" << addonInfo.name <<  "' result is not a valid JSON (" << err << ")" << std::endl;
-            continue;
-        }
-        if (!res.is<picojson::object>()) {
-            //std::cout << "addon '" << addonInfo.name <<  "' result is not a JSON object" << std::endl;
-            continue;
-        }
-        addonResult.emplace_back(std::move(res));
-    }
-
-    // Valid results
-    return addonResult;
+    return runAddonCommand(addonInfo.name, pythonExe, args, executeCommand);
 }
 
 static std::string getDefinesFlags(const std::string &semicolonSeparatedString)
@@ -1803,6 +1814,25 @@ void CppCheck::getErrorMessages(ErrorLogger &errorlogger)
     Preprocessor::getErrorMessages(errorlogger, s);
     Tokenizer::getErrorMessages(errorlogger, s);
     SymbolDatabase::getErrorMessages(errorlogger);
+}
+
+void CppCheck::getAddonErrorMessages(const AddonInfo &addonInfo, ErrorLogger &errorlogger, const ExecuteCmdFn &executeCommand)
+{
+    if (!executeCommand)
+        throw InternalError(nullptr, "Failed to execute addon - no command callback provided");
+
+    const std::vector<picojson::value> results = runAddonCommand(addonInfo.name, addonInfo.executable, "--cli --errorlist", executeCommand);
+
+    for (const picojson::value& res : results) {
+        // this is a copy so we can access missing fields and get a default value
+        picojson::object obj = res.get<picojson::object>();
+
+        ErrorMessage errmsg;
+        errmsg.id = obj["addon"].get<std::string>() + "-" + obj["errorId"].get<std::string>();
+        errmsg.setmsg(obj["message"].get<std::string>());
+        errmsg.severity = severityFromString(obj["severity"].get<std::string>());
+        errorlogger.reportErr(errmsg);
+    }
 }
 
 void CppCheck::analyseClangTidy(const FileSettings &fileSettings)

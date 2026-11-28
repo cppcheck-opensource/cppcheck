@@ -33,6 +33,7 @@
 class Settings;
 struct Suppressions;
 class Library;
+class ErrorLogger;
 
 /// @addtogroup CLI
 /// @{
@@ -151,6 +152,12 @@ private:
     bool loadAddons(Settings& settings);
 
     bool loadCppcheckCfg();
+
+    /**
+     * @brief Get the error messages of the Cppcheck Premium addon
+     * @return Returns true if successful
+     */
+    bool getPremiumErrorMessages(ErrorLogger &errorLogger);
 
     void outputFormatOptionMixingError() const;
 

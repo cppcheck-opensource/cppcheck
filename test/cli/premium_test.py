@@ -1,11 +1,15 @@
 
 # python -m pytest premium_test.py
 
+import json
 import os
 import re
 import shutil
 import sys
 import time
+from xml.etree import ElementTree
+
+import pytest
 
 from testutils import cppcheck, __lookup_cppcheck_exe
 
@@ -199,3 +203,52 @@ def test_hash(tmpdir):
 
     _, _, stderr = cppcheck(args)
     assert '<error id="a-id" severity="error" msg="bug" verbose="bug" hash="123" ' in stderr
+
+
+def __add_premiumaddon(exe, tmpdir, script):
+    addon_exe = os.path.join(tmpdir, 'premiumaddon.sh')
+    with open(addon_exe, 'wt') as f:
+        f.write('#!/bin/sh\n' + script)
+    os.chmod(addon_exe, 0o755)
+
+    with open(os.path.join(tmpdir, 'premiumaddon.json'), 'wt') as f:
+        f.write(json.dumps({'executable': addon_exe}))
+
+    cfg_file = os.path.join(os.path.dirname(exe), 'cppcheck.cfg')
+    with open(cfg_file, 'rt') as f:
+        cfg = json.load(f)
+    cfg['addons'] = [os.path.join(tmpdir, 'premiumaddon.json')]
+    with open(cfg_file, 'wt') as f:
+        f.write(json.dumps(cfg))
+
+
+@pytest.mark.skipif(sys.platform == 'win32', reason='uses a shell script as addon executable')
+def test_errorlist(tmpdir):
+    exe = __copy_cppcheck_premium(tmpdir)
+    __add_premiumaddon(exe, tmpdir,
+                       '[ "$*" = "--cli --errorlist" ] || exit 1\n'
+                       'echo \'{"addon":"premium","column":1,"errorId":"misra-c-2012-1.1","extra":"","file":"file.cpp",'
+                       '"flags":["--premium=misra-c-2012"],"linenr":1,"message":"Some message","severity":"style"}\'\n')
+
+    exitcode, stdout, stderr = cppcheck(['--errorlist'], cppcheck_exe=exe)
+    assert exitcode == 0, stdout
+    assert stderr == ''
+    errors = ElementTree.fromstring(stdout).findall('errors/error')
+    ids = [e.get('id') for e in errors]
+    assert 'nullPointer' in ids
+    premium = [e for e in errors if e.get('id') == 'premium-misra-c-2012-1.1']
+    assert len(premium) == 1
+    assert premium[0].get('severity') == 'style'
+    assert premium[0].get('msg') == 'Some message'
+
+
+@pytest.mark.skipif(sys.platform == 'win32', reason='uses a shell script as addon executable')
+def test_errorlist_failure(tmpdir):
+    exe = __copy_cppcheck_premium(tmpdir)
+    __add_premiumaddon(exe, tmpdir, 'echo "something went wrong"\nexit 1\n')
+
+    exitcode, stdout, _ = cppcheck(['--errorlist'], cppcheck_exe=exe)
+    assert exitcode == 1, stdout
+    assert "Failed to execute addon 'premiumaddon.json' - exitcode is 1" in stdout
+    assert 'something went wrong' in stdout
+    assert '<results' not in stdout
