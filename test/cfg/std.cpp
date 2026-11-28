@@ -5088,6 +5088,11 @@ int f_constVariable_std_begin() {
     return arr[0];
 }
 
+void f_constParameterPointer_std_begin(std::vector<int>* p) {
+    std::fill(std::begin(*p), std::end(*p), 0);
+}
+
+
 std::size_t uninitvar_std_size() { // #14976
     int a[3];
     return std::size(a);
