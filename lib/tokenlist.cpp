@@ -198,6 +198,7 @@ void TokenList::addtoken(const Token * tok, const nonneg int lineno, const nonne
     mTokensFrontBack->back->column(column);
     mTokensFrontBack->back->fileIndex(fileno);
     mTokensFrontBack->back->flags(tok->flags());
+    mTokensFrontBack->back->copyLifetimeAttributes(*tok);
     mTokensFrontBack->back->tokType(tok->tokType());
 }
 
@@ -217,6 +218,7 @@ void TokenList::addtoken(const Token *tok, const Token *locationTok)
     }
 
     mTokensFrontBack->back->flags(tok->flags());
+    mTokensFrontBack->back->copyLifetimeAttributes(*tok);
     mTokensFrontBack->back->linenr(locationTok->linenr());
     mTokensFrontBack->back->column(locationTok->column());
     mTokensFrontBack->back->fileIndex(locationTok->fileIndex());
@@ -241,6 +243,7 @@ void TokenList::addtoken(const Token *tok)
     }
 
     mTokensFrontBack->back->flags(tok->flags());
+    mTokensFrontBack->back->copyLifetimeAttributes(*tok);
     mTokensFrontBack->back->linenr(tok->linenr());
     mTokensFrontBack->back->column(tok->column());
     mTokensFrontBack->back->fileIndex(tok->fileIndex());
@@ -265,6 +268,7 @@ Token *TokenList::copyTokens(Token *dest, const Token *first, const Token *last,
         tok2->linenr(linenr);
         tok2->tokType(tok->tokType());
         tok2->flags(tok->flags());
+        tok2->copyLifetimeAttributes(*tok);
         tok2->varId(tok->varId());
         tok2->setTokenDebug(tok->getTokenDebug());
 
@@ -317,6 +321,7 @@ void TokenList::insertTokens(Token *dest, const Token *src, nonneg int n)
         dest->varId(src->varId());
         dest->tokType(src->tokType());
         dest->flags(src->flags());
+        dest->copyLifetimeAttributes(*src);
         if (!src->getMacroName().empty())
             dest->setMacroName(src->getMacroName());
         src  = src->next();
@@ -424,6 +429,7 @@ std::size_t TokenList::calculateHash() const
     std::string hashData;
     for (const Token* tok = front(); tok; tok = tok->next()) {
         hashData += std::to_string(tok->flags());
+        hashData += std::to_string(static_cast<int>(tok->getAttributeLifetimeBound()));
         hashData += std::to_string(tok->varId());
         hashData += std::to_string(tok->tokType());
         hashData += tok->str();

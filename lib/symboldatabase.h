@@ -654,6 +654,14 @@ public:
         return getFlag(fIsMaybeUnused);
     }
 
+    /**
+     * Is this a function argument marked [[clang::lifetimebound]]?
+     * The return value of the function (or the constructed object) may refer to it.
+     */
+    bool isLifetimeBound() const {
+        return mLifetimeBound != Token::LifetimeAttrMode::NONE;
+    }
+
     const ValueType *valueType() const {
         return mValueType;
     }
@@ -695,6 +703,9 @@ private:
 
     /** @brief flags */
     unsigned int mFlags;
+
+    /** @brief function argument marked [[clang::lifetimebound]] */
+    Token::LifetimeAttrMode mLifetimeBound = Token::LifetimeAttrMode::NONE;
 
     /** @brief pointer to user defined type info (for known types) */
     const Type *mType;
@@ -836,6 +847,10 @@ public:
     }
     bool isAttributeMaybeUnused() const {
         return tokenDef->isAttributeMaybeUnused();
+    }
+    /** The implicit object parameter is marked [[clang::lifetimebound]] */
+    bool isAttributeLifetimeBound() const {
+        return tokenDef->isAttributeLifetimeBound() || (token && token->isAttributeLifetimeBound());
     }
 
     bool hasBody() const {

@@ -9753,6 +9753,46 @@ static Token* getVariableTokenAfterAttributes(Token* tok) {
     return vartok;
 }
 
+// An attribute after the function declarator applies to the implicit object parameter, so the function
+// name is returned. Otherwise a token of the parameter declaration is returned.
+static Token* getLifetimeBoundTok(Token* attr, Token* after)
+{
+    Token* const prev = attr->previous();
+    Token* declEnd = prev;
+    while (declEnd) {
+        if (Token::Match(declEnd, "const|volatile|&|&&|noexcept"))
+            declEnd = declEnd->previous();
+        else if (Token::simpleMatch(declEnd, ")") && Token::simpleMatch(declEnd->link()->previous(), "noexcept"))
+            declEnd = declEnd->link()->tokAt(-2);
+        else
+            break;
+    }
+    if (Token::simpleMatch(declEnd, ")")) {
+        Token* const ftok = declEnd->link()->previous();
+        if (Token::simpleMatch(ftok, ")") && Token::simpleMatch(ftok->tokAt(-2), "operator ("))
+            return ftok->tokAt(-2);
+        for (Token* tok = ftok; tok && !Token::Match(tok, "[;{}()]"); tok = tok->previous()) {
+            if (tok->str() == "operator")
+                return tok;
+        }
+        return Token::Match(ftok, "%name%") ? ftok : nullptr;
+    }
+    if (Token::Match(prev, "(|,")) {
+        Token* end = after;
+        while (end && !Token::Match(end, "[,)=;]")) {
+            if (end->link() && Token::Match(end, "(|[|{"))
+                end = end->link();
+            else if (end->str() == "<" && end->findClosingBracket())
+                end = end->findClosingBracket();
+            end = end->next();
+        }
+        if (!Token::Match(end, "[,)=]") || end == after)
+            return nullptr;
+        return end->previous();
+    }
+    return Token::Match(prev, "%name%|]|*|&|&&|>") ? prev : nullptr;
+}
+
 Token* Tokenizer::getAttributeFuncTok(Token* tok, bool gccattr) const {
     if (!Token::Match(tok, "%name% ("))
         return nullptr;
@@ -9876,6 +9916,11 @@ void Tokenizer::simplifyAttribute()
                 else if (Token::Match(attr, "[(,] packed [,)]") && Token::simpleMatch(tok->previous(), "}"))
                     tok->previous()->isAttributePacked(true);
 
+                else if (Token::Match(attr, "[(,] lifetimebound|__lifetimebound__ [,)]")) {
+                    if (Token* lifetimeBoundTok = getLifetimeBoundTok(tok, getTokenAfterAttributes(tok, true)))
+                        lifetimeBoundTok->setAttributeLifetimeBound(Token::LifetimeAttrMode::OBJECT);
+                }
+
                 else if (functok && Token::simpleMatch(attr, "( __visibility__ ( \"default\" ) )"))
                     functok->isAttributeExport(true);
 
@@ -9955,6 +10000,13 @@ void Tokenizer::simplifyCPPAttribute()
             if (!hasCppAttribute) {
                 tok = skipCPPOrAlignAttribute(tok)->next();
                 continue;
+            }
+            if (Token::findmatch(tok->tokAt(2), "lifetimebound|__lifetimebound__", tok->link())) {
+                Token* head = skipCPPOrAlignAttribute(tok)->next();
+                while (isCPPAttribute(head) || isAlignAttribute(head))
+                    head = skipCPPOrAlignAttribute(head)->next();
+                if (Token* lifetimeBoundTok = getLifetimeBoundTok(tok, head))
+                    lifetimeBoundTok->setAttributeLifetimeBound(Token::LifetimeAttrMode::OBJECT);
             }
             if (Token::findsimplematch(tok->tokAt(2), "noreturn", tok->link())) {
                 Token * head = skipCPPOrAlignAttribute(tok)->next();

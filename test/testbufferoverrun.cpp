@@ -6200,6 +6200,18 @@ private:
               "    g(q);\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        check("struct W {\n"
+              "    const int* p;\n"
+              "    int operator[](int i) const;\n"
+              "};\n"
+              "W wrap(const int& x) { return W{&x}; }\n"
+              "int f() {\n"
+              "    int x = 0;\n"
+              "    W w = wrap(x);\n"
+              "    return w[1];\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void checkPipeParameterSize() { // #3521

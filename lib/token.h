@@ -84,6 +84,8 @@ class CPPCHECKLIB Token {
 public:
     enum CppcheckAttributesType : std::uint8_t { LOW, HIGH };
     enum class Cpp11init : std::uint8_t { UNKNOWN, CPP11INIT, NOINIT };
+    /** What a lifetime attribute such as [[clang::lifetimebound]] applies to. OBJECT is the object that is passed. */
+    enum class LifetimeAttrMode : std::uint8_t { NONE, OBJECT };
 
 private:
     struct Impl {
@@ -163,6 +165,9 @@ private:
         }
 
         std::string mAttributeCleanup;
+
+        // [[clang::lifetimebound]], __attribute__((lifetimebound))
+        LifetimeAttrMode mAttributeLifetimeBound{LifetimeAttrMode::NONE};
 
         // For memoization, to speed up parsing of huge arrays #8897
         Cpp11init mCpp11init{Cpp11init::UNKNOWN};
@@ -585,6 +590,19 @@ public:
     }
     void isAttributeFallthrough(const bool value) {
         setFlag(fIsAttributeFallthrough, value);
+    }
+    bool isAttributeLifetimeBound() const {
+        return mImpl->mAttributeLifetimeBound != LifetimeAttrMode::NONE;
+    }
+    LifetimeAttrMode getAttributeLifetimeBound() const {
+        return mImpl->mAttributeLifetimeBound;
+    }
+    void setAttributeLifetimeBound(LifetimeAttrMode mode) {
+        mImpl->mAttributeLifetimeBound = mode;
+    }
+    /** Copy the lifetime attributes. They are not a part of flags(). */
+    void copyLifetimeAttributes(const Token& tok) {
+        mImpl->mAttributeLifetimeBound = tok.mImpl->mAttributeLifetimeBound;
     }
     std::vector<std::string> getAttributeAlignas() const {
         return mImpl->mAttributeAlignas ? *mImpl->mAttributeAlignas : std::vector<std::string>();

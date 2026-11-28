@@ -71,7 +71,9 @@ namespace ValueFlow {
     struct LifetimeToken {
         const Token* token{};
         ErrorPath errorPath;
-        bool addressOf{};
+        // The expression is the object that the token refers to. When this is false, the expression is a part of that
+        // object such as a member or an element.
+        bool addressOf = true;
         bool inconclusive{};
 
         LifetimeToken() = default;
