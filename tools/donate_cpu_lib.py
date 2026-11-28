@@ -570,9 +570,7 @@ def scan_package(cppcheck_path, source_path, libraries, capture_callstack=True, 
                     stacktrace = st_stdout[gdb_pos:]
                 else:
                     # put the assertion failure messages before the ' received signal ' line, the servers parse the stack trace after that line
-                    signal_line_pos = st_stdout.rfind('\n', 0, gdb_pos) + 1
-                    if signal_line_pos < last_check_pos:
-                        signal_line_pos = last_check_pos
+                    signal_line_pos = max(st_stdout.rfind('\n', 0, gdb_pos) + 1, last_check_pos)
                     stacktrace = st_stdout[last_check_pos:signal_line_pos] + \
                         ''.join(msg + '\n' for msg in assertion_failures) + \
                         st_stdout[signal_line_pos:]
