@@ -18,6 +18,7 @@
 
 
 #include "mathlib.h"
+#include "calculate.h"
 #include "errortypes.h"
 #include "token.h"
 #include "utils.h"
@@ -186,13 +187,9 @@ MathLib::value MathLib::value::calc(char op, const MathLib::value &v1, const Mat
     } else {
         switch (op) {
         case '+':
-            temp.mIntValue += v2.mIntValue;
-            break;
         case '-':
-            temp.mIntValue -= v2.mIntValue;
-            break;
         case '*':
-            temp.mIntValue *= v2.mIntValue;
+            temp.mIntValue = calculateArithmetic(op, temp.mIntValue, v2.mIntValue);
             break;
         case '/':
             if (v2.mIntValue == 0)
@@ -204,7 +201,11 @@ MathLib::value MathLib::value::calc(char op, const MathLib::value &v1, const Mat
         case '%':
             if (v2.mIntValue == 0)
                 throw InternalError(nullptr, "Internal Error: Division by zero");
-            temp.mIntValue %= v2.mIntValue;
+            // x % -1 is 0, but the division overflows for the minimum value
+            if (v2.mIntValue == -1)
+                temp.mIntValue = 0;
+            else
+                temp.mIntValue %= v2.mIntValue;
             break;
         case '&':
             temp.mIntValue &= v2.mIntValue;
@@ -1119,7 +1120,7 @@ std::string MathLib::add(const std::string & first, const std::string & second)
     return (value(first) + value(second)).str();
 #else
     if (MathLib::isInt(first) && MathLib::isInt(second)) {
-        return MathLib::toString(toBigNumber(first) + toBigNumber(second)) + intsuffix(first, second);
+        return MathLib::toString(calculateArithmetic('+', toBigNumber(first), toBigNumber(second))) + intsuffix(first, second);
     }
 
     double d1 = toDoubleNumber(first);
@@ -1141,7 +1142,7 @@ std::string MathLib::subtract(const std::string &first, const std::string &secon
     return (value(first) - value(second)).str();
 #else
     if (MathLib::isInt(first) && MathLib::isInt(second)) {
-        return MathLib::toString(toBigNumber(first) - toBigNumber(second)) + intsuffix(first, second);
+        return MathLib::toString(calculateArithmetic('-', toBigNumber(first), toBigNumber(second))) + intsuffix(first, second);
     }
 
     if (first == second)
@@ -1189,7 +1190,7 @@ std::string MathLib::multiply(const std::string &first, const std::string &secon
     return (value(first) * value(second)).str();
 #else
     if (MathLib::isInt(first) && MathLib::isInt(second)) {
-        return MathLib::toString(toBigNumber(first) * toBigNumber(second)) + intsuffix(first, second);
+        return MathLib::toString(calculateArithmetic('*', toBigNumber(first), toBigNumber(second))) + intsuffix(first, second);
     }
     return toString(toDoubleNumber(first) * toDoubleNumber(second));
 #endif
@@ -1204,6 +1205,9 @@ std::string MathLib::mod(const std::string &first, const std::string &second)
         const bigint b = toBigNumber(second);
         if (b == 0)
             throw InternalError(nullptr, "Internal Error: Division by zero");
+        // x % -1 is 0, but the division overflows for the minimum value
+        if (b == -1)
+            return "0" + intsuffix(first, second);
         return MathLib::toString(toBigNumber(first) % b) + intsuffix(first, second);
     }
     return toString(std::fmod(toDoubleNumber(first),toDoubleNumber(second)));

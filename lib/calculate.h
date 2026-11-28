@@ -23,6 +23,7 @@
 #include "errortypes.h"
 #include <limits>
 #include <string>
+#include <type_traits>
 
 template<class T>
 bool isEqual(T x, T y)
@@ -47,6 +48,39 @@ bool isZero(T x)
 }
 
 /**
+ * x + y, x - y or x * y. Signed integer overflow is undefined behaviour, so for a signed integer
+ * type the operation is done on the unsigned type and the result wraps.
+ */
+template<class T>
+T calculateArithmetic(char op, T x, T y, std::true_type /*isSignedInteger*/)
+{
+    using U = typename std::make_unsigned<T>::type;
+    const U ux = static_cast<U>(x);
+    const U uy = static_cast<U>(y);
+    if (op == '+')
+        return static_cast<T>(ux + uy);
+    if (op == '-')
+        return static_cast<T>(ux - uy);
+    return static_cast<T>(ux * uy);
+}
+
+template<class T>
+T calculateArithmetic(char op, T x, T y, std::false_type /*isSignedInteger*/)
+{
+    if (op == '+')
+        return x + y;
+    if (op == '-')
+        return x - y;
+    return x * y;
+}
+
+template<class T>
+T calculateArithmetic(char op, T x, T y)
+{
+    return calculateArithmetic(op, x, y, std::integral_constant<bool, std::is_integral<T>::value && std::is_signed<T>::value>{});
+}
+
+/**
  * @throws InternalError thrown in case of unknown operator
  */
 template<class R, class T>
@@ -61,13 +95,13 @@ R calculate(const std::string& s, const T& x, const T& y, bool* error = nullptr)
     switch (MathLib::encodeMultiChar(s)) {
     case '+':
     case '+=':
-        return wrap(x + y);
+        return wrap(calculateArithmetic('+', x, y));
     case '-':
     case '-=':
-        return wrap(x - y);
+        return wrap(calculateArithmetic('-', x, y));
     case '*':
     case '*=':
-        return wrap(x * y);
+        return wrap(calculateArithmetic('*', x, y));
     case '/':
     case '/=':
         if (isZero(y) || (std::is_signed<T>{} && y < 0)) {
@@ -126,7 +160,7 @@ R calculate(const std::string& s, const T& x, const T& y, bool* error = nullptr)
     case '<=':
         return wrap(x <= y);
     case '<=>':
-        return wrap(x - y);
+        return wrap(calculateArithmetic('-', x, y));
     }
     throw InternalError(nullptr, "Unknown operator: " + s);
 }
