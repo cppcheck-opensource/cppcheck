@@ -251,6 +251,8 @@ private:
         TEST_CASE(template_namespace_11); // #7145
         TEST_CASE(template_namespace_12);
         TEST_CASE(template_namespace_13);
+        TEST_CASE(template_namespace_14); // #15278
+        TEST_CASE(template_namespace_15); // #15278
         TEST_CASE(template_pointer_type);
         TEST_CASE(template_array_type);
 
@@ -5515,6 +5517,71 @@ private:
                       "} "
                       "int * u ; "
                       "struct N :: S<int> { } ;",
+                      tok(code));
+    }
+
+    void template_namespace_14() {
+        // #15278: eleven levels, one more than the simplifier's pass limit, so A0
+        // is instantiated only if each level does not cost an extra pass
+        const char code[] = "namespace NS {\n"
+                            "    template<class T> struct A0 { T t; };\n"
+                            "    template<class T> struct A1 { A0<T> m; };\n"
+                            "    template<class T> struct A2 { A1<T> m; };\n"
+                            "    template<class T> struct A3 { A2<T> m; };\n"
+                            "    template<class T> struct A4 { A3<T> m; };\n"
+                            "    template<class T> struct A5 { A4<T> m; };\n"
+                            "    template<class T> struct A6 { A5<T> m; };\n"
+                            "    template<class T> struct A7 { A6<T> m; };\n"
+                            "    template<class T> struct A8 { A7<T> m; };\n"
+                            "    template<class T> struct A9 { A8<T> m; };\n"
+                            "    template<class T> struct A10 { A9<T> m; };\n"
+                            "}\n"
+                            "NS::A10<int> x;\n";
+        ASSERT_EQUALS("namespace NS { "
+                      "struct A0<int> ; "
+                      "struct A1<int> ; "
+                      "struct A2<int> ; "
+                      "struct A3<int> ; "
+                      "struct A4<int> ; "
+                      "struct A5<int> ; "
+                      "struct A6<int> ; "
+                      "struct A7<int> ; "
+                      "struct A8<int> ; "
+                      "struct A9<int> ; "
+                      "struct A10<int> ; "
+                      "} "
+                      "NS :: A10<int> x ; "
+                      "struct NS :: A10<int> { A9<int> m ; } ; "
+                      "struct NS :: A9<int> { A8<int> m ; } ; "
+                      "struct NS :: A8<int> { A7<int> m ; } ; "
+                      "struct NS :: A7<int> { A6<int> m ; } ; "
+                      "struct NS :: A6<int> { A5<int> m ; } ; "
+                      "struct NS :: A5<int> { A4<int> m ; } ; "
+                      "struct NS :: A4<int> { A3<int> m ; } ; "
+                      "struct NS :: A3<int> { A2<int> m ; } ; "
+                      "struct NS :: A2<int> { A1<int> m ; } ; "
+                      "struct NS :: A1<int> { A0<int> m ; } ; "
+                      "struct NS :: A0<int> { int t ; } ;",
+                      tok(code));
+    }
+
+    void template_namespace_15() {
+        // #15278: B<T> inside A names the member template A::B, which hides NS::B
+        const char code[] = "namespace NS {\n"
+                            "    template<class T> struct B { T x; };\n"
+                            "    template<class T> struct A {\n"
+                            "        template<class U> struct B { U u; };\n"
+                            "        B<T> b;\n"
+                            "    };\n"
+                            "}\n"
+                            "NS::A<int> a;\n";
+        ASSERT_EQUALS("namespace NS { "
+                      "template < class T > struct B { T x ; } ; "
+                      "struct A<int> ; "
+                      "} "
+                      "NS :: A<int> a ; "
+                      "struct NS :: A<int> { struct B<int> ; B<int> b ; } ; "
+                      "struct NS :: A<int> :: B<int> { int u ; } ;",
                       tok(code));
     }
 
