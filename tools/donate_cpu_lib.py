@@ -16,7 +16,7 @@ import copy
 # Version scheme (MAJOR.MINOR.PATCH) should orientate on "Semantic Versioning" https://semver.org/
 # Every change in this script should result in increasing the version number accordingly (exceptions may be cosmetic
 # changes)
-CLIENT_VERSION = "1.4.0"
+CLIENT_VERSION = "1.4.1"
 
 # Timeout for analysis with Cppcheck in seconds
 CPPCHECK_TIMEOUT = 30 * 60
@@ -218,7 +218,8 @@ def compile_cppcheck(cppcheck_path):
             subprocess.check_call([__make_cmd, '-t:cli', os.path.join(cppcheck_path, 'cppcheck.sln'), '/property:Configuration=Release;Platform=x64'], cwd=cppcheck_path, env=build_env)
         else:
             # TODO: use CXXOPTS instead
-            build_cmd = [__make_cmd, __jobs, 'MATCHCOMPILER=yes', 'CXXFLAGS=-O2 -g -w']
+            # -UNDEBUG: release Makefiles add -DNDEBUG. Build all versions with assertions so results can be compared.
+            build_cmd = [__make_cmd, __jobs, 'MATCHCOMPILER=yes', 'CXXFLAGS=-O2 -g -w -UNDEBUG']
             build_env = os.environ
             if __make_cmd == 'mingw32-make':
                 # TODO: MinGW will always link even if no changes are present
