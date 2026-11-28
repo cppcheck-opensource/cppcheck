@@ -542,7 +542,7 @@ void CheckStlImpl::iterators()
                                 break;
                             bool inconclusiveType2=false;
                             if (isIterator(par2->variable(), inconclusiveType2))
-                                break;  // TODO: check if iterator points at same container
+                                break;  // iterator range insert(first, last): mismatchingContainers() checks that both iterators refer to the same container
                             if (par2->str() == "(")
                                 par2 = par2->link();
                             par2 = par2->next();
@@ -816,6 +816,49 @@ bool CheckStlImpl::checkIteratorPair(const Token* tok1, const Token* tok2)
     return false;
 }
 
+// Get the iterator range [first, last) that is passed to a member function of a container, e.g.
+// 'c.insert(first, last)', 'c.insert(pos, first, last)', 'c.assign(first, last)'. Both iterators must
+// refer to the same container.
+static std::pair<const Token*, const Token*> getMemberIteratorRange(const Token* ftok, const std::vector<const Token*>& args, const Settings& settings)
+{
+    if (!Token::simpleMatch(ftok->astParent(), ".") || ftok->astParent()->astOperand2() != ftok)
+        return {};
+    const Token* const contTok = ftok->astParent()->astOperand1();
+    if (!astIsContainer(contTok) || !contTok->valueType()->container)
+        return {};
+    const Library::Container* const container = contTok->valueType()->container;
+
+    std::size_t first;
+    if (ftok->str() == "insert") {
+        if (args.size() == 3) // insert(pos, first, last)
+            first = 1;
+        else if (args.size() == 2 && container->stdAssociativeLike) // insert(first, last) or insert(hint, value)
+            first = 0;
+        else
+            return {};
+    } else if (Token::Match(ftok, "assign|append") && args.size() == 2) { // assign(first, last)
+        first = 0;
+    } else if (ftok->str() == "replace" && args.size() == 4 && container->stdStringLike) { // replace(pos1, pos2, first, last)
+        first = 2;
+    } else {
+        return {};
+    }
+
+    const Token* const firstTok = args[first];
+    const Token* const lastTok = args[first + 1];
+    if (!astIsIterator(firstTok) || !astIsIterator(lastTok))
+        return {};
+
+    if (args.size() == 2 && ftok->str() == "insert") {
+        // The first argument is a hint if it is an iterator to the container itself.
+        // Then this is insert(hint, value) where value is an iterator stored in the container.
+        const ValueFlow::Value val = getLifetimeIteratorValue(firstTok);
+        if (!val.tokvalue || isSameIteratorContainerExpression(contTok, val.tokvalue, settings))
+            return {};
+    }
+    return {firstTok, lastTok};
+}
+
 namespace {
     struct ArgIteratorInfo {
         const Token* tok;
@@ -841,6 +884,11 @@ void CheckStlImpl::mismatchingContainers()
 
             const std::vector<const Token *> args = getArguments(ftok);
             if (args.size() < 2)
+                continue;
+
+            // Iterator range passed to member function of container
+            const std::pair<const Token*, const Token*> range = getMemberIteratorRange(ftok, args, mSettings);
+            if (range.first && checkIteratorPair(range.first, range.second))
                 continue;
 
             // Group args together by container

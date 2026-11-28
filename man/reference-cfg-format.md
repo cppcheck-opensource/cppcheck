@@ -577,7 +577,9 @@ The size of the type is specified in bytes. Possible values for the "sign" attri
 
 # `<container>`
 
-A lot of C++ libraries, among those the STL itself, provide containers with very similar functionality. Libraries can be used to tell cppcheck about their behaviour. Each container needs a unique ID. It can optionally have a startPattern, which must be a valid Token::Match pattern and an endPattern that is compared to the linked token of the first token with such a link. The optional attribute "inherits" takes an ID from a previously defined container.
+A lot of C++ libraries, among those the STL itself, provide containers with very similar functionality. Libraries can be used to tell cppcheck about their behaviour. Each container needs a unique ID. It can optionally have a startPattern, which must be a valid Token::Match pattern and an endPattern that is compared to the linked token of the first token with such a link. The itEndPattern is compared in the same way to detect iterators of the container (e.g. `> :: iterator|const_iterator`). The optional attribute "inherits" takes an ID from a previously defined container.
+
+If the container is not a template (e.g. `std::string`) or if its template arguments can be deduced (e.g. `std::span`), set endPattern to an empty string. The itEndPattern is then compared to the tokens following the container type and its template arguments, if there are any (e.g. `:: iterator|const_iterator`).
 
 The `hasInitializerListConstructor` attribute can be set when the container has a constructor taking an initializer list.
 

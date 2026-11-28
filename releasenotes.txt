@@ -34,4 +34,7 @@ Infrastructure & dependencies:
   no effect.
 
 Other:
--
+- Iterators of non-template library containers (e.g. std::string::iterator, std::string_view::const_iterator, QString::iterator, wxString::iterator) are now detected as iterators.
+  Previously such variables had no value type, so several iterator checks (e.g. containerOutOfBounds, mismatchingContainerIterator) missed bugs involving them.
+- Iterators of std::span and gsl::span (e.g. std::span<int>::iterator) are now detected as iterators instead of containers, and nested types such as std::span<int>::size_type are no longer treated as containers.
+- mismatchingContainers now detects iterator ranges from different containers passed to container member functions, e.g. s.insert(a.begin(), b.end()), v.insert(v.end(), a.begin(), b.end()), v.assign(a.begin(), b.end()) and str.append(a.begin(), b.end()).
