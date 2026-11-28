@@ -2557,6 +2557,18 @@ bool Token::hasKnownSymbolicValue(const Token* tok) const
     });
 }
 
+const ValueFlow::Value* Token::getKnownValue() const
+{
+    if (!mImpl->mValues)
+        return nullptr;
+    if (mImpl->mValues->empty())
+        return nullptr;
+    auto it = std::find_if(mImpl->mValues->begin(), mImpl->mValues->end(), [&](const ValueFlow::Value& value) {
+        return value.isKnown();
+    });
+    return it == mImpl->mValues->end() ? nullptr : &*it;
+}
+
 const ValueFlow::Value* Token::getKnownValue(ValueFlow::Value::ValueType t) const
 {
     if (!mImpl->mValues)
