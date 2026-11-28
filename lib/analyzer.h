@@ -189,6 +189,10 @@ struct Analyzer {
     virtual void assume(const Token* tok, bool state, unsigned int flags = 0) = 0;
     /// Update the state of the program at the token
     virtual void updateState(const Token* tok) = 0;
+    /// Go back to the program state of 'before' (an earlier copy of this analyzer) and update it at the token
+    virtual void resetState(const Analyzer& /*before*/, const Token* tok) {
+        updateState(tok);
+    }
     /// Return analyzer for expression at token
     virtual ValuePtr<Analyzer> reanalyze(Token* tok, const std::string& msg = "") const = 0;
     virtual bool invalid() const {

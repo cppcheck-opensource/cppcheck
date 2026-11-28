@@ -909,6 +909,19 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
+        // inside a block that does not return
+        check("void g(int);\n"
+              "int f(int x) {\n"
+              "    int d = 0;\n"
+              "    if (x >= 0) {\n"
+              "        if (x > 5) x = 0;\n"
+              "        if (x <= 5) d = 1;\n"
+              "        g(10 / d);\n"
+              "    }\n"
+              "    return d;\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
         check("int f(int x) {\n"
               "    int d = 0;\n"
               "    if (x >= 0) {\n"

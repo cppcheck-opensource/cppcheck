@@ -64,6 +64,10 @@ namespace {
         int forkDepth = 0;
         // Total forks of the traversal (shared via the fork() copy); backstop past the depth bound.
         std::shared_ptr<int> forkBudget = std::make_shared<int>(0);
+        // End of the whole traversal; a fork inside a branch or loop body only walks to the block end
+        const Token* traversalEnd = nullptr;
+        // A then-path carried past an if in the current block reached the block end and ends there
+        bool forkLostAtBlockEnd = false;
 
         Progress Break(Analyzer::Terminate t = Analyzer::Terminate::None) {
             if ((!analyzeOnly || analyzeTerminate) && t != Analyzer::Terminate::None)
@@ -329,6 +333,7 @@ namespace {
 
         ForwardTraversal fork(bool analyze = false) const {
             ForwardTraversal ft = *this;
+            ft.forkLostAtBlockEnd = false;
             if (analyze) {
                 ft.analyzeOnly = true;
                 ft.analyzeTerminate = true;
@@ -402,12 +407,27 @@ namespace {
             return a;
         }
 
+        // A then-path carried past an if inside the block ends at the block end. This traversal assumed
+        // that path's condition false, so after the block it has to stand for that path as well: what it
+        // learned in the block is dropped again.
+        Progress updateBlock(Token* endBlock, int depth)
+        {
+            const ValuePtr<Analyzer> before = analyzer;
+            const bool outerForkLost = forkLostAtBlockEnd;
+            forkLostAtBlockEnd = false;
+            const Progress p = updateRange(endBlock->link(), endBlock, depth);
+            if (forkLostAtBlockEnd && p != Progress::Break)
+                analyzer->resetState(*before, endBlock);
+            forkLostAtBlockEnd = outerForkLost;
+            return p;
+        }
+
         Progress updateBranch(Branch& branch, int depth)
         {
             // Save and reset actions
             Analyzer::Action prevActions = actions;
             actions = Analyzer::Action::None;
-            Progress p = updateRange(branch.endBlock->link(), branch.endBlock, depth);
+            Progress p = updateBlock(branch.endBlock, depth);
             branch.action |= actions;
             // Restore actions
             actions |= prevActions;
@@ -624,7 +644,7 @@ namespace {
             if (!endBlock)
                 return Break();
             updateScopeState(endBlock);
-            return updateRange(endBlock->link(), endBlock, depth);
+            return updateBlock(endBlock, depth);
         }
 
         /**
@@ -837,7 +857,10 @@ namespace {
                                 ++(*forkBudget);
                                 ++ft.forkDepth;
                                 ft.analyzer->assume(condTok, true, Analyzer::Assume::Quiet | Analyzer::Assume::Absolute);
-                                ft.updateRange(tok->next(), end, depth - 1);
+                                const Progress pCarried = ft.updateRange(tok->next(), end, depth - 1);
+                                // Inside a branch or loop body the fork walks only to the block end
+                                if (pCarried != Progress::Break && end != traversalEnd)
+                                    forkLostAtBlockEnd = true;
                             }
                             if (elseBranch.progress == Progress::Break) {
                                 // Only the else branch escaped; the then branch falls through, so
@@ -992,6 +1015,7 @@ Analyzer::Result valueFlowGenericForward(Token* start, const Token* end, const V
     if (a->invalid())
         return Analyzer::Result{Analyzer::Action::None, Analyzer::Terminate::Bail};
     ForwardTraversal ft{a, tokenList, errorLogger, settings};
+    ft.traversalEnd = end;
     if (start)
         ft.analyzer->updateState(start);
     ft.updateRange(start, end);

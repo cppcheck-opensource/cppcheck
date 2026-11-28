@@ -7976,6 +7976,20 @@ private:
                         "    *v[0] = 0;\n"
                         "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        valueFlowUninit("struct D { int a; int b; };\n" // #15266
+                        "void use(D d);\n"
+                        "void f(const int* p, int n) {\n"
+                        "    D d;\n"
+                        "    d.a = 0;\n"
+                        "    bool found = false;\n"
+                        "    for (int i = 0; i < n; i++)\n"
+                        "        if (p[i] == 0)\n"
+                        "            found = true;\n"
+                        "    if (found)\n"
+                        "        use(d);\n"
+                        "}\n");
+        ASSERT_EQUALS("[test.cpp:10:9] -> [test.cpp:11:13]: (warning) Uninitialized variable: d.b [uninitvar]\n", errout_str());
     }
 
     void valueFlowUninitForLoop()

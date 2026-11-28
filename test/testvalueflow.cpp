@@ -4766,6 +4766,32 @@ private:
                "}\n";
         ASSERT_EQUALS(false, testValueOfX(code, 5U, 0));
 
+        // the fork that sets the flag in a nested branch ends with the outer block, so the main path
+        // must not drop it: the value still reaches the branch on the flag
+        code = "bool g();\n"
+               "bool h();\n"
+               "void f() {\n"
+               "    int x = 1;\n"
+               "    bool b = false;\n"
+               "    if (g()) {\n"
+               "        if (h())\n"
+               "            b = true;\n"
+               "    }\n"
+               "    if (b) { int a = x; }\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXKnown(code, 10U, 1));
+
+        // the same with the flag set in a loop
+        code = "void f(const int* p, int n) {\n"
+               "    int x = 1;\n"
+               "    bool b = false;\n"
+               "    for (int i = 0; i < n; i++)\n"
+               "        if (p[i] == 0)\n"
+               "            b = true;\n"
+               "    if (b) { int a = x; }\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXKnown(code, 7U, 1));
+
         // no fork: the main path still knows the condition is false
         /*const*/ Settings s(settings);
         s.vfOptions.maxForwardConditionForkDepth = 0;

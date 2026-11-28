@@ -815,6 +815,14 @@ private:
         pms.addState(tok, getProgramState());
     }
 
+    void resetState(const Analyzer& before, const Token* tok) override
+    {
+        // 'before' is a copy of this analyzer
+        assert(dynamic_cast<const ValueFlowAnalyzer*>(&before));
+        pms = static_cast<const ValueFlowAnalyzer&>(before).pms;
+        updateState(tok);
+    }
+
     void update(Token* tok, Action a, Direction d) override {
         ValueFlow::Value* value = getValue(tok);
         if (!value)
