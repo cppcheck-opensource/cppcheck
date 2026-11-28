@@ -97,6 +97,8 @@ jobs:
           python -m pip install requests
           python -m pip install psutil
           python -m pip install setuptools
+          python -m pip install -r tools/donate-cpu-server-requirements.txt
+          python -m pip install httpx
 
       - name: run Shellcheck
         if: matrix.python-latest
@@ -188,6 +190,12 @@ jobs:
           python -m pytest -Werror --strict-markers -vv test/tools/donate_cpu_server_test.py
           # TODO: why is this file generated? also should be in a temporary folder if possible
           rm -f test/tools/donate-cpu-server.log
+        env:
+          PYTHONPATH: ./tools
+
+      - name: test donate_cpu_server_rest
+        run: |
+          python -m pytest -Werror --strict-markers -vv test/tools/donate_cpu_server_rest_test.py
         env:
           PYTHONPATH: ./tools
 

@@ -1,0 +1,26 @@
+[Unit]
+Description=daca@home HTTP server (HTML reports and REST API, port 80)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=daca
+Group=daca
+WorkingDirectory=/var/daca@home
+ExecStart=/var/daca@home/rest-venv/bin/python /var/daca@home/donate-cpu-server-rest.py --work-path /var/daca@home --port 80
+# the only privilege: binding to port 80
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+Restart=always
+RestartSec=2
+Nice=5
+UMask=0002
+Environment=PYTHONUNBUFFERED=1
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/daca@home
+
+[Install]
+WantedBy=multi-user.target

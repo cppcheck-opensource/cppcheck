@@ -1,0 +1,23 @@
+[Unit]
+Description=daca@home server for donate-cpu.py clients (socket protocol, port 8000)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=daca
+Group=daca
+WorkingDirectory=/var/daca@home
+ExecStart=/usr/bin/python3 /var/daca@home/donate-cpu-server.py
+Restart=always
+RestartSec=2
+Nice=10
+UMask=0002
+Environment=PYTHONUNBUFFERED=1
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/daca@home
+
+[Install]
+WantedBy=multi-user.target
