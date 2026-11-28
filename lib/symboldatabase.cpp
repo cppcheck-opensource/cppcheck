@@ -7021,6 +7021,27 @@ static bool isContainerYieldPointer(Library::Container::Yield yield)
     return yield == Library::Container::Yield::BUFFER || yield == Library::Container::Yield::BUFFER_NT;
 }
 
+// Get the value type of the container in a member access 'c.f' or 'p->f'.
+// If 'p' is a smart pointer, the value type of the object it points at is written to 'pointee' and returned.
+static const ValueType* getMemberContainerValueType(const Token* memberTok,
+                                                    ValueType& pointee,
+                                                    ValueType::Sign defaultSignedness,
+                                                    const Settings& settings)
+{
+    if (!Token::simpleMatch(memberTok, ".") || !memberTok->astOperand1())
+        return nullptr;
+    const ValueType* vt = memberTok->astOperand1()->valueType();
+    if (!vt)
+        return nullptr;
+    if (vt->container)
+        return vt;
+    if (memberTok->originalName() == "->" && vt->type == ValueType::Type::SMART_POINTER && vt->pointer == 0 &&
+        vt->smartPointerTypeToken && parsedecl(vt->smartPointerTypeToken, &pointee, defaultSignedness, settings) &&
+        pointee.container && pointee.type == ValueType::Type::CONTAINER && pointee.pointer == 0)
+        return &pointee;
+    return nullptr;
+}
+
 void SymbolDatabase::setValueType(Token* tok, const ValueType& valuetype, const SourceLocation &loc)
 {
     auto* valuetypePtr = new ValueType(valuetype);
@@ -7054,15 +7075,16 @@ void SymbolDatabase::setValueType(Token* tok, const ValueType& valuetype, const 
         return;
     }
 
-    if (vt1 && vt1->container && vt1->containerTypeToken && Token::Match(parent, ". %name% (") &&
-        isContainerYieldElement(vt1->container->getYield(parent->strAt(1)))) {
+    ValueType pointee;
+    const ValueType* contVt = Token::Match(parent, ". %name% (") ? getMemberContainerValueType(parent, pointee, mDefaultSignedness, mSettings) : nullptr;
+    if (contVt && contVt->containerTypeToken && isContainerYieldElement(contVt->container->getYield(parent->strAt(1)))) {
         ValueType item;
-        if (parsedecl(vt1->containerTypeToken, &item, mDefaultSignedness, mSettings)) {
+        if (parsedecl(contVt->containerTypeToken, &item, mDefaultSignedness, mSettings)) {
             if (item.constness == 0)
-                item.constness = vt1->constness;
+                item.constness = contVt->constness;
             if (item.volatileness == 0)
-                item.volatileness = vt1->volatileness;
-            if (isContainerYieldPointer(vt1->container->getYield(parent->strAt(1))))
+                item.volatileness = contVt->volatileness;
+            if (isContainerYieldPointer(contVt->container->getYield(parent->strAt(1))))
                 item.pointer += 1;
             else
                 item.reference = Reference::LValue;
@@ -8252,12 +8274,11 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
                 //Is iterator fetching function invoked on container?
                 const bool isReturnIter = typestr == "iterator";
                 if (typestr.empty() || isReturnIter) {
-                    if (Token::simpleMatch(tok->astOperand1(), ".") &&
-                        tok->astOperand1()->astOperand1() &&
-                        tok->astOperand1()->astOperand2() &&
-                        tok->astOperand1()->astOperand1()->valueType() &&
-                        tok->astOperand1()->astOperand1()->valueType()->container) {
-                        const Library::Container *cont = tok->astOperand1()->astOperand1()->valueType()->container;
+                    ValueType pointee;
+                    const ValueType* contVt = tok->astOperand1() && tok->astOperand1()->astOperand2() ?
+                                              getMemberContainerValueType(tok->astOperand1(), pointee, mDefaultSignedness, mSettings) : nullptr;
+                    if (contVt) {
+                        const Library::Container *cont = contVt->container;
                         const auto it = cont->functions.find(tok->astOperand1()->astOperand2()->str());
                         if (it != cont->functions.end()) {
                             if (it->second.yield == Library::Container::Yield::START_ITERATOR ||
@@ -8266,8 +8287,7 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
                                 ValueType vt;
                                 vt.type = ValueType::Type::ITERATOR;
                                 vt.container = cont;
-                                vt.containerTypeToken =
-                                    tok->astOperand1()->astOperand1()->valueType()->containerTypeToken;
+                                vt.containerTypeToken = contVt->containerTypeToken;
                                 setValueType(tok, vt);
                                 continue;
                             }

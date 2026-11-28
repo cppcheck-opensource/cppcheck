@@ -3060,11 +3060,16 @@ static void valueFlowLifetime(TokenList &tokenlist, ErrorLogger &errorLogger, co
             valueFlowForwardLifetime(tok, tokenlist, errorLogger, settings);
         }
         // container lifetimes
-        else if (astIsContainer(tok)) {
+        else if (astIsContainer(tok) || astIsSmartPointerContainerAccess(tok, settings)) {
             Token * parent = astParentSkipParens(tok);
             if (!parent)
                 continue;
             if (!Token::Match(parent, ". %name% (") && !Token::Match(parent->previous(), "%name% ("))
+                continue;
+            // Container that is owned by a smart pointer. Only iterators are tracked, the lifetime refers
+            // to the smart pointer.
+            const bool smartPointer = !astIsContainer(tok);
+            if (smartPointer && !astIsIterator(parent->tokAt(2)))
                 continue;
 
             // Skip if its a free function that doesnt yield an iterator to the container
@@ -3095,7 +3100,9 @@ static void valueFlowLifetime(TokenList &tokenlist, ErrorLogger &errorLogger, co
             }
 
             std::vector<const Token*> toks;
-            if (tok->isUnaryOp("*") || parent->originalName() == "->") {
+            if (smartPointer) {
+                toks = {tok};
+            } else if (tok->isUnaryOp("*") || parent->originalName() == "->") {
                 for (const ValueFlow::Value& v : tok->values()) {
                     if (!v.isLocalLifetimeValue())
                         continue;
@@ -6501,7 +6508,7 @@ static void valueFlowIterators(TokenList& tokenlist, const Settings& settings)
             continue;
         if (!tok->scope()->isExecutable())
             continue;
-        if (!astIsContainer(tok))
+        if (!astIsContainer(tok) && !astIsSmartPointerContainerAccess(tok, settings))
             continue;
         const Token* ftok = nullptr;
         const Library::Container::Yield yield = findIteratorYield(tok, ftok, settings.library);
