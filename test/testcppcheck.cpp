@@ -102,6 +102,7 @@ private:
         TEST_CASE(premiumResultsCache);
         TEST_CASE(purgedConfiguration);
         TEST_CASE(recheckInclude);
+        TEST_CASE(cmdFileName);
     }
 
     void getErrorMessages() const {
@@ -755,6 +756,20 @@ private:
             ASSERT_EQUALS(1, includes.size());
             ASSERT_EQUALS("test1.h", *includes.begin());
         }
+    }
+
+    void cmdFileName() const {
+        ASSERT_EQUALS("x", CppCheck::cmdFileName("x"));
+        ASSERT_EQUALS("\" \"", CppCheck::cmdFileName(" "));
+        ASSERT_THROW_EQUALS(CppCheck::cmdFileName("\t"), std::runtime_error, "Cppcheck does not allow character <tab> in filename \t");
+        ASSERT_THROW_EQUALS(CppCheck::cmdFileName("\r"), std::runtime_error, "Cppcheck does not allow character <carriage-return> in filename \r");
+        ASSERT_THROW_EQUALS(CppCheck::cmdFileName("\n"), std::runtime_error, "Cppcheck does not allow character <new-line> in filename \n");
+        ASSERT_THROW_EQUALS(CppCheck::cmdFileName(";"), std::runtime_error, "Cppcheck does not allow character ; in filename ;");
+        ASSERT_THROW_EQUALS(CppCheck::cmdFileName(">"), std::runtime_error, "Cppcheck does not allow character > in filename >");
+        ASSERT_THROW_EQUALS(CppCheck::cmdFileName("<"), std::runtime_error, "Cppcheck does not allow character < in filename <");
+        ASSERT_THROW_EQUALS(CppCheck::cmdFileName("|"), std::runtime_error, "Cppcheck does not allow character | in filename |");
+        ASSERT_THROW_EQUALS(CppCheck::cmdFileName("`"), std::runtime_error, "Cppcheck does not allow character ` in filename `");
+        ASSERT_THROW_EQUALS(CppCheck::cmdFileName("$"), std::runtime_error, "Cppcheck does not allow character $ in filename $");
     }
 
     // TODO: test suppressions
