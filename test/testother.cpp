@@ -10612,6 +10612,13 @@ private:
               "    return f<-1>(2)\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        Settings settings = settingsBuilder(settings0).severity(Severity::portability).build();
+        check("int f(int k, int& s) {\n" // #7215
+              "    if (k >= -128 && k <= 127)\n"
+              "        s = (k << 8);\n"
+              "}\n", dinit(CheckOptions, $.settings = &settings));
+        ASSERT_EQUALS("[test.cpp:2:11] -> [test.cpp:3:16]: (portability) Shifting a negative value is technically undefined behaviour [shiftNegativeLHS]\n", errout_str());
     }
 
     void checkNegativeShiftErrorPath() {

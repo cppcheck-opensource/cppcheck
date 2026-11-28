@@ -3189,13 +3189,31 @@ private:
               "}\n");
         ASSERT_EQUALS("", errout_str());
 
-        Settings s = settings;
-        s.daca = true;
+        {
+            Settings s = settings;
+            s.daca = true;
 
-        check("void f() {\n"
-              "    const char a[][5] = { \"1\", \"true\", \"on\", \"yes\" };\n"
-              "}\n", s);
-        ASSERT_EQUALS("", errout_str());
+            check("void f() {\n"
+                  "    const char a[][5] = { \"1\", \"true\", \"on\", \"yes\" };\n"
+                  "}\n", s);
+            ASSERT_EQUALS("", errout_str());
+        }
+
+        {
+            Settings s = settings;
+            const char code[] = "char f(const std::string& s, bool b) {\n"
+                                "    int i = -1;\n"
+                                "    if (b)\n"
+                                "        i = 0;\n"
+                                "    return s[i];\n"
+                                "}\n";
+            check(code, s);
+            ASSERT_EQUALS("[test.cpp:5:12]: (warning) Array index -1 is out of bounds. [negativeContainerIndex]\n", errout_str());
+
+            s.severity.disable(Severity::warning);
+            check(code, s);
+            ASSERT_EQUALS("", errout_str());
+        }
     }
 
     void negativeIndexMultiline() {
