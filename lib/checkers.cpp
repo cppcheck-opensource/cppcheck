@@ -131,6 +131,7 @@ namespace checkers {
         {"CheckOther::checkInvalidFree",""},
         {"CheckOther::checkKnownArgument","style"},
         {"CheckOther::checkKnownPointerToBool","style"},
+        {"CheckOther::checkMissingForLoopIncrement","warning"},
         {"CheckOther::checkMisusedScopedObject","style,c++"},
         {"CheckOther::checkModuloOfOne","style"},
         {"CheckOther::checkNanInArithmeticExpression","style"},

@@ -68,6 +68,7 @@ static const CWE CWE704(704U);   // Incorrect Type Conversion or Cast
 static const CWE CWE758(758U);   // Reliance on Undefined, Unspecified, or Implementation-Defined Behavior
 static const CWE CWE768(768U);   // Incorrect Short Circuit Evaluation
 static const CWE CWE783(783U);   // Operator Precedence Logic Error
+static const CWE CWE835(835U);   // Loop with Unreachable Exit Condition ('Infinite Loop')
 
 //----------------------------------------------------------------------------------
 // The return value of fgetc(), getc(), ungetc(), getchar() etc. is an integer value.
@@ -4895,6 +4896,205 @@ void CheckOtherImpl::overlappingWriteFunction(const Token *tok, const std::strin
     reportError(tok, Severity::error, "overlappingWriteFunction", "Overlapping read/write in " + funcname + "() is undefined behavior");
 }
 
+//---------------------------------------------------------------------------
+// Detect for-loops that never update their control variable (#5459)
+//---------------------------------------------------------------------------
+
+static void getStepTokRange(const Token* stepTok, const Token*& stepStart, const Token*& stepEnd)
+{
+    stepStart = nullptr;
+    stepEnd = nullptr;
+    if (!stepTok)
+        return;
+    stepStart = previousBeforeAstLeftmostLeaf(stepTok);
+    if (!stepStart)
+        stepStart = stepTok;
+    stepEnd = nextAfterAstRightmostLeaf(stepTok);
+}
+
+static bool stepMayUpdateVar(const Token* stepTok, const Token* loopVarTok, const Settings& settings)
+{
+    if (!stepTok || !loopVarTok)
+        return false;
+
+    const Token* stepStart = nullptr;
+    const Token* stepEnd = nullptr;
+    getStepTokRange(stepTok, stepStart, stepEnd);
+    if (!stepEnd)
+        return true; // cannot determine step range; be conservative
+
+    // Covers ++/--/assignment and updates through calls (inc(&i), std::advance, ...)
+    if (findExpressionChanged(loopVarTok, stepStart, stepEnd, settings))
+        return true;
+
+    // Opaque call/lambda in the step may update the variable in ways we do not see
+    if (findAstNode(stepTok, [](const Token* tok) {
+        if (findLambdaEndToken(tok))
+            return true;
+        return tok->isName() && Token::simpleMatch(tok->next(), "(") && !tok->isKeyword();
+    }))
+        return true;
+
+    return false;
+}
+
+static bool hasForLoopExit(const Scope& scope, const Library& library)
+{
+    for (const Token* tok = scope.bodyStart; tok != scope.bodyEnd; tok = tok->next()) {
+        const Scope* escapeScope = tok->scope();
+        if (!escapeScope || !escapeScope->isExecutable()) {
+            if (escapeScope)
+                tok = escapeScope->bodyEnd;
+            continue;
+        }
+        if (const Token* lambdaEnd = findLambdaEndToken(tok)) {
+            tok = lambdaEnd;
+            continue;
+        }
+        if (!tok->isName())
+            continue;
+        // exit/abort/longjmp/[[noreturn]] and similar
+        if (isEscapeFunction(tok, library))
+            return true;
+        if (!tok->isKeyword())
+            continue;
+        if (Token::Match(tok, "goto|return|throw"))
+            return true;
+        if (tok->str() != "break")
+            continue;
+        // break only exits this loop if it is not nested in an inner loop/switch
+        while (escapeScope && escapeScope != &scope) {
+            if (escapeScope->isLoopScope() || escapeScope->type == ScopeType::eSwitch)
+                break;
+            escapeScope = escapeScope->nestedIn;
+        }
+        if (escapeScope == &scope)
+            return true;
+    }
+    return false;
+}
+
+static bool isStableLoopBound(const Token* boundTok,
+                              const Token* bodyStart,
+                              const Token* bodyEnd,
+                              const Token* stepTok,
+                              const Settings& settings)
+{
+    if (!boundTok)
+        return false;
+
+    // Bound must not contain non-const calls (e.g. get()) or side effects
+    if (!isConstExpression(boundTok, settings.library))
+        return false;
+
+    // Bound must not read volatile data (e.g. i < *p with volatile int *p)
+    if (findAstNode(boundTok, [](const Token* tok) {
+        return tok->valueType() && tok->valueType()->volatileness != 0;
+    }))
+        return false;
+
+    // Bound must not be modified in the body (e.g. i < n with n-- in the body)
+    if (findExpressionChanged(boundTok, bodyStart, bodyEnd, settings))
+        return false;
+
+    // Bound must not be modified in the step (e.g. for (m = M; i < m; i++))
+    if (stepTok) {
+        const Token* stepStart = nullptr;
+        const Token* stepEnd = nullptr;
+        getStepTokRange(stepTok, stepStart, stepEnd);
+        if (!stepEnd || findExpressionChanged(boundTok, stepStart, stepEnd, settings))
+            return false;
+    }
+
+    return true;
+}
+
+static const Token* findForLoopControlVar(const Token* initTok, const Token* condTok)
+{
+    if (!initTok || !condTok || !condTok->isComparisonOp())
+        return nullptr;
+
+    const Token* initLhs = Token::simpleMatch(initTok, "=") ? initTok->astOperand1() : nullptr;
+    if (!Token::Match(initLhs, "%var%") || initLhs->varId() == 0)
+        return nullptr;
+
+    const Variable* var = initLhs->variable();
+    if (!var || !var->isLocal() || var->isStatic() || var->isReference() || var->isRValueReference())
+        return nullptr;
+
+    auto isAcceptableLoopVar = [](const Token* tok) -> bool {
+        if (!Token::Match(tok, "%var%") || tok->varId() == 0)
+            return false;
+        if (!tok->valueType())
+            return true; // incomplete type info; still allow for C / missing VT
+        return tok->valueType()->isIntegral() || tok->valueType()->type == ValueType::Type::ITERATOR;
+    };
+
+    const Token* op1 = condTok->astOperand1();
+    const Token* op2 = condTok->astOperand2();
+    if (isAcceptableLoopVar(op1) && op1->varId() == initLhs->varId())
+        return op1;
+    if (isAcceptableLoopVar(op2) && op2->varId() == initLhs->varId())
+        return op2;
+    return nullptr;
+}
+
+void CheckOtherImpl::checkMissingForLoopIncrement()
+{
+    if (!mSettings.severity.isEnabled(Severity::warning))
+        return;
+
+    logChecker("CheckOther::checkMissingForLoopIncrement"); // warning
+
+    const SymbolDatabase* symbolDatabase = mTokenizer->getSymbolDatabase();
+    for (const Scope& scope : symbolDatabase->scopeList) {
+        if (scope.type != ScopeType::eFor || !scope.classDef)
+            continue;
+
+        const Token* forTok = scope.classDef;
+        const Token* initTok = getInitTok(forTok);
+        const Token* condTok = getCondTok(forTok);
+        const Token* stepTok = getStepTok(forTok);
+        if (!initTok || !condTok)
+            continue;
+
+        const Token* loopVarTok = findForLoopControlVar(initTok, condTok);
+        if (!loopVarTok)
+            continue;
+
+        const nonneg int varId = loopVarTok->varId();
+        if (stepMayUpdateVar(stepTok, loopVarTok, mSettings))
+            continue;
+
+        if (!astHasVar(condTok, varId))
+            continue;
+
+        // The other operand of the comparison must be a stable bound, otherwise the
+        // loop can terminate without updating the control variable.
+        const Token* otherBound = (loopVarTok == condTok->astOperand1())
+                                    ? condTok->astOperand2()
+                                    : condTok->astOperand1();
+        if (!isStableLoopBound(otherBound, scope.bodyStart, scope.bodyEnd, stepTok, mSettings))
+            continue;
+
+        if (hasForLoopExit(scope, mSettings.library))
+            continue;
+
+        if (findExpressionChanged(loopVarTok, scope.bodyStart, scope.bodyEnd, mSettings))
+            continue;
+
+        missingForLoopIncrementError(forTok, loopVarTok->str());
+    }
+}
+
+void CheckOtherImpl::missingForLoopIncrementError(const Token *tok, const std::string &varname)
+{
+    reportError(tok, Severity::warning, "missingForLoopIncrement",
+                "$symbol:" + varname + "\n"
+                "The loop variable '$symbol' is not updated in this for-loop, so the loop might never terminate.",
+                CWE835, Certainty::normal);
+}
+
 void CheckOther::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
 {
     CheckOtherImpl checkOther(&tokenizer, tokenizer.getSettings(), errorLogger);
@@ -4946,6 +5146,7 @@ void CheckOther::runChecks(const Tokenizer &tokenizer, ErrorLogger& errorLogger)
     checkOther.checkModuloOfOne();
     checkOther.checkOverlappingWrite();
     checkOther.checkUnionZeroInit();
+    checkOther.checkMissingForLoopIncrement();
 }
 
 void CheckOther::getErrorMessages(ErrorLogger& errorLogger, const Settings &settings) const
@@ -5031,4 +5232,5 @@ void CheckOther::getErrorMessages(ErrorLogger& errorLogger, const Settings &sett
     c.funcArgOrderDifferent("function", nullptr, nullptr, nullvec, nullvec);
     c.checkModuloOfOneError(nullptr);
     c.unionZeroInitError(nullptr, UnionMember());
+    c.missingForLoopIncrementError(nullptr, "i");
 }

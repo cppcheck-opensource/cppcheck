@@ -345,6 +345,8 @@ private:
         TEST_CASE(unionZeroInitStructMember);
         TEST_CASE(unionZeroInitUnknownType);
         TEST_CASE(unionZeroInitBitfields);
+
+        TEST_CASE(missingForLoopIncrement); // #5459
     }
 
     struct CheckOptions
@@ -6689,7 +6691,8 @@ private:
               "        c ++;\n"
               "    }\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:31]: (warning, inconclusive) Found suspicious equality comparison. Did you intend to assign a value instead? [constStatement]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:31]: (warning, inconclusive) Found suspicious equality comparison. Did you intend to assign a value instead? [constStatement]\n"
+                      "[test.cpp:2:5]: (warning) The loop variable 'i' is not updated in this for-loop, so the loop might never terminate. [missingForLoopIncrement]\n", errout_str());
 
         check("void foo(int c) {\n"
               "    for (; running == 1;) {\n"
@@ -8648,7 +8651,8 @@ private:
               "        if( i != 0 ) {}\n"
               "    }\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:2:17] -> [test.cpp:3:15]: (style) The comparison 'i != 0' is always false. [knownConditionTrueFalse]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:2:17] -> [test.cpp:3:15]: (style) The comparison 'i != 0' is always false. [knownConditionTrueFalse]\n"
+                      "[test.cpp:2:5]: (warning) The loop variable 'i' is not updated in this for-loop, so the loop might never terminate. [missingForLoopIncrement]\n", errout_str());
 
         check("void f() {\n"
               "    for(int i = 0; i < 10;) {\n"
@@ -14602,6 +14606,218 @@ private:
             "  Evex evex = {0};\n"
             "}\n");
         ASSERT_EQUALS("", errout_str());
+    }
+
+    void missingForLoopIncrement() { // #5459
+        // Ticket example: empty step, iterator never updated
+        check("void f(const std::map<int,int>& theMap) {\n"
+              "  for (auto it = theMap.begin(); it != theMap.end();) {\n"
+              "    (void)*it;\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:3]: (warning) The loop variable 'it' is not updated in this for-loop, so the loop might never terminate. [missingForLoopIncrement]\n", errout_str());
+
+        // Index variable with empty step
+        check("void use(int);\n"
+              "void f(int n) {\n"
+              "  for (int i = 0; i < n;) {\n"
+              "    use(i);\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:3]: (warning) The loop variable 'i' is not updated in this for-loop, so the loop might never terminate. [missingForLoopIncrement]\n", errout_str());
+
+        // Empty body
+        check("void f(int n) {\n"
+              "  for (int i = 0; i < n;) {\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:3]: (warning) The loop variable 'i' is not updated in this for-loop, so the loop might never terminate. [missingForLoopIncrement]\n", errout_str());
+
+        // Step in header — OK
+        check("void f(const std::map<int,int>& theMap) {\n"
+              "  for (auto it = theMap.begin(); it != theMap.end(); ++it) {\n"
+              "    (void)*it;\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Increment in body — OK
+        check("void f(const std::map<int,int>& theMap) {\n"
+              "  for (auto it = theMap.begin(); it != theMap.end();) {\n"
+              "    ++it;\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Assignment via erase in body — OK
+        check("void f(std::map<int,int>& theMap) {\n"
+              "  for (auto it = theMap.begin(); it != theMap.end();) {\n"
+              "    it = theMap.erase(it);\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // += in body — OK
+        check("void f(int n) {\n"
+              "  for (int i = 0; i < n;) {\n"
+              "    i += 1;\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // break in body — bail out
+        check("void f(int n) {\n"
+              "  for (int i = 0; i < n;) {\n"
+              "    if (n == 1)\n"
+              "      break;\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // return in body — bail out
+        check("void f(int n) {\n"
+              "  for (int i = 0; i < n;) {\n"
+              "    return;\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Infinite for(;;) — no identifiable control var
+        check("void f() {\n"
+              "  for (;;) {\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Range-for — OK
+        check("void f(const std::vector<int>& v) {\n"
+              "  for (auto x : v) {\n"
+              "    (void)x;\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Opaque call that may modify the variable — bail out
+        check("void g(int& i);\n"
+              "void f(int n) {\n"
+              "  for (int i = 0; i < n;) {\n"
+              "    g(i);\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Nested update in step — OK
+        check("void f(const std::vector<int*>& v) {\n"
+              "  for (auto it = v.begin(); it != v.end(); delete *it++);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Loop var updated on RHS of step assignment — OK
+        check("void dostuff(int);\n"
+              "void foo(int num) {\n"
+              "  int a = num;\n"
+              "  for (int b = 0; b < num; a = b++)\n"
+              "    dostuff(a);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Step updates via function call — OK (false positive previously)
+        check("void inc(int* p) { ++*p; }\n"
+              "void f(int n) {\n"
+              "  for (int i = 0; i < n; inc(&i)) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Step updates via std::advance — OK
+        check("#include <iterator>\n"
+              "#include <list>\n"
+              "void f(std::list<int>& l) {\n"
+              "  for (auto it = l.begin(); it != l.end(); std::advance(it, 1)) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Step updates via member taking reference — OK
+        check("struct S { void step(int& i); };\n"
+              "void f(S& s, int n) {\n"
+              "  for (int i = 0; i < n; s.step(i)) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Lambda in step that updates the variable — OK
+        check("void f(int n) {\n"
+              "  for (int i = 0; i < n; ([&]{ i++; })()) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Other operand of condition changes in body — OK
+        check("void use(int);\n"
+              "void f(int n) {\n"
+              "  for (int i = 0; i < n;) {\n"
+              "    use(i);\n"
+              "    n--;\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Other operand is a non-const function call — OK
+        check("int get();\n"
+              "void f() {\n"
+              "  for (int i = 0; i != get();) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Other operand reads volatile — OK
+        check("void f(const volatile int *p) {\n"
+              "  for (int i = 0; i < *p;) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // Init assigns bound; step updates the other operand — OK
+        check("void f(int M) {\n"
+              "  int i = 0;\n"
+              "  for (int m = M; i < m; i++) {}\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // noreturn/exit in body — OK
+        check("#include <stdlib.h>\n"
+              "void use(int);\n"
+              "void f(int n) {\n"
+              "  for (int i = 0; i < n;) {\n"
+              "    use(i);\n"
+              "    exit(1);\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // [[noreturn]] in body — OK
+        check("void use(int);\n"
+              "[[noreturn]] void fail();\n"
+              "void f(int n) {\n"
+              "  for (int i = 0; i < n;) {\n"
+              "    use(i);\n"
+              "    fail();\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // continue alone does not exit the loop — still warn
+        check("void use(int);\n"
+              "void f(int n) {\n"
+              "  for (int i = 0; i < n;) {\n"
+              "    if (n > 0)\n"
+              "      continue;\n"
+              "    use(i);\n"
+              "  }\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:3]: (warning) The loop variable 'i' is not updated in this for-loop, so the loop might never terminate. [missingForLoopIncrement]\n", errout_str());
+
+        // Step updates a different variable, not the control var — still warn
+        check("void f() {\n"
+              "  int k = 0;\n"
+              "  for (int h = 35; h > 5; k++) {}\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:3:3]: (warning) The loop variable 'h' is not updated in this for-loop, so the loop might never terminate. [missingForLoopIncrement]\n", errout_str());
     }
 };
 
