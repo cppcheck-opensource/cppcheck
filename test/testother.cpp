@@ -4966,7 +4966,9 @@ private:
               "    int i = 0;\n"
               "    return [](int* p) { return *p; }(&i);\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:3:20]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n", errout_str());
+        TODO_ASSERT_EQUALS("[test.cpp:3:20]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n",
+                           "",
+                           errout_str());
 
         check("struct S {\n" // #14571
               "    char* c;\n"
@@ -5096,6 +5098,14 @@ private:
         ASSERT_EQUALS("[test.cpp:3:8]: (style) Parameter 'p' can be declared as pointer to const [constParameterPointer]\n"
                       "[test.cpp:3:8]: (style) Parameter 'q' can be declared as pointer to const [constParameterPointer]\n",
                       errout_str());
+
+        check("void f(int* p, U n) {\n" // #15226
+              "    g(*(p + n));\n"
+              "}\n"
+              "U g(int* p, int n) {\n"
+              "    return *(p + n);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void constArray() {

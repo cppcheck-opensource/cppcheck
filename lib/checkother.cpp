@@ -2053,7 +2053,7 @@ void CheckOtherImpl::checkConstPointer()
             int argn = -1;
             if (Token::simpleMatch(gparent, "return")) {
                 const Function* function = getEnclosingFunction(var);
-                if (function && (!Function::returnsReference(function) || Function::returnsConst(function)))
+                if (function && (!Function::returnsReference(function, /*unknown*/ true) || Function::returnsConst(function)))
                     continue;
             }
             else if (Token::Match(gparent, "%assign%") && parent == gparent->astOperand2()) {
