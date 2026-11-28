@@ -9,6 +9,8 @@ endif()
 
 include(cmake/options.cmake)
 
+include(cmake/platformCheck.cmake)
+
 include(cmake/cxx11.cmake)
 use_cxx11()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
