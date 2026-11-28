@@ -6893,6 +6893,34 @@ private:
         ASSERT_EQUALS("[test.cpp:3:12]: (error) Uninitialized variable: a [uninitvar]\n"
                       "[test.cpp:8:11]: (error) Uninitialized variable: a [uninitvar]\n",
                       errout_str());
+
+        // #15265 - 'err' is unknown before the condition, but not 0 on the path where sq is not set
+        valueFlowUninit("int calcA();\n"
+                        "int calcB(double *r);\n"
+                        "void print(double d);\n"
+                        "void f() {\n"
+                        "    double sq;\n"
+                        "    int err = calcA();\n"
+                        "    if (err == 0)\n"
+                        "        err = calcB(&sq);\n"
+                        "    print(err == 0 ? sq : 0.0);\n"
+                        "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        valueFlowUninit("bool g();\n"
+                        "int calcA();\n"
+                        "int calcB(double *r);\n"
+                        "void print(double d);\n"
+                        "void f() {\n"
+                        "    bool const a = g();\n"
+                        "    double sq;\n"
+                        "    int err = calcA();\n"
+                        "    if (err == 0)\n"
+                        "        err = calcB(&sq);\n"
+                        "    if (!a)\n"
+                        "        print(err == 0 ? sq : 0.0);\n"
+                        "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void valueFlowUninitBreak() { // Do not show duplicate warnings about the same uninitialized value

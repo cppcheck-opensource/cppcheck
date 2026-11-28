@@ -128,6 +128,7 @@ private:
         TEST_CASE(knownConditionCast); // #9976
         TEST_CASE(knownConditionIncrementLoop); // #9808
         TEST_CASE(knownConditionAfterBailout); // #12526
+        TEST_CASE(knownConditionAfterIfNull); // #15265
         TEST_CASE(knownConditionIncDecOperator);
         TEST_CASE(knownConditionFloating);
         TEST_CASE(knownConditionRecordedComparison);
@@ -6766,6 +6767,31 @@ private:
             "};\n"
             );
         ASSERT_EQUALS("[test.cpp:13:11] -> [test.cpp:18:13]: (style) Condition 'mS.b' is always false [knownConditionTrueFalse]\n", errout_str());
+    }
+
+    void knownConditionAfterIfNull() {
+        // flag is set on the path where p is not null
+        check("bool g();\n"
+              "bool h();\n"
+              "int* get();\n"
+              "void use();\n"
+              "void f(bool c) {\n"
+              "    bool flag = false;\n"
+              "    int* p = get();\n"
+              "    if (p == nullptr) {\n"
+              "        if (g())\n"
+              "            return;\n"
+              "    }\n"
+              "    if (c) {\n"
+              "        if (h()) {\n"
+              "            if (p != nullptr && *p > 0)\n"
+              "                flag = true;\n"
+              "        }\n"
+              "    }\n"
+              "    if (flag)\n"
+              "        use();\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void knownConditionIncDecOperator() {
