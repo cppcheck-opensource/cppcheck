@@ -1138,15 +1138,22 @@ def test_lookup_path(tmpdir, type, file):
 
     cppcheck = 'cppcheck' # No path
     path = os.path.dirname(__lookup_cppcheck_exe())
+    args = [f'--debug-lookup={type}', f'--{type}={file}', test_file]
+    if type == 'config':
+        # cppcheck.cfg is looked up next to the executable - use a copy so tests running in parallel do not pick it up
+        bin_dir = path
+        path = os.path.join(tmpdir, 'bin')
+        os.mkdir(path)
+        shutil.copy2(__lookup_cppcheck_exe(), path)
+        if sys.platform == 'win32':
+            shutil.copy2(os.path.join(bin_dir, 'cppcheck-core.dll'), path)
+        shutil.copytree(os.path.join(bin_dir, 'cfg'), os.path.join(path, 'cfg'))
+        with open(os.path.join(path, 'cppcheck.cfg'), 'wt') as f:
+            f.write('{}')
+        args = [f'--debug-lookup={type}', test_file]
     env = os.environ.copy()
     env['PATH'] = path + (';' if sys.platform == 'win32' else ':') + env.get('PATH', '')
-    if type == 'config':
-        with open(os.path.join(path, "cppcheck.cfg"), 'wt') as f:
-            f.write('{}')
-        exitcode, stdout, stderr, _ = cppcheck_ex(args=[f'--debug-lookup={type}', test_file], cppcheck_exe=cppcheck, cwd=str(tmpdir), env=env)
-        os.remove(os.path.join(path, "cppcheck.cfg")) # clean up otherwise other tests may fail
-    else:
-        exitcode, stdout, stderr, _ = cppcheck_ex(args=[f'--debug-lookup={type}', f'--{type}={file}', test_file], cppcheck_exe=cppcheck, cwd=str(tmpdir), env=env)
+    exitcode, stdout, stderr, _ = cppcheck_ex(args=args, cppcheck_exe=cppcheck, cwd=str(tmpdir), env=env)
     assert exitcode == 0, stdout if stdout else stderr
     def format_path(p):
         return p.replace('\\', '/').replace('"', '\'')
