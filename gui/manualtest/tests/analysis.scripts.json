@@ -395,5 +395,78 @@
       }
     ],
     "script_for": "3090dfe1cf47"
+  },
+  "t1508ae01": {
+    "script": [
+      {
+        "do": "click",
+        "name": "File",
+        "role": "menu item",
+        "label": "Open the File menu to open the project file"
+      },
+      {
+        "do": "click",
+        "name": "Open Project File...",
+        "role": "menu item",
+        "label": "Choose Open Project File"
+      },
+      {
+        "do": "wait",
+        "name": "Select Project File",
+        "role": "dialog",
+        "label": "Wait for the project file dialog"
+      },
+      {
+        "do": "settext",
+        "name": "File name:",
+        "role": "text",
+        "value": "{project:unused-exclude}/p.cppcheck",
+        "label": "Enter the project file {project:unused-exclude}/p.cppcheck"
+      },
+      {
+        "do": "key",
+        "keys": [
+          "Return"
+        ],
+        "label": "Open the project file"
+      },
+      {
+        "expect": "visible",
+        "name": "Project: p.cppcheck",
+        "role": "frame",
+        "timeout": 10,
+        "label": "The project p.cppcheck is loaded"
+      },
+      {
+        "expect": "visible",
+        "name": "Cppcheck",
+        "role": "alert",
+        "timeout": 10,
+        "label": "A warning message box is shown"
+      },
+      {
+        "expect": "visible",
+        "name": "Unused exclude paths",
+        "role": "label",
+        "label": "The message says that there are unused exclude paths"
+      },
+      {
+        "expect": "text",
+        "contains": "src/missing/",
+        "label": "The message lists src/missing/"
+      },
+      {
+        "expect": "text",
+        "not_contains": "src/skip/",
+        "label": "The message does not list src/skip/, that exclude path is used"
+      },
+      {
+        "expect": "visible",
+        "name": "to hide warnings in certain files use suppressions instead",
+        "role": "label",
+        "label": "The message says that suppressions should be used to hide warnings in certain files"
+      }
+    ],
+    "script_for": "8e3fa82eb6c0"
   }
 }

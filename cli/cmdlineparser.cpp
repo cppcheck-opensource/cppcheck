@@ -148,6 +148,23 @@ CmdLineParser::CmdLineParser(CmdLineLogger &logger, Settings &settings, Suppress
     , mSuppressions(suppressions)
 {}
 
+// The file lister does not walk into an excluded directory, so a pattern that only matches paths in
+// there looks unused. Walk the paths again without excluding anything to find out which of the
+// remaining patterns match something. This is only done when some patterns look unused.
+static std::vector<std::string> unmatchedIgnoredPaths(const PathMatch &matcher, const std::vector<std::string> &pathnames, const std::set<std::string> &extra)
+{
+    std::vector<std::string> unmatched = matcher.unmatched();
+    if (unmatched.empty())
+        return unmatched;
+
+    PathMatch recorder(std::move(unmatched), Path::getCurrentPath());
+    recorder.setRecordOnly(true);
+    std::list<FileWithDetails> files;
+    for (const std::string &pathname : pathnames)
+        (void)FileLister::recursiveAddFiles(files, Path::toNativeSeparators(pathname), extra, recorder);
+    return recorder.unmatched();
+}
+
 bool CmdLineParser::fillSettingsFromArgs(int argc, const char* const argv[])
 {
     const Result result = parseFromArgs(argc, argv);
@@ -247,7 +264,7 @@ bool CmdLineParser::fillSettingsFromArgs(int argc, const char* const argv[])
         std::list<FileWithDetails> filesResolved;
         // Execute recursiveAddFiles() to each given file parameter
         // TODO: verbose log which files were ignored?
-        const PathMatch matcher(ignored, Path::getCurrentPath());
+        PathMatch matcher(ignored, Path::getCurrentPath());
         for (const std::string &pathname : pathnamesRef) {
             const std::string err = FileLister::recursiveAddFiles(filesResolved, Path::toNativeSeparators(pathname), mSettings.library.markupExtensions(), matcher, mSettings.debugignore);
             if (!err.empty()) {
@@ -261,6 +278,12 @@ bool CmdLineParser::fillSettingsFromArgs(int argc, const char* const argv[])
             // TODO: PathMatch should provide the information if files were ignored
             if (!ignored.empty())
                 mLogger.printMessage("Maybe all paths were ignored?");
+            return false;
+        }
+
+        const std::vector<std::string> unmatched = unmatchedIgnoredPaths(matcher, pathnamesRef, mSettings.library.markupExtensions());
+        if (!unmatched.empty()) {
+            mLogger.printError("unused ignore/exclude path '" + unmatched.front() + "'. To hide warnings in certain files use suppressions instead.");
             return false;
         }
 
@@ -1723,10 +1746,14 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
         mPathNames = project.guiProject.pathNames;
 
     if (!project.fileSettings.empty()) {
-        project.ignorePaths(mIgnoredPaths, mSettings.debugignore);
+        const auto& unmatched = project.ignorePaths(mIgnoredPaths, mSettings.debugignore);
         if (project.fileSettings.empty()) {
             mLogger.printError("no C or C++ source files found.");
             mLogger.printMessage("all paths were ignored"); // TODO: log this differently?
+            return Result::Fail;
+        }
+        if (!unmatched.empty()) {
+            mLogger.printError("unused ignore/exclude path '" + unmatched.front() + "'. To hide warnings in certain files use suppressions instead.");
             return Result::Fail;
         }
         mFileSettings = project.fileSettings;

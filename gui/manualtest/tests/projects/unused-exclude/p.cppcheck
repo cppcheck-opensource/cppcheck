@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="1">
+  <paths>
+    <dir name="src/"/>
+  </paths>
+  <exclude>
+    <path name="src/skip/"/>
+    <path name="src/missing/"/>
+  </exclude>
+</project>
