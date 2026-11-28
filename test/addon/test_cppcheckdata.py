@@ -523,6 +523,7 @@ class TestMatch:
     def test_empty_pattern_and_no_token(self, match_cfg):
         calc_def = find_token(match_cfg, 'calc')
         assert not cppcheckdata.match(calc_def, '')
+        assert not cppcheckdata.match(calc_def, None)
         assert not cppcheckdata.match(None, 'calc')
 
     def test_end(self, match_cfg):
@@ -571,6 +572,23 @@ class TestMatch:
         mod = find_token(match_cfg, '%')
         assert cppcheckdata.match(mod, '%')
         assert cppcheckdata.match(mod.previous, '%var% % %var% ;')
+
+    def test_literal_or_assign(self, match_cfg):
+        or_assign = find_token(match_cfg, '|=')
+        assert cppcheckdata.match(or_assign, '|=')
+        assert cppcheckdata.match(or_assign.previous, '%var% |= %var% ;')
+        assert cppcheckdata.match(or_assign, '%assign%')
+        assert not cppcheckdata.match(find_token(match_cfg, '|'), '|=')
+        # '|=' is a literal, not an alternation of '' and '='
+        # (unlike the C++ Token::Match, which also matches a '=' token here)
+        assert not cppcheckdata.match(find_token(match_cfg, '='), '|=')
+
+    def test_whitespace_only_pattern(self, match_cfg):
+        calc_def = find_token(match_cfg, 'calc')
+        res = cppcheckdata.match(calc_def, '   ')
+        assert not res
+        with pytest.raises(AttributeError):
+            res.end # pylint: disable=W0104
 
     def test_literal_parentheses(self, match_cfg):
         calc_call = find_token(match_cfg, 'calc', skip=1)
@@ -696,6 +714,65 @@ class TestMatch:
         assert cppcheckdata.match(calc_call, '%name% !!%op%')
         assert not cppcheckdata.match(calc_call, '%name% !!(')
 
+    def test_negation_literal_or_assign(self, match_cfg):
+        # '!!|=' is "not |=", not an alternation of '!!' and '='
+        or_assign = find_token(match_cfg, '|=')
+        assert not cppcheckdata.match(or_assign.previous, '%var% !!|=')
+        bit_or = find_token(match_cfg, '|')
+        assert cppcheckdata.match(bit_or.previous, '%var% !!|=')
+        assert cppcheckdata.match(find_token(match_cfg, '=').previous, '%var% !!|=')
+
+    def test_negation_literal_bitwise_or(self, match_cfg):
+        bit_or = find_token(match_cfg, '|')
+        assert not cppcheckdata.match(bit_or.previous, '%var% !!|')
+        assert cppcheckdata.match(find_token(match_cfg, '||').previous, '%var% !!|')
+        assert cppcheckdata.match(find_token(match_cfg, '|=').previous, '%var% !!|')
+
+    def test_negation_literal_logical_or(self, match_cfg):
+        log_or = find_token(match_cfg, '||')
+        assert not cppcheckdata.match(log_or.previous, '%var% !!||')
+        assert cppcheckdata.match(find_token(match_cfg, '|').previous, '%var% !!||')
+        assert cppcheckdata.match(find_token(match_cfg, '|=').previous, '%var% !!||')
+
+    def test_negation_alternatives(self, match_cfg):
+        # as in the C++ Token::Match, the word after '!!' is not split into
+        # alternatives: '!!a|b' is "not the token a|b"
+        struct_tok = find_token(match_cfg, 'struct')
+        assert cppcheckdata.match(struct_tok, 'struct !!Point|Foo')
+        assert cppcheckdata.match(struct_tok, 'struct !!Foo|Point')
+        assert cppcheckdata.match(struct_tok, 'struct !!Foo|Bar')
+        assert cppcheckdata.match(struct_tok, 'struct !!%name%|;')
+
+    def test_find_forward_alternatives(self, match_cfg):
+        # '**a|b' searches ahead for the first token that is a or b
+        calc_def = find_token(match_cfg, 'calc')
+        res = cppcheckdata.match(calc_def, 'calc **{|nosuchtoken')
+        assert res
+        assert res.end.str == '{'
+        res = cppcheckdata.match(calc_def, 'calc **nosuchtoken|{')
+        assert res
+        assert res.end.str == '{'
+        res = cppcheckdata.match(calc_def, 'calc **{|(')
+        assert res
+        assert res.end.str == '('
+        res = cppcheckdata.match(calc_def, 'calc **%op%|{')
+        assert res
+        assert res.end.str == '{'
+        assert not cppcheckdata.match(calc_def, 'calc **nosuchtoken|nosuchtoken2')
+
+    def test_find_forward_literal_or_operators(self, match_cfg):
+        # '**|', '**||' and '**|=' search for the operator as a whole
+        bit_or_decl = find_token(match_cfg, 'bit_or')
+        for op in ('|', '||', '|='):
+            res = cppcheckdata.match(bit_or_decl, 'bit_or **' + op)
+            assert res
+            assert res.end.str == op
+        # past the last '|' and '||' only the '|=' is left to find
+        arr_decl = find_token(match_cfg, 'arr')
+        assert not cppcheckdata.match(arr_decl, 'arr **|')
+        assert not cppcheckdata.match(arr_decl, 'arr **||')
+        assert cppcheckdata.match(arr_decl, 'arr **|=')
+
     @pytest.mark.xfail(strict=False,
                        reason='in the C++ Token::Match a negation also matches when there is no token, '
                               'in match() it does not')
@@ -760,6 +837,23 @@ class TestMatch:
         assert res
         assert res.end.str == '{'
         assert not cppcheckdata.match(calc_def, 'calc **nosuchtoken')
+
+    # ---- compiled pattern cache ----
+
+    def test_compile_pattern_reused(self):
+        compiled = cppcheckdata.compile_pattern('calc ( %var%')
+        assert compiled.pattern == 'calc ( %var%'
+        assert cppcheckdata.compile_pattern('calc ( %var%') is compiled
+
+    def test_compiled_patterns_limited(self, match_cfg):
+        calc_def = find_token(match_cfg, 'calc')
+        maxsize = cppcheckdata.compile_pattern.cache_info().maxsize
+        assert maxsize is not None
+        for i in range(maxsize + 100):
+            assert not cppcheckdata.match(calc_def, 'nosuchtoken{} ('.format(i))
+        assert cppcheckdata.compile_pattern.cache_info().currsize == maxsize
+        # a pattern that was dropped is compiled again and still matches
+        assert cppcheckdata.match(calc_def, 'calc ( int')
 
 
 class TestSuppressions:
