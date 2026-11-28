@@ -154,6 +154,7 @@ private:
         TEST_CASE(nullpointer113); // a variable is clamped before the check
         TEST_CASE(nullpointer114); // the else block changes the value
         TEST_CASE(nullpointer115); // a range condition overlapping the assumed one
+        TEST_CASE(nullpointer116); // #14747
         TEST_CASE(nullpointer_addressOf); // address of
         TEST_CASE(nullpointerSwitch); // #2626
         TEST_CASE(nullpointer_cast); // #4692
@@ -3373,6 +3374,32 @@ private:
               "    return 0;\n"
               "}\n");
         ASSERT_EQUALS("[test.cpp:4:24]: (warning) Possible null pointer dereference: p [nullPointer]\n", errout_str());
+    }
+
+    void nullpointer116() { // #14747
+        check("void f(double *d1, double *d2) {\n"
+              "    if (!d1 && !d2)\n"
+              "        return;\n"
+              "    double d3 = d1 ? *d1 : *d2;\n"
+              "    (void)d3;\n"
+              "}\n"
+              "void g() {\n"
+              "    double d = 0;\n"
+              "    f(&d, nullptr);\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        check("void f(double *d1, double *d2) {\n"
+              "    if (!d1 && !d2)\n"
+              "        return;\n"
+              "    double d3 = d1 ? *d2 : 0;\n"
+              "    (void)d3;\n"
+              "}\n"
+              "void g() {\n"
+              "    double d = 0;\n"
+              "    f(&d, nullptr);\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:23]: (warning) Possible null pointer dereference: d2 [nullPointer]\n", errout_str());
     }
 
     void nullpointer_addressOf() { // address of
