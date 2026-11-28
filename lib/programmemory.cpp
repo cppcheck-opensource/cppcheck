@@ -523,7 +523,7 @@ static void programMemoryParseCondition(ProgramMemory& pm,
     if (Token::Match(tok, "==|>=|<=|<|>|!=")) {
         ValueFlow::Value truevalue;
         ValueFlow::Value falsevalue;
-        const Token* vartok = parseCompareInt(tok, truevalue, falsevalue, eval);
+        const Token* vartok = parseCompareInt(tok, truevalue, falsevalue, settings, eval);
         if (!vartok)
             return;
         if (vartok->exprId() == 0)

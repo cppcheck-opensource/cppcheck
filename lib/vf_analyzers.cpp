@@ -303,6 +303,13 @@ struct ValueFlowAnalyzer : Analyzer {
         // Only if its invertible
         if (value->isImpossible() && !Token::Match(parent, "+=|-=|*=|++|--"))
             return Action::None;
+        // Shifting an impossible range bound is unsound if the operation can wrap: unsigned types, and
+        // signed types narrower than int (promoted to int and converted back)
+        if (value->isImpossible() && value->bound != ValueFlow::Value::Bound::Point && tok->valueType() &&
+            tok->valueType()->isIntegral() && !tok->valueType()->pointer &&
+            (tok->valueType()->sign == ValueType::Sign::UNSIGNED || tok->valueType()->type == ValueType::Type::CHAR ||
+             tok->valueType()->type == ValueType::Type::SHORT))
+            return Action::None;
         if (value->isLifetimeValue()) {
             if (value->lifetimeKind != ValueFlow::Value::LifetimeKind::Iterator)
                 return Action::None;
@@ -1180,6 +1187,12 @@ struct SingleValueFlowAnalyzer : ValueFlowAnalyzer {
     }
 
     void addErrorPath(const Token* tok, const std::string& s) override {
+        // Only record assumptions about conditions the tracked value actually depends on. A
+        // condition that neither is the value's own condition nor mentions the value says nothing
+        // about it (e.g. an unrelated `if (length + 40 > 65535)`), and carrying its assumption into
+        // the value's error path would attribute a note to the wrong condition.
+        if (!value.isLifetimeValue() && value.condition && value.condition != tok && !conditionReferencesValue(tok))
+            return;
         auto& ep = value.errorPath;
         if (std::any_of(ep.begin(), ep.end(), [&](const ErrorPathItem& epi) {
             return epi.first == tok && epi.second == s;

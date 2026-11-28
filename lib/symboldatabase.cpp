@@ -66,6 +66,12 @@ static int qualifierBit(int indirection)
     return static_cast<int>(1U << indirection);
 }
 
+// wchar_t is unsigned 16-bit on Windows and signed 32-bit on common Unix ABIs
+static ValueType::Sign wcharSign(const Platform& platform)
+{
+    return platform.sizeof_wchar_t == 2 ? ValueType::Sign::UNSIGNED : ValueType::Sign::SIGNED;
+}
+
 SymbolDatabase::SymbolDatabase(Tokenizer& tokenizer)
     : mTokenizer(tokenizer)
     , mSettings(tokenizer.getSettings())
@@ -6968,7 +6974,7 @@ void SymbolDatabase::setValueType(Token* tok, const Variable& var, const SourceL
     }
 }
 
-static ValueType::Type getEnumType(const Scope* scope, const Platform& platform);
+static ValueType getEnumType(const Scope* scope, const Platform& platform);
 
 void SymbolDatabase::setValueType(Token* tok, const Enumerator& enumerator, const SourceLocation &loc)
 {
@@ -6997,8 +7003,9 @@ void SymbolDatabase::setValueType(Token* tok, const Enumerator& enumerator, cons
 
         setValueType(tok, valuetype);
     } else {
-        valuetype.sign = ValueType::SIGNED;
-        valuetype.type = getEnumType(enumerator.scope, mSettings.platform);
+        const ValueType enumType = getEnumType(enumerator.scope, mSettings.platform);
+        valuetype.sign = enumType.sign;
+        valuetype.type = enumType.type;
         setValueType(tok, valuetype);
     }
 }
@@ -7489,8 +7496,15 @@ void SymbolDatabase::setValueType(Token* tok, const ValueType& valuetype, const 
                 return;
             }
 
-            if (vt1->isTypeEqual(vt2)) {
+            if (vt1->isTypeEqual(vt2) && vt1->sign == vt2->sign) {
                 setValueType(parent, *vt1);
+                return;
+            }
+
+            if (vt1->pointer == 0U && vt2 && vt2->pointer == 0U && vt1->isIntegral() && vt2->isIntegral()) {
+                const ValueType commonType = ValueType::getCommonIntegralType(vt1, vt2, mSettings);
+                if (commonType.type != ValueType::Type::UNKNOWN_TYPE)
+                    setValueType(parent, commonType);
                 return;
             }
         }
@@ -7532,63 +7546,266 @@ void SymbolDatabase::setValueType(Token* tok, const ValueType& valuetype, const 
     if (vt1->isIntegral() && vt1->pointer == 0U &&
         (!vt2 || (vt2->isIntegral() && vt2->pointer == 0U)) &&
         (ternary || parent->isArithmeticalOp() || parent->tokType() == Token::eBitOp || parent->tokType() == Token::eIncDecOp || parent->isAssignmentOp())) {
-
-        ValueType vt;
-        if (!vt2 || vt1->type > vt2->type) {
-            vt.type = vt1->type;
-            vt.sign = vt1->sign;
-            vt.originalTypeName = vt1->originalTypeName;
-        } else if (vt1->type == vt2->type) {
-            vt.type = vt1->type;
-            if (vt1->sign == ValueType::Sign::UNSIGNED || vt2->sign == ValueType::Sign::UNSIGNED)
-                vt.sign = ValueType::Sign::UNSIGNED;
-            else if (vt1->sign == ValueType::Sign::UNKNOWN_SIGN || vt2->sign == ValueType::Sign::UNKNOWN_SIGN)
-                vt.sign = ValueType::Sign::UNKNOWN_SIGN;
-            else
-                vt.sign = ValueType::Sign::SIGNED;
-            vt.originalTypeName = (vt1->originalTypeName.empty() ? vt2 : vt1)->originalTypeName;
-        } else {
-            vt.type = vt2->type;
-            vt.sign = vt2->sign;
-            vt.originalTypeName = vt2->originalTypeName;
+        if (parent->isAssignmentOp()) {
+            setValueType(parent, *vt1);
+            return;
         }
-        if (vt.type < ValueType::Type::INT && !(ternary && vt.type==ValueType::Type::BOOL)) {
-            vt.type = ValueType::Type::INT;
-            vt.sign = ValueType::Sign::SIGNED;
-            vt.originalTypeName.clear();
+        if (parent->tokType() == Token::eIncDecOp) {
+            // Build a fresh type so bitfield width, constness, references
+            // and similar operand properties are not copied to the result.
+            setValueType(parent, ValueType(vt1->sign, vt1->type, 0, 0, vt1->originalTypeName));
+            return;
         }
-
-        setValueType(parent, vt);
+        const ValueType vt = ValueType::getCommonIntegralType(vt1, vt2, mSettings);
+        if (vt.type != ValueType::Type::UNKNOWN_TYPE)
+            setValueType(parent, vt);
         return;
     }
 }
 
-static ValueType::Type getEnumType(const Scope* scope, const Platform& platform) // TODO: also determine sign?
+ValueType ValueType::getCommonIntegralType(const ValueType* lhs, const ValueType* rhs, const Settings& settings)
 {
-    ValueType::Type type = ValueType::Type::INT;
-    for (const Token* tok = scope->bodyStart; tok && tok != scope->bodyEnd; tok = tok->next()) {
-        if (const Token* lam = findLambdaEndToken(tok)) {
-            tok = lam;
-            continue;
+    if (!lhs || !lhs->isIntegral() || lhs->pointer || (rhs && (!rhs->isIntegral() || rhs->pointer)))
+        return {};
+
+    const auto getBits = [&](const ValueType& type) {
+        return type.getSizeOf(settings, Accuracy::ExactOrZero, SizeOf::Pointee) * settings.platform.char_bit;
+    };
+    const auto promote = [&](const ValueType& type) {
+        if (type.type == Type::BOOL)
+            return ValueType(Sign::SIGNED, Type::INT, 0);
+        if (type.type != Type::CHAR && type.type != Type::SHORT && type.type != Type::WCHAR_T) {
+            // Not promoted: build a fresh type so bitfield width, constness,
+            // references and similar operand properties are not copied to the result.
+            return ValueType(type.sign, type.type, 0, 0, type.originalTypeName);
         }
-        if (!tok->isAssignmentOp())
-            continue;
-        const Token* vTok = tok->astOperand2();
-        if (!vTok->hasKnownIntValue()) {
-            if (!vTok->isLiteral())
-                continue;
-            if (const ValueType* vt = vTok->valueType()) {
-                if ((vt->type > type && (vt->type == ValueType::Type::LONG || vt->type == ValueType::Type::LONGLONG)))
-                    type = vt->type;
+
+        ValueType result(Sign::UNKNOWN_SIGN, Type::INT, 0);
+        const std::size_t sourceBits = getBits(type);
+        const std::size_t intBits = settings.platform.int_bit;
+        if (sourceBits == 0 || intBits == 0)
+            return result;
+        if (type.sign == Sign::SIGNED)
+            result.sign = sourceBits <= intBits ? Sign::SIGNED : Sign::UNSIGNED;
+        else if (type.sign == Sign::UNSIGNED)
+            result.sign = sourceBits < intBits ? Sign::SIGNED : Sign::UNSIGNED;
+        else if (sourceBits < intBits)
+            result.sign = Sign::SIGNED;
+        return result;
+    };
+
+    const ValueType first = promote(*lhs);
+    if (!rhs)
+        return first;
+    const ValueType second = promote(*rhs);
+    if (first.type == Type::UNKNOWN_INT || second.type == Type::UNKNOWN_INT) {
+        if (first.type == second.type && first.sign == second.sign)
+            return first;
+        const Sign commonSign = first.sign == second.sign ? first.sign : Sign::UNKNOWN_SIGN;
+        return ValueType(commonSign, Type::UNKNOWN_INT, 0);
+    }
+    const ValueType* const higherRank = first.type >= second.type ? &first : &second;
+    ValueType result(Sign::UNKNOWN_SIGN, higherRank->type, 0);
+    result.originalTypeName = higherRank->originalTypeName;
+
+    if (first.sign == second.sign) {
+        result.sign = first.sign;
+        return result;
+    }
+    if (first.sign == Sign::UNKNOWN_SIGN || second.sign == Sign::UNKNOWN_SIGN)
+        return result;
+
+    const ValueType& unsignedType = first.sign == Sign::UNSIGNED ? first : second;
+    const ValueType& signedType = first.sign == Sign::SIGNED ? first : second;
+    if (unsignedType.type >= signedType.type) {
+        result.type = unsignedType.type;
+        result.sign = Sign::UNSIGNED;
+        result.originalTypeName = unsignedType.originalTypeName;
+    } else if (getBits(signedType) > getBits(unsignedType)) {
+        result.type = signedType.type;
+        result.sign = Sign::SIGNED;
+        result.originalTypeName = signedType.originalTypeName;
+    } else {
+        result.type = signedType.type;
+        result.sign = Sign::UNSIGNED;
+        result.originalTypeName.clear();
+    }
+    return result;
+}
+
+
+namespace {
+    /** Constant value of an enumerator initializer, as an unsigned magnitude plus sign. */
+    struct EnumConstant {
+        MathLib::biguint magnitude{};
+        bool negative{};
+        bool known{};
+    };
+
+    unsigned int integralBits(ValueType::Type type, const Platform& platform)
+    {
+        switch (type) {
+        case ValueType::Type::INT:
+            return platform.int_bit;
+        case ValueType::Type::LONG:
+            return platform.long_bit;
+        case ValueType::Type::LONGLONG:
+            return platform.long_long_bit;
+        default:
+            return 0;
+        }
+    }
+
+    /** Can the value be represented by the given (integral, non-pointer) type? */
+    bool isEnumValueRepresentable(const ValueType& type, const EnumConstant& value, const Platform& platform)
+    {
+        const unsigned int bits = integralBits(type.type, platform);
+        if (bits == 0 || bits > MathLib::bigint_bits)
+            return true; // unknown size -> do not widen
+        const MathLib::biguint signBit = static_cast<MathLib::biguint>(1) << (bits - 1);
+        if (type.sign == ValueType::Sign::UNSIGNED)
+            return !value.negative && value.magnitude < signBit * 2;
+        return value.negative ? value.magnitude <= signBit : value.magnitude < signBit;
+    }
+
+    /** Widen the type until it can represent the value. Follows the integer conversion rank. */
+    ValueType widenEnumType(ValueType type, const EnumConstant& value, const Platform& platform)
+    {
+        while (!isEnumValueRepresentable(type, value, platform)) {
+            if (type.sign == ValueType::Sign::SIGNED)
+                type.sign = ValueType::Sign::UNSIGNED;
+            else if (type.type == ValueType::Type::INT)
+                type = ValueType(ValueType::Sign::SIGNED, ValueType::Type::LONG, 0);
+            else if (type.type == ValueType::Type::LONG)
+                type = ValueType(ValueType::Sign::SIGNED, ValueType::Type::LONGLONG, 0);
+            else
+                break; // does not fit even in unsigned long long
+        }
+        return type;
+    }
+
+    EnumConstant evaluateEnumConstant(const Token* tok,
+                                      const std::unordered_map<std::string, EnumConstant>& known,
+                                      int depth)
+    {
+        EnumConstant result;
+        if (!tok || depth < 0)
+            return result;
+
+        if (const Enumerator* enumerator = tok->enumerator()) {
+            if (!enumerator->name)
+                return result;
+            const auto it = known.find(enumerator->name->str());
+            if (it != known.end())
+                return it->second;
+            return result;
+        }
+
+        if (tok->isNumber() && MathLib::isInt(tok->str())) {
+            try {
+                result.magnitude = MathLib::toBigUNumber(MathLib::abs(tok->str()), tok);
+                result.known = true;
+            } catch (const InternalError&) {
+                // Bad integer literal
             }
+            return result;
+        }
+
+        const Token* lhs = tok->astOperand1();
+        const Token* rhs = tok->astOperand2();
+        if (!lhs && rhs)
+            return evaluateEnumConstant(rhs, known, depth - 1);
+        if (!lhs)
+            return result;
+
+        if (tok->isUnaryOp("-")) {
+            result = evaluateEnumConstant(lhs, known, depth - 1);
+            if (result.known && result.magnitude != 0)
+                result.negative = !result.negative;
+            return result;
+        }
+        if (tok->isUnaryOp("+"))
+            return evaluateEnumConstant(lhs, known, depth - 1);
+        if (!rhs)
+            return result;
+
+        const EnumConstant a = evaluateEnumConstant(lhs, known, depth - 1);
+        const EnumConstant b = evaluateEnumConstant(rhs, known, depth - 1);
+        if (!a.known || !b.known)
+            return result;
+
+        const std::string& op = tok->str();
+        if (op == "+" || op == "-") {
+            const bool bNegative = (op == "-") ? !b.negative : b.negative;
+            if (a.negative == bNegative) {
+                result.magnitude = a.magnitude + b.magnitude;
+                result.negative = a.negative;
+            } else if (a.magnitude >= b.magnitude) {
+                result.magnitude = a.magnitude - b.magnitude;
+                result.negative = a.negative;
+            } else {
+                result.magnitude = b.magnitude - a.magnitude;
+                result.negative = bNegative;
+            }
+            if (result.magnitude == 0)
+                result.negative = false;
+            result.known = true;
+            return result;
+        }
+        if (a.negative || b.negative)
+            return result; // the remaining operators are only folded for non-negative values
+
+        if (op == "*") {
+            if (a.magnitude != 0 && b.magnitude > std::numeric_limits<MathLib::biguint>::max() / a.magnitude)
+                return result;
+            result.magnitude = a.magnitude * b.magnitude;
+            result.known = true;
+        } else if (op == "<<" || op == ">>") {
+            if (b.magnitude >= MathLib::bigint_bits)
+                return result;
+            result.magnitude = (op == "<<") ? (a.magnitude << b.magnitude) : (a.magnitude >> b.magnitude);
+            result.known = true;
+        } else if (op == "|") {
+            result.magnitude = a.magnitude | b.magnitude;
+            result.known = true;
+        } else if (op == "&") {
+            result.magnitude = a.magnitude & b.magnitude;
+            result.known = true;
+        } else if (op == "^") {
+            result.magnitude = a.magnitude ^ b.magnitude;
+            result.known = true;
+        }
+        return result;
+    }
+}
+
+static ValueType getEnumType(const Scope* scope, const Platform& platform)
+{
+    ValueType type(ValueType::Sign::SIGNED, ValueType::Type::INT, 0);
+
+    // The compatible type must represent every enumerator, so widen for each known value.
+    std::unordered_map<std::string, EnumConstant> known;
+    MathLib::biguint next = 0;
+    for (const Enumerator& enumerator : scope->enumeratorList) {
+        EnumConstant value;
+        if (enumerator.start) {
+            const Token* const vTok = enumerator.start->previous() ? enumerator.start->previous()->astOperand2() : nullptr;
+            value = evaluateEnumConstant(vTok, known, 32);
+        } else if (enumerator.value_known) {
+            value.magnitude = enumerator.value;
+            value.known = true;
+        } else {
+            value.magnitude = next;
+            value.known = true;
+        }
+        if (!value.known) {
+            next = 0;
             continue;
         }
-        const MathLib::bigint value = vTok->getKnownIntValue();
-        if (!platform.isIntValue(value)) {
-            type = ValueType::Type::LONG;
-            if (!platform.isLongValue(value))
-                type = ValueType::Type::LONGLONG;
-        }
+        type = widenEnumType(std::move(type), value, platform);
+        if (enumerator.name)
+            known[enumerator.name->str()] = value;
+        next = value.negative ? 0 : value.magnitude + 1;
     }
     return type;
 }
@@ -7624,8 +7841,9 @@ static const Token* parsedecl(const Token* type,
                 valuetype->type = t;
             else if (enum_type->isStandardType())
                 valuetype->fromLibraryType(enum_type->str(), settings);
-        } else
-            valuetype->type = getEnumType(valuetype->typeScope, settings.platform);
+        } else {
+            valuetype->type = getEnumType(valuetype->typeScope, settings.platform).type;
+        }
     } else
         valuetype->type = ValueType::Type::RECORD;
     const bool cpp = type->isCpp();
@@ -7791,8 +8009,9 @@ static const Token* parsedecl(const Token* type,
             valuetype->type = type->str() == "struct" ? ValueType::Type::RECORD : ValueType::Type::NONSTD;
         else if (!valuetype->typeScope && type->type() && type->type()->classScope && valuetype->type != ValueType::Type::SMART_POINTER) {
             if (type->type()->classScope->type == ScopeType::eEnum) {
-                valuetype->sign = ValueType::Sign::SIGNED;
-                valuetype->type = getEnumType(type->type()->classScope, settings.platform);
+                const ValueType enumType = getEnumType(type->type()->classScope, settings.platform);
+                valuetype->sign = enumType.sign;
+                valuetype->type = enumType.type;
             } else {
                 valuetype->type = ValueType::Type::RECORD;
             }
@@ -7812,7 +8031,9 @@ static const Token* parsedecl(const Token* type,
 
     // Set signedness for integral types..
     if (valuetype->isIntegral() && valuetype->sign == ValueType::Sign::UNKNOWN_SIGN) {
-        if (valuetype->type >= ValueType::Type::SHORT)
+        if (valuetype->type == ValueType::Type::WCHAR_T)
+            valuetype->sign = wcharSign(settings.platform);
+        else if (valuetype->type >= ValueType::Type::SHORT)
             valuetype->sign = ValueType::Sign::SIGNED;
     }
 
@@ -8168,7 +8389,8 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
                 else if (tok->previous()->isSigned())
                     valuetype.sign = ValueType::Sign::SIGNED;
                 else if (valuetype.isIntegral() && valuetype.type != ValueType::UNKNOWN_INT)
-                    valuetype.sign = (valuetype.type == ValueType::Type::CHAR) ? mDefaultSignedness : ValueType::Sign::SIGNED;
+                    valuetype.sign = (valuetype.type == ValueType::Type::CHAR) ? mDefaultSignedness :
+                                     (valuetype.type == ValueType::Type::WCHAR_T) ? wcharSign(mSettings.platform) : ValueType::Sign::SIGNED;
                 setValueType(tok, valuetype);
             }
 
@@ -8398,7 +8620,8 @@ void SymbolDatabase::setValueTypeInTokenList(bool reportDebugWarnings, Token *to
                 else if (typeTok->isSigned())
                     vt.sign = ValueType::Sign::SIGNED;
                 if (vt.sign == ValueType::Sign::UNKNOWN_SIGN && vt.isIntegral())
-                    vt.sign = (vt.type == ValueType::Type::CHAR) ? mDefaultSignedness : ValueType::Sign::SIGNED;
+                    vt.sign = (vt.type == ValueType::Type::CHAR) ? mDefaultSignedness :
+                              (vt.type == ValueType::Type::WCHAR_T) ? wcharSign(mSettings.platform) : ValueType::Sign::SIGNED;
             }
             setValueType(tok, vt);
             if (Token::simpleMatch(tok->astOperand1(), "(")) {

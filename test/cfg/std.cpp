@@ -2714,7 +2714,6 @@ void uninitvar_fpclassify(void)
 void bool_isfinite(float f)
 {
     // cppcheck-suppress compareBoolExpressionWithInt
-    // cppcheck-suppress compareValueOutOfTypeRangeError
     if (std::isfinite(f)==123) {}
 }
 
@@ -2736,7 +2735,6 @@ void uninitvar_isfinite(void)
 void bool_isgreater(float f1, float f2)
 {
     // cppcheck-suppress compareBoolExpressionWithInt
-    // cppcheck-suppress compareValueOutOfTypeRangeError
     if (std::isgreater(f1,f2)==123) {}
 }
 
@@ -2758,7 +2756,6 @@ void uninitvar_isgreater(void)
 void bool_isgreaterequal(float f1, float f2)
 {
     // cppcheck-suppress compareBoolExpressionWithInt
-    // cppcheck-suppress compareValueOutOfTypeRangeError
     if (std::isgreaterequal(f1, f2)==123) {}
 }
 
@@ -2780,7 +2777,6 @@ void uninitvar_isgreaterequal(void)
 void bool_isinf(float f)
 {
     // cppcheck-suppress compareBoolExpressionWithInt
-    // cppcheck-suppress compareValueOutOfTypeRangeError
     if (std::isinf(f)==123) {}
 }
 
@@ -2809,7 +2805,6 @@ void uninitvar_logb(void)
 void bool_isless(float f1, float f2)
 {
     // cppcheck-suppress compareBoolExpressionWithInt
-    // cppcheck-suppress compareValueOutOfTypeRangeError
     if (std::isless(f1,f2)==123) {}
 }
 
@@ -2831,7 +2826,6 @@ void uninitvar_isless(void)
 void bool_islessequal(float f1, float f2)
 {
     // cppcheck-suppress compareBoolExpressionWithInt
-    // cppcheck-suppress compareValueOutOfTypeRangeError
     if (std::islessequal(f1,f2)==123) {}
 }
 
@@ -2853,7 +2847,6 @@ void uninitvar_islessequal(void)
 void bool_islessgreater(float f1, float f2)
 {
     // cppcheck-suppress compareBoolExpressionWithInt
-    // cppcheck-suppress compareValueOutOfTypeRangeError
     if (std::islessgreater(f1,f2)==123) {}
 }
 
@@ -2886,7 +2879,6 @@ void uninitvar_nan(void)
 void bool_isnan(float f)
 {
     // cppcheck-suppress compareBoolExpressionWithInt
-    // cppcheck-suppress compareValueOutOfTypeRangeError
     if (std::isnan(f)==123) {}
 }
 
@@ -2900,7 +2892,6 @@ void uninitvar_isnan(void)
 void bool_isnormal(float f)
 {
     // cppcheck-suppress compareBoolExpressionWithInt
-    // cppcheck-suppress compareValueOutOfTypeRangeError
     if (std::isnormal(f)==123) {}
 }
 
@@ -2914,7 +2905,6 @@ void uninitvar_isnormal(void)
 void bool_isunordered(float f1, float f2)
 {
     // cppcheck-suppress compareBoolExpressionWithInt
-    // cppcheck-suppress compareValueOutOfTypeRangeError
     if (std::isunordered(f1,f2)==123) {}
 }
 
@@ -3456,7 +3446,6 @@ void uninivar_scalbln(void)
 void bool_signbit(float f)
 {
     // cppcheck-suppress compareBoolExpressionWithInt
-    // cppcheck-suppress compareValueOutOfTypeRangeError
     if (std::signbit(f)==123) {}
 }
 

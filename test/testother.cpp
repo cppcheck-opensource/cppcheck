@@ -232,6 +232,7 @@ private:
 
         TEST_CASE(checkNegativeShift);
         TEST_CASE(checkNegativeShiftErrorPath);
+        TEST_CASE(checkNegativeShiftDeadBranchArgument);
 
         TEST_CASE(incompleteArrayFill);
 
@@ -441,6 +442,15 @@ private:
               "    cout<<b/sum;\n"
               "}\n");
         ASSERT_EQUALS("", errout_str());
+
+        // The loop variable starts at a reachable floor, 0 when n is 0, so the divisor can be zero.
+        check("int z2(unsigned n) {\n"
+              "    int s = 0;\n"
+              "    for (unsigned i = n; i < 10; i++)\n"
+              "        s += 100 / i;\n"
+              "    return s;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:18]: (error) Division by zero. [zerodiv]\n", errout_str());
     }
 
     void zeroDiv3() {
@@ -10563,6 +10573,12 @@ private:
         check("const int x = -1 >> 2;\n");
         ASSERT_EQUALS("[test.cpp:1:18]: (portability) Shifting a negative value is technically undefined behaviour [shiftNegativeLHS]\n", errout_str());
 
+        check("int negative_lhs(int value) {\n"
+              "    if (value < -16 || value > 15) return 0;\n"
+              "    return value << 10;\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:2:15] -> [test.cpp:3:18]: (portability) Shifting a negative value is technically undefined behaviour [shiftNegativeLHS]\n", errout_str());
+
         // #6383 - unsigned type
         check("const int x = (unsigned int)(-1) >> 2;\n");
         ASSERT_EQUALS("", errout_str());
@@ -10630,6 +10646,20 @@ private:
                       "[test.cpp:3:9]: note: Assuming condition is false\n"
                       "[test.cpp:5:14]: note: Shifting by a negative value is undefined behaviour\n",
                       errout_str());
+    }
+
+    void checkNegativeShiftDeadBranchArgument() {
+        // The 'else' is unreachable for the g<1> instantiation, so its call cannot pass shift=7.
+        check("int f(int src, int shift) {\n"
+              "    return src >> (8 - 2 * shift);\n"
+              "}\n"
+              "template<int alphabits>\n"
+              "void g(int *out, int rgba) {\n"
+              "    if (alphabits == 1) { out[0] = rgba; }\n"
+              "    else { out[0] = f(rgba, 8 - alphabits); }\n"
+              "}\n"
+              "void inst(int *out, int rgba) { g<1>(out, rgba); g<4>(out, rgba); }\n");
+        ASSERT_EQUALS("", errout_str());
     }
 
     void incompleteArrayFill() {
@@ -14290,7 +14320,7 @@ private:
               "    }\n"
               "    return false;\n"
               "}\n");
-        ASSERT_EQUALS("[test.cpp:4:17]: (style) Pointer expression 'a.x' converted to bool is always true. [knownPointerToBool]\n", errout_str());
+        ASSERT_EQUALS("[test.cpp:3:10] -> [test.cpp:4:17]: (style) Pointer expression 'a.x' converted to bool is always true. [knownPointerToBool]\n", errout_str());
 
         check("void f(bool* b) { if (b) *b = true; }\n");
         ASSERT_EQUALS("", errout_str());
