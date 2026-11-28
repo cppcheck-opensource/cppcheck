@@ -9358,6 +9358,15 @@ private:
                "}\n";
         ASSERT_EQUALS(false, testValueOfXImpossible(code, 3U, 2));
         ASSERT_EQUALS(true, testValueOfXImpossible(code, 3U, -1));
+
+        // operands of unknown size: no truncation
+        code = "int f() {\n"
+               "    int_fast8_t a = 0;\n"
+               "    uint_fast8_t b = 10;\n"
+               "    int x = a == b;\n"
+               "    return x;\n"
+               "}\n";
+        ASSERT_EQUALS(true, testValueOfXKnown(code, 5U, 0));
     }
 
     void valueFlowMod() {
@@ -9409,6 +9418,25 @@ private:
         values = tokenValues(code, "--");
         ASSERT_EQUALS(1U, values.size());
         ASSERT_EQUALS(127LLU, values.back().intvalue);
+
+        // operand wider than 64 bits: no truncation
+        code = "struct S { int a, b, c; S& operator++(); };\n"
+               "void f(S s) {\n"
+               "    s = 5000000000LL;\n"
+               "    ++s;\n"
+               "}\n";
+        values = tokenValues(code, "++");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(5000000001LL, values.back().intvalue);
+
+        code = "struct S { long a, b; S& operator--(); };\n"
+               "void f(S s) {\n"
+               "    s = 5000000000LL;\n"
+               "    --s;\n"
+               "}\n";
+        values = tokenValues(code, "--");
+        ASSERT_EQUALS(1U, values.size());
+        ASSERT_EQUALS(4999999999LL, values.back().intvalue);
     }
 
     void valueFlowNotNull()
