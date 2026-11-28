@@ -997,6 +997,53 @@ void CheckMemoryLeakNoVarImpl::check()
     }
 }
 
+static const Variable *getAssignedMemberFromArg(const Scope *classScope, const Scope *ctorScope, const Token *initListBegin, const Variable *arg)
+{
+    for (const Token *tok = ctorScope->bodyStart; tok != ctorScope->bodyEnd; tok = tok->next()) {
+        if (!Token::Match(tok, "%name% = %varid%", arg->declarationId()))
+            continue;
+
+        if (!tok->variable())
+            continue;
+
+        const Variable *member = tok->variable();
+
+        if (member->scope() == classScope && member->isMember())
+            return member;
+    }
+
+    if (initListBegin) {
+        for (const Token *tok = initListBegin; Token::Match(tok, ":|, %name% ("); tok = tok->linkAt(2)->next()) {
+            if (Token::Match(tok, ":|, %name% ( %varid% )", arg->declarationId()))
+                return tok->next()->variable();
+        }
+    }
+
+    return nullptr;
+}
+
+bool CheckMemoryLeakImpl::isMemberDeallocated(const Variable *member, const Scope *scope, AllocType alloc) const
+{
+    for (const Token *tok = scope->bodyStart; tok != scope->bodyEnd; tok = tok->next()) {
+        if (tok->varId() != member->declarationId())
+            continue;
+
+        const Token *parent = tok;
+        while (parent && (!parent->astOperand1() || !parent->astOperand1()->isName()))
+            parent = parent->astParent();
+
+        if (!parent)
+            continue;
+
+        const Token *funcTok = parent->astOperand1();
+
+        if (getDeallocationType(funcTok, tok->varId()) == alloc)
+            return true;
+    }
+
+    return false;
+}
+
 //---------------------------------------------------------------------------
 // Checks if an input argument to a function is the return value of an allocation function
 // like malloc(), and the function does not release it.
@@ -1071,6 +1118,27 @@ void CheckMemoryLeakNoVarImpl::checkForUnreleasedInputArgument(const Scope *scop
                 const size_t argSize = argvar->valueType()->getSizeOf(mSettings, ValueType::Accuracy::ExactOrZero, ValueType::SizeOf::Pointer);
                 if (argSize == 0 || argSize >= mSettings.platform.sizeof_pointer)
                     continue;
+
+                if (tok->function()->isConstructor()) {
+                    if (!tok->function()->nestedIn || !tok->function()->functionScope) {
+                        continue;
+                    }
+
+                    const Scope *classScope = tok->function()->nestedIn;
+                    const Scope *ctorScope = tok->function()->functionScope;
+                    const Token *initListBegin = tok->function()->constructorMemberInitialization();
+                    const Variable *member = getAssignedMemberFromArg(classScope, ctorScope, initListBegin, argvar);
+
+                    if (member) {
+                        const Function *dtor = classScope->getDestructor();
+
+                        if (!dtor || !dtor->functionScope)
+                            continue;
+
+                        if (isMemberDeallocated(member, dtor->functionScope, alloc))
+                            continue;
+                    }
+                }
             }
             functionCallLeak(arg, arg->str(), functionName);
         }
