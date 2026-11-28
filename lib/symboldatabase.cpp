@@ -2016,6 +2016,21 @@ bool SymbolDatabase::isFunction(const Token *tok, const Scope* outerScope, const
         const Token* tok1 = tok->previous();
         const Token* tok2 = tok->linkAt(1)->next();
 
+        // deduction guide 'S ( .. ) -> S < .. > ;': a function with a trailing return type has 'auto' or a
+        // qualification directly before its name (the tokenizer removed calling conventions and attributes)
+        if (!Token::Match(tok1, "auto|::") && Token::Match(tok2, ". ::| %name%")) {
+            const Token* typeTok = tok2->next();
+            if (typeTok->str() == "::")
+                typeTok = typeTok->next();
+            while (Token::Match(typeTok, "%name% :: %name%"))
+                typeTok = typeTok->tokAt(2);
+            const std::string& trailingType = typeTok->str();
+            const bool sameTemplate = (trailingType == tok->str() && typeTok->strAt(1) == "<") ||
+                                      startsWith(trailingType, tok->str() + " <"); // instantiated 'S < .. >' is one token
+            if (sameTemplate)
+                return false;
+        }
+
         if (!TokenList::isFunctionHead(tok->next(), ";:{"))
             return false;
 
