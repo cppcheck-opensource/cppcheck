@@ -530,7 +530,8 @@ static void programMemoryParseCondition(ProgramMemory& pm,
             return;
         if (!truevalue.isIntValue())
             return;
-        if (endTok && changed(vartok, tok->next(), endTok))
+        // The other operand is evaluated with its current value, so it must be unchanged as well
+        if (endTok && changed(tok, tok->next(), endTok))
             return;
         const bool impossible = (tok->str() == "==" && !then) || (tok->str() == "!=" && then);
         ValueFlow::Value& v = then ? truevalue : falsevalue;
