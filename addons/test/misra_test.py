@@ -192,7 +192,9 @@ def test_read_ctu_info_line(checker):
     ('MisraTypedefInfo', 203, False),
     ('MisraTypedefInfo', 203, True),
     ('MisraTagName', 204, False),
-    ('MisraTagName', 204, True)
+    ('MisraTagName', 204, True),
+    ('MisraMacro', 205, False),
+    ('MisraMacro', 205, True)
 ])
 def test_ctu_unused_declaration(checker, tmp_path, summary, rule, used_first):
     # The same name declared in two files, unused in a.c and used in b.c
@@ -205,6 +207,18 @@ def test_ctu_unused_declaration(checker, tmp_path, summary, rule, used_first):
     checker.analyse_ctu_info([str(ctu_info)])
     assert 'a.c-1-13-%d' % rule in checker.existing_violations
     assert 'b.c-1-13-%d' % rule not in checker.existing_violations
+
+@pytest.mark.parametrize('summary', ['MisraTypedefInfo', 'MisraTagName', 'MisraMacro'])
+def test_ctu_declaration_path_spelling(checker, tmp_path, summary):
+    # The same declaration in h.h, reached through a relative and an absolute path
+    unused = {'name': 'X', 'file': 'h.h', 'line': 1, 'column': 13, 'used': False}
+    used = {'name': 'X', 'file': os.path.abspath('h.h'), 'line': 1, 'column': 13, 'used': True}
+    ctu_info = tmp_path / 'test.ctu-info'
+    with open(ctu_info, 'wt') as f:
+        for declaration in [unused, used]:
+            f.write(json.dumps({'summary': summary, 'data': [declaration]}) + '\n')
+    checker.analyse_ctu_info([str(ctu_info)])
+    assert not checker.existing_violations
 
 def test_platform(checker):
     test_file = os.path.join('addons','test','misra','misra-test.c')
