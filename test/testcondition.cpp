@@ -131,6 +131,7 @@ private:
         TEST_CASE(knownConditionIncDecOperator);
         TEST_CASE(knownConditionFloating);
         TEST_CASE(knownConditionRecordedComparison);
+        TEST_CASE(knownConditionAfterConditionalEscape); // #15264
     }
 
     struct CheckOptions
@@ -6955,6 +6956,121 @@ private:
             "[test.cpp:3]: (style) Condition 'nf>-1.0' is always false\n",
             "",
             errout_str());
+    }
+
+    void knownConditionAfterConditionalEscape() {
+        // the then-block falls through when g() and b are true, so 'a' can be true after it
+        check("bool g();\n"
+              "void use();\n"
+              "void f(bool a, bool b) {\n"
+              "    if (a) {\n"
+              "        bool w = false;\n"
+              "        if (g())\n"
+              "            w = true;\n"
+              "        if (!w || !b)\n"
+              "            return;\n"
+              "    }\n"
+              "    if (b && a)\n"
+              "        use();\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // the then-path of 'if (g())' stops in its branch, but the then-block falls through when h() is true
+        check("bool g();\n"
+              "bool h();\n"
+              "void use();\n"
+              "void f(bool a, bool b) {\n"
+              "    if (a) {\n"
+              "        bool w = false;\n"
+              "        if (g()) {\n"
+              "            if (h())\n"
+              "                w = true;\n"
+              "            else\n"
+              "                return;\n"
+              "        }\n"
+              "        if (!w || !b)\n"
+              "            return;\n"
+              "    }\n"
+              "    if (b && a)\n"
+              "        use();\n"
+              "}\n");
+        ASSERT_EQUALS("", errout_str());
+
+        // every path through the then-block returns
+        check("bool g();\n"
+              "void use();\n"
+              "void f(bool a, bool b) {\n"
+              "    if (a) {\n"
+              "        bool w = false;\n"
+              "        if (g())\n"
+              "            w = true;\n"
+              "        if (!w || !b)\n"
+              "            return;\n"
+              "        return;\n"
+              "    }\n"
+              "    if (b && a)\n"
+              "        use();\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:9] -> [test.cpp:12:14]: (style) Condition 'a' is always false [knownConditionTrueFalse]\n", errout_str());
+
+        // a fork inside a loop body does not fall through the then-block
+        check("bool g();\n"
+              "void use();\n"
+              "void f(bool a, bool b, int n) {\n"
+              "    if (a) {\n"
+              "        bool z = false;\n"
+              "        for (int i = 0; i < n; i++) {\n"
+              "            if (g())\n"
+              "                use();\n"
+              "        }\n"
+              "        if (!z)\n"
+              "            return;\n"
+              "    }\n"
+              "    if (b && a)\n"
+              "        use();\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:10:13]: (style) Condition '!z' is always true [knownConditionTrueFalse]\n"
+                      "[test.cpp:4:9] -> [test.cpp:13:14]: (style) Condition 'a' is always false [knownConditionTrueFalse]\n",
+                      errout_str());
+
+        // the then-path is not forked when the fork limit is reached, but it falls through
+        const Settings settingsNormal = settingsBuilder().severity(Severity::style).checkLevel(Settings::CheckLevel::normal).build();
+        check("bool g();\n"
+              "bool h();\n"
+              "void use();\n"
+              "void f(bool a, bool b) {\n"
+              "    if (a) {\n"
+              "        bool w = false;\n"
+              "        bool v = false;\n"
+              "        if (g())\n"
+              "            w = true;\n"
+              "        if (h())\n"
+              "            v = true;\n"
+              "        if (!w || !v)\n"
+              "            return;\n"
+              "    }\n"
+              "    if (b && a)\n"
+              "        use();\n"
+              "}\n", settingsNormal);
+        ASSERT_EQUALS("", errout_str());
+
+        // the path that falls through the inner if returns too
+        check("bool g();\n"
+              "void use();\n"
+              "void f(bool a) {\n"
+              "    if (a) {\n"
+              "        bool w = false;\n"
+              "        if (g())\n"
+              "            w = true;\n"
+              "        if (!w)\n"
+              "            return;\n"
+              "        a = false;\n"
+              "        return;\n"
+              "    }\n"
+              "    if (a)\n"
+              "        use();\n"
+              "}\n");
+        ASSERT_EQUALS("[test.cpp:4:9] -> [test.cpp:13:9]: (style) Condition 'a' is always false [knownConditionTrueFalse]\n", errout_str());
     }
 
     // TODO: a comparison of two expressions without values should decide the comparisons of the pair

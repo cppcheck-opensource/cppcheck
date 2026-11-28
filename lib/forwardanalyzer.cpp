@@ -64,9 +64,22 @@ namespace {
         int forkDepth = 0;
         // Total forks of the traversal (shared via the fork() copy); backstop past the depth bound.
         std::shared_ptr<int> forkBudget = std::make_shared<int>(0);
+        // A fork carried past an if did not escape, so not every path of the traversal escapes
+        bool forkFallsThrough = false;
+        // What the forks that fall through do
+        Analyzer::Action forkActions = Analyzer::Action::None;
+        // A path that was not followed to the end might fall through
+        bool forkMayFallThrough = false;
+        // End of the whole traversal; a fork inside a branch or loop body only walks to the block end
+        const Token* traversalEnd = nullptr;
+
+        // The terminate reason is recorded
+        bool recordsTerminate() const {
+            return !analyzeOnly || analyzeTerminate;
+        }
 
         Progress Break(Analyzer::Terminate t = Analyzer::Terminate::None) {
-            if ((!analyzeOnly || analyzeTerminate) && t != Analyzer::Terminate::None)
+            if (recordsTerminate() && t != Analyzer::Terminate::None)
                 terminate = t;
             return Progress::Break;
         }
@@ -102,6 +115,20 @@ namespace {
                 return progress != Progress::Break && !isEscape();
             }
         };
+
+        // The main path escapes, but if a fork falls through then the traversal as a whole does not
+        Analyzer::Result result() const {
+            if (terminate != Analyzer::Terminate::Escape || (!forkFallsThrough && !forkMayFallThrough))
+                return Analyzer::Result{actions, terminate};
+            // Every path escapes if the range itself ends with an escape
+            bool unknown = false;
+            if (Token::simpleMatch(traversalEnd, "}") && traversalEnd->link() && isEscapeScope(traversalEnd, unknown))
+                return Analyzer::Result{actions, terminate};
+            if (forkFallsThrough)
+                return Analyzer::Result{actions | forkActions, Analyzer::Terminate::None};
+            // It is not known whether the path that was not followed escapes
+            return Analyzer::Result{actions, Analyzer::Terminate::Bail};
+        }
 
         bool stopUpdates() {
             analyzeOnly = true;
@@ -334,6 +361,9 @@ namespace {
                 ft.analyzeTerminate = true;
             }
             ft.actions = Analyzer::Action::None;
+            ft.forkFallsThrough = false;
+            ft.forkActions = Analyzer::Action::None;
+            ft.forkMayFallThrough = false;
             return ft;
         }
 
@@ -837,7 +867,20 @@ namespace {
                                 ++(*forkBudget);
                                 ++ft.forkDepth;
                                 ft.analyzer->assume(condTok, true, Analyzer::Assume::Quiet | Analyzer::Assume::Absolute);
-                                ft.updateRange(tok->next(), end, depth - 1);
+                                const Progress pFork = ft.updateRange(tok->next(), end, depth - 1);
+                                if (end == traversalEnd) {
+                                    if (ft.forkFallsThrough || pFork == Progress::Continue ||
+                                        (ft.recordsTerminate() && ft.terminate == Analyzer::Terminate::Modified)) {
+                                        forkFallsThrough = true;
+                                        forkActions |= ft.actions | ft.forkActions;
+                                    } else if (ft.forkMayFallThrough || !ft.recordsTerminate() ||
+                                               ft.terminate != Analyzer::Terminate::Escape) {
+                                        forkMayFallThrough = true;
+                                    }
+                                }
+                            } else if (!thenBranch.isEscape() && end == traversalEnd) {
+                                // The then-path stops in the branch or is not followed
+                                forkMayFallThrough = true;
                             }
                             if (elseBranch.progress == Progress::Break) {
                                 // Only the else branch escaped; the then branch falls through, so
@@ -994,8 +1037,9 @@ Analyzer::Result valueFlowGenericForward(Token* start, const Token* end, const V
     ForwardTraversal ft{a, tokenList, errorLogger, settings};
     if (start)
         ft.analyzer->updateState(start);
+    ft.traversalEnd = end;
     ft.updateRange(start, end);
-    return Analyzer::Result{ ft.actions, ft.terminate };
+    return ft.result();
 }
 
 Analyzer::Result valueFlowGenericForward(Token* start, const ValuePtr<Analyzer>& a, const TokenList& tokenList, ErrorLogger& errorLogger, const Settings& settings)
@@ -1006,5 +1050,5 @@ Analyzer::Result valueFlowGenericForward(Token* start, const ValuePtr<Analyzer>&
         return Analyzer::Result{Analyzer::Action::None, Analyzer::Terminate::Bail};
     ForwardTraversal ft{a, tokenList, errorLogger, settings};
     (void)ft.updateRecursive(start);
-    return Analyzer::Result{ ft.actions, ft.terminate };
+    return ft.result();
 }
