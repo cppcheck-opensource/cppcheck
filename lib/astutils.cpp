@@ -2642,7 +2642,7 @@ bool isVariableChanged(const Token *tok, int indirect, const Settings &settings,
     if (!tok->isMutableExpr())
         return false;
 
-    if (isConstVarExpression(tok))
+    if (indirect == 0 && isConstVarExpression(tok))
         return false;
 
     const Token *tok2 = tok;
