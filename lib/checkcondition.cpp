@@ -327,8 +327,10 @@ void CheckConditionImpl::checkBadBitmaskCheck()
             const bool isTrue = (tok->astOperand1()->hasKnownIntValue() && tok->astOperand1()->getKnownIntValue() != 0) ||
                                 (tok->astOperand2()->hasKnownIntValue() && tok->astOperand2()->getKnownIntValue() != 0);
 
-            if (isBoolean && isTrue)
+            if (isBoolean && isTrue) {
                 badBitmaskCheckError(tok);
+                diag(tok);
+            }
 
             // If there are #ifdef in the expression don't warn about redundant | to avoid FP
             const auto& startStop = tok->findExpressionStartEndTokens();
