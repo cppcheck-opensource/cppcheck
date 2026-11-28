@@ -106,6 +106,22 @@ void unreachableCode_std_terminate(int &x)
     x=42;
 }
 
+#ifdef __cpp_lib_unreachable
+void unreachableCode_std_unreachable(int &x)
+{
+    std::unreachable();
+    // cppcheck-suppress unreachableCode
+    x=42;
+}
+
+int missingReturn_std_unreachable(int x) // #15277
+{
+    if (x == 0)
+        return 1;
+    std::unreachable();
+}
+#endif
+
 bool ignoredReturnValue_std_filesystem_exists(const std::filesystem::path &path, std::error_code& ec)
 {
     // cppcheck-suppress ignoredReturnValue
