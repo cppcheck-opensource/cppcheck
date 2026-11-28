@@ -66,3 +66,14 @@ def test_match_multiple_time(tmpdir):
     # there was a bug that we would only match each library once successfully
     _test_library_includes(tmpdir, ['posix', 'gnu', 'bsd', 'zlib'], '#include <zlib.h>', libinc)
     _test_library_includes(tmpdir, ['posix', 'gnu', 'bsd', 'zlib'], '#include <zlib.h>', libinc)
+
+def test_get_assertion_failures():
+    assert get_assertion_failures('') == []
+    assert get_assertion_failures('Checking file.cpp ...\n') == []
+    glibc_msg = "cppcheck: build/symboldatabase.cpp:6760: bool Variable::arrayDimensions(const Settings&, bool&): Assertion `dimension_.tok->values().size() == 1' failed."
+    assert get_assertion_failures('Checking file.cpp ...\n' + glibc_msg + '\n') == [glibc_msg]
+    # same message twice => reported once
+    assert get_assertion_failures(glibc_msg + '\n' + glibc_msg + '\n') == [glibc_msg]
+    # not an assertion failure message
+    assert get_assertion_failures("Assertion `x' failed.\n") == []
+    assert get_assertion_failures("file.cpp:1:2: style: Assertion `x' failed. [id]\n") == []
