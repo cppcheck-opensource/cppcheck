@@ -32,6 +32,7 @@
 #include "errorlogger.h"
 #include "errortypes.h"
 #include "filesettings.h"
+#include "gitlabcodequalityreport.h"
 #include "path.h"
 #include "sarifreport.h"
 #include "settings.h"
@@ -117,8 +118,17 @@ namespace {
         }
 
         ~StdLogger() override {
+            // SARIF and GitlabCodeQuality reports are a JSON array. They cannot
+            // be written incrementally, but only when the full set of findings
+            // is available.
             if (mSettings.outputFormat == Settings::OutputFormat::sarif) {
                 reportErr(mSarifReport.serialize(mSettings.cppcheckCfgProductName));
+            } else if (mSettings.outputFormat == Settings::OutputFormat::gitlabCodeQuality) {
+                if (mGitlabCodeQualityReport.hasAbsolutePath()) {
+                    // Keep the JSON report on stderr free of warnings.
+                    reportOut("cppcheck: warning: GitLab Code Quality requires repository-relative paths; use --relative-paths=<repository-root>.");
+                }
+                reportErr(mGitlabCodeQualityReport.serialize());
             }
             delete mErrorOutput;
         }
@@ -237,6 +247,11 @@ namespace {
          * SARIF report generator
          */
         SarifReport mSarifReport;
+
+        /**
+         * GitLab Code Quality report generator
+         */
+        GitlabCodeQualityReport mGitlabCodeQualityReport;
 
         /**
          * Coding standard guideline mapping
@@ -679,7 +694,8 @@ void StdLogger::reportErr(const ErrorMessage &msg)
     // Don't perform redundant reads for these formats, the code is not needed
     // for deduplication
     const bool noCode = mSettings.outputFormat == Settings::OutputFormat::xml ||
-                        mSettings.outputFormat == Settings::OutputFormat::sarif;
+                        mSettings.outputFormat == Settings::OutputFormat::sarif ||
+                        mSettings.outputFormat == Settings::OutputFormat::gitlabCodeQuality;
     const std::string msgStr =
         msgCopy.toString(mSettings.verbose, mSettings.templateFormat,
                          mSettings.templateLocation, noCode);
@@ -690,6 +706,8 @@ void StdLogger::reportErr(const ErrorMessage &msg)
 
     if (mSettings.outputFormat == Settings::OutputFormat::sarif) {
         mSarifReport.addFinding(std::move(msgCopy));
+    } else if (mSettings.outputFormat == Settings::OutputFormat::gitlabCodeQuality) {
+        mGitlabCodeQualityReport.addFinding(std::move(msgCopy));
     } else if (mSettings.outputFormat == Settings::OutputFormat::xml) {
         reportErr(msgCopy.toXML());
     } else {

@@ -349,7 +349,7 @@ public:
     /** @brief write results (--output-file=&lt;file&gt;) */
     std::string outputFile;
 
-    enum class OutputFormat : std::uint8_t {text, plist, sarif, xml};
+    enum class OutputFormat : std::uint8_t {text, plist, sarif, gitlabCodeQuality, xml};
     OutputFormat outputFormat = OutputFormat::text;
 
     Platform platform;

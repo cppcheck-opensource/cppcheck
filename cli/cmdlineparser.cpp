@@ -1049,6 +1049,8 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                 mSettings.outputFormat = Settings::OutputFormat::text;
             else if (format == "sarif")
                 mSettings.outputFormat = Settings::OutputFormat::sarif;
+            else if (format == "gitlab-codequality")
+                mSettings.outputFormat = Settings::OutputFormat::gitlabCodeQuality;
             else if (format == "xml")
                 mSettings.outputFormat = Settings::OutputFormat::xml;
             else if (format == "xmlv2") {
@@ -1058,7 +1060,7 @@ CmdLineParser::Result CmdLineParser::parseFromArgs(int argc, const char* const a
                 mSettings.outputFormat = Settings::OutputFormat::xml;
                 mSettings.xml_version = 3;
             } else {
-                mLogger.printError("argument to '--output-format=' must be 'text', 'sarif', 'xml' (deprecated), 'xmlv2' or 'xmlv3'.");
+                mLogger.printError("argument to '--output-format=' must be 'text', 'sarif', 'gitlab-codequality', 'xml' (deprecated), 'xmlv2' or 'xmlv3'.");
                 return Result::Fail;
             }
             mSettings.plistOutput = "";
@@ -1913,6 +1915,7 @@ void CmdLineParser::printHelp() const
         "                        Specify the output format. The available formats are:\n"
         "                          * text\n"
         "                          * sarif\n"
+        "                          * gitlab-codequality\n"
         "                          * xml (deprecated)\n"
         "                          * xmlv2\n"
         "                          * xmlv3\n"
